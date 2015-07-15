@@ -44,7 +44,9 @@
 #include "CommonDef.h"
 #include "TComRom.h"
 #include "TComList.h"
-
+#if QC_AC_ADAPT_WDOW
+#include "TLibCommon/TComBitStream.h"
+#endif
 //! \ingroup TLibCommon
 //! \{
 
@@ -763,9 +765,33 @@ private:
   Int         m_iUseInterEMT;
 #endif
 
+#if QC_INTRA_4TAP_FILTER
+  Bool m_iUse4TapIntraFilter;
+#endif
+#if INTRA_BOUNDARY_FILTER
+  Bool m_iUseBoundaryFilter;
+#endif
+#if QC_USE_65ANG_MODES
+  Bool m_iUseExtIntraAngMode;
+#endif
 #if QC_OBMC
   Bool        m_bOBMC;
   Int         m_nOBMCBlkSize;
+#endif
+
+#if QC_FRUC_MERGE
+  Int         m_nFRUCMgrMode;
+  Int         m_nFRUCRefineFilter;
+  Int         m_nFURCRefineRange;
+  Int         m_nFRUCSmallBlkRefineDepth;
+#endif
+
+#if QC_IMV
+  Bool  m_nIMV;
+  Int   m_nIMVMaxCand;
+#endif
+#if QC_IC
+  Bool        m_bICFlag;
 #endif
 public:
   TComSPS();
@@ -912,12 +938,46 @@ public:
   Void setUseInterEMT(Int n)    { m_iUseInterEMT = n;     }
   Int  getUseInterEMT()         { return m_iUseInterEMT;  }
 #endif
-
+#if QC_INTRA_4TAP_FILTER
+  Void setUse4TapIntraFilter(Bool b)  { m_iUse4TapIntraFilter = b;     }
+  Bool getUse4TapIntraFilter()        { return m_iUse4TapIntraFilter;  }
+#endif
+#if INTRA_BOUNDARY_FILTER
+  Void setUseBoundaryFilter(Bool b)   { m_iUseBoundaryFilter = b;     }
+  Bool getUseBoundaryFilter()         { return m_iUseBoundaryFilter;  }
+#endif
+#if QC_USE_65ANG_MODES
+  Void setUseExtIntraAngModes(Bool b) { m_iUseExtIntraAngMode = b;     }
+  Bool getUseExtIntraAngModes()       { return m_iUseExtIntraAngMode;  }
+#endif
 #if QC_OBMC
   Void setOBMC(Bool bOBMC)            { m_bOBMC = bOBMC;    }
   Bool getOBMC()                      { return m_bOBMC;     }
   Void setOBMCBlkSize(Int nBlkSize)   { m_nOBMCBlkSize = nBlkSize;    }
   Int  getOBMCBlkSize()               { return m_nOBMCBlkSize;     }
+#endif
+
+#if QC_FRUC_MERGE
+  Void setUseFRUCMgrMode(Int n)    { m_nFRUCMgrMode = n;     }
+  Bool getUseFRUCMgrMode()         { return m_nFRUCMgrMode;  }
+  Void setFRUCRefineFilter(Int n)  { m_nFRUCRefineFilter = n;     }
+  Int  getFRUCRefineFilter()       { return m_nFRUCRefineFilter;  }
+  Void setFRUCRefineRange(Int n)  { m_nFURCRefineRange = n;     }
+  Int  getFRUCRefineRange()       { return m_nFURCRefineRange;  }
+  Void setFRUCSmallBlkRefineDepth(Int n)  { m_nFRUCSmallBlkRefineDepth = n;     }
+  Int  getFRUCSmallBlkRefineDepth()       { return m_nFRUCSmallBlkRefineDepth;  }
+#endif
+
+#if QC_IMV
+  Void  setIMV(Bool n)  { m_nIMV = n;    }
+  Bool  getIMV()       { return m_nIMV; }
+  Void  setIMVMaxCand(Int n)  { m_nIMVMaxCand = n;    }
+  Int   getIMVMaxCand()       { return m_nIMVMaxCand; }
+#endif
+
+#if QC_IC
+  Bool  getICFlag()         { return m_bICFlag;}
+  Void  setICFlag(Bool b)   { m_bICFlag = b;}
 #endif
 };
 
@@ -1191,6 +1251,13 @@ private:
   Int         m_aiRefPOCList  [2][MAX_NUM_REF+1];
   Bool        m_bIsUsedAsLongTerm[2][MAX_NUM_REF+1];
   Int         m_iDepth;
+
+#if QC_FRUC_MERGE
+  Int         m_iFrucRefIdxPair[2][MAX_NUM_REF+1];
+  Bool        m_bFrucRefIdxPairValid;
+  static Int  m_iScaleFactor[256][256];
+  static Bool m_bScaleFactorValid;
+#endif
  
   // referenced slice?
   Bool        m_bRefenced;
@@ -1200,6 +1267,15 @@ private:
   TComSPS*    m_pcSPS;
   TComPPS*    m_pcPPS;
   TComPic*    m_pcPic;
+#if QC_AC_ADAPT_WDOW
+#if INIT_PREVFRAME
+  Int         m_iCtxQPIdxStore;
+#endif
+  TComStats*  m_pcStats; 
+  Int         m_iCtxQPIdx;
+  Int         m_iQPIdx;
+#endif
+
 #if ADAPTIVE_QP_SELECTION
   TComTrQuant* m_pcTrQuant;
 #endif  
@@ -1251,7 +1327,9 @@ private:
   Bool       m_LFCrossSliceBoundaryFlag;
 
   Bool       m_enableTMVPFlag;
-
+#if QC_IC
+  Bool       m_bApplyIC;
+#endif
 public:
   TComSlice();
   virtual ~TComSlice(); 
@@ -1264,12 +1342,28 @@ public:
   
   Void      setPPS          ( TComPPS* pcPPS )         { assert(pcPPS!=NULL); m_pcPPS = pcPPS; m_iPPSId = pcPPS->getPPSId(); }
   TComPPS*  getPPS          () { return m_pcPPS; }
+#if QC_AC_ADAPT_WDOW
+  Void      setCtxMapQPIdx  (Int iQPIdx)  { m_iCtxQPIdx = iQPIdx; }
+  Void      setQPIdx        (Int iQPIdx)  { m_iQPIdx    = iQPIdx; }
+  Int       getQPIdx        ()            {  return  m_iQPIdx;    }
+  Int       getCtxMapQPIdx  ()            {  return  m_iCtxQPIdx; }
+#if INIT_PREVFRAME
+  Void      setCtxMapQPIdxforStore  (Int iQPIdx)  { m_iCtxQPIdxStore = iQPIdx; }  
+  Int       getCtxMapQPIdxforStore  ()            {  return  m_iCtxQPIdxStore; }
+#endif
+#endif
 
 #if ADAPTIVE_QP_SELECTION
   Void          setTrQuant          ( TComTrQuant* pcTrQuant ) { m_pcTrQuant = pcTrQuant; }
   TComTrQuant*  getTrQuant          () { return m_pcTrQuant; }
 #endif
-
+#if QC_IC
+  Void      setApplyIC( Bool b )       { m_bApplyIC = b; }
+  Bool      getApplyIC()               { return m_bApplyIC; }
+#if QC_IC_SPDUP
+  Void      xSetApplyIC();
+#endif
+#endif
   Void      setPPSId        ( Int PPSId )         { m_iPPSId = PPSId; }
   Int       getPPSId        () { return m_iPPSId; }
   Void      setPicOutputFlag( Bool b )         { m_PicOutputFlag = b;    }
@@ -1478,6 +1572,16 @@ public:
 
   Void      setEnableTMVPFlag     ( Bool   b )    { m_enableTMVPFlag = b; }
   Bool      getEnableTMVPFlag     ()              { return m_enableTMVPFlag;}
+
+#if QC_AC_ADAPT_WDOW
+  Void setStatsHandle ( TComStats*  pcStats)  {m_pcStats=pcStats;}
+  Void initStatsGlobal(); 
+  TComStats* getStatsHandle ()                {return m_pcStats; }
+#endif 
+#if QC_FRUC_MERGE
+  Int       getRefIdx4MVPair( RefPicList eCurRefPicList , Int nCurRefIdx );
+  inline Int getScaleFactor( Int iTDB , Int iTDD )  { return TComSlice::m_iScaleFactor[128+iTDB][128+iTDD]; }
+#endif
 
 protected:
   TComPic*  xGetRefPic  (TComList<TComPic*>& rcListPic,

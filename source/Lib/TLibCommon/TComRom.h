@@ -136,7 +136,16 @@ extern       UInt   g_sigLastScanCG64x64[ 256 ];
 extern const UInt   g_uiGroupIdx  [ 32 ];
 extern const UInt   g_uiMinInGroup[ 10 ];
 #endif
-  
+
+#if QC_CTX_RESIDUALCODING
+#if !QC_T64
+extern const UInt   g_uiLastCtx[ 28 ];
+#endif
+extern const UInt   g_auiGoRiceRange[5];                  //!< maximum value coded with Rice codes
+extern const UInt   g_auiGoRicePrefixLen[5];              //!< prefix length for each maximum value
+extern const UInt   g_auiGoRiceTable[64];
+#endif
+
 extern const UInt   g_sigLastScan8x8[ 3 ][ 4 ];           //!< coefficient group scan order for 8x8 TUs
 extern       UInt   g_sigLastScanCG32x32[ 64 ];
 
@@ -145,6 +154,11 @@ extern       UInt   g_sigLastScanCG32x32[ 64 ];
 // ====================================================================================================================
 
 extern const UChar  g_aucIntraModeNumFast[ MAX_CU_DEPTH ];
+
+#if QC_INTRA_4TAP_FILTER
+extern Int g_aiIntraCubicFilter[32][4];
+extern Int g_aiIntraGaussFilter[32][4];
+#endif
 
 // ====================================================================================================================
 // Bit-depth
@@ -168,8 +182,12 @@ extern const Short g_as_DST_MAT_4 [4][4];
 #if QC_EMT
 extern Int g_aiTrSubsetIntra[3][2];
 extern Int g_aiTrSubsetInter[4];
-extern const UChar g_aucTrSetVert[NUM_INTRA_MODE-1];
-extern const UChar g_aucTrSetHorz[NUM_INTRA_MODE-1];
+#if QC_USE_65ANG_MODES
+extern const UChar g_aucTrSetVertExt[NUM_INTRA_MODE-1];
+extern const UChar g_aucTrSetHorzExt[NUM_INTRA_MODE-1];
+#endif
+extern const UChar g_aucTrSetVert[35];
+extern const UChar g_aucTrSetHorz[35];
 extern const UInt g_iEmtSigNumThr;
 #endif
 
@@ -186,7 +204,6 @@ extern short g_aiTr64[NUM_TRANS_TYPE][64][64];
 // ====================================================================================================================
 // Misc.
 // ====================================================================================================================
-
 extern       Char   g_aucConvertToBit  [ MAX_CU_SIZE+1 ];   // from width to log2(width)-2
 
 #ifndef ENC_DEC_TRACE

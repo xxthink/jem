@@ -240,6 +240,9 @@ Void TEncSampleAdaptiveOffset::initRDOCabacCoder(TEncSbac* pcRDGoOnSbacCoder, TC
 {
   m_pcRDGoOnSbacCoder = pcRDGoOnSbacCoder;
   m_pcRDGoOnSbacCoder->setSlice(pcSlice);
+#if QC_AC_ADAPT_WDOW
+  m_pcRDGoOnSbacCoder->setStatesHandle(m_pcEntropyCoder->getStatsHandle());
+#endif
   m_pcRDGoOnSbacCoder->resetEntropy();
   m_pcRDGoOnSbacCoder->resetBits();
 

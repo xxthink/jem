@@ -384,5 +384,62 @@ Void TComInputBitstream::readByteAlignment()
     assert(code == 0);
   }
 }
+#if QC_AC_ADAPT_WDOW
+#if INIT_PREVFRAME
+TComStats::TComStats(UInt uiNLCUW, UInt uiNLCUH)
+#else
+TComStats::TComStats()
+#endif
+{
+  for (Int k = 0; k < 3; k++)
+    for (Int i=0; i<NUM_QP_PROB; i++)
+    {
+      aaQPUsed[k][i].uiQP = 0;
+      aaQPUsed[k][i].bUsed = false;
+      aaQPUsed[k][i].bFirstUsed = false;
+#if INIT_PREVFRAME
+      aaQPUsed[k][i].uiResetInit = -1;
+#endif
+    }
 
+#if INIT_PREVFRAME
+  m_uiLastIPOC = -1;
+  for(Int i=0; i< 2; i++)
+    for(Int j=0; j< NUM_QP_PROB; j++)  
+  {
+    if((m_uiCtxProbIdx[i][j] =(UShort**)calloc(uiNLCUH, sizeof(UShort*))) == NULL)
+    {
+      printf("get_mem2Dpel: array2D");
+      exit(-1);
+    }
+    if(((m_uiCtxProbIdx[i][j])[0] = (UShort* )calloc(uiNLCUH*uiNLCUW,sizeof(UShort ))) == NULL)
+    {
+      printf("get_mem2Dpel: array2D");
+      exit(-1);
+    }
+  
+  for(Int k=1 ; k<uiNLCUH ; k++)
+    m_uiCtxProbIdx[i][j][k] =  m_uiCtxProbIdx[i][j][k-1] + uiNLCUW  ;
+  }
+#endif
+}
+TComStats::~TComStats()
+{
+#if INIT_PREVFRAME
+  if(m_uiCtxProbIdx)
+  {
+    for(Int i=0; i<2; i++)
+      for(Int j=0; j< NUM_QP_PROB; j++)
+      {
+        if (m_uiCtxProbIdx[i][j])
+        {
+          if (m_uiCtxProbIdx[i][j][0])
+            free (m_uiCtxProbIdx[i][j][0]);
+          free (m_uiCtxProbIdx[i][j]);
+        }
+      }
+  }
+#endif
+}
+#endif
 //! \}

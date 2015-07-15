@@ -102,8 +102,19 @@ private:
   UChar*          m_puhQTTempEmtCuFlag;
 #endif
 #if QC_SUB_PU_TMVP
+#if QC_SUB_PU_TMVP_EXT
+  TComMvField   * m_pMvFieldSP[2];
+  UChar         * m_phInterDirSP[2];
+#else
   TComMvField  * m_pMvFieldSP;
   UChar        * m_phInterDirSP;
+#endif
+#endif
+#if QC_FRUC_MERGE
+  TComMvField  * m_pMvFieldFRUC;
+  UChar        * m_phInterDirFRUC;
+  UChar        * m_phFRUCRefineDist[2];
+  UChar        * m_phFRUCSBlkRefineDist[2];
 #endif
 protected:
   // interface to option
@@ -368,6 +379,9 @@ protected:
                                     Int&        riMVPIdx,
                                     UInt&       ruiBits,
                                     UInt&       ruiCost
+#if QC_IMV
+                                    , UInt uiPartAddr
+#endif
                                     );
   
   UInt xGetTemplateCost           ( TComDataCU* pcCU,
@@ -404,10 +418,20 @@ protected:
                                     Int& numValidMergeCand
 #if QC_SUB_PU_TMVP
                                   , UChar*      pMergeTypeNeighbor 
+#if QC_SUB_PU_TMVP_EXT
+                                  , TComMvField*    pcMvFieldSP[2]
+                                  , UChar*          puhInterDirSP[2]
+#else
                                   , TComMvField*    pcMvFieldSP
                                   , UChar*          puhInterDirSP
 #endif
+#endif
                                    );
+#if QC_FRUC_MERGE
+  Void xFRUCMgrEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPUIdx, TComMvField* pacMvField, 
+    UChar * phInterDir , UChar ** phFRUCRefineDist , UChar ** phFRUCSBlkRefineDist ,
+    UInt& ruiMinCost , UChar & ruhFRUCMode );
+#endif
   Void xRestrictBipredMergeCand   ( TComDataCU*     pcCU,
                                     UInt            puIdx,
                                     TComMvField*    mvFieldNeighbours, 
@@ -483,7 +507,12 @@ protected:
   Void xEstimateResidualQT( TComDataCU* pcCU, UInt uiQuadrant, UInt uiAbsPartIdx, UInt absTUPartIdx,TComYuv* pcResi, const UInt uiDepth, Double &rdCost, UInt &ruiBits, UInt &ruiDist, UInt *puiZeroDist );
   Void xSetResidualQTData( TComDataCU* pcCU, UInt uiQuadrant, UInt uiAbsPartIdx,UInt absTUPartIdx, TComYuv* pcResi, UInt uiDepth, Bool bSpatial );
   
-  UInt  xModeBitsIntra ( TComDataCU* pcCU, UInt uiMode, UInt uiPU, UInt uiPartOffset, UInt uiDepth, UInt uiInitTrDepth );
+  UInt  xModeBitsIntra ( TComDataCU* pcCU, UInt uiMode, UInt uiPU, UInt uiPartOffset, UInt uiDepth, UInt uiInitTrDepth 
+#if QC_USE_65ANG_MODES
+    , Int* piModes = NULL
+    , Int  iAboveLeftCase = -1
+#endif
+    );
   UInt  xUpdateCandList( UInt uiMode, Double uiCost, UInt uiFastCandNum, UInt * CandModeList, Double * CandCostList );
   
   // -------------------------------------------------------------------------------------------------------------------

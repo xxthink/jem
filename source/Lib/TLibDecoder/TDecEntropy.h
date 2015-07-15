@@ -69,6 +69,11 @@ public:
   virtual Void  parsePPS                  ( TComPPS* pcPPS )                                      = 0;
 
   virtual Void parseSliceHeader          ( TComSlice*& rpcSlice, ParameterSetManagerDecoder *parameterSetManager)       = 0;
+#if QC_AC_ADAPT_WDOW
+  virtual TComStats* getStatesHandle      () = 0;
+  virtual Void setStatesHandle            ( TComStats* pcStats) = 0;
+  virtual Void parseCtxUpdateInfo         ( TComSlice*& rpcSlice, TComStats* apcStats )   = 0;
+#endif
 
   virtual Void  parseTerminatingBit       ( UInt& ruilsLast )                                     = 0;
   
@@ -76,13 +81,22 @@ public:
   
 public:
   virtual Void parseSkipFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
+#if QC_IMV
+  virtual Void parseiMVFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
+#endif
 #if QC_OBMC
   virtual Void parseOBMCFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
+#endif
+#if QC_IC
+  virtual Void parseICFlag        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
 #endif
   virtual Void parseCUTransquantBypassFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
   virtual Void parseSplitFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
   virtual Void parseMergeFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx ) = 0;
   virtual Void parseMergeIndex    ( TComDataCU* pcCU, UInt& ruiMergeIndex ) = 0;
+#if QC_FRUC_MERGE
+  virtual Void parseFRUCMgrMode  ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx ) = 0;
+#endif
 #if QC_EMT
   virtual Void parseEmtTuIdx      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
   virtual Void parseEmtCuFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bRootCbf ) = 0;
@@ -135,8 +149,13 @@ private:
   UInt    m_uiBakChromaOffset;
   UInt    m_bakAbsPartIdxCU;
 #if QC_SUB_PU_TMVP
+#if QC_SUB_PU_TMVP_EXT
+  TComMvField*        m_pMvFieldSP[2];
+  UChar*              m_phInterDirSP[2];
+#else
   TComMvField  * m_pMvFieldSP;
   UChar        * m_phInterDirSP;
+#endif
 #endif
   
 public:
@@ -144,6 +163,12 @@ public:
   TDecEntropy();
   ~TDecEntropy();
 #endif
+#if QC_AC_ADAPT_WDOW
+  TComStats*                      m_pcStats;
+  Void       updateStates   ( SliceType uiSliceType, UInt uiSliceQP, TComStats*  apcStats);
+  Void       setStatsHandle ( TComStats*  pcStats)  {m_pcStats = pcStats;}
+  TComStats* getStatsHandle ()  {return m_pcStats;}
+#endif 
 
   Void init (TComPrediction* p) {m_pcPrediction = p;}
   Void decodePUWise       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, TComDataCU* pcSubCU );
@@ -154,7 +179,16 @@ public:
   
   Void    setEntropyDecoder           ( TDecEntropyIf* p );
   Void    setBitstream                ( TComInputBitstream* p ) { m_pcEntropyDecoderIf->setBitstream(p);                    }
+#if QC_AC_ADAPT_WDOW
+  Void    resetEntropy      ( TComSlice* p)       
+  {
+    m_pcEntropyDecoderIf->setStatesHandle (m_pcStats);
+    m_pcEntropyDecoderIf->resetEntropy(p);  
+  }
+  Void    decodeCtxUpdateInfo         (TComSlice*& rpcSlice, TComStats* apcStats )  { m_pcEntropyDecoderIf->parseCtxUpdateInfo( rpcSlice, apcStats); }
+#else
   Void    resetEntropy                ( TComSlice* p)           { m_pcEntropyDecoderIf->resetEntropy(p);                    }
+#endif
   Void    decodeVPS                   ( TComVPS* pcVPS ) { m_pcEntropyDecoderIf->parseVPS(pcVPS); }
   Void    decodeSPS                   ( TComSPS* pcSPS     )    { m_pcEntropyDecoderIf->parseSPS(pcSPS);                    }
   Void    decodePPS                   ( TComPPS* pcPPS )    { m_pcEntropyDecoderIf->parsePPS(pcPPS);                    }
@@ -167,12 +201,21 @@ public:
 public:
   Void decodeSplitFlag         ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   Void decodeSkipFlag          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#if QC_IMV
+  Void decodeiMVFlag          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
 #if QC_OBMC
   Void decodeOBMCFlag          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
+#if QC_IC
+  Void decodeICFlag            ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
   Void decodeCUTransquantBypassFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   Void decodeMergeFlag         ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx );
   Void decodeMergeIndex        ( TComDataCU* pcSubCU, UInt uiPartIdx, UInt uiPartAddr, UInt uiDepth );
+#if QC_FRUC_MERGE
+  Void decodeFRUCMgrMode      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx );
+#endif
   Void decodePredMode          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   Void decodePartSize          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   

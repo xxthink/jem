@@ -114,7 +114,9 @@ typedef struct
   Int lastXBits[32];
   Int lastYBits[32];
   Int m_greaterOneBits[NUM_ONE_FLAG_CTX][2];
+#if !QC_CTX_RESIDUALCODING
   Int m_levelAbsBits[NUM_ABS_FLAG_CTX][2];
+#endif
 
   Int blockCbpBits[3*NUM_QT_CBF_CTX][2];
   Int blockRootCbpBits[4][2];
@@ -200,6 +202,9 @@ public:
 #if QC_EMT
     , UChar ucTrIdx = DCT2_HEVC
 #endif
+#if QC_USE_65ANG_MODES
+    , Bool bUseExtIntraAngModes = false
+#endif
     );
   Void invRecurTransformNxN ( TComDataCU* pcCU, UInt uiAbsPartIdx, TextType eTxt, Pel* rpcResidual, UInt uiAddr,   UInt uiStride, UInt uiWidth, UInt uiHeight,
                              UInt uiMaxTrMode,  UInt uiTrMode, TCoeff* rpcCoeff );
@@ -222,7 +227,45 @@ public:
   Void setRDOQOffset( UInt uiRDOQOffset ) { m_uiRDOQOffset = uiRDOQOffset; }
   
   estBitsSbacStruct* m_pcEstBitsSbac;
-  
+#if QC_CTX_RESIDUALCODING
+  static Int getGrtZeroCtxInc    ( TCoeff*                         pcCoeff,
+                                   Int                             posX,
+                                   Int                             posY,
+                                   Int                             width
+                                  ,Int                             height
+                                  ,TextType                        textureType 
+                                  );
+  static Int getGrtOneCtxInc    ( TCoeff*                         pcCoeff,
+                                   Int                             posX,
+                                   Int                             posY,
+                                   Int                             width
+                                  ,Int                             height
+                                  ,TextType                        textureType 
+                                  );
+  static Int getGrtTwoCtxInc    ( TCoeff*                         pcCoeff,
+                                   Int                             posX,
+                                   Int                             posY,
+                                   Int                             width
+                                  ,Int                             height
+                                  ,TextType                        textureType 
+                                  );
+  static Int getRemainCoeffCtxInc( TCoeff*                         pcCoeff,
+                                   Int                             posX,
+                                   Int                             posY,
+                                   Int                             width
+                                  ,Int                             height
+                                  );
+  static Int      getSigCtxInc     ( TCoeff*                         pcCoeff,
+                                     Int                             posX,
+                                     Int                             posY,
+                                     Int                             width
+                                    ,Int                             height
+                                    ,TextType                        textureType
+                                    ,UInt&                           sumOne
+                                    ,UInt&                           sumTwo
+                                    ,UInt&                           sumAbs
+                                    );
+#else  
   static Int      calcPatternSigCtx( const UInt* sigCoeffGroupFlag, UInt posXCG, UInt posYCG, Int width, Int height );
 
   static Int      getSigCtxInc     (
@@ -233,9 +276,13 @@ public:
                                      Int                             log2BlkSize,
                                      TextType                        textureType
                                     );
+#endif
   static UInt getSigCoeffGroupCtxInc  ( const UInt*                   uiSigCoeffGroupFlag,
                                        const UInt                       uiCGPosX,
                                        const UInt                       uiCGPosY,
+#if QC_CTX_RESIDUALCODING
+                                       const UInt                      scanIdx,
+#endif
                                        Int width, Int height);
   Void initScalingList                      ();
   Void destroyScalingList                   ();
@@ -296,6 +343,9 @@ private:
   Void xT   (Int bitDepth, UInt uiMode,Pel* pResidual, UInt uiStride, Int* plCoeff, Int iWidth, Int iHeight 
 #if QC_EMT
     , UChar ucTrIdx
+#endif
+#if QC_USE_65ANG_MODES
+    , Bool bUseExtIntraAngModes = false
 #endif
     );
   
@@ -368,6 +418,9 @@ __inline Int xGetICRate  ( UInt                            uiAbsLevel,
   Void xIT    (Int bitDepth, UInt uiMode, Int* plCoef, Pel* pResidual, UInt uiStride, Int iWidth, Int iHeight 
 #if QC_EMT
     , UChar ucTrIdx
+#endif
+#if QC_USE_65ANG_MODES
+    , Bool bUseExtIntraAngModes = false
 #endif
     );
   
