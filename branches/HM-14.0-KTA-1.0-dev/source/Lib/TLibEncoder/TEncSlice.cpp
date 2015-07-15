@@ -1382,7 +1382,7 @@ Void TEncSlice::encodeSlice   ( TComPic*& rpcPic, TComOutputBitstream* pcSubstre
     }
 #if INIT_PREVFRAME
     UInt uiTargetCUAddr = rpcPic->getFrameWidthInCU()/2 + rpcPic->getNumCUsInFrame()/2;
-    if( uiTargetCUAddr >= rpcPic->getfsNumCUsInFrame() )
+    if( uiTargetCUAddr >= rpcPic->getNumCUsInFrame() )
     {
       uiTargetCUAddr = rpcPic->getNumCUsInFrame() - 1;
     }
