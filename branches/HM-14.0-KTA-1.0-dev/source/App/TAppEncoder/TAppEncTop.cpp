@@ -341,12 +341,40 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setUseFastInterEMT( (m_iUseFastEMT>>1)&1 );
 #endif
 #endif
+
+#if QC_INTRA_4TAP_FILTER
+  m_cTEncTop.setUse4TapIntraFilter ( m_bUse4TapIntraFilter );
+#endif
+#if INTRA_BOUNDARY_FILTER
+  m_cTEncTop.setUseBoundaryFilter ( m_bUseBoundaryFilter );
+#endif
+
+#if QC_USE_65ANG_MODES
+  m_cTEncTop.setUseExtIntraAngModes ( m_bUseExtIntraAngMode );
+#endif
+
 #if QC_LARGE_CTU_FAST
   m_cTEncTop.setLCTUFast( m_nLCTUFast );
 #endif
 #if QC_OBMC
   m_cTEncTop.setOBMC( m_bOBMC );
   m_cTEncTop.setOBMCBlkSize( m_nOBMCBlkSize );
+#endif
+
+#if QC_FRUC_MERGE
+  m_cTEncTop.setFRUCMgrMode( m_nFRUCMgrMode );
+  m_cTEncTop.setFRUCRefineFilter( m_nFRUCRefineFilter );
+  m_cTEncTop.setFRUCRefineRange( m_nFURCRefineRange << QC_MV_STORE_PRECISION_BIT );
+  m_cTEncTop.setFRUCSmallBlkRefineDepth( m_nFRUCSmallBlkRefineDepth );
+#endif
+
+#if QC_IMV
+  m_cTEncTop.setIMV( m_nIMV );
+  m_cTEncTop.setIMVMaxCand( m_nIMVMaxCand );
+#endif
+
+#if QC_IC
+  m_cTEncTop.setUseIC( m_abUseIC );
 #endif
 }
 
@@ -361,6 +389,13 @@ Void TAppEncTop::xCreateLib()
   
   // Neo Decoder
   m_cTEncTop.create();
+#if QC_AC_ADAPT_WDOW
+#if INIT_PREVFRAME
+  m_apcStats=new TComStats (1, NUM_CTX_PBSLICE);   
+#else
+  m_apcStats=new TComStats ();  
+#endif
+#endif 
 }
 
 Void TAppEncTop::xDestroyLib()
@@ -368,7 +403,15 @@ Void TAppEncTop::xDestroyLib()
   // Video I/O
   m_cTVideoIOYuvInputFile.close();
   m_cTVideoIOYuvReconFile.close();
-  
+
+#if QC_AC_ADAPT_WDOW
+  if (m_apcStats)
+  {
+    delete m_apcStats;   
+    m_apcStats =NULL;
+  }              
+#endif  
+
   // Neo Decoder
   m_cTEncTop.destroy();
 }
@@ -448,11 +491,19 @@ Void TAppEncTop::encode()
     // call encoding function for one frame
     if ( m_isField )
     {
+#if QC_AC_ADAPT_WDOW
+      m_cTEncTop.encode( bEos, flush ? 0 : pcPicYuvOrg, m_cListPicYuvRec, outputAccessUnits, iNumEncoded, m_isTopFieldFirst, m_apcStats);
+#else
       m_cTEncTop.encode( bEos, flush ? 0 : pcPicYuvOrg, m_cListPicYuvRec, outputAccessUnits, iNumEncoded, m_isTopFieldFirst);
+#endif
     }
     else
     {
+#if QC_AC_ADAPT_WDOW
+      m_cTEncTop.encode( bEos, flush ? 0 : pcPicYuvOrg, m_cListPicYuvRec, outputAccessUnits, iNumEncoded, m_apcStats);
+#else
       m_cTEncTop.encode( bEos, flush ? 0 : pcPicYuvOrg, m_cListPicYuvRec, outputAccessUnits, iNumEncoded );
+#endif
     }
     
     // write bistream to file if necessary

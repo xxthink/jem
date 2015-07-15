@@ -189,7 +189,9 @@ Void TEncSlice::initEncSlice( TComPic* pcPic, Int pocLast, Int pocCurr, Int iNum
   rpcSlice->initSlice();
   rpcSlice->setPicOutputFlag( true );
   rpcSlice->setPOC( pocCurr );
-  
+#if QC_IC
+  rpcSlice->setApplyIC( false );
+#endif  
   // depth computation based on GOP size
   Int depth;
   {
@@ -501,7 +503,11 @@ Void TEncSlice::initEncSlice( TComPic* pcPic, Int pocLast, Int pocCurr, Int iNum
   rpcSlice->setSliceSegmentMode     ( m_pcCfg->getSliceSegmentMode()     );
   rpcSlice->setSliceSegmentArgument ( m_pcCfg->getSliceSegmentArgument() );
 #if QC_SUB_PU_TMVP
+#if MERGE_CAND_NUM_PATCH
+  rpcSlice->setMaxNumMergeCand        (m_pcCfg->getMaxNumMergeCand());
+#else
   rpcSlice->setMaxNumMergeCand        ( m_pcCfg->getMaxNumMergeCand() + (m_pcCfg->getAtmvp()? 1:0)        );
+#endif
 #else
   rpcSlice->setMaxNumMergeCand        ( m_pcCfg->getMaxNumMergeCand()        );
 #endif
@@ -752,6 +758,9 @@ Void TEncSlice::compressSlice( TComPic*& rpcPic )
   m_uiPicDist       = 0;
   
   // set entropy coder
+#if QC_AC_ADAPT_WDOW
+  m_pcEntropyCoder->setStatsHandle ( m_apcStats);
+#endif  
   m_pcSbacCoder->init( m_pcBinCABAC );
   m_pcEntropyCoder->setEntropyCoder   ( m_pcSbacCoder, pcSlice );
   m_pcEntropyCoder->resetEntropy      ();
@@ -810,7 +819,16 @@ Void TEncSlice::compressSlice( TComPic*& rpcPic )
   TComBitCounter* pcBitCounters     = pcEncTop->getBitCounters();
   Int  iNumSubstreams = 1;
   UInt uiTilesAcross  = 0;
-
+#if QC_IC
+  if ( pcEncTop->getUseIC() )
+  {
+#if QC_IC_SPDUP
+    pcSlice->xSetApplyIC();
+#else
+    pcSlice->setApplyIC( pcSlice->isIntra() ? false : true );
+#endif
+  }
+#endif
   iNumSubstreams = pcSlice->getPPS()->getNumSubstreams();
   uiTilesAcross = rpcPic->getPicSym()->getNumColumnsMinus1()+1;
   delete[] m_pcBufferSbacCoders;
@@ -940,6 +958,12 @@ Void TEncSlice::compressSlice( TComPic*& rpcPic )
         ppppcRDSbacCoders[uiSubStrm][0][CI_CURR_BEST]->loadContexts( &m_pcBufferSbacCoders[uiTileCol] );
       }
     }
+#if INIT_PREVFRAME
+    if(pcSlice->getSliceType()!=I_SLICE && uiCUAddr==0)
+    {
+      ppppcRDSbacCoders[uiSubStrm][0][CI_CURR_BEST]->loadContextsFromPrev( m_apcStats, pcSlice->getSliceType(), pcSlice->getCtxMapQPIdx(), true, pcSlice->getCtxMapQPIdxforStore(), (pcSlice->getPOC() > m_apcStats->m_uiLastIPOC) ); 
+    }
+#endif
     m_pppcRDSbacCoder[0][CI_CURR_BEST]->load( ppppcRDSbacCoders[uiSubStrm][0][CI_CURR_BEST] ); //this load is used to simplify the code
 
     // reset the entropy coder
@@ -1118,7 +1142,13 @@ Void TEncSlice::encodeSlice   ( TComPic*& rpcPic, TComOutputBitstream* pcSubstre
     m_pcSbacCoder->init( (TEncBinIf*)m_pcBinCABAC );
     m_pcEntropyCoder->setEntropyCoder ( m_pcSbacCoder, pcSlice );
   }
-  
+#if QC_AC_ADAPT_WDOW && ENABLE_ADAPTIVE_W
+  TEncBinCABAC* pEncBin = m_pcSbacCoder->getBinIf()->getTEncBinCABAC();
+  if(pcSlice->getQPIdx()!= -1)
+  {
+    pEncBin->allocateMemoryforBinStrings();
+  }
+#endif  
   m_pcCuEncoder->setBitCounter( NULL );
   m_pcBitCounter = NULL;
   // Appropriate substream bitstream is switched later.
@@ -1253,6 +1283,12 @@ Void TEncSlice::encodeSlice   ( TComPic*& rpcPic, TComOutputBitstream* pcSubstre
         pcSbacCoders[uiSubStrm].loadContexts( &m_pcBufferSbacCoders[uiTileCol] );
       }
     }
+#if INIT_PREVFRAME
+    if(pcSlice->getSliceType()!=I_SLICE && uiCUAddr==0)
+    {
+      pcSbacCoders[uiSubStrm].loadContextsFromPrev( pcSlice->getStatsHandle(), pcSlice->getSliceType(), pcSlice->getCtxMapQPIdx(), true, pcSlice->getCtxMapQPIdxforStore(), (pcSlice->getPOC() > m_apcStats->m_uiLastIPOC) ); 
+    }
+#endif
     m_pcSbacCoder->load(&pcSbacCoders[uiSubStrm]);  //this load is used to simplify the code (avoid to change all the call to m_pcSbacCoder)
 
     // reset the entropy coder
@@ -1344,6 +1380,17 @@ Void TEncSlice::encodeSlice   ( TComPic*& rpcPic, TComOutputBitstream* pcSubstre
     {
       m_pcBufferSbacCoders[uiTileCol].loadContexts( &pcSbacCoders[uiSubStrm] );
     }
+#if INIT_PREVFRAME
+    UInt uiTargetCUAddr = rpcPic->getFrameWidthInCU()/2 + rpcPic->getNumCUsInFrame()/2;
+    if( uiTargetCUAddr >= rpcPic->getfsNumCUsInFrame() )
+    {
+      uiTargetCUAddr = rpcPic->getNumCUsInFrame() - 1;
+    }
+    if(pcSlice->getSliceType()!=I_SLICE && uiCUAddr ==  uiTargetCUAddr)
+    {
+      pcSbacCoders[uiSubStrm].loadContextsFromPrev( pcSlice->getStatsHandle(), pcSlice->getSliceType(), pcSlice->getCtxMapQPIdxforStore(), false ); 
+    }
+#endif
   }
   if( depSliceSegmentsEnabled )
   {
@@ -1370,6 +1417,14 @@ Void TEncSlice::encodeSlice   ( TComPic*& rpcPic, TComOutputBitstream* pcSubstre
       m_pcEntropyCoder->determineCabacInitIdx();
     }
   }
+
+#if QC_AC_ADAPT_WDOW && ENABLE_ADAPTIVE_W
+  if(pcSlice->getQPIdx()!= -1)
+  {
+    xGenUpdateMap    (pcSlice->getSliceType(), pcSlice->getQPIdx(), m_apcStats);
+    pEncBin->freeMemoryforBinStrings();
+  }
+#endif
 }
 
 /** Determines the starting and bounding LCU address of current slice / dependent slice
@@ -1704,4 +1759,145 @@ Double TEncSlice::xGetQPValueAccordingToLambda ( Double lambda )
   return 4.2005*log(lambda) + 13.7122;
 }
 
+#if QC_AC_ADAPT_WDOW && ENABLE_ADAPTIVE_W
+#if ALF_HM3_QC_REFACTOR 
+Void TEncSlice::xGenUpdateMapAlF (UInt uiSliceType, Int iQP,  TComStats* apcStats)
+{
+  TEncSbac  * pSbacCoder =  m_pcEntropyCoder->getCABACCoder();  
+  ContextModel* pCtx     =  pSbacCoder->getContextModel();
+  UInt uiCtxStartPos     =  pSbacCoder->getCtxNumber() - NUM_ALF_CTX;
+
+  TEncBinCABAC* pEncBinCABAC = pSbacCoder->getBinIf()->getTEncBinCABAC();
+  Bool** pCodedBinStr = pEncBinCABAC->getCodedBinStr();
+  Int*   pCounter     = pEncBinCABAC->getCodedNumBins();
+  pEncBinCABAC->setUpdateStr(false);
+
+  TEncSbac* pTestEncSbac            = new TEncSbac;  
+  TEncBinCABAC* pcTestBinCoderCABAC = new TEncBinCABAC;
+  TComOutputBitstream* pBitIf       = new TComOutputBitstream;
+
+  pTestEncSbac->init(pcTestBinCoderCABAC);
+  pTestEncSbac->setBitstream(pBitIf);
+ 
+  for(UInt i=0; i<NUM_ALF_CTX; i++)
+  {
+    xContextWdowSizeUpdateDecision(pTestEncSbac, uiCtxStartPos, pCtx, apcStats->m_uiCtxMAP[uiSliceType][iQP], apcStats->m_uiCtxCodeIdx[uiSliceType][iQP], pCodedBinStr, pCounter);
+  }
+  if(pTestEncSbac)        {free(pTestEncSbac);             pTestEncSbac        = NULL;      }
+  if(pcTestBinCoderCABAC) {free(pcTestBinCoderCABAC);      pcTestBinCoderCABAC = NULL;      }
+  if(pBitIf)              {free(pBitIf);                   pBitIf              = NULL;      }
+}
+#endif
+
+#if INIT_PREVFRAME
+Void TEncSlice::xContextWdowSizeUpdateDecision(TEncSbac* pTestEncSbac, UInt &uiCtxStartPos, ContextModel* pSliceCtx, Bool *uiCtxMap, UChar *uiCtxCodeIdx, Bool** pCodedBinStr, Int* pCounter, UShort* uiCTX)
+#else
+Void TEncSlice::xContextWdowSizeUpdateDecision(TEncSbac* pTestEncSbac, UInt &uiCtxStartPos, ContextModel* pSliceCtx, Bool *uiCtxMap, UChar *uiCtxCodeIdx, Bool** pCodedBinStr, Int* pCounter)
+#endif
+{
+  //derive the best window size
+  UInt uiBestW = 0, currBits = 0, minBits = MAX_UINT;
+  Bool* pBinStr  = pCodedBinStr[uiCtxStartPos];
+  UInt  uiStrlen = pCounter[uiCtxStartPos];
+  if(uiStrlen==0)
+  {
+    uiCtxMap[uiCtxStartPos] = 0;
+    uiCtxStartPos += 1;
+    return;
+  }
+
+
+  for(UInt uiW = 0; uiW < NUM_WDOW; uiW++)
+  {
+#if !ENABLE_ADAPTIVE_W
+    if((uiW + 4) != ALPHA0 )
+      continue;
+#endif
+    //initilization        
+    pTestEncSbac->getEncBinIf()->start(); 
+    currBits = pTestEncSbac->getNumberOfWrittenBits();
+
+    ContextModel cCurrCtx = pSliceCtx[uiCtxStartPos];  
+#if INIT_PREVFRAME
+    if(uiCTX != NULL)
+    {
+      cCurrCtx.setState(uiCTX[uiCtxStartPos]);
+    }
+#endif
+    cCurrCtx.setWindowSize(uiW + 4);    
+
+
+    for(UInt k = 0; k < uiStrlen; k ++)
+    {         
+      UInt val = pBinStr[k];
+      pTestEncSbac->getEncBinIf()->encodeBin(val, cCurrCtx);
+    }
+    currBits = pTestEncSbac->getNumberOfWrittenBits()-currBits;
+
+    if(currBits < minBits)
+    {
+      minBits = currBits;
+      uiBestW = uiW;
+    }   
+  }
+  if( uiBestW != (ALPHA0 - 4) )
+  {
+    uiCtxMap[uiCtxStartPos] = 1;
+    uiCtxCodeIdx[uiCtxStartPos] =(UChar) (uiBestW + 4); //the best window size, to be signalled
+  }
+  else
+  {
+    uiCtxMap[uiCtxStartPos] = 0;
+    uiCtxCodeIdx[uiCtxStartPos] = ALPHA0;
+  }
+  uiCtxStartPos += 1;
+}
+
+Void TEncSlice::xGenUpdateMap (UInt uiSliceType, Int iQP,  TComStats* apcStats)
+{
+  UInt uiCtxStartPos = 0;
+  Bool bUpdate       = false;
+
+  TEncSbac*     pSbacCoder   =  m_pcEntropyCoder->getCABACCoder();  
+  TEncBinCABAC* pEncBinCABAC = pSbacCoder->getBinIf()->getTEncBinCABAC();
+  Bool** pCodedBinStr        = pEncBinCABAC->getCodedBinStr();
+  Int*   pCounter            = pEncBinCABAC->getCodedNumBins();
+  Int    iCtxNr              = pSbacCoder->getCtxNumber() - NUM_ALF_CTX;
+
+  ContextModel* pCtx         =  pSbacCoder->getContextModel();
+  pEncBinCABAC->setUpdateStr(false);
+
+  TEncSbac*     pTestEncSbac        = new TEncSbac;  
+  TEncBinCABAC* pcTestBinCoderCABAC = new TEncBinCABAC;
+  TComOutputBitstream* pBitIf       = new TComOutputBitstream;
+
+  pTestEncSbac->init(pcTestBinCoderCABAC);
+  pTestEncSbac->setBitstream(pBitIf);
+
+  for(UInt i=0; i<iCtxNr; i++)
+  {
+#if INIT_PREVFRAME
+    xContextWdowSizeUpdateDecision(pTestEncSbac, uiCtxStartPos, pCtx, apcStats->m_uiCtxMAP[uiSliceType][iQP], apcStats->m_uiCtxCodeIdx[uiSliceType][iQP], pCodedBinStr, pCounter, (uiSliceType != I_SLICE ?apcStats->m_uiCtxProbIdx[uiSliceType][iQP][0]: NULL));
+#else
+    xContextWdowSizeUpdateDecision(pTestEncSbac, uiCtxStartPos, pCtx, apcStats->m_uiCtxMAP[uiSliceType][iQP], apcStats->m_uiCtxCodeIdx[uiSliceType][iQP], pCodedBinStr, pCounter);
+#endif
+    if(bUpdate==false && apcStats->m_uiCtxMAP[uiSliceType][iQP][i])
+    {
+      bUpdate = true;
+    }
+  }
+  apcStats->m_uiNumCtx[uiSliceType][iQP] = uiCtxStartPos + NUM_ALF_CTX; 
+  assert( apcStats->m_uiNumCtx[uiSliceType][iQP] == pSbacCoder->getCtxNumber());
+
+  if(bUpdate==false)
+  {
+    apcStats->m_uiNumCtx[uiSliceType][iQP]= 0; 
+  }
+
+  if(pTestEncSbac)        {free(pTestEncSbac);             pTestEncSbac        = NULL;      }
+  if(pcTestBinCoderCABAC) {free(pcTestBinCoderCABAC);      pcTestBinCoderCABAC = NULL;      }
+  if(pBitIf)              {free(pBitIf);                   pBitIf              = NULL;      }
+
+}
+#endif
 //! \}

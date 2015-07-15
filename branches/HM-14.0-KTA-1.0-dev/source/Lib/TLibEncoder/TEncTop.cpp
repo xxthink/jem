@@ -65,7 +65,7 @@ TEncTop::TEncTop()
 
   m_iMaxRefPicNum     = 0;
 
-#if FAST_BIT_EST
+#if FAST_BIT_EST && !QC_AC_ADAPT_WDOW
   ContextModel::buildNextStateTable();
 #endif
 
@@ -344,7 +344,11 @@ Void TEncTop::deletePicBuffer()
  \retval  rcListBitstreamOut  list of output bitstreams
  \retval  iNumEncoded         number of encoded pictures
  */
+#if QC_AC_ADAPT_WDOW
+Void TEncTop::encode(Bool flush, TComPicYuv* pcPicYuvOrg, TComList<TComPicYuv*>& rcListPicYuvRecOut, std::list<AccessUnit>& accessUnitsOut, Int& iNumEncoded, TComStats* m_apcStats )
+#else
 Void TEncTop::encode(Bool flush, TComPicYuv* pcPicYuvOrg, TComList<TComPicYuv*>& rcListPicYuvRecOut, std::list<AccessUnit>& accessUnitsOut, Int& iNumEncoded )
+#endif
 {
   if (pcPicYuvOrg) {
     // get original YUV
@@ -371,8 +375,11 @@ Void TEncTop::encode(Bool flush, TComPicYuv* pcPicYuvOrg, TComList<TComPicYuv*>&
   }
 
   // compress GOP
-
+#if QC_AC_ADAPT_WDOW
+  m_cGOPEncoder.compressGOP(m_iPOCLast, m_iNumPicRcvd, m_cListPic, rcListPicYuvRecOut, accessUnitsOut, false, false, m_apcStats);
+#else
   m_cGOPEncoder.compressGOP(m_iPOCLast, m_iNumPicRcvd, m_cListPic, rcListPicYuvRecOut, accessUnitsOut, false, false);
+#endif
 
   if ( m_RCEnableRateControl )
   {
@@ -405,8 +412,11 @@ void separateFields(Pel* org, Pel* dstField, UInt stride, UInt width, UInt heigh
   }
   
 }
-
+#if QC_AC_ADAPT_WDOW
+Void TEncTop::encode(Bool flush, TComPicYuv* pcPicYuvOrg, TComList<TComPicYuv*>& rcListPicYuvRecOut, std::list<AccessUnit>& accessUnitsOut, Int& iNumEncoded, bool isTff, TComStats* m_apcStats)
+#else
 Void TEncTop::encode(Bool flush, TComPicYuv* pcPicYuvOrg, TComList<TComPicYuv*>& rcListPicYuvRecOut, std::list<AccessUnit>& accessUnitsOut, Int& iNumEncoded, bool isTff)
+#endif
 {
   /* -- TOP FIELD -- */
   
@@ -455,7 +465,11 @@ Void TEncTop::encode(Bool flush, TComPicYuv* pcPicYuvOrg, TComList<TComPicYuv*>&
   
   if (m_iPOCLast == 0) // compress field 0
   {
+#if QC_AC_ADAPT_WDOW
+    m_cGOPEncoder.compressGOP(m_iPOCLast, m_iNumPicRcvd, m_cListPic, rcListPicYuvRecOut, accessUnitsOut, true, isTff, m_apcStats);
+#else
     m_cGOPEncoder.compressGOP(m_iPOCLast, m_iNumPicRcvd, m_cListPic, rcListPicYuvRecOut, accessUnitsOut, true, isTff);
+#endif
   }
   
   /* -- BOTTOM FIELD -- */
@@ -522,8 +536,11 @@ Void TEncTop::encode(Bool flush, TComPicYuv* pcPicYuvOrg, TComList<TComPicYuv*>&
   }
   
   // compress GOP
+#if QC_AC_ADAPT_WDOW
+  m_cGOPEncoder.compressGOP(m_iPOCLast, m_iNumPicRcvd, m_cListPic, rcListPicYuvRecOut, accessUnitsOut, true, isTff, m_apcStats);
+#else
   m_cGOPEncoder.compressGOP(m_iPOCLast, m_iNumPicRcvd, m_cListPic, rcListPicYuvRecOut, accessUnitsOut, true, isTff);
-  
+#endif
   iNumEncoded = m_iNumPicRcvd;
   m_iNumPicRcvd = 0;
   m_uiNumAllPicCoded += iNumEncoded;
@@ -723,11 +740,30 @@ Void TEncTop::xInitSPS()
 #if ALF_HM3_QC_REFACTOR
   m_cSPS.setUseALF        ( m_bUseALF           );
 #endif
+#if QC_IMV
+  m_cSPS.setIMV( m_nIMV );
+  m_cSPS.setIMVMaxCand( m_nIMVMaxCand );
+#endif
+#if QC_FRUC_MERGE
+  m_cSPS.setUseFRUCMgrMode( m_nFRUCMgrMode );
+  m_cSPS.setFRUCRefineFilter( m_nFRUCRefineFilter );
+  m_cSPS.setFRUCRefineRange( m_nFURCRefineRange );
+  m_cSPS.setFRUCSmallBlkRefineDepth( m_nFRUCSmallBlkRefineDepth );
+#endif
 #if QC_EMT_INTRA
   m_cSPS.setUseIntraEMT( m_iUseIntraEMT );
 #endif
 #if QC_EMT_INTER
   m_cSPS.setUseInterEMT( m_iUseInterEMT );
+#endif
+#if INTRA_BOUNDARY_FILTER
+  m_cSPS.setUseBoundaryFilter( m_bUseBoundaryFilter );
+#endif
+#if QC_INTRA_4TAP_FILTER
+  m_cSPS.setUse4TapIntraFilter( m_bUse4TapIntraFilter );
+#endif
+#if QC_USE_65ANG_MODES
+  m_cSPS.setUseExtIntraAngModes( m_bUseExtIntraAngMode );
 #endif
 #if QC_OBMC
   m_cSPS.setOBMC( m_bOBMC );
@@ -735,6 +771,9 @@ Void TEncTop::xInitSPS()
 #endif
 #if QC_LMCHROMA
   m_cSPS.setUseLMChroma   ( m_bUseLMChroma           );  
+#endif
+#if QC_IC
+  m_cSPS.setICFlag( m_bUseIC );
 #endif
 }
 

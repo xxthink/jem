@@ -317,10 +317,31 @@ protected:
   Int       m_iUseEMT;                                        ///< XZ: Enhanced Multiple Transform
   Int       m_iUseFastEMT;                                    ///< XZ: Fast Methods of Enhanced Multiple Transform
 #endif
+#if QC_INTRA_4TAP_FILTER
+  Bool      m_bUse4TapIntraFilter;
+#endif
+#if INTRA_BOUNDARY_FILTER
+  Bool      m_bUseBoundaryFilter;
+#endif
+#if QC_USE_65ANG_MODES
+  Bool      m_bUseExtIntraAngMode;
+#endif
 #if QC_LARGE_CTU_FAST
   Int       m_nLCTUFast;
 #endif
-
+#if QC_FRUC_MERGE
+  Int       m_nFRUCMgrMode;
+  Int       m_nFRUCRefineFilter;
+  Int       m_nFURCRefineRange;
+  Int       m_nFRUCSmallBlkRefineDepth;
+#endif
+#if QC_IMV
+  Bool      m_nIMV;
+  Int       m_nIMVMaxCand;
+#endif
+#if QC_IC
+  Bool      m_abUseIC;
+#endif
   // internal member functions
   Void  xSetGlobal      ();                                   ///< set global variables
   Void  xCheckParameter ();                                   ///< check validity of configuration values

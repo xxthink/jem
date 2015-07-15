@@ -44,6 +44,11 @@
 //! \ingroup TLibCommon
 //! \{
 
+#if QC_FRUC_MERGE
+Bool TComSlice::m_bScaleFactorValid = false;
+Int TComSlice::m_iScaleFactor[256][256];
+#endif
+
 TComSlice::TComSlice()
 : m_iPPSId                        ( -1 )
 , m_iPOC                          ( 0 )
@@ -68,6 +73,10 @@ TComSlice::TComSlice()
 , m_pcSPS                         ( NULL )
 , m_pcPPS                         ( NULL )
 , m_pcPic                         ( NULL )
+#if QC_AC_ADAPT_WDOW
+, m_iCtxQPIdx                     (-1)
+, m_iQPIdx                        (-1)
+#endif
 , m_colFromL0Flag                 ( 1 )
 #if SETTING_NO_OUT_PIC_PRIOR
 , m_noOutputPriorPicsFlag         ( false )
@@ -98,6 +107,9 @@ TComSlice::TComSlice()
 , m_numEntryPointOffsets          ( 0 )
 , m_temporalLayerNonReferenceFlag ( false )
 , m_enableTMVPFlag                ( true )
+#if QC_IC
+, m_bApplyIC                      ( false )
+#endif
 {
   m_aiNumRefIdx[0] = m_aiNumRefIdx[1] = 0;
   
@@ -153,6 +165,25 @@ Void TComSlice::initSlice()
   m_cabacInitFlag        = false;
   m_numEntryPointOffsets = 0;
   m_enableTMVPFlag = true;
+
+#if QC_FRUC_MERGE
+  m_bFrucRefIdxPairValid = false;
+  if( TComSlice::m_bScaleFactorValid == false )
+  {
+    for( Int iTDB = -128 ; iTDB <= 127 ; iTDB++ )
+    {
+      for( Int iTDD = -128 ; iTDD <= 127 ; iTDD++ )
+      {
+        if( iTDD == 0 )
+          continue;
+        Int iX        = (0x4000 + abs(iTDD/2)) / iTDD;
+        Int iScale    = Clip3( -4096, 4095, (iTDB * iX + 32) >> 6 );
+        TComSlice::m_iScaleFactor[128+iTDB][128+iTDD] = iScale;
+      }
+    }
+    TComSlice::m_bScaleFactorValid = true;
+  }
+#endif
 }
 
 Bool TComSlice::getRapPicFlag()
@@ -760,6 +791,9 @@ Void TComSlice::copySliceInfo(TComSlice *pSrc)
   m_LFCrossSliceBoundaryFlag = pSrc->m_LFCrossSliceBoundaryFlag;
   m_enableTMVPFlag                = pSrc->m_enableTMVPFlag;
   m_maxNumMergeCand               = pSrc->m_maxNumMergeCand;
+#if QC_IC
+  m_bApplyIC = pSrc->m_bApplyIC;
+#endif
 }
 
 Int TComSlice::m_prevTid0POC = 0;
@@ -1495,6 +1529,53 @@ Void  TComSlice::initWpScaling()
     }
   }
 }
+
+#if QC_FRUC_MERGE
+Int TComSlice::getRefIdx4MVPair( RefPicList eCurRefPicList , Int nCurRefIdx )
+{
+  assert( isInterB() );
+  if( !m_bFrucRefIdxPairValid )
+  {
+    memset( m_iFrucRefIdxPair , -1 , sizeof( m_iFrucRefIdxPair ) );
+    for( Int nRefPicList = 0 ; nRefPicList < 2 ; nRefPicList++ )
+    {
+      for( Int nRefIdx = 0 ; nRefIdx < getNumRefIdx( ( RefPicList )nRefPicList ) ; nRefIdx++ )
+      {
+        Int nRefPOC = getRefPOC( ( RefPicList )nRefPicList , nRefIdx );
+        Int nTargetPOC = ( getPOC() << 1 ) - nRefPOC;
+        RefPicList eTargetRefPicList = RefPicList( 1 - nRefPicList );
+        Int nTargetRefIdx = getNumRefIdx( eTargetRefPicList ) - 1;
+        for( ; nTargetRefIdx >= 0 ; nTargetRefIdx-- )
+        {
+          if( nTargetPOC == getRefPOC( eTargetRefPicList , nTargetRefIdx ) )
+          {
+            m_iFrucRefIdxPair[nRefPicList][nRefIdx] = nTargetRefIdx;
+          }
+        }
+
+        if( m_iFrucRefIdxPair[nRefPicList][nRefIdx] == -1 && getCheckLDC() )
+        {
+          Int nMinDeltaPOC = MAX_INT;
+          nTargetRefIdx = -1;
+          for( Int nTmpIdx = getNumRefIdx( eTargetRefPicList ) - 1 ; nTmpIdx >= 0 ; nTmpIdx-- )
+          {
+            Int nTmpPOC = getRefPOC( eTargetRefPicList , nTmpIdx );
+            if( nRefPOC != nTmpPOC && abs( nTmpPOC - getPOC() ) < nMinDeltaPOC )
+            {
+              nMinDeltaPOC = abs( nTmpPOC - getPOC() );
+              nTargetRefIdx = nTmpIdx;
+            }
+          }
+          m_iFrucRefIdxPair[nRefPicList][nRefIdx] = nTargetRefIdx;
+        }
+      }
+    }
+    m_bFrucRefIdxPairValid = true;
+  }
+
+  return( m_iFrucRefIdxPair[eCurRefPicList][nCurRefIdx] );
+}
+#endif
 
 // ------------------------------------------------------------------------------------------------
 // Video parameter set (VPS)
@@ -2288,5 +2369,126 @@ TComPTL::TComPTL()
   ::memset(m_subLayerProfilePresentFlag, 0, sizeof(m_subLayerProfilePresentFlag));
   ::memset(m_subLayerLevelPresentFlag,   0, sizeof(m_subLayerLevelPresentFlag  ));
 }
+
+#if QC_AC_ADAPT_WDOW
+Void TComSlice::initStatsGlobal()
+{
+  {
+    Int iQP = -1,  k;
+    Int uiSliceType = getSliceType();
+    Int uiSliceQP   = getSliceQp  ();
+    TComStats* pcStats = getStatsHandle();
+
+    for (k = 0; k < NUM_QP_PROB; k++)
+    {
+      if (pcStats-> aaQPUsed[uiSliceType][k].bUsed ==true && pcStats-> aaQPUsed[uiSliceType][k].uiQP == uiSliceQP)
+      {
+        iQP  = k;
+        break;
+      }
+    }
+    setCtxMapQPIdx(iQP);
+#if INIT_PREVFRAME
+    if(iQP==-1)
+    {
+      for (k = 0; k < NUM_QP_PROB; k++)
+      {
+        if(pcStats-> aaQPUsed[uiSliceType][k].bUsed==false)
+        {
+          iQP= k;
+          break;
+        }
+      }
+    }
+    setCtxMapQPIdxforStore(iQP);
+
+    if(uiSliceType==I_SLICE)
+    {
+      pcStats->m_uiLastIPOC = this->getPOC();
+      for(UInt uitype= 0; uitype < 2; uitype++)
+         for (k = 0; k < NUM_QP_PROB; k++)
+        {
+          pcStats-> aaQPUsed[uitype][k].uiResetInit = -1;
+        }
+    }
+    else if(this->getPOC() > pcStats->m_uiLastIPOC)
+    {
+       pcStats-> aaQPUsed[uiSliceType][k].uiResetInit ++;
+    }
+#endif
+  }
+}
+#endif
+
+#if QC_IC_SPDUP
+Void TComSlice::xSetApplyIC()
+{
+  m_bApplyIC = false;
+
+  if( isIntra() )
+  {
+    return;
+  }
+
+  Int iMaxPelValue = (1<<g_bitDepthY); 
+  Int *aiRefOrgHist;
+  Int *aiCurrHist;
+
+  aiRefOrgHist = (Int *)xMalloc(Int, iMaxPelValue);
+  aiCurrHist   = (Int *)xMalloc(Int, iMaxPelValue);
+  
+  TComPicYuv* pcCurrPicYuv = getPic()->getPicYuvOrg();
+  Int iCurrStride = pcCurrPicYuv->getStride();
+  Int iWidth = pcCurrPicYuv->getWidth();
+  Int iHeight = pcCurrPicYuv->getHeight();
+
+  for( Int dir = 0; dir < ( isInterB() ? 2 : 1 ); dir++ )
+  {
+    RefPicList eRefPicList = dir ? REF_PIC_LIST_1 : REF_PIC_LIST_0;
+    Int numRefPic = getNumRefIdx( eRefPicList );
+    
+    for ( Int i = 0 ; i < numRefPic; i++ )
+    {
+      Pel* pRefOrgY   = getRefPic( eRefPicList, i )->getPicYuvOrg()->getLumaAddr();
+      Int iRefStride  = getRefPic( eRefPicList, i )->getPicYuvOrg()->getStride();
+      Pel* pCurrY     = pcCurrPicYuv ->getLumaAddr();
+      Int iSumOrgSAD = 0;
+
+      memset(aiRefOrgHist, 0, iMaxPelValue*sizeof(Int) );
+      memset(aiCurrHist, 0, iMaxPelValue*sizeof(Int) );
+
+      double dThresholdOrgSAD = 0.05;
+      // Histogram building - luminance
+      for ( Int y = 0; y < iHeight; y++)
+      {
+        for ( Int x = 0; x < iWidth; x++)
+        {
+          aiCurrHist[pCurrY[x]]++;
+          aiRefOrgHist[pRefOrgY[x]]++;
+        }
+        pCurrY += iCurrStride;
+        pRefOrgY += iRefStride;
+      }
+      // Calc SAD
+      for (Int j = 0; j < iMaxPelValue; j++)
+      {
+        iSumOrgSAD += abs(aiCurrHist[j] - aiRefOrgHist[j]);
+      }
+
+      // Setting
+      if ( iSumOrgSAD > Int(dThresholdOrgSAD * iWidth * iHeight) )
+      {
+        m_bApplyIC = true;
+        break;
+      }
+    }
+  }
+
+  xFree(aiCurrHist);
+  xFree(aiRefOrgHist);
+  aiCurrHist = NULL;
+  aiRefOrgHist = NULL;
+}
+#endif
 
 //! \}

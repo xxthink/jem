@@ -133,6 +133,11 @@ template <typename T> inline T ClipC(T x) { return std::min<T>(T((1 << g_bitDept
 /** clip a, such that minVal <= a <= maxVal */
 template <typename T> inline T Clip3( T minVal, T maxVal, T a) { return std::min<T> (std::max<T> (minVal, a) , maxVal); }  ///< general min/max clip
 
+#if QC_USE_65ANG_MODES
+#define MAP35TO67( mode ) (mode<2?mode:((mode<<1)-2))
+#define MAP67TO35( mode ) (mode<2?mode:((mode>>1)+1))
+#endif
+
 #define DATA_ALIGN                  1                                                                 ///< use 32-bit aligned malloc/free
 #if     DATA_ALIGN && _WIN32 && ( _MSC_VER > 1300 )
 #define xMalloc( type, len )        _aligned_malloc( sizeof(type)*(len), 32 )
@@ -158,13 +163,22 @@ template <typename T> inline T Clip3( T minVal, T maxVal, T a) { return std::min
 #define AMVP_MAX_NUM_CANDS_MEM      3           ///< max number of candidates
 // MERGE
 #if QC_SUB_PU_TMVP
+#if QC_SUB_PU_TMVP_EXT
+#define MRG_MAX_NUM_CANDS           7
+enum MergeType
+{
+  MGR_TYPE_DEFAULT_N  = 0, // 0
+  MGR_TYPE_SUBPU_TMVP = 1, // 1
+  MGR_TYPE_SUBPU_TMVP_EXT =2, // 2
+};
+#else
 #define MRG_MAX_NUM_CANDS           6
 enum MergeType
 {
   MGR_TYPE_DEFAULT_N  = 0, // 0
   MGR_TYPE_SUBPU_TMVP = 1, // 1
 };
-
+#endif
 #else
 #define MRG_MAX_NUM_CANDS           5
 #endif

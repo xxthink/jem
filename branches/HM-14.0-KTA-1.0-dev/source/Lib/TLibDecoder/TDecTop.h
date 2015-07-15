@@ -120,7 +120,12 @@ public:
   void setDecodedPictureHashSEIEnabled(Int enabled) { m_cGopDecoder.setDecodedPictureHashSEIEnabled(enabled); }
 
   Void  init();
+#if QC_AC_ADAPT_WDOW 
+  Bool  decode(InputNALUnit& nalu, Int& iSkipFrame, Int& iPOCLastDisplay,   TComStats*  m_apcStats);     
+#else
   Bool  decode(InputNALUnit& nalu, Int& iSkipFrame, Int& iPOCLastDisplay);
+#endif
+
   Void  deletePicBuffer();
 
   
@@ -140,7 +145,13 @@ protected:
   Void  xCreateLostPicture (Int iLostPOC);
 
   Void      xActivateParameterSets();
+#if QC_AC_ADAPT_WDOW
+  Bool      xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisplay, TComStats*  m_apcStats);
+  Void      xRecCtxUpdateInfo (UInt uiSliceType,Int iSliceQP, TComStats*  m_apcStats);
+  Void      xRecCtxWdowSizeUpdate(UInt uiSliceType, UInt uiSliceQP, UInt uiSizeX, UInt uiSizeY, CABACState * psCtxStates, Bool *uiCtxMap, UChar *uiCtxCodeIdx, UInt & uiStart, Bool bValid);
+#else
   Bool      xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisplay);
+#endif
   Void      xDecodeVPS();
   Void      xDecodeSPS();
   Void      xDecodePPS();

@@ -117,8 +117,11 @@ Void TDecGop::init( TDecEntropy*            pcEntropyDecoder,
 // ====================================================================================================================
 // Public member functions
 // ====================================================================================================================
-
+#if QC_AC_ADAPT_WDOW
+Void TDecGop::decompressSlice(TComInputBitstream* pcBitstream, TComPic*& rpcPic, TComStats*  m_apcStats)
+#else
 Void TDecGop::decompressSlice(TComInputBitstream* pcBitstream, TComPic*& rpcPic)
+#endif
 {
   TComSlice*  pcSlice = rpcPic->getSlice(rpcPic->getCurrSliceIdx());
   // Table of extracted substreams.
@@ -129,6 +132,9 @@ Void TDecGop::decompressSlice(TComInputBitstream* pcBitstream, TComPic*& rpcPic)
   long iBeforeTime = clock();
   m_pcSbacDecoder->init( (TDecBinIf*)m_pcBinCABAC );
   m_pcEntropyDecoder->setEntropyDecoder (m_pcSbacDecoder);
+#if QC_AC_ADAPT_WDOW
+  m_pcEntropyDecoder->setStatsHandle ( m_apcStats);
+#endif
 
   UInt uiNumSubstreams = pcSlice->getPPS()->getEntropyCodingSyncEnabledFlag() ? pcSlice->getNumEntryPointOffsets()+1 : pcSlice->getPPS()->getNumSubstreams();
 
@@ -185,7 +191,15 @@ Void TDecGop::decompressSlice(TComInputBitstream* pcBitstream, TComPic*& rpcPic)
     }
   }
 #endif
+#if INIT_PREVFRAME
+  pcSlice->setStatsHandle(m_apcStats);
+  pcSlice->initStatsGlobal();
+#endif
+
   m_pcSliceDecoder->decompressSlice( ppcSubstreams, rpcPic, m_pcSbacDecoder, m_pcSbacDecoders);
+#if QC_AC_ADAPT_WDOW
+  m_pcEntropyDecoder->updateStates (pcSlice->getSliceType(), pcSlice->getSliceQp(), m_apcStats);
+#endif
   m_pcEntropyDecoder->setBitstream(  ppcSubstreams[uiNumSubstreams-1] );
   // deallocate all created substreams, including internal buffers.
   for (UInt ui = 0; ui < uiNumSubstreams; ui++)
