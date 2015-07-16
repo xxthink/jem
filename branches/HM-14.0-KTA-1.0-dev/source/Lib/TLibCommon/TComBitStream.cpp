@@ -426,18 +426,19 @@ TComStats::TComStats()
 TComStats::~TComStats()
 {
 #if INIT_PREVFRAME
-  if(m_uiCtxProbIdx)
+  for(Int i=0; i<2; i++)
   {
-    for(Int i=0; i<2; i++)
-      for(Int j=0; j< NUM_QP_PROB; j++)
+    for(Int j=0; j< NUM_QP_PROB; j++)
+    {
+      if (m_uiCtxProbIdx[i][j])
       {
-        if (m_uiCtxProbIdx[i][j])
+        if (m_uiCtxProbIdx[i][j][0])
         {
-          if (m_uiCtxProbIdx[i][j][0])
-            free (m_uiCtxProbIdx[i][j][0]);
-          free (m_uiCtxProbIdx[i][j]);
+          free (m_uiCtxProbIdx[i][j][0]);
         }
+        free (m_uiCtxProbIdx[i][j]);
       }
+    }
   }
 #endif
 }
