@@ -108,7 +108,7 @@ Void TComLoopFilter::destroy()
 {
   for( UInt uiDir = 0; uiDir < 2; uiDir++ )
   {
-    if (m_aapucBS)
+    if (m_aapucBS[uiDir])
     {
       delete [] m_aapucBS       [uiDir];
       m_aapucBS [uiDir] = NULL;

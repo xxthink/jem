@@ -103,8 +103,6 @@ private:
   Int **m_diffFilterCoeffQuant;
   Int **m_FilterCoeffQuantTemp;
   
-  Int  m_iMatrixBaseFiltNo;
-
   static Int  m_aiTapPos9x9_In9x9Sym[21];
   static Int  m_aiTapPos7x7_In9x9Sym[14];
   static Int  m_aiTapPos5x5_In9x9Sym[8];
