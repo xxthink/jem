@@ -1,9 +1,9 @@
 /* The copyright in this software is being made available under the BSD
  * License, included below. This software may be subject to other third party
  * and contributor rights, including patent rights, and no such rights are
- * granted under this license.  
+ * granted under this license.
  *
- * Copyright (c) 2010-2014, ITU/ISO/IEC
+ * Copyright (c) 2010-2015, ITU/ISO/IEC
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -49,7 +49,6 @@ TComPic::TComPic()
 : m_uiTLayer                              (0)
 , m_bUsedByCurr                           (false)
 , m_bIsLongTerm                           (false)
-, m_apcPicSym                             (NULL)
 , m_pcPicYuvPred                          (NULL)
 , m_pcPicYuvResi                          (NULL)
 , m_bReconstructed                        (false)
@@ -57,85 +56,111 @@ TComPic::TComPic()
 , m_uiCurrSliceIdx                        (0)
 , m_bCheckLTMSB                           (false)
 {
-  m_apcPicYuv[0]      = NULL;
-  m_apcPicYuv[1]      = NULL;
+  for(UInt i=0; i<NUM_PIC_YUV; i++)
+  {
+    m_apcPicYuv[i]      = NULL;
+  }
 }
 
 TComPic::~TComPic()
 {
 }
 
-Void TComPic::create( Int iWidth, Int iHeight, UInt uiMaxWidth, UInt uiMaxHeight, UInt uiMaxDepth, Window &conformanceWindow, Window &defaultDisplayWindow,
-                      Int *numReorderPics, Bool bIsVirtual)
-
+Void TComPic::create( const TComSPS &sps, const TComPPS &pps, const Bool bIsVirtual)
 {
-  m_apcPicSym     = new TComPicSym;  m_apcPicSym   ->create( iWidth, iHeight, uiMaxWidth, uiMaxHeight, uiMaxDepth );
+  const ChromaFormat chromaFormatIDC = sps.getChromaFormatIdc();
+  const Int          iWidth          = sps.getPicWidthInLumaSamples();
+  const Int          iHeight         = sps.getPicHeightInLumaSamples();
+  const UInt         uiMaxCuWidth    = sps.getMaxCUWidth();
+  const UInt         uiMaxCuHeight   = sps.getMaxCUHeight();
+  const UInt         uiMaxDepth      = sps.getMaxTotalCUDepth();
+
+  m_picSym.create( sps, pps, uiMaxDepth );
   if (!bIsVirtual)
   {
-    m_apcPicYuv[0]  = new TComPicYuv;  m_apcPicYuv[0]->create( iWidth, iHeight, uiMaxWidth, uiMaxHeight, uiMaxDepth );
+    m_apcPicYuv[PIC_YUV_ORG    ]   = new TComPicYuv;  m_apcPicYuv[PIC_YUV_ORG     ]->create( iWidth, iHeight, chromaFormatIDC, uiMaxCuWidth, uiMaxCuHeight, uiMaxDepth, true );
+    m_apcPicYuv[PIC_YUV_TRUE_ORG]  = new TComPicYuv;  m_apcPicYuv[PIC_YUV_TRUE_ORG]->create( iWidth, iHeight, chromaFormatIDC, uiMaxCuWidth, uiMaxCuHeight, uiMaxDepth, true );
   }
-  m_apcPicYuv[1]  = new TComPicYuv;  m_apcPicYuv[1]->create( iWidth, iHeight, uiMaxWidth, uiMaxHeight, uiMaxDepth );
-  
+  m_apcPicYuv[PIC_YUV_REC]  = new TComPicYuv;  m_apcPicYuv[PIC_YUV_REC]->create( iWidth, iHeight, chromaFormatIDC, uiMaxCuWidth, uiMaxCuHeight, uiMaxDepth, true );
+
   // there are no SEI messages associated with this picture initially
   if (m_SEIs.size() > 0)
   {
     deleteSEIs (m_SEIs);
   }
   m_bUsedByCurr = false;
-
-  /* store conformance window parameters with picture */
-  m_conformanceWindow = conformanceWindow;
-  
-  /* store display window parameters with picture */
-  m_defaultDisplayWindow = defaultDisplayWindow;
-
-  /* store number of reorder pics with picture */
-  memcpy(m_numReorderPics, numReorderPics, MAX_TLAYER*sizeof(Int));
-
-  return;
 }
 
 Void TComPic::destroy()
 {
-  if (m_apcPicSym)
+  m_picSym.destroy();
+
+  for(UInt i=0; i<NUM_PIC_YUV; i++)
   {
-    m_apcPicSym->destroy();
-    delete m_apcPicSym;
-    m_apcPicSym = NULL;
+    if (m_apcPicYuv[i])
+    {
+      m_apcPicYuv[i]->destroy();
+      delete m_apcPicYuv[i];
+      m_apcPicYuv[i]  = NULL;
+    }
   }
-  
-  if (m_apcPicYuv[0])
-  {
-    m_apcPicYuv[0]->destroy();
-    delete m_apcPicYuv[0];
-    m_apcPicYuv[0]  = NULL;
-  }
-  
-  if (m_apcPicYuv[1])
-  {
-    m_apcPicYuv[1]->destroy();
-    delete m_apcPicYuv[1];
-    m_apcPicYuv[1]  = NULL;
-  }
-  
+
   deleteSEIs(m_SEIs);
 }
 
 Void TComPic::compressMotion()
 {
-  TComPicSym* pPicSym = getPicSym(); 
-  for ( UInt uiCUAddr = 0; uiCUAddr < pPicSym->getFrameHeightInCU()*pPicSym->getFrameWidthInCU(); uiCUAddr++ )
+  TComPicSym* pPicSym = getPicSym();
+  for ( UInt uiCUAddr = 0; uiCUAddr < pPicSym->getNumberOfCtusInFrame(); uiCUAddr++ )
   {
-    TComDataCU* pcCU = pPicSym->getCU(uiCUAddr);
-    pcCU->compressMV(); 
-  } 
+    TComDataCU* pCtu = pPicSym->getCtu(uiCUAddr);
+    pCtu->compressMV();
+  }
 }
 
 Bool  TComPic::getSAOMergeAvailability(Int currAddr, Int mergeAddr)
 {
-  Bool mergeCtbInSliceSeg = (mergeAddr >= getPicSym()->getCUOrderMap(getCU(currAddr)->getSlice()->getSliceCurStartCUAddr()/getNumPartInCU()));
+  Bool mergeCtbInSliceSeg = (mergeAddr >= getPicSym()->getCtuTsToRsAddrMap(getCtu(currAddr)->getSlice()->getSliceCurStartCtuTsAddr()));
   Bool mergeCtbInTile     = (getPicSym()->getTileIdxMap(mergeAddr) == getPicSym()->getTileIdxMap(currAddr));
   return (mergeCtbInSliceSeg && mergeCtbInTile);
 }
+
+UInt TComPic::getSubstreamForCtuAddr(const UInt ctuAddr, const Bool bAddressInRaster, TComSlice *pcSlice)
+{
+  UInt subStrm;
+  const bool bWPPEnabled=pcSlice->getPPS()->getEntropyCodingSyncEnabledFlag();
+  const TComPicSym &picSym            = *(getPicSym());
+
+  if ((bWPPEnabled && picSym.getFrameHeightInCtus()>1) || (picSym.getNumTiles()>1)) // wavefronts, and possibly tiles being used.
+  {
+    if (bWPPEnabled)
+    {
+      const UInt ctuRsAddr                = bAddressInRaster?ctuAddr : picSym.getCtuTsToRsAddrMap(ctuAddr);
+      const UInt frameWidthInCtus         = picSym.getFrameWidthInCtus();
+      const UInt tileIndex                = picSym.getTileIdxMap(ctuRsAddr);
+      const UInt numTileColumns           = (picSym.getNumTileColumnsMinus1()+1);
+      const TComTile *pTile               = picSym.getTComTile(tileIndex);
+      const UInt firstCtuRsAddrOfTile     = pTile->getFirstCtuRsAddr();
+      const UInt tileYInCtus              = firstCtuRsAddrOfTile / frameWidthInCtus;
+      // independent tiles => substreams are "per tile"
+      const UInt ctuLine                  = ctuRsAddr / frameWidthInCtus;
+      const UInt startingSubstreamForTile =(tileYInCtus*numTileColumns) + (pTile->getTileHeightInCtus()*(tileIndex%numTileColumns));
+      subStrm = startingSubstreamForTile + (ctuLine - tileYInCtus);
+    }
+    else
+    {
+      const UInt ctuRsAddr                = bAddressInRaster?ctuAddr : picSym.getCtuTsToRsAddrMap(ctuAddr);
+      const UInt tileIndex                = picSym.getTileIdxMap(ctuRsAddr);
+      subStrm=tileIndex;
+    }
+  }
+  else
+  {
+    // dependent tiles => substreams are "per frame".
+    subStrm = 0;
+  }
+  return subStrm;
+}
+
 
 //! \}

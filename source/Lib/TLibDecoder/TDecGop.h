@@ -1,9 +1,9 @@
 /* The copyright in this software is being made available under the BSD
  * License, included below. This software may be subject to other third party
  * and contributor rights, including patent rights, and no such rights are
- * granted under this license.  
+ * granted under this license.
  *
- * Copyright (c) 2010-2014, ITU/ISO/IEC
+ * Copyright (c) 2010-2015, ITU/ISO/IEC
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -49,9 +49,6 @@
 #include "TLibCommon/TComPic.h"
 #include "TLibCommon/TComLoopFilter.h"
 #include "TLibCommon/TComSampleAdaptiveOffset.h"
-#if ALF_HM3_QC_REFACTOR
-#include "TLibCommon/TComAdaptiveLoopFilter.h"
-#endif
 
 #include "TDecEntropy.h"
 #include "TDecSlice.h"
@@ -70,50 +67,39 @@ class TDecGop
 {
 private:
   TComList<TComPic*>    m_cListPic;         //  Dynamic buffer
-  
+
   //  Access channel
   TDecEntropy*          m_pcEntropyDecoder;
   TDecSbac*             m_pcSbacDecoder;
   TDecBinCABAC*         m_pcBinCABAC;
-  TDecSbac*             m_pcSbacDecoders; // independant CABAC decoders
-  TDecBinCABAC*         m_pcBinCABACs;
   TDecCavlc*            m_pcCavlcDecoder;
   TDecSlice*            m_pcSliceDecoder;
   TComLoopFilter*       m_pcLoopFilter;
-  
+
   TComSampleAdaptiveOffset*     m_pcSAO;
   Double                m_dDecTime;
   Int                   m_decodedPictureHashSEIEnabled;  ///< Checksum(3)/CRC(2)/MD5(1)/disable(0) acting on decoded picture hash SEI message
+  UInt                  m_numberOfChecksumErrorsDetected;
 
-#if ALF_HM3_QC_REFACTOR
-  TComAdaptiveLoopFilter*       m_pcAdaptiveLoopFilter;
-  ALFParam              m_cAlfParam;
-#endif
-#if QC_ALF_TMEPORAL_NUM
-  static Int           m_iStoredAlfParaNum;
-  ALFParam             m_acStoredAlfPara[QC_ALF_TMEPORAL_NUM];
-#endif
 public:
   TDecGop();
   virtual ~TDecGop();
-  
-  Void  init    ( TDecEntropy*            pcEntropyDecoder, 
-                 TDecSbac*               pcSbacDecoder, 
+
+  Void  init    ( TDecEntropy*            pcEntropyDecoder,
+                 TDecSbac*               pcSbacDecoder,
                  TDecBinCABAC*           pcBinCABAC,
-                 TDecCavlc*              pcCavlcDecoder, 
-                 TDecSlice*              pcSliceDecoder, 
+                 TDecCavlc*              pcCavlcDecoder,
+                 TDecSlice*              pcSliceDecoder,
                  TComLoopFilter*         pcLoopFilter,
-#if ALF_HM3_QC_REFACTOR
-                 TComAdaptiveLoopFilter* pcAdaptiveLoopFilter,
-#endif
                  TComSampleAdaptiveOffset* pcSAO
                  );
   Void  create  ();
   Void  destroy ();
-  Void  decompressSlice(TComInputBitstream* pcBitstream, TComPic*& rpcPic );
-  Void  filterPicture  (TComPic*& rpcPic );
+  Void  decompressSlice(TComInputBitstream* pcBitstream, TComPic* pcPic );
+  Void  filterPicture  (TComPic* pcPic );
 
-  void setDecodedPictureHashSEIEnabled(Int enabled) { m_decodedPictureHashSEIEnabled = enabled; }
+  Void setDecodedPictureHashSEIEnabled(Int enabled) { m_decodedPictureHashSEIEnabled = enabled; }
+  UInt getNumberOfChecksumErrorsDetected() const { return m_numberOfChecksumErrorsDetected; }
 
 };
 
