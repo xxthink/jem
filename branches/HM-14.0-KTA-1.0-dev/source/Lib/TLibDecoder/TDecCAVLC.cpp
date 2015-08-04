@@ -816,7 +816,11 @@ Void TDecCavlc::xLevelDecoding       (Bool * uiCtxMAP, UChar *uiCtxCodeIdx, UInt
     if (uiCtxMAP[i])
     {
       READ_UVLC(uiIdx, "wind diff");
-      uiCtxCodeIdx[i] = (UChar)(uiIdx ==2 ? (uiIdx+5):(uiIdx+4));
+#if (ALPHA0!=6)
+      uiCtxCodeIdx[i] = (UChar)((uiIdx+4 >=ALPHA0) ? (uiIdx+5): (uiIdx+4));
+#else
+    uiCtxCodeIdx[i] = (UChar)(uiIdx ==2 ? (uiIdx+5):(uiIdx+4));
+#endif
     }
     else
     {
@@ -1702,7 +1706,11 @@ Void TDecCavlc::parseDeltaQP( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth 
   pcCU->setQPSubParts( qp, uiAbsQpCUPartIdx, uiQpCUDepth );
 }
 
-Void TDecCavlc::parseCoeffNxN( TComDataCU* /*pcCU*/, TCoeff* /*pcCoef*/, UInt /*uiAbsPartIdx*/, UInt /*uiWidth*/, UInt /*uiHeight*/, UInt /*uiDepth*/, TextType /*eTType*/ )
+Void TDecCavlc::parseCoeffNxN( TComDataCU* /*pcCU*/, TCoeff* /*pcCoef*/, UInt /*uiAbsPartIdx*/, UInt /*uiWidth*/, UInt /*uiHeight*/, UInt /*uiDepth*/, TextType /*eTType*/ 
+#if ROT_TR
+    , Bool& /*g_bCbfCU*/
+#endif
+    )
 {
   assert(0);
 }
@@ -1726,6 +1734,18 @@ Void TDecCavlc::parseTransformSkipFlags (TComDataCU* /*pcCU*/, UInt /*uiAbsPartI
 {
   assert(0);
 }
+#if ROT_TR  
+Void TDecCavlc::parseROTIdx ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/ )
+{
+  assert(0);
+}
+#endif
+#if CU_LEVEL_MPI
+Void TDecCavlc::parseMPIIdx ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/ )
+{
+  assert(0);
+}
+#endif
 
 Void TDecCavlc::parseMergeFlag ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/, UInt /*uiPUIdx*/ )
 {

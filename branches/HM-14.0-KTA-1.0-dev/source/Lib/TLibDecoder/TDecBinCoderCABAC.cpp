@@ -97,7 +97,7 @@ TDecBinCABAC::copyState( TDecBinIf* pcTDecBinIf )
   m_bitsNeeded= pcTDecBinCABAC->m_bitsNeeded;
 }
 
-#if QC_AC_ADAPT_WDOW  
+#if QC_AC_ADAPT_WDOW  || MULTI_PARAM_CABAC
 Void TDecBinCABAC::decodeBin( UInt& ruiBin, ContextModel &rcCtxModel )
 {
   UShort uiLPS = TComCABACTables::sm_aucLPSTable[rcCtxModel.getState()>>6][(m_uiRange>>2)-64];

@@ -667,7 +667,12 @@ Void TEncCavlc::xCtxCodewordCoding(Bool * uiCtxMAP, UChar * uiCtxCodeIdx, UInt u
    {
      if (uiCtxMAP[i])
      {
+#if (ALPHA0!=6)
+UInt uiSymbol = (UInt) (uiCtxCodeIdx[i]>ALPHA0?(uiCtxCodeIdx[i]-5):(uiCtxCodeIdx[i]-4));//uiCtxCodeIdx[i] = ALPHA0 --> not coded
+       WRITE_UVLC ( uiSymbol, "wind diff");
+#else
        WRITE_UVLC ( (UInt) ((uiCtxCodeIdx[i]-4)>2?2:(uiCtxCodeIdx[i]-4)), "wind diff");
+#endif
      }
    }
 }
@@ -1228,6 +1233,18 @@ Void TEncCavlc::codeMergeIndex    ( TComDataCU* pcCU, UInt uiAbsPartIdx )
   assert(0);
 }
 
+#if ROT_TR  
+Void TEncCavlc::codeROTIdx    ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth )
+{
+  assert(0);
+}
+#endif
+#if CU_LEVEL_MPI
+Void TEncCavlc::codeMPIIdx    ( TComDataCU* pcCU, UInt uiAbsPartIdx )
+{
+  assert(0);
+}
+#endif
 #if QC_FRUC_MERGE
 Void TEncCavlc::codeFRUCMgrMode  ( TComDataCU* pcCU, UInt uiAbsPartIdx , UInt uiPUIdx )
 {
@@ -1356,7 +1373,11 @@ Void TEncCavlc::codeDeltaQP( TComDataCU* pcCU, UInt uiAbsPartIdx )
   return;
 }
 
-Void TEncCavlc::codeCoeffNxN    ( TComDataCU* pcCU, TCoeff* pcCoef, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight, UInt uiDepth, TextType eTType )
+Void TEncCavlc::codeCoeffNxN    ( TComDataCU* pcCU, TCoeff* pcCoef, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight, UInt uiDepth, TextType eTType 
+#if ROT_TR    || CU_LEVEL_MPI
+    , Int& bCbfCU
+#endif
+    )
 {
   assert(0);
 }

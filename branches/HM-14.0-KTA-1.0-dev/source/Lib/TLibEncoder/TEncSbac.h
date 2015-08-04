@@ -146,6 +146,12 @@ protected:
 public:
   Void codeCUTransquantBypassFlag( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeSkipFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
+#if ROT_TR 
+    Void codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  );
+#endif
+#if CU_LEVEL_MPI
+     Void codeMPIIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx );
+#endif
 #if QC_IMV
   Void codeiMVFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
 #endif
@@ -190,7 +196,11 @@ public:
   Void codeDeltaQP             ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   
   Void codeLastSignificantXY ( UInt uiPosX, UInt uiPosY, Int width, Int height, TextType eTType, UInt uiScanIdx );
-  Void codeCoeffNxN            ( TComDataCU* pcCU, TCoeff* pcCoef, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight, UInt uiDepth, TextType eTType );
+  Void codeCoeffNxN            ( TComDataCU* pcCU, TCoeff* pcCoef, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight, UInt uiDepth, TextType eTType 
+#if ROT_TR   || CU_LEVEL_MPI 
+    ,  Int& bCbfCU
+#endif
+    );
   void codeTransformSkipFlags ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt width, UInt height, TextType eTType );
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -228,6 +238,12 @@ private:
   Int                  m_numContextModels;
   ContextModel3DBuffer m_cCUSplitFlagSCModel;
   ContextModel3DBuffer m_cCUSkipFlagSCModel;
+#if ROT_TR
+    ContextModel3DBuffer m_cROTidxSCModel;
+#endif
+#if CU_LEVEL_MPI
+    ContextModel3DBuffer m_cMPIIdxSCModel;
+#endif
 #if QC_IMV
   ContextModel3DBuffer m_cCUiMVFlagSCModel;
 #endif

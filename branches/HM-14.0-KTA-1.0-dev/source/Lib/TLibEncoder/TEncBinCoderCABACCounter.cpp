@@ -74,7 +74,7 @@ Void TEncBinCABACCounter::encodeBin( UInt binValue, ContextModel &rcCtxModel )
   m_uiBinsCoded += m_binCountIncrement;
   
   m_fracBits += rcCtxModel.getEntropyBits( binValue );
-#if QC_AC_ADAPT_WDOW
+#if QC_AC_ADAPT_WDOW || MULTI_PARAM_CABAC
   if( binValue == 0 )
   {
     rcCtxModel.updateLPS();

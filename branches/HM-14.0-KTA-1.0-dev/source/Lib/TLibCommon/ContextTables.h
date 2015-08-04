@@ -57,6 +57,12 @@
 #define NUM_SPLIT_FLAG_CTX            3       ///< number of context models for split flag
 #endif
 #define NUM_SKIP_FLAG_CTX             3       ///< number of context models for skip flag
+#if CU_LEVEL_MPI
+ #define NUM_MPI_CTX                  2       /// < number of context models for MPI Idx coding
+#endif
+#if ROT_TR
+ #define NUM_ROT_TR_CTX               7       /// < number of context models for ROT Idx coding
+#endif
 #if QC_IMV
 #define NUM_IMV_FLAG_CTX              3       ///< number of context models for iMV flag
 #endif
@@ -210,7 +216,24 @@ INIT_SKIP_FLAG[3][NUM_SKIP_FLAG_CTX] =
   { 197,  185,  201, }, 
   { CNU,  CNU,  CNU, }, 
 };
-
+#if CU_LEVEL_MPI
+static const UChar 
+INIT_MPIIdx_FLAG[3][NUM_MPI_CTX] =  
+{
+  { 107,107 }, 
+  { 107,107 }, 
+  { 139,139 }, 
+};
+#endif
+#if ROT_TR
+static const UChar 
+INIT_ROT_TR_IDX[3][NUM_ROT_TR_CTX] =  
+{
+  { 107,107,107,107,107,107,107 }, 
+  { 107,107,107,107,107,107,107 }, 
+  { 139,139,139,139,139,139,139 }, 
+};
+#endif
 #if QC_IMV
 static const UChar 
   INIT_IMV_FLAG[3][NUM_IMV_FLAG_CTX] =
@@ -291,8 +314,8 @@ static const UChar
 static const UChar 
 INIT_EMT_TU_IDX[3][NUM_EMT_TU_IDX_CTX] =  
 {
-  { CNU,  CNU, CNU,  CNU }, 
-  { CNU,  CNU, CNU,  CNU }, 
+  { CNU,  CNU, CNU,  CNU },
+  { CNU,  CNU, CNU,  CNU },
   { CNU,  CNU, CNU,  CNU }, 
 };
 

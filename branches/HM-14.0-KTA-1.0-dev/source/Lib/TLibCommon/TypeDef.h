@@ -110,6 +110,29 @@
 // Contribution COM16–C806 (QUALCOMM) defines section end
 ///////////////////////////////////////////////////////////
 
+
+///////////////////////////////////////////////////////////
+// Contribution VCEG-AZ05 (SAMSUNG) defines section starts
+///////////////////////////////////////////////////////////
+#define MULTI_PARAM_CABAC                   1
+#if MULTI_PARAM_CABAC
+#define ALPHA0                              4       // 2^ALPHA0 is 1st "window size" for probability up-date (4,5,6,7; could be adaptive if ENABLE_ADAPTIVE_W==1)
+#endif
+#define BIO                                 1  // bi-directional optical flow
+#define ROT_TR                              1  // rotational transform for 4x4 coefficients sub-blocks
+#define CU_LEVEL_MPI                        1 // multi-parameter Intra prediction
+#if CU_LEVEL_MPI
+  #define MPI_DICT_SIZE_INTRA         4
+  #define MPI_DICT_SIZE_INTER         2
+#endif
+// confirmation from Qualcomm is needed:
+#define FREE_2_DELETE   1
+#define QC_ECABAC_BF    1
+#define QC_EMT_BF       1
+///////////////////////////////////////////////////////////
+// Contribution VCEG-AZ05 (SAMSUNG) defines section ends
+///////////////////////////////////////////////////////////
+
 ///////////////////////////////////////////////////////////
 // Contribution VCEG-AZ07 (QUALCOMM) defines section starts
 ///////////////////////////////////////////////////////////
@@ -120,8 +143,9 @@
 
 #define QC_AC_ADAPT_WDOW                    1
 #if QC_AC_ADAPT_WDOW
+#if !MULTI_PARAM_CABAC
 #define ALPHA0                              6       // 2^ALPHA0 is "window size" for probability up-date
-#define PROB_UPDATE_MAX                     32768   //(1<<15)
+#endif
 #define CABAC_NUM_BINS                      100000
 #define NUM_WDOW                            4       //could be 16, 32, 64, 128
 #define ENABLE_ADAPTIVE_W                   1       //0: always use ALPHA0

@@ -55,7 +55,9 @@
 // ====================================================================================================================
 // Type definition
 // ====================================================================================================================
-
+#if ROT_TR
+ __inline static Short  xMult ( Int i, UInt uiShift ) { return ((i)>>uiShift); }
+#endif
 void fastForwardDCT2_B4 (Short *block,Short *coeff,Int shift, Int line, Int zo, Int use);
 void fastInverseDCT2_B4 (Short *coeff,Short *block,Int shift, Int line, Int zo, Int use);
 void fastForwardDCT2_B8 (Short *block,Short *coeff,Int shift, Int line, Int zo, Int use);
@@ -178,7 +180,10 @@ public:
     , Bool bUseAdaptQpSelect = false
 #endif 
     );
-  
+#if ROT_TR
+Void InvRotTransform4I(  Int* matrix, UChar index );
+Void RotTransform4I( Int* matrix, UChar index );
+#endif 
   // transform & inverse transform functions
   Void transformNxN( TComDataCU* pcCU, 
                      Pel*        pcResidual, 
@@ -196,11 +201,17 @@ public:
 #if QC_EMT
                      , UChar     ucTrIdx = DCT2_HEVC
 #endif
+#if ROT_TR 
+   , UChar ucROTIdx = 0
+#endif
                      );
 
   Void invtransformNxN( Bool transQuantBypass, TextType eText, UInt uiMode,Pel* rpcResidual, UInt uiStride, TCoeff*   pcCoeff, UInt uiWidth, UInt uiHeight,  Int scalingListType, Bool useTransformSkip = false 
 #if QC_EMT
     , UChar ucTrIdx = DCT2_HEVC
+#endif
+#if ROT_TR 
+   , UChar ucROTIdx = 0
 #endif
 #if QC_USE_65ANG_MODES
     , Bool bUseExtIntraAngModes = false
@@ -319,7 +330,9 @@ protected:
   Double  m_sliceSumC[LEVEL_RANGE+1] ;  
 #endif
   Int*    m_plTempCoeff;
-  
+#if ROT_TR
+  //Int* ROT_MATRIX;  
+#endif  
   QpParam  m_cQP;
 #if RDOQ_CHROMA_LAMBDA
   Double   m_lambdas[3];

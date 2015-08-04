@@ -50,6 +50,16 @@ TComPrediction::TComPrediction()
 , m_iLumaRecStride(0)
 {
   m_piYuvExt = NULL;
+#if BIO 
+#define BIO_TEMP_BUFFER_SIZE      (MAX_CU_SIZE+4)*(MAX_CU_SIZE+4) 
+    m_pGradX0 = new Pel [BIO_TEMP_BUFFER_SIZE];
+  m_pGradY0 = new Pel [BIO_TEMP_BUFFER_SIZE];
+  m_pGradX1 = new Pel [BIO_TEMP_BUFFER_SIZE];
+  m_pGradY1 = new Pel [BIO_TEMP_BUFFER_SIZE];
+  m_pPred0  = new Pel [BIO_TEMP_BUFFER_SIZE];
+  m_pPred1  = new Pel [BIO_TEMP_BUFFER_SIZE];
+  iRefListIdx = -1;  
+#endif
 #if QC_FRUC_MERGE
   m_cFRUCRDCost.init();
 #endif
@@ -65,7 +75,15 @@ TComPrediction::TComPrediction()
 
 TComPrediction::~TComPrediction()
 {
- #if QC_SUB_PU_TMVP_EXT
+#if BIO 
+  if( m_pGradX0 != NULL )     {delete [] m_pGradX0 ; m_pGradX0= NULL;}
+  if( m_pGradY0 != NULL )     {delete [] m_pGradY0 ; m_pGradY0= NULL;}
+  if( m_pGradX1 != NULL )     {delete [] m_pGradX1 ; m_pGradX1= NULL;}
+  if( m_pGradY1 != NULL )     {delete [] m_pGradY1 ; m_pGradY1= NULL;}
+  if( m_pPred0  != NULL )     {delete [] m_pPred0  ; m_pPred0 = NULL;}
+  if( m_pPred1  != NULL )     {delete [] m_pPred1  ; m_pPred1 = NULL;}
+#endif
+#if QC_SUB_PU_TMVP_EXT
   for (UInt ui=0;ui<2;ui++)
   {
     if( m_cMvFieldSP[ui] != NULL )
@@ -123,7 +141,11 @@ Void TComPrediction::initTempBuff()
     Int i, j;
     for (i = 0; i < 4; i++)
     {
-      m_filteredBlockTmp[i].create(extWidth, extHeight + 7);
+#if BIO
+        m_filteredBlockTmp[i].create(extWidth+ 4 , extHeight + 7 + 4);
+#else
+    m_filteredBlockTmp[i].create(extWidth, extHeight + 7);
+#endif
       for (j = 0; j < 4; j++)
       {
         m_filteredBlock[i][j].create(extWidth, extHeight);
@@ -140,8 +162,13 @@ Void TComPrediction::initTempBuff()
 
     // new structure
 #if QC_LARGE_CTU
-    m_acYuvPred[0] .create( g_uiMaxCUWidth, g_uiMaxCUHeight );
+#if BIO
+    m_acYuvPred[0] .create( g_uiMaxCUWidth + 4, g_uiMaxCUHeight + 4);
+    m_acYuvPred[1] .create( g_uiMaxCUWidth + 4, g_uiMaxCUHeight + 4);
+#else
+  m_acYuvPred[0] .create( g_uiMaxCUWidth, g_uiMaxCUHeight );
     m_acYuvPred[1] .create( g_uiMaxCUWidth, g_uiMaxCUHeight );
+#endif
 
     m_cYuvPredTemp.create( g_uiMaxCUWidth, g_uiMaxCUHeight );
 #else
@@ -467,6 +494,9 @@ Void TComPrediction::predIntraLumaAng(TComPattern* pcTComPattern, UInt uiDirMode
 #if QC_USE_65ANG_MODES
                                       , Bool bUseExtIntraAngModes
 #endif
+#if CU_LEVEL_MPI
+, TComDataCU* pcCU, UInt uiAbsPartIdx
+#endif
                                       )
 {
   Pel *pDst = piPred;
@@ -511,15 +541,18 @@ Void TComPrediction::predIntraLumaAng(TComPattern* pcTComPattern, UInt uiDirMode
         , bUse4TapFilter
 #endif
         );
-
+#if CU_LEVEL_MPI
+    if( !pcCU->getMPIIdx(uiAbsPartIdx) && (uiDirMode == DC_IDX ) && bAbove && bLeft )
+#else
       if( (uiDirMode == DC_IDX ) && bAbove && bLeft )
+#endif
       {
         xDCPredFiltering( ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight);
       }
     }
 #if INTRA_BOUNDARY_FILTER
     if( bUseBoundaryFilter )
-    {
+  {
 #if QC_USE_65ANG_MODES
       if( uiDirMode == VDIA_IDX )
 #else
@@ -543,12 +576,27 @@ Void TComPrediction::predIntraLumaAng(TComPattern* pcTComPattern, UInt uiDirMode
     }
 #endif
   }
+#if CU_LEVEL_MPI
+  if( pcCU->getMPIIdx(uiAbsPartIdx) && pcCU->getCUPelX() && pcCU->getCUPelY() )
+  {
+      Pel* pRec = pcCU->getPic()->getPicYuvRec()->getLumaAddr(pcCU->getAddr(), pcCU->getZorderIdxInCU()+uiAbsPartIdx);
+    Int iStrideRec= pcCU->getPic()->getPicYuvRec()->getStride();
+    PartSize eSize         = pcCU->getPartitionSize( uiAbsPartIdx );
+      Int idexMPI = pcCU->getMPIIdx(uiAbsPartIdx) ;
+    if (idexMPI>3) idexMPI = 0;
+      idexMPI += (eSize == SIZE_NxN?4:0) ;
+    xMPIredFiltering( pRec, iStrideRec, pDst, uiStride, iWidth, iHeight, idexMPI );
+  }
+#endif
 }
 
 // Angular chroma
 Void TComPrediction::predIntraChromaAng( Int* piSrc, UInt uiDirMode, Pel* piPred, UInt uiStride, Int iWidth, Int iHeight, Bool bAbove, Bool bLeft 
 #if QC_INTRA_4TAP_FILTER
                                         , Bool bUse4TapFilter
+#endif
+#if CU_LEVEL_MPI
+, TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiChromaIdx
 #endif
                                         )
 {
@@ -572,6 +620,20 @@ Void TComPrediction::predIntraChromaAng( Int* piSrc, UInt uiDirMode, Pel* piPred
 #endif
       );
   }
+#if CU_LEVEL_MPI
+  if( pcCU->getMPIIdx(uiAbsPartIdx) && pcCU->getCUPelX() && pcCU->getCUPelY() )
+  { 
+      Pel* pRec = pcCU->getPic()->getPicYuvRec()->getCbAddr(pcCU->getAddr(), pcCU->getZorderIdxInCU()+uiAbsPartIdx);
+    if (uiChromaIdx == 1)
+      pRec = pcCU->getPic()->getPicYuvRec()->getCrAddr(pcCU->getAddr(), pcCU->getZorderIdxInCU()+uiAbsPartIdx);
+    Int iStrideRec= pcCU->getPic()->getPicYuvRec()->getCStride();
+    PartSize eSize         = pcCU->getPartitionSize( uiAbsPartIdx );
+      Int idexMPI = pcCU->getMPIIdx(uiAbsPartIdx) ;
+    if (idexMPI>3) idexMPI = 0;
+      idexMPI += (eSize == SIZE_NxN?4:0) ;
+    xMPIredFiltering( pRec, iStrideRec, pDst, uiStride, iWidth, iHeight, idexMPI );
+  }
+#endif
 }
 
 /** Function for checking identical motion.
@@ -685,7 +747,6 @@ Void TComPrediction::motionCompensation ( TComDataCU* pcCU, TComYuv* pcYuvPred, 
   Int         iWidth;
   Int         iHeight;
   UInt        uiPartAddr;
-
   if ( iPartIdx >= 0 )
   {
     pcCU->getPartIndexAndSize( iPartIdx, uiPartAddr, iWidth, iHeight );
@@ -697,11 +758,15 @@ Void TComPrediction::motionCompensation ( TComDataCU* pcCU, TComYuv* pcYuvPred, 
 #endif
         )
       {
-        xPredInterUni (pcCU, uiPartAddr, iWidth, iHeight, eRefPicList, pcYuvPred, true );
+        xPredInterUni (pcCU, uiPartAddr, iWidth, iHeight, eRefPicList, pcYuvPred
+#if BIO
+    ,  false 
+#endif
+    , true   );
       }
       else
       {
-        xPredInterUni (pcCU, uiPartAddr, iWidth, iHeight, eRefPicList, pcYuvPred );
+        xPredInterUni (pcCU, uiPartAddr, iWidth, iHeight, eRefPicList, pcYuvPred  );
       }
       if ( pcCU->getSlice()->getPPS()->getUseWP() 
 #if QC_IC
@@ -746,7 +811,7 @@ Void TComPrediction::motionCompensation ( TComDataCU* pcCU, TComYuv* pcYuvPred, 
 
           if(xCheckIdenticalMotion( pcCU, uiSPAddr[i] )/*0*/)
           {
-            xPredInterUni (pcCU, uiSPAddr[i], uiW[i], uiH[i], REF_PIC_LIST_0, pcYuvPred );
+            xPredInterUni (pcCU, uiSPAddr[i], uiW[i], uiH[i], REF_PIC_LIST_0, pcYuvPred  );
           }
           else
           {
@@ -759,7 +824,7 @@ Void TComPrediction::motionCompensation ( TComDataCU* pcCU, TComYuv* pcYuvPred, 
 #endif
         if ( xCheckIdenticalMotion( pcCU, uiPartAddr ) )
         {
-          xPredInterUni (pcCU, uiPartAddr, iWidth, iHeight, REF_PIC_LIST_0, pcYuvPred );
+          xPredInterUni (pcCU, uiPartAddr, iWidth, iHeight, REF_PIC_LIST_0, pcYuvPred  );
         }
         else
         {
@@ -784,11 +849,15 @@ Void TComPrediction::motionCompensation ( TComDataCU* pcCU, TComYuv* pcYuvPred, 
 #endif
         )
       {
-        xPredInterUni (pcCU, uiPartAddr, iWidth, iHeight, eRefPicList, pcYuvPred, true );
+        xPredInterUni (pcCU, uiPartAddr, iWidth, iHeight, eRefPicList, pcYuvPred 
+#if BIO
+    ,  false 
+#endif
+    , true    );
       }
       else
       {
-        xPredInterUni (pcCU, uiPartAddr, iWidth, iHeight, eRefPicList, pcYuvPred );
+        xPredInterUni (pcCU, uiPartAddr, iWidth, iHeight, eRefPicList, pcYuvPred  );
       }
       if ( pcCU->getSlice()->getPPS()->getUseWP()
 #if QC_IC
@@ -830,7 +899,7 @@ Void TComPrediction::motionCompensation ( TComDataCU* pcCU, TComYuv* pcYuvPred, 
           }
           if( xCheckIdenticalMotion( pcCU, uiSPAddr[i] )/*0*/)
           {
-            xPredInterUni (pcCU, uiSPAddr[i], uiW[i], uiH[i], REF_PIC_LIST_0, pcYuvPred );
+            xPredInterUni (pcCU, uiSPAddr[i], uiW[i], uiH[i], REF_PIC_LIST_0, pcYuvPred   );
           }
           else
           {
@@ -843,7 +912,7 @@ Void TComPrediction::motionCompensation ( TComDataCU* pcCU, TComYuv* pcYuvPred, 
 #endif
         if ( xCheckIdenticalMotion( pcCU, uiPartAddr ) )
         {
-          xPredInterUni (pcCU, uiPartAddr, iWidth, iHeight, REF_PIC_LIST_0, pcYuvPred );
+          xPredInterUni (pcCU, uiPartAddr, iWidth, iHeight, REF_PIC_LIST_0, pcYuvPred   );
         }
         else
         {
@@ -1358,9 +1427,13 @@ Void TComPrediction::xSubBlockMotionCompensation ( TComDataCU* pcCU, TComYuv* pc
 {
   if ( xCheckIdenticalMotion( pcCU, uiPartAddr ) )
   {
-    xPredInterUni (pcCU, uiPartAddr, iWidth, iHeight, REF_PIC_LIST_0, pcYuvPred 
+    xPredInterUni (pcCU, uiPartAddr, iWidth, iHeight, REF_PIC_LIST_0, pcYuvPred
+#if BIO 
+    ,  false 
+#endif
 #if QC_FRUC_MERGE
-      , false , true
+      , false 
+    , true
 #endif
       );
   }
@@ -1375,12 +1448,16 @@ Void TComPrediction::xSubBlockMotionCompensation ( TComDataCU* pcCU, TComYuv* pc
 }
 #endif
 
-Void TComPrediction::xPredInterUni ( TComDataCU* pcCU, UInt uiPartAddr, Int iWidth, Int iHeight, RefPicList eRefPicList, TComYuv*& rpcYuvPred, Bool bi 
+Void TComPrediction::xPredInterUni ( TComDataCU* pcCU, UInt uiPartAddr, Int iWidth, Int iHeight, RefPicList eRefPicList, TComYuv*& rpcYuvPred
+#if BIO                  
+   ,Bool bBIOapplied
+#endif
+   , Bool bi 
 #if QC_FRUC_MERGE
   , Bool bOBMC
 #endif
   )
-{
+{ 
 #if QC_FRUC_MERGE
   Int nBlkWidth = iWidth;
   Int nBlkHeight = iHeight;
@@ -1390,7 +1467,11 @@ Void TComPrediction::xPredInterUni ( TComDataCU* pcCU, UInt uiPartAddr, Int iWid
   Int yRasterOffsetStep = 0;
   UInt uiIdxRasterStart = g_auiZscanToRaster[pcCU->getZorderIdxInCU() + uiPartAddr];
   Int nBlkMCWidth = iWidth;
-  if( !bOBMC && pcCU->getFRUCMgrMode( uiPartAddr ) )
+  if( !bOBMC && pcCU->getFRUCMgrMode( uiPartAddr ) 
+#if BIO                  
+    && !bBIOapplied
+#endif
+   )
   {
     Int nRefineBlkSize = xFrucGetSubBlkSize( pcCU , uiPartAddr , nBlkWidth , nBlkHeight );
     nBlkMCWidth = iWidth = iHeight = nRefineBlkSize;
@@ -1427,13 +1508,25 @@ Void TComPrediction::xPredInterUni ( TComDataCU* pcCU, UInt uiPartAddr, Int iWid
   Bool bICFlag = pcCU->getICFlag( uiPartAddr ) ;
 
 #if QC_FRUC_MERGE
-  xPredInterLumaBlk  ( pcCU, pcCU->getSlice()->getRefPic( eRefPicList, iRefIdx )->getPicYuvRec(), uiPartAddr, &cMv, iWidth, iHeight, rpcYuvPred, bi, false, bICFlag );
+  xPredInterLumaBlk  ( pcCU, pcCU->getSlice()->getRefPic( eRefPicList, iRefIdx )->getPicYuvRec(), uiPartAddr, &cMv, iWidth, iHeight, rpcYuvPred, bi
+#if BIO                  
+,bBIOapplied
+#endif
+, false, bICFlag );
 #else
-  xPredInterLumaBlk  ( pcCU, pcCU->getSlice()->getRefPic( eRefPicList, iRefIdx )->getPicYuvRec(), uiPartAddr, &cMv, iWidth, iHeight, rpcYuvPred, bi, bICFlag );
+  xPredInterLumaBlk  ( pcCU, pcCU->getSlice()->getRefPic( eRefPicList, iRefIdx )->getPicYuvRec(), uiPartAddr, &cMv, iWidth, iHeight, rpcYuvPred, bi
+#if BIO                  
+,bBIOapplied
+#endif
+, bICFlag );
 #endif
   xPredInterChromaBlk( pcCU, pcCU->getSlice()->getRefPic( eRefPicList, iRefIdx )->getPicYuvRec(), uiPartAddr, &cMv, iWidth, iHeight, rpcYuvPred, bi, bICFlag );
 #else
-  xPredInterLumaBlk  ( pcCU, pcCU->getSlice()->getRefPic( eRefPicList, iRefIdx )->getPicYuvRec(), uiPartAddr, &cMv, iWidth, iHeight, rpcYuvPred, bi );
+  xPredInterLumaBlk  ( pcCU, pcCU->getSlice()->getRefPic( eRefPicList, iRefIdx )->getPicYuvRec(), uiPartAddr, &cMv, iWidth, iHeight, rpcYuvPred, bi 
+#if BIO                  
+,bBIOapplied
+#endif
+);
   xPredInterChromaBlk( pcCU, pcCU->getSlice()->getRefPic( eRefPicList, iRefIdx )->getPicYuvRec(), uiPartAddr, &cMv, iWidth, iHeight, rpcYuvPred, bi );
 #endif
 #if QC_FRUC_MERGE
@@ -1450,7 +1543,34 @@ Void TComPrediction::xPredInterBi ( TComDataCU* pcCU, UInt uiPartAddr, Int iWidt
 {
   TComYuv* pcMbYuv;
   Int      iRefIdx[2] = {-1, -1};
+#if BIO 
+  Int      FrameNumber[3] = {-1, -1,-1};
+  FrameNumber[2] = pcCU->getSlice()->getPOC();
+  bool bBIOcheck0 = pcCU->getSlice()->getPPS()->getWPBiPred()    && pcCU->getSlice()->getSliceType() == B_SLICE; 
+  bool bBIOcheck1 =  pcCU->getSlice()->getPPS()->getUseWP() && pcCU->getSlice()->getSliceType() == P_SLICE;
+  bool bBIOapplied = false;
 
+  for ( Int iRefList = 0; iRefList < 2; iRefList++ )
+  {
+    RefPicList eRefPicList = (iRefList ? REF_PIC_LIST_1 : REF_PIC_LIST_0);
+    iRefIdx[iRefList] = pcCU->getCUMvField( eRefPicList )->getRefIdx( uiPartAddr );
+   if ( iRefIdx[iRefList] >= 0 )
+     FrameNumber[iRefList] = pcCU->getSlice()->getRefPic(eRefPicList,iRefIdx[iRefList])->getPOC() ;
+  }
+ 
+if ( iRefIdx[0] >= 0 && iRefIdx[1] >= 0 ) // applied for only EL,  only if Bi-pred is from different "time directions"
+  {  
+      int d1 = FrameNumber[1] - FrameNumber[2], d0 = FrameNumber[2] - FrameNumber[0];
+      if (d1 * d0 > 0&&!bBIOcheck0&&! bBIOcheck1 )
+    {
+        bBIOapplied = true;
+    }
+  }
+
+#if QC_FRUC_MERGE 
+ if (pcCU->getFRUCMgrMode( uiPartAddr ) ) bBIOapplied = false;
+#endif
+#endif
   for ( Int iRefList = 0; iRefList < 2; iRefList++ )
   {
     RefPicList eRefPicList = (iRefList ? REF_PIC_LIST_1 : REF_PIC_LIST_0);
@@ -1462,11 +1582,17 @@ Void TComPrediction::xPredInterBi ( TComDataCU* pcCU, UInt uiPartAddr, Int iWidt
     }
 
     assert( iRefIdx[iRefList] < pcCU->getSlice()->getNumRefIdx(eRefPicList) );
-
+#if BIO 
+  iRefListIdx = iRefList;
+#endif
     pcMbYuv = &m_acYuvPred[iRefList];
     if( pcCU->getCUMvField( REF_PIC_LIST_0 )->getRefIdx( uiPartAddr ) >= 0 && pcCU->getCUMvField( REF_PIC_LIST_1 )->getRefIdx( uiPartAddr ) >= 0 )
     {
-      xPredInterUni ( pcCU, uiPartAddr, iWidth, iHeight, eRefPicList, pcMbYuv, true 
+      xPredInterUni ( pcCU, uiPartAddr, iWidth, iHeight, eRefPicList, pcMbYuv 
+#if BIO                  
+   ,bBIOapplied
+#endif
+   , true 
 #if QC_FRUC_MERGE
         , bOBMC
 #endif
@@ -1483,7 +1609,11 @@ Void TComPrediction::xPredInterBi ( TComDataCU* pcCU, UInt uiPartAddr, Int iWidt
            ( pcCU->getSlice()->getPPS()->getWPBiPred() && pcCU->getSlice()->getSliceType() == B_SLICE ) )
 #endif
       {
-        xPredInterUni ( pcCU, uiPartAddr, iWidth, iHeight, eRefPicList, pcMbYuv, true 
+        xPredInterUni ( pcCU, uiPartAddr, iWidth, iHeight, eRefPicList, pcMbYuv
+#if BIO                  
+   ,bBIOapplied
+#endif
+   , true 
 #if QC_FRUC_MERGE
           , bOBMC
 #endif
@@ -1493,7 +1623,15 @@ Void TComPrediction::xPredInterBi ( TComDataCU* pcCU, UInt uiPartAddr, Int iWidt
       {
         xPredInterUni ( pcCU, uiPartAddr, iWidth, iHeight, eRefPicList, pcMbYuv 
 #if QC_FRUC_MERGE
-          , false , bOBMC
+#if BIO                  
+   ,bBIOapplied
+#endif 
+   , false 
+   , bOBMC
+#else
+#if BIO                  
+    ,bBIOapplied,false
+#endif 
 #endif
           );
       }
@@ -1518,10 +1656,45 @@ Void TComPrediction::xPredInterBi ( TComDataCU* pcCU, UInt uiPartAddr, Int iWidt
   }
   else
   {
-    xWeightedAverage( &m_acYuvPred[0], &m_acYuvPred[1], iRefIdx[0], iRefIdx[1], uiPartAddr, iWidth, iHeight, rpcYuvPred );
+    xWeightedAverage( &m_acYuvPred[0], &m_acYuvPred[1], iRefIdx[0], iRefIdx[1], uiPartAddr, iWidth, iHeight, rpcYuvPred 
+#if BIO                  
+   ,bBIOapplied
+#endif
+                  );
   }
 }
+#if BIO 
+Void  TComPrediction::xGradFilterX(Pel*  piRefY, Int iRefStride,Pel*  piDstY,Int iDstStride,
+                                  Int iWidth, Int iHeight,Int iMVyFrac,Int iMVxFrac)
+{
+if ( iMVyFrac == 0 )
+  {
+    xCTI_Filter1DHorG (piRefY, iRefStride,  iWidth, iHeight, iDstStride,  piDstY, iMVxFrac );
+    return;
+  }
 
+    Int tmpStride = m_filteredBlockTmp[0].getStride();
+    Pel *tmp    = m_filteredBlockTmp[0].getLumaAddr();
+
+  xCTI_Filter2DVerGG (piRefY - BIO_FILTER_HALF_LENGTH_MINUS_1,  iRefStride,  iWidth +BIO_FILTER_LENGTH_MINUS_1 , iHeight, tmpStride,  tmp,  iMVyFrac        );
+  xCTI_Filter2DHorG  (tmp +   BIO_FILTER_HALF_LENGTH_MINUS_1,  tmpStride,  iWidth            , iHeight, iDstStride,  piDstY ,iMVxFrac );
+  }
+Void  TComPrediction::xGradFilterY(Pel*  piRefY, Int iRefStride,Pel*  piDstY,Int iDstStride,
+                                  Int iWidth, Int iHeight,Int iMVyFrac,Int iMVxFrac)
+{
+  if ( iMVxFrac == 0 )
+  {
+    xCTI_Filter1DVerG (piRefY, iRefStride,  iWidth, iHeight, iDstStride,  piDstY, iMVyFrac );
+    return;
+  }
+
+    Int tmpStride = m_filteredBlockTmp[0].getStride();
+    Pel *tmp    = m_filteredBlockTmp[0].getLumaAddr();
+  
+  xCTI_Filter2DVerG (piRefY  - BIO_FILTER_HALF_LENGTH_MINUS_1,  iRefStride,  iWidth +BIO_FILTER_LENGTH_MINUS_1 , iHeight, tmpStride,  tmp,  iMVyFrac );
+  xCTI_Filter2DHorGG (tmp  + BIO_FILTER_HALF_LENGTH_MINUS_1,  tmpStride,  iWidth            , iHeight, iDstStride,  piDstY , iMVxFrac );
+}
+#endif
 /**
  * \brief Generate motion-compensated luma block
  *
@@ -1535,6 +1708,9 @@ Void TComPrediction::xPredInterBi ( TComDataCU* pcCU, UInt uiPartAddr, Int iWidt
  * \param bi       Flag indicating whether bipred is used
  */
 Void TComPrediction::xPredInterLumaBlk( TComDataCU *cu, TComPicYuv *refPic, UInt partAddr, TComMv *mv, Int width, Int height, TComYuv *&dstPic, Bool bi 
+#if BIO                  
+   ,bool bBIOapplied
+#endif
 #if QC_FRUC_MERGE
   , Int nFRUCMode
 #endif
@@ -1556,7 +1732,7 @@ Void TComPrediction::xPredInterLumaBlk( TComDataCU *cu, TComPicYuv *refPic, UInt
   Pel *ref      = refPic->getLumaAddr( cu->getAddr(), cu->getZorderIdxInCU() + partAddr ) + refOffset;
   
   Int dstStride = dstPic->getStride();
-  Pel *dst      = dstPic->getLumaAddr( partAddr );
+  Pel *dst      = dstPic->getLumaAddr( partAddr ); 
 #if QC_FRUC_MERGE
   if( nFRUCMode )
     dst = dstPic->getLumaAddr( 0 );
@@ -1569,7 +1745,40 @@ Void TComPrediction::xPredInterLumaBlk( TComDataCU *cu, TComPicYuv *refPic, UInt
   Int xFrac = mv->getHor() & 0x3;
   Int yFrac = mv->getVer() & 0x3;
 #endif
+#if BIO 
+  if ( bBIOapplied)
+  { 
+      Pel* pGradY= m_pGradY0;  Pel* pGradX= m_pGradX0;  Pel *pPred= m_pPred0;
+      Int iWidthG   = width + 4;
+      Int iHeightG = height + 4;
+      if (iRefListIdx == 0)
+      {    
+       pGradY = m_pGradY0;
+       pGradX = m_pGradX0;
+       pPred = m_pPred0;
+      }
+      else
+      {
+       pGradY = m_pGradY1;
+       pGradX = m_pGradX1;
+       pPred  = m_pPred1 ;
+      }
 
+  ref -=(2+2*refStride);
+#if QC_MV_STORE_PRECISION_BIT == 3
+         xGradFilterY(ref , refStride,pGradY,iWidthG,iWidthG,iHeightG, yFrac>>1,  xFrac>>1);
+     xGradFilterX(ref , refStride,pGradX,iWidthG,iWidthG,iHeightG, yFrac>>1,  xFrac>>1);
+#else
+         xGradFilterY(ref , refStride,pGradY,iWidthG,iWidthG,iHeightG, yFrac,  xFrac);
+     xGradFilterX(ref , refStride,pGradX,iWidthG,iWidthG,iHeightG, yFrac,  xFrac);
+#endif
+     xPredInterFrac( ref , pPred, iWidthG, refStride, xFrac, yFrac, iWidthG, iHeightG,bi);
+    ref +=(2+2*refStride);
+
+    }
+  else
+  {   
+#endif
   if ( yFrac == 0 )
   {
     m_if.filterHorLuma( ref, refStride, dst, dstStride, width, height, xFrac,       
@@ -1628,7 +1837,9 @@ Void TComPrediction::xPredInterLumaBlk( TComDataCU *cu, TComPicYuv *refPic, UInt
 #endif
       );    
   }
-
+#if BIO 
+}
+#endif
 #if QC_IC
   if( bICFlag )
   {
@@ -1663,7 +1874,29 @@ Void TComPrediction::xPredInterLumaBlk( TComDataCU *cu, TComPicYuv *refPic, UInt
   }
 #endif
 }
+#if BIO 
+Void TComPrediction::xPredInterFrac(Pel* ref,Pel* dst,Int dstStride,Int refStride,Int xFrac,Int yFrac,Int width, Int height,Bool bi  )
+{
+  if ( yFrac == 0 )
+  {
+    m_if.filterHorLuma( ref, refStride, dst, dstStride, width, height, xFrac,       !bi  );
+  }
+  else if ( xFrac == 0 )
+  {
+    m_if.filterVerLuma( ref, refStride, dst, dstStride, width, height, yFrac, true,  !bi  );
+  }
+  else
+  {
+    Int tmpStride = m_filteredBlockTmp[0].getStride();
+    Short *tmp    = m_filteredBlockTmp[0].getLumaAddr();
+    Int filterSize = NTAPS_LUMA;
+    Int halfFilterSize = ( filterSize >> 1 );
 
+    m_if.filterHorLuma(ref - (halfFilterSize-1)*refStride, refStride, tmp, tmpStride, width, height+filterSize-1, xFrac, false      );
+    m_if.filterVerLuma(tmp + (halfFilterSize-1)*tmpStride, tmpStride, dst, dstStride, width, height,              yFrac, false,  !bi);    
+  }
+}
+#endif
 /**
  * \brief Generate motion-compensated chroma block
  *
@@ -2000,12 +2233,197 @@ Void TComPrediction::xGetLLSICPrediction( TComDataCU* pcCU, TComMv *pMv, TComPic
   b = Clip3( -iOffset, iOffset - 1, b );
 }
 #endif
-
-Void TComPrediction::xWeightedAverage( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, Int iRefIdx0, Int iRefIdx1, UInt uiPartIdx, Int iWidth, Int iHeight, TComYuv*& rpcYuvDst )
+#if BIO
+Pel optical_flow_averaging( Int64 s1,Int64 s2,Int64 s3,Int64 s5,Int64 s6,
+              Pel pGradX0 , Pel pGradX1,Pel pGradY0 , Pel pGradY1,
+              Pel pSrcY0Temp, Pel pSrcY1Temp, int shiftNum , int  offset     , Int64 limit ,   Int64 denom_min_1 ,   Int64 denom_min_2   )
 {
+Int64 vx = 0;  Int64 vy = 0;
+Int64 b=0;
+if (s1>denom_min_1)         
+{
+vx =  s3  / s1;
+vx =vx>limit?limit:vx<-limit?-limit:vx; 
+}
+if (s5>denom_min_2)
+{
+vy = (s6-vx*s2)/ s5;
+vy =vy>limit?limit:vy<-limit?-limit:vy; 
+}
+  
+b = vx * (pGradX0 - pGradX1) +vy * (pGradY0 - pGradY1);       
+b = (b>0)?((b +32)>> 6):(-((-b+32) >> 6));
+return( ClipY((Short)((pSrcY0Temp + pSrcY1Temp + b +offset) >> shiftNum)));
+}
+#endif
+Void TComPrediction::xWeightedAverage( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, Int iRefIdx0, Int iRefIdx1, UInt uiPartIdx, Int iWidth, Int iHeight, TComYuv*& rpcYuvDst 
+#if BIO                  
+   ,bool bBIOapplied
+#endif
+)
+{
+
   if( iRefIdx0 >= 0 && iRefIdx1 >= 0 )
   {
-    rpcYuvDst->addAvg( pcYuvSrc0, pcYuvSrc1, uiPartIdx, iWidth, iHeight );
+#if BIO 
+    if (bBIOapplied)
+    {
+      static Int64 m_piDotProduct1[BIO_TEMP_BUFFER_SIZE];
+      static Int64 m_piDotProduct2[BIO_TEMP_BUFFER_SIZE];
+      static Int64 m_piDotProduct3[BIO_TEMP_BUFFER_SIZE];
+      static Int64 m_piDotProduct5[BIO_TEMP_BUFFER_SIZE];
+      static Int64 m_piDotProduct6[BIO_TEMP_BUFFER_SIZE];
+      static Int64 m_piS1temp[BIO_TEMP_BUFFER_SIZE];
+      static Int64 m_piS2temp[BIO_TEMP_BUFFER_SIZE];
+      static Int64 m_piS3temp[BIO_TEMP_BUFFER_SIZE];
+      static Int64 m_piS5temp[BIO_TEMP_BUFFER_SIZE];
+      static Int64 m_piS6temp[BIO_TEMP_BUFFER_SIZE];
+      static Int64 m_piS1[BIO_TEMP_BUFFER_SIZE];
+      static Int64 m_piS2[BIO_TEMP_BUFFER_SIZE];
+      static Int64 m_piS3[BIO_TEMP_BUFFER_SIZE];
+      static Int64 m_piS5[BIO_TEMP_BUFFER_SIZE];
+      static Int64 m_piS6[BIO_TEMP_BUFFER_SIZE];
+      Int x=0, y=0;
+
+      Int iHeightG = iHeight + 4;
+      Int iWidthG  = iWidth  + 4;
+      Int iStrideTemp = 2+2*iWidthG;
+      Pel* pGradX0 = m_pGradX0; Pel* pGradX1 = m_pGradX1; 
+      Pel* pGradY0 = m_pGradY0; Pel* pGradY1 = m_pGradY1;    
+      Pel* pSrcY0 = m_pPred0; 
+      Pel* pSrcY1 = m_pPred1;
+      Int iSrc0Stride = iWidthG;
+      Int iSrc1Stride = iWidthG;   
+      Pel* pDstY = rpcYuvDst->getLumaAddr(uiPartIdx); 
+      Int iDstStride = rpcYuvDst->getStride(); 
+      Pel* pSrcY0Temp = pSrcY0; Pel* pSrcY1Temp = pSrcY1;
+
+      static const int  shiftNum    = IF_INTERNAL_PREC + 1 - g_bitDepthY;
+      static const int  offset      = ( 1 << ( shiftNum - 1 ) ) + 2 * IF_INTERNAL_OFFS;
+      static const Int64 limit = (12<<(IF_INTERNAL_PREC-1- g_bitDepthY)); 
+      static const Int64 regularizator_1 = 500* (1<< (g_bitDepthY-8))* (1<< (g_bitDepthY-8));
+      static const Int64 regularizator_2 =regularizator_1<<1;
+      static const Int64 denom_min_1 = 700* (1<< (g_bitDepthY-8))* (1<< (g_bitDepthY-8));
+      static const Int64 denom_min_2 = denom_min_1<<1;
+
+      Int64* m_piDotProductTemp1 = m_piDotProduct1;Int64* m_piDotProductTemp2 = m_piDotProduct2;Int64* m_piDotProductTemp3 = m_piDotProduct3;Int64* m_piDotProductTemp5 = m_piDotProduct5;Int64* m_piDotProductTemp6 = m_piDotProduct6;
+      Int64* m_pS1loc=m_piS1temp;Int64* m_pS2loc=m_piS2temp;Int64* m_pS3loc=m_piS3temp;Int64* m_pS5loc=m_piS5temp;Int64* m_pS6loc=m_piS6temp;
+      Int64* m_pS1loc_1=m_piS1temp;Int64* m_pS2loc_1=m_piS2temp;Int64* m_pS3loc_1=m_piS3temp;Int64* m_pS5loc_1=m_piS5temp;Int64* m_pS6loc_1=m_piS6temp;
+      Int64* m_pS1loc_2=m_piS1temp;Int64* m_pS2loc_2=m_piS2temp;Int64* m_pS3loc_2=m_piS3temp;Int64* m_pS5loc_2=m_piS5temp;Int64* m_pS6loc_2=m_piS6temp;
+      Int64* m_pS1loc_3=m_piS1temp;Int64* m_pS2loc_3=m_piS2temp;Int64* m_pS3loc_3=m_piS3temp;Int64* m_pS5loc_3=m_piS5temp;Int64* m_pS6loc_3=m_piS6temp;
+
+      Int64* m_pS1loc1=m_piS1temp;Int64* m_pS2loc1=m_piS2temp;Int64* m_pS3loc1=m_piS3temp;Int64* m_pS5loc1=m_piS5temp;Int64* m_pS6loc1=m_piS6temp;
+      Int64* m_pS1loc2=m_piS1temp;Int64* m_pS2loc2=m_piS2temp;Int64* m_pS3loc2=m_piS3temp;Int64* m_pS5loc2=m_piS5temp;Int64* m_pS6loc2=m_piS6temp;
+      Int64* m_piSS1loc=m_piS1;Int64* m_piSS2loc=m_piS2;Int64* m_piSS3loc=m_piS3;Int64* m_piSS5loc=m_piS5;Int64* m_piSS6loc=m_piS6;
+      Int64* m_piSS1loc_1=m_piS1;Int64* m_piSS2loc_1=m_piS2;Int64* m_piSS3loc_1=m_piS3;Int64* m_piSS5loc_1=m_piS5;Int64* m_piSS6loc_1=m_piS6;
+
+      Int64 temp=0, tempX=0, tempY=0;
+      for (y = 0; y < iHeightG; y ++)    
+      {
+        for (x =0; x < iWidthG ; x ++)
+        {
+          temp =(Int64) (pSrcY0Temp[x ] - pSrcY1Temp[x ]);
+          tempX =(Int64) (pGradX0[x] +  pGradX1[x]);
+          tempY =(Int64) (pGradY0[x] +  pGradY1[x]);
+          m_piDotProductTemp1[x] =  tempX*tempX;
+          m_piDotProductTemp2[x] =  tempX*tempY;
+          m_piDotProductTemp3[x] = -tempX*temp<<5;
+          m_piDotProductTemp5[x] =  tempY*tempY<<1;
+          m_piDotProductTemp6[x] = -tempY*temp<<6;
+        }
+        pSrcY0Temp+=iSrc0Stride;
+        pSrcY1Temp+=iSrc1Stride;
+        pGradX0+=iWidthG;
+        pGradX1+=iWidthG;
+        pGradY0+=iWidthG;
+        pGradY1+=iWidthG;
+        m_piDotProductTemp1+=iWidthG;
+        m_piDotProductTemp2+=iWidthG;
+        m_piDotProductTemp3+=iWidthG;
+        m_piDotProductTemp5+=iWidthG;
+        m_piDotProductTemp6+=iWidthG;
+      }
+
+      m_piDotProductTemp1 = m_piDotProduct1+2;m_piDotProductTemp2 = m_piDotProduct2+2;m_piDotProductTemp3 = m_piDotProduct3+2;m_piDotProductTemp5 = m_piDotProduct5+2;m_piDotProductTemp6 = m_piDotProduct6+2;
+      m_pS1loc=m_piS1temp+2;m_pS2loc=m_piS2temp+2;m_pS3loc=m_piS3temp+2;m_pS5loc=m_piS5temp+2;m_pS6loc=m_piS6temp+2;      
+
+      for (y = 0;y < iHeightG ; y ++)
+      {  
+        x=0;
+        m_pS1loc[x] =  m_piDotProductTemp1[-2] + m_piDotProductTemp1[-1] + m_piDotProductTemp1[0] + m_piDotProductTemp1[1] +  m_piDotProductTemp1[2] ;
+        m_pS2loc[x] =  m_piDotProductTemp2[-2] + m_piDotProductTemp2[-1] + m_piDotProductTemp2[0] + m_piDotProductTemp2[1] +  m_piDotProductTemp2[2] ;
+        m_pS3loc[x] =  m_piDotProductTemp3[-2] + m_piDotProductTemp3[-1] + m_piDotProductTemp3[0] + m_piDotProductTemp3[1] +  m_piDotProductTemp3[2] ;
+        m_pS5loc[x] =  m_piDotProductTemp5[-2] + m_piDotProductTemp5[-1] + m_piDotProductTemp5[0] + m_piDotProductTemp5[1] +  m_piDotProductTemp5[2] ;
+        m_pS6loc[x] =  m_piDotProductTemp6[-2] + m_piDotProductTemp6[-1] + m_piDotProductTemp6[0] + m_piDotProductTemp6[1] +  m_piDotProductTemp6[2] ;
+
+        for ( x=1;    x < iWidth  ; x++)
+        {
+          m_pS1loc[x] =  -m_piDotProductTemp1[x-3]  +  m_piDotProductTemp1[x+2] + m_pS1loc[x-1];
+          m_pS2loc[x] =  -m_piDotProductTemp2[x-3]  +  m_piDotProductTemp2[x+2] + m_pS2loc[x-1];  
+          m_pS3loc[x] =  -m_piDotProductTemp3[x-3]  +  m_piDotProductTemp3[x+2] + m_pS3loc[x-1];
+          m_pS5loc[x] =  -m_piDotProductTemp5[x-3]  +  m_piDotProductTemp5[x+2] + m_pS5loc[x-1];  
+          m_pS6loc[x] =  -m_piDotProductTemp6[x-3]  +  m_piDotProductTemp6[x+2] + m_pS6loc[x-1];
+        }
+        m_piDotProductTemp1+=iWidthG;m_piDotProductTemp2+=iWidthG;m_piDotProductTemp3+=iWidthG;m_piDotProductTemp5+=iWidthG;m_piDotProductTemp6+=iWidthG;
+        m_pS1loc+=iWidthG;m_pS2loc+=iWidthG;m_pS3loc+=iWidthG;m_pS5loc+=iWidthG;m_pS6loc+=iWidthG;
+      }
+      m_pS1loc=m_piS1temp+iStrideTemp;m_pS2loc=m_piS2temp+iStrideTemp;m_pS3loc=m_piS3temp+iStrideTemp;m_pS5loc=m_piS5temp+iStrideTemp;m_pS6loc=m_piS6temp+iStrideTemp;
+      m_pS1loc_1=m_pS1loc- iWidthG;m_pS2loc_1=m_pS2loc- iWidthG;m_pS3loc_1=m_pS3loc- iWidthG;m_pS5loc_1=m_pS5loc- iWidthG;m_pS6loc_1=m_pS6loc- iWidthG;
+      m_pS1loc_2=m_pS1loc_1- iWidthG;m_pS2loc_2=m_pS2loc_1- iWidthG;m_pS3loc_2=m_pS3loc_1- iWidthG;m_pS5loc_2=m_pS5loc_1- iWidthG;m_pS6loc_2=m_pS6loc_1- iWidthG;
+      m_pS1loc1=m_pS1loc+ iWidthG;m_pS2loc1=m_pS2loc+ iWidthG;m_pS3loc1=m_pS3loc+ iWidthG;m_pS5loc1=m_pS5loc+ iWidthG;m_pS6loc1=m_pS6loc+ iWidthG;
+      m_pS1loc2=m_pS1loc1+ iWidthG;m_pS2loc2=m_pS2loc1+ iWidthG;m_pS3loc2=m_pS3loc1+ iWidthG;m_pS5loc2=m_pS5loc1+ iWidthG;m_pS6loc2=m_pS6loc1+ iWidthG;
+      m_piSS1loc=m_piS1+iStrideTemp;m_piSS2loc=m_piS2+iStrideTemp;m_piSS3loc=m_piS3+iStrideTemp;m_piSS5loc=m_piS5+iStrideTemp;m_piSS6loc=m_piS6+iStrideTemp;
+      pGradX0 = m_pGradX0+iStrideTemp ;  pGradX1 = m_pGradX1+iStrideTemp ;
+      pGradY0 = m_pGradY0+iStrideTemp  ; pGradY1 = m_pGradY1+iStrideTemp ;
+      pSrcY0Temp = pSrcY0 +iStrideTemp;
+      pSrcY1Temp = pSrcY1 +iStrideTemp;
+
+      y = 0;
+      for (x = 0; x < iWidth ; x ++)
+      { 
+        m_piSS1loc[x]=m_pS1loc_2[x]+m_pS1loc_1[x]+m_pS1loc[x]+m_pS1loc1[x]+m_pS1loc2[x]+regularizator_1;
+        m_piSS2loc[x]=m_pS2loc_2[x]+m_pS2loc_1[x]+m_pS2loc[x]+m_pS2loc1[x]+m_pS2loc2[x];
+        m_piSS3loc[x]=m_pS3loc_2[x]+m_pS3loc_1[x]+m_pS3loc[x]+m_pS3loc1[x]+m_pS3loc2[x];
+        m_piSS5loc[x]=m_pS5loc_2[x]+m_pS5loc_1[x]+m_pS5loc[x]+m_pS5loc1[x]+m_pS5loc2[x]+regularizator_2;
+        m_piSS6loc[x]=m_pS6loc_2[x]+m_pS6loc_1[x]+m_pS6loc[x]+m_pS6loc1[x]+m_pS6loc2[x];
+        pDstY[x]=optical_flow_averaging(
+          m_piSS1loc[x],m_piSS2loc[x],m_piSS3loc[x],m_piSS5loc[x],m_piSS6loc[x],
+          pGradX0[x] , pGradX1[x],pGradY0[x] , pGradY1[x],pSrcY0Temp[x ], pSrcY1Temp[x ]
+        ,  shiftNum ,  offset , limit, denom_min_1, denom_min_2);
+      }
+      m_pS1loc2+=iWidthG;m_pS2loc2+=iWidthG;m_pS3loc2+=iWidthG;m_pS5loc2+=iWidthG;m_pS6loc2+=iWidthG;
+      pDstY += iDstStride;pSrcY0Temp+=iSrc0Stride;pSrcY1Temp+=iSrc1Stride;pGradX0+=iWidthG;pGradX1+=iWidthG;pGradY0+=iWidthG;pGradY1+=iWidthG;
+      m_piSS1loc_1=m_piSS1loc;m_piSS2loc_1=m_piSS2loc;m_piSS3loc_1=m_piSS3loc;m_piSS5loc_1=m_piSS5loc;m_piSS6loc_1=m_piSS6loc;
+      m_pS1loc+=iWidthG;m_pS2loc+=iWidthG;m_pS3loc+=iWidthG;m_pS5loc+=iWidthG;m_pS6loc+=iWidthG;
+      m_pS1loc_3=m_pS1loc_2;m_pS2loc_3=m_pS2loc_2;m_pS3loc_3=m_pS3loc_2;m_pS5loc_3=m_pS5loc_2;m_pS6loc_3=m_pS6loc_2;
+      m_piSS1loc+=iWidthG;  m_piSS2loc+=iWidthG;  m_piSS3loc+=iWidthG;  m_piSS5loc+=iWidthG;  m_piSS6loc+=iWidthG;
+      for (y = 1;  y < iHeight ;   y ++)
+      {
+        for (x = 0; x < iWidth ; x ++)
+        { 
+          m_piSS1loc[x]=m_piSS1loc_1[x]-m_pS1loc_3[x]+m_pS1loc2[x];
+          m_piSS2loc[x]=m_piSS2loc_1[x]-m_pS2loc_3[x]+m_pS2loc2[x];
+          m_piSS3loc[x]=m_piSS3loc_1[x]-m_pS3loc_3[x]+m_pS3loc2[x];
+          m_piSS5loc[x]=m_piSS5loc_1[x]-m_pS5loc_3[x]+m_pS5loc2[x];
+          m_piSS6loc[x]=m_piSS6loc_1[x]-m_pS6loc_3[x]+m_pS6loc2[x];
+
+          pDstY[x]=optical_flow_averaging(m_piSS1loc[x],m_piSS2loc[x],m_piSS3loc[x],m_piSS5loc[x],m_piSS6loc[x],
+            pGradX0[x] , pGradX1[x],pGradY0[x] , pGradY1[x],pSrcY0Temp[x ], pSrcY1Temp[x ]
+          ,  shiftNum,  offset, limit, denom_min_1, denom_min_2 );
+        }
+
+        m_piSS1loc_1=m_piSS1loc;m_piSS2loc_1=m_piSS2loc;m_piSS3loc_1=m_piSS3loc;m_piSS5loc_1=m_piSS5loc;m_piSS6loc_1=m_piSS6loc;
+        m_piSS1loc+=iWidthG;m_piSS2loc+=iWidthG;m_piSS3loc+=iWidthG;m_piSS5loc+=iWidthG;m_piSS6loc+=iWidthG;
+        m_pS1loc2+=iWidthG;m_pS2loc2+=iWidthG;m_pS3loc2+=iWidthG;m_pS5loc2+=iWidthG;m_pS6loc2+=iWidthG;
+        m_pS1loc_3+=iWidthG;m_pS2loc_3+=iWidthG;m_pS3loc_3+=iWidthG;m_pS5loc_3+=iWidthG;m_pS6loc_3+=iWidthG;
+        pDstY += iDstStride;pSrcY0Temp+=iSrc0Stride;pSrcY1Temp+=iSrc1Stride;
+        pGradX0+=iWidthG;pGradX1+=iWidthG;pGradY0+=iWidthG;pGradY1+=iWidthG;
+      }
+    } //bBIOapplied
+    rpcYuvDst->addAvg( pcYuvSrc0, pcYuvSrc1, uiPartIdx, iWidth, iHeight, bBIOapplied);    
+#else
+  rpcYuvDst->addAvg( pcYuvSrc0, pcYuvSrc1, uiPartIdx, iWidth, iHeight );
+#endif
   }
   else if ( iRefIdx0 >= 0 && iRefIdx1 <  0 )
   {
@@ -2016,7 +2434,226 @@ Void TComPrediction::xWeightedAverage( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, I
     pcYuvSrc1->copyPartToPartYuv( rpcYuvDst, uiPartIdx, iWidth, iHeight );
   }
 }
+#if BIO 
+const Short m_lumaGradientFilter[4][BIO_FILTER_LENGTH] =
+{
+  {  8,      -39,       -3,       46,      -17,        5 },
+  {  4,      -17,      -36,       60,      -15,        4 },
+  { -1,        4,      -57,       57,       -4,        1 },
+  { -4,       15,      -60,       36,       17,       -4 }
+};
+const Short m_lumaInterpolationFilter[4][BIO_FILTER_LENGTH] =
+{
+  {      0,    0,  64,   0,    0,    0  },
+  {      2,   -9,  57,  19,   -7,    2  },
+  {      1,   -7,  38,  38,   -7,    1  },
+  {      2,   -7,  19,  57,   -9,    2  },
+};
 
+
+__inline Void TComPrediction::xCTI_Filter2DVerG (Pel* piSrc, Int iSrcStride,  Int iWidth, Int iHeight, Int iDstStride,  
+   Pel*& rpiDst, Int iMV)
+{
+  Pel*   piDst = rpiDst;
+  Int   iSum =0;
+  Pel*  piSrcTmp  = piSrc-BIO_FILTER_HALF_LENGTH_MINUS_1*iSrcStride;
+  Pel*  piSrcTmp1  = piSrcTmp+iSrcStride;
+  Pel*  piSrcTmp2  = piSrcTmp1+iSrcStride;
+  Pel*  piSrcTmp3  = piSrcTmp2+iSrcStride;
+  Pel*  piSrcTmp4  = piSrcTmp3+iSrcStride;
+  Pel*  piSrcTmp5  = piSrcTmp4+iSrcStride;
+   Int iShift = g_bitDepthY-8; // MC interpolation filter bit-depth + gradient's filter bit-depth
+   Int iOffSet = iShift>0?(1<<(iShift-1)):0;
+  for ( Int y = iHeight; y != 0; y-- )
+      {
+
+      for ( Int x = 0; x < iWidth; x++ )
+      {
+        iSum      = m_lumaGradientFilter[iMV][0]* piSrcTmp[x] 
+                   +m_lumaGradientFilter[iMV][1]*piSrcTmp1[x]
+               +m_lumaGradientFilter[iMV][2]*piSrcTmp2[x]
+               +m_lumaGradientFilter[iMV][3]*piSrcTmp3[x] 
+               +m_lumaGradientFilter[iMV][4]*piSrcTmp4[x] 
+               +m_lumaGradientFilter[iMV][5]*piSrcTmp5[x];
+        piDst[x ] = (Pel) ((iSum>=0)?((iSum +iOffSet)>> iShift):(-((-iSum +iOffSet)>> iShift)));
+
+      }
+      piSrcTmp+=iSrcStride;
+      piSrcTmp1+=iSrcStride;
+      piSrcTmp2+=iSrcStride;
+      piSrcTmp3+=iSrcStride;
+      piSrcTmp4+=iSrcStride;
+      piSrcTmp5+=iSrcStride;
+      piSrc += iSrcStride;
+      piDst += iDstStride;
+      }
+  return;
+}
+__inline Void TComPrediction::xCTI_Filter1DVerG (Pel* piSrc, Int iSrcStride, Int iWidth, Int iHeight, Int iDstStride, 
+  Pel*& rpiDst, Int iMV)
+{
+  Pel*  piDst = rpiDst;
+  Pel*  piSrcTmp  = piSrc-BIO_FILTER_HALF_LENGTH_MINUS_1*iSrcStride;
+  Pel*  piSrcTmp1  = piSrcTmp+iSrcStride;
+  Pel*  piSrcTmp2  = piSrcTmp1+iSrcStride;
+  Pel*  piSrcTmp3  = piSrcTmp2+iSrcStride;
+  Pel*  piSrcTmp4  = piSrcTmp3+iSrcStride;
+  Pel*  piSrcTmp5  = piSrcTmp4+iSrcStride;
+  Int iSum = 0;
+   Int iShift = 4;       
+   Int iOffSet = 8;  
+  for ( Int y = iHeight; y != 0; y-- )
+        {
+        for ( Int x = 0; x < iWidth; x++ )
+        {
+        iSum      = m_lumaGradientFilter[iMV][0]* piSrcTmp[x] 
+        +m_lumaGradientFilter[iMV][1]*piSrcTmp1[x]
+        +m_lumaGradientFilter[iMV][2]*piSrcTmp2[x]
+        +m_lumaGradientFilter[iMV][3]*piSrcTmp3[x] 
+        +m_lumaGradientFilter[iMV][4]*piSrcTmp4[x] 
+        +m_lumaGradientFilter[iMV][5]*piSrcTmp5[x];
+      piDst   [x ] =  (Pel) (  (iSum>=0)? ((iSum + iOffSet) >>  iShift):(- ((-iSum + iOffSet) >>  iShift ))   );
+        }
+      piSrcTmp+=iSrcStride;
+      piSrcTmp1+=iSrcStride;
+      piSrcTmp2+=iSrcStride;
+      piSrcTmp3+=iSrcStride;
+      piSrcTmp4+=iSrcStride;
+      piSrcTmp5+=iSrcStride;
+      piSrc += iSrcStride;
+        piDst += iDstStride;
+        }
+  return;
+}
+__inline Void TComPrediction::xCTI_Filter1DHorG(Pel* piSrc, Int iSrcStride, Int iWidth, Int iHeight, Int iDstStride, 
+  Pel*& rpiDst, Int iMV)
+{
+  Pel*  piDst    = rpiDst;
+  Int   iSum =0;
+  Pel*  piSrcTmp;
+   Int iShift = 4;       
+   Int iOffSet = 8;  
+   for ( Int y = iHeight; y != 0; y-- )
+        {
+          piSrcTmp = &piSrc[ -BIO_FILTER_HALF_LENGTH_MINUS_1 ];
+        for ( Int x = 0; x < iWidth; x++ )
+        {
+          iSum      = m_lumaGradientFilter[iMV][0]* piSrcTmp[0] 
+          +m_lumaGradientFilter[iMV][1]*piSrcTmp[1]
+          +m_lumaGradientFilter[iMV][2]*piSrcTmp[2]
+          +m_lumaGradientFilter[iMV][3]*piSrcTmp[3] 
+          +m_lumaGradientFilter[iMV][4]*piSrcTmp[4] 
+          +m_lumaGradientFilter[iMV][5]*piSrcTmp[5];
+
+      piDst   [x ] =  (Pel) (  (iSum>=0)? ((iSum + iOffSet) >>  iShift):(- ((-iSum + iOffSet) >>  iShift ))   );
+            piSrcTmp++;
+        }
+        piSrc += iSrcStride;
+        piDst += iDstStride;
+        }
+
+  return;
+}
+__inline Void TComPrediction::xCTI_Filter2DHorG( Pel* piSrc, Int iSrcStride,  Int iWidth, Int iHeight, Int iDstStride,  
+  Pel*& rpiDst, Int iMV)
+{
+  Pel*  piDst    = rpiDst;
+  Int   iSum=0;
+  Pel*  piSrcTmp;
+   Int iShift = 6+4-(g_bitDepthY-8); // MC interpolation filter bit-depth + gradient's filter bit-depth
+   Int iOffSet = iShift>0?(1<<(iShift-1)):0;
+
+     for ( Int y = iHeight; y != 0; y-- )
+        {
+          piSrcTmp = &piSrc[ -BIO_FILTER_HALF_LENGTH_MINUS_1 ];
+        for ( Int x = 0; x < iWidth; x++ )
+        {
+
+          iSum      = m_lumaGradientFilter[iMV][0]* piSrcTmp[0] 
+          +m_lumaGradientFilter[iMV][1]*piSrcTmp[1]
+          +m_lumaGradientFilter[iMV][2]*piSrcTmp[2]
+          +m_lumaGradientFilter[iMV][3]*piSrcTmp[3] 
+          +m_lumaGradientFilter[iMV][4]*piSrcTmp[4] 
+          +m_lumaGradientFilter[iMV][5]*piSrcTmp[5];
+
+          piDst[x ] = (iSum>=0)?  Pel((iSum +  iOffSet) >>  iShift ): Pel(- ((-iSum +  iOffSet) >>  iShift  ));
+          piSrcTmp++;
+        }
+        piSrc += iSrcStride;
+        piDst += iDstStride;
+        }
+
+  return;
+}
+__inline Void TComPrediction::xCTI_Filter2DVerGG (Pel* piSrc, Int iSrcStride,  Int iWidth, Int iHeight, Int iDstStride,  
+   Pel*& rpiDst, Int iMV)
+{
+    Pel* piDst = rpiDst;
+  Int   iSum=0;
+  Pel*  piSrcTmp  = piSrc-BIO_FILTER_HALF_LENGTH_MINUS_1*iSrcStride;
+  Pel*  piSrcTmp1  = piSrcTmp+iSrcStride;
+  Pel*  piSrcTmp2  = piSrcTmp1+iSrcStride;
+  Pel*  piSrcTmp3  = piSrcTmp2+iSrcStride;
+  Pel*  piSrcTmp4  = piSrcTmp3+iSrcStride;
+  Pel*  piSrcTmp5  = piSrcTmp4+iSrcStride;
+
+   Int iShift = g_bitDepthY-8; // MC interpolation filter bit-depth + gradient's filter bit-depth
+   Int iOffSet = iShift>0?(1<<(iShift-1)):0;
+
+    for ( Int y = iHeight; y != 0; y-- )
+      {
+      for ( Int x = 0; x < iWidth; x++ )
+      {
+        iSum      = m_lumaInterpolationFilter[iMV][0]* piSrcTmp[x] 
+        +m_lumaInterpolationFilter[iMV][1]*piSrcTmp1[x]
+        +m_lumaInterpolationFilter[iMV][2]*piSrcTmp2[x]
+          +m_lumaInterpolationFilter[iMV][3]*piSrcTmp3[x] 
+          +m_lumaInterpolationFilter[iMV][4]*piSrcTmp4[x] 
+          +m_lumaInterpolationFilter[iMV][5]*piSrcTmp5[x];
+        piDst[x ] = (Pel) ((iSum>=0)?((iSum +iOffSet)>> iShift):(-((-iSum +iOffSet)>> iShift)));
+
+      }
+      piSrcTmp+=iSrcStride;
+      piSrcTmp1+=iSrcStride;
+      piSrcTmp2+=iSrcStride;
+      piSrcTmp3+=iSrcStride;
+      piSrcTmp4+=iSrcStride;
+      piSrcTmp5+=iSrcStride;
+      piSrc += iSrcStride;
+      piDst += iDstStride;
+      }
+
+  return;
+}
+__inline Void TComPrediction::xCTI_Filter2DHorGG( Pel* piSrc, Int iSrcStride,  Int iWidth, Int iHeight, Int iDstStride,  Pel*& rpiDst, Int iMV)
+{
+  Pel*  piDst    = rpiDst;
+  Int   iSum=0;
+   Pel*  piSrcTmp;
+   Int iShift = 6+4-(g_bitDepthY-8); // MC interpolation filter bit-depth + gradient's filter bit-depth
+   Int iOffSet = iShift>0?(1<<(iShift-1)):0;
+      for ( Int y = iHeight; y != 0; y-- )
+      {
+        piSrcTmp = &piSrc[ -BIO_FILTER_HALF_LENGTH_MINUS_1 ];
+      for ( Int x = 0; x < iWidth; x++ )
+      {
+        iSum      = m_lumaInterpolationFilter[iMV][0]* piSrcTmp[0] 
+        +m_lumaInterpolationFilter[iMV][1]*piSrcTmp[1]
+        +m_lumaInterpolationFilter[iMV][2]*piSrcTmp[2]
+          +m_lumaInterpolationFilter[iMV][3]*piSrcTmp[3]
+          + m_lumaInterpolationFilter[iMV][4]*piSrcTmp[4] 
+          +m_lumaInterpolationFilter[iMV][5]*piSrcTmp[5];
+
+        piDst[x ] =(iSum>=0)?  Pel((iSum +  iOffSet) >>  iShift ) :  Pel(- ((-iSum +  iOffSet) >>  iShift  ));
+          piSrcTmp++;
+      }
+      piSrc += iSrcStride;
+      piDst += iDstStride;
+      }
+      
+  return;
+}
+#endif
 // AMVP
 Void TComPrediction::getMvPredAMVP( TComDataCU* pcCU, UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefPicList, TComMv& rcMvPred )
 {
@@ -2605,7 +3242,11 @@ UInt TComPrediction::xFrucGetTempMatchCost( TComDataCU * pcCU , UInt uiAbsPartId
   {
     TComMv mvTop( 0 , - ( QC_FRUC_MERGE_TEMPLATE_SIZE << nMVUnit ) );
     mvTop += rCurMvField.getMv();
-    xPredInterLumaBlk( pcCU , pRefPicYuv , uiAbsPartIdx , &mvTop , nWidth , QC_FRUC_MERGE_TEMPLATE_SIZE , pYuvPredRefTop , false , QC_FRUC_MERGE_TEMPLATE );
+    xPredInterLumaBlk( pcCU , pRefPicYuv , uiAbsPartIdx , &mvTop , nWidth , QC_FRUC_MERGE_TEMPLATE_SIZE , pYuvPredRefTop , false , 
+#if BIO
+false,
+#endif
+QC_FRUC_MERGE_TEMPLATE );
     m_cFRUCRDCost.setDistParam( cDistParam , g_bitDepthY , pYuvPredCurTop->getLumaAddr( 0 ) , pYuvPredCurTop->getStride() ,
       pYuvPredRefTop->getLumaAddr( 0 ) , pYuvPredRefTop->getStride() , nWidth , QC_FRUC_MERGE_TEMPLATE_SIZE , false );
 #if QC_IC
@@ -2618,7 +3259,11 @@ UInt TComPrediction::xFrucGetTempMatchCost( TComDataCU * pcCU , UInt uiAbsPartId
   {
     TComMv mvLeft( - ( QC_FRUC_MERGE_TEMPLATE_SIZE << nMVUnit ) , 0 );
     mvLeft += rCurMvField.getMv();
-    xPredInterLumaBlk( pcCU , pRefPicYuv , uiAbsPartIdx , &mvLeft , QC_FRUC_MERGE_TEMPLATE_SIZE , nHeight , pYuvPredRefLeft , false , QC_FRUC_MERGE_TEMPLATE );
+    xPredInterLumaBlk( pcCU , pRefPicYuv , uiAbsPartIdx , &mvLeft , QC_FRUC_MERGE_TEMPLATE_SIZE , nHeight , pYuvPredRefLeft , false , 
+#if BIO
+false,
+#endif
+QC_FRUC_MERGE_TEMPLATE );
     m_cFRUCRDCost.setDistParam( cDistParam , g_bitDepthY , pYuvPredCurLeft->getLumaAddr( 0 ) , pYuvPredCurLeft->getStride() ,
       pYuvPredRefLeft->getLumaAddr( 0 ) , pYuvPredRefLeft->getStride() , QC_FRUC_MERGE_TEMPLATE_SIZE , nHeight , false );
 #if QC_IC
@@ -2655,9 +3300,17 @@ UInt TComPrediction::xFrucGetBilaMatchCost( TComDataCU * pcCU , UInt uiAbsPartId
     TComYuv * pYuvPredB = &m_acYuvPred[1];
     TComMv mvOffset( 0 , 0 );
     TComMv mvAp = rCurMvField.getMv() + mvOffset;
-    xPredInterLumaBlk( pcCU , pRefPicYuvA , uiAbsPartIdx , &mvAp , nWidth , nHeight , pYuvPredA , false , QC_FRUC_MERGE_BILATERALMV );
+    xPredInterLumaBlk( pcCU , pRefPicYuvA , uiAbsPartIdx , &mvAp , nWidth , nHeight , pYuvPredA , false 
+#if BIO                  
+,false
+#endif
+, QC_FRUC_MERGE_BILATERALMV );
     TComMv mvBp = rPairMVField.getMv() + mvOffset;
-    xPredInterLumaBlk( pcCU , pRefPicYuvB , uiAbsPartIdx , &mvBp , nWidth , nHeight , pYuvPredB , false , QC_FRUC_MERGE_BILATERALMV );
+    xPredInterLumaBlk( pcCU , pRefPicYuvB , uiAbsPartIdx , &mvBp , nWidth , nHeight , pYuvPredB , false 
+#if BIO                  
+,false
+#endif
+, QC_FRUC_MERGE_BILATERALMV );
     DistParam cDistParam;
     cDistParam.bApplyWeight = false;
     m_cFRUCRDCost.setDistParam( cDistParam , g_bitDepthY , pYuvPredA->getLumaAddr( 0 ) , pYuvPredA->getStride() ,
@@ -3465,13 +4118,21 @@ Bool TComPrediction::xFrucGetCurBlkTemplate( TComDataCU * pCU , UInt uiAbsPartId
   {
     TComYuv * pTemplateTop = &m_cYuvPredFrucTemplate[0];
     TComMv mvTop( 0 , - ( QC_FRUC_MERGE_TEMPLATE_SIZE << nMVUnit ) );
-    xPredInterLumaBlk( pCU , pCurPicYuv , uiAbsPartIdx , &mvTop , nCurBlkWidth , QC_FRUC_MERGE_TEMPLATE_SIZE , pTemplateTop , false , QC_FRUC_MERGE_TEMPLATE );
+    xPredInterLumaBlk( pCU , pCurPicYuv , uiAbsPartIdx , &mvTop , nCurBlkWidth , QC_FRUC_MERGE_TEMPLATE_SIZE , pTemplateTop , false ,
+#if BIO
+false,
+#endif
+QC_FRUC_MERGE_TEMPLATE );
   }
   if( m_bFrucTemplateAvailabe[1] )
   {
     TComYuv * pTemplateLeft = &m_cYuvPredFrucTemplate[1];
     TComMv mvLeft( - ( QC_FRUC_MERGE_TEMPLATE_SIZE << nMVUnit ) , 0 );
-    xPredInterLumaBlk( pCU , pCurPicYuv , uiAbsPartIdx , &mvLeft , QC_FRUC_MERGE_TEMPLATE_SIZE , nCurBlkHeight , pTemplateLeft , false , QC_FRUC_MERGE_TEMPLATE );
+    xPredInterLumaBlk( pCU , pCurPicYuv , uiAbsPartIdx , &mvLeft , QC_FRUC_MERGE_TEMPLATE_SIZE , nCurBlkHeight , pTemplateLeft , false , 
+#if BIO
+false,
+#endif
+QC_FRUC_MERGE_TEMPLATE );
   }
 
   return( true );
@@ -3499,5 +4160,245 @@ UInt TComPrediction::xFrucGetMvCost( const TComMv & rMvStart , const TComMv & rM
 }
 
 #endif
+#if CU_LEVEL_MPI
+Void TComPrediction::xMPIredFiltering( Pel* pSrc, Int iSrcStride, Pel*& rpDst, Int iDstStride, Int iWidth, Int iHeight , Int idxMPI)
+{
+  Pel* pDst = rpDst;
+  Int x, y;
+  switch(idxMPI)
+  {
+  case 7:
+     // 0* 0*
+     // 1* 1*
+    {
+      // boundary pixels processing
+      //            top                left           top-left        current                
+      pDst[0] = ((                    pSrc[-1] +                      3*pDst[0] + 2) >> 2);//left-top corner
 
+      for ( x = 1; x < iWidth; x++ )
+      {
+      //                 top                left           top-left          current  
+      pDst[x] = ((                     pDst[x-1] +                     3*pDst[x] + 2) >> 2); //upper-line
+      }
+      //left column
+      for ( y = 1; y < iHeight; y++ )
+      {
+      //                                   top                left                    top-left                   current  
+        pDst[iDstStride*y] = ((                         pSrc[iSrcStride*y-1]  +                               3*pDst[iDstStride*y]+2) >> 2);
+      }
+ 
+      //inner samples
+      pDst++; pDst+=iDstStride;
+      Pel* pDstLeft    = pDst-1;
+      for ( y = 0; y < iHeight-1; y++ )
+      {
+        for ( x = 0; x < iWidth-1; x++ )
+        {
+        pDst[x] = (Pel)((
+         pDstLeft[x]          // left neighbour
+        +3*pDst[x] + 2) >> 2); 
+        }
+        pDst+=iDstStride;
+        pDstLeft+=iDstStride;
+      }
+    }
+    break;
+  case 6:
+    // 0* 1*
+    // 0* 3*
+    {
+      // boundary pixels processing
+      //            top                left           top-left        current                
+      pDst[0] = ((pSrc[-iSrcStride] +                                    3*pDst[0]  +2) >> 2);//left-top corner
+
+      for ( x = 1; x < iWidth; x++ )
+      {
+      //                 top                left           top-left          current  
+      pDst[x] = ((pSrc[x - iSrcStride]  +                                  3*pDst[x]  +2) >> 2); //upper-line
+      }     
+      //left column
+      for ( y = 1; y < iHeight; y++ )
+      {
+      //                   top                left                top-left        current  
+        pDst[iDstStride*y] = 
+          ((pDst[iDstStride*(y-1)]   +                                     3*pDst[iDstStride*y]+2) >> 2);
+      }
+ 
+      //inner samples
+      pDst++; pDst+=iDstStride;
+      Pel* pDstTop     = pDst-iDstStride;
+      for ( y = 0; y < iHeight-1; y++ )
+      {
+        for ( x = 0; x < iWidth-1; x++ )
+        {
+        pDst[x] = (Pel)((
+        +pDstTop[x]          // top neighbour
+        +3*pDst[x] +2) >> 2); 
+        }
+        pDst+=iDstStride;
+        pDstTop+=iDstStride;
+      }
+    }
+    break;
+  case 5: 
+    // 0* 1*
+    // 1* 6*
+    {
+      // boundary pixels processing
+      //            top                left           top-left        current                
+      pDst[0] = ((pSrc[-iSrcStride] + pSrc[-1] +                      6*pDst[0] + 4) >> 3);//left-top corner
+
+      for ( x = 1; x < iWidth; x++ )
+      {
+      //                 top                left           top-left          current  
+      pDst[x] = ((pSrc[x - iSrcStride]  +pDst[x-1] +                         6*pDst[x] + 4) >> 3); //upper-line
+      }
+      //left column
+      for ( y = 1; y < iHeight; y++ )
+      {
+      //                                   top                left                    top-left                   current  
+        pDst[iDstStride*y] = ((pDst[iDstStride*(y-1)] +  pSrc[iSrcStride*y-1]  +                               6*pDst[iDstStride*y]+ 4) >> 3);
+      }
+ 
+      //inner samples
+      pDst++; pDst+=iDstStride;
+      Pel* pDstLeft    = pDst-1;
+      Pel* pDstTop     = pDst-iDstStride;
+      for ( y = 0; y < iHeight-1; y++ )
+      {
+        for ( x = 0; x < iWidth-1; x++ )
+        {
+        pDst[x] = (Pel)((
+         pDstLeft[x]          // left neighbour
+        +pDstTop[x]          // top neighbour
+        +6*pDst[x] + 4) >> 3); 
+        }
+        pDst+=iDstStride;
+        pDstLeft+=iDstStride;
+        pDstTop+=iDstStride;
+      }
+    }
+    break;
+  case 3:
+    // 0* 0*
+    // 1* 1*
+    {
+      // boundary pixels processing
+      //            top                left           top-left        current                
+      pDst[0] = ((                    pSrc[-1] +                      pDst[0] + 1) >> 1);//left-top corner
+
+      for ( x = 1; x < iWidth; x++ )
+      {
+      //                 top                left           top-left          current  
+      pDst[x] = ((                     pDst[x-1] +                     pDst[x] + 1) >> 1); //upper-line
+      }
+      //left column
+      for ( y = 1; y < iHeight; y++ )
+      {
+      //                                   top                left                    top-left                   current  
+        pDst[iDstStride*y] = ((                         pSrc[iSrcStride*y-1]  +                               pDst[iDstStride*y]+1) >> 1);
+      }
+ 
+      //inner samples
+      pDst++; pDst+=iDstStride;
+      Pel* pDstLeft    = pDst-1;
+      for ( y = 0; y < iHeight-1; y++ )
+      {
+        for ( x = 0; x < iWidth-1; x++ )
+        {
+        pDst[x] = (Pel)((
+         pDstLeft[x]          // left neighbour
+        +pDst[x] + 1) >> 1); 
+        }
+        pDst+=iDstStride;
+        pDstLeft+=iDstStride;
+      }
+    }
+    break;
+  case 2:
+    // 0* 1*
+    // 0* 1*
+    {
+      // boundary pixels processing
+      //            top                left           top-left        current                
+      pDst[0] = ((pSrc[-iSrcStride] +                                    pDst[0]  +1) >> 1);//left-top corner
+
+      for ( x = 1; x < iWidth; x++ )
+      {
+      //                 top                left           top-left          current  
+      pDst[x] = ((pSrc[x - iSrcStride]  +                                   pDst[x]  +1) >> 1); //upper-line
+      }     
+      //left column
+      for ( y = 1; y < iHeight; y++ )
+      {
+      //                   top                left                top-left        current  
+        pDst[iDstStride*y] = 
+          ((pDst[iDstStride*(y-1)]   +                                      pDst[iDstStride*y]+1) >> 1);
+      }
+ 
+      //inner samples
+      pDst++; pDst+=iDstStride;
+      Pel* pDstTop     = pDst-iDstStride;
+      for ( y = 0; y < iHeight-1; y++ )
+      {
+        for ( x = 0; x < iWidth-1; x++ )
+        {
+        pDst[x] = (Pel)((
+        +pDstTop[x]          // top neighbour
+        +pDst[x] +1) >> 1); 
+        }
+        pDst+=iDstStride;
+        pDstTop+=iDstStride;
+      }
+    }
+    break;
+  case 1: 
+    // 0* 1*
+    // 1* 2*
+    {
+      // boundary pixels processing
+      //            top                left           top-left        current                
+      pDst[0] = ((pSrc[-iSrcStride] + pSrc[-1] +                      2*pDst[0] + 2) >> 2);//left-top corner
+
+      for ( x = 1; x < iWidth; x++ )
+      {
+      //                 top                left           top-left          current  
+      pDst[x] = ((pSrc[x - iSrcStride]  +pDst[x-1] +                         2*pDst[x] + 2) >> 2); //upper-line
+      }
+      //left column
+      for ( y = 1; y < iHeight; y++ )
+      {
+      //                                   top                left                    top-left                   current  
+        pDst[iDstStride*y] = ((pDst[iDstStride*(y-1)] +  pSrc[iSrcStride*y-1]  +                               2*pDst[iDstStride*y]+ 2) >> 2);
+      }
+ 
+      //inner samples
+      pDst++; pDst+=iDstStride;
+      Pel* pDstLeft    = pDst-1;
+      Pel* pDstTop     = pDst-iDstStride;
+      for ( y = 0; y < iHeight-1; y++ )
+      {
+        for ( x = 0; x < iWidth-1; x++ )
+        {
+        pDst[x] = (Pel)((
+         pDstLeft[x]          // left neighbour
+        +pDstTop[x]          // top neighbour
+        +2*pDst[x] + 2) >> 2); 
+        }
+        pDst+=iDstStride;
+        pDstLeft+=iDstStride;
+        pDstTop+=iDstStride;
+      }
+    }
+    break;
+  case 0:
+  case 4:
+    {
+
+    }
+    break;
+  }
+  return;
+}
+#endif
 //! \}

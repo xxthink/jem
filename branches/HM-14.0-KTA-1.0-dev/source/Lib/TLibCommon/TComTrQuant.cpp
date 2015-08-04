@@ -104,7 +104,7 @@ TComTrQuant::TComTrQuant()
   
   // allocate temporary buffers
   m_plTempCoeff  = new Int[ MAX_CU_SIZE*MAX_CU_SIZE ];
-  
+
   // allocate bit estimation class  (for RDOQ)
   m_pcEstBitsSbac = new estBitsSbacStruct;
   initScalingList();
@@ -117,8 +117,7 @@ TComTrQuant::~TComTrQuant()
   {
     delete [] m_plTempCoeff;
     m_plTempCoeff = NULL;
-  }
-  
+  }  
   // delete bit estimation class
   if ( m_pcEstBitsSbac )
   {
@@ -2365,7 +2364,143 @@ Void TComTrQuant::init( UInt uiMaxTrSize,
 #endif
   m_useTransformSkipFast = useTransformSkipFast;
 }
+#if ROT_TR
+// ====================================================================================================================
+// ROT_TR
+// ====================================================================================================================
+const short g_ROT_U[4][6] =
+{//----------horizontal-----    
+  { -7,  -7,   5,  -4,  -2,  -2, },
+  {  4, -22,   9,  -7,  -4,   5, },
+  { -3,  -5,  -3,   2, -29,   5, },
+  {-10,  -6,  -4,  -1, -29,   6, },
+};    
+const short g_ROT_V[4][6] =
+{//----------horizontal-----      
+  { 14,  13, -10,   8,   3,   4, },
+  { -8,  30, -17,  13,   7, -10, },
+  {  5,   9,   6,  -5,  32, -10, },
+  { 18,  11,   8,   1,  32, -12, },
+};    
+#define LIFT_PRECISION   5
+///4x4
+Void TComTrQuant::InvRotTransform4I(  Int* matrix, UChar index )
+{
+ Int temp[16];
+  Int n=0;
+  // Rot process
+  Int liftPrecision = LIFT_PRECISION;
+  
+  Int dum;
+  Int A0, B1,  C0,  D1,  F1,  G0;
+  
+  for (n=0; n<4; n++)
+  { // vertical ROT
+   temp[n+12] = matrix[n+12];
+     
+    G0 = matrix[n   ] - xMult(g_ROT_U[index][2] * matrix[n+ 4], liftPrecision);
+    F1 = matrix[n+4 ] - xMult(g_ROT_V[index][2]*G0, liftPrecision);
+    C0 = G0        - xMult(g_ROT_U[index][2]*F1, liftPrecision);
 
+    D1      = F1        - xMult(g_ROT_U[index][1] * matrix[n+8], liftPrecision);
+    temp[n+8] = matrix[n+8] - xMult(g_ROT_V[index][1] * D1, liftPrecision);
+    B1      = D1        - xMult(g_ROT_U[index][1] * temp[n+8], liftPrecision);
+
+    if (index == 1)
+    {
+      dum = B1;
+      B1 = temp[n+8];
+      temp[n+8] = -dum;
+    } // if index == 1
+
+    A0      = C0 - xMult(g_ROT_U[index][0] * B1, liftPrecision);
+    temp[n+ 4] = B1 - xMult(g_ROT_V[index][0] * A0, liftPrecision);
+    temp[n]    = A0 - xMult(g_ROT_U[index][0] * temp[n+4], liftPrecision);
+  } // for n, vertical ROT
+
+  for (n=0; n<16; n+=4)
+  { // horizontal ROT
+
+    matrix[n+3] = temp[n+3];
+    G0 = temp[n  ] - xMult(g_ROT_U[index][5] * temp[n+1], liftPrecision);
+    F1 = temp[n+1] - xMult(g_ROT_V[index][5] * G0, liftPrecision);
+    C0 = G0   - xMult(g_ROT_U[index][5] * F1, liftPrecision);
+
+    D1 = F1       - xMult(g_ROT_U[index][4] * temp[n+2], liftPrecision);
+    matrix[n+2] = temp[n+2] - xMult(g_ROT_V[index][4] * D1, liftPrecision);
+    B1 = D1       - xMult(g_ROT_U[index][4] * matrix[n+2], liftPrecision);
+
+     if ((index == 2) || (index == 3))
+    {
+      dum = B1; 
+      B1 = matrix[n+2];
+      matrix[n+2] = -dum;
+    }// if index = 2 or 3
+
+    A0     = C0 - xMult(g_ROT_U[index][3] * B1, liftPrecision);
+    matrix[n+1] = B1 - xMult(g_ROT_V[index][3] * A0, liftPrecision);
+    matrix[n  ] = A0 - xMult(g_ROT_U[index][3] * matrix[n+1], liftPrecision);
+  } // for n, horizontal ROT
+}
+
+Void TComTrQuant::RotTransform4I( Int* matrix, UChar index )
+{
+
+  Int temp[16];
+  Int n = 0;
+
+  Int liftPrecision = LIFT_PRECISION;
+  Int  dum;
+  Int A0,  B1,  C0,  D1,  F1,  G0;
+
+
+  for (n=0; n<16; n+=4)
+  { // horizontal ROT
+    
+    A0 = matrix[n  ] + xMult(g_ROT_U[index][3] * matrix[n+1], liftPrecision);
+      B1 = xMult(g_ROT_V[index][3]*A0, liftPrecision) + matrix[n+1];
+    C0 = A0     + xMult(g_ROT_U[index][3] * B1, liftPrecision);
+    if ((index == 2) || (index == 3))
+    {
+      dum = B1; 
+      B1 = -matrix[n+2];
+      matrix[n+2] = dum;
+    }// if index = 2 or 3
+    D1   = B1     + xMult(g_ROT_U[index][4] * matrix[n+2], liftPrecision);
+    temp[n+2] = xMult(g_ROT_V[index][4]*D1, liftPrecision) + matrix[n+2];
+    F1   = D1     + xMult(g_ROT_U[index][4] * temp[n+2], liftPrecision);
+
+    G0   = C0     + xMult(g_ROT_U[index][5] * F1, liftPrecision);
+    temp[n+1] = xMult(g_ROT_V[index][5]*G0, liftPrecision) + F1;
+    temp[n  ] = G0     + xMult(g_ROT_U[index][5] * temp[n+1], liftPrecision);
+
+    temp[n+3] = matrix[n+3];
+  } // for n, horizontal ROT
+
+  for (n=0; n<4; n++)
+  { // vertical ROT
+    A0   = temp[n]       + xMult(g_ROT_U[index][0] * temp[n+4 ], liftPrecision);
+    B1   = xMult(g_ROT_V[index][0]*A0, liftPrecision) + temp[n+4];
+    C0   = A0         + xMult(g_ROT_U[index][0] * B1, liftPrecision);
+
+    if (index == 1)
+    {
+      dum = B1;
+      B1 = -temp[n+8];
+      temp[n+8] = dum;
+    } // if index == 1
+    D1   = B1         + xMult(g_ROT_U[index][1] * temp[n+8], liftPrecision);
+    matrix[n+8] = xMult(g_ROT_V[index][1]*D1, liftPrecision) + temp[n+8];
+    F1   = D1         + xMult(g_ROT_U[index][1] * matrix[n+8], liftPrecision);
+
+    G0   = C0         + xMult(g_ROT_U[index][2] * F1, liftPrecision);
+    matrix[n+4 ] = xMult(g_ROT_V[index][2]*G0, liftPrecision) + F1;
+    matrix[n   ] = G0    + xMult(g_ROT_U[index][2] * matrix[n+ 4], liftPrecision);
+
+    matrix[n+12] = temp[n+12];
+  } // for n, vertical ROT
+}
+#endif
 Void TComTrQuant::transformNxN( TComDataCU* pcCU, 
                                Pel*        pcResidual, 
                                UInt        uiStride, 
@@ -2381,6 +2516,9 @@ Void TComTrQuant::transformNxN( TComDataCU* pcCU,
                                Bool        useTransformSkip
 #if QC_EMT
                                , UChar     ucTrIdx
+#endif
+#if ROT_TR 
+   , UChar ucROTIdx 
 #endif
                                )
 {
@@ -2447,6 +2585,44 @@ Void TComTrQuant::transformNxN( TComDataCU* pcCU,
 #endif
       );
   }
+#if ROT_TR
+  if (pcCU->getROTIdx(uiAbsPartIdx) )
+  {           
+            static Int ROT_MATRIX[16];
+      Int iSubGroupXMax = Clip3 (1,16,(Int)( (uiWidth>>2)));
+      Int iSubGroupYMax = Clip3 (1,16,(Int)( (uiHeight>>2)));
+
+      Int iOffSetX = 0;
+      Int iOffSetY = 0;
+      Int y = 0;
+      Int* piCoeffTemp = m_plTempCoeff;
+      Int* piROTTemp = ROT_MATRIX;
+      Int iString2CopySize = 4*sizeof(Int);
+    for (Int iSubGroupX = 0; iSubGroupX<iSubGroupXMax; iSubGroupX++)
+      for (Int iSubGroupY = 0; iSubGroupY<iSubGroupYMax; iSubGroupY++)
+      {
+        iOffSetX = 4*iSubGroupX;
+        iOffSetY = 4*iSubGroupY*uiWidth;
+          piROTTemp = ROT_MATRIX;
+          piCoeffTemp = m_plTempCoeff+iOffSetX+iOffSetY;
+          for(  y = 0; y < 4; y++ )
+           {  
+             ::memcpy(piROTTemp, piCoeffTemp, iString2CopySize); 
+                       piROTTemp +=4;
+             piCoeffTemp +=uiWidth;
+            }
+           RotTransform4I( ROT_MATRIX, pcCU->getROTIdx(uiAbsPartIdx)-1 );
+          piROTTemp = ROT_MATRIX;
+          piCoeffTemp = m_plTempCoeff+iOffSetX+iOffSetY;
+          for(  y = 0; y < 4; y++ )
+          {    
+             ::memcpy(piCoeffTemp,piROTTemp, iString2CopySize);
+                       piROTTemp +=4;
+             piCoeffTemp +=uiWidth;
+          }
+             }
+  }
+#endif
   xQuant( pcCU, m_plTempCoeff, rpcCoeff,
 #if ADAPTIVE_QP_SELECTION
        rpcArlCoeff,
@@ -2457,6 +2633,9 @@ Void TComTrQuant::transformNxN( TComDataCU* pcCU,
 Void TComTrQuant::invtransformNxN( Bool transQuantBypass, TextType eText, UInt uiMode,Pel* rpcResidual, UInt uiStride, TCoeff*   pcCoeff, UInt uiWidth, UInt uiHeight,  Int scalingListType, Bool useTransformSkip 
 #if QC_EMT
                                   , UChar ucTrIdx
+#endif
+#if ROT_TR 
+   , UChar ucROTIdx
 #endif
 #if QC_USE_65ANG_MODES
                                   , Bool bUseExtIntraAngModes 
@@ -2476,6 +2655,43 @@ Void TComTrQuant::invtransformNxN( Bool transQuantBypass, TextType eText, UInt u
   }
   Int bitDepth = eText == TEXT_LUMA ? g_bitDepthY : g_bitDepthC;
   xDeQuant(bitDepth, pcCoeff, m_plTempCoeff, uiWidth, uiHeight, scalingListType);
+#if ROT_TR
+  if (ucROTIdx )
+  {             
+            static Int ROT_MATRIX[16];
+      Int iSubGroupXMax = Clip3 (1,16,(Int)( (uiWidth>>2)));
+      Int iSubGroupYMax = Clip3 (1,16,(Int)( (uiHeight>>2)));
+      Int iOffSetX = 0;
+      Int iOffSetY = 0;
+      Int y = 0;
+      Int* piCoeffTemp = m_plTempCoeff;
+      Int* piROTTemp = ROT_MATRIX;
+      Int iString2CopySize = 4*sizeof(Int);
+      for (Int iSubGroupX = 0; iSubGroupX<iSubGroupXMax; iSubGroupX++)
+      for (Int iSubGroupY = 0; iSubGroupY<iSubGroupYMax; iSubGroupY++)
+      {
+        iOffSetX = 4*iSubGroupX;
+        iOffSetY = 4*iSubGroupY*uiWidth;
+          piROTTemp = ROT_MATRIX;
+          piCoeffTemp = m_plTempCoeff+iOffSetX+iOffSetY;
+          for(  y = 0; y < 4; y++ )
+          {    
+             ::memcpy(piROTTemp, piCoeffTemp, iString2CopySize); 
+                       piROTTemp +=4;
+             piCoeffTemp +=uiWidth;            
+          }
+           InvRotTransform4I( ROT_MATRIX, ucROTIdx-1);
+          piROTTemp = ROT_MATRIX;
+          piCoeffTemp = m_plTempCoeff+iOffSetX+iOffSetY;
+          for(  y = 0; y < 4; y++ )
+          {    
+             ::memcpy( piCoeffTemp, piROTTemp, iString2CopySize); 
+                       piROTTemp +=4;
+             piCoeffTemp +=uiWidth;          
+          }
+        }
+  }
+#endif
   if(useTransformSkip == true)
   {
     xITransformSkip(bitDepth, m_plTempCoeff, rpcResidual, uiStride, uiWidth, uiHeight );
@@ -2527,6 +2743,9 @@ Void TComTrQuant::invRecurTransformNxN( TComDataCU* pcCU, UInt uiAbsPartIdx, Tex
       , pResi, uiStride, rpcCoeff, uiWidth, uiHeight, scalingListType, pcCU->getTransformSkip(uiAbsPartIdx, eTxt) 
 #if QC_EMT_INTER
       , pcCU->getSlice()->getSPS()->getUseInterEMT() ? ( eTxt==TEXT_LUMA ? pcCU->getEmtTuIdx(uiAbsPartIdx) : DCT2_EMT ) : DCT2_HEVC
+#endif
+#if ROT_TR 
+   ,  0
 #endif
       );
   }

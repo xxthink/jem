@@ -1055,7 +1055,10 @@ TEncSearch::xEncIntraHeader( TComDataCU*  pcCU,
         }
         m_pcEntropyCoder->encodeSkipFlag( pcCU, 0, true );
         m_pcEntropyCoder->encodePredMode( pcCU, 0, true );
-      }
+#if CU_LEVEL_MPI 
+   m_pcEntropyCoder->encodeMPIIdx( pcCU, 0, true );
+#endif
+    }
       
       m_pcEntropyCoder  ->encodePartSize( pcCU, 0, pcCU->getDepth(0), true );
 
@@ -1212,6 +1215,9 @@ TEncSearch::xIntraCodingLumaBlk( TComDataCU* pcCU,
 #if QC_USE_65ANG_MODES
     , pcCU->getUseExtIntraAngModes(uiPUWidth)
 #endif
+#if CU_LEVEL_MPI
+,  pcCU,  uiAbsPartIdx
+#endif
       );
     // save prediction 
     if(default0Save1Load2 == 1)
@@ -1325,6 +1331,9 @@ TEncSearch::xIntraCodingLumaBlk( TComDataCU* pcCU,
     m_pcTrQuant->invtransformNxN( pcCU->getCUTransquantBypass(uiAbsPartIdx), TEXT_LUMA,pcCU->getLumaIntraDir( uiAbsPartIdx ), piResi, uiStride, pcCoeff, uiWidth, uiHeight, scalingListType, useTransformSkip 
 #if QC_EMT_INTRA
     , ucTrIdx
+#endif
+#if ROT_TR 
+   , pcCU->getROTIdx(uiAbsPartIdx)
 #endif
 #if QC_USE_65ANG_MODES
     , pcCU->getUseExtIntraAngModes(uiPUWidth)
@@ -1456,6 +1465,9 @@ TEncSearch::xIntraCodingChromaBlk( TComDataCU* pcCU,
 #if QC_INTRA_4TAP_FILTER
         , pcCU->getSlice()->getSPS()->getUse4TapIntraFilter()
 #endif
+#if CU_LEVEL_MPI
+,  pcCU,  uiAbsPartIdx, uiChromaId
+#endif
         );
 
 #if QC_LMCHROMA
@@ -1567,6 +1579,9 @@ TEncSearch::xIntraCodingChromaBlk( TComDataCU* pcCU,
       m_pcTrQuant->invtransformNxN( pcCU->getCUTransquantBypass(uiAbsPartIdx), TEXT_CHROMA, REG_DCT, piResi, uiStride, pcCoeff, uiWidth, uiHeight, scalingListType, useTransformSkipChroma 
 #if QC_EMT_INTRA
         , pcCU->getSlice()->getSPS()->getUseIntraEMT() ? DCT2_EMT : DCT2_HEVC
+#endif
+#if ROT_TR 
+   , pcCU->getROTIdx(uiAbsPartIdx)
 #endif
         );
     }
@@ -2871,10 +2886,16 @@ TEncSearch::preestChromaPredMode( TComDataCU* pcCU,
 #if QC_INTRA_4TAP_FILTER
       , pcCU->getSlice()->getSPS()->getUse4TapIntraFilter()
 #endif
+#if CU_LEVEL_MPI
+,  pcCU,  0, 0
+#endif
       );
     predIntraChromaAng( pPatChromaV, uiMode, piPredV, uiStride, uiWidth, uiHeight, bAboveAvail, bLeftAvail 
 #if QC_INTRA_4TAP_FILTER
       , pcCU->getSlice()->getSPS()->getUse4TapIntraFilter()
+#endif
+#if CU_LEVEL_MPI
+,  pcCU,  0, 1
 #endif
       );
     
@@ -3028,6 +3049,9 @@ TEncSearch::estIntraPredQT( TComDataCU* pcCU,
 #if QC_USE_65ANG_MODES
           , pcCU->getUseExtIntraAngModes(uiWidth)
 #endif
+#if CU_LEVEL_MPI
+,  pcCU,  uiPartOffset
+#endif
           );
         
         // use hadamard transform here
@@ -3068,6 +3092,9 @@ TEncSearch::estIntraPredQT( TComDataCU* pcCU,
                   , pcCU->getSlice()->getSPS()->getUseBoundaryFilter()
 #endif
                   , pcCU->getUseExtIntraAngModes(uiWidth)
+#if CU_LEVEL_MPI
+,  pcCU,  uiPartOffset
+#endif
                   );
 
                 UInt uiSad = m_pcRdCost->calcHAD(g_bitDepthY, piOrg, uiStride, piPred, uiStride, uiWidth, uiHeight );
@@ -4938,11 +4965,18 @@ UInt TEncSearch::xGetTemplateCost( TComDataCU* pcCU,
 #endif
     )
   {
-    xPredInterLumaBlk( pcCU, pcPicYuvRef, uiPartAddr, &cMvCand, iSizeX, iSizeY, pcTemplateCand, true );
+    xPredInterLumaBlk( pcCU, pcPicYuvRef, uiPartAddr, &cMvCand, iSizeX, iSizeY, pcTemplateCand, true 
+#if BIO
+,false
+#endif
+    );
   }
   else
   {
     xPredInterLumaBlk( pcCU, pcPicYuvRef, uiPartAddr, &cMvCand, iSizeX, iSizeY, pcTemplateCand, false
+#if BIO
+,false
+#endif
 #if QC_IC
 #if QC_FRUC_MERGE
       , false
@@ -5944,6 +5978,9 @@ Void TEncSearch::xEstimateResidualQT( TComDataCU* pcCU, UInt uiQuadrant, UInt ui
         , false
         , pcCU->getEmtCuFlag(uiAbsPartIdx) ? pcCU->getEmtTuIdx(uiAbsPartIdx) : ( pcCU->getSlice()->getSPS()->getUseInterEMT() ? DCT2_EMT : DCT2_HEVC )
 #endif
+#if ROT_TR 
+   ,  0
+#endif
         );//this is for inter mode only
       
       const UInt uiNonzeroDistY = m_pcRdCost->getDistPart(g_bitDepthY, m_pcQTTempTComYuv[uiQTTempAccessLayer].getLumaAddr( absTUPartIdx ), m_pcQTTempTComYuv[uiQTTempAccessLayer].getStride(),
@@ -6168,6 +6205,9 @@ Void TEncSearch::xEstimateResidualQT( TComDataCU* pcCU, UInt uiQuadrant, UInt ui
           , false
           , pcCU->getSlice()->getSPS()->getUseInterEMT() ? DCT2_EMT : DCT2_HEVC
 #endif
+#if ROT_TR 
+   ,  0
+#endif
           );
         
         const UInt uiNonzeroDistU = m_pcRdCost->getDistPart(g_bitDepthC, m_pcQTTempTComYuv[uiQTTempAccessLayer].getCbAddr( absTUPartIdxC), m_pcQTTempTComYuv[uiQTTempAccessLayer].getCStride(),
@@ -6246,6 +6286,9 @@ Void TEncSearch::xEstimateResidualQT( TComDataCU* pcCU, UInt uiQuadrant, UInt ui
 #if QC_EMT_INTER
           , false
           , pcCU->getSlice()->getSPS()->getUseInterEMT() ? DCT2_EMT : DCT2_HEVC
+#endif
+#if ROT_TR 
+   ,  0
 #endif
           );
         
@@ -6960,7 +7003,14 @@ Void  TEncSearch::xAddSymbolBitsInter( TComDataCU* pcCU, UInt uiQp, UInt uiTrMod
     m_pcEntropyCoder->encodeICFlag( pcCU, 0 );
 #endif
     Bool bDummy = false;
-    m_pcEntropyCoder->encodeCoeff   ( pcCU, 0, pcCU->getDepth(0), pcCU->getWidth(0), pcCU->getHeight(0), bDummy );
+#if ROT_TR  || CU_LEVEL_MPI
+  Int bNonZeroCoeff = false;
+#endif
+    m_pcEntropyCoder->encodeCoeff   ( pcCU, 0, pcCU->getDepth(0), pcCU->getWidth(0), pcCU->getHeight(0), bDummy 
+#if ROT_TR  || CU_LEVEL_MPI
+  , bNonZeroCoeff 
+#endif
+  );
     
     ruiBits += m_pcEntropyCoder->getNumberOfWrittenBits();
   }

@@ -63,6 +63,12 @@ TComDataCU::TComDataCU()
   m_puhDepth           = NULL;
   
   m_skipFlag           = NULL;
+#if ROT_TR
+  m_ROTIdx           = NULL;
+#endif
+#if CU_LEVEL_MPI
+  m_MPIIdx           = NULL;
+#endif
 #if QC_IMV
   m_iMVFlag            = NULL;
   m_piMVCandNum        = NULL;
@@ -170,6 +176,12 @@ Void TComDataCU::create(UInt uiNumPartition, UInt uiWidth, UInt uiHeight, Bool b
 #endif
 
     m_skipFlag           = new Bool[ uiNumPartition ];
+#if ROT_TR
+    m_ROTIdx           = new Char[ uiNumPartition ];
+#endif
+#if CU_LEVEL_MPI
+    m_MPIIdx           = new Char[ uiNumPartition ];
+#endif
 #if QC_IMV
     m_iMVFlag            = new Bool[ uiNumPartition ];
     m_piMVCandNum        = new Char[ uiNumPartition ];
@@ -311,6 +323,12 @@ Void TComDataCU::destroy()
     if ( m_puhHeight          ) { xFree(m_puhHeight);           m_puhHeight         = NULL; }
 
     if ( m_skipFlag           ) { delete[] m_skipFlag;          m_skipFlag          = NULL; }
+#if ROT_TR
+    if ( m_ROTIdx           ) { delete[] m_ROTIdx;          m_ROTIdx          = NULL; }
+#endif
+#if CU_LEVEL_MPI
+    if ( m_MPIIdx           ) { delete[] m_MPIIdx;          m_MPIIdx          = NULL; }
+#endif
 #if QC_IMV
     if ( m_iMVFlag            ) { delete[] m_iMVFlag;           m_iMVFlag           = NULL; }
     if ( m_piMVCandNum        ) { delete[] m_piMVCandNum;       m_piMVCandNum       = NULL; }
@@ -465,6 +483,12 @@ Void TComDataCU::initCU( TComPic* pcPic, UInt iCUAddr
   {
     TComDataCU * pcFrom = pcPic->getCU(getAddr());
     m_skipFlag[ui]   = pcFrom->getSkipFlag(ui);
+#if ROT_TR
+    m_ROTIdx[ui]   = pcFrom->getROTIdx(ui);
+#endif
+#if CU_LEVEL_MPI
+    m_MPIIdx[ui]   = pcFrom->getMPIIdx(ui);
+#endif
 #if QC_IMV
     m_iMVFlag[ui]    = pcFrom->getiMVFlag(ui);
     if( !m_bDecSubCu )
@@ -520,6 +544,12 @@ Void TComDataCU::initCU( TComPic* pcPic, UInt iCUAddr
   if ( numElements > 0 )
   {
     memset( m_skipFlag          + firstElement, false,                    numElements * sizeof( *m_skipFlag ) );
+#if ROT_TR
+    memset( m_ROTIdx          + firstElement, false,                    numElements * sizeof( *m_ROTIdx ) );
+#endif
+#if CU_LEVEL_MPI
+    memset( m_MPIIdx          + firstElement, true,                    numElements * sizeof( *m_MPIIdx ) );
+#endif
 #if QC_IMV
     memset( m_iMVFlag           + firstElement, false,                      numElements * sizeof( *m_iMVFlag ) );
     if( !m_bDecSubCu )
@@ -716,6 +746,12 @@ Void TComDataCU::initEstData( UInt uiDepth, Int qp, Bool bTransquantBypass )
       m_puhTransformSkip[1][ui] = 0;
       m_puhTransformSkip[2][ui] = 0;
       m_skipFlag[ui]   = false;
+#if ROT_TR
+      m_ROTIdx[ui]   = false;
+#endif
+#if CU_LEVEL_MPI
+    m_MPIIdx[ui]   = 0;
+#endif
 #if QC_IMV
       m_iMVFlag[ui]       = false;
       if( !m_bDecSubCu )
@@ -851,6 +887,12 @@ Void TComDataCU::initSubCU( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth, 
   for (UInt ui = 0; ui < m_uiNumPartition; ui++)
   {
     m_skipFlag[ui]   = false;
+#if ROT_TR
+    m_ROTIdx[ui]   = false;
+#endif
+#if CU_LEVEL_MPI
+    m_MPIIdx[ui]   = false;
+#endif
 #if QC_IMV
     m_iMVFlag[ui]    = false;
     if( !m_bDecSubCu )
@@ -889,6 +931,12 @@ Void TComDataCU::initSubCU( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth, 
       m_puhTransformSkip[1][ui] = pcCU->getTransformSkip(uiPartOffset+ui,TEXT_CHROMA_U);
       m_puhTransformSkip[2][ui] = pcCU->getTransformSkip(uiPartOffset+ui,TEXT_CHROMA_V);
       m_skipFlag[ui]   = pcCU->getSkipFlag(uiPartOffset+ui);
+#if ROT_TR
+      m_ROTIdx[ui]   = pcCU->getROTIdx(uiPartOffset+ui);
+#endif
+#if CU_LEVEL_MPI
+      m_MPIIdx[ui]   = pcCU->getMPIIdx(uiPartOffset+ui);
+#endif
 #if QC_IMV
       m_iMVFlag[ui]    = pcCU->getiMVFlag(uiPartOffset+ui);
       if( !m_bDecSubCu )
@@ -1027,6 +1075,12 @@ Void TComDataCU::copySubCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
   m_uiCUPelY           = pcCU->getCUPelY() + g_auiRasterToPelY[ g_auiZscanToRaster[uiAbsPartIdx] ];
   
   m_skipFlag=pcCU->getSkipFlag()          + uiPart;
+#if ROT_TR
+  m_ROTIdx=pcCU->getROTIdx()          + uiPart;
+#endif
+#if CU_LEVEL_MPI
+  m_MPIIdx=pcCU->getMPIIdx()          + uiPart;
+#endif
 #if QC_IMV
   m_iMVFlag=pcCU->getiMVFlag()            + uiPart;
   if( !m_bDecSubCu )
@@ -1138,6 +1192,12 @@ Void TComDataCU::copyInterPredInfoFrom    ( TComDataCU* pcCU, UInt uiAbsPartIdx,
   m_apcCUColocated[1]  = pcCU->getCUColocated(REF_PIC_LIST_1);
   
   m_skipFlag           = pcCU->getSkipFlag ()             + uiAbsPartIdx;
+#if ROT_TR
+  m_ROTIdx           = pcCU->getROTIdx ()             + uiAbsPartIdx;
+#endif
+#if CU_LEVEL_MPI
+  m_MPIIdx           = pcCU->getMPIIdx ()             + uiAbsPartIdx;
+#endif
 #if QC_IMV
   m_iMVFlag            = pcCU->getiMVFlag()               + uiAbsPartIdx;
   if( !m_bDecSubCu )
@@ -1197,6 +1257,12 @@ Void TComDataCU::copyPartFrom( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDept
   
   Int sizeInChar  = sizeof( Char ) * uiNumPartition;
   memcpy( m_skipFlag   + uiOffset, pcCU->getSkipFlag(),       sizeof( *m_skipFlag )   * uiNumPartition );
+#if ROT_TR
+  memcpy( m_ROTIdx   + uiOffset, pcCU->getROTIdx(),       sizeof( *m_ROTIdx )   * uiNumPartition );
+#endif
+#if CU_LEVEL_MPI
+  memcpy( m_MPIIdx   + uiOffset, pcCU->getMPIIdx(),       sizeof( *m_MPIIdx )   * uiNumPartition );
+#endif
 #if QC_IMV
   memcpy( m_iMVFlag    + uiOffset, pcCU->getiMVFlag(),        sizeof( *m_iMVFlag )    * uiNumPartition );
   if( !m_bDecSubCu )
@@ -1306,6 +1372,12 @@ Void TComDataCU::copyToPic( UChar uhDepth )
   Int sizeInChar  = sizeof( Char ) * m_uiNumPartition;
 
   memcpy( rpcCU->getSkipFlag() + m_uiAbsIdxInLCU, m_skipFlag, sizeof( *m_skipFlag ) * m_uiNumPartition );
+#if ROT_TR
+  memcpy( rpcCU->getROTIdx() + m_uiAbsIdxInLCU, m_ROTIdx, sizeof( *m_ROTIdx ) * m_uiNumPartition );
+#endif
+#if CU_LEVEL_MPI
+  memcpy( rpcCU->getMPIIdx() + m_uiAbsIdxInLCU, m_MPIIdx, sizeof( *m_MPIIdx ) * m_uiNumPartition );
+#endif
 #if QC_IMV
   memcpy( rpcCU->getiMVFlag() + m_uiAbsIdxInLCU, m_iMVFlag, sizeof( *m_iMVFlag ) * m_uiNumPartition );
   if( !m_bDecSubCu )
@@ -1409,6 +1481,12 @@ Void TComDataCU::copyToPic( UChar uhDepth, UInt uiPartIdx, UInt uiPartDepth )
   
   Int sizeInChar  = sizeof( Char ) * uiQNumPart;
   memcpy( rpcCU->getSkipFlag()       + uiPartOffset, m_skipFlag,   sizeof( *m_skipFlag )   * uiQNumPart );
+#if ROT_TR
+  memcpy( rpcCU->getROTIdx()       + uiPartOffset, m_ROTIdx,   sizeof( *m_ROTIdx )   * uiQNumPart );
+#endif
+#if CU_LEVEL_MPI
+  memcpy( rpcCU->getMPIIdx()       + uiPartOffset, m_MPIIdx,   sizeof( *m_MPIIdx )   * uiQNumPart );
+#endif
 #if QC_IMV
   memcpy( rpcCU->getiMVFlag()        + uiPartOffset, m_iMVFlag,     sizeof( *m_iMVFlag )   * uiQNumPart );
   if( !m_bDecSubCu )
@@ -2901,7 +2979,21 @@ Void TComDataCU::setSkipFlagSubParts( Bool skip, UInt absPartIdx, UInt depth )
   assert( sizeof( *m_skipFlag) == 1 );
   memset( m_skipFlag + absPartIdx, skip, m_pcPic->getNumPartInCU() >> ( 2 * depth ) );
 }
-
+#if ROT_TR
+Void TComDataCU::setROTIdxSubParts( Char ROTIdx, UInt absPartIdx, UInt depth  )
+{
+  assert( sizeof( *m_ROTIdx) == 1 );
+  memset( m_ROTIdx + absPartIdx, ROTIdx, m_pcPic->getNumPartInCU() >> ( 2 * depth ) );
+}
+#endif
+#if CU_LEVEL_MPI
+Void TComDataCU::setMPIIdxSubParts( Char MPIIdx, UInt absPartIdx, UInt depth  )
+{
+  assert( sizeof( *m_MPIIdx) == 1 );
+  UInt uiCurrPartNumb = m_pcPic->getNumPartInCU() >> (depth << 1);
+  memset(  m_MPIIdx + absPartIdx, MPIIdx, sizeof(Char)*uiCurrPartNumb );
+}
+#endif
 #if QC_IMV
 Void TComDataCU::setiMVFlagSubParts( Bool iMV, UInt absPartIdx, UInt depth )
 {

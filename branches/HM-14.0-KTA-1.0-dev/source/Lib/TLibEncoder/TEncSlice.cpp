@@ -1840,6 +1840,7 @@ Void TEncSlice::xContextWdowSizeUpdateDecision(TEncSbac* pTestEncSbac, UInt &uiC
       uiBestW = uiW;
     }   
   }
+
   if( uiBestW != (ALPHA0 - 4) )
   {
     uiCtxMap[uiCtxStartPos] = 1;

@@ -224,7 +224,7 @@ UInt TEncBinCABAC::getNumWrittenBits()
  * \param binValue   bin value
  * \param rcCtxModel context model
  */
-#if QC_AC_ADAPT_WDOW  
+#if QC_AC_ADAPT_WDOW || MULTI_PARAM_CABAC  
 Void TEncBinCABAC::encodeBin( UInt binValue, ContextModel &rcCtxModel )
 {
   m_uiBinsCoded += m_binCountIncrement;

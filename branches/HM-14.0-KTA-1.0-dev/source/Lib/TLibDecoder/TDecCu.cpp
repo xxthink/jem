@@ -416,6 +416,9 @@ Void TDecCu::xDecodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt&
   }
 
   m_pcEntropyDecoder->decodePredMode( pcCU, uiAbsPartIdx, uiDepth );
+#if CU_LEVEL_MPI
+  m_pcEntropyDecoder->decodeMPIIdx( pcCU, uiAbsPartIdx, uiDepth );
+#endif
   m_pcEntropyDecoder->decodePartSize( pcCU, uiAbsPartIdx, uiDepth );
 
   if (pcCU->isIntra( uiAbsPartIdx ) && pcCU->getPartitionSize( uiAbsPartIdx ) == SIZE_2Nx2N )
@@ -596,6 +599,9 @@ TDecCu::xIntraRecLumaBlk( TComDataCU* pcCU,
 #if QC_USE_65ANG_MODES
     , pcCU->getUseExtIntraAngModes(uiPUWidth)
 #endif
+#if CU_LEVEL_MPI
+,  pcCU,  uiAbsPartIdx
+#endif
     );
   
   if ( pcCU->getCbf( uiAbsPartIdx, TEXT_LUMA, uiTrDepth ) )
@@ -608,6 +614,9 @@ TDecCu::xIntraRecLumaBlk( TComDataCU* pcCU,
     m_pcTrQuant->invtransformNxN( pcCU->getCUTransquantBypass(uiAbsPartIdx), TEXT_LUMA, pcCU->getLumaIntraDir( uiAbsPartIdx ), piResi, uiStride, pcCoeff, uiWidth, uiHeight, scalingListType, useTransformSkip 
 #if QC_EMT_INTRA
       , pcCU->getSlice()->getSPS()->getUseIntraEMT() ? pcCU->getEmtTuIdx(uiAbsPartIdx) : DCT2_HEVC
+#endif
+#if ROT_TR 
+   , pcCU->getROTIdx(uiAbsPartIdx)
 #endif
 #if QC_USE_65ANG_MODES
     , pcCU->getUseExtIntraAngModes(uiPUWidth)
@@ -733,7 +742,10 @@ TDecCu::xIntraRecChromaBlk( TComDataCU* pcCU,
 #if QC_INTRA_4TAP_FILTER
       , pcCU->getSlice()->getSPS()->getUse4TapIntraFilter()
 #endif
-      );  
+#if CU_LEVEL_MPI
+,  pcCU,  uiAbsPartIdx, uiChromaId
+#endif
+);  
 
 #if QC_LMCHROMA
     if( uiChromaId == 1 && pcCU->getSlice()->getSPS()->getUseLMChroma() )
@@ -762,6 +774,9 @@ TDecCu::xIntraRecChromaBlk( TComDataCU* pcCU,
     m_pcTrQuant->invtransformNxN( pcCU->getCUTransquantBypass(uiAbsPartIdx), eText, REG_DCT, piResi, uiStride, pcCoeff, uiWidth, uiHeight, scalingListType, useTransformSkipChroma 
 #if QC_EMT_INTRA
       , pcCU->getSlice()->getSPS()->getUseIntraEMT() ? DCT2_EMT : DCT2_HEVC
+#endif
+#if ROT_TR 
+   , pcCU->getROTIdx(uiAbsPartIdx)
 #endif
       );
     
