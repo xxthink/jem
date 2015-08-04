@@ -98,6 +98,12 @@ private:
   // CU data
   // -------------------------------------------------------------------------------------------------------------------
   Bool*         m_skipFlag;           ///< array of skip flags
+#if ROT_TR
+  Char*         m_ROTIdx;             ///< array of ROTIdxs
+#endif
+#if CU_LEVEL_MPI
+  Char*         m_MPIIdx;           ///< array of MPIIdxs
+#endif
 #if QC_IMV
   Bool*         m_iMVFlag;           ///< array of integer MV flags
   Char*         m_piMVCandNum;        ///< encoder only array
@@ -279,6 +285,18 @@ public:
   Bool         getSkipFlag            (UInt idx)                { return m_skipFlag[idx];     }
   Void         setSkipFlag           ( UInt idx, Bool skip)     { m_skipFlag[idx] = skip;   }
   Void         setSkipFlagSubParts   ( Bool skip, UInt absPartIdx, UInt depth );
+#if ROT_TR
+  Char*        getROTIdx            ()                        { return m_ROTIdx;          }
+  Char         getROTIdx            (UInt idx)                { return m_ROTIdx[idx];     }
+  Void         setROTIdx           ( UInt idx, Char ROTIdx)     { m_ROTIdx[idx] = ROTIdx;   }
+  Void         setROTIdxSubParts   ( Char ROTIdx, UInt absPartIdx, UInt depth );
+#endif
+#if CU_LEVEL_MPI
+  Char*        getMPIIdx            ()                        { return m_MPIIdx;          }
+  Char         getMPIIdx            (UInt idx)                { return m_MPIIdx[idx];     }
+  Void         setMPIIdx           ( UInt idx, Char MPIIdx)     { m_MPIIdx[idx] = MPIIdx;   }
+  Void         setMPIIdxSubParts   ( Char MPIIdx, UInt absPartIdx, UInt depth );
+#endif
 #if QC_IMV
   Bool*         getiMVFlag            ()                        { return m_iMVFlag;          }
   Bool          getiMVFlag            (UInt idx)                { return m_iMVFlag[idx];     }

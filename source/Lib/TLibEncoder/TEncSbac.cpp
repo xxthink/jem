@@ -57,6 +57,12 @@ TEncSbac::TEncSbac()
 , m_numContextModels          ( 0 )
 , m_cCUSplitFlagSCModel       ( 1,             1,               NUM_SPLIT_FLAG_CTX            , m_contextModels + m_numContextModels, m_numContextModels )
 , m_cCUSkipFlagSCModel        ( 1,             1,               NUM_SKIP_FLAG_CTX             , m_contextModels + m_numContextModels, m_numContextModels)
+#if ROT_TR
+, m_cROTidxSCModel           ( 1,             1,               NUM_ROT_TR_CTX             , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
+#if CU_LEVEL_MPI
+, m_cMPIIdxSCModel           ( 1,             1,               NUM_MPI_CTX             , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 #if QC_IMV
 , m_cCUiMVFlagSCModel         ( 1,             1,               NUM_IMV_FLAG_CTX              , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
@@ -134,6 +140,12 @@ Void TEncSbac::resetEntropy           ()
   m_cCUSplitFlagSCModel.initBuffer       ( eSliceType, iQp, (UChar*)INIT_SPLIT_FLAG );
   
   m_cCUSkipFlagSCModel.initBuffer        ( eSliceType, iQp, (UChar*)INIT_SKIP_FLAG );
+#if ROT_TR
+  m_cROTidxSCModel.initBuffer        ( eSliceType, iQp, (UChar*)INIT_ROT_TR_IDX );
+#endif
+#if CU_LEVEL_MPI
+  m_cMPIIdxSCModel.initBuffer        ( eSliceType, iQp, (UChar*)INIT_MPIIdx_FLAG );
+#endif 
 #if QC_IMV
   m_cCUiMVFlagSCModel.initBuffer         ( eSliceType, iQp, (UChar*)INIT_IMV_FLAG );
 #endif
@@ -230,6 +242,12 @@ Void TEncSbac::determineCabacInitIdx()
 
       curCost  = m_cCUSplitFlagSCModel.calcCost       ( curSliceType, qp, (UChar*)INIT_SPLIT_FLAG );
       curCost += m_cCUSkipFlagSCModel.calcCost        ( curSliceType, qp, (UChar*)INIT_SKIP_FLAG );
+#if ROT_TR
+      curCost += m_cROTidxSCModel.calcCost        ( curSliceType, qp, (UChar*)INIT_ROT_TR_IDX );
+#endif
+#if CU_LEVEL_MPI
+      curCost += m_cMPIIdxSCModel.calcCost        ( curSliceType, qp, (UChar*)INIT_MPIIdx_FLAG );
+#endif
 #if QC_IMV
       curCost += m_cCUiMVFlagSCModel.calcCost         ( curSliceType, qp, (UChar*)INIT_IMV_FLAG );
 #endif
@@ -591,7 +609,7 @@ Void TEncSbac::codeEmtCuFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth,
   if ( pcCU->isIntra( uiAbsPartIdx ) && bCodeCuFlag && pcCU->getWidth(uiAbsPartIdx) <= QC_EMT_INTRA_MAX_CU && pcCU->getSlice()->getSPS()->getUseIntraEMT() )
   {
     UChar ucCuFlag = pcCU->getEmtCuFlag( uiAbsPartIdx );
-    m_pcBinIf->encodeBin( ucCuFlag, m_cEmtCuFlagSCModel.get(0, 0, uiDepth));
+  m_pcBinIf->encodeBin( ucCuFlag, m_cEmtCuFlagSCModel.get(0, 0, uiDepth));
   }
 #endif
 
@@ -599,7 +617,7 @@ Void TEncSbac::codeEmtCuFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth,
   if( !pcCU->isIntra( uiAbsPartIdx ) && bCodeCuFlag && pcCU->getWidth(uiAbsPartIdx) <= QC_EMT_INTER_MAX_CU && pcCU->getSlice()->getSPS()->getUseInterEMT() )
   {
     UChar ucCuFlag = pcCU->getEmtCuFlag( uiAbsPartIdx );
-    m_pcBinIf->encodeBin( ucCuFlag, m_cEmtCuFlagSCModel.get(0, 0, uiDepth));
+  m_pcBinIf->encodeBin( ucCuFlag, m_cEmtCuFlagSCModel.get(0, 0, uiDepth));
   }
 #endif
 }
@@ -783,7 +801,54 @@ Void TEncSbac::codeICFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
   DTRACE_CABAC_T( "\n");
 }
 #endif
-
+#if ROT_TR  
+Void TEncSbac::codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
+{ 
+  Int iNumberOfPassesROT = 1;
+  if( pcCU->isIntra(uiAbsPartIdx)
+#if CU_LEVEL_MPI
+    && pcCU->getMPIIdx(uiAbsPartIdx) ==0
+#endif  
+    )  iNumberOfPassesROT = 4;
+  if (iNumberOfPassesROT>1) // for only 1 pass no signaling is needed 
+  {
+      Int idxROT = pcCU->getROTIdx( uiAbsPartIdx );
+      const UInt uiSymbol0 = (idxROT >>1);
+      const UInt uiSymbol1 = (idxROT %2 );
+      m_pcBinIf->encodeBin( uiSymbol0, m_cROTidxSCModel.get(0,0, uiDepth ) );
+      m_pcBinIf->encodeBin( uiSymbol1, m_cROTidxSCModel.get(0,0, uiDepth ) );
+  }
+}
+#endif
+#if CU_LEVEL_MPI
+Void TEncSbac::codeMPIIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx  )
+{
+  if (pcCU->getPredictionMode(uiAbsPartIdx)==MODE_INTER)
+  {
+     return;
+  }
+    Int iNumberOfPassesMPI = 1;
+    if( pcCU->getSlice()->getSliceType() == I_SLICE) iNumberOfPassesMPI = MPI_DICT_SIZE_INTRA;
+    else iNumberOfPassesMPI = MPI_DICT_SIZE_INTER;
+  if (iNumberOfPassesMPI>1) // for only 1 pass no signaling is needed 
+  {
+    if (iNumberOfPassesMPI>2)  // 3 or 4
+    {
+      Int idxMPI = pcCU->getMPIIdx( uiAbsPartIdx );
+      const UInt uiSymbol0 = (idxMPI >>1);
+      const UInt uiSymbol1 = (idxMPI %2 );
+      m_pcBinIf->encodeBin( uiSymbol0, m_cMPIIdxSCModel.get(0,0, 0 ) );
+      m_pcBinIf->encodeBin( uiSymbol1, m_cMPIIdxSCModel.get(0,0, 1 ) );
+    }
+    else //iNumberOfPassesMPI==2
+    {
+      Int idxMPI = pcCU->getMPIIdx( uiAbsPartIdx );
+      const UInt uiSymbol = idxMPI;
+      m_pcBinIf->encodeBin( uiSymbol, m_cMPIIdxSCModel.get( 0,0,0 ) );
+    }
+  }
+}
+#endif
 /** code merge flag
  * \param pcCU
  * \param uiAbsPartIdx 
@@ -1526,7 +1591,11 @@ Void TEncSbac::codeLastSignificantXY( UInt uiPosX, UInt uiPosY, Int width, Int h
   }
 }
 #if QC_CTX_RESIDUALCODING
-Void TEncSbac::codeCoeffNxN( TComDataCU* pcCU, TCoeff* pcCoef, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight, UInt uiDepth, TextType eTType )
+Void TEncSbac::codeCoeffNxN( TComDataCU* pcCU, TCoeff* pcCoef, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight, UInt uiDepth, TextType eTType 
+#if ROT_TR    || CU_LEVEL_MPI
+    ,  Int& bCbfCU
+#endif
+    )
 {
   DTRACE_CABAC_VL( g_nSymbolCounter++ )
   DTRACE_CABAC_T( "\tparseCoeffNxN()\teType=" )
@@ -1683,6 +1752,9 @@ Void TEncSbac::codeCoeffNxN( TComDataCU* pcCU, TCoeff* pcCoef, UInt uiAbsPartIdx
       pos[ numNonZero ] = uiBlkPosLast;
       coeffSigns    = ( pcCoef[ posLast ] < 0 );
       numNonZero    = 1;
+#if ROT_TR || CU_LEVEL_MPI 
+      bCbfCU+=abs( pcCoef[ posLast ] ); 
+#endif
       lastNZPosInCG  = iScanPosSig;
       firstNZPosInCG = iScanPosSig;
       iScanPosSig--;
@@ -1735,6 +1807,9 @@ Void TEncSbac::codeCoeffNxN( TComDataCU* pcCU, TCoeff* pcCoef, UInt uiAbsPartIdx
           absCoeff[ numNonZero ] = abs( pcCoef[ uiBlkPos ] );
           pos[ numNonZero ]      = uiBlkPos;          
           coeffSigns = 2 * coeffSigns + ( pcCoef[ uiBlkPos ] < 0 );
+ #if ROT_TR || CU_LEVEL_MPI 
+      bCbfCU+=absCoeff[ numNonZero ];
+#endif
           numNonZero++;
           if( lastNZPosInCG == -1 )
           {
@@ -1846,7 +1921,11 @@ Void TEncSbac::codeCoeffNxN( TComDataCU* pcCU, TCoeff* pcCoef, UInt uiAbsPartIdx
   return;
 }
 #else
-Void TEncSbac::codeCoeffNxN( TComDataCU* pcCU, TCoeff* pcCoef, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight, UInt uiDepth, TextType eTType )
+Void TEncSbac::codeCoeffNxN( TComDataCU* pcCU, TCoeff* pcCoef, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight, UInt uiDepth, TextType eTType
+#if ROT_TR    || CU_LEVEL_MPI
+    ,  Int& bCbfCU
+#endif
+    )
 {
   DTRACE_CABAC_VL( g_nSymbolCounter++ )
   DTRACE_CABAC_T( "\tparseCoeffNxN()\teType=" )
@@ -1986,6 +2065,9 @@ Void TEncSbac::codeCoeffNxN( TComDataCU* pcCU, TCoeff* pcCoef, UInt uiAbsPartIdx
       absCoeff[ 0 ] = abs( pcCoef[ posLast ] );
       coeffSigns    = ( pcCoef[ posLast ] < 0 );
       numNonZero    = 1;
+#if ROT_TR || CU_LEVEL_MPI 
+      bCbfCU+=abs( pcCoef[ posLast ] ); 
+#endif
       lastNZPosInCG  = iScanPosSig;
       firstNZPosInCG = iScanPosSig;
       iScanPosSig--;
@@ -2032,6 +2114,9 @@ Void TEncSbac::codeCoeffNxN( TComDataCU* pcCU, TCoeff* pcCoef, UInt uiAbsPartIdx
           {
             absCoeff[ numNonZero ] = abs( pcCoef[ uiBlkPos ] );
             coeffSigns = 2 * coeffSigns + ( pcCoef[ uiBlkPos ] < 0 );
+#if ROT_TR || CU_LEVEL_MPI 
+      bCbfCU+=absCoeff[ numNonZero ];
+#endif
             numNonZero++;
             if( lastNZPosInCG == -1 )
             {

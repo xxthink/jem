@@ -125,9 +125,15 @@ Void TEncCu::create(UChar uhTotalDepth, UInt uiMaxWidth, UInt uiMaxHeight)
     
     m_ppcOrigYuv    [i] = new TComYuv; m_ppcOrigYuv    [i]->create(uiWidth, uiHeight);
 #if QC_OBMC
-    m_ppcTmpYuv1      [i] = new TComYuv; m_ppcTmpYuv1      [i]->create(uiWidth, uiHeight);
+#if BIO
+    m_ppcTmpYuv1      [i] = new TComYuv; m_ppcTmpYuv1      [i]->create(uiWidth + 4, uiHeight + 4);
+    m_ppcTmpYuv2      [i] = new TComYuv; m_ppcTmpYuv2      [i]->create(uiWidth + 4, uiHeight + 4);
+    m_ppcPredYuvWoOBMC[i] = new TComYuv; m_ppcPredYuvWoOBMC[i]->create(uiWidth, uiHeight);
+#else
+  m_ppcTmpYuv1      [i] = new TComYuv; m_ppcTmpYuv1      [i]->create(uiWidth, uiHeight);
     m_ppcTmpYuv2      [i] = new TComYuv; m_ppcTmpYuv2      [i]->create(uiWidth, uiHeight);
     m_ppcPredYuvWoOBMC[i] = new TComYuv; m_ppcPredYuvWoOBMC[i]->create(uiWidth, uiHeight);
+#endif
 #endif
   }
   
@@ -980,6 +986,23 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, UInt u
           rpcBestCU->getCbf( 0, TEXT_CHROMA_U ) != 0   ||
           rpcBestCU->getCbf( 0, TEXT_CHROMA_V ) != 0     ) // avoid very complex intra if it is unlikely
         {
+#if ROT_TR  || CU_LEVEL_MPI
+   Int bNonZeroCoeff =0;
+#endif
+#if ROT_TR
+   Char iROTidx = 0; Char iNumberOfPassesROT = 4;  
+for ( iROTidx = 0; iROTidx<iNumberOfPassesROT; iROTidx++)
+{
+#endif
+#if CU_LEVEL_MPI
+   Char iMPIidx = 0;  Char iNumberOfPassesMPI = MPI_DICT_SIZE_INTRA;
+if( rpcTempCU->getSlice()->getSliceType() != I_SLICE)  iNumberOfPassesMPI = MPI_DICT_SIZE_INTER;
+#if ROT_TR
+  if (iROTidx) iNumberOfPassesMPI = 1;
+#endif
+  for ( iMPIidx = 0; iMPIidx<iNumberOfPassesMPI; iMPIidx++)
+  {
+#endif
 #if QC_EMT_INTRA
           UChar ucEmtUsage = ( ( rpcTempCU->getWidth(0) > QC_EMT_INTRA_MAX_CU ) || ( rpcTempCU->getSlice()->getSPS()->getUseIntraEMT()==0 ) ) ? 1 : 2;
           for (UChar ucCuFlag = 0; ucCuFlag < ucEmtUsage; ucCuFlag++)
@@ -991,7 +1014,17 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, UInt u
             }
 #endif
             rpcTempCU->setEmtCuFlagSubParts(ucCuFlag, 0, uiDepth);
-            xCheckRDCostIntra( rpcBestCU, rpcTempCU, SIZE_2Nx2N );
+#if CU_LEVEL_MPI
+  rpcTempCU->setMPIIdxSubParts(iMPIidx, 0,  uiDepth ); 
+#endif
+  #if ROT_TR
+    rpcTempCU->setROTIdxSubParts(iROTidx, 0,  uiDepth ); 
+#endif
+            xCheckRDCostIntra( rpcBestCU, rpcTempCU, SIZE_2Nx2N 
+#if ROT_TR  || CU_LEVEL_MPI
+  ,  bNonZeroCoeff 
+#endif
+  );
 #if QC_EMT_INTER_FAST
             if( !ucCuFlag && !rpcBestCU->isIntra(0) && m_pcEncCfg->getUseFastInterEMT() )
             {
@@ -1010,17 +1043,51 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, UInt u
             rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
           }
 #else
-          xCheckRDCostIntra( rpcBestCU, rpcTempCU, SIZE_2Nx2N );
+#if CU_LEVEL_MPI
+rpcTempCU->setMPIIdxSubParts(iMPIidx, 0,  uiDepth ); 
+#endif
+#if ROT_TR
+  rpcTempCU->setROTIdxSubParts(iROTidx, 0,  uiDepth ); 
+#endif
+           xCheckRDCostIntra( rpcBestCU, rpcTempCU, SIZE_2Nx2N 
+#if ROT_TR  || CU_LEVEL_MPI
+  ,  bNonZeroCoeff 
+#endif
+  );
           rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
+#endif
+#if CU_LEVEL_MPI
+  if (rpcBestCU->isIntra(0) && !bNonZeroCoeff) break;
+    }
+#endif
+#if ROT_TR  
+  if (rpcBestCU->isIntra(0) && !bNonZeroCoeff) break;
+    }   
 #endif
 #if QC_EMT_INTER_FAST
           if( ( uiDepth == g_uiMaxCUDepth - g_uiAddCUDepth ) && !bEarlySkipIntra )
 #else
           if( uiDepth == g_uiMaxCUDepth - g_uiAddCUDepth )
 #endif
-          {
+      {
+#if QC_EMT_INTRA && (ROT_TR || CU_LEVEL_MPI)
+          UChar ucEmtUsage = ( ( rpcTempCU->getWidth(0) > QC_EMT_INTRA_MAX_CU ) || ( rpcTempCU->getSlice()->getSPS()->getUseIntraEMT()==0 ) ) ? 1 : 2;
+#endif
+#if ROT_TR
+for ( iROTidx = 0; iROTidx<iNumberOfPassesROT; iROTidx++)
+{
+#endif
+#if CU_LEVEL_MPI
+#if ROT_TR
+Char iMPIidx = 0;  Char iNumberOfPassesMPI = MPI_DICT_SIZE_INTRA;
+if( rpcTempCU->getSlice()->getSliceType() != I_SLICE)  iNumberOfPassesMPI = MPI_DICT_SIZE_INTER;
+if (iROTidx) iNumberOfPassesMPI = 1;
+#endif
+  for ( iMPIidx = 0; iMPIidx<iNumberOfPassesMPI; iMPIidx++)
+{
+#endif 
             if( rpcTempCU->getWidth(0) > ( 1 << rpcTempCU->getSlice()->getSPS()->getQuadtreeTULog2MinSize() ) )
-            {
+      {
 #if QC_EMT_INTRA
               for (UChar ucCuFlag = 0; ucCuFlag < ucEmtUsage; ucCuFlag++)
               {
@@ -1034,7 +1101,17 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, UInt u
                 }
 #endif
                 rpcTempCU->setEmtCuFlagSubParts(ucCuFlag, 0, uiDepth);
-                xCheckRDCostIntra( rpcBestCU, rpcTempCU, SIZE_NxN );
+#if CU_LEVEL_MPI
+rpcTempCU->setMPIIdxSubParts(iMPIidx, 0,  uiDepth ); 
+#endif
+#if ROT_TR
+rpcTempCU->setROTIdxSubParts(iROTidx, 0,  uiDepth ); 
+#endif
+           xCheckRDCostIntra( rpcBestCU, rpcTempCU, SIZE_NxN 
+#if ROT_TR  || CU_LEVEL_MPI
+  ,  bNonZeroCoeff 
+#endif
+  );
 #if QC_EMT_INTRA_FAST
                 if( !ucCuFlag )
                 {
@@ -1044,12 +1121,30 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, UInt u
                 rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
               }
 #else
-              xCheckRDCostIntra( rpcBestCU, rpcTempCU, SIZE_NxN   );
+#if CU_LEVEL_MPI
+rpcTempCU->setMPIIdxSubParts(iMPIidx, 0,  uiDepth ); 
+#endif
+#if ROT_TR
+  rpcTempCU->setROTIdxSubParts(iROTidx, 0,  uiDepth ); 
+#endif
+           xCheckRDCostIntra( rpcBestCU, rpcTempCU, SIZE_NxN   
+#if ROT_TR  || CU_LEVEL_MPI
+  ,  bNonZeroCoeff 
+#endif
+  );
               rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
 #endif
             }
-          }
-        }
+#if CU_LEVEL_MPI
+   if (rpcBestCU->isIntra(0) && !bNonZeroCoeff) break;
+     }
+#endif
+#if ROT_TR  
+ if (rpcBestCU->isIntra(0) && !bNonZeroCoeff) break;
+    }
+#endif
+      }
+  }
 
         // test PCM
         if(pcPic->getSlice(0)->getSPS()->getUsePCM()
@@ -1478,7 +1573,9 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
     return;
   }
   m_pcEntropyCoder->encodePredMode( pcCU, uiAbsPartIdx );
-  
+ #if CU_LEVEL_MPI
+  m_pcEntropyCoder->encodeMPIIdx( pcCU, uiAbsPartIdx );
+#endif   
   m_pcEntropyCoder->encodePartSize( pcCU, uiAbsPartIdx, uiDepth );
   
   if (pcCU->isIntra( uiAbsPartIdx ) && pcCU->getPartitionSize( uiAbsPartIdx ) == SIZE_2Nx2N )
@@ -1503,7 +1600,14 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 #endif
   // Encode Coefficients
   Bool bCodeDQP = getdQPFlag();
-  m_pcEntropyCoder->encodeCoeff( pcCU, uiAbsPartIdx, uiDepth, pcCU->getWidth (uiAbsPartIdx), pcCU->getHeight(uiAbsPartIdx), bCodeDQP );
+#if ROT_TR  || CU_LEVEL_MPI
+  Int bNonZeroCoeff = false;
+#endif
+  m_pcEntropyCoder->encodeCoeff( pcCU, uiAbsPartIdx, uiDepth, pcCU->getWidth (uiAbsPartIdx), pcCU->getHeight(uiAbsPartIdx), bCodeDQP 
+#if ROT_TR  || CU_LEVEL_MPI
+  , bNonZeroCoeff 
+#endif
+  );
   setdQPFlag( bCodeDQP );
 
   // --- write terminating bit ---
@@ -2063,7 +2167,11 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
 #endif
 }
 
-Void TEncCu::xCheckRDCostIntra( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, PartSize eSize )
+Void TEncCu::xCheckRDCostIntra( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, PartSize eSize 
+#if ROT_TR  || CU_LEVEL_MPI
+  , Int& bNonZeroCoeff
+#endif
+  )
 {
   UInt uiDepth = rpcTempCU->getDepth( 0 );
 #if QC_LARGE_CTU_FAST
@@ -2105,13 +2213,23 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
   }
   m_pcEntropyCoder->encodeSkipFlag ( rpcTempCU, 0,          true );
   m_pcEntropyCoder->encodePredMode( rpcTempCU, 0,          true );
+#if CU_LEVEL_MPI
+  m_pcEntropyCoder->encodeMPIIdx( rpcTempCU, 0, true );
+#endif 
   m_pcEntropyCoder->encodePartSize( rpcTempCU, 0, uiDepth, true );
   m_pcEntropyCoder->encodePredInfo( rpcTempCU, 0,          true );
   m_pcEntropyCoder->encodeIPCMInfo(rpcTempCU, 0, true );
 
   // Encode Coefficients
   Bool bCodeDQP = getdQPFlag();
-  m_pcEntropyCoder->encodeCoeff( rpcTempCU, 0, uiDepth, rpcTempCU->getWidth (0), rpcTempCU->getHeight(0), bCodeDQP );
+#if ROT_TR || CU_LEVEL_MPI
+   bNonZeroCoeff = false;
+#endif
+   m_pcEntropyCoder->encodeCoeff( rpcTempCU, 0, uiDepth, rpcTempCU->getWidth (0), rpcTempCU->getHeight(0), bCodeDQP 
+#if ROT_TR  || CU_LEVEL_MPI
+   , bNonZeroCoeff
+#endif
+   );
   setdQPFlag( bCodeDQP );
   
   m_pcRDGoOnSbacCoder->store(m_pppcRDSbacCoder[uiDepth][CI_TEMP_BEST]);

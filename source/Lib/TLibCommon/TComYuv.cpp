@@ -516,7 +516,6 @@ Void TComYuv::subtractChroma( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt uiTrU
     pDstV  += iDstStride;
   }
 }
-
 #if QC_OBMC
 UInt TComYuv::sadLuma( TComYuv* pcYuvSrc0 )
 {
@@ -541,7 +540,11 @@ UInt TComYuv::sadLuma( TComYuv* pcYuvSrc0 )
 }
 #endif
 
-Void TComYuv::addAvg( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt iPartUnitIdx, UInt iWidth, UInt iHeight )
+Void TComYuv::addAvg( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt iPartUnitIdx, UInt iWidth, UInt iHeight 
+#if BIO                  
+,bool bBIOapplied
+#endif
+)
 {
   Int x, y;
   
@@ -566,7 +569,10 @@ Void TComYuv::addAvg( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt iPartUnitIdx,
   static const Pel nMaxY = ( 1 << g_bitDepthY ) -1;
   static const Pel nMaxC = ( 1 << g_bitDepthC ) -1;
 #endif
-  
+#if BIO
+  if(!bBIOapplied)
+  {
+#endif   
   for ( y = 0; y < iHeight; y++ )
   {
 #if HM14_CLEAN_UP
@@ -588,7 +594,9 @@ Void TComYuv::addAvg( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt iPartUnitIdx,
     pSrcY1 += iSrc1Stride;
     pDstY  += iDstStride;
   }
-  
+#if BIO
+  }
+#endif  
   shiftNum = IF_INTERNAL_PREC + 1 - g_bitDepthC;
   offset = ( 1 << ( shiftNum - 1 ) ) + 2 * IF_INTERNAL_OFFS;
 

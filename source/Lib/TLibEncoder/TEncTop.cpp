@@ -65,7 +65,7 @@ TEncTop::TEncTop()
 
   m_iMaxRefPicNum     = 0;
 
-#if FAST_BIT_EST && !QC_AC_ADAPT_WDOW
+#if FAST_BIT_EST && !(QC_AC_ADAPT_WDOW  ||   MULTI_PARAM_CABAC)
   ContextModel::buildNextStateTable();
 #endif
 

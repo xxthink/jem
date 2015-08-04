@@ -68,6 +68,16 @@
 class TComPrediction : public TComWeightPrediction
 {
 protected:
+#if BIO  
+  Pel* m_pGradX0;
+  Pel* m_pGradY0;
+  Pel* m_pGradX1;
+  Pel* m_pGradY1;
+  Pel*  m_pPred0 ;
+  Pel*  m_pPred1 ;
+
+  Int iRefListIdx;
+#endif
   Int*      m_piYuvExt;
   Int       m_iYuvExtStride;
   Int       m_iYuvExtHeight;
@@ -114,7 +124,25 @@ protected:
   Void xPredIntraPlanar         ( Int* pSrc, Int srcStride, Pel* rpDst, Int dstStride, UInt width, UInt height );
   
   // motion compensation functions
-  Void xPredInterUni            ( TComDataCU* pcCU,                          UInt uiPartAddr,               Int iWidth, Int iHeight, RefPicList eRefPicList, TComYuv*& rpcYuvPred, Bool bi=false          
+#if BIO  //4
+#define BIO_FILTER_LENGTH   6
+#define BIO_FILTER_LENGTH_MINUS_1         (BIO_FILTER_LENGTH-1)
+#define BIO_FILTER_HALF_LENGTH_MINUS_1   ((BIO_FILTER_LENGTH>>1)-1)
+  Void xPredInterFrac(Pel* ref,Pel* dst,Int dstStride,Int refStride,Int xFrac,Int yFrac,Int width, Int height,Bool bi);
+  Void  xGradFilterX(Pel*  piRefY, Int iRefStride,Pel*  piDstY,Int iDstStride, Int iWidth, Int iHeight,Int iMVyFrac,Int iMVxFrac);
+  Void  xGradFilterY(Pel*  piRefY, Int iRefStride,Pel*  piDstY,Int iDstStride, Int iWidth, Int iHeight,Int iMVyFrac,Int iMVxFrac);
+  __inline Void xCTI_Filter2DVerG (Pel* piSrc, Int iSrcStride,  Int iWidth, Int iHeight, Int iDstStride,  Pel*& rpiDst, Int iMv);
+  __inline Void xCTI_Filter2DHorG (Pel* piSrc, Int iSrcStride,  Int iWidth, Int iHeight, Int iDstStride,  Pel*& rpiDst, Int iMV);
+  __inline Void xCTI_Filter2DHorGG(Pel* piSrc, Int iSrcStride,  Int iWidth, Int iHeight, Int iDstStride,  Pel*& rpiDst, Int iMV);
+  __inline Void xCTI_Filter2DVerGG(Pel* piSrc, Int iSrcStride,  Int iWidth, Int iHeight, Int iDstStride,  Pel*& rpiDst, Int iMv);
+  __inline Void xCTI_Filter1DHorG (Pel* piSrc, Int iSrcStride,  Int iWidth, Int iHeight, Int iDstStride,  Pel*& rpiDst, Int iMV);
+  __inline Void xCTI_Filter1DVerG (Pel* piSrc, Int iSrcStride,  Int iWidth, Int iHeight, Int iDstStride,  Pel*& rpiDst, Int iMV);
+#endif
+  Void xPredInterUni            ( TComDataCU* pcCU,                          UInt uiPartAddr,               Int iWidth, Int iHeight, RefPicList eRefPicList, TComYuv*& rpcYuvPred
+#if BIO
+    , Bool bBIOApplied =false
+#endif
+    , Bool bi=false         
 #if QC_FRUC_MERGE
     , Bool bOBMC = false
 #endif
@@ -125,6 +153,9 @@ protected:
 #endif
     );
   Void xPredInterLumaBlk  ( TComDataCU *cu, TComPicYuv *refPic, UInt partAddr, TComMv *mv, Int width, Int height, TComYuv *&dstPic, Bool bi 
+#if BIO                  
+  ,Bool bBIOapplied =false
+#endif
 #if QC_FRUC_MERGE
     , Int nFRUCMode = QC_FRUC_MERGE_OFF
 #endif
@@ -137,7 +168,11 @@ protected:
     , Bool bICFlag    = false
 #endif
     );
-  Void xWeightedAverage         ( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, Int iRefIdx0, Int iRefIdx1, UInt uiPartAddr, Int iWidth, Int iHeight, TComYuv*& rpcYuvDst );
+  Void xWeightedAverage         ( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, Int iRefIdx0, Int iRefIdx1, UInt uiPartAddr, Int iWidth, Int iHeight, TComYuv*& rpcYuvDst 
+#if BIO
+, Bool bBIOApplied
+#endif
+    );
   
   Void xDCPredFiltering( Int* pSrc, Int iSrcStride, Pel*& rpDst, Int iDstStride, Int iWidth, Int iHeight );
 #if INTRA_BOUNDARY_FILTER
@@ -146,6 +181,9 @@ protected:
   Void xIntraPredFilteringMode02 ( Int* pSrc, Int iSrcStride, Pel*& rpDst, Int iDstStride, Int iWidth, Int iHeight);
 #endif
   Bool xCheckIdenticalMotion    ( TComDataCU* pcCU, UInt PartAddr);
+#if CU_LEVEL_MPI
+  Void xMPIredFiltering( Pel* pSrc, Int iSrcStride, Pel*& rpDst, Int iDstStride, Int iWidth, Int iHeight , Int idxMPI);
+#endif
 #if QC_SUB_PU_TMVP
   Bool xCheckTwoSPMotion ( TComDataCU* pcCU, UInt PartAddr0, UInt PartAddr1 );
   Void xGetSubPUAddrAndMerge(TComDataCU* pcCU, UInt uiPartAddr, Int iSPWidth, Int iSPHeight, Int iNumSPInOneLine, Int iNumSP, UInt* uiMergedSPW, UInt* uiMergedSPH, UInt* uiSPAddr );
@@ -218,10 +256,16 @@ public:
 #if QC_USE_65ANG_MODES
     , Bool bUseExtIntraAngModes
 #endif
+#if CU_LEVEL_MPI
+, TComDataCU* pcCU, UInt uiAbsPartIdx
+#endif
     );
   Void predIntraChromaAng         ( Int* piSrc, UInt uiDirMode, Pel* piPred, UInt uiStride, Int iWidth, Int iHeight, Bool bAbove, Bool bLeft 
 #if QC_INTRA_4TAP_FILTER
     , Bool bUse4TapFilter
+#endif
+#if CU_LEVEL_MPI
+, TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiChromaIdx
 #endif
     );
   

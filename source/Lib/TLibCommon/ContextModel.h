@@ -51,7 +51,7 @@
 // ====================================================================================================================
 // Class definition
 // ====================================================================================================================
-#if QC_AC_ADAPT_WDOW
+#if QC_AC_ADAPT_WDOW || MULTI_PARAM_CABAC
 const Int m_entropyBits[2][512] =
 {
   {
@@ -73,7 +73,7 @@ class ContextModel
 {
 public:
 
-#if QC_AC_ADAPT_WDOW 
+#if QC_AC_ADAPT_WDOW || MULTI_PARAM_CABAC
   ContextModel  ()                        
   {
     m_iCtxIdx              = 0;
@@ -84,28 +84,47 @@ public:
   Void updateLPS () //code "0"
   {
     iP1-= (iP1 >> m_ucWdow);
+#if MULTI_PARAM_CABAC
+    iP0-= (iP0 >> 8);
+#endif
   }
   
   Void updateMPS () //code "1"
   {
     iP1 +=  ((32768-iP1) >> m_ucWdow);
+#if MULTI_PARAM_CABAC
+    iP0 +=  ((32768-iP0) >> 8);
+#endif
   }
 
   UShort getState( )
   {
+#if MULTI_PARAM_CABAC
+    return  (iP0+iP1)>>1;
+#else
     return  iP1;
+#endif
   }  
 
   Int getEntropyBits(Short val) 
   {
-    Int tmpIdx = iP1 >> 7;
+    Int tmpIdx =
+#if MULTI_PARAM_CABAC
+    (iP0+iP1) >> 8;
+#else
+    iP1 >> 7;
+#endif
     return m_entropyBits[val][tmpIdx];
   }
 
   static Int getEntropyBitsTrm( Int val ) { return m_entropyBits[val][0]; }
   Void   init ( Int qp, Int initValue     );
 #if INIT_PREVFRAME
-  Void   setState(UShort uiState )        {iP1 = uiState;              }
+  Void   setState(UShort uiState )        {iP1 = uiState; 
+#if MULTI_PARAM_CABAC
+iP0 = uiState;
+#endif
+  }
 #endif
 
 #else
@@ -154,10 +173,13 @@ public:
 
 private:
 
-#if  QC_AC_ADAPT_WDOW
+#if  QC_AC_ADAPT_WDOW || MULTI_PARAM_CABAC
   UShort iP1;
   UChar         m_ucWdow;
   UInt          m_iCtxIdx;
+#if MULTI_PARAM_CABAC
+  UShort iP0;
+#endif
 #else
   UChar         m_ucState;                                                                  ///< internal state variable
   static const  UChar m_aucNextStateMPS[ 128 ];
