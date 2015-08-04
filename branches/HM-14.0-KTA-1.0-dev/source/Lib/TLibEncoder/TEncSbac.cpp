@@ -586,6 +586,7 @@ Void TEncSbac::codeEmtTuIdx( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 
 Void TEncSbac::codeEmtCuFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bCodeCuFlag )
 {
+  assert( uiDepth < NUM_EMT_CU_FLAG_CTX );
 #if QC_EMT_INTRA
   if ( pcCU->isIntra( uiAbsPartIdx ) && bCodeCuFlag && pcCU->getWidth(uiAbsPartIdx) <= QC_EMT_INTRA_MAX_CU && pcCU->getSlice()->getSPS()->getUseIntraEMT() )
   {

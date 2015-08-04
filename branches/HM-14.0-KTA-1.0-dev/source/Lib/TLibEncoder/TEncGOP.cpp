@@ -1826,6 +1826,9 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     } // end iteration over slices
 #if ! QC_HEVC_MOTION_CONSTRAINT_REMOVAL
     pcPic->compressMotion();
+#else
+    if (!pcSlice->getSPS()->getAtmvpEnableFlag())
+      pcPic->compressMotion();
 #endif    
     //-- For time output for each slice
     Double dEncTime = (Double)(clock()-iBeforeTime) / CLOCKS_PER_SEC;
