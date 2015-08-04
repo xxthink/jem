@@ -52,11 +52,19 @@ const UChar TComPattern::m_aucIntraFilter[MAX_CU_DEPTH] =
 const UChar TComPattern::m_aucIntraFilter[5] =
 #endif
 {
+#if QC_USE_65ANG_MODES
+  20, //4x4
+  14, //8x8
+  2, //16x16
+  0, //32x32
+  20, //64x64
+#else
   10, //4x4
   7, //8x8
   1, //16x16
   0, //32x32
   10, //64x64
+#endif
 #if QC_LARGE_CTU
   0, //128x128
   0, //256x256
@@ -873,7 +881,11 @@ Int* TComPattern::getAdiCrBuf(Int iCuWidth,Int iCuHeight, Int* piAdiBuf)
  *
  * The prediction mode index is used to determine whether a smoothed reference sample buffer is returned.
  */
-Int* TComPattern::getPredictorPtr( UInt uiDirMode, UInt log2BlkSize, Int* piAdiBuf )
+Int* TComPattern::getPredictorPtr( UInt uiDirMode, UInt log2BlkSize, Int* piAdiBuf 
+#if QC_USE_65ANG_MODES
+                                  , Bool bUseExtIntraAngModes
+#endif
+                                  )
 {
   Int* piSrc;
 #if QC_LARGE_CTU

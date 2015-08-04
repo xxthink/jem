@@ -72,8 +72,13 @@ private:
 
   Bool                m_bDecodeDQP;
 #if QC_SUB_PU_TMVP
+#if QC_SUB_PU_TMVP_EXT
+  TComMvField*        m_pMvFieldSP[2];
+  UChar*              m_phInterDirSP[2];
+#else
   TComMvField*        m_pMvFieldSP;
   UChar*              m_phInterDirSP;
+#endif
 #endif
   
 public:
@@ -122,9 +127,11 @@ protected:
   Void setdQPFlag               ( Bool b )                { m_bDecodeDQP = b;           }
   Void xFillPCMBuffer           (TComDataCU* pCU, UInt depth);
 
+#if QC_FRUC_MERGE
+  Void xDeriveCUMV( TComDataCU * pcCU , UInt uiAbsPartIdx , UInt uiDepth );
+#endif
 };
 
 //! \}
-
 #endif
 

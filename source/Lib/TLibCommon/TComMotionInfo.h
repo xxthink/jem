@@ -43,7 +43,7 @@
 #include "CommonDef.h"
 #include "TComMv.h"
 
-#if QC_SUB_PU_TMVP
+#if QC_SUB_PU_TMVP || QC_FRUC_MERGE
 class TComDataCU;
 class TComPic;
 #endif
@@ -89,7 +89,7 @@ public:
   Int getRefIdx() const { return  m_iRefIdx;       }
   Int getHor   () const { return  m_acMv.getHor(); }
   Int getVer   () const { return  m_acMv.getVer(); }
-#if GEN_MRG_IMPROVEMENT || QC_OBMC
+#if GEN_MRG_IMPROVEMENT || QC_OBMC || QC_FRUC_MERGE
   Bool operator== (const TComMvField& rcMv) const
   {
     return (m_acMv.getHor()== rcMv.getHor() && m_acMv.getVer()== rcMv.getVer() && m_iRefIdx == rcMv.getRefIdx());
@@ -138,7 +138,14 @@ public:
   TComMv const & getMv    ( Int iIdx ) const { return  m_pcMv    [iIdx]; }
   TComMv const & getMvd   ( Int iIdx ) const { return  m_pcMvd   [iIdx]; }
   Int            getRefIdx( Int iIdx ) const { return  m_piRefIdx[iIdx]; }
- 
+#if QC_FRUC_MERGE
+  Void    setMv             ( TComMv  cMv,     Int iIdx ) { m_pcMv    [iIdx] = cMv;     }
+  Void    setRefIdx         ( Int     iRefIdx, Int iIdx ) { m_piRefIdx[iIdx] = iRefIdx; }
+#endif
+#if QC_SUB_PU_TMVP_EXT 
+  Void    setMvField         ( TComMvField cMvField, Int iIdx   ) { m_pcMv    [iIdx] = cMvField.getMv();  m_piRefIdx[iIdx] = cMvField.getRefIdx();   };
+  Void    setMvd             ( TComMv  cMv,     Int iIdx ) { m_pcMvd    [iIdx] = cMv;     }
+#endif
   AMVPInfo* getAMVPInfo () { return &m_cAMVPInfo; }
   
   // ------------------------------------------------------------------------------------------------------------------
@@ -151,7 +158,7 @@ public:
   Void    setAllMvField( TComMvField const & mvField, PartSize eMbMode, Int iPartAddr, UInt uiDepth, Int iPartIdx=0 );
 
   
-#if QC_SUB_PU_TMVP
+#if QC_SUB_PU_TMVP || QC_FRUC_MERGE
   Void    setMvFieldSP ( TComDataCU* pcCU, UInt uiAbsPartIdx, TComMvField cMvField, Int iWidth, Int iHeight  );
 #endif
 

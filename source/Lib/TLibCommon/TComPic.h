@@ -100,6 +100,9 @@ public:
   Void          setCheckLTMSBPresent     (Bool b ) {m_bCheckLTMSB=b;}
   Bool          getCheckLTMSBPresent     () { return m_bCheckLTMSB;}
 
+#if QC_FRUC_MERGE
+  Void          initFRUCMVP()         { return m_apcPicSym->initFRUCMVP();  }
+#endif
   TComPicSym*   getPicSym()           { return  m_apcPicSym;    }
   TComSlice*    getSlice(Int i)       { return  m_apcPicSym->getSlice(i);  }
   Int           getPOC()              { return  m_apcPicSym->getSlice(m_uiCurrSliceIdx)->getPOC();  }

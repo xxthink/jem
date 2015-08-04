@@ -149,6 +149,16 @@ public:
     Int mvy = Clip3( -32768, 32767, (iScale * getVer() + 127 + (iScale * getVer() < 0)) >> 8 );
     return TComMv( mvx, mvy );
   }
+
+#if QC_MV_STORE_PRECISION_BIT
+  Void roundMV2SignalPrecision()
+  {
+    Int nShift = QC_MV_STORE_PRECISION_BIT - QC_MV_SIGNAL_PRECISION_BIT;
+    Int nOffset = 1 << ( nShift - 1 );
+    m_iHor = m_iHor >= 0 ? ( m_iHor + nOffset ) >> nShift << nShift : - ( ( -m_iHor + nOffset ) >> nShift << nShift );
+    m_iVer = m_iVer >= 0 ? ( m_iVer + nOffset ) >> nShift << nShift : - ( ( -m_iVer + nOffset ) >> nShift << nShift );
+  }
+#endif
 };// END CLASS DEFINITION TComMV
 
 //! \}

@@ -101,13 +101,96 @@
 #endif
 
 // code cleaning and optimization
-#define QC_SIMD_OPT                         0
+#define QC_SIMD_OPT                         1
 #define HM14_CLEAN_UP                       1
 #if HM14_CLEAN_UP
 #define MLS_CG_BITS                         2
 #endif
 ///////////////////////////////////////////////////////////
 // Contribution COM16–C806 (QUALCOMM) defines section end
+///////////////////////////////////////////////////////////
+
+
+///////////////////////////////////////////////////////////
+// Contribution VCEG-AZ05 (SAMSUNG) defines section starts
+///////////////////////////////////////////////////////////
+#define MULTI_PARAM_CABAC                   1
+#if MULTI_PARAM_CABAC
+#define ALPHA0                              4       // 2^ALPHA0 is 1st "window size" for probability up-date (4,5,6,7; could be adaptive if ENABLE_ADAPTIVE_W==1)
+#endif
+#define BIO                                 1  // bi-directional optical flow
+#define ROT_TR                              1  // rotational transform for 4x4 coefficients sub-blocks
+#define CU_LEVEL_MPI                        1 // multi-parameter Intra prediction
+#if CU_LEVEL_MPI
+  #define MPI_DICT_SIZE_INTRA         4
+  #define MPI_DICT_SIZE_INTER         2
+#endif
+// confirmation from Qualcomm is needed:
+#define FREE_2_DELETE   1
+#define QC_ECABAC_BF    1
+#define QC_EMT_BF       1
+///////////////////////////////////////////////////////////
+// Contribution VCEG-AZ05 (SAMSUNG) defines section ends
+///////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////
+// Contribution VCEG-AZ07 (QUALCOMM) defines section starts
+///////////////////////////////////////////////////////////
+#define QC_ECABAC                           1  /// CABAC improvements
+#if QC_ECABAC
+#define DEBUG                               1  //for CABAC debug
+#define QC_CTX_RESIDUALCODING               1  //new ctx for residual coding
+
+#define QC_AC_ADAPT_WDOW                    1
+#if QC_AC_ADAPT_WDOW
+#if !MULTI_PARAM_CABAC
+#define ALPHA0                              6       // 2^ALPHA0 is "window size" for probability up-date
+#endif
+#define CABAC_NUM_BINS                      100000
+#define NUM_WDOW                            4       //could be 16, 32, 64, 128
+#define ENABLE_ADAPTIVE_W                   1       //0: always use ALPHA0
+#define INIT_PREVFRAME                      1       //initilized probabilities are from previously coded frames
+#endif
+#endif
+
+#define QC_FRUC_MERGE                       1
+#if QC_FRUC_MERGE
+#define QC_FRUC_MERGE_OFF                   0x0
+#define QC_FRUC_MERGE_BILATERALMV           0x01
+#define QC_FRUC_MERGE_TEMPLATE              0x02
+#define QC_FRUC_MERGE_TEMPLATE_SIZE         4
+#define QC_FRUC_MERGE_REFINE_MVWEIGHT       4
+#define QC_FRUC_MERGE_REFINE_MINBLKSIZE     4
+#define QC_MV_STORE_PRECISION_BIT           3
+#define QC_MV_SIGNAL_PRECISION_BIT          2
+#endif
+
+#define QC_IMV                              1
+
+#define QC_SUB_PU_TMVP_V08                  QC_FRUC_MERGE
+#define MERGE_CAND_NUM_PATCH                1
+
+#if QC_SUB_PU_TMVP
+#define QC_SUB_PU_TMVP_EXT                  1
+#endif
+
+#define QC_INTRA_4TAP_FILTER                1 ///< Intra 4-tap interpolation filters
+#define INTRA_BOUNDARY_FILTER               1 ///< Intra Boundary Filtering
+#if INTRA_BOUNDARY_FILTER
+#define INTRA_BOUNDARY_FILTER_MULTI_LINE    1 /// 0: Filter one boundary line, 1: Filter 4 boundary lines
+#endif
+
+#define QC_USE_65ANG_MODES                  1 ///< Extended angular intra prediction, including 65 angular modes & 6 MPMs
+
+#define QC_IC                               1 ///< Illumination Compensation
+#if QC_IC
+#define IC_REG_COST_SHIFT                   7
+#define IC_CONST_SHIFT                      5
+#define IC_SHIFT_DIFF                       12
+#define QC_IC_SPDUP                         1 //speedup of IC
+#endif
+///////////////////////////////////////////////////////////
+// Contribution VCEG-AZ07 (QUALCOMM) defines section ends
 ///////////////////////////////////////////////////////////
 
 #define HARMONIZE_GOP_FIRST_FIELD_COUPLE  1
@@ -141,8 +224,9 @@
 #define MAX_CPB_CNT                     32  ///< Upper bound of (cpb_cnt_minus1 + 1)
 #define MAX_NUM_LAYER_IDS                64
 
+#if !QC_CTX_RESIDUALCODING
 #define COEF_REMAIN_BIN_REDUCTION        3 ///< indicates the level at which the VLC 
-                                           ///< transitions from Golomb-Rice to TU+EG(k)
+#endif                                     ///< transitions from Golomb-Rice to TU+EG(k)
 
 #define CU_DQP_TU_CMAX 5                   ///< max number bins for truncated unary
 #define CU_DQP_EG_k 0                      ///< expgolomb order
@@ -205,7 +289,11 @@
 
 #define ZERO_MVD_EST                          0           ///< Zero Mvd Estimation in normal mode
 
+#if QC_USE_65ANG_MODES
+#define NUM_INTRA_MODE 68
+#else
 #define NUM_INTRA_MODE 36
+#endif
 
 #define WRITE_BACK                      1           ///< Enable/disable the encoder to replace the deltaPOC and Used by current from the config file with the values derived by the refIdc parameter.
 #define AUTO_INTER_RPS                  1           ///< Enable/disable the automatic generation of refIdc from the deltaPOC and Used by current from the config file.
@@ -217,17 +305,32 @@
 #define RVM_VCEGAM10_M 4
 
 #define PLANAR_IDX             0
+#if QC_USE_65ANG_MODES
+#define NUM_DIR                (((NUM_INTRA_MODE-4)>>2)+1)
+#define HOR_IDX                (1*(NUM_DIR-1)+2)       // index for intra HORIZONTAL mode
+#define DIA_IDX                (2*(NUM_DIR-1)+2)       // index for intra DIAGONAL   mode
+#define VER_IDX                (3*(NUM_DIR-1)+2)       // index for intra VERTICAL   mode
+#define VDIA_IDX               (4*(NUM_DIR-1)+2)       // index for intra VERTICAL DIAGONAL   mode
+#else
 #define VER_IDX                26                    // index for intra VERTICAL   mode
 #define HOR_IDX                10                    // index for intra HORIZONTAL mode
+#endif
 #define DC_IDX                 1                     // index for intra DC mode
 #if QC_LMCHROMA
 #define NUM_CHROMA_MODE        6                     // total number of chroma modes
+#if QC_USE_65ANG_MODES
+#define LM_CHROMA_IDX          (NUM_INTRA_MODE-1)
+#else
 #define LM_CHROMA_IDX          35
+#endif
 #else
 #define NUM_CHROMA_MODE        5                     // total number of chroma modes
 #endif
+#if QC_USE_65ANG_MODES
+#define DM_CHROMA_IDX          NUM_INTRA_MODE        // chroma mode index for derived from luma intra mode
+#else
 #define DM_CHROMA_IDX          36                    // chroma mode index for derived from luma intra mode
-
+#endif
 
 #define FAST_UDI_USE_MPM 1
 
@@ -448,6 +551,9 @@ enum PartSize
   SIZE_2NxnD,           ///< asymmetric motion partition, 2Nx(3N/2) + 2Nx( N/2)
   SIZE_nLx2N,           ///< asymmetric motion partition, ( N/2)x2N + (3N/2)x2N
   SIZE_nRx2N,           ///< asymmetric motion partition, (3N/2)x2N + ( N/2)x2N
+#if QC_IMV
+  NUMBER_OF_PART_SIZES = 8,
+#endif
   SIZE_NONE = 15
 };
 
@@ -647,6 +753,25 @@ struct _AlfParam
   UInt *alf_cu_flag;
 
 };
+#endif
+
+#if QC_AC_ADAPT_WDOW
+typedef struct _CABACState
+{
+  Bool bActived;
+  UChar uiWdow; 
+  UInt uiQP;
+} CABACState;
+
+typedef struct _QPFLAG
+{
+  UInt uiQP;       
+  Bool bUsed;      //same QP, same type has appearaed
+  Bool bFirstUsed; //same QP, same type was firstly signaled
+#if INIT_PREVFRAME
+  UInt uiResetInit; //for the first B/P frame after intra slice, no init update
+#endif
+} QPFlag;
 #endif
 //! \}
 

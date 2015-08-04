@@ -599,6 +599,9 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
       parseScalingList( pcSPS->getScalingList() );
     }
   }
+#if QC_IC
+  READ_FLAG( uiCode, "illumination_comp_enabled_flag" );             pcSPS->setICFlag(uiCode);
+#endif
 #if QC_SUB_PU_TMVP
   READ_FLAG( uiCode, "atmvp_flag"); pcSPS->setAtmvpEnableFlag( uiCode );
   READ_CODE( 3, uiCode, "log2_sub_pu_tmvp_size" );          pcSPS->setSubPUTLog2Size(uiCode);
@@ -608,11 +611,29 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
 #endif
 
   READ_FLAG( uiCode, "amp_enabled_flag" );                          pcSPS->setUseAMP( uiCode );
+#if QC_FRUC_MERGE
+  READ_FLAG( uiCode , "fruc_merge_mode" );              pcSPS->setUseFRUCMgrMode( uiCode );
+  if( pcSPS->getUseFRUCMgrMode() )
+  {
+    READ_UVLC( uiCode , "fruc_refine_filter" );         pcSPS->setFRUCRefineFilter( uiCode );
+    READ_UVLC( uiCode , "fruc_refine_range_in_pixel" ); pcSPS->setFRUCRefineRange( uiCode << QC_MV_STORE_PRECISION_BIT );
+    READ_UVLC( uiCode , "fruc_small_blk_refine_depth" );      pcSPS->setFRUCSmallBlkRefineDepth( uiCode );
+  }
+#endif
 #if QC_EMT_INTRA
   READ_UVLC( uiCode, "use_intra_emt" );    pcSPS->setUseIntraEMT(uiCode);
 #endif
 #if QC_EMT_INTER
   READ_UVLC( uiCode, "use_inter_emt" );    pcSPS->setUseInterEMT(uiCode);
+#endif
+#if QC_INTRA_4TAP_FILTER
+  READ_FLAG( uiCode, "intra_4tap_filter_enabled_flag" ); pcSPS->setUse4TapIntraFilter( uiCode );
+#endif
+#if INTRA_BOUNDARY_FILTER
+  READ_FLAG( uiCode, "boundary_filter_enabled_flag" ); pcSPS->setUseBoundaryFilter( uiCode );
+#endif
+#if QC_USE_65ANG_MODES
+  READ_FLAG( uiCode, "ext_intra_angular_modes_enabled_flag" ); pcSPS->setUseExtIntraAngModes( uiCode );
 #endif
 #if QC_OBMC
   READ_FLAG( uiCode , "obmc_flag" );       pcSPS->setOBMC( uiCode );
@@ -662,6 +683,10 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
   READ_FLAG( uiCode, "sps_temporal_mvp_enable_flag" );            pcSPS->setTMVPFlagsPresent(uiCode);
 
   READ_FLAG( uiCode, "sps_strong_intra_smoothing_enable_flag" );  pcSPS->setUseStrongIntraSmoothing(uiCode);
+
+#if QC_IMV
+  READ_FLAG( uiCode , "QC_IMV" );                              pcSPS->setIMV( uiCode );
+#endif
 
 #if QC_LMCHROMA
   READ_FLAG( uiCode, "cross_component_prediction_enabled_flag" );        pcSPS->setUseLMChroma ( uiCode ? true : false );
@@ -767,6 +792,89 @@ Void TDecCavlc::parseVPS(TComVPS* pcVPS)
   
   return;
 }
+
+#if QC_AC_ADAPT_WDOW
+Void TDecCavlc::  xRunDecoding(Bool * uiCtxMAP,  UInt uiNumCtx)
+{
+  UInt uiRun = 0, uiIndex = 0;
+  while (uiIndex<uiNumCtx)
+  {
+    READ_UVLC (uiRun, "CtxUpdateMap");
+    uiIndex+=uiRun;
+    if (uiIndex>=uiNumCtx)
+      break;
+    uiCtxMAP[uiIndex]=1;
+    uiIndex++;
+  }
+}
+Void TDecCavlc::xLevelDecoding       (Bool * uiCtxMAP, UChar *uiCtxCodeIdx, UInt uiNumCtx)
+{
+  Int i;
+  UInt uiIdx;
+  for (i = 0; i< uiNumCtx; i++)
+  {
+    if (uiCtxMAP[i])
+    {
+      READ_UVLC(uiIdx, "wind diff");
+#if (ALPHA0!=6)
+      uiCtxCodeIdx[i] = (UChar)((uiIdx+4 >=ALPHA0) ? (uiIdx+5): (uiIdx+4));
+#else
+    uiCtxCodeIdx[i] = (UChar)(uiIdx ==2 ? (uiIdx+5):(uiIdx+4));
+#endif
+    }
+    else
+    {
+      assert(uiCtxCodeIdx[i] == ALPHA0);
+    }
+  }
+}
+Void TDecCavlc:: parseCtxUpdateInfo (TComSlice*& rpcSlice, TComStats* apcStats )  
+{
+  UInt uiUpdate = 0;
+  READ_FLAG( uiUpdate, "cabac_newWindow_flag" ); 
+
+  if (uiUpdate == 0)
+  {
+    rpcSlice->setCtxMapQPIdx(-1);
+    m_pcBitstream->readByteAlignment();
+    return;
+  }
+
+  UInt bReuse = 0;
+  READ_FLAG( bReuse, "cabac_reusePrevFrame_flag" ); 
+
+  //start for verifications
+  Int  iQP = -1;
+
+  UInt uiSliceType = rpcSlice->getSliceType();
+  UInt uiSliceQP   = rpcSlice->getSliceQp()  ;
+
+  for (UInt k = 0; k < NUM_QP_PROB; k++)
+  {
+    if (apcStats-> aaQPUsed[uiSliceType][k].bUsed ==true && apcStats-> aaQPUsed[uiSliceType][k].uiQP == uiSliceQP)
+    {
+      iQP  = k;   
+      break;
+    }
+  } 
+
+  rpcSlice->setCtxMapQPIdx(iQP);
+  apcStats->m_uiNumCtx[uiSliceType][iQP] = NUM_CTX_PBSLICE;
+
+  if(!bReuse)
+  {
+    for (int i =0; i<MAX_NUM_CTX_MOD;i++)
+    {
+      apcStats->m_uiCtxMAP[uiSliceType][iQP][i] = 0;
+      apcStats->m_uiCtxCodeIdx[uiSliceType][iQP][i] = ALPHA0; 
+    }
+    xRunDecoding   (apcStats->m_uiCtxMAP[uiSliceType][iQP], apcStats->m_uiNumCtx[uiSliceType][iQP]);
+    xLevelDecoding (apcStats->m_uiCtxMAP[uiSliceType][iQP], apcStats->m_uiCtxCodeIdx[uiSliceType][iQP], apcStats->m_uiNumCtx[uiSliceType][iQP]);
+  }
+  m_pcBitstream->readByteAlignment();
+  return;
+}
+#endif
 
 Void TDecCavlc::parseSliceHeader (TComSlice*& rpcSlice, ParameterSetManagerDecoder *parameterSetManager)
 {
@@ -1200,9 +1308,17 @@ Void TDecCavlc::parseSliceHeader (TComSlice*& rpcSlice, ParameterSetManagerDecod
       xParsePredWeightTable(rpcSlice);
       rpcSlice->initWpScaling();
     }
+#if QC_IC
+    if (sps->getICFlag()&& rpcSlice->getSliceType() != I_SLICE)
+    {
+      UInt uiCodeTmp = 0;
+      READ_FLAG ( uiCodeTmp, "slice_ic_enable_flag" );
+      rpcSlice->setApplyIC( uiCodeTmp );
+    }
+#endif
     if (!rpcSlice->isIntra())
     {
-#if QC_SUB_PU_TMVP
+#if QC_SUB_PU_TMVP &&!MERGE_CAND_NUM_PATCH
       READ_UVLC( uiCode, rpcSlice->getSPS()->getAtmvpEnableFlag() ? "six_minus_max_num_merge_cand": "five_minus_max_num_merge_cand");
       rpcSlice->setMaxNumMergeCand(MRG_MAX_NUM_CANDS - ( rpcSlice->getSPS()->getAtmvpEnableFlag() ? 0 : 1) - uiCode);
       
@@ -1318,7 +1434,9 @@ Void TDecCavlc::parseSliceHeader (TComSlice*& rpcSlice, ParameterSetManagerDecod
       READ_CODE(8,ignore,"slice_header_extension_data_byte");
     }
   }
+#if !QC_AC_ADAPT_WDOW
   m_pcBitstream->readByteAlignment();
+#endif
 
   if( pps->getTilesEnabledFlag() || pps->getEntropyCodingSyncEnabledFlag() )
   {
@@ -1477,6 +1595,13 @@ Void TDecCavlc::parseSkipFlag( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt
   assert(0);
 }
 
+#if QC_IMV
+Void TDecCavlc::parseiMVFlag( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/ )
+{
+  assert(0);
+}
+#endif
+
 #if QC_OBMC
 Void TDecCavlc::parseOBMCFlag( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/ )
 {
@@ -1484,6 +1609,12 @@ Void TDecCavlc::parseOBMCFlag( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt
 }
 #endif
 
+#if QC_IC
+Void TDecCavlc::parseICFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
+{
+  assert(0);
+}
+#endif
 
 Void TDecCavlc::parseCUTransquantBypassFlag( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/ )
 {
@@ -1575,7 +1706,11 @@ Void TDecCavlc::parseDeltaQP( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth 
   pcCU->setQPSubParts( qp, uiAbsQpCUPartIdx, uiQpCUDepth );
 }
 
-Void TDecCavlc::parseCoeffNxN( TComDataCU* /*pcCU*/, TCoeff* /*pcCoef*/, UInt /*uiAbsPartIdx*/, UInt /*uiWidth*/, UInt /*uiHeight*/, UInt /*uiDepth*/, TextType /*eTType*/ )
+Void TDecCavlc::parseCoeffNxN( TComDataCU* /*pcCU*/, TCoeff* /*pcCoef*/, UInt /*uiAbsPartIdx*/, UInt /*uiWidth*/, UInt /*uiHeight*/, UInt /*uiDepth*/, TextType /*eTType*/ 
+#if ROT_TR
+    , Bool& /*g_bCbfCU*/
+#endif
+    )
 {
   assert(0);
 }
@@ -1599,6 +1734,18 @@ Void TDecCavlc::parseTransformSkipFlags (TComDataCU* /*pcCU*/, UInt /*uiAbsPartI
 {
   assert(0);
 }
+#if ROT_TR  
+Void TDecCavlc::parseROTIdx ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/ )
+{
+  assert(0);
+}
+#endif
+#if CU_LEVEL_MPI
+Void TDecCavlc::parseMPIIdx ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/ )
+{
+  assert(0);
+}
+#endif
 
 Void TDecCavlc::parseMergeFlag ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/, UInt /*uiPUIdx*/ )
 {
@@ -1610,6 +1757,12 @@ Void TDecCavlc::parseMergeIndex ( TComDataCU* /*pcCU*/, UInt& /*ruiMergeIndex*/ 
   assert(0);
 }
 
+#if QC_FRUC_MERGE
+Void TDecCavlc::parseFRUCMgrMode ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/, UInt /*uiPUIdx*/ )
+{
+  assert(0);
+}
+#endif
 // ====================================================================================================================
 // Protected member functions
 // ====================================================================================================================
