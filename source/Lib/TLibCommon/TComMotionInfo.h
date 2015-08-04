@@ -43,7 +43,7 @@
 #include "CommonDef.h"
 #include "TComMv.h"
 
-#if QC_SUB_PU_TMVP
+#if QC_SUB_PU_TMVP || QC_FRUC_MERGE
 class TComDataCU;
 class TComPic;
 #endif
@@ -158,7 +158,7 @@ public:
   Void    setAllMvField( TComMvField const & mvField, PartSize eMbMode, Int iPartAddr, UInt uiDepth, Int iPartIdx=0 );
 
   
-#if QC_SUB_PU_TMVP
+#if QC_SUB_PU_TMVP || QC_FRUC_MERGE
   Void    setMvFieldSP ( TComDataCU* pcCU, UInt uiAbsPartIdx, TComMvField cMvField, Int iWidth, Int iHeight  );
 #endif
 

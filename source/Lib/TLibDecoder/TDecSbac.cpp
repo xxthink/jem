@@ -787,6 +787,7 @@ Void TDecSbac::parseEmtTuIdx( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth 
  */
 Void TDecSbac::parseEmtCuFlag  ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bParseCuFlag )
 {
+  assert( uiDepth < NUM_EMT_CU_FLAG_CTX );
   pcCU->setEmtCuFlagSubParts( 0, uiAbsPartIdx, uiDepth );
   pcCU->setEmtTuIdxSubParts( DCT2_EMT, uiAbsPartIdx, uiDepth );
 

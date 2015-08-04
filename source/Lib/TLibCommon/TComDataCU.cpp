@@ -4114,6 +4114,21 @@ Void TComDataCU::getInterMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TComM
   }
 #endif
 #else
+#if QC_SUB_PU_TMVP_EXT
+  for (Int i=0; i< getPic()->getPicSym()->getNumPartition(); i++)
+  {
+    puhInterDirSP[0][i] = 0;
+    pcMvFieldSP[0][2*i].getMv().set(0, 0);
+    pcMvFieldSP[0][2*i+1].getMv().set(0, 0);
+    pcMvFieldSP[0][2*i].setRefIdx(-1);
+    pcMvFieldSP[0][2*i+1].setRefIdx(-1);
+    puhInterDirSP[1][i] = 0;
+    pcMvFieldSP[1][2*i].getMv().set(0, 0);
+    pcMvFieldSP[1][2*i+1].getMv().set(0, 0);
+    pcMvFieldSP[1][2*i].setRefIdx(-1);
+    pcMvFieldSP[1][2*i+1].setRefIdx(-1);
+  }
+#else
   for (Int i=0; i< getPic()->getPicSym()->getNumPartition(); i++)
   {
     puhInterDirSP[i] = 0;
@@ -4122,6 +4137,7 @@ Void TComDataCU::getInterMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TComM
     pcMvFieldSP[2*i].setRefIdx(-1);
     pcMvFieldSP[2*i+1].setRefIdx(-1);
   }
+#endif
 #endif
   memset(peMergeTypeNeighbors, MGR_TYPE_DEFAULT_N, sizeof(UChar)*MRG_MAX_NUM_CANDS);
   Bool bAtmvpAva = false;

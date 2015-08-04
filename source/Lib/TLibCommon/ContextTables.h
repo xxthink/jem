@@ -81,7 +81,11 @@
 
 #if QC_EMT
 #define NUM_EMT_TU_IDX_CTX            4
+#if QC_LARGE_CTU
+#define NUM_EMT_CU_FLAG_CTX           6
+#else
 #define NUM_EMT_CU_FLAG_CTX           4
+#endif
 #endif
 #if QC_IC
 #define NUM_IC_FLAG_CTX               1       ///< number of context models for illumination compensation flag
@@ -295,9 +299,15 @@ INIT_EMT_TU_IDX[3][NUM_EMT_TU_IDX_CTX] =
 static const UChar 
 INIT_EMT_CU_FLAG[3][NUM_EMT_CU_FLAG_CTX] = 
 {
+#if QC_LARGE_CTU
+  { CNU,  CNU, CNU,  CNU,  CNU,  CNU },
+  { CNU,  CNU, CNU,  CNU,  CNU,  CNU },
+  { CNU,  CNU, CNU,  CNU,  CNU,  CNU }, 
+#else
   { CNU,  CNU, CNU,  CNU },
   { CNU,  CNU, CNU,  CNU },
   { CNU,  CNU, CNU,  CNU }, 
+#endif
 };
 #endif
 

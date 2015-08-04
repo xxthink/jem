@@ -1783,9 +1783,9 @@ Void TEncSlice::xGenUpdateMapAlF (UInt uiSliceType, Int iQP,  TComStats* apcStat
   {
     xContextWdowSizeUpdateDecision(pTestEncSbac, uiCtxStartPos, pCtx, apcStats->m_uiCtxMAP[uiSliceType][iQP], apcStats->m_uiCtxCodeIdx[uiSliceType][iQP], pCodedBinStr, pCounter);
   }
-  if(pTestEncSbac)        {free(pTestEncSbac);             pTestEncSbac        = NULL;      }
-  if(pcTestBinCoderCABAC) {free(pcTestBinCoderCABAC);      pcTestBinCoderCABAC = NULL;      }
-  if(pBitIf)              {free(pBitIf);                   pBitIf              = NULL;      }
+  if(pTestEncSbac)        {delete pTestEncSbac;             pTestEncSbac        = NULL;      }
+  if(pcTestBinCoderCABAC) {delete pcTestBinCoderCABAC;      pcTestBinCoderCABAC = NULL;      }
+  if(pBitIf)              {delete pBitIf;                   pBitIf              = NULL;      }
 }
 #endif
 
@@ -1887,16 +1887,20 @@ Void TEncSlice::xGenUpdateMap (UInt uiSliceType, Int iQP,  TComStats* apcStats)
     }
   }
   apcStats->m_uiNumCtx[uiSliceType][iQP] = uiCtxStartPos + NUM_ALF_CTX; 
-  assert( apcStats->m_uiNumCtx[uiSliceType][iQP] == pSbacCoder->getCtxNumber());
 
   if(bUpdate==false)
   {
     apcStats->m_uiNumCtx[uiSliceType][iQP]= 0; 
+    for(UInt i = iCtxNr; i < (NUM_ALF_CTX + iCtxNr); i ++ )
+    {
+      apcStats->m_uiCtxMAP[uiSliceType][iQP][i] = 0;
+      apcStats->m_uiCtxCodeIdx[uiSliceType][iQP][i] = ALPHA0;
+    }
   }
 
-  if(pTestEncSbac)        {free(pTestEncSbac);             pTestEncSbac        = NULL;      }
-  if(pcTestBinCoderCABAC) {free(pcTestBinCoderCABAC);      pcTestBinCoderCABAC = NULL;      }
-  if(pBitIf)              {free(pBitIf);                   pBitIf              = NULL;      }
+  if(pTestEncSbac)        {delete pTestEncSbac;             pTestEncSbac        = NULL;      }
+  if(pcTestBinCoderCABAC) {delete pcTestBinCoderCABAC;      pcTestBinCoderCABAC = NULL;      }
+  if(pBitIf)              {delete pBitIf;                   pBitIf              = NULL;      }
 
 }
 #endif
