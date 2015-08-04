@@ -1603,7 +1603,7 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
             nalu.m_Bitstream.setStatsHandle(m_apcStats);
             m_pcEntropyCoder->setStatsHandle(nalu.m_Bitstream.getStatsHandle());         
             Int iQPIdx = xUpdateTStates (pcSlice->getSliceType(), pcSlice->getSliceQp(), m_apcStats);
-#if ENABLE_ADAPTIVE_W
+#if ENABLE_ADAPTIVE_W && ALF_HM3_QC_REFACTOR
             TEncBinCABAC* pEncBin = m_pcEntropyCoder->getCABACCoder()->getBinIf()->getTEncBinCABAC();
 #endif
             pcSlice->setQPIdx(iQPIdx);
