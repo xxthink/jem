@@ -135,6 +135,11 @@
 		71AD603911EBC28500F5F1FE /* libTLibCommon.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 6767959411AD61BB00421804 /* libTLibCommon.a */; };
 		71AD603A11EBC28D00F5F1FE /* libTLibEncoder.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 6767961911AD626F00421804 /* libTLibEncoder.a */; };
 		71AD603B11EBC29600F5F1FE /* libTLibVideoIO.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 6767964B11AD629200421804 /* libTLibVideoIO.a */; };
+		71E903651B737E8F00414089 /* TComAdaptiveLoopFilter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71E903621B737E8F00414089 /* TComAdaptiveLoopFilter.cpp */; };
+		71E903661B737E8F00414089 /* TComAdaptiveLoopFilter.h in Headers */ = {isa = PBXBuildFile; fileRef = 71E903631B737E8F00414089 /* TComAdaptiveLoopFilter.h */; };
+		71E903671B737E8F00414089 /* TComCodingStatistics.h in Headers */ = {isa = PBXBuildFile; fileRef = 71E903641B737E8F00414089 /* TComCodingStatistics.h */; };
+		71E9036A1B737ECA00414089 /* TEncAdaptiveLoopFilter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71E903681B737ECA00414089 /* TEncAdaptiveLoopFilter.cpp */; };
+		71E9036B1B737ECA00414089 /* TEncAdaptiveLoopFilter.h in Headers */ = {isa = PBXBuildFile; fileRef = 71E903691B737ECA00414089 /* TEncAdaptiveLoopFilter.h */; };
 		DB7795C213F1226500C92469 /* TEncPic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DB7795BE13F1226500C92469 /* TEncPic.cpp */; };
 		DB7795C313F1226500C92469 /* TEncPic.h in Headers */ = {isa = PBXBuildFile; fileRef = DB7795BF13F1226500C92469 /* TEncPic.h */; };
 		DB7795C413F1226500C92469 /* TEncPreanalyzer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DB7795C013F1226500C92469 /* TEncPreanalyzer.cpp */; };
@@ -348,6 +353,11 @@
 		719E0DAA1A927238000361D4 /* SEIEncoder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SEIEncoder.h; path = source/Lib/TLibEncoder/SEIEncoder.h; sourceTree = "<group>"; };
 		719E0DAD1A927294000361D4 /* SEIwrite.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = SEIwrite.cpp; path = source/Lib/TLibEncoder/SEIwrite.cpp; sourceTree = "<group>"; };
 		719E0DAE1A927294000361D4 /* SEIwrite.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SEIwrite.h; path = source/Lib/TLibEncoder/SEIwrite.h; sourceTree = "<group>"; };
+		71E903621B737E8F00414089 /* TComAdaptiveLoopFilter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = TComAdaptiveLoopFilter.cpp; path = source/Lib/TLibCommon/TComAdaptiveLoopFilter.cpp; sourceTree = "<group>"; };
+		71E903631B737E8F00414089 /* TComAdaptiveLoopFilter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = TComAdaptiveLoopFilter.h; path = source/Lib/TLibCommon/TComAdaptiveLoopFilter.h; sourceTree = "<group>"; };
+		71E903641B737E8F00414089 /* TComCodingStatistics.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = TComCodingStatistics.h; path = source/Lib/TLibCommon/TComCodingStatistics.h; sourceTree = "<group>"; };
+		71E903681B737ECA00414089 /* TEncAdaptiveLoopFilter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = TEncAdaptiveLoopFilter.cpp; path = source/Lib/TLibEncoder/TEncAdaptiveLoopFilter.cpp; sourceTree = "<group>"; };
+		71E903691B737ECA00414089 /* TEncAdaptiveLoopFilter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = TEncAdaptiveLoopFilter.h; path = source/Lib/TLibEncoder/TEncAdaptiveLoopFilter.h; sourceTree = "<group>"; };
 		DB7795BE13F1226500C92469 /* TEncPic.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = TEncPic.cpp; path = source/Lib/TLibEncoder/TEncPic.cpp; sourceTree = "<group>"; };
 		DB7795BF13F1226500C92469 /* TEncPic.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = TEncPic.h; path = source/Lib/TLibEncoder/TEncPic.h; sourceTree = "<group>"; };
 		DB7795C013F1226500C92469 /* TEncPreanalyzer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = TEncPreanalyzer.cpp; path = source/Lib/TLibEncoder/TEncPreanalyzer.cpp; sourceTree = "<group>"; };
@@ -487,6 +497,8 @@
 				712FAEA91379BA2F00DB5314 /* NAL.h */,
 				71161E9E16A7253F0021E8A8 /* SEI.cpp */,
 				65EA1B941357451300988950 /* SEI.h */,
+				71E903621B737E8F00414089 /* TComAdaptiveLoopFilter.cpp */,
+				71E903631B737E8F00414089 /* TComAdaptiveLoopFilter.h */,
 				671E0D3E11B6AD8C00F3747B /* TComBitCounter.h */,
 				676795A311AD61FC00421804 /* TComBitStream.cpp */,
 				676795A411AD61FC00421804 /* TComBitStream.h */,
@@ -494,6 +506,7 @@
 				671E0D4011B6AD8C00F3747B /* TComCABACTables.h */,
 				61601BB115A74998008F8892 /* TComChromaFormat.cpp */,
 				61601BB215A74998008F8892 /* TComChromaFormat.h */,
+				71E903641B737E8F00414089 /* TComCodingStatistics.h */,
 				676795A511AD61FC00421804 /* TComDataCU.cpp */,
 				676795A611AD61FC00421804 /* TComDataCU.h */,
 				DBDDB3A913E26B4400A70251 /* TComInterpolationFilter.cpp */,
@@ -583,6 +596,8 @@
 				719E0DAE1A927294000361D4 /* SEIwrite.h */,
 				71206CD916066EDD00A354E7 /* SyntaxElementWriter.cpp */,
 				71206CDA16066EDD00A354E7 /* SyntaxElementWriter.h */,
+				71E903681B737ECA00414089 /* TEncAdaptiveLoopFilter.cpp */,
+				71E903691B737ECA00414089 /* TEncAdaptiveLoopFilter.h */,
 				6767961F11AD628100421804 /* TEncAnalyze.h */,
 				671E0D7211B6ADE900F3747B /* TEncBinCoder.h */,
 				671E0D7311B6ADE900F3747B /* TEncBinCoderCABAC.cpp */,
@@ -693,6 +708,7 @@
 				676795E911AD61FC00421804 /* TComSlice.h in Headers */,
 				676795EB11AD61FC00421804 /* TComTrQuant.h in Headers */,
 				676795ED11AD61FC00421804 /* TComYuv.h in Headers */,
+				71E903661B737E8F00414089 /* TComAdaptiveLoopFilter.h in Headers */,
 				676795EE11AD61FC00421804 /* TypeDef.h in Headers */,
 				671E0D4A11B6AD8C00F3747B /* ContextModel.h in Headers */,
 				671E0D4C11B6AD8C00F3747B /* ContextModel3DBuffer.h in Headers */,
@@ -713,6 +729,7 @@
 				61601BB715A74998008F8892 /* Debug.h in Headers */,
 				61601BB915A74998008F8892 /* TComChromaFormat.h in Headers */,
 				61601BBA15A74998008F8892 /* TComRectangle.h in Headers */,
+				71E903671B737E8F00414089 /* TComCodingStatistics.h in Headers */,
 				61601BBC15A74998008F8892 /* TComTU.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -745,6 +762,7 @@
 				6767963611AD628100421804 /* TEncCavlc.h in Headers */,
 				6767963711AD628100421804 /* TEncCfg.h in Headers */,
 				6767963911AD628100421804 /* TEncCu.h in Headers */,
+				71E9036B1B737ECA00414089 /* TEncAdaptiveLoopFilter.h in Headers */,
 				6767963B11AD628100421804 /* TEncEntropy.h in Headers */,
 				719E0DAC1A927238000361D4 /* SEIEncoder.h in Headers */,
 				6767963D11AD628100421804 /* TEncGOP.h in Headers */,
@@ -968,6 +986,7 @@
 				65EA1B89135744C400988950 /* libmd5.c in Sources */,
 				65EA1B97135745D500988950 /* TComPicYuvMD5.cpp in Sources */,
 				DBDDB3AB13E26B4400A70251 /* TComInterpolationFilter.cpp in Sources */,
+				71E903651B737E8F00414089 /* TComAdaptiveLoopFilter.cpp in Sources */,
 				DB7795C213F1226500C92469 /* TEncPic.cpp in Sources */,
 				DB7795C413F1226500C92469 /* TEncPreanalyzer.cpp in Sources */,
 				DBC9C94014477F6400A77A93 /* TComSampleAdaptiveOffset.cpp in Sources */,
@@ -1008,6 +1027,7 @@
 				6767963A11AD628100421804 /* TEncEntropy.cpp in Sources */,
 				6767963C11AD628100421804 /* TEncGOP.cpp in Sources */,
 				719E0DAF1A927294000361D4 /* SEIwrite.cpp in Sources */,
+				71E9036A1B737ECA00414089 /* TEncAdaptiveLoopFilter.cpp in Sources */,
 				6767963E11AD628100421804 /* TEncSbac.cpp in Sources */,
 				719E0DAB1A927238000361D4 /* SEIEncoder.cpp in Sources */,
 				6767964011AD628100421804 /* TEncSearch.cpp in Sources */,
