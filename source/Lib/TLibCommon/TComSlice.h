@@ -810,6 +810,9 @@ private:
   UInt             m_pcmLog2MaxSize;
   UInt             m_uiPCMLog2MinSize;
   Bool             m_useAMP;
+#if ALF_HM3_REFACTOR
+  Bool             m_useALF;
+#endif
 
   // Parameter
   BitDepths        m_bitDepths;
@@ -979,6 +982,13 @@ public:
 
   const TComSPSRExt&     getSpsRangeExtension() const                                                    { return m_spsRangeExtension;                                          }
   TComSPSRExt&           getSpsRangeExtension()                                                          { return m_spsRangeExtension;                                          }
+
+  // KTA tools
+#if ALF_HM3_REFACTOR
+  Bool                   getUseALF () const                                                              { return m_useALF;                                                    } 
+  Void                   setUseALF ( Bool b )                                                            { m_useALF  = b;                                                      }
+#endif
+  // KTA tools
 
   // Sequence parameter set range extension syntax
   // WAS: getUseResidualRotation and setUseResidualRotation

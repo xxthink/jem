@@ -140,6 +140,14 @@ Void TEncTop::create ()
       m_pppcRDSbacCoder   [iDepth][iCIIdx]->init( m_pppcBinCoderCABAC [iDepth][iCIIdx] );
     }
   }
+
+#if ALF_HM3_REFACTOR
+  if( m_useALF )
+  {
+    assert( m_bitDepth[CHANNEL_TYPE_LUMA] == m_bitDepth[CHANNEL_TYPE_CHROMA] );
+    m_cAdaptiveLoopFilter.create( getSourceWidth(), getSourceHeight(), getChromaFormatIdc(), m_maxCUWidth, m_maxCUHeight, m_maxTotalCUDepth , m_bitDepth[CHANNEL_TYPE_LUMA] , m_bitDepth[CHANNEL_TYPE_LUMA] );
+  }
+#endif
 }
 
 Void TEncTop::destroy ()
@@ -153,6 +161,12 @@ Void TEncTop::destroy ()
   m_cLoopFilter.        destroy();
   m_cRateCtrl.          destroy();
   m_cSearch.            destroy();
+#if ALF_HM3_REFACTOR
+  if(m_useALF)
+  {
+    m_cAdaptiveLoopFilter.destroy();
+  }
+#endif
   Int iDepth;
   for ( iDepth = 0; iDepth < m_maxTotalCUDepth+1; iDepth++ )
   {
@@ -684,6 +698,12 @@ Void TEncTop::xInitSPS()
   m_cSPS.getSpsRangeExtension().setHighPrecisionOffsetsEnabledFlag(m_highPrecisionOffsetsEnabledFlag);
   m_cSPS.getSpsRangeExtension().setPersistentRiceAdaptationEnabledFlag(m_persistentRiceAdaptationEnabledFlag);
   m_cSPS.getSpsRangeExtension().setCabacBypassAlignmentEnabledFlag(m_cabacBypassAlignmentEnabledFlag);
+
+  // Set up SPS for KTA tools
+#if ALF_HM3_REFACTOR
+  m_cSPS.setUseALF        ( m_useALF           );
+#endif
+
 }
 
 Void TEncTop::xInitHrdParameters()

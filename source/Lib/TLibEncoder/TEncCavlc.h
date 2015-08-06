@@ -60,6 +60,12 @@ class TEncTop;
 /// CAVLC encoder class
 class TEncCavlc : public SyntaxElementWriter, public TEncEntropyIf
 {
+#if ALF_HM3_REFACTOR
+protected:
+  Bool          m_bAlfCtrl;
+  UInt          m_uiMaxAlfCtrlDepth;
+#endif
+
 public:
   TEncCavlc();
   virtual ~TEncCavlc();
@@ -131,6 +137,21 @@ public:
   Void xCodeScalingList ( const TComScalingList* scalingList, UInt sizeId, UInt listId);
 
   Void codeExplicitRdpcmMode( TComTU &rTu, const ComponentID compID );
+
+#if ALF_HM3_REFACTOR
+  Void xWriteUnaryMaxSymbol( UInt uiSymbol, UInt uiMaxSymbol );
+  Bool getAlfCtrl() {return m_bAlfCtrl;}
+  UInt getMaxAlfCtrlDepth() {return m_uiMaxAlfCtrlDepth;}
+  Void setAlfCtrl(Bool bAlfCtrl) {m_bAlfCtrl = bAlfCtrl;}
+  Void setMaxAlfCtrlDepth(UInt uiMaxAlfCtrlDepth) {m_uiMaxAlfCtrlDepth = uiMaxAlfCtrlDepth;}
+  Void codeAlfFlag       ( UInt uiCode );
+  Void codeAlfUvlc       ( UInt uiCode );
+  Void codeAlfSvlc       ( Int   iCode );
+  Void codeAlfCtrlDepth  ( UInt uiMaxTotalCUDepth );
+  Void codeAlfCtrlFlag   ( TComDataCU* pcCU, UInt uiAbsPartIdx );
+  Void codeAlfFlagNum    ( UInt uiCode, UInt minValue );
+  Void codeAlfCtrlFlag   ( UInt uiSymbol );
+#endif
 };
 
 //! \}

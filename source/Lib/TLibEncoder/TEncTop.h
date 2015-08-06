@@ -111,6 +111,10 @@ private:
 
   TEncRateCtrl            m_cRateCtrl;                    ///< Rate control class
 
+#if ALF_HM3_REFACTOR
+  TEncAdaptiveLoopFilter  m_cAdaptiveLoopFilter;          ///< adaptive loop filter class
+#endif
+
 protected:
   Void  xGetNewPicBuffer  ( TComPic*& rpcPic );           ///< get picture buffer which will be processed
   Void  xInitVPS          ();                             ///< initialize VPS from encoder options
@@ -174,6 +178,9 @@ public:
 
   Void printSummary(Bool isField) { m_cGOPEncoder.printOutSummary (m_uiNumAllPicCoded, isField, m_printMSEBasedSequencePSNR, m_printSequenceMSE, m_cSPS.getBitDepths()); }
 
+#if ALF_HM3_REFACTOR
+  TEncAdaptiveLoopFilter* getAdaptiveLoopFilter () { return  &m_cAdaptiveLoopFilter;  }
+#endif
 };
 
 //! \}

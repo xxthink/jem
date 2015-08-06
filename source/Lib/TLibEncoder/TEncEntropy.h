@@ -46,6 +46,9 @@
 #include "TLibCommon/TComTrQuant.h"
 #include "TLibCommon/TComSampleAdaptiveOffset.h"
 #include "TLibCommon/TComChromaFormat.h"
+#if ALF_HM3_REFACTOR
+#include "TLibCommon//TComAdaptiveLoopFilter.h"
+#endif
 
 class TEncSbac;
 class TEncCavlc;
@@ -111,6 +114,20 @@ public:
   virtual Void codeExplicitRdpcmMode ( TComTU &rTu, const ComponentID compID ) = 0;
 
   virtual ~TEncEntropyIf() {}
+
+#if ALF_HM3_REFACTOR
+  virtual Bool getAlfCtrl()                = 0;
+  virtual UInt getMaxAlfCtrlDepth()                = 0;
+  virtual Void setAlfCtrl(Bool bAlfCtrl)                = 0;
+  virtual Void setMaxAlfCtrlDepth(UInt uiMaxAlfCtrlDepth)                = 0;
+  virtual Void codeAlfCtrlDepth     ( UInt uiMaxTotalCUDepth ) = 0;
+  virtual Void codeAlfCtrlFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
+  virtual Void codeAlfFlag          ( UInt uiCode ) = 0;
+  virtual Void codeAlfUvlc          ( UInt uiCode ) = 0;
+  virtual Void codeAlfSvlc          ( Int   iCode ) = 0;
+  virtual Void codeAlfFlagNum       ( UInt uiCode, UInt minValue ) = 0;
+  virtual Void codeAlfCtrlFlag      ( UInt uiSymbol ) = 0;
+#endif
 };
 
 /// entropy encoder class
@@ -178,6 +195,25 @@ public:
 
   static Int countNonZeroCoeffs( TCoeff* pcCoef, UInt uiSize );
 
+#if ALF_HM3_REFACTOR
+  Void encodeAlfParam(ALFParam* pAlfParam, UInt uiMaxTotalCUDepth);
+  Void encodeAlfCtrlFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
+  Void encodeAlfCtrlParam      ( ALFParam *pAlfParam );
+  Bool getAlfCtrl() {return m_pcEntropyCoderIf->getAlfCtrl();}
+  UInt getMaxAlfCtrlDepth() {return m_pcEntropyCoderIf->getMaxAlfCtrlDepth();}
+  Void setAlfCtrl(Bool bAlfCtrl) {m_pcEntropyCoderIf->setAlfCtrl(bAlfCtrl);}
+  Void setMaxAlfCtrlDepth(UInt uiMaxAlfCtrlDepth) {m_pcEntropyCoderIf->setMaxAlfCtrlDepth(uiMaxAlfCtrlDepth);}
+  Void codeAuxCountBit(ALFParam* pAlfParam, Int64* ruiRate, const TComSlice * pSlice);
+  Void codeFiltCountBit(ALFParam* pAlfParam, Int64* ruiRate, const TComSlice * pSlice);
+  Void codeAux (ALFParam* pAlfParam);
+  Void codeFilt (ALFParam* pAlfParam);
+  Int codeFilterCoeff(ALFParam* ALFp);
+  Int writeFilterCodingParams(int minKStart, int maxScanVal, int kMinTab[]);
+  Int writeFilterCoeffs(int sqrFiltLength, int filters_per_group, const int pDepthInt[], 
+    int **FilterCoeff, int kMinTab[]);
+  Int golombEncode(int coeff, int k);
+  Int lengthGolomb(int coeffVal, int k);
+#endif
 };// END CLASS DEFINITION TEncEntropy
 
 //! \}

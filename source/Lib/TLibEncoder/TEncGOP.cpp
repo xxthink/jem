@@ -105,6 +105,10 @@ TEncGOP::~TEncGOP()
 {
 }
 
+#if COM16_C806_ALF_TEMPPRED_NUM
+Int TEncGOP::m_iStoredAlfParaNum = 0;
+#endif
+
 /** Create list to contain pointers to CTU start addresses of slice.
  */
 Void  TEncGOP::create()
@@ -115,6 +119,12 @@ Void  TEncGOP::create()
 
 Void  TEncGOP::destroy()
 {
+#if COM16_C806_ALF_TEMPPRED_NUM
+  for( Int i = 0; i < COM16_C806_ALF_TEMPPRED_NUM; i++ )
+  {
+    m_pcAdaptiveLoopFilter->freeALFParam( &m_acStoredAlfPara[i] );
+  }
+#endif
 }
 
 Void TEncGOP::init ( TEncTop* pcTEncTop )
@@ -136,6 +146,26 @@ Void TEncGOP::init ( TEncTop* pcTEncTop )
   m_lastBPSEI          = 0;
   m_totalCoded         = 0;
 
+#if ALF_HM3_REFACTOR
+  if( m_pcCfg->getUseALF() )
+  {
+    m_pcAdaptiveLoopFilter = pcTEncTop->getAdaptiveLoopFilter();
+#if COM16_C806_ALF_TEMPPRED_NUM
+    UInt uiMaxCUWidth = m_pcCfg->getMaxCUWidth();
+    UInt uiMaxCUHeight = m_pcCfg->getMaxCUHeight();
+    UInt uiPicWidth = m_pcCfg->getSourceWidth();
+    UInt uiPicHeight = m_pcCfg->getSourceHeight();
+    UInt uiWidthInCU       = ( uiPicWidth %uiMaxCUWidth  ) ? uiPicWidth /uiMaxCUWidth  + 1 : uiPicWidth /uiMaxCUWidth;
+    UInt uiHeightInCU      = ( uiPicHeight%uiMaxCUHeight ) ? uiPicHeight/uiMaxCUHeight + 1 : uiPicHeight/uiMaxCUHeight;
+    UInt uiNumCUsInFrame   = uiWidthInCU * uiHeightInCU;
+    m_pcAdaptiveLoopFilter->setNumCUsInFrame( uiNumCUsInFrame );
+    for( Int i = 0; i < COM16_C806_ALF_TEMPPRED_NUM; i++ )
+    {
+      m_pcAdaptiveLoopFilter->allocALFParam( &m_acStoredAlfPara[i] );
+    }
+#endif
+  }
+#endif
 }
 
 Int TEncGOP::xWriteVPS (AccessUnit &accessUnit, const TComVPS *vps)
@@ -1006,6 +1036,10 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
 
   xInitGOP( iPOCLast, iNumPicRcvd, isField );
 
+#if ALF_HM3_REFACTOR
+  ALFParam cAlfParam;
+  Bool bInitAlfParam = false;
+#endif
   m_iNumPicCoded = 0;
   SEIMessages leadingSeiMessages;
   SEIMessages nestedSeiMessages;
@@ -1509,6 +1543,41 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
       }
     }
 
+#if ALF_HM3_REFACTOR
+    if( pcSlice->getSPS()->getUseALF() )
+    {
+      m_pcAdaptiveLoopFilter->setNumCUsInFrame(pcPic);
+      TComBitCounter tempBitCounter;
+      tempBitCounter.resetBits();
+      m_pcEncTop->getRDGoOnSbacCoder()->setBitstream(&tempBitCounter);
+      m_pcEntropyCoder->setEntropyCoder ( m_pcEncTop->getRDGoOnSbacCoder() );
+      m_pcAdaptiveLoopFilter->startALFEnc(pcPic, m_pcEntropyCoder );
+      UInt64 uiDist, uiBits;
+      if( !bInitAlfParam )
+      {
+        m_pcAdaptiveLoopFilter->setNumCUsInFrame(pcPic);
+        m_pcAdaptiveLoopFilter->allocALFParam(&cAlfParam);
+        bInitAlfParam = true;
+      }
+      m_pcAdaptiveLoopFilter->resetALFParam( &cAlfParam );
+      m_pcAdaptiveLoopFilter->ALFProcess( &cAlfParam, pcPic->getSlice(0)->getLambdas()[0], pcPic->getSlice(0)->getLambdas()[1], uiDist, uiBits, cAlfParam.alf_max_depth
+#if COM16_C806_ALF_TEMPPRED_NUM
+        , m_acStoredAlfPara, m_iStoredAlfParaNum
+#endif
+        );
+#if COM16_C806_ALF_TEMPPRED_NUM
+      if( cAlfParam.alf_flag && !cAlfParam.temproalPredFlag && cAlfParam.filtNo >= 0 )
+      {
+        Int iIdx = m_iStoredAlfParaNum % COM16_C806_ALF_TEMPPRED_NUM;
+        m_iStoredAlfParaNum++;
+        m_acStoredAlfPara[iIdx].temproalPredFlag = false;
+        m_pcAdaptiveLoopFilter->copyALFParam( &m_acStoredAlfPara[iIdx], &cAlfParam );
+      }
+#endif     
+      m_pcAdaptiveLoopFilter->endALFEnc();
+    }
+#endif
+
     // pcSlice is currently slice 0.
     std::size_t binCountsInNalUnits   = 0; // For implementation of cabac_zero_word stuffing (section 7.4.3.10)
     std::size_t numBytesInVclNalUnits = 0; // For implementation of cabac_zero_word stuffing (section 7.4.3.10)
@@ -1566,7 +1635,11 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
       pcSlice->clearSubstreamSizes(  );
       {
         UInt numBinsCoded = 0;
-        m_pcSliceEncoder->encodeSlice(pcPic, &(substreamsOut[0]), numBinsCoded);
+        m_pcSliceEncoder->encodeSlice(pcPic, &(substreamsOut[0]), numBinsCoded
+#if ALF_HM3_REFACTOR
+          , cAlfParam
+#endif
+          );
         binCountsInNalUnits+=numBinsCoded;
       }
 
@@ -1707,7 +1780,12 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
   } // iGOPid-loop
 
   delete pcBitstreamRedirect;
-
+#if ALF_HM3_REFACTOR
+  if( pcSlice->getSPS()->getUseALF() )
+  {
+    m_pcAdaptiveLoopFilter->freeALFParam(&cAlfParam);
+  }
+#endif
   assert ( (m_iNumPicCoded == iNumPicRcvd) );
 }
 
@@ -1773,6 +1851,25 @@ Void TEncGOP::preLoopFilterPicAll( TComPic* pcPic, UInt64& ruiDist )
   Bool bCalcDist = false;
   m_pcLoopFilter->setCfg(m_pcCfg->getLFCrossTileBoundaryFlag());
   m_pcLoopFilter->loopFilterPic( pcPic );
+
+#if ALF_HM3_REFACTOR
+  // Adaptive Loop filter
+  if( pcPic->getSlice(0)->getSPS()->getUseALF() )
+  {
+    ALFParam cAlfParam;
+    UInt64 dummy = 0;
+    m_pcAdaptiveLoopFilter->setNumCUsInFrame(pcPic);
+    m_pcAdaptiveLoopFilter->allocALFParam(&cAlfParam);
+    m_pcAdaptiveLoopFilter->startALFEnc(pcPic, m_pcEntropyCoder);
+    UInt uiMaxAlfCtrlDepth;
+    m_pcAdaptiveLoopFilter->ALFProcess(&cAlfParam, pcPic->getSlice(0)->getLambdas()[0], pcPic->getSlice(0)->getLambdas()[1], ruiDist, dummy, uiMaxAlfCtrlDepth
+#if COM16_C806_ALF_TEMPPRED_NUM
+      , NULL, 0
+#endif
+      );
+    m_pcAdaptiveLoopFilter->endALFEnc();
+  }
+#endif
 
   if (!bCalcDist)
   {

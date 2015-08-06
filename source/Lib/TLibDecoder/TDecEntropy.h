@@ -44,6 +44,9 @@
 #include "TLibCommon/TComPic.h"
 #include "TLibCommon/TComSampleAdaptiveOffset.h"
 #include "TLibCommon/TComRectangle.h"
+#if ALF_HM3_REFACTOR
+#include "TLibCommon//TComAdaptiveLoopFilter.h"
+#endif
 
 class TDecSbac;
 class TDecCavlc;
@@ -110,6 +113,16 @@ public:
   virtual Void parseExplicitRdpcmMode ( TComTU &rTu, ComponentID compID ) = 0;
 
   virtual ~TDecEntropyIf() {}
+
+#if ALF_HM3_REFACTOR
+  virtual Void parseAlfFlag       ( UInt& ruiVal           ) = 0;
+  virtual Void parseAlfUvlc       ( UInt& ruiVal           ) = 0;
+  virtual Void parseAlfSvlc       ( Int&  riVal            ) = 0;
+  virtual Void parseAlfCtrlDepth   ( UInt& ruiAlfCtrlDepth , UInt uiMaxTotalCUDepth ) = 0; 
+  virtual Void parseAlfCtrlFlag    ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth , UInt uiMaxAlfCtrlDepth ) = 0;
+  virtual Void parseAlfFlagNum    ( UInt& ruiVal, UInt minValue, UInt depth ) = 0;
+  virtual Void parseAlfCtrlFlag   ( UInt &ruiAlfCtrlFlag ) = 0;
+#endif
 };
 
 /// entropy decoder class
@@ -170,6 +183,18 @@ private:
 public:
 
   Void decodeCoeff             ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool& bCodeDQP, Bool& isChromaQpAdjCoded );
+
+#if ALF_HM3_REFACTOR
+  // Adaptive Loop filter
+  Void decodeAlfParam(ALFParam* pAlfParam, UInt uiMaxTotalCUDepth);
+  Void decodeAux(ALFParam* pAlfParam);
+  Void decodeFilt(ALFParam* pAlfParam);
+  Void readFilterCodingParams(ALFParam* pAlfParam);
+  Void readFilterCoeffs(ALFParam* pAlfParam);
+  Void decodeFilterCoeff (ALFParam* pAlfParam);
+  Int  golombDecode(Int k);
+  Void decodeAlfCtrlParam      ( ALFParam *pAlfParam );
+#endif
 
 };// END CLASS DEFINITION TDecEntropy
 

@@ -49,6 +49,9 @@
 #include "TLibCommon/TComPic.h"
 #include "TLibCommon/TComLoopFilter.h"
 #include "TLibCommon/TComSampleAdaptiveOffset.h"
+#if ALF_HM3_REFACTOR
+#include "TLibCommon/TComAdaptiveLoopFilter.h"
+#endif
 
 #include "TDecEntropy.h"
 #include "TDecSlice.h"
@@ -81,6 +84,15 @@ private:
   Int                   m_decodedPictureHashSEIEnabled;  ///< Checksum(3)/CRC(2)/MD5(1)/disable(0) acting on decoded picture hash SEI message
   UInt                  m_numberOfChecksumErrorsDetected;
 
+#if ALF_HM3_REFACTOR
+  TComAdaptiveLoopFilter*       m_pcAdaptiveLoopFilter;
+  ALFParam              m_cAlfParam;
+#endif
+#if COM16_C806_ALF_TEMPPRED_NUM
+  static Int           m_iStoredAlfParaNum;
+  ALFParam             m_acStoredAlfPara[COM16_C806_ALF_TEMPPRED_NUM];
+#endif
+
 public:
   TDecGop();
   virtual ~TDecGop();
@@ -91,6 +103,9 @@ public:
                  TDecCavlc*              pcCavlcDecoder,
                  TDecSlice*              pcSliceDecoder,
                  TComLoopFilter*         pcLoopFilter,
+#if ALF_HM3_REFACTOR
+                 TComAdaptiveLoopFilter* pcAdaptiveLoopFilter,
+#endif
                  TComSampleAdaptiveOffset* pcSAO
                  );
   Void  create  ();

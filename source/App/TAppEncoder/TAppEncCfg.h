@@ -369,6 +369,10 @@ protected:
   Int       m_log2MaxMvLengthHorizontal;                      ///< Indicate the maximum absolute value of a decoded horizontal MV component in quarter-pel luma units
   Int       m_log2MaxMvLengthVertical;                        ///< Indicate the maximum absolute value of a decoded vertical MV component in quarter-pel luma units
 
+#if ALF_HM3_REFACTOR
+  Bool      m_useALF;                                         ///< flag for using adaptive loop filter
+#endif
+
   std::string m_summaryOutFilename;                           ///< filename to use for producing summary output file.
   std::string m_summaryPicFilenameBase;                       ///< Base filename to use for producing summary picture output files. The actual filenames used will have I.txt, P.txt and B.txt appended.
   UInt        m_summaryVerboseness;                           ///< Specifies the level of the verboseness of the text output.

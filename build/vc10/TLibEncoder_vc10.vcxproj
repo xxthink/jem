@@ -147,6 +147,7 @@
     <ClCompile Include="..\..\source\Lib\TLibEncoder\SEIEncoder.cpp" />
     <ClCompile Include="..\..\source\Lib\TLibEncoder\SEIwrite.cpp" />
     <ClCompile Include="..\..\source\Lib\TLibEncoder\SyntaxElementWriter.cpp" />
+    <ClCompile Include="..\..\source\Lib\TLibEncoder\TEncAdaptiveLoopFilter.cpp" />
     <ClCompile Include="..\..\source\Lib\TLibEncoder\TEncBinCoderCABAC.cpp" />
     <ClCompile Include="..\..\source\Lib\TLibEncoder\TEncBinCoderCABACCounter.cpp" />
     <ClCompile Include="..\..\source\Lib\TLibEncoder\TEncCavlc.cpp" />
@@ -169,6 +170,7 @@
     <ClInclude Include="..\..\source\Lib\TLibEncoder\SEIEncoder.h" />
     <ClInclude Include="..\..\source\Lib\TLibEncoder\SEIwrite.h" />
     <ClInclude Include="..\..\source\Lib\TLibEncoder\SyntaxElementWriter.h" />
+    <ClInclude Include="..\..\source\Lib\TLibEncoder\TEncAdaptiveLoopFilter.h" />
     <ClInclude Include="..\..\source\Lib\TLibEncoder\TEncAnalyze.h" />
     <ClInclude Include="..\..\source\Lib\TLibEncoder\TEncBinCoder.h" />
     <ClInclude Include="..\..\source\Lib\TLibEncoder\TEncBinCoderCABAC.h" />

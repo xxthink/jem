@@ -66,7 +66,11 @@ Void TDecSlice::init(TDecEntropy* pcEntropyDecoder, TDecCu* pcCuDecoder)
   m_pcCuDecoder       = pcCuDecoder;
 }
 
-Void TDecSlice::decompressSlice(TComInputBitstream** ppcSubstreams, TComPic* pcPic, TDecSbac* pcSbacDecoder)
+Void TDecSlice::decompressSlice(TComInputBitstream** ppcSubstreams, TComPic* pcPic, TDecSbac* pcSbacDecoder
+#if ALF_HM3_REFACTOR
+  , ALFParam & alfParam
+#endif
+  )
 {
   TComSlice* pcSlice                 = pcPic->getSlice(pcPic->getCurrSliceIdx());
 
@@ -136,6 +140,13 @@ Void TDecSlice::decompressSlice(TComInputBitstream** ppcSubstreams, TComPic* pcP
     pCtu->initCtu( pcPic, ctuRsAddr );
 
     m_pcEntropyDecoder->setBitstream( ppcSubstreams[uiSubStrm] );
+
+#if ALF_HM3_REFACTOR
+    if ( pcSlice->getSPS()->getUseALF() && ctuRsAddr == 0 )
+    {
+      m_pcEntropyDecoder->decodeAlfParam(&alfParam, pcSlice->getSPS()->getMaxTotalCUDepth());
+    }
+#endif
 
     // set up CABAC contexts' state for this CTU
     if (ctuRsAddr == firstCtuRsAddrOfTile)

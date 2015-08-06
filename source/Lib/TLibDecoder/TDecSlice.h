@@ -76,7 +76,11 @@ public:
   Void  create            ();
   Void  destroy           ();
 
-  Void  decompressSlice   ( TComInputBitstream** ppcSubstreams,   TComPic* pcPic, TDecSbac* pcSbacDecoder );
+  Void  decompressSlice   ( TComInputBitstream** ppcSubstreams,   TComPic* pcPic, TDecSbac* pcSbacDecoder 
+#if ALF_HM3_REFACTOR
+    , ALFParam & alfParam
+#endif
+    );
 };
 
 //! \}

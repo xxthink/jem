@@ -179,22 +179,56 @@ Void TComPicYuv::destroy()
 
 
 
-Void  TComPicYuv::copyToPic (TComPicYuv*  pcPicYuvDst) const
+Void  TComPicYuv::copyToPic (TComPicYuv*  pcPicYuvDst
+#if ALF_HM3_REFACTOR
+  , ComponentID chDst
+  , Bool bMarginIncluded 
+#endif
+  ) const
 {
   assert( m_iPicWidth  == pcPicYuvDst->getWidth(COMPONENT_Y)  );
   assert( m_iPicHeight == pcPicYuvDst->getHeight(COMPONENT_Y) );
   assert( m_chromaFormatIDC == pcPicYuvDst->getChromaFormat() );
 
+#if ALF_HM3_REFACTOR
+  Int chStart = 0 , chEnd = getNumberValidComponents();
+  if( chDst != MAX_NUM_COMPONENT )
+  {
+    chStart = chDst;
+    chEnd = chStart + 1;
+  }
+  for(Int chan=chStart ; chan < chEnd ; chan++ )
+#else
   for(Int chan=0; chan<getNumberValidComponents(); chan++)
+#endif
   {
     const ComponentID ch=ComponentID(chan);
+#if ALF_HM3_REFACTOR
+    if( !bMarginIncluded )
+    {
+      const Pel * pSrc = getAddr( ch );
+      Int nSrcStride = getStride( ch );
+      Pel * pDst = pcPicYuvDst->getAddr( ch );
+      Int nDstStride = pcPicYuvDst->getStride( ch );
+      Int nSize = getWidth( ch ) * sizeof( Pel );
+      for( Int n = 0 ; n < getHeight( ch ) ; n++ , pSrc += nSrcStride , pDst += nDstStride )
+      {
+        ::memcpy( pDst , pSrc , nSize );
+      }
+    }
+    else
+#endif
     ::memcpy ( pcPicYuvDst->getBuf(ch), m_apiPicBuf[ch], sizeof (Pel) * getStride(ch) * getTotalHeight(ch));
   }
   return;
 }
 
 
-Void TComPicYuv::extendPicBorder ()
+Void TComPicYuv::extendPicBorder (
+#if ALF_HM3_REFACTOR
+  Int nMargin 
+#endif
+  )
 {
   if ( m_bIsBorderExtended )
   {
@@ -208,8 +242,13 @@ Void TComPicYuv::extendPicBorder ()
     const Int iStride=getStride(ch);
     const Int iWidth=getWidth(ch);
     const Int iHeight=getHeight(ch);
+#if ALF_HM3_REFACTOR
+    const Int iMarginX=nMargin>0?nMargin:getMarginX(ch);
+    const Int iMarginY=nMargin>0?nMargin:getMarginY(ch);
+#else
     const Int iMarginX=getMarginX(ch);
     const Int iMarginY=getMarginY(ch);
+#endif
 
     Pel*  pi = piTxt;
     // do left and right margins

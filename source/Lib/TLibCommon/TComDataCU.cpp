@@ -101,6 +101,11 @@ TComDataCU::TComDataCU()
   }
 
   m_bDecSubCu          = false;
+
+#if ALF_HM3_REFACTOR
+  m_puiAlfCtrlFlag     = NULL;
+  m_puiTmpAlfCtrlFlag  = NULL;
+#endif
 }
 
 TComDataCU::~TComDataCU()
@@ -136,6 +141,10 @@ Void TComDataCU::create( ChromaFormat chromaFormatIDC, UInt uiNumPartition, UInt
 
     m_pbMergeFlag        = (Bool*  )xMalloc(Bool,   uiNumPartition);
     m_puhMergeIndex      = (UChar* )xMalloc(UChar,  uiNumPartition);
+
+#if ALF_HM3_REFACTOR
+    m_puiAlfCtrlFlag     = (UInt*  )xMalloc(UInt,   uiNumPartition);
+#endif
 
     for (UInt ch=0; ch<MAX_NUM_CHANNEL_TYPE; ch++)
     {
@@ -278,6 +287,14 @@ Void TComDataCU::destroy()
       xFree(m_puhMergeIndex);
       m_puhMergeIndex  = NULL;
     }
+
+#if ALF_HM3_REFACTOR
+    if ( m_puiAlfCtrlFlag ) 
+    { 
+      xFree(m_puiAlfCtrlFlag);      
+      m_puiAlfCtrlFlag = NULL; 
+    }
+#endif
 
     for (UInt ch=0; ch<MAX_NUM_CHANNEL_TYPE; ch++)
     {
@@ -474,6 +491,11 @@ Void TComDataCU::initCtu( TComPic* pcPic, UInt ctuRsAddr )
   }
   memset( m_pbMergeFlag       , false,                    m_uiNumPartition * sizeof( *m_pbMergeFlag ) );
   memset( m_puhMergeIndex     , 0,                        m_uiNumPartition * sizeof( *m_puhMergeIndex ) );
+
+#if ALF_HM3_REFACTOR
+  memset( m_puiAlfCtrlFlag    , 0,                        m_uiNumPartition * sizeof( *m_puiAlfCtrlFlag ) );
+#endif
+
   for (UInt ch=0; ch<MAX_NUM_CHANNEL_TYPE; ch++)
   {
     memset( m_puhIntraDir[ch] , ((ch==0) ? DC_IDX : 0),   m_uiNumPartition * sizeof( *(m_puhIntraDir[ch]) ) );
@@ -586,6 +608,9 @@ Void TComDataCU::initEstData( const UInt uiDepth, const Int qp, const Bool bTran
     m_ChromaQpAdj[ui]   = 0;
     m_pbMergeFlag[ui]   = 0;
     m_puhMergeIndex[ui] = 0;
+#if ALF_HM3_REFACTOR
+    m_puiAlfCtrlFlag[ui] = 0;
+#endif
 
     for (UInt ch=0; ch<MAX_NUM_CHANNEL_TYPE; ch++)
     {
@@ -650,6 +675,9 @@ Void TComDataCU::initSubCU( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth, 
   memset( m_phQP,              qp,  sizeInChar );
   memset( m_pbMergeFlag,        0, iSizeInBool  );
   memset( m_puhMergeIndex,      0, iSizeInUchar );
+#if ALF_HM3_REFACTOR
+  memset( m_puiAlfCtrlFlag,     0, sizeof( UInt   ) * m_uiNumPartition );
+#endif
   for (UInt ch=0; ch<MAX_NUM_CHANNEL_TYPE; ch++)
   {
     memset( m_puhIntraDir[ch],  ((ch==0) ? DC_IDX : 0), iSizeInUchar );
@@ -881,6 +909,9 @@ Void TComDataCU::copyPartFrom( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDept
   memcpy( m_CUTransquantBypass + uiOffset, pcCU->getCUTransquantBypass(), sizeof( *m_CUTransquantBypass ) * uiNumPartition );
   memcpy( m_pbMergeFlag         + uiOffset, pcCU->getMergeFlag(),         iSizeInBool  );
   memcpy( m_puhMergeIndex       + uiOffset, pcCU->getMergeIndex(),        iSizeInUchar );
+#if ALF_HM3_REFACTOR
+  memcpy( m_puiAlfCtrlFlag      + uiOffset, pcCU->getAlfCtrlFlag(),       sizeof(*m_puiAlfCtrlFlag) * uiNumPartition  );
+#endif
 
   for (UInt ch=0; ch<numValidChan; ch++)
   {
@@ -966,6 +997,9 @@ Void TComDataCU::copyToPic( UChar uhDepth )
   memcpy( pCtu->getCUTransquantBypass()+ m_absZIdxInCtu, m_CUTransquantBypass, sizeof( *m_CUTransquantBypass ) * m_uiNumPartition );
   memcpy( pCtu->getMergeFlag()         + m_absZIdxInCtu, m_pbMergeFlag,         iSizeInBool  );
   memcpy( pCtu->getMergeIndex()        + m_absZIdxInCtu, m_puhMergeIndex,       iSizeInUchar );
+#if ALF_HM3_REFACTOR
+  memcpy( pCtu->getAlfCtrlFlag()       + m_absZIdxInCtu, m_puiAlfCtrlFlag,      sizeof( *m_puiAlfCtrlFlag ) * m_uiNumPartition );
+#endif
   for (UInt ch=0; ch<numValidChan; ch++)
   {
     memcpy( pCtu->getIntraDir(ChannelType(ch)) + m_absZIdxInCtu, m_puhIntraDir[ch], iSizeInUchar);
@@ -3232,5 +3266,57 @@ UInt TComDataCU::getCoefScanIdx(const UInt uiAbsPartIdx, const UInt uiWidth, con
     return SCAN_DIAG;
   }
 }
+
+#if ALF_HM3_REFACTOR
+UInt TComDataCU::getCtxAlfCtrlFlag( UInt uiAbsPartIdx )
+{
+  TComDataCU* pcTempCU;
+  UInt        uiTempPartIdx;
+  UInt        uiCtx = 0;
+
+  // Get BCBP of left PU
+  pcTempCU = getPULeft( uiTempPartIdx, getZorderIdxInCtu() + uiAbsPartIdx );
+  uiCtx    = ( pcTempCU ) ? pcTempCU->getAlfCtrlFlag( uiTempPartIdx ) : 0;
+
+  // Get BCBP of above PU
+  pcTempCU = getPUAbove( uiTempPartIdx, getZorderIdxInCtu() + uiAbsPartIdx );
+  uiCtx   += ( pcTempCU ) ? pcTempCU->getAlfCtrlFlag( uiTempPartIdx ) : 0;
+
+  return uiCtx;
+}
+
+Void TComDataCU::setAlfCtrlFlagSubParts         ( UInt uiFlag, UInt uiAbsPartIdx, UInt uiDepth )
+{
+  UInt uiCurrPartNumb = m_pcPic->getNumPartitionsInCtu() >> (uiDepth << 1);
+
+  for (UInt ui = 0; ui < uiCurrPartNumb; ui++ )
+  {
+    m_puiAlfCtrlFlag[uiAbsPartIdx + ui] = uiFlag;
+  }
+}
+
+Void TComDataCU::createTmpAlfCtrlFlag()
+{
+  m_puiTmpAlfCtrlFlag = (UInt* )xMalloc(UInt, m_uiNumPartition);
+}
+
+Void TComDataCU::destroyTmpAlfCtrlFlag()
+{
+  if(m_puiTmpAlfCtrlFlag)
+  {
+    xFree(m_puiTmpAlfCtrlFlag);        m_puiTmpAlfCtrlFlag = NULL;
+  }
+}
+
+Void TComDataCU::copyAlfCtrlFlagToTmp()
+{
+  memcpy( m_puiTmpAlfCtrlFlag, m_puiAlfCtrlFlag, sizeof(UInt)*m_uiNumPartition );
+}
+
+Void TComDataCU::copyAlfCtrlFlagFromTmp()
+{
+  memcpy( m_puiAlfCtrlFlag, m_puiTmpAlfCtrlFlag, sizeof(UInt)*m_uiNumPartition );
+}
+#endif
 
 //! \}

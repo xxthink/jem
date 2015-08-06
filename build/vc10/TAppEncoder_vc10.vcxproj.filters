@@ -20,12 +20,18 @@
     <ClCompile Include="..\..\source\App\TAppEncoder\TAppEncTop.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\source\Lib\TLibEncoder\TEncAdaptiveLoopFilter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\App\TAppEncoder\TAppEncCfg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\source\App\TAppEncoder\TAppEncTop.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\Lib\TLibEncoder\TEncAdaptiveLoopFilter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

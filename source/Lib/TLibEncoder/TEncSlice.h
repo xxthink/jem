@@ -118,7 +118,11 @@ public:
   Void    precompressSlice    ( TComPic* pcPic                                     );      ///< precompress slice for multi-loop slice-level QP opt.
   Void    compressSlice       ( TComPic* pcPic, const Bool bCompressEntireSlice, const Bool bFastDeltaQP );      ///< analysis stage of slice
   Void    calCostSliceI       ( TComPic* pcPic );
-  Void    encodeSlice         ( TComPic* pcPic, TComOutputBitstream* pcSubstreams, UInt &numBinsCoded );
+  Void    encodeSlice         ( TComPic* pcPic, TComOutputBitstream* pcSubstreams, UInt &numBinsCoded
+#if ALF_HM3_REFACTOR
+    , ALFParam & alfParam
+#endif
+    );
 
   // misc. functions
   Void    setSearchRange      ( TComSlice* pcSlice  );                                  ///< set ME range adaptively

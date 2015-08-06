@@ -117,8 +117,20 @@ public:
 
   Void  parseExplicitRdpcmMode( TComTU &rTu, ComponentID compID );
 
+#if ALF_HM3_REFACTOR
+  Void  xReadUnaryMaxSymbol ( UInt& ruiSymbol, UInt uiMaxSymbol );
+  Void  parseAlfFlag        ( UInt& ruiVal );
+  Void  parseAlfUvlc        ( UInt& ruiVal );
+  Void  parseAlfSvlc        ( Int&  riVal  );
+  Void  parseAlfCtrlDepth   ( UInt& ruiAlfCtrlDepth , UInt uiMaxTotalCUDepth ); 
+  Void  parseAlfCtrlFlag    ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth , UInt uiMaxAlfCtrlDepth );
+  Void  parseAlfFlagNum     ( UInt& ruiVal, UInt minValue, UInt depth );
+  Void  parseAlfCtrlFlag    ( UInt &ruiAlfCtrlFlag );
+#endif
+
 protected:
   Bool  xMoreRbspData();
+
 };
 
 //! \}

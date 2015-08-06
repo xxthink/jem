@@ -79,6 +79,10 @@ TEncCavlc::TEncCavlc()
 
 TEncCavlc::~TEncCavlc()
 {
+#if ALF_HM3_REFACTOR
+  m_bAlfCtrl = false;
+  m_uiMaxAlfCtrlDepth = 0;
+#endif
 }
 
 
@@ -566,6 +570,12 @@ Void TEncCavlc::codeSPS( const TComSPS* pcSPS )
   {
       codeVUI(pcSPS->getVuiParameters(), pcSPS);
   }
+
+  // KTA tools
+#if ALF_HM3_REFACTOR
+  WRITE_FLAG( pcSPS->getUseALF () ? 1 : 0, "use_alf_flag" );
+#endif
+  // KTA tools
 
   Bool sps_extension_present_flag=false;
   Bool sps_extension_flags[NUM_SPS_EXTENSION_FLAGS]={false};
@@ -1497,5 +1507,102 @@ Void TEncCavlc::codeExplicitRdpcmMode( TComTU& /*rTu*/, const ComponentID /*comp
  {
    assert(0);
  }
+
+#if ALF_HM3_REFACTOR
+Void TEncCavlc::codeAlfFlag( UInt uiCode )
+{
+  //xWriteFlag( uiCode );
+  WRITE_FLAG( uiCode , "alf_flag" );
+}
+
+Void TEncCavlc::codeAlfFlagNum( UInt uiCode, UInt minValue )
+{
+  UInt uiLength = 0;
+  UInt maxValue = (minValue << (this->getMaxAlfCtrlDepth()*2));
+  assert((uiCode>=minValue)&&(uiCode<=maxValue));
+  UInt temp = maxValue - minValue;
+  for(UInt i=0; i<32; i++)
+  {
+    if(temp&0x1)
+    {
+      uiLength = i+1;
+    }
+    temp = (temp >> 1);
+  }
+  if(uiLength)
+  {
+    WRITE_CODE( uiCode - minValue, uiLength , "alf_flag_num" );
+    //xWriteCode( uiCode - minValue, uiLength );
+  }
+}
+
+Void TEncCavlc::codeAlfCtrlFlag( UInt uiSymbol )
+{
+  //xWriteFlag( uiSymbol );
+  WRITE_FLAG( uiSymbol , "alf_ctrl_flag" );
+}
+
+Void TEncCavlc::codeAlfUvlc( UInt uiCode )
+{
+  //xWriteUvlc( uiCode );
+  WRITE_UVLC( uiCode , "alf_uvlc" );
+}
+
+Void TEncCavlc::codeAlfSvlc( Int iCode )
+{
+  //xWriteSvlc( iCode );
+  WRITE_SVLC( iCode , "alf_svlc" );
+}
+
+Void TEncCavlc::codeAlfCtrlFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
+{  
+  if (!m_bAlfCtrl)
+    return;
+
+  if( pcCU->getDepth(uiAbsPartIdx) > m_uiMaxAlfCtrlDepth && !pcCU->isFirstAbsZorderIdxInDepth(uiAbsPartIdx, m_uiMaxAlfCtrlDepth))
+  {
+    return;
+  }
+
+  // get context function is here
+  UInt uiSymbol = pcCU->getAlfCtrlFlag( uiAbsPartIdx ) ? 1 : 0;
+
+  //xWriteFlag( uiSymbol );
+  WRITE_FLAG( uiSymbol , "alf_ctrl_flag" );
+}
+
+Void TEncCavlc::codeAlfCtrlDepth( UInt uiMaxTotalCUDepth )
+{  
+  UInt uiDepth = m_uiMaxAlfCtrlDepth;
+
+  xWriteUnaryMaxSymbol(uiDepth, uiMaxTotalCUDepth-1);
+}
+
+Void TEncCavlc::xWriteUnaryMaxSymbol( UInt uiSymbol, UInt uiMaxSymbol )
+{
+  if (uiMaxSymbol == 0)
+  {
+    return;
+  }
+  //xWriteFlag( uiSymbol ? 1 : 0 );
+  WRITE_FLAG( uiSymbol ? 1 : 0 , "alf_ctrl_depth_flag_1st" );
+  if ( uiSymbol == 0 )
+  {
+    return;
+  }
+
+  Bool bCodeLast = ( uiMaxSymbol > uiSymbol );
+
+  while( --uiSymbol )
+  {
+    xWriteFlag( 1 );
+  }
+  if( bCodeLast )
+  {
+    xWriteFlag( 0 );
+  }
+  return;
+}
+#endif
 
 //! \}
