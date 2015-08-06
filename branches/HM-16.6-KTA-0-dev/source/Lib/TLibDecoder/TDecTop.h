@@ -113,6 +113,11 @@ private:
   Bool                    m_warningMessageSkipPicture;
 
   std::list<InputNALUnit*> m_prefixSEINALUs; /// Buffered up prefix SEI NAL Units.
+
+#if ALF_HM3_REFACTOR
+  TComAdaptiveLoopFilter  m_cAdaptiveLoopFilter;
+#endif
+
 public:
   TDecTop();
   virtual ~TDecTop();

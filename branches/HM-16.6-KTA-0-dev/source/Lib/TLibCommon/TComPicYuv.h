@@ -144,10 +144,19 @@ public:
   // ------------------------------------------------------------------------------------------------
 
   //  Copy function to picture
-  Void          copyToPic         ( TComPicYuv*  pcPicYuvDst ) const ;
+  Void          copyToPic         ( TComPicYuv*  pcPicYuvDst 
+#if ALF_HM3_REFACTOR
+    , ComponentID chDst = MAX_NUM_COMPONENT
+    , Bool bMarginIncluded = true
+#endif
+    ) const ;
 
   //  Extend function of picture buffer
-  Void          extendPicBorder   ();
+  Void          extendPicBorder   (
+#if ALF_HM3_REFACTOR
+    Int nMargin = -1      // use default margin
+#endif
+    );
 
   //  Dump picture
   Void          dump              (const Char* pFileName, const BitDepths &bitDepths, Bool bAdd = false) const ;

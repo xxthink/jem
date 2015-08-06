@@ -126,7 +126,11 @@ Void TDecTop::init()
 {
   // initialize ROM
   initROM();
-  m_cGopDecoder.init( &m_cEntropyDecoder, &m_cSbacDecoder, &m_cBinCABAC, &m_cCavlcDecoder, &m_cSliceDecoder, &m_cLoopFilter, &m_cSAO);
+  m_cGopDecoder.init( &m_cEntropyDecoder, &m_cSbacDecoder, &m_cBinCABAC, &m_cCavlcDecoder, &m_cSliceDecoder, &m_cLoopFilter, 
+#if ALF_HM3_REFACTOR
+    &m_cAdaptiveLoopFilter, 
+#endif
+    &m_cSAO);
   m_cSliceDecoder.init( &m_cEntropyDecoder, &m_cCuDecoder );
   m_cEntropyDecoder.init(&m_cPrediction);
 }
@@ -144,6 +148,11 @@ Void TDecTop::deletePicBuffer ( )
     delete pcPic;
     pcPic = NULL;
   }
+
+#if ALF_HM3_REFACTOR
+  // destroy ALF temporary buffers
+  m_cAdaptiveLoopFilter.destroy();
+#endif
 
   m_cSAO.destroy();
 
@@ -337,6 +346,14 @@ Void TDecTop::xActivateParameterSets()
     sps=pSlice->getSPS();
 
     // Initialise the various objects for the new set of settings
+#if ALF_HM3_REFACTOR
+    if( sps->getUseALF() )
+    {
+      assert( sps->getBitDepth( CHANNEL_TYPE_LUMA ) == sps->getBitDepth( CHANNEL_TYPE_CHROMA ) );
+      m_cAdaptiveLoopFilter.create( sps->getPicWidthInLumaSamples(), sps->getPicHeightInLumaSamples(), sps->getChromaFormatIdc() , sps->getMaxCUWidth(), sps->getMaxCUHeight(), sps->getMaxTotalCUDepth() ,
+        sps->getBitDepth( CHANNEL_TYPE_LUMA ) , sps->getBitDepth( CHANNEL_TYPE_LUMA ) );
+    }
+#endif
     m_cSAO.create( sps->getPicWidthInLumaSamples(), sps->getPicHeightInLumaSamples(), sps->getChromaFormatIdc(), sps->getMaxCUWidth(), sps->getMaxCUHeight(), sps->getMaxTotalCUDepth(), pps->getPpsRangeExtension().getLog2SaoOffsetScale(CHANNEL_TYPE_LUMA), pps->getPpsRangeExtension().getLog2SaoOffsetScale(CHANNEL_TYPE_CHROMA) );
     m_cLoopFilter.create( sps->getMaxTotalCUDepth() );
     m_cPrediction.initTempBuff(sps->getChromaFormatIdc());

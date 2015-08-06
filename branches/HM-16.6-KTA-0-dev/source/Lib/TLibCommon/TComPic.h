@@ -113,6 +113,15 @@ public:
   Void          setPicYuvPred( TComPicYuv* pcPicYuv )       { m_pcPicYuvPred = pcPicYuv; }
   Void          setPicYuvResi( TComPicYuv* pcPicYuv )       { m_pcPicYuvResi = pcPicYuv; }
 
+#if ALF_HM3_REFACTOR
+  TComPicYuv*   replacePicYuvRecPointer( TComPicYuv * pNewPicYuvRec )
+  {
+    TComPicYuv * pOldPicYuvRec = m_apcPicYuv[1];
+    m_apcPicYuv[1] = pNewPicYuvRec;
+    return ( pOldPicYuvRec );
+  }
+#endif
+
   UInt          getNumberOfCtusInFrame() const     { return m_picSym.getNumberOfCtusInFrame(); }
   UInt          getNumPartInCtuWidth() const       { return m_picSym.getNumPartInCtuWidth();   }
   UInt          getNumPartInCtuHeight() const      { return m_picSym.getNumPartInCtuHeight();  }

@@ -1078,6 +1078,9 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   ("SEIMasteringDisplayPrimaries",                    cfg_DisplayPrimariesCode,       cfg_DisplayPrimariesCode, "Mastering display primaries for all three colour planes in CIE xy coordinates in increments of 1/50000 (results in the ranges 0 to 50000 inclusive)")
   ("SEIMasteringDisplayWhitePoint",                   cfg_DisplayWhitePointCode,     cfg_DisplayWhitePointCode, "Mastering display white point CIE xy coordinates in normalised increments of 1/50000 (e.g. 0.333 = 16667)")
     
+#if ALF_HM3_REFACTOR
+  ("ALF", m_useALF, true, "Adaptive Loop Filter")
+#endif
   ;
 
   for(Int i=1; i<MAX_GOP+1; i++)
@@ -2480,6 +2483,10 @@ Void TAppEncCfg::xPrintParameter()
 
   printf(" SignBitHidingFlag:%d ", m_signHideFlag);
   printf("RecalQP:%d", m_recalculateQPAccordingToLambda ? 1 : 0 );
+
+#if ALF_HM3_REFACTOR
+  printf(" ALF:%d ", m_useALF             );
+#endif
 
   printf("\n\n");
 

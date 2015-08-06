@@ -141,6 +141,16 @@ public:
 
   Void  parseScalingList ( TComScalingList* /*scalingList*/ ) {}
 
+#if ALF_HM3_REFACTOR
+  Void  parseAlfFlag          ( UInt& ruiVal           );
+  Void  parseAlfUvlc          ( UInt& ruiVal           );
+  Void  parseAlfSvlc          ( Int&  riVal            );
+  Void  parseAlfCtrlDepth     ( UInt& ruiAlfCtrlDepth , UInt uiMaxTotalCUDepth ); 
+  Void  parseAlfCtrlFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth , UInt uiMaxAlfCtrlDepth );
+  Void  parseAlfFlagNum       ( UInt& ruiVal, UInt minValue, UInt depth );
+  Void  parseAlfCtrlFlag      ( UInt &ruiAlfCtrlFlag );
+#endif
+
   Void  parseExplicitRdpcmMode( TComTU &rTu, ComponentID compID );
 
 private:
@@ -181,6 +191,13 @@ private:
 
   ContextModel3DBuffer m_ChromaQpAdjFlagSCModel;
   ContextModel3DBuffer m_ChromaQpAdjIdcSCModel;
+
+#if ALF_HM3_REFACTOR
+  ContextModel3DBuffer m_cCUAlfCtrlFlagSCModel;
+  ContextModel3DBuffer m_cALFFlagSCModel;
+  ContextModel3DBuffer m_cALFUvlcSCModel;
+  ContextModel3DBuffer m_cALFSvlcSCModel;
+#endif
 
   UInt m_golombRiceAdaptationStatistics[RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS];
 };

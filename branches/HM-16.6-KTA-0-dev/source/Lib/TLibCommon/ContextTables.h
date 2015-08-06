@@ -160,6 +160,13 @@ static const UInt notFirstGroupNeighbourhoodContextOffset[MAX_NUM_CHANNEL_TYPE] 
 
 #define NUM_CROSS_COMPONENT_PREDICTION_CTX 10
 
+#if ALF_HM3_REFACTOR
+#define NUM_ALF_CTRL_FLAG_CTX         3       ///< number of context models for ALF control flag
+#define NUM_ALF_FLAG_CTX              1       ///< number of context models for ALF flag
+#define NUM_ALF_UVLC_CTX              2       ///< number of context models for ALF UVLC (filter length)
+#define NUM_ALF_SVLC_CTX              3       ///< number of context models for ALF SVLC (filter coeff.)
+#endif
+
 #define CNU                          154      ///< dummy initialization value for unused context models 'Context model Not Used'
 
 
@@ -496,6 +503,43 @@ INIT_CROSS_COMPONENT_PREDICTION[NUMBER_OF_SLICE_TYPES][NUM_CROSS_COMPONENT_PREDI
   { 154, 154, 154, 154, 154, 154, 154, 154, 154, 154 },
   { 154, 154, 154, 154, 154, 154, 154, 154, 154, 154 },
 };
+
+#if ALF_HM3_REFACTOR
+static const UChar
+  INIT_ALF_CTRL_FLAG[NUMBER_OF_SLICE_TYPES][NUM_ALF_CTRL_FLAG_CTX] =
+{
+  { CNU, CNU, CNU },
+  { CNU, CNU, CNU },
+  { CNU, CNU, CNU },
+};
+
+// initial probability for ALF flag
+static const UChar
+  INIT_ALF_FLAG[NUMBER_OF_SLICE_TYPES][NUM_ALF_FLAG_CTX] =
+{
+  {240},
+  {224},
+  {224}
+};
+
+// initial probability for ALF side information (unsigned)
+static const UChar
+  INIT_ALF_UVLC[NUMBER_OF_SLICE_TYPES][NUM_ALF_UVLC_CTX] =
+{
+  {154, 140},
+  {140, 110},
+  {139, 139},
+};
+
+// initial probability for ALF side information (signed)
+static const UChar
+  INIT_ALF_SVLC[NUMBER_OF_SLICE_TYPES][NUM_ALF_SVLC_CTX] =
+{
+  { 185, 185, CNU },
+  { CNU, CNU, CNU },
+  { CNU, CNU, CNU },
+};
+#endif
 
 //! \}
 

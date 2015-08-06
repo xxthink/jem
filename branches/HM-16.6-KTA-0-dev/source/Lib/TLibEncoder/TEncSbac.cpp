@@ -90,6 +90,14 @@ TEncSbac::TEncSbac()
 , m_cCrossComponentPredictionSCModel   ( 1,             1,                      NUM_CROSS_COMPONENT_PREDICTION_CTX   , m_contextModels + m_numContextModels, m_numContextModels)
 , m_ChromaQpAdjFlagSCModel             ( 1,             1,                      NUM_CHROMA_QP_ADJ_FLAG_CTX           , m_contextModels + m_numContextModels, m_numContextModels)
 , m_ChromaQpAdjIdcSCModel              ( 1,             1,                      NUM_CHROMA_QP_ADJ_IDC_CTX            , m_contextModels + m_numContextModels, m_numContextModels)
+#if ALF_HM3_REFACTOR
+, m_bAlfCtrl                           ( false )
+, m_uiMaxAlfCtrlDepth                  ( 0 )
+, m_cCUAlfCtrlFlagSCModel              ( 1,             1,               NUM_ALF_CTRL_FLAG_CTX         , m_contextModels + m_numContextModels, m_numContextModels)
+, m_cALFFlagSCModel                    ( 1,             1,               NUM_ALF_FLAG_CTX              , m_contextModels + m_numContextModels, m_numContextModels)
+, m_cALFUvlcSCModel                    ( 1,             1,               NUM_ALF_UVLC_CTX              , m_contextModels + m_numContextModels, m_numContextModels)
+, m_cALFSvlcSCModel                    ( 1,             1,               NUM_ALF_SVLC_CTX              , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 {
   assert( m_numContextModels <= MAX_NUM_CTX_MOD );
 }
@@ -144,6 +152,12 @@ Void TEncSbac::resetEntropy           (const TComSlice *pSlice)
   m_cCrossComponentPredictionSCModel.initBuffer   ( eSliceType, iQp, (UChar*)INIT_CROSS_COMPONENT_PREDICTION  );
   m_ChromaQpAdjFlagSCModel.initBuffer             ( eSliceType, iQp, (UChar*)INIT_CHROMA_QP_ADJ_FLAG );
   m_ChromaQpAdjIdcSCModel.initBuffer              ( eSliceType, iQp, (UChar*)INIT_CHROMA_QP_ADJ_IDC );
+#if ALF_HM3_REFACTOR
+  m_cCUAlfCtrlFlagSCModel.initBuffer              ( eSliceType, iQp, (UChar*)INIT_ALF_CTRL_FLAG );
+  m_cALFFlagSCModel.initBuffer                    ( eSliceType, iQp, (UChar*)INIT_ALF_FLAG );
+  m_cALFUvlcSCModel.initBuffer                    ( eSliceType, iQp, (UChar*)INIT_ALF_UVLC );
+  m_cALFSvlcSCModel.initBuffer                    ( eSliceType, iQp, (UChar*)INIT_ALF_SVLC );
+#endif
 
   for (UInt statisticIndex = 0; statisticIndex < RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS ; statisticIndex++)
   {
@@ -2013,5 +2027,125 @@ Void TEncSbac::codeExplicitRdpcmMode( TComTU &rTu, const ComponentID compID )
     assert(0);
   }
 }
+
+#if ALF_HM3_REFACTOR
+Void TEncSbac::codeAlfCtrlFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
+{
+  if (!m_bAlfCtrl)
+    return;
+
+  if( pcCU->getDepth(uiAbsPartIdx) > m_uiMaxAlfCtrlDepth && !pcCU->isFirstAbsZorderIdxInDepth(uiAbsPartIdx, m_uiMaxAlfCtrlDepth))
+  {
+    return;
+  }
+
+  // get context function is here
+  UInt uiSymbol = pcCU->getAlfCtrlFlag( uiAbsPartIdx ) ? 1 : 0;
+
+  m_pcBinIf->encodeBin( uiSymbol, m_cCUAlfCtrlFlagSCModel.get( 0, 0, pcCU->getCtxAlfCtrlFlag( uiAbsPartIdx) ) );
+  DTRACE_CABAC_VL( g_nSymbolCounter++ )
+  DTRACE_CABAC_T( "\tAlfCtrlFlag\n" )
+}
+
+Void TEncSbac::codeAlfCtrlDepth( UInt uiMaxTotalCUDepth )
+{
+  UInt uiDepth = m_uiMaxAlfCtrlDepth;
+  xWriteUnaryMaxSymbol(uiDepth, m_cALFUvlcSCModel.get(0), 1, uiMaxTotalCUDepth-1);
+  DTRACE_CABAC_VL( g_nSymbolCounter++ )
+  DTRACE_CABAC_T( "\tAlfCtrlDepth\n" )
+}
+
+Void TEncSbac::codeAlfFlag       ( UInt uiCode )
+{
+  UInt uiSymbol = ( ( uiCode == 0 ) ? 0 : 1 );
+  m_pcBinIf->encodeBin( uiSymbol, m_cALFFlagSCModel.get( 0, 0, 0 ) );
+  DTRACE_CABAC_VL( g_nSymbolCounter++ )
+  DTRACE_CABAC_T( "\tAlfFlag\n" )
+}
+
+Void TEncSbac::codeAlfFlagNum( UInt uiCode, UInt minValue )
+{
+  UInt uiLength = 0;
+  UInt maxValue = (minValue << (this->getMaxAlfCtrlDepth()*2));
+  assert((uiCode>=minValue)&&(uiCode<=maxValue));
+  UInt temp = maxValue - minValue;
+  for(UInt i=0; i<32; i++)
+  {
+    if(temp&0x1)
+    {
+      uiLength = i+1;
+    }
+    temp = (temp >> 1);
+  }
+  UInt uiSymbol = uiCode - minValue;
+  if(uiLength)
+  {
+    while( uiLength-- )
+    {
+      m_pcBinIf->encodeBinEP( (uiSymbol>>uiLength) & 0x1 );
+    }
+  }
+  DTRACE_CABAC_VL( g_nSymbolCounter++ )
+  DTRACE_CABAC_T( "\tAlfFlagNum\n" )
+}
+
+Void TEncSbac::codeAlfCtrlFlag( UInt uiSymbol )
+{
+  m_pcBinIf->encodeBin( uiSymbol, m_cCUAlfCtrlFlagSCModel.get( 0, 0, 0) );
+  DTRACE_CABAC_VL( g_nSymbolCounter++ )
+  DTRACE_CABAC_T( "\tAlfCtrlFlag\n" )
+}
+
+Void TEncSbac::codeAlfUvlc       ( UInt uiCode )
+{
+  Int i;
+
+  if ( uiCode == 0 )
+  {
+    m_pcBinIf->encodeBin( 0, m_cALFUvlcSCModel.get( 0, 0, 0 ) );
+  }
+  else
+  {
+    m_pcBinIf->encodeBin( 1, m_cALFUvlcSCModel.get( 0, 0, 0 ) );
+    for ( i=0; i<uiCode-1; i++ )
+    {
+      m_pcBinIf->encodeBin( 1, m_cALFUvlcSCModel.get( 0, 0, 1 ) );
+    }
+    m_pcBinIf->encodeBin( 0, m_cALFUvlcSCModel.get( 0, 0, 1 ) );
+  }
+}
+
+Void TEncSbac::codeAlfSvlc       ( Int iCode )
+{
+  Int i;
+
+  if ( iCode == 0 )
+  {
+    m_pcBinIf->encodeBin( 0, m_cALFSvlcSCModel.get( 0, 0, 0 ) );
+  }
+  else
+  {
+    m_pcBinIf->encodeBin( 1, m_cALFSvlcSCModel.get( 0, 0, 0 ) );
+
+    // write sign
+    if ( iCode > 0 )
+    {
+      m_pcBinIf->encodeBin( 0, m_cALFSvlcSCModel.get( 0, 0, 1 ) );
+    }
+    else
+    {
+      m_pcBinIf->encodeBin( 1, m_cALFSvlcSCModel.get( 0, 0, 1 ) );
+      iCode = -iCode;
+    }
+
+    // write magnitude
+    for ( i=0; i<iCode-1; i++ )
+    {
+      m_pcBinIf->encodeBin( 1, m_cALFSvlcSCModel.get( 0, 0, 2 ) );
+    }
+    m_pcBinIf->encodeBin( 0, m_cALFSvlcSCModel.get( 0, 0, 2 ) );
+  }
+}
+#endif
 
 //! \}

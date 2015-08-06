@@ -38,6 +38,10 @@
 #include "TDecEntropy.h"
 #include "TLibCommon/TComTU.h"
 #include "TLibCommon/TComPrediction.h"
+#if ALF_HM3_REFACTOR
+#include "TLibCommon/TComAdaptiveLoopFilter.h"
+#include <cmath>
+#endif
 
 #if ENVIRONMENT_VARIABLE_DEBUG_AND_TEST
 #include "../TLibCommon/Debug.h"
@@ -645,5 +649,278 @@ Void TDecEntropy::decodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
   
   xDecodeTransform( bCodeDQP, isChromaQpAdjCoded, tuRecurse, quadtreeTULog2MinSizeInCU );
 }
+
+#if ALF_HM3_REFACTOR
+Void TDecEntropy::decodeAux(ALFParam* pAlfParam)
+{
+  UInt uiSymbol;
+  Int sqrFiltLengthTab[3] = {TComAdaptiveLoopFilter::m_SQR_FILT_LENGTH_9SYM, TComAdaptiveLoopFilter::m_SQR_FILT_LENGTH_7SYM, TComAdaptiveLoopFilter::m_SQR_FILT_LENGTH_5SYM};
+  Int FiltTab[3] = {9, 7, 5};
+
+  pAlfParam->filters_per_group = 0;
+
+  memset (pAlfParam->filterPattern, 0 , sizeof(Int)*TComAdaptiveLoopFilter::m_NO_VAR_BINS);
+  pAlfParam->filtNo = 1; //nonZeroCoeffs
+
+  m_pcEntropyDecoderIf->parseAlfUvlc(uiSymbol);
+  Int TabIdx = uiSymbol;
+  pAlfParam->realfiltNo = 2-TabIdx;
+  pAlfParam->tap = FiltTab[pAlfParam->realfiltNo];
+  pAlfParam->num_coeff = sqrFiltLengthTab[pAlfParam->realfiltNo];
+
+  if (pAlfParam->filtNo>=0)
+  {
+    if(pAlfParam->realfiltNo >= 0)
+    {
+      // filters_per_fr
+      m_pcEntropyDecoderIf->parseAlfUvlc(uiSymbol);
+      pAlfParam->noFilters = uiSymbol + 1;
+      pAlfParam->filters_per_group = pAlfParam->noFilters; 
+
+      if(pAlfParam->noFilters == 2)
+      {
+        m_pcEntropyDecoderIf->parseAlfUvlc(uiSymbol);
+        pAlfParam->startSecondFilter = uiSymbol;
+        pAlfParam->filterPattern [uiSymbol] = 1;
+      }
+      else if (pAlfParam->noFilters > 2)
+      {
+        pAlfParam->filters_per_group = 1;
+        for (int i=1; i<TComAdaptiveLoopFilter::m_NO_VAR_BINS; i++) 
+        {
+          m_pcEntropyDecoderIf->parseAlfFlag (uiSymbol);
+          pAlfParam->filterPattern[i] = uiSymbol;
+          pAlfParam->filters_per_group += uiSymbol;
+        }
+      }
+    }
+  }
+  else
+  {
+    memset (pAlfParam->filterPattern, 0, TComAdaptiveLoopFilter::m_NO_VAR_BINS*sizeof(Int));
+  }
+  // Reconstruct varIndTab[]
+  memset(pAlfParam->varIndTab, 0, TComAdaptiveLoopFilter::m_NO_VAR_BINS * sizeof(int));
+  if(pAlfParam->filtNo>=0)
+  {
+    for(Int i = 1; i < TComAdaptiveLoopFilter::m_NO_VAR_BINS; ++i)
+    {
+      if(pAlfParam->filterPattern[i])
+        pAlfParam->varIndTab[i] = pAlfParam->varIndTab[i-1] + 1;
+      else
+        pAlfParam->varIndTab[i] = pAlfParam->varIndTab[i-1];
+    }
+  }
+}
+
+Void TDecEntropy::readFilterCodingParams(ALFParam* pAlfParam)
+{
+  UInt uiSymbol;
+  int ind, scanPos;
+  int golombIndexBit;
+  int kMin;
+  int maxScanVal;
+  const int *pDepthInt;
+  int fl;
+
+  // Determine fl
+  if(pAlfParam->num_coeff == TComAdaptiveLoopFilter::m_SQR_FILT_LENGTH_9SYM)
+    fl = 4;
+  else if(pAlfParam->num_coeff == TComAdaptiveLoopFilter::m_SQR_FILT_LENGTH_7SYM)
+    fl = 3;
+  else
+    fl = 2;
+
+  // Determine maxScanVal
+  maxScanVal = 0;
+  pDepthInt = TComAdaptiveLoopFilter::m_pDepthIntTab[fl - 2];
+  for(ind = 0; ind < pAlfParam->num_coeff; ind++)
+    maxScanVal = max(maxScanVal, pDepthInt[ind]);
+
+  // Golomb parameters
+  m_pcEntropyDecoderIf->parseAlfUvlc(uiSymbol);
+  pAlfParam->minKStart = 1 + uiSymbol;
+
+  kMin = pAlfParam->minKStart;
+  for(scanPos = 0; scanPos < maxScanVal; scanPos++)
+  {
+    m_pcEntropyDecoderIf->parseAlfFlag(uiSymbol);
+    golombIndexBit = uiSymbol;
+    if(golombIndexBit)
+      pAlfParam->kMinTab[scanPos] = kMin + 1;
+    else
+      pAlfParam->kMinTab[scanPos] = kMin;
+    kMin = pAlfParam->kMinTab[scanPos];
+  }
+}
+
+Int TDecEntropy::golombDecode(Int k)
+{
+  UInt uiSymbol;
+  Int q = -1;
+  Int nr = 0;
+  Int m = (Int)pow(2.0, k);
+  Int a;
+
+  uiSymbol = 1;
+  while (uiSymbol)
+  {
+    m_pcEntropyDecoderIf->parseAlfFlag(uiSymbol);
+    q++;
+  }
+  for(a = 0; a < k; ++a)          // read out the sequential log2(M) bits
+  {
+    m_pcEntropyDecoderIf->parseAlfFlag(uiSymbol);
+    if(uiSymbol)
+      nr += 1 << a;
+  }
+  nr += q * m;                    // add the bits and the multiple of M
+  if(nr != 0)
+  {
+    m_pcEntropyDecoderIf->parseAlfFlag(uiSymbol);
+    nr = (uiSymbol)? nr: -nr;
+  }
+  return nr;
+}
+
+
+
+Void TDecEntropy::readFilterCoeffs(ALFParam* pAlfParam)
+{
+  int ind, scanPos, i;
+  const int *pDepthInt;
+  int fl;
+
+  if(pAlfParam->num_coeff == TComAdaptiveLoopFilter::m_SQR_FILT_LENGTH_9SYM)
+    fl = 4;
+  else if(pAlfParam->num_coeff == TComAdaptiveLoopFilter::m_SQR_FILT_LENGTH_7SYM)
+    fl = 3;
+  else
+    fl = 2;
+
+  pDepthInt = TComAdaptiveLoopFilter::m_pDepthIntTab[fl - 2];
+
+  for(ind = 0; ind < pAlfParam->filters_per_group_diff; ++ind)
+  {
+    for(i = 0; i < pAlfParam->num_coeff; i++)
+    {
+      scanPos = pDepthInt[i] - 1;
+      pAlfParam->coeffmulti[ind][i] = golombDecode(pAlfParam->kMinTab[scanPos]);
+    }
+  }
+
+}
+Void TDecEntropy::decodeFilterCoeff (ALFParam* pAlfParam)
+{
+  readFilterCodingParams (pAlfParam);
+  readFilterCoeffs (pAlfParam);
+}
+
+
+
+Void TDecEntropy::decodeFilt(ALFParam* pAlfParam)
+{
+  UInt uiSymbol;
+
+  if (pAlfParam->filtNo >= 0)
+  {
+    pAlfParam->filters_per_group_diff = pAlfParam->filters_per_group;
+    if (pAlfParam->filters_per_group > 1)
+    {
+      pAlfParam->forceCoeff0 = 0;
+      {
+        for (int i=0; i<TComAdaptiveLoopFilter::m_NO_VAR_BINS; i++)
+          pAlfParam->codedVarBins[i] = 1;
+
+      }
+      m_pcEntropyDecoderIf->parseAlfFlag (uiSymbol);
+      pAlfParam->predMethod = uiSymbol;
+    }
+    else
+    {
+      pAlfParam->forceCoeff0 = 0;
+      pAlfParam->predMethod = 0;
+    }
+
+    decodeFilterCoeff (pAlfParam);
+  }
+}
+
+Void TDecEntropy::decodeAlfParam(ALFParam* pAlfParam, UInt uiMaxTotalCUDepth)
+{
+  UInt uiSymbol;
+  Int iSymbol;
+  m_pcEntropyDecoderIf->parseAlfFlag(uiSymbol);
+  pAlfParam->alf_flag = uiSymbol;
+
+  if (!pAlfParam->alf_flag)
+  {
+    return;
+  }
+#if COM16_C806_ALF_TEMPPRED_NUM
+  //encode temporal reuse flag and index
+  m_pcEntropyDecoderIf->parseAlfFlag( uiSymbol );
+  pAlfParam->temproalPredFlag = uiSymbol;
+  if( uiSymbol )
+  {
+    m_pcEntropyDecoderIf->parseAlfUvlc( uiSymbol );
+    pAlfParam->prevIdx = uiSymbol;
+  }
+#endif
+  Int pos;
+#if COM16_C806_ALF_TEMPPRED_NUM
+  if( !pAlfParam->temproalPredFlag )
+  {
+#endif
+    decodeAux(pAlfParam);
+    decodeFilt(pAlfParam);
+#if COM16_C806_ALF_TEMPPRED_NUM
+  }
+#endif
+  // filter parameters for chroma
+  m_pcEntropyDecoderIf->parseAlfUvlc(uiSymbol);
+  pAlfParam->chroma_idc = uiSymbol;
+#if COM16_C806_ALF_TEMPPRED_NUM
+  if(!pAlfParam->temproalPredFlag && pAlfParam->chroma_idc)
+#else
+  if(pAlfParam->chroma_idc)
+#endif
+  {
+    m_pcEntropyDecoderIf->parseAlfUvlc(uiSymbol);
+    pAlfParam->tap_chroma = (uiSymbol<<1) + 5;
+    pAlfParam->num_coeff_chroma = ((pAlfParam->tap_chroma*pAlfParam->tap_chroma+1)>>1) + 1;
+
+    // filter coefficients for chroma
+    for(pos=0; pos<pAlfParam->num_coeff_chroma; pos++)
+    {
+      m_pcEntropyDecoderIf->parseAlfSvlc(iSymbol);
+      pAlfParam->coeff_chroma[pos] = iSymbol;
+    }
+  }
+
+  // region control parameters for luma
+  m_pcEntropyDecoderIf->parseAlfFlag(uiSymbol);
+  pAlfParam->cu_control_flag = uiSymbol;
+  if (pAlfParam->cu_control_flag)
+  {
+    m_pcEntropyDecoderIf->parseAlfCtrlDepth(uiSymbol,uiMaxTotalCUDepth);
+    pAlfParam->alf_max_depth = uiSymbol;
+    decodeAlfCtrlParam(pAlfParam);
+  }
+}
+
+Void TDecEntropy::decodeAlfCtrlParam( ALFParam* pAlfParam )
+{
+  UInt uiSymbol;
+  m_pcEntropyDecoderIf->parseAlfFlagNum( uiSymbol, pAlfParam->num_cus_in_frame, pAlfParam->alf_max_depth );
+  pAlfParam->num_alf_cu_flag = uiSymbol;
+
+  for(UInt i=0; i<pAlfParam->num_alf_cu_flag; i++)
+  {
+    m_pcEntropyDecoderIf->parseAlfCtrlFlag( pAlfParam->alf_cu_flag[i] );
+  }
+}
+
+#endif
 
 //! \}

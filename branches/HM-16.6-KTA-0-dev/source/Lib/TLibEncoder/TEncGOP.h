@@ -58,6 +58,9 @@
 #include "TEncAnalyze.h"
 #include "TEncRateCtrl.h"
 #include <vector>
+#if ALF_HM3_REFACTOR
+#include "TEncAdaptiveLoopFilter.h"
+#endif
 
 //! \ingroup TLibEncoder
 //! \{
@@ -132,6 +135,15 @@ private:
   UInt                    m_totalCoded;
   Bool                    m_bufferingPeriodSEIPresentInAU;
   SEIEncoder              m_seiEncoder;
+
+#if ALF_HM3_REFACTOR
+  // Adaptive Loop filter
+  TEncAdaptiveLoopFilter* m_pcAdaptiveLoopFilter;
+#if COM16_C806_ALF_TEMPPRED_NUM
+  static Int           m_iStoredAlfParaNum;
+  ALFParam             m_acStoredAlfPara[COM16_C806_ALF_TEMPPRED_NUM];
+#endif
+#endif
 
 public:
   TEncGOP();

@@ -775,6 +775,12 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
     parseVUI(pcSPS->getVuiParameters(), pcSPS);
   }
 
+  // KTA tools
+#if ALF_HM3_REFACTOR
+  READ_FLAG( uiCode , "use_alf_flag" ); pcSPS->setUseALF ( uiCode ? true : false );
+#endif
+  // KTA tools
+
   READ_FLAG( uiCode, "sps_extension_present_flag");
   if (uiCode)
   {
@@ -2041,6 +2047,113 @@ Void TDecCavlc::parseExplicitRdpcmMode( TComTU& /*rTu*/, ComponentID /*compID*/ 
   assert(0);
 }
 
+#if ALF_HM3_REFACTOR
+Void TDecCavlc::xReadUnaryMaxSymbol( UInt& ruiSymbol, UInt uiMaxSymbol )
+{
+  if (uiMaxSymbol == 0)
+  {
+    ruiSymbol = 0;
+    return;
+  }
+
+  READ_FLAG( ruiSymbol , "alf_ctrl_depth_flag_1st" );
+
+  if (ruiSymbol == 0 || uiMaxSymbol == 1)
+  {
+    return;
+  }
+
+  UInt uiSymbol = 0;
+  UInt uiCont;
+
+  do
+  {
+    READ_FLAG( uiCont , "alf_ctrl_depth_flag_cont" );
+    uiSymbol++;
+  }
+  while( uiCont && (uiSymbol < uiMaxSymbol-1) );
+
+  if( uiCont && (uiSymbol == uiMaxSymbol-1) )
+  {
+    uiSymbol++;
+  }
+
+  ruiSymbol = uiSymbol;
+}
+
+Void TDecCavlc::parseAlfCtrlDepth( UInt& ruiAlfCtrlDepth , UInt uiMaxTotalCUDepth )
+{
+  UInt uiSymbol;
+  xReadUnaryMaxSymbol(uiSymbol, uiMaxTotalCUDepth-1);
+  ruiAlfCtrlDepth = uiSymbol;
+}
+
+Void TDecCavlc::parseAlfCtrlFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth  , UInt uiMaxAlfCtrlDepth )
+{
+  if( uiDepth > uiMaxAlfCtrlDepth && !pcCU->isFirstAbsZorderIdxInDepth(uiAbsPartIdx, uiMaxAlfCtrlDepth))
+  {
+    return;
+  }
+
+  UInt uiSymbol;
+  READ_FLAG( uiSymbol , "alf_ctrl_flag" );
+
+  if (uiDepth > uiMaxAlfCtrlDepth)
+  {
+    pcCU->setAlfCtrlFlagSubParts( uiSymbol, uiAbsPartIdx, uiMaxAlfCtrlDepth);
+  }
+  else
+  {
+    pcCU->setAlfCtrlFlagSubParts( uiSymbol, uiAbsPartIdx, uiDepth );
+  }
+}
+
+Void TDecCavlc::parseAlfFlag (UInt& ruiVal)
+{
+  READ_FLAG( ruiVal , "alf_flag" );
+}
+
+Void TDecCavlc::parseAlfFlagNum( UInt& ruiVal, UInt minValue, UInt depth )
+{
+  UInt uiLength = 0;
+  UInt maxValue = (minValue << (depth*2));
+  UInt temp = maxValue - minValue;
+  for(UInt i=0; i<32; i++)
+  {
+    if(temp&0x1)
+    {
+      uiLength = i+1;
+    }
+    temp = (temp >> 1);
+  }
+  if(uiLength)
+  {
+    READ_CODE( uiLength , ruiVal , "alf_flag_num" );
+  }
+  else
+  {
+    ruiVal = 0;
+  }
+  ruiVal += minValue;
+}
+
+Void TDecCavlc::parseAlfCtrlFlag( UInt &ruiAlfCtrlFlag )
+{
+  UInt uiSymbol;
+  READ_FLAG( uiSymbol , "alf_ctrl_flag" );
+  ruiAlfCtrlFlag = uiSymbol;
+}
+
+Void TDecCavlc::parseAlfUvlc (UInt& ruiVal)
+{
+  READ_UVLC( ruiVal , "alf_uvlc" );
+}
+
+Void TDecCavlc::parseAlfSvlc (Int&  riVal)
+{
+  READ_SVLC( riVal , "alf_svlc" );
+}
+#endif
 
 //! \}
 

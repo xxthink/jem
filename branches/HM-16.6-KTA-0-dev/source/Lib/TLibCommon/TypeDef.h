@@ -47,6 +47,20 @@
 //! \ingroup TLibCommon
 //! \{
 
+///////////////////////////////////////////////////////////
+// KTA tools section start
+///////////////////////////////////////////////////////////
+#define TEMP_SYNC_HM166_HM14                              1  /// TO be removed later
+
+#define ALF_HM3_REFACTOR                                  1  ///< Adaptive loop filter with 4x4 block activity adaptation 
+#if ALF_HM3_REFACTOR
+#define COM16_C806_ALF_TEMPPRED_NUM                       6  ///< 0: no temporal prediction
+#endif
+
+///////////////////////////////////////////////////////////
+// KTA tools section end
+///////////////////////////////////////////////////////////
+
 // ====================================================================================================================
 // Debugging
 // ====================================================================================================================
@@ -801,6 +815,7 @@ struct TComSEIMasteringDisplay
   UShort    primaries[3][2];
   UShort    whitePoint[2];
 };
+
 //! \}
 
 #endif

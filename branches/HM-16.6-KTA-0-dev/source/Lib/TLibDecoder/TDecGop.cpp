@@ -71,7 +71,17 @@ Void TDecGop::create()
 
 Void TDecGop::destroy()
 {
+#if COM16_C806_ALF_TEMPPRED_NUM
+  for( Int i = 0; i < COM16_C806_ALF_TEMPPRED_NUM; i++ )
+  {
+    m_pcAdaptiveLoopFilter->freeALFParam( &m_acStoredAlfPara[i] );
+  }
+#endif
 }
+
+#if COM16_C806_ALF_TEMPPRED_NUM
+Int TDecGop::m_iStoredAlfParaNum = 0;
+#endif
 
 Void TDecGop::init( TDecEntropy*            pcEntropyDecoder,
                    TDecSbac*               pcSbacDecoder,
@@ -79,6 +89,9 @@ Void TDecGop::init( TDecEntropy*            pcEntropyDecoder,
                    TDecCavlc*              pcCavlcDecoder,
                    TDecSlice*              pcSliceDecoder,
                    TComLoopFilter*         pcLoopFilter,
+#if ALF_HM3_REFACTOR
+                   TComAdaptiveLoopFilter* pcAdaptiveLoopFilter, 
+#endif
                    TComSampleAdaptiveOffset* pcSAO
                    )
 {
@@ -90,6 +103,9 @@ Void TDecGop::init( TDecEntropy*            pcEntropyDecoder,
   m_pcLoopFilter          = pcLoopFilter;
   m_pcSAO                 = pcSAO;
   m_numberOfChecksumErrorsDetected = 0;
+#if ALF_HM3_REFACTOR
+  m_pcAdaptiveLoopFilter  = pcAdaptiveLoopFilter;
+#endif
 }
 
 
@@ -121,7 +137,42 @@ Void TDecGop::decompressSlice(TComInputBitstream* pcBitstream, TComPic* pcPic)
     ppcSubstreams[ui] = pcBitstream->extractSubstream(ui+1 < uiNumSubstreams ? (pcSlice->getSubstreamSize(ui)<<3) : pcBitstream->getNumBitsLeft());
   }
 
-  m_pcSliceDecoder->decompressSlice( ppcSubstreams, pcPic, m_pcSbacDecoder);
+#if ALF_HM3_REFACTOR
+  if ( pcSlice->getSPS()->getUseALF() )
+  {
+    m_pcAdaptiveLoopFilter->setNumCUsInFrame(pcPic);
+    m_pcAdaptiveLoopFilter->allocALFParam(&m_cAlfParam);
+    m_pcAdaptiveLoopFilter->resetALFParam(&m_cAlfParam);
+#if COM16_C806_ALF_TEMPPRED_NUM
+    static int iFirstLoop = 0;
+    for( Int i = 0; i < COM16_C806_ALF_TEMPPRED_NUM && !iFirstLoop; i++ )
+    {
+      m_pcAdaptiveLoopFilter->allocALFParam( &m_acStoredAlfPara[i] );
+    }
+    iFirstLoop++;
+#endif
+  }
+#endif
+#if COM16_C806_ALF_TEMPPRED_NUM
+  else
+  {
+    for( Int i = 0; i < COM16_C806_ALF_TEMPPRED_NUM; i++ )
+    {
+      m_acStoredAlfPara[i].coeff        = NULL;
+      m_acStoredAlfPara[i].coeff_chroma = NULL;
+      m_acStoredAlfPara[i].coeffmulti = NULL;
+      m_acStoredAlfPara[i].alf_cu_flag = NULL;
+      m_acStoredAlfPara[i].alfCoeffLuma   = NULL;
+      m_acStoredAlfPara[i].alfCoeffChroma = NULL;
+    }
+  }
+#endif
+
+  m_pcSliceDecoder->decompressSlice( ppcSubstreams, pcPic, m_pcSbacDecoder
+#if ALF_HM3_REFACTOR
+    , m_cAlfParam
+#endif
+    );
   // deallocate all created substreams, including internal buffers.
   for (UInt ui = 0; ui < uiNumSubstreams; ui++)
   {
@@ -150,6 +201,30 @@ Void TDecGop::filterPicture(TComPic* pcPic)
     m_pcSAO->SAOProcess(pcPic);
     m_pcSAO->PCMLFDisableProcess(pcPic);
   }
+
+#if ALF_HM3_REFACTOR
+  // adaptive loop filter
+  if( pcSlice->getSPS()->getUseALF() )
+  {
+#if COM16_C806_ALF_TEMPPRED_NUM
+    if( m_cAlfParam.temproalPredFlag )
+    {
+      m_pcAdaptiveLoopFilter->copyALFParam( &m_cAlfParam, &m_acStoredAlfPara[m_cAlfParam.prevIdx] );
+    }
+#endif
+    m_pcAdaptiveLoopFilter->ALFProcess(pcPic, &m_cAlfParam);
+#if COM16_C806_ALF_TEMPPRED_NUM
+    if( m_cAlfParam.alf_flag && !m_cAlfParam.temproalPredFlag && m_cAlfParam.filtNo >= 0 )
+    {
+      Int iIdx = m_iStoredAlfParaNum % COM16_C806_ALF_TEMPPRED_NUM;
+      m_iStoredAlfParaNum++;
+      m_acStoredAlfPara[iIdx].temproalPredFlag = false;
+      m_pcAdaptiveLoopFilter->copyALFParam( &m_acStoredAlfPara[iIdx], &m_cAlfParam );
+    }
+#endif
+    m_pcAdaptiveLoopFilter->freeALFParam(&m_cAlfParam);
+  }
+#endif
 
   pcPic->compressMotion();
   Char c = (pcSlice->isIntra() ? 'I' : pcSlice->isInterP() ? 'P' : 'B');

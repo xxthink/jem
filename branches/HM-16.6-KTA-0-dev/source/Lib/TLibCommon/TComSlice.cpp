@@ -1535,6 +1535,9 @@ TComSPS::TComSPS()
 , m_usePCM                    (false)
 , m_pcmLog2MaxSize            (  5)
 , m_uiPCMLog2MinSize          (  7)
+#if ALF_HM3_REFACTOR
+, m_useALF                   (false)
+#endif
 , m_bPCMFilterDisableFlag     (false)
 , m_uiBitsForPOC              (  8)
 , m_numLongTermRefPicSPS      (  0)

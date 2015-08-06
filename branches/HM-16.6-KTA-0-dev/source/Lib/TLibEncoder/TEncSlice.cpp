@@ -665,6 +665,12 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
   
   m_pcCuEncoder->setFastDeltaQp(bFastDeltaQP);
 
+#if ALF_HM3_REFACTOR
+  // initialize ALF parameters
+  m_pcEntropyCoder->setAlfCtrl(false);
+  m_pcEntropyCoder->setMaxAlfCtrlDepth(0); //unnecessary
+#endif
+
   //------------------------------------------------------------------------------
   //  Weighted Prediction parameters estimation.
   //------------------------------------------------------------------------------
@@ -919,7 +925,11 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
   //}
 }
 
-Void TEncSlice::encodeSlice   ( TComPic* pcPic, TComOutputBitstream* pcSubstreams, UInt &numBinsCoded )
+Void TEncSlice::encodeSlice   ( TComPic* pcPic, TComOutputBitstream* pcSubstreams, UInt &numBinsCoded 
+#if ALF_HM3_REFACTOR
+  , ALFParam & alfParam
+#endif
+  )
 {
   TComSlice *const pcSlice           = pcPic->getSlice(getSliceIdx());
 
@@ -1011,6 +1021,25 @@ Void TEncSlice::encodeSlice   ( TComPic* pcPic, TComOutputBitstream* pcSubstream
       }
     }
 
+#if ALF_HM3_REFACTOR
+    if( pcSlice->getSPS()->getUseALF() && ctuRsAddr == 0 )
+    {
+      if (alfParam.cu_control_flag)
+      {
+        m_pcEntropyCoder->setAlfCtrl( true );
+        m_pcEntropyCoder->setMaxAlfCtrlDepth(alfParam.alf_max_depth);
+      }
+      else
+      {
+        m_pcEntropyCoder->setAlfCtrl(false);
+      }
+      m_pcEntropyCoder->encodeAlfParam(&alfParam,pcSlice->getSPS()->getMaxTotalCUDepth());
+      if(alfParam.cu_control_flag)
+      {
+        m_pcEntropyCoder->encodeAlfCtrlParam(&alfParam);
+      }
+    }
+#endif
 
     if ( pcSlice->getSPS()->getUseSAO() )
     {

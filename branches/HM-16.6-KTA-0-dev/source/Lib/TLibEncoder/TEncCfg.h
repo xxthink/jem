@@ -378,6 +378,10 @@ protected:
   Bool      m_bEfficientFieldIRAPEnabled;                     ///< enable to code fields in a specific, potentially more efficient, order.
   Bool      m_bHarmonizeGopFirstFieldCoupleEnabled;
 
+#if ALF_HM3_REFACTOR
+  Bool      m_useALF;
+#endif
+
   std::string m_summaryOutFilename;                           ///< filename to use for producing summary output file.
   std::string m_summaryPicFilenameBase;                       ///< Base filename to use for producing summary picture output files. The actual filenames used will have I.txt, P.txt and B.txt appended.
   UInt        m_summaryVerboseness;                           ///< Specifies the level of the verboseness of the text output.
@@ -441,6 +445,10 @@ public:
   Void      setMaxTempLayer                 ( Int maxTempLayer )            { m_maxTempLayer = maxTempLayer;      }
   Void      setMaxCUWidth                   ( UInt  u )      { m_maxCUWidth  = u; }
   Void      setMaxCUHeight                  ( UInt  u )      { m_maxCUHeight = u; }
+#if ALF_HM3_REFACTOR
+  Int       getMaxCUWidth                   ()               { return  m_maxCUWidth; }
+  Int       getMaxCUHeight                  ()               { return  m_maxCUHeight; }
+#endif
   Void      setMaxTotalCUDepth              ( UInt  u )      { m_maxTotalCUDepth = u; }
   Void      setLog2DiffMaxMinCodingBlockSize( UInt  u )      { m_log2DiffMaxMinCodingBlockSize = u; }
 
@@ -942,6 +950,11 @@ public:
 
   Void      setSummaryVerboseness(UInt v)                            { m_summaryVerboseness = v; }
   UInt      getSummaryVerboseness( ) const                           { return m_summaryVerboseness; }
+
+#if ALF_HM3_REFACTOR
+  Void      setUseALF                       ( Bool  b )     { m_useALF   = b; }
+  Bool      getUseALF                       ()      { return m_useALF;     }
+#endif
 };
 
 //! \}

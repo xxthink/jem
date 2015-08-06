@@ -139,6 +139,11 @@ private:
   Char*         m_apiMVPNum[NUM_REF_PIC_LIST_01];       ///< array of number of possible motion vectors predictors
   Bool*         m_pbIPCMFlag;         ///< array of intra_pcm flags
 
+#if ALF_HM3_REFACTOR
+  UInt*         m_puiAlfCtrlFlag;     ///< array of ALF flags
+  UInt*         m_puiTmpAlfCtrlFlag;  ///< temporal array of ALF flags
+#endif
+
   // -------------------------------------------------------------------------------------------------------------------
   // misc. variables
   // -------------------------------------------------------------------------------------------------------------------
@@ -346,6 +351,18 @@ public:
   Bool          getIPCMFlag           (UInt uiIdx )             { return m_pbIPCMFlag[uiIdx];        }
   Void          setIPCMFlag           (UInt uiIdx, Bool b )     { m_pbIPCMFlag[uiIdx] = b;           }
   Void          setIPCMFlagSubParts   (Bool bIpcmFlag, UInt uiAbsPartIdx, UInt uiDepth);
+
+#if ALF_HM3_REFACTOR
+  UInt*         getAlfCtrlFlag        ()                        { return m_puiAlfCtrlFlag;            }
+  UInt          getAlfCtrlFlag        ( UInt uiIdx )            { return m_puiAlfCtrlFlag[uiIdx];     }
+  Void          setAlfCtrlFlag        ( UInt uiIdx, UInt uiFlag){ m_puiAlfCtrlFlag[uiIdx] = uiFlag;   }
+  Void          setAlfCtrlFlagSubParts( UInt uiFlag, UInt uiAbsPartIdx, UInt uiDepth );
+  Void          createTmpAlfCtrlFlag  ();
+  Void          destroyTmpAlfCtrlFlag ();
+  Void          copyAlfCtrlFlagToTmp  ();
+  Void          copyAlfCtrlFlagFromTmp();
+  UInt          getCtxAlfCtrlFlag               ( UInt   uiAbsPartIdx                                 );
+#endif
 
   // -------------------------------------------------------------------------------------------------------------------
   // member functions for accessing partition information

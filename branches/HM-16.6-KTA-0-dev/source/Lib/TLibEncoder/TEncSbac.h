@@ -168,6 +168,21 @@ public:
 
 
   TEncBinIf* getEncBinIf()  { return m_pcBinIf; }
+
+#if ALF_HM3_REFACTOR
+  Bool  getAlfCtrl             ()                         { return m_bAlfCtrl;          }
+  UInt  getMaxAlfCtrlDepth     ()                         { return m_uiMaxAlfCtrlDepth; }
+  Void  setAlfCtrl             ( Bool bAlfCtrl          ) { m_bAlfCtrl          = bAlfCtrl;          }
+  Void  setMaxAlfCtrlDepth     ( UInt uiMaxAlfCtrlDepth ) { m_uiMaxAlfCtrlDepth = uiMaxAlfCtrlDepth; }
+  Void  codeAlfFlag       ( UInt uiCode );
+  Void  codeAlfUvlc       ( UInt uiCode );
+  Void  codeAlfSvlc       ( Int  uiCode );
+  Void  codeAlfCtrlDepth  ( UInt uiMaxTotalCUDepth );
+  Void  codeAlfFlagNum    ( UInt uiCode, UInt minValue );
+  Void  codeAlfCtrlFlag   ( UInt uiSymbol );
+  Void  codeAlfCtrlFlag   ( TComDataCU* pcCU, UInt uiAbsPartIdx );
+#endif
+
 private:
   ContextModel         m_contextModels[MAX_NUM_CTX_MOD];
   Int                  m_numContextModels;
@@ -206,6 +221,15 @@ private:
 
   ContextModel3DBuffer m_ChromaQpAdjFlagSCModel;
   ContextModel3DBuffer m_ChromaQpAdjIdcSCModel;
+
+#if ALF_HM3_REFACTOR
+  Bool          m_bAlfCtrl;
+  UInt          m_uiMaxAlfCtrlDepth;
+  ContextModel3DBuffer m_cCUAlfCtrlFlagSCModel;
+  ContextModel3DBuffer m_cALFFlagSCModel;
+  ContextModel3DBuffer m_cALFUvlcSCModel;
+  ContextModel3DBuffer m_cALFSvlcSCModel;
+#endif
 
   UInt m_golombRiceAdaptationStatistics[RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS];
 };
