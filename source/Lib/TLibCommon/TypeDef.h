@@ -125,10 +125,6 @@
   #define MPI_DICT_SIZE_INTRA         4
   #define MPI_DICT_SIZE_INTER         2
 #endif
-// confirmation from Qualcomm is needed:
-#define FREE_2_DELETE   1
-#define QC_ECABAC_BF    1
-#define QC_EMT_BF       1
 ///////////////////////////////////////////////////////////
 // Contribution VCEG-AZ05 (SAMSUNG) defines section ends
 ///////////////////////////////////////////////////////////
