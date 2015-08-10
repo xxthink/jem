@@ -74,6 +74,11 @@ TComPrediction::TComPrediction()
 : m_pLumaRecBuffer(0)
 , m_iLumaRecStride(0)
 {
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  m_puiW = NULL;
+  m_puiH = NULL;
+  m_puiSPAddr = NULL;
+#endif
   for(UInt ch=0; ch<MAX_NUM_COMPONENT; ch++)
   {
     for(UInt buf=0; buf<2; buf++)
@@ -90,6 +95,23 @@ TComPrediction::~TComPrediction()
 
 Void TComPrediction::destroy()
 {
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  if( m_puiW != NULL )
+  {
+    delete [] m_puiW;
+    m_puiW = NULL;
+  }
+  if( m_puiH != NULL )
+  {
+    delete [] m_puiH;
+    m_puiH = NULL;
+  }
+  if( m_puiSPAddr != NULL )
+  {
+    delete [] m_puiSPAddr;
+    m_puiSPAddr = NULL;
+  }
+#endif
   for(UInt ch=0; ch<MAX_NUM_COMPONENT; ch++)
   {
     for(UInt buf=0; buf<NUM_PRED_BUF; buf++)
@@ -172,6 +194,12 @@ Void TComPrediction::initTempBuff(ChromaFormat chromaFormatIDC)
       m_pLumaRecBuffer = new Pel[ m_iLumaRecStride * m_iLumaRecStride ];
     }
   }
+
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  m_puiW = new UInt[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
+  m_puiH = new UInt[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
+  m_puiSPAddr = new UInt[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
+#endif
 }
 
 // ====================================================================================================================
@@ -518,6 +546,36 @@ Void TComPrediction::motionCompensation ( TComDataCU* pcCU, TComYuv* pcYuvPred, 
     }
     else
     {
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+      if ( pcCU->getMergeType(uiPartAddr))  
+      {
+        Int iNumSPInOneLine, iNumSP, iSPWidth, iSPHeight;
+
+        pcCU->getSPPara(iWidth, iHeight, iNumSP, iNumSPInOneLine, iSPWidth, iSPHeight);
+
+        xGetSubPUAddrAndMerge(pcCU, uiPartAddr, iSPWidth, iSPHeight, iNumSPInOneLine, iNumSP, m_puiW, m_puiH, m_puiSPAddr);
+
+        //MC
+        for (Int i = 0; i < iNumSP; i++)
+        {
+          if (m_puiW[i]==0 || m_puiH[i]==0)
+          {
+            continue;
+          }
+
+          if(xCheckIdenticalMotion( pcCU, m_puiSPAddr[i] ))
+          {
+            xPredInterUni (pcCU, m_puiSPAddr[i], m_puiW[i], m_puiH[i], REF_PIC_LIST_0, pcYuvPred );
+          }
+          else
+          {
+            xPredInterBi  (pcCU, m_puiSPAddr[i], m_puiW[i], m_puiH[i], pcYuvPred);
+          }
+        }
+      }
+      else
+      {
+#endif
       if ( xCheckIdenticalMotion( pcCU, uiPartAddr ) )
       {
         xPredInterUni (pcCU, uiPartAddr, iWidth, iHeight, REF_PIC_LIST_0, pcYuvPred );
@@ -526,6 +584,9 @@ Void TComPrediction::motionCompensation ( TComDataCU* pcCU, TComYuv* pcYuvPred, 
       {
         xPredInterBi  (pcCU, uiPartAddr, iWidth, iHeight, pcYuvPred );
       }
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+      }
+#endif
     }
     return;
   }
@@ -551,6 +612,34 @@ Void TComPrediction::motionCompensation ( TComDataCU* pcCU, TComYuv* pcYuvPred, 
     }
     else
     {
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+      if (pcCU->getMergeType(uiPartAddr))  
+      {
+        Int iNumSPInOneLine, iNumSP, iSPWidth, iSPHeight;
+
+        pcCU->getSPPara(iWidth, iHeight, iNumSP, iNumSPInOneLine, iSPWidth, iSPHeight);
+
+        xGetSubPUAddrAndMerge(pcCU, uiPartAddr, iSPWidth, iSPHeight, iNumSPInOneLine, iNumSP, m_puiW, m_puiH, m_puiSPAddr);
+      
+        for (Int i = 0; i < iNumSP; i++)
+        {
+          if (m_puiW[i]==0 || m_puiH[i]==0)
+          {
+            continue;
+          }
+          if( xCheckIdenticalMotion( pcCU, m_puiSPAddr[i] ))
+          {
+            xPredInterUni (pcCU, m_puiSPAddr[i], m_puiW[i], m_puiH[i], REF_PIC_LIST_0, pcYuvPred );
+          }
+          else
+          {
+            xPredInterBi  (pcCU, m_puiSPAddr[i], m_puiW[i], m_puiH[i], pcYuvPred);
+          }
+        }
+      }
+      else
+      {
+#endif
       if ( xCheckIdenticalMotion( pcCU, uiPartAddr ) )
       {
         xPredInterUni (pcCU, uiPartAddr, iWidth, iHeight, REF_PIC_LIST_0, pcYuvPred );
@@ -559,6 +648,9 @@ Void TComPrediction::motionCompensation ( TComDataCU* pcCU, TComYuv* pcYuvPred, 
       {
         xPredInterBi  (pcCU, uiPartAddr, iWidth, iHeight, pcYuvPred );
       }
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+      }
+#endif
     }
   }
   return;
@@ -826,5 +918,86 @@ Bool TComPrediction::UseDPCMForFirstPassIntraEstimation(TComTU &rTu, const UInt 
           rTu.getCU()->getCUTransquantBypass(rTu.GetAbsPartIdxTU()) &&
           (uiDirMode==HOR_IDX || uiDirMode==VER_IDX);
 }
+
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+Void TComPrediction::xGetSubPUAddrAndMerge(TComDataCU* pcCU, UInt uiPartAddr, Int iSPWidth, Int iSPHeight, Int iNumSPInOneLine, Int iNumSP, UInt* uiMergedSPW, UInt* uiMergedSPH, UInt* uiSPAddr )
+{
+  for (Int i = 0; i < iNumSP; i++)
+  {
+    uiMergedSPW[i] = iSPWidth;
+    uiMergedSPH[i] = iSPHeight;
+    pcCU->getSPAbsPartIdx(uiPartAddr, iSPWidth, iSPHeight, i, iNumSPInOneLine, uiSPAddr[i]);
+  }
+
+  // horizontal sub-PU merge
+  for (Int i=0; i<iNumSP; i++)
+  {
+    if (i % iNumSPInOneLine == iNumSPInOneLine - 1 || uiMergedSPW[i]==0 || uiMergedSPH[i]==0)
+    {
+      continue;
+    }
+    for (Int j=i+1; j<i+iNumSPInOneLine-i%iNumSPInOneLine; j++)
+    {
+      if (xCheckTwoSPMotion(pcCU, uiSPAddr[i], uiSPAddr[j]))
+      {
+        uiMergedSPW[i] += iSPWidth;
+        uiMergedSPW[j] = uiMergedSPH[j] = 0;
+      }
+      else
+      {
+        break;
+      }
+    }
+  }
+  //vertical sub-PU merge
+  for (Int i=0; i<iNumSP-iNumSPInOneLine; i++)
+  {
+    if (uiMergedSPW[i]==0 || uiMergedSPH[i]==0)
+    {
+      continue;
+    }
+    for (Int j=i+iNumSPInOneLine; j<iNumSP; j+=iNumSPInOneLine)
+    {
+      if (xCheckTwoSPMotion(pcCU, uiSPAddr[i], uiSPAddr[j]) && uiMergedSPW[i]==uiMergedSPW[j])
+      {
+        uiMergedSPH[i] += iSPHeight;
+        uiMergedSPH[j] = uiMergedSPW[j] = 0;
+      }
+      else
+      {
+        break;
+      }
+    }
+  }
+}
+Bool TComPrediction::xCheckTwoSPMotion ( TComDataCU* pcCU, UInt PartAddr0, UInt PartAddr1 )
+{
+  if( pcCU->getCUMvField(REF_PIC_LIST_0)->getRefIdx(PartAddr0) != pcCU->getCUMvField(REF_PIC_LIST_0)->getRefIdx(PartAddr1))
+  {
+    return false;
+  }
+  if( pcCU->getCUMvField(REF_PIC_LIST_1)->getRefIdx(PartAddr0) != pcCU->getCUMvField(REF_PIC_LIST_1)->getRefIdx(PartAddr1))
+  {
+    return false;
+  }
+
+  if (pcCU->getCUMvField(REF_PIC_LIST_0)->getRefIdx(PartAddr0) >= 0)
+  {
+    if (pcCU->getCUMvField(REF_PIC_LIST_0)->getMv(PartAddr0) != pcCU->getCUMvField(REF_PIC_LIST_0)->getMv(PartAddr1))
+    {
+      return false;
+    }
+  }
+
+  if (pcCU->getCUMvField(REF_PIC_LIST_1)->getRefIdx(PartAddr0) >= 0)
+  {
+    if (pcCU->getCUMvField(REF_PIC_LIST_1)->getMv(PartAddr0) != pcCU->getCUMvField(REF_PIC_LIST_1)->getMv(PartAddr1))
+    {
+      return false;
+    }
+  }
+  return true;
+}
+#endif
 
 //! \}

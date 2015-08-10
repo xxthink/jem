@@ -489,6 +489,9 @@ Void TDecSbac::parseMergeIndex ( TComDataCU* pcCU, UInt& ruiMergeIndex )
     for( ; uiUnaryIdx < uiNumCand - 1; ++uiUnaryIdx )
     {
       UInt uiSymbol = 0;
+#if COM16_C806_GEN_MRG_IMPROVEMENT
+      m_pcTDecBinIf->decodeBin( uiSymbol, m_cCUMergeIdxExtSCModel.get( 0, 0, (uiUnaryIdx>NUM_MERGE_IDX_EXT_CTX-1? NUM_MERGE_IDX_EXT_CTX-1:uiUnaryIdx) ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MERGE_INDEX));
+#else
       if ( uiUnaryIdx==0 )
       {
         m_pcTDecBinIf->decodeBin( uiSymbol, m_cCUMergeIdxExtSCModel.get( 0, 0, 0 ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MERGE_INDEX) );
@@ -497,6 +500,7 @@ Void TDecSbac::parseMergeIndex ( TComDataCU* pcCU, UInt& ruiMergeIndex )
       {
         m_pcTDecBinIf->decodeBinEP( uiSymbol RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MERGE_INDEX) );
       }
+#endif
       if( uiSymbol == 0 )
       {
         break;
@@ -582,8 +586,12 @@ Void TDecSbac::parsePartSize( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth 
   else
   {
     UInt uiMaxNumBits = 2;
-
+#if COM16_C806_HEVC_MOTION_CONSTRAINT_REMOVAL && !COM16_C806_DISABLE_4X4_PU
+    if ( (pcCU->getSlice()->getSPS()->getAtmvpEnableFlag() && (uiDepth == log2DiffMaxMinCodingBlockSize)) ||
+        (!pcCU->getSlice()->getSPS()->getAtmvpEnableFlag() && (uiDepth == log2DiffMaxMinCodingBlockSize && !( (g_uiMaxCUWidth>>uiDepth) == 8 && (g_uiMaxCUHeight>>uiDepth) == 8 ) ) ))
+#else
     if( uiDepth == log2DiffMaxMinCodingBlockSize && !( cuWidth == 8 && cuHeight == 8 ) )
+#endif
     {
       uiMaxNumBits ++;
     }
@@ -740,7 +748,11 @@ Void TDecSbac::parseInterDir( TComDataCU* pcCU, UInt& ruiInterDir, UInt uiAbsPar
   ContextModel *pCtx = m_cCUInterDirSCModel.get( 0 );
 
   uiSymbol = 0;
+#if COM16_C806_HEVC_MOTION_CONSTRAINT_REMOVAL
+  if (pcCU->getSlice()->getSPS()->getAtmvpEnableFlag() || pcCU->getPartitionSize(uiAbsPartIdx) == SIZE_2Nx2N || pcCU->getHeight(uiAbsPartIdx) != 8 )
+#else
   if (pcCU->getPartitionSize(uiAbsPartIdx) == SIZE_2Nx2N || pcCU->getHeight(uiAbsPartIdx) != 8 )
+#endif
   {
     m_pcTDecBinIf->decodeBin( uiSymbol, *( pCtx + uiCtx ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__INTER_DIR) );
   }

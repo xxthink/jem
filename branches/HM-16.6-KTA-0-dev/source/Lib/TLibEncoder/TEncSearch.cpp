@@ -155,6 +155,14 @@ TEncSearch::TEncSearch()
   }
 
   setWpScalingDistParam( NULL, -1, REF_PIC_LIST_X );
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  m_pMvFieldSP[0] = new TComMvField[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH*2];
+  m_pMvFieldSP[1] = new TComMvField[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH*2];
+  m_phInterDirSP[0] = new UChar[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
+  m_phInterDirSP[1] = new UChar[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
+  assert( m_pMvFieldSP[0] != NULL && m_phInterDirSP[0] != NULL );
+  assert( m_pMvFieldSP[1] != NULL && m_phInterDirSP[1] != NULL );
+#endif
 }
 
 
@@ -212,6 +220,21 @@ Void TEncSearch::destroy()
 
   m_tmpYuvPred.destroy();
   m_isInitialized = false;
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  for (UInt ui=0;ui<2;ui++)
+  {
+    if( m_pMvFieldSP[ui] != NULL )
+    {
+      delete [] m_pMvFieldSP[ui];
+      m_pMvFieldSP[ui] = NULL;
+    }
+    if( m_phInterDirSP[ui] != NULL )
+    {
+      delete [] m_phInterDirSP[ui];
+      m_phInterDirSP[ui] = NULL;
+    }
+  }
+#endif
 }
 
 TEncSearch::~TEncSearch()
@@ -2840,7 +2863,13 @@ Void TEncSearch::xGetInterPredictionError( TComDataCU* pcCU, TComYuv* pcYuvOrg, 
 }
 
 //! estimation of best merge coding
-Void TEncSearch::xMergeEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPUIdx, UInt& uiInterDir, TComMvField* pacMvField, UInt& uiMergeIndex, Distortion& ruiCost, TComMvField* cMvFieldNeighbours, UChar* uhInterDirNeighbours, Int& numValidMergeCand )
+Void TEncSearch::xMergeEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPUIdx, UInt& uiInterDir, TComMvField* pacMvField, UInt& uiMergeIndex, Distortion& ruiCost, TComMvField* cMvFieldNeighbours, UChar* uhInterDirNeighbours, Int& numValidMergeCand
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  , UChar*          pMergeTypeNeighbor 
+    , TComMvField*    pcMvFieldSP[2]
+    , UChar*          puhInterDirSP[2]
+#endif
+  )
 {
   UInt uiAbsPartIdx = 0;
   Int iWidth = 0;
@@ -2855,13 +2884,25 @@ Void TEncSearch::xMergeEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPUI
     if ( iPUIdx == 0 )
     {
       pcCU->setPartSizeSubParts( SIZE_2Nx2N, 0, uiDepth ); // temporarily set
-      pcCU->getInterMergeCandidates( 0, 0, cMvFieldNeighbours,uhInterDirNeighbours, numValidMergeCand );
+      pcCU->getInterMergeCandidates( 0, 0, cMvFieldNeighbours,uhInterDirNeighbours, numValidMergeCand
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+      , pMergeTypeNeighbor
+      , pcMvFieldSP
+      , puhInterDirSP
+#endif
+        );
       pcCU->setPartSizeSubParts( partSize, 0, uiDepth ); // restore
     }
   }
   else
   {
-    pcCU->getInterMergeCandidates( uiAbsPartIdx, iPUIdx, cMvFieldNeighbours, uhInterDirNeighbours, numValidMergeCand );
+    pcCU->getInterMergeCandidates( uiAbsPartIdx, iPUIdx, cMvFieldNeighbours, uhInterDirNeighbours, numValidMergeCand
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+      , pMergeTypeNeighbor
+      , pcMvFieldSP
+      , puhInterDirSP
+#endif
+      );
   }
 
   xRestrictBipredMergeCand( pcCU, iPUIdx, cMvFieldNeighbours, uhInterDirNeighbours, numValidMergeCand );
@@ -2873,13 +2914,40 @@ Void TEncSearch::xMergeEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPUI
     UInt       uiBitsCand = 0;
 
     PartSize ePartSize = pcCU->getPartitionSize( 0 );
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+    pcCU->setMergeTypeSubParts( pMergeTypeNeighbor[uiMergeCand], uiAbsPartIdx, iPUIdx, pcCU->getDepth( uiAbsPartIdx ));  
+    if( pMergeTypeNeighbor[uiMergeCand])
+    {
 
+      UInt uiSPAddr;
+      Int iNumSPInOneLine, iNumSP, iSPWidth, iSPHeight;
+      UInt uiSPListIndex = pMergeTypeNeighbor[uiMergeCand]==MGR_TYPE_SUBPU_TMVP?0:1;
+      pcCU->getSPPara(iWidth, iHeight, iNumSP, iNumSPInOneLine, iSPWidth, iSPHeight);
+
+      for (Int iPartitionIdx = 0; iPartitionIdx < iNumSP; iPartitionIdx++)
+      {
+        pcCU->getSPAbsPartIdx(uiAbsPartIdx, iSPWidth, iSPHeight, iPartitionIdx, iNumSPInOneLine, uiSPAddr);
+        pcCU->getCUMvField( REF_PIC_LIST_0 )->setMvFieldSP(pcCU, uiSPAddr, m_pMvFieldSP[uiSPListIndex][2*iPartitionIdx], iSPWidth, iSPHeight);
+        pcCU->getCUMvField( REF_PIC_LIST_1 )->setMvFieldSP(pcCU, uiSPAddr, m_pMvFieldSP[uiSPListIndex][2*iPartitionIdx + 1], iSPWidth, iSPHeight);
+      }
+    }
+    else 
+    {
+#endif
     pcCU->getCUMvField(REF_PIC_LIST_0)->setAllMvField( cMvFieldNeighbours[0 + 2*uiMergeCand], ePartSize, uiAbsPartIdx, 0, iPUIdx );
     pcCU->getCUMvField(REF_PIC_LIST_1)->setAllMvField( cMvFieldNeighbours[1 + 2*uiMergeCand], ePartSize, uiAbsPartIdx, 0, iPUIdx );
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+    }
+#endif
 
     xGetInterPredictionError( pcCU, pcYuvOrg, iPUIdx, uiCostCand, m_pcEncCfg->getUseHADME() );
     uiBitsCand = uiMergeCand + 1;
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+    UInt uiMaxCand = m_pcEncCfg->getMaxNumMergeCand() + (m_pcEncCfg->getAtmvp()? 2:0);
+    if (uiMergeCand == uiMaxCand -1)
+#else
     if (uiMergeCand == m_pcEncCfg->getMaxNumMergeCand() -1)
+#endif
     {
         uiBitsCand--;
     }
@@ -2982,6 +3050,13 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
   TComMvField cMvFieldNeighbours[MRG_MAX_NUM_CANDS << 1]; // double length for mv of both lists
   UChar uhInterDirNeighbours[MRG_MAX_NUM_CANDS];
   Int numValidMergeCand = 0 ;
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  UChar eMergeCandTypeNieghors[MRG_MAX_NUM_CANDS];
+  for ( Int i=0; i< MRG_MAX_NUM_CANDS ; i++)
+  {
+    eMergeCandTypeNieghors[i] = MGR_TYPE_DEFAULT_N;
+  }
+#endif
 
   for ( Int iPartIdx = 0; iPartIdx < iNumPart; iPartIdx++ )
   {
@@ -3379,18 +3454,53 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
 
       // find Merge result
       Distortion uiMRGCost = std::numeric_limits<Distortion>::max();
-
-      xMergeEstimation( pcCU, pcOrgYuv, iPartIdx, uiMRGInterDir, cMRGMvField, uiMRGIndex, uiMRGCost, cMvFieldNeighbours, uhInterDirNeighbours, numValidMergeCand);
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+      memset( eMergeCandTypeNieghors,MGR_TYPE_DEFAULT_N, MRG_MAX_NUM_CANDS*sizeof(UChar) );
+#endif
+      xMergeEstimation( pcCU, pcOrgYuv, iPartIdx, uiMRGInterDir, cMRGMvField, uiMRGIndex, uiMRGCost, cMvFieldNeighbours, uhInterDirNeighbours, numValidMergeCand
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+      , eMergeCandTypeNieghors
+      , m_pMvFieldSP
+      , m_phInterDirSP
+#endif 
+        );
 
       if ( uiMRGCost < uiMECost )
       {
         // set Merge result
         pcCU->setMergeFlagSubParts ( true,          uiPartAddr, iPartIdx, pcCU->getDepth( uiPartAddr ) );
         pcCU->setMergeIndexSubParts( uiMRGIndex,    uiPartAddr, iPartIdx, pcCU->getDepth( uiPartAddr ) );
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+        pcCU->setMergeTypeSubParts( eMergeCandTypeNieghors[uiMRGIndex], uiPartAddr, iPartIdx, pcCU->getDepth( uiPartAddr ) ); 
+        if (eMergeCandTypeNieghors[uiMRGIndex])
+        {
+          UInt uiSPAddr;
+          Int iNumSPInOneLine, iNumSP, iSPWidth, iSPHeight;
+          pcCU->getSPPara(iRoiWidth, iRoiHeight, iNumSP, iNumSPInOneLine, iSPWidth, iSPHeight);
+          UInt uiSPListIndex = eMergeCandTypeNieghors[uiMRGIndex]==MGR_TYPE_SUBPU_TMVP ? 0:1;
+          for (Int iPartitionIdx = 0; iPartitionIdx < iNumSP; iPartitionIdx++)
+          {
+            pcCU->getSPAbsPartIdx(uiPartAddr, iSPWidth, iSPHeight, iPartitionIdx, iNumSPInOneLine, uiSPAddr);
+            pcCU->setInterDirSP(m_phInterDirSP[uiSPListIndex][iPartitionIdx], uiSPAddr, iSPWidth, iSPHeight);
+            pcCU->getCUMvField( REF_PIC_LIST_0 )->setMvFieldSP(pcCU, uiSPAddr, m_pMvFieldSP[uiSPListIndex][2*iPartitionIdx], iSPWidth, iSPHeight);
+            pcCU->getCUMvField( REF_PIC_LIST_1 )->setMvFieldSP(pcCU, uiSPAddr, m_pMvFieldSP[uiSPListIndex][2*iPartitionIdx + 1], iSPWidth, iSPHeight);
+          }
+          if ( pcCU->getInterDir(uiPartAddr) == 3 && pcCU->isBipredRestriction(iPartIdx) )
+          {
+            pcCU->getCUMvField( REF_PIC_LIST_1 )->setAllMv( TComMv(0,0), ePartSize, uiPartAddr, 0, iPartIdx);
+            pcCU->getCUMvField( REF_PIC_LIST_1 )->setAllRefIdx( -1, ePartSize, uiPartAddr, 0, iPartIdx);
+            pcCU->setInterDirSubParts( 1, uiPartAddr, iPartIdx, pcCU->getDepth( uiPartAddr ));
+          }
+        }
+        else
+        {
+#endif
         pcCU->setInterDirSubParts  ( uiMRGInterDir, uiPartAddr, iPartIdx, pcCU->getDepth( uiPartAddr ) );
         pcCU->getCUMvField( REF_PIC_LIST_0 )->setAllMvField( cMRGMvField[0], ePartSize, uiPartAddr, 0, iPartIdx );
         pcCU->getCUMvField( REF_PIC_LIST_1 )->setAllMvField( cMRGMvField[1], ePartSize, uiPartAddr, 0, iPartIdx );
-
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+        }
+#endif
         pcCU->getCUMvField(REF_PIC_LIST_0)->setAllMvd    ( cMvZero,            ePartSize, uiPartAddr, 0, iPartIdx );
         pcCU->getCUMvField(REF_PIC_LIST_1)->setAllMvd    ( cMvZero,            ePartSize, uiPartAddr, 0, iPartIdx );
 
@@ -3402,6 +3512,9 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
       else
       {
         // set ME result
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+        pcCU->setMergeTypeSubParts( MGR_TYPE_DEFAULT_N , uiPartAddr, iPartIdx, pcCU->getDepth( uiPartAddr ) ); 
+#endif
         pcCU->setMergeFlagSubParts( false,        uiPartAddr, iPartIdx, pcCU->getDepth( uiPartAddr ) );
         pcCU->setInterDirSubParts ( uiMEInterDir, uiPartAddr, iPartIdx, pcCU->getDepth( uiPartAddr ) );
         pcCU->getCUMvField( REF_PIC_LIST_0 )->setAllMvField( cMEMvField[0], ePartSize, uiPartAddr, 0, iPartIdx );

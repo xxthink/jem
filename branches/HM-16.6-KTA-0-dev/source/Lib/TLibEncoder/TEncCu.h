@@ -98,6 +98,12 @@ private:
   TEncSbac*               m_pcRDGoOnSbacCoder;
   TEncRateCtrl*           m_pcRateCtrl;
 
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  //ATMVP 
+  TComMvField  * m_pMvFieldSP[2];
+  UChar        * m_phInterDirSP[2];
+#endif
+
 public:
   /// copy parameters from encoder class
   Void  init                ( TEncTop* pcEncTop );

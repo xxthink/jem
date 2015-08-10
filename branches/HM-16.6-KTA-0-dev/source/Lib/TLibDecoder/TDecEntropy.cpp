@@ -191,6 +191,10 @@ Void TDecEntropy::decodePUWise( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDept
 
   TComMvField cMvFieldNeighbours[MRG_MAX_NUM_CANDS << 1]; // double length for mv of both lists
   UChar uhInterDirNeighbours[MRG_MAX_NUM_CANDS];
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  UChar    eMergeCandTypeNieghors[MRG_MAX_NUM_CANDS];
+  memset( eMergeCandTypeNieghors, MGR_TYPE_DEFAULT_N, sizeof(UChar)*MRG_MAX_NUM_CANDS );
+#endif
 
   for ( UInt ui = 0; ui < pcCU->getSlice()->getMaxNumMergeCand(); ui++ )
   {
@@ -221,7 +225,15 @@ Void TDecEntropy::decodePUWise( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDept
         if ( !hasMergedCandList )
         {
           pcSubCU->setPartSizeSubParts( SIZE_2Nx2N, 0, uiDepth ); // temporarily set.
-          pcSubCU->getInterMergeCandidates( 0, 0, cMvFieldNeighbours, uhInterDirNeighbours, numValidMergeCand );
+          pcSubCU->getInterMergeCandidates( 0, 0, cMvFieldNeighbours, uhInterDirNeighbours, numValidMergeCand 
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+          , eMergeCandTypeNieghors
+          , m_pMvFieldSP
+          , m_phInterDirSP
+          , uiSubPartIdx
+          , pcCU
+#endif
+            );
           pcSubCU->setPartSizeSubParts( ePartSize, 0, uiDepth ); // restore.
           hasMergedCandList = true;
         }
@@ -229,9 +241,22 @@ Void TDecEntropy::decodePUWise( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDept
       else
       {
         uiMergeIndex = pcCU->getMergeIndex(uiSubPartIdx);
-        pcSubCU->getInterMergeCandidates( uiSubPartIdx-uiAbsPartIdx, uiPartIdx, cMvFieldNeighbours, uhInterDirNeighbours, numValidMergeCand, uiMergeIndex );
+        pcSubCU->getInterMergeCandidates( uiSubPartIdx-uiAbsPartIdx, uiPartIdx, cMvFieldNeighbours, uhInterDirNeighbours, numValidMergeCand
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+          , eMergeCandTypeNieghors
+          , m_pMvFieldSP
+          , m_phInterDirSP
+          , uiSubPartIdx
+          , pcCU
+#endif
+          , uiMergeIndex
+          );
       }
 
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+      pcCU->setMergeTypeSubParts( eMergeCandTypeNieghors[uiMergeIndex], uiSubPartIdx, uiPartIdx, uiDepth ); 
+      if( eMergeCandTypeNieghors[uiMergeIndex] == MGR_TYPE_DEFAULT_N )
+#endif
       pcCU->setInterDirSubParts( uhInterDirNeighbours[uiMergeIndex], uiSubPartIdx, uiPartIdx, uiDepth );
 
       TComMv cTmpMv( 0, 0 );
@@ -242,6 +267,9 @@ Void TDecEntropy::decodePUWise( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDept
           pcCU->setMVPIdxSubParts( 0, RefPicList( uiRefListIdx ), uiSubPartIdx, uiPartIdx, uiDepth);
           pcCU->setMVPNumSubParts( 0, RefPicList( uiRefListIdx ), uiSubPartIdx, uiPartIdx, uiDepth);
           pcCU->getCUMvField( RefPicList( uiRefListIdx ) )->setAllMvd( cTmpMv, ePartSize, uiSubPartIdx, uiDepth, uiPartIdx );
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+          if( eMergeCandTypeNieghors[uiMergeIndex] == MGR_TYPE_DEFAULT_N )
+#endif
           pcCU->getCUMvField( RefPicList( uiRefListIdx ) )->setAllMvField( cMvFieldNeighbours[ 2*uiMergeIndex + uiRefListIdx ], ePartSize, uiSubPartIdx, uiDepth, uiPartIdx );
 
         }
@@ -649,6 +677,35 @@ Void TDecEntropy::decodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
   
   xDecodeTransform( bCodeDQP, isChromaQpAdjCoded, tuRecurse, quadtreeTULog2MinSizeInCU );
 }
+
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+TDecEntropy::TDecEntropy()
+{
+  m_pMvFieldSP[0] = new TComMvField[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH*2];
+  m_pMvFieldSP[1] = new TComMvField[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH*2];
+  m_phInterDirSP[0] = new UChar[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
+  m_phInterDirSP[1] = new UChar[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
+  assert( m_pMvFieldSP[0] != NULL && m_phInterDirSP[0] != NULL );
+  assert( m_pMvFieldSP[1] != NULL && m_phInterDirSP[1] != NULL );
+}
+
+TDecEntropy::~TDecEntropy()
+{
+  for (UInt ui=0;ui<2;ui++)
+  {
+    if( m_pMvFieldSP[ui] != NULL )
+    {
+      delete [] m_pMvFieldSP[ui];
+      m_pMvFieldSP[ui] = NULL;
+    }
+    if( m_phInterDirSP[ui] != NULL )
+    {
+      delete [] m_phInterDirSP[ui];
+      m_phInterDirSP[ui] = NULL;
+    }
+  }
+}
+#endif
 
 #if ALF_HM3_REFACTOR
 Void TDecEntropy::decodeAux(ALFParam* pAlfParam)

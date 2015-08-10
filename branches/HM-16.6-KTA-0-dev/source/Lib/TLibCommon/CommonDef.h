@@ -128,8 +128,11 @@ static const Int NOT_VALID =                                       -1;
 static const Int AMVP_MAX_NUM_CANDS =                               2; ///< AMVP: advanced motion vector prediction - max number of final candidates
 static const Int AMVP_MAX_NUM_CANDS_MEM =                           3; ///< AMVP: advanced motion vector prediction - max number of candidates
 static const Int AMVP_DECIMATION_FACTOR =                           4;
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+static const Int MRG_MAX_NUM_CANDS =                                7; ///< MERGE
+#else
 static const Int MRG_MAX_NUM_CANDS =                                5; ///< MERGE
-
+#endif
 
 static const Int MAX_TLAYER =                                       7; ///< Explicit temporal layer QP offset - max number of temporal layer
 

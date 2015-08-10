@@ -96,6 +96,15 @@ Void TEncCu::create(UChar uhTotalDepth, UInt uiMaxWidth, UInt uiMaxHeight, Chrom
     m_ppcOrigYuv    [i] = new TComYuv; m_ppcOrigYuv    [i]->create(uiWidth, uiHeight, chromaFormat);
   }
 
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  m_pMvFieldSP[0] = new TComMvField[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH*2];
+  m_pMvFieldSP[1] = new TComMvField[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH*2];
+  m_phInterDirSP[0] = new UChar[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
+  m_phInterDirSP[1] = new UChar[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
+  assert( m_pMvFieldSP[0] != NULL && m_phInterDirSP[0] != NULL );
+  assert( m_pMvFieldSP[1] != NULL && m_phInterDirSP[1] != NULL );
+#endif
+
   m_bEncodeDQP                     = false;
   m_stillToCodeChromaQpOffsetFlag  = false;
   m_cuChromaQpOffsetIdxPlus1       = 0;
@@ -199,6 +208,21 @@ Void TEncCu::destroy()
     delete [] m_ppcOrigYuv;
     m_ppcOrigYuv = NULL;
   }
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  for (UInt ui=0;ui<2;ui++)
+  {
+    if( m_pMvFieldSP[ui] != NULL )
+    {
+      delete [] m_pMvFieldSP[ui];
+      m_pMvFieldSP[ui] = NULL;
+    }
+    if( m_phInterDirSP[ui] != NULL )
+    {
+      delete [] m_phInterDirSP[ui];
+      m_phInterDirSP[ui] = NULL;
+    }
+  }
+#endif
 }
 
 /** \param    pcEncTop      pointer of encoder class
@@ -490,8 +514,11 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         if( rpcBestCU->getSlice()->getSliceType() != I_SLICE )
         {
           // 2Nx2N, NxN
-
+#if !COM16_C806_HEVC_MOTION_CONSTRAINT_REMOVAL || COM16_C806_DISABLE_4X4_PU
           if(!( (rpcBestCU->getWidth(0)==8) && (rpcBestCU->getHeight(0)==8) ))
+#else
+          if ( rpcBestCU->getSlice()->getSPS()->getAtmvpEnableFlag() || !( (rpcBestCU->getWidth(0)==8) && (rpcBestCU->getHeight(0)==8) )) 
+#endif
           {
             if( uiDepth == sps.getLog2DiffMaxMinCodingBlockSize() && doNotBlockPu)
             {
@@ -1169,6 +1196,10 @@ Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTem
   UChar uhInterDirNeighbours[MRG_MAX_NUM_CANDS];
   Int numValidMergeCand = 0;
   const Bool bTransquantBypassFlag = rpcTempCU->getCUTransquantBypass(0);
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  UChar  eMergeCandTypeNieghors[MRG_MAX_NUM_CANDS];
+  memset ( eMergeCandTypeNieghors, MGR_TYPE_DEFAULT_N, sizeof(UChar)*MRG_MAX_NUM_CANDS );
+#endif
 
   for( UInt ui = 0; ui < rpcTempCU->getSlice()->getMaxNumMergeCand(); ++ui )
   {
@@ -1176,7 +1207,24 @@ Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTem
   }
   UChar uhDepth = rpcTempCU->getDepth( 0 );
   rpcTempCU->setPartSizeSubParts( SIZE_2Nx2N, 0, uhDepth ); // interprets depth relative to CTU level
-  rpcTempCU->getInterMergeCandidates( 0, 0, cMvFieldNeighbours,uhInterDirNeighbours, numValidMergeCand );
+
+
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  for (Int i=0 , i2 = 0 ; i< rpcTempCU->getTotalNumPart(); i++ , i2 += 2)
+  {
+    m_phInterDirSP[1][i] = 0;
+    m_pMvFieldSP[1][i2].setRefIdx(-1);
+    m_pMvFieldSP[1][i2+1].setRefIdx(-1);
+  }
+#endif
+
+  rpcTempCU->getInterMergeCandidates( 0, 0, cMvFieldNeighbours,uhInterDirNeighbours, numValidMergeCand
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+    , eMergeCandTypeNieghors
+    , m_pMvFieldSP
+    , m_phInterDirSP
+#endif
+    );
 
   Int mergeCandBuffer[MRG_MAX_NUM_CANDS];
   for( UInt ui = 0; ui < numValidMergeCand; ++ui )
@@ -1213,10 +1261,35 @@ Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTem
           rpcTempCU->setPartSizeSubParts( SIZE_2Nx2N, 0, uhDepth ); // interprets depth relative to CTU level
           rpcTempCU->setMergeFlagSubParts( true, 0, 0, uhDepth ); // interprets depth relative to CTU level
           rpcTempCU->setMergeIndexSubParts( uiMergeCand, 0, 0, uhDepth ); // interprets depth relative to CTU level
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+          rpcTempCU->setMergeTypeSubParts(eMergeCandTypeNieghors[uiMergeCand] , 0, 0, uhDepth ); 
+          if( eMergeCandTypeNieghors[uiMergeCand])
+          {
+            UInt uiSPAddr;
+            Int iWidth = rpcTempCU->getWidth(0);
+            Int iHeight = rpcTempCU->getHeight(0);
+
+            Int iNumSPInOneLine, iNumSP, iSPWidth, iSPHeight;
+            UInt uiSPListIndex = eMergeCandTypeNieghors[uiMergeCand] == MGR_TYPE_SUBPU_TMVP?0:1;
+            rpcTempCU->getSPPara(iWidth, iHeight, iNumSP, iNumSPInOneLine, iSPWidth, iSPHeight);
+
+            for (Int iPartitionIdx = 0; iPartitionIdx < iNumSP; iPartitionIdx++)
+            {
+              rpcTempCU->getSPAbsPartIdx(0, iSPWidth, iSPHeight, iPartitionIdx, iNumSPInOneLine, uiSPAddr);
+              rpcTempCU->setInterDirSP(m_phInterDirSP[uiSPListIndex][iPartitionIdx], uiSPAddr, iSPWidth, iSPHeight);
+              rpcTempCU->getCUMvField( REF_PIC_LIST_0 )->setMvFieldSP(rpcTempCU, uiSPAddr, m_pMvFieldSP[uiSPListIndex][2*iPartitionIdx], iSPWidth, iSPHeight);
+              rpcTempCU->getCUMvField( REF_PIC_LIST_1 )->setMvFieldSP(rpcTempCU, uiSPAddr, m_pMvFieldSP[uiSPListIndex][2*iPartitionIdx + 1], iSPWidth, iSPHeight);
+            }
+          }
+          else
+          {
+#endif
           rpcTempCU->setInterDirSubParts( uhInterDirNeighbours[uiMergeCand], 0, 0, uhDepth ); // interprets depth relative to CTU level
           rpcTempCU->getCUMvField( REF_PIC_LIST_0 )->setAllMvField( cMvFieldNeighbours[0 + 2*uiMergeCand], SIZE_2Nx2N, 0, 0 ); // interprets depth relative to rpcTempCU level
           rpcTempCU->getCUMvField( REF_PIC_LIST_1 )->setAllMvField( cMvFieldNeighbours[1 + 2*uiMergeCand], SIZE_2Nx2N, 0, 0 ); // interprets depth relative to rpcTempCU level
-
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+          }
+#endif
           // do MC
           m_pcPredSearch->motionCompensation ( rpcTempCU, m_ppcPredYuvTemp[uhDepth] );
           // estimate residual and encode everything

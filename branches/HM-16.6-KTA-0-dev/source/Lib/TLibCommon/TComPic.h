@@ -76,6 +76,11 @@ private:
 
   Bool                  m_isTop;
   Bool                  m_isField;
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  Int                   m_iBaseUnitWidth;       ///< Width of Base Unit (with maximum depth or minimum size, m_iCuWidth >> Max. Depth)
+  Int                   m_iBaseUnitHeight;      ///< Height of Base Unit (with maximum depth or minimum size, m_iCuHeight >> Max. Depth)
+  Int                   m_iNumCuInWidth;
+#endif
 
   std::vector<std::vector<TComDataCU*> > m_vSliceCUDataLink;
 
@@ -112,6 +117,10 @@ public:
   TComPicYuv*   getPicYuvResi()       { return  m_pcPicYuvResi; }
   Void          setPicYuvPred( TComPicYuv* pcPicYuv )       { m_pcPicYuvPred = pcPicYuv; }
   Void          setPicYuvResi( TComPicYuv* pcPicYuv )       { m_pcPicYuvResi = pcPicYuv; }
+
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  Void          getCUAddrAndPartIdx( Int iX, Int iY, Int& riCuAddr, Int& riAbsZorderIdx );
+#endif
 
 #if ALF_HM3_REFACTOR
   TComPicYuv*   replacePicYuvRecPointer( TComPicYuv * pNewPicYuvRec )

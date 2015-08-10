@@ -52,7 +52,11 @@
 #define NUM_SKIP_FLAG_CTX             3       ///< number of context models for skip flag
 
 #define NUM_MERGE_FLAG_EXT_CTX        1       ///< number of context models for merge flag of merge extended
+#if COM16_C806_GEN_MRG_IMPROVEMENT
+#define NUM_MERGE_IDX_EXT_CTX         5       ///< number of context models for merge index of merge extended
+#else
 #define NUM_MERGE_IDX_EXT_CTX         1       ///< number of context models for merge index of merge extended
+#endif
 
 #define NUM_PART_SIZE_CTX             4       ///< number of context models for partition size
 #define NUM_PRED_MODE_CTX             1       ///< number of context models for prediction mode
@@ -211,9 +215,15 @@ INIT_MERGE_FLAG_EXT[NUMBER_OF_SLICE_TYPES][NUM_MERGE_FLAG_EXT_CTX] =
 static const UChar
 INIT_MERGE_IDX_EXT[NUMBER_OF_SLICE_TYPES][NUM_MERGE_IDX_EXT_CTX] =
 {
+#if COM16_C806_GEN_MRG_IMPROVEMENT
+  { 137, CNU, CNU, CNU, CNU}, 
+  { 122, CNU, CNU, CNU, CNU}, 
+  { CNU, CNU, CNU, CNU, CNU}, 
+#else
   { 137, },
   { 122, },
   { CNU, },
+#endif
 };
 
 static const UChar

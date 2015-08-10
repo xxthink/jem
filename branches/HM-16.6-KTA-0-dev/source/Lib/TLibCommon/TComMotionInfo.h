@@ -43,6 +43,10 @@
 #include "CommonDef.h"
 #include "TComMv.h"
 
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+class TComDataCU;
+class TComPic;
+#endif
 //! \ingroup TLibCommon
 //! \{
 
@@ -85,6 +89,12 @@ public:
   Int getRefIdx() const { return  m_iRefIdx;       }
   Int getHor   () const { return  m_acMv.getHor(); }
   Int getVer   () const { return  m_acMv.getVer(); }
+#if COM16_C806_GEN_MRG_IMPROVEMENT 
+  Bool operator== (const TComMvField& rcMv) const
+  {
+    return (m_acMv.getHor()== rcMv.getHor() && m_acMv.getVer()== rcMv.getVer() && m_iRefIdx == rcMv.getRefIdx());
+  }
+#endif
 };
 
 /// class for motion information in one CU
@@ -139,6 +149,9 @@ public:
   Void    setAllMvd    ( TComMv const & rcMvd,        PartSize eCUMode, Int iPartAddr, UInt uiDepth, Int iPartIdx=0 );
   Void    setAllRefIdx ( Int iRefIdx,                 PartSize eMbMode, Int iPartAddr, UInt uiDepth, Int iPartIdx=0 );
   Void    setAllMvField( TComMvField const & mvField, PartSize eMbMode, Int iPartAddr, UInt uiDepth, Int iPartIdx=0 );
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  Void    setMvFieldSP ( TComDataCU* pcCU, UInt uiAbsPartIdx, TComMvField cMvField, Int iWidth, Int iHeight  );
+#endif
 
   Void setNumPartition( Int iNumPart )
   {

@@ -135,7 +135,17 @@ private:
   //UInt    m_uiBakChromaOffset;
   //UInt    m_bakAbsPartIdxCU;
 
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  TComMvField*        m_pMvFieldSP[2];
+  UChar*              m_phInterDirSP[2];
+#endif
+
 public:
+
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  TDecEntropy();
+  ~TDecEntropy();
+#endif
   Void init (TComPrediction* p) {m_pcPrediction = p;}
   Void decodePUWise       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, TComDataCU* pcSubCU );
   Void decodeInterDirPU   ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPartIdx );

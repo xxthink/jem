@@ -776,8 +776,12 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
   }
 
   // KTA tools
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  READ_FLAG( uiCode,    "atmvp_flag"            );                pcSPS->setAtmvpEnableFlag( uiCode ? true : false );
+  READ_CODE( 3, uiCode, "log2_sub_pu_tmvp_size" );                pcSPS->setSubPUTLog2Size ( uiCode );
+#endif
 #if ALF_HM3_REFACTOR
-  READ_FLAG( uiCode , "use_alf_flag" ); pcSPS->setUseALF ( uiCode ? true : false );
+  READ_FLAG( uiCode , "use_alf_flag" );                           pcSPS->setUseALF ( uiCode ? true : false );
 #endif
   // KTA tools
 
@@ -1360,8 +1364,13 @@ Void TDecCavlc::parseSliceHeader (TComSlice* pcSlice, ParameterSetManager *param
     }
     if (!pcSlice->isIntra())
     {
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+      READ_UVLC( uiCode, sps->getAtmvpEnableFlag() ? "seven_minus_max_num_merge_cand": "five_minus_max_num_merge_cand");
+      pcSlice->setMaxNumMergeCand(MRG_MAX_NUM_CANDS - ( sps->getAtmvpEnableFlag() ? 0 : 2) - uiCode);      
+#else 
       READ_UVLC( uiCode, "five_minus_max_num_merge_cand");
       pcSlice->setMaxNumMergeCand(MRG_MAX_NUM_CANDS - uiCode);
+#endif
     }
 
     READ_SVLC( iCode, "slice_qp_delta" );

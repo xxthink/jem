@@ -69,6 +69,11 @@ private:
   Bool                m_bDecodeDQP;
   Bool                m_IsChromaQpAdjCoded;
 
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  TComMvField*        m_pMvFieldSP[2];
+  UChar*              m_phInterDirSP[2];
+#endif
+
 public:
   TDecCu();
   virtual ~TDecCu();

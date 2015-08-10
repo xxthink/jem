@@ -493,8 +493,11 @@ Void TEncSbac::codePartSize( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
     {
       m_pcBinIf->encodeBin( 0, m_cCUPartSizeSCModel.get( 0, 0, 0) );
       m_pcBinIf->encodeBin( 0, m_cCUPartSizeSCModel.get( 0, 0, 1) );
-
+#if COM16_C806_HEVC_MOTION_CONSTRAINT_REMOVAL && !COM16_C806_DISABLE_4X4_PU
+      if( uiDepth == log2DiffMaxMinCodingBlockSize && (pcCU->getSlice()->getSPS()->getAtmvpEnableFlag()||!( pcCU->getWidth(uiAbsPartIdx) == 8 && pcCU->getHeight(uiAbsPartIdx) == 8 )))
+#else
       if( uiDepth == log2DiffMaxMinCodingBlockSize && !( pcCU->getWidth(uiAbsPartIdx) == 8 && pcCU->getHeight(uiAbsPartIdx) == 8 ) )
+#endif
       {
         m_pcBinIf->encodeBin( 1, m_cCUPartSizeSCModel.get( 0, 0, 2) );
       }
@@ -515,7 +518,12 @@ Void TEncSbac::codePartSize( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
     }
     case SIZE_NxN:
     {
+#if COM16_C806_HEVC_MOTION_CONSTRAINT_REMOVAL && !COM16_C806_DISABLE_4X4_PU
+      if( uiDepth == log2DiffMaxMinCodingBlockSize && 
+        (pcCU->getSlice()->getSPS()->getAtmvpEnableFlag()||!( pcCU->getWidth(uiAbsPartIdx) == 8 && pcCU->getHeight(uiAbsPartIdx) == 8 )))
+#else
       if( uiDepth == log2DiffMaxMinCodingBlockSize && !( pcCU->getWidth(uiAbsPartIdx) == 8 && pcCU->getHeight(uiAbsPartIdx) == 8 ) )
+#endif
       {
         m_pcBinIf->encodeBin( 0, m_cCUPartSizeSCModel.get( 0, 0, 0) );
         m_pcBinIf->encodeBin( 0, m_cCUPartSizeSCModel.get( 0, 0, 1) );
@@ -603,6 +611,9 @@ Void TEncSbac::codeMergeIndex( TComDataCU* pcCU, UInt uiAbsPartIdx )
     for( UInt ui = 0; ui < uiNumCand - 1; ++ui )
     {
       const UInt uiSymbol = ui == uiUnaryIdx ? 0 : 1;
+#if COM16_C806_GEN_MRG_IMPROVEMENT
+      m_pcBinIf->encodeBin( uiSymbol, m_cCUMergeIdxExtSCModel.get( 0, 0, (ui > NUM_MERGE_IDX_EXT_CTX-1? NUM_MERGE_IDX_EXT_CTX-1:ui) ) );
+#else
       if ( ui==0 )
       {
         m_pcBinIf->encodeBin( uiSymbol, m_cCUMergeIdxExtSCModel.get( 0, 0, 0 ) );
@@ -611,6 +622,7 @@ Void TEncSbac::codeMergeIndex( TComDataCU* pcCU, UInt uiAbsPartIdx )
       {
         m_pcBinIf->encodeBinEP( uiSymbol );
       }
+#endif
       if( uiSymbol == 0 )
       {
         break;
@@ -745,8 +757,11 @@ Void TEncSbac::codeInterDir( TComDataCU* pcCU, UInt uiAbsPartIdx )
   const UInt uiInterDir = pcCU->getInterDir( uiAbsPartIdx ) - 1;
   const UInt uiCtx      = pcCU->getCtxInterDir( uiAbsPartIdx );
   ContextModel *pCtx    = m_cCUInterDirSCModel.get( 0 );
-
+#if COM16_C806_HEVC_MOTION_CONSTRAINT_REMOVAL
+  if (pcCU->getSlice()->getSPS()->getAtmvpEnableFlag() || pcCU->getPartitionSize(uiAbsPartIdx) == SIZE_2Nx2N || pcCU->getHeight(uiAbsPartIdx) != 8 )
+#else
   if (pcCU->getPartitionSize(uiAbsPartIdx) == SIZE_2Nx2N || pcCU->getHeight(uiAbsPartIdx) != 8 )
+#endif
   {
     m_pcBinIf->encodeBin( uiInterDir == 2 ? 1 : 0, *( pCtx + uiCtx ) );
   }

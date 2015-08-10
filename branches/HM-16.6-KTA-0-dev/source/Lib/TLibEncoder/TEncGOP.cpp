@@ -1697,9 +1697,14 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
 
     // cabac_zero_words processing
     cabac_zero_word_padding(pcSlice, pcPic, binCountsInNalUnits, numBytesInVclNalUnits, accessUnit.back()->m_nalUnitData, m_pcCfg->getCabacZeroWordPaddingEnabled());
-
+#if COM16_C806_HEVC_MOTION_CONSTRAINT_REMOVAL
+    if ( !pcSlice->getSPS()->getAtmvpEnableFlag())
+    {
+      pcPic->compressMotion();
+    }
+#else  
     pcPic->compressMotion();
-
+#endif
     //-- For time output for each slice
     Double dEncTime = (Double)(clock()-iBeforeTime) / CLOCKS_PER_SEC;
 

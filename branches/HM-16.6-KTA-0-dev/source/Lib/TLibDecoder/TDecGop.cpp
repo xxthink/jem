@@ -226,7 +226,14 @@ Void TDecGop::filterPicture(TComPic* pcPic)
   }
 #endif
 
+#if COM16_C806_HEVC_MOTION_CONSTRAINT_REMOVAL
+  if ( !pcSlice->getSPS()->getAtmvpEnableFlag() )
+  {
+    pcPic->compressMotion();
+  }
+#else
   pcPic->compressMotion();
+#endif
   Char c = (pcSlice->isIntra() ? 'I' : pcSlice->isInterP() ? 'P' : 'B');
   if (!pcSlice->isReferenced())
   {

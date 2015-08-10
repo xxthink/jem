@@ -1077,7 +1077,10 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   ("SEIMasteringDisplayMinLuminance",                 m_masteringDisplay.minLuminance,                      0u, "Specifies the mastering display minimum luminance value in units of 1/10000 candela per square metre (32-bit code value)")
   ("SEIMasteringDisplayPrimaries",                    cfg_DisplayPrimariesCode,       cfg_DisplayPrimariesCode, "Mastering display primaries for all three colour planes in CIE xy coordinates in increments of 1/50000 (results in the ranges 0 to 50000 inclusive)")
   ("SEIMasteringDisplayWhitePoint",                   cfg_DisplayWhitePointCode,     cfg_DisplayWhitePointCode, "Mastering display white point CIE xy coordinates in normalised increments of 1/50000 (e.g. 0.333 = 16667)")
-    
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  ("ATMVP",                                           m_useAtmvpFlag,                                     true, "Advanced TMVP")       
+  ("SubPUTempLog2Size",                               m_subPUTLog2Size,                                (UInt)2, "Sub-PU TMVP size index: 2^n")
+#endif    
 #if ALF_HM3_REFACTOR
   ("ALF", m_useALF, true, "Adaptive Loop Filter")
 #endif
@@ -1757,7 +1760,11 @@ Void TAppEncCfg::xCheckParameter()
 
   xConfirmPara(  m_maxNumMergeCand < 1,  "MaxNumMergeCand must be 1 or greater.");
   xConfirmPara(  m_maxNumMergeCand > 5,  "MaxNumMergeCand must be 5 or smaller.");
-
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  xConfirmPara( m_subPUTLog2Size < 2,                                                               "SubPULog2Size must be 2 or greater.");
+  xConfirmPara( m_subPUTLog2Size > 6,                                                               "SubPULog2Size must be 6 or smaller.");
+  xConfirmPara( (1<<m_subPUTLog2Size) > m_uiMaxCUWidth,                                             "SubPULog2Size must be log2(maxCUSize) or smaller.");
+#endif 
 #if ADAPTIVE_QP_SELECTION
   xConfirmPara( m_bUseAdaptQpSelect == true && m_iQP < 0,                                              "AdaptiveQpSelection must be disabled when QP < 0.");
   xConfirmPara( m_bUseAdaptQpSelect == true && (m_cbQpOffset !=0 || m_crQpOffset != 0 ),               "AdaptiveQpSelection must be disabled when ChromaQpOffset is not equal to 0.");
@@ -2425,8 +2432,11 @@ Void TAppEncCfg::xPrintParameter()
     printf("InitialQP                              : %d\n", m_RCInitialQP );
     printf("ForceIntraQP                           : %d\n", m_RCForceIntraQP );
   }
-
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  printf("Max Num Merge Candidates               : %d\n", m_maxNumMergeCand+(m_useAtmvpFlag? 2:0 ));
+#else
   printf("Max Num Merge Candidates               : %d\n", m_maxNumMergeCand);
+#endif
   printf("\n");
 
   printf("TOOL CFG: ");
@@ -2484,6 +2494,10 @@ Void TAppEncCfg::xPrintParameter()
   printf(" SignBitHidingFlag:%d ", m_signHideFlag);
   printf("RecalQP:%d", m_recalculateQPAccordingToLambda ? 1 : 0 );
 
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  printf(" ATMVP:%d, ", m_useAtmvpFlag );
+  printf(" SubPUTLog2Size:%d  " , m_subPUTLog2Size  );
+#endif
 #if ALF_HM3_REFACTOR
   printf(" ALF:%d ", m_useALF             );
 #endif

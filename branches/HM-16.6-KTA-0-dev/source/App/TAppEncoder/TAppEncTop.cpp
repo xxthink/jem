@@ -387,6 +387,10 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setEfficientFieldIRAPEnabled                         ( m_bEfficientFieldIRAPEnabled );
   m_cTEncTop.setHarmonizeGopFirstFieldCoupleEnabled               ( m_bHarmonizeGopFirstFieldCoupleEnabled );
 
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  m_cTEncTop.setSubPUTLog2Size ( m_subPUTLog2Size);
+  m_cTEncTop.setAtmvp( m_useAtmvpFlag);
+#endif
 #if ALF_HM3_REFACTOR
   m_cTEncTop.setUseALF                       ( m_useALF      );
 #endif

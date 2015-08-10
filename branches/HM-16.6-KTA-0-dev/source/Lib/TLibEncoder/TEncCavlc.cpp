@@ -572,6 +572,10 @@ Void TEncCavlc::codeSPS( const TComSPS* pcSPS )
   }
 
   // KTA tools
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  WRITE_FLAG( pcSPS->getAtmvpEnableFlag() ? 1: 0, "atmvp_flag");
+  WRITE_CODE( pcSPS->getSubPUTLog2Size(),      3, "log2_sub_pu_tmvp_size" );
+#endif
 #if ALF_HM3_REFACTOR
   WRITE_FLAG( pcSPS->getUseALF () ? 1 : 0, "use_alf_flag" );
 #endif
@@ -1008,7 +1012,16 @@ Void TEncCavlc::codeSliceHeader         ( TComSlice* pcSlice )
     assert(pcSlice->getMaxNumMergeCand()<=MRG_MAX_NUM_CANDS);
     if (!pcSlice->isIntra())
     {
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+      UInt uiValTemp = MRG_MAX_NUM_CANDS - pcSlice->getMaxNumMergeCand();
+      if (!pcSlice->getSPS()->getAtmvpEnableFlag()) 
+      {
+        uiValTemp-=2;
+      }
+      WRITE_UVLC( uiValTemp ,  pcSlice->getSPS()->getAtmvpEnableFlag() ? "seven_minus_max_num_merge_cand": "five_minus_max_num_merge_cand");
+#else
       WRITE_UVLC(MRG_MAX_NUM_CANDS - pcSlice->getMaxNumMergeCand(), "five_minus_max_num_merge_cand");
+#endif
     }
     Int iCode = pcSlice->getSliceQp() - ( pcSlice->getPPS()->getPicInitQPMinus26() + 26 );
     WRITE_SVLC( iCode, "slice_qp_delta" );
