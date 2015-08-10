@@ -1535,6 +1535,10 @@ TComSPS::TComSPS()
 , m_usePCM                    (false)
 , m_pcmLog2MaxSize            (  5)
 , m_uiPCMLog2MinSize          (  7)
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+, m_useAtmvpFlag              (false)
+, m_subPUTLog2Size            (  6)
+#endif
 #if ALF_HM3_REFACTOR
 , m_useALF                   (false)
 #endif

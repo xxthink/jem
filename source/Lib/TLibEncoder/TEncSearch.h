@@ -88,6 +88,10 @@ private:
 #if ADAPTIVE_QP_SELECTION
   TCoeff*         m_ppcQTTempTUArlCoeff[MAX_NUM_COMPONENT];
 #endif
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  TComMvField   * m_pMvFieldSP[2];
+  UChar         * m_phInterDirSP[2];
+#endif
 
 protected:
   // interface to option
@@ -350,6 +354,11 @@ protected:
                                     TComMvField* cMvFieldNeighbours,
                                     UChar*       uhInterDirNeighbours,
                                     Int&         numValidMergeCand
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+                                  , UChar*      pMergeTypeNeighbor 
+                                  , TComMvField*    pcMvFieldSP[2]
+                                  , UChar*          puhInterDirSP[2]
+#endif
                                    );
 
   Void xRestrictBipredMergeCand   ( TComDataCU*     pcCU,

@@ -69,6 +69,11 @@ class TComPrediction : public TComWeightPrediction
 {
 private:
   static const UChar m_aucIntraFilter[MAX_NUM_CHANNEL_TYPE][MAX_INTRA_FILTER_DEPTHS];
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  UInt*  m_puiW;
+  UInt*  m_puiH;
+  UInt*  m_puiSPAddr;
+#endif
 
 protected:
   Pel*      m_piYuvExt[MAX_NUM_COMPONENT][NUM_PRED_BUF];
@@ -98,6 +103,11 @@ protected:
   Void xDCPredFiltering( const Pel* pSrc, Int iSrcStride, Pel* pDst, Int iDstStride, Int iWidth, Int iHeight, ChannelType channelType );
   Bool xCheckIdenticalMotion    ( TComDataCU* pcCU, UInt PartAddr);
   Void destroy();
+
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  Bool xCheckTwoSPMotion ( TComDataCU* pcCU, UInt PartAddr0, UInt PartAddr1 );
+  Void xGetSubPUAddrAndMerge(TComDataCU* pcCU, UInt uiPartAddr, Int iSPWidth, Int iSPHeight, Int iNumSPInOneLine, Int iNumSP, UInt* uiMergedSPW, UInt* uiMergedSPH, UInt* uiSPAddr );
+#endif
 
 public:
   TComPrediction();

@@ -378,6 +378,10 @@ protected:
   Bool      m_bEfficientFieldIRAPEnabled;                     ///< enable to code fields in a specific, potentially more efficient, order.
   Bool      m_bHarmonizeGopFirstFieldCoupleEnabled;
 
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  UInt      m_subPUTLog2Size;
+  Bool      m_useAtmvpFlag;
+#endif
 #if ALF_HM3_REFACTOR
   Bool      m_useALF;
 #endif
@@ -950,7 +954,11 @@ public:
 
   Void      setSummaryVerboseness(UInt v)                            { m_summaryVerboseness = v; }
   UInt      getSummaryVerboseness( ) const                           { return m_summaryVerboseness; }
-
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  Void setSubPUTLog2Size                    ( UInt u )      { m_subPUTLog2Size = u; } 
+  Void setAtmvp                             ( Bool b )      { m_useAtmvpFlag       = b; }
+  Bool getAtmvp                             ()              { return    m_useAtmvpFlag; }
+#endif
 #if ALF_HM3_REFACTOR
   Void      setUseALF                       ( Bool  b )     { m_useALF   = b; }
   Bool      getUseALF                       ()      { return m_useALF;     }

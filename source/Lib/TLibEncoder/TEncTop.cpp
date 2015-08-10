@@ -624,7 +624,7 @@ Void TEncTop::xInitSPS()
   m_cSPS.setMaxTLayers( m_maxTempLayer );
   m_cSPS.setTemporalIdNestingFlag( ( m_maxTempLayer == 1 ) ? true : false );
 
-  for (Int i = 0; i < min(m_cSPS.getMaxTLayers(),(UInt) MAX_TLAYER); i++ )
+  for (UInt i = 0; i < min(m_cSPS.getMaxTLayers(),(UInt) MAX_TLAYER); i++ )
   {
     m_cSPS.setMaxDecPicBuffering(m_maxDecPicBuffering[i], i);
     m_cSPS.setNumReorderPics(m_numReorderPics[i], i);
@@ -700,6 +700,10 @@ Void TEncTop::xInitSPS()
   m_cSPS.getSpsRangeExtension().setCabacBypassAlignmentEnabledFlag(m_cabacBypassAlignmentEnabledFlag);
 
   // Set up SPS for KTA tools
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  m_cSPS.setAtmvpEnableFlag( m_useAtmvpFlag);
+  m_cSPS.setSubPUTLog2Size ( m_subPUTLog2Size );
+#endif
 #if ALF_HM3_REFACTOR
   m_cSPS.setUseALF        ( m_useALF           );
 #endif

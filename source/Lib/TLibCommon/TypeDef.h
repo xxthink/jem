@@ -51,6 +51,12 @@
 // KTA tools section start
 ///////////////////////////////////////////////////////////
 #define TEMP_SYNC_HM166_HM14                              1  /// TO be removed later
+#define COM16_C806_VCEG_AZ10_SUB_PU_TMVP                  1  ///< CY: sub-block level temporal motion prediction (a.k.a. ATMVP) 
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP                     
+#define COM16_C806_HEVC_MOTION_CONSTRAINT_REMOVAL         1
+#define COM16_C806_DISABLE_4X4_PU                         1
+#define COM16_C806_GEN_MRG_IMPROVEMENT                    1
+#endif
 
 #define ALF_HM3_REFACTOR                                  1  ///< Adaptive loop filter with 4x4 block activity adaptation 
 #if ALF_HM3_REFACTOR
@@ -247,6 +253,15 @@ typedef       UInt            Distortion;        ///< distortion measurement
 // ====================================================================================================================
 // Enumeration
 // ====================================================================================================================
+
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+enum MergeType
+{
+  MGR_TYPE_DEFAULT_N  = 0, // 0
+  MGR_TYPE_SUBPU_TMVP = 1, // 1
+  MGR_TYPE_SUBPU_TMVP_EXT =2, // 2
+};
+#endif
 
 enum RDPCMMode
 {

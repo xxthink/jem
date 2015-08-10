@@ -368,7 +368,10 @@ protected:
   Int       m_maxBitsPerMinCuDenom;                           ///< Indicates an upper bound for the number of bits of coding_unit() data
   Int       m_log2MaxMvLengthHorizontal;                      ///< Indicate the maximum absolute value of a decoded horizontal MV component in quarter-pel luma units
   Int       m_log2MaxMvLengthVertical;                        ///< Indicate the maximum absolute value of a decoded vertical MV component in quarter-pel luma units
-
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  UInt      m_subPUTLog2Size;
+  Bool      m_useAtmvpFlag;
+#endif
 #if ALF_HM3_REFACTOR
   Bool      m_useALF;                                         ///< flag for using adaptive loop filter
 #endif

@@ -460,7 +460,11 @@ Void TEncSlice::initEncSlice( TComPic* pcPic, Int pocLast, Int pocCurr, Int iGOP
   rpcSlice->setSliceArgument        ( m_pcCfg->getSliceArgument()        );
   rpcSlice->setSliceSegmentMode     ( m_pcCfg->getSliceSegmentMode()     );
   rpcSlice->setSliceSegmentArgument ( m_pcCfg->getSliceSegmentArgument() );
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  rpcSlice->setMaxNumMergeCand        ( m_pcCfg->getMaxNumMergeCand() + (m_pcCfg->getAtmvp()? 2:0)        );
+#else
   rpcSlice->setMaxNumMergeCand        ( m_pcCfg->getMaxNumMergeCand()        );
+#endif
 }
 
 Void TEncSlice::resetQP( TComPic* pic, Int sliceQP, Double lambda )

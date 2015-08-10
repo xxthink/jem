@@ -75,6 +75,13 @@ Void TComPic::create( const TComSPS &sps, const TComPPS &pps, const Bool bIsVirt
   const UInt         uiMaxCuHeight   = sps.getMaxCUHeight();
   const UInt         uiMaxDepth      = sps.getMaxTotalCUDepth();
 
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  m_iNumCuInWidth                    = iWidth / uiMaxCuWidth;
+  m_iNumCuInWidth                   += ( iWidth % uiMaxCuWidth ) ? 1 : 0;
+  m_iBaseUnitWidth                   = uiMaxCuWidth  >> uiMaxDepth;
+  m_iBaseUnitHeight                  = uiMaxCuHeight >> uiMaxDepth;
+#endif
+
   m_picSym.create( sps, pps, uiMaxDepth );
   if (!bIsVirtual)
   {
@@ -161,6 +168,21 @@ UInt TComPic::getSubstreamForCtuAddr(const UInt ctuAddr, const Bool bAddressInRa
   }
   return subStrm;
 }
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+Void TComPic::getCUAddrAndPartIdx( Int iX, Int iY, Int& riCuAddr, Int& riAbsZorderIdx )
+{
+  Int iMaxCUWidth   = (Int) ( getPicSym()->getSPS().getMaxCUWidth()  );
+  Int iMaxCuHeight  = (Int) ( getPicSym()->getSPS().getMaxCUHeight() );
 
+  Int iCuX            = iX / iMaxCUWidth;
+  Int iCuY            = iY / iMaxCuHeight;
+  Int iBaseX          = ( iX - iCuX * iMaxCUWidth  ) / m_iBaseUnitWidth;
+  Int iBaseY          = ( iY - iCuY * iMaxCuHeight ) / m_iBaseUnitHeight;
+  Int iCuSizeInBases  = iMaxCUWidth                  / m_iBaseUnitWidth;
+  riCuAddr            = iCuY   * m_iNumCuInWidth + iCuX;
+  Int iRastPartIdx    = iBaseY * iCuSizeInBases  + iBaseX;
+  riAbsZorderIdx      = g_auiRasterToZscan[ iRastPartIdx ];
+}
+#endif
 
 //! \}

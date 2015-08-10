@@ -39,7 +39,10 @@
 #include "TComMotionInfo.h"
 #include "assert.h"
 #include <stdlib.h>
-
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+#include "TComDataCU.h"
+#include "TComPic.h"
+#endif
 //! \ingroup TLibCommon
 //! \{
 
@@ -348,4 +351,34 @@ Void TComCUMvField::compress(Char* pePredMode, Int scale)
     }
   }
 }
+
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+Void TComCUMvField::setMvFieldSP( TComDataCU* pcCU, UInt uiAbsPartIdx, TComMvField cMvField, Int iWidth, Int iHeight  )
+{
+  uiAbsPartIdx += pcCU->getZorderIdxInCtu();
+
+  Int iMinCUW  = pcCU->getPic()->getMinCUHeight();
+  Int iStartPelX = g_auiRasterToPelX[g_auiZscanToRaster[uiAbsPartIdx]]/iMinCUW;
+  Int iStartPelY = g_auiRasterToPelY[g_auiZscanToRaster[uiAbsPartIdx]]/iMinCUW;
+  Int iEndPelX = iStartPelX + iWidth/iMinCUW;
+  Int iEndPelY = iStartPelY + iHeight/iMinCUW;
+
+  Int iNumPart = pcCU->getPic()->getNumPartInCtuWidth();
+  Int iCurrRaster, uiPartAddr;
+
+  for (Int i=iStartPelY; i < iEndPelY; i ++)
+  {
+    for (Int j=iStartPelX; j < iEndPelX; j ++)
+    {
+      iCurrRaster = i * iNumPart + j;
+      uiPartAddr  = g_auiRasterToZscan[iCurrRaster];
+      uiPartAddr -= pcCU->getZorderIdxInCtu();  
+
+      m_pcMv[uiPartAddr]     = cMvField.getMv();
+      m_piRefIdx[uiPartAddr] = cMvField.getRefIdx();
+    }
+  }
+}
+#endif
+
 //! \}

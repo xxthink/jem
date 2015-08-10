@@ -810,6 +810,10 @@ private:
   UInt             m_pcmLog2MaxSize;
   UInt             m_uiPCMLog2MinSize;
   Bool             m_useAMP;
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  Bool             m_useAtmvpFlag;
+  UInt             m_subPUTLog2Size;
+#endif
 #if ALF_HM3_REFACTOR
   Bool             m_useALF;
 #endif
@@ -984,6 +988,12 @@ public:
   TComSPSRExt&           getSpsRangeExtension()                                                          { return m_spsRangeExtension;                                          }
 
   // KTA tools
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  Bool  getAtmvpEnableFlag() const                                                                       { return m_useAtmvpFlag;                                               }
+  Void  setAtmvpEnableFlag(Bool b)                                                                       { m_useAtmvpFlag = b;                                                  }
+  UInt  getSubPUTLog2Size () const                                                                       { return m_subPUTLog2Size;                                             }
+  Void  setSubPUTLog2Size (UInt u)                                                                       { m_subPUTLog2Size = u;                                                } 
+#endif
 #if ALF_HM3_REFACTOR
   Bool                   getUseALF () const                                                              { return m_useALF;                                                    } 
   Void                   setUseALF ( Bool b )                                                            { m_useALF  = b;                                                      }
