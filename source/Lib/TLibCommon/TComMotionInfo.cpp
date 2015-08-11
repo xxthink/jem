@@ -40,7 +40,7 @@
 #include "assert.h"
 #include <stdlib.h>
 
-#if QC_SUB_PU_TMVP
+#if QC_SUB_PU_TMVP || QC_FRUC_MERGE
 #include "TComDataCU.h"
 #include "TComPic.h"
 #endif
@@ -330,7 +330,7 @@ Void TComCUMvField::setAllMvField( TComMvField const & mvField, PartSize eCUMode
   setAllRefIdx( mvField.getRefIdx(), eCUMode, iPartAddr, uiDepth, iPartIdx );
 }
 
-#if QC_SUB_PU_TMVP
+#if QC_SUB_PU_TMVP || QC_FRUC_MERGE
 Void TComCUMvField::setMvFieldSP( TComDataCU* pcCU, UInt uiAbsPartIdx, TComMvField cMvField, Int iWidth, Int iHeight  )
 {
   uiAbsPartIdx += pcCU->getZorderIdxInCU();

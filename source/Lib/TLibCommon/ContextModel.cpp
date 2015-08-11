@@ -53,6 +53,20 @@ using namespace std;
  \param  qp         input QP value
  \param  initValue  8 bit initialization value
  */
+#if QC_AC_ADAPT_WDOW || MULTI_PARAM_CABAC
+const UShort m_MappedProb[128] =
+{ 
+   614,    647,    681,    718,    756,    797,    839,    884,    932,    982,   1034,   1089,   1148,   1209,   1274,   1342,
+  1414,   1490,   1569,   1653,   1742,   1835,   1933,   2037,   2146,   2261,   2382,   2509,   2643,   2785,   2934,   3091,
+  3256,   3430,   3614,   3807,   4011,   4225,   4452,   4690,   4941,   5205,   5483,   5777,   6086,   6412,   6755,   7116,
+  7497,   7898,   8320,   8766,   9235,   9729,  10249,  10798,  11375,  11984,  12625,  13300,  14012,  14762,  15551,  16384,
+ 16384,  17216,  18005,  18755,  19467,  20142,  20783,  21392,  21969,  22518,  23038,  23532,  24001,  24447,  24869,  25270,
+ 25651,  26012,  26355,  26681,  26990,  27284,  27562,  27826,  28077,  28315,  28542,  28756,  28960,  29153,  29337,  29511,
+ 29676,  29833,  29982,  30124,  30258,  30385,  30506,  30621,  30730,  30834,  30932,  31025,  31114,  31198,  31277,  31353,
+ 31425,  31493,  31558,  31619,  31678,  31733,  31785,  31835,  31883,  31928,  31970,  32011,  32049,  32086,  32120,  32153,
+};
+#endif
+
 Void ContextModel::init( Int qp, Int initValue )
 {
   qp = Clip3(0, 51, qp);
@@ -60,10 +74,19 @@ Void ContextModel::init( Int qp, Int initValue )
   Int  slope      = (initValue>>4)*5 - 45;
   Int  offset     = ((initValue&15)<<3)-16;
   Int  initState  =  min( max( 1, ( ( ( slope * qp ) >> 4 ) + offset ) ), 126 );
+#if QC_AC_ADAPT_WDOW || MULTI_PARAM_CABAC
+  iP1 = m_MappedProb[initState];
+  m_ucWdow = ALPHA0;
+#if MULTI_PARAM_CABAC
+  iP0 = m_MappedProb[initState];
+#endif
+#else
   UInt mpState    = (initState >= 64 );
   m_ucState       = ( (mpState? (initState - 64):(63 - initState)) <<1) + mpState;
+#endif
 }
 
+#if !QC_AC_ADAPT_WDOW && !MULTI_PARAM_CABAC
 const UChar ContextModel::m_aucNextStateMPS[ 128 ] =
 {
   2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
@@ -126,4 +149,5 @@ const Int ContextModel::m_entropyBits[128] =
   0x0050e, 0x29af6, 0x004cc, 0x2a497, 0x0048d, 0x2ae35, 0x00451, 0x2b7d6, 0x00418, 0x2c176, 0x003e2, 0x2cb15, 0x003af, 0x2d4b5, 0x0037f, 0x2de55
 #endif
 };
+#endif
 //! \}

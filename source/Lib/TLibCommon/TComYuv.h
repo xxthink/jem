@@ -42,7 +42,6 @@
 #include <assert.h>
 #include "CommonDef.h"
 #include "TComPicYuv.h"
-
 //! \ingroup TLibCommon
 //! \{
 
@@ -147,10 +146,13 @@ public:
 
 #if QC_OBMC
   UInt    sadLuma           ( TComYuv* pcYuvSrc0 );
-#endif
-  
+#endif 
   //  (pcYuvSrc0 + pcYuvSrc1)/2 for YUV partition
-  Void    addAvg            ( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt iPartUnitIdx, UInt iWidth, UInt iHeight );
+  Void    addAvg            ( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt iPartUnitIdx, UInt iWidth, UInt iHeight 
+#if BIO                  
+  ,bool bBIOapplied
+#endif 
+);
 
   //   Remove High frequency
   Void    removeHighFreq    ( TComYuv* pcYuvSrc, UInt uiPartIdx, UInt uiWidht, UInt uiHeight );

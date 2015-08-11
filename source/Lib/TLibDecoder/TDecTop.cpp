@@ -351,8 +351,11 @@ Void TDecTop::xActivateParameterSets()
   m_cSAO.create( sps->getPicWidthInLumaSamples(), sps->getPicHeightInLumaSamples(), sps->getMaxCUWidth(), sps->getMaxCUHeight(), sps->getMaxCUDepth() );
   m_cLoopFilter.create( sps->getMaxCUDepth() );
 }
-
+#if QC_AC_ADAPT_WDOW
+Bool TDecTop::xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisplay, TComStats*  m_apcStats)
+#else
 Bool TDecTop::xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisplay )
+#endif
 {
   TComPic*& pcPic = m_pcPic;
   m_apcSlicePilot->initSlice();
@@ -379,7 +382,11 @@ Bool TDecTop::xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisp
   m_apcSlicePilot->setTLayerInfo(nalu.m_temporalId);
 
   m_cEntropyDecoder.decodeSliceHeader (m_apcSlicePilot, &m_parameterSetManagerDecoder);
-  
+
+#if QC_AC_ADAPT_WDOW
+  m_cEntropyDecoder.decodeCtxUpdateInfo (m_apcSlicePilot, m_apcStats ) ;    
+#endif  
+
   // set POC for dependent slices in skipped pictures
   if(m_apcSlicePilot->getDependentSliceSegmentFlag() && m_prevSliceSkipped) 
   {
@@ -728,8 +735,19 @@ Bool TDecTop::xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisp
     m_cTrQuant.setUseScalingList(false);
   }
 
+#if QC_FRUC_MERGE
+  if( pcSlice->getSPS()->getUseFRUCMgrMode() && !pcSlice->isIntra() )
+  {
+    pcPic->initFRUCMVP();
+  }
+#endif
+
   //  Decode a picture
+#if QC_AC_ADAPT_WDOW
+  m_cGopDecoder.decompressSlice(nalu.m_Bitstream, pcPic, m_apcStats);
+#else
   m_cGopDecoder.decompressSlice(nalu.m_Bitstream, pcPic);
+#endif
 
   m_bFirstSliceInPicture = false;
   m_uiSliceIdx++;
@@ -782,7 +800,11 @@ Void TDecTop::xDecodeSEI( TComInputBitstream* bs, const NalUnitType nalUnitType 
   }
 }
 
+#if QC_AC_ADAPT_WDOW
+Bool TDecTop::decode(InputNALUnit& nalu, Int& iSkipFrame, Int& iPOCLastDisplay, TComStats*  m_apcStats)
+#else
 Bool TDecTop::decode(InputNALUnit& nalu, Int& iSkipFrame, Int& iPOCLastDisplay)
+#endif
 {
   // Initialize entropy decoder
   m_cEntropyDecoder.setEntropyDecoder (&m_cCavlcDecoder);
@@ -823,7 +845,11 @@ Bool TDecTop::decode(InputNALUnit& nalu, Int& iSkipFrame, Int& iPOCLastDisplay)
     case NAL_UNIT_CODED_SLICE_RADL_R:
     case NAL_UNIT_CODED_SLICE_RASL_N:
     case NAL_UNIT_CODED_SLICE_RASL_R:
+#if QC_AC_ADAPT_WDOW
+      return xDecodeSlice(nalu, iSkipFrame, iPOCLastDisplay, m_apcStats);
+#else
       return xDecodeSlice(nalu, iSkipFrame, iPOCLastDisplay);
+#endif
       break;
       
     case NAL_UNIT_EOS:

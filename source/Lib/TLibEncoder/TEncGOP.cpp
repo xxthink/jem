@@ -363,7 +363,11 @@ Void TEncGOP::xCreateLeadingSEIMessages (/*SEIMessages seiMessages,*/ AccessUnit
 // ====================================================================================================================
 // Public member functions
 // ====================================================================================================================
+#if QC_AC_ADAPT_WDOW
+Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rcListPic, TComList<TComPicYuv*>& rcListPicYuvRecOut, std::list<AccessUnit>& accessUnitsInGOP, Bool isField, Bool isTff, TComStats* m_apcStats)
+#else
 Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rcListPic, TComList<TComPicYuv*>& rcListPicYuvRecOut, std::list<AccessUnit>& accessUnitsInGOP, bool isField, bool isTff)
+#endif
 {
   TComPic*        pcPic;
   TComPicYuv*     pcPicYuvRecOut;
@@ -1073,12 +1077,24 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     m_storedStartCUAddrForEncodingSliceSegment.push_back(nextCUAddr);
     startCUAddrSliceSegmentIdx++;
     
+#if QC_FRUC_MERGE
+    if( pcSlice->getSPS()->getUseFRUCMgrMode() && !pcSlice->isIntra() )
+    {
+      pcPic->initFRUCMVP();
+    }
+#endif
+
     while(nextCUAddr<uiRealEndAddress) // determine slice boundaries
     {
       pcSlice->setNextSlice       ( false );
       pcSlice->setNextSliceSegment( false );
       assert(pcPic->getNumAllocatedSlice() == startCUAddrSliceIdx);
       m_pcSliceEncoder->precompressSlice( pcPic );
+#if QC_AC_ADAPT_WDOW
+      pcSlice->setStatsHandle(m_apcStats);
+      pcSlice->initStatsGlobal();
+      m_pcSliceEncoder->m_apcStats = m_apcStats;      
+#endif  
       m_pcSliceEncoder->compressSlice   ( pcPic );
       
       Bool bNoBinBitConstraintViolated = (!pcSlice->isNextSlice() && !pcSlice->isNextSliceSegment());
@@ -1533,6 +1549,9 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
 
           tmpBitsBeforeWriting = m_pcEntropyCoder->getNumberOfWrittenBits();
           m_pcEntropyCoder->encodeSliceHeader(pcSlice);
+#if QC_AC_ADAPT_WDOW
+          m_pcEntropyCoder->encodeCtxUpdateInfo(pcSlice, m_apcStats);
+#endif
           actualHeadBits += ( m_pcEntropyCoder->getNumberOfWrittenBits() - tmpBitsBeforeWriting );
           // is it needed?
           {
@@ -1580,6 +1599,16 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
             // for now, override the TILES_DECODER setting in order to write substreams.
             m_pcEntropyCoder->setBitstream    ( &pcSubstreamsOut[0] );
             
+#if QC_AC_ADAPT_WDOW 
+            nalu.m_Bitstream.setStatsHandle(m_apcStats);
+            m_pcEntropyCoder->setStatsHandle(nalu.m_Bitstream.getStatsHandle());         
+            Int iQPIdx = xUpdateTStates (pcSlice->getSliceType(), pcSlice->getSliceQp(), m_apcStats);
+#if ENABLE_ADAPTIVE_W && ALF_HM3_QC_REFACTOR
+            TEncBinCABAC* pEncBin = m_pcEntropyCoder->getCABACCoder()->getBinIf()->getTEncBinCABAC();
+#endif
+            pcSlice->setQPIdx(iQPIdx);
+#endif   
+
 #if ALF_HM3_QC_REFACTOR
             if( pcSlice->getSPS()->getUseALF() )
             {
@@ -1594,11 +1623,24 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
               {
                 m_pcEntropyCoder->setAlfCtrl(false);
               }
+#if QC_AC_ADAPT_WDOW && ENABLE_ADAPTIVE_W
+              if(iQPIdx != -1)
+              {
+                pEncBin->allocateMemoryforBinStrings();
+              }
+#endif
               m_pcEntropyCoder->encodeAlfParam(&cAlfParam);
               if(cAlfParam.cu_control_flag)
               {
                 m_pcEntropyCoder->encodeAlfCtrlParam(&cAlfParam);
               }
+#if QC_AC_ADAPT_WDOW && ENABLE_ADAPTIVE_W 
+              if(iQPIdx != -1)
+              {
+                m_pcSliceEncoder->xGenUpdateMapAlF (pcSlice->getSliceType(), iQPIdx, m_apcStats);
+                pEncBin->freeMemoryforBinStrings();
+              }
+#endif
             }
 #endif
           }
@@ -1609,7 +1651,7 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
           pcSlice->setTileOffstForMultES( uiOneBitstreamPerSliceLength );
           pcSlice->setTileLocationCount ( 0 );
           m_pcSliceEncoder->encodeSlice(pcPic, pcSubstreamsOut);
-
+         
           {
             // Construct the final bitstream by flushing and concatenating substreams.
             // The final bitstream is either nalu.m_Bitstream or pcBitstreamRedirect;
@@ -1719,6 +1761,9 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
             m_pcEntropyCoder->resetEntropy();
             m_pcEntropyCoder->setBitstream( m_pcBitCounter );
             Bool sliceEnabled[NUM_SAO_COMPONENTS];
+#if QC_AC_ADAPT_WDOW
+            m_pcSAO->setEntropyCoder(m_pcEntropyCoder);
+#endif
             m_pcSAO->initRDOCabacCoder(m_pcEncTop->getRDGoOnSbacCoder(), pcSlice);
             m_pcSAO->SAOProcess(pcPic
               , sliceEnabled
@@ -1782,7 +1827,7 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
 #if ! QC_HEVC_MOTION_CONSTRAINT_REMOVAL
     pcPic->compressMotion();
 #else
-    if (! pcSlice->getSPS()->getAtmvpEnableFlag())
+    if (!pcSlice->getSPS()->getAtmvpEnableFlag())
       pcPic->compressMotion();
 #endif    
     //-- For time output for each slice
@@ -3092,4 +3137,44 @@ Void TEncGOP::dblMetric( TComPic* pcPic, UInt uiNumSlices )
   free(colSAD);
   free(rowSAD);
 }
+
+#if QC_AC_ADAPT_WDOW
+Int TEncGOP::xUpdateTStates (UInt uiSliceType, UInt uiSliceQP, TComStats* apcStats )
+{ 
+  Int iQP = 0, k;
+  for (k = 0; k < NUM_QP_PROB; k++)
+  {
+    if (apcStats-> aaQPUsed[uiSliceType][k].bUsed ==true && apcStats-> aaQPUsed[uiSliceType][k].uiQP == uiSliceQP)
+    {
+      iQP  = k;
+      apcStats-> aaQPUsed[uiSliceType][k].bFirstUsed = false;
+      break;
+    }
+    else if (apcStats-> aaQPUsed[uiSliceType][k].bUsed ==false)
+    {
+      iQP = k;
+      apcStats-> aaQPUsed[uiSliceType][k].bUsed = true;
+      apcStats-> aaQPUsed[uiSliceType][k].uiQP = uiSliceQP;
+      apcStats-> aaQPUsed[uiSliceType][k].bFirstUsed = true;
+      for (Int index=0; index < MAX_NUM_CTX_MOD; index++) 
+      {
+        apcStats->m_uiCtxMAP[uiSliceType][iQP][index]     = 0;
+        apcStats->m_uiCtxCodeIdx[uiSliceType][iQP][index] = ALPHA0;
+      }
+      break;
+    }
+  }
+
+  iQP = -1;
+  for (k = 0; k < NUM_QP_PROB; k++)
+  {
+    if (apcStats-> aaQPUsed[uiSliceType][k].bFirstUsed ==true && apcStats-> aaQPUsed[uiSliceType][k].bUsed ==true && apcStats-> aaQPUsed[uiSliceType][k].uiQP == uiSliceQP)
+    {
+      iQP  = k;
+      break;
+    }
+  }
+  return iQP;
+}
+#endif
 //! \}

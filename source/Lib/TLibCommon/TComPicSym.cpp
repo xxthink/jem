@@ -415,6 +415,85 @@ Void TComPicSym::deriveLoopFilterBoundaryAvailibility(Int ctu,
 
 }
 
+#if QC_FRUC_MERGE
+Void TComPicSym::initFRUCMVP()
+{
+  const Int nBlkPosMask = g_uiMaxCUWidth - 1;
+  const Int nCUSizeLog2 = g_aucConvertToBit[g_uiMaxCUWidth] + 2;
+  const Int nWidthInNumSPU = 1 << ( nCUSizeLog2 - 2 );
+  assert( MAX_CU_DEPTH == g_aucConvertToBit[MAX_CU_SIZE] + 2 && MIN_PU_SIZE == 4 );
+  TComSlice * pCurSlice = getSlice( 0 );
+  assert( !pCurSlice->isIntra() );
+  // reset MV prediction
+  for( UInt uiCUAddr = 0 ; uiCUAddr < getNumberOfCUsInFrame() ; uiCUAddr++ )
+  {
+    TComDataCU * pCurPicCU = getCU( uiCUAddr );
+    pCurPicCU->getFRUCUniLateralMVField( REF_PIC_LIST_0 )->clearMvField();
+    pCurPicCU->getFRUCUniLateralMVField( REF_PIC_LIST_1 )->clearMvField();
+  }
+
+  // get MV from all reference
+  Int nCurPOC = pCurSlice->getPOC();
+  for( Int nRefPicList = 0 ; nRefPicList < 2 ; nRefPicList++ )
+  {
+    RefPicList eRefPicList = ( RefPicList )nRefPicList;
+    for( Int nRefIdx = 0 ; nRefIdx < pCurSlice->getNumRefIdx( eRefPicList ) ; nRefIdx++ )
+    {
+#if QC_MV_STORE_PRECISION_BIT
+      Int nOffset = 1 << ( QC_MV_STORE_PRECISION_BIT - 1 );
+#endif
+      Int nTargetRefIdx = 0;
+      Int nTargetRefPOC = pCurSlice->getRefPOC( eRefPicList , nTargetRefIdx );
+      Int nCurRefIdx = nRefIdx; 
+      Int nCurRefPOC = pCurSlice->getRefPOC( eRefPicList , nCurRefIdx );
+      Int nColPOC = pCurSlice->getRefPOC( eRefPicList , nRefIdx );
+      TComPic * pColPic = pCurSlice->getRefPic( eRefPicList , nRefIdx );
+      assert( getNumberOfCUsInFrame() == pColPic->getNumCUsInFrame() );
+      for( UInt uiColPicCUAddr = 0 ; uiColPicCUAddr < pColPic->getNumCUsInFrame() ; uiColPicCUAddr++ )
+      {
+        TComDataCU * pColPicCU = pColPic->getCU( uiColPicCUAddr );
+        for( UInt uiAbsPartIdxColPicCU = 0 ; uiAbsPartIdxColPicCU < pColPic->getNumPartInCU() ; uiAbsPartIdxColPicCU++ )
+        {
+          Int xColPic = pColPicCU->getCUPelX() + g_auiRasterToPelX[g_auiZscanToRaster[uiAbsPartIdxColPicCU]];
+          Int yColPic = pColPicCU->getCUPelY() + g_auiRasterToPelY[g_auiZscanToRaster[uiAbsPartIdxColPicCU]];
+          TComCUMvField * pColPicCUMVField = pColPicCU->getCUMvField( eRefPicList );
+          if( pColPicCUMVField->getRefIdx( uiAbsPartIdxColPicCU ) >= 0 )
+          {
+            TComSlice * pColSlice = pColPic->getSlice( 0 );
+            Int nColRefPOC = pColSlice->getRefPOC( eRefPicList , pColPicCUMVField->getRefIdx( uiAbsPartIdxColPicCU ) );
+            TComMv mvColPic = pColPicCUMVField->getMv( uiAbsPartIdxColPicCU );
+            TComMv mv2CurRefPic = pColPicCU->scaleMV( mvColPic , nCurPOC , nCurRefPOC , nColPOC , nColRefPOC );
+            // map the position into current picture, note that MV must be Qual-pel
+#if QC_MV_STORE_PRECISION_BIT
+            Int xCurPic = xColPic + ( MIN_PU_SIZE >> 1 ) - ( ( mv2CurRefPic.getHor() + nOffset ) >> QC_MV_STORE_PRECISION_BIT ) ; 
+            Int yCurPic = yColPic + ( MIN_PU_SIZE >> 1 ) - ( ( mv2CurRefPic.getVer() + nOffset ) >> QC_MV_STORE_PRECISION_BIT ) ;
+#else
+            Int xCurPic = xColPic - ( ( mv.getHor() + 2 ) >> 2 ) + ( MIN_PU_SIZE >> 1); 
+            Int yCurPic = yColPic - ( ( mv.getVer() + 2 ) >> 2 ) + ( MIN_PU_SIZE >> 1 );
+#endif
+            if( 0 <= xCurPic && xCurPic < pCurSlice->getSPS()->getPicWidthInLumaSamples()
+              && 0 <= yCurPic && yCurPic < pCurSlice->getSPS()->getPicHeightInLumaSamples() )
+            {
+              UInt uiCurPicCUAddr = ( yCurPic >> nCUSizeLog2 ) * getFrameWidthInCU() + ( xCurPic >> nCUSizeLog2 );
+              assert( MIN_PU_SIZE == 4 );
+              UInt uiAbsPartIdxCurPicCU = g_auiRasterToZscan[( ( yCurPic & nBlkPosMask ) >> 2 ) * nWidthInNumSPU + ( ( xCurPic & nBlkPosMask ) >> 2 )];
+              TComCUMvField * pCurPicFRUCCUMVField = getCU( uiCurPicCUAddr )->getFRUCUniLateralMVField( eRefPicList );
+              if( pCurPicFRUCCUMVField->getRefIdx( uiAbsPartIdxCurPicCU ) < 0 )
+              {
+                // further scale to the target reference picture
+                TComMv mv2TargetPic = nCurRefIdx == nTargetRefIdx ? mv2CurRefPic : pColPicCU->scaleMV( mvColPic , nCurPOC , nTargetRefPOC , nColPOC , nColRefPOC );
+                pCurPicFRUCCUMVField->setMv( mv2TargetPic , uiAbsPartIdxCurPicCU );
+                pCurPicFRUCCUMVField->setRefIdx( nTargetRefIdx , uiAbsPartIdxCurPicCU );
+              }            
+            }
+          }
+        }
+      }
+    }
+  }
+}
+#endif
+
 TComTile::TComTile()
 {
 }

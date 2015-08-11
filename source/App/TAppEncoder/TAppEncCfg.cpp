@@ -406,7 +406,11 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   ("ScalingList",                 m_useScalingListId,              0,          "0: no scaling list, 1: default scaling lists, 2: scaling lists specified in ScalingListFile")
   ("ScalingListFile",             cfg_ScalingListFile,             string(""), "Scaling list file name")
   ("SignHideFlag,-SBH",                m_signHideFlag, 1)
+#if MERGE_CAND_NUM_PATCH
+  ("MaxNumMergeCand",             m_maxNumMergeCand,             (UInt)MRG_MAX_NUM_CANDS,         "Maximum number of merge candidates")
+#else
   ("MaxNumMergeCand",             m_maxNumMergeCand,             5u,         "Maximum number of merge candidates")
+#endif
 #if QC_SUB_PU_TMVP
   ("ATMVP",                       m_bAtmvpEnableFlag,           true,         "Advanced TMVP")       
   ("SubPUTempLog2Size",           m_uiSubPUTLog2Size,             (UInt)2,     "Sub-PU TMVP size index: 2^n")
@@ -548,6 +552,17 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 #endif
 #endif
 
+#if QC_INTRA_4TAP_FILTER
+  ("FourTapIntraFilter", m_bUse4TapIntraFilter, true, "Enable 4-tap Intra predicton filter")
+#endif
+#if INTRA_BOUNDARY_FILTER
+  ("BoundaryFilter", m_bUseBoundaryFilter, true, "Enable Boundary filter")
+#endif
+
+#if QC_USE_65ANG_MODES
+  ("ExtIntraAngularMode", m_bUseExtIntraAngMode, true, "Enable extended Intra angular modes")
+#endif
+
 #if QC_LARGE_CTU_FAST
   ("LCTUFast" , m_nLCTUFast , 1 , "Fast methods for large CTU" )
 #endif
@@ -556,6 +571,19 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   ("OBMCBLK", m_nOBMCBlkSize , 4 , "block size in overlapped block motion compensation" )
 #endif
 
+#if QC_FRUC_MERGE
+  ("FRUC" , m_nFRUCMgrMode , 1 , "frame rate up-conversion based merge mode" )
+  ("FRUCF" , m_nFRUCRefineFilter , 1 , "whether bilinear filter is used in FRUC" )
+  ("FRUCR" , m_nFURCRefineRange , 8 , "search range (in pixel) of FRUC refinement" )
+  ("FRUCRDepth" , m_nFRUCSmallBlkRefineDepth , 3 , "depth of FRUC refinement" )
+#endif
+#if QC_IMV
+  ("IMV", m_nIMV , true , "adaptive MV precision" )
+  ("IMVMaxCand", m_nIMVMaxCand , 4 , "max IMV cand ")
+#endif
+#if QC_IC
+  ("IlluCompEnable", m_abUseIC, true, "Enable illumination compensation")
+#endif
   ;
   
   for(Int i=1; i<MAX_GOP+1; i++) {
@@ -943,8 +971,11 @@ Void TAppEncCfg::xCheckParameter()
   xConfirmPara( m_uiMaxCUWidth < ( 1 << (m_uiQuadtreeTULog2MinSize + m_uiQuadtreeTUMaxDepthIntra - 1) ), "QuadtreeTUMaxDepthInter must be less than or equal to the difference between log2(maxCUSize) and QuadtreeTULog2MinSize plus 1" );
   
   xConfirmPara(  m_maxNumMergeCand < 1,  "MaxNumMergeCand must be 1 or greater.");
+#if MERGE_CAND_NUM_PATCH
+  xConfirmPara(  m_maxNumMergeCand > MRG_MAX_NUM_CANDS,  "MaxNumMergeCand must be MRG_MAX_NUM_CANDS or smaller.");
+#else
   xConfirmPara(  m_maxNumMergeCand > 5,  "MaxNumMergeCand must be 5 or smaller.");
-
+#endif
 #if ADAPTIVE_QP_SELECTION
   xConfirmPara( m_bUseAdaptQpSelect == true && m_iQP < 0,                                              "AdaptiveQpSelection must be disabled when QP < 0.");
   xConfirmPara( m_bUseAdaptQpSelect == true && (m_cbQpOffset !=0 || m_crQpOffset != 0 ),               "AdaptiveQpSelection must be disabled when ChromaQpOffset is not equal to 0.");
@@ -1520,7 +1551,11 @@ Void TAppEncCfg::xPrintParameter()
     printf("ForceIntraQP                 : %d\n", m_RCForceIntraQP );
   }
 #if QC_SUB_PU_TMVP
+#if MERGE_CAND_NUM_PATCH
+  printf("Max Num Merge Candidates     : %d\n", m_maxNumMergeCand);
+#else
   printf("Max Num Merge Candidates     : %d\n", m_maxNumMergeCand+(m_bAtmvpEnableFlag? 1:0 ));
+#endif
 #else
   printf("Max Num Merge Candidates     : %d\n", m_maxNumMergeCand);
 #endif
@@ -1613,6 +1648,15 @@ Void TAppEncCfg::xPrintParameter()
 #endif
   }
 #endif
+#if QC_INTRA_4TAP_FILTER
+  printf( "4TapIntraFilter:%d " , m_bUse4TapIntraFilter );
+#endif
+#if INTRA_BOUNDARY_FILTER
+  printf( "BoundaryFilter:%d " , m_bUseBoundaryFilter );
+#endif
+#if QC_USE_65ANG_MODES
+  printf( "ExtIntraAngularMode:%d " , m_bUseExtIntraAngMode );
+#endif
 #if QC_LARGE_CTU_FAST
   printf( "LCTUFast:%d " , m_nLCTUFast );
 #endif
@@ -1621,6 +1665,16 @@ Void TAppEncCfg::xPrintParameter()
   printf( " OBMC: %d  OBMCBLK: %d ", m_bOBMC, m_nOBMCBlkSize );
 #endif
 
+#if QC_FRUC_MERGE
+  printf( "FRUC:%d FRUCF:%d FRUCR:%d FRUCRDepth:%d " , m_nFRUCMgrMode ,m_nFRUCRefineFilter , m_nFURCRefineRange , m_nFRUCSmallBlkRefineDepth );
+#endif
+#if QC_IMV
+  printf( " IMV:%d ", m_nIMV );
+  printf( " IMVMaxCand:%d ", m_nIMVMaxCand );
+#endif
+#if QC_IC
+  printf( "IlluCompEnable:%d ", m_abUseIC);
+#endif
   printf("\n\n");
   
   fflush(stdout);

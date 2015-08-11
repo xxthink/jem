@@ -36,7 +36,9 @@
 */
 
 #include "TDecBinCoderCABAC.h"
-
+#if DEBUG
+#include "TLibCommon/TComRom.h"
+#endif
 //! \ingroup TLibDecoder
 //! \{
 
@@ -95,7 +97,71 @@ TDecBinCABAC::copyState( TDecBinIf* pcTDecBinIf )
   m_bitsNeeded= pcTDecBinCABAC->m_bitsNeeded;
 }
 
+#if QC_AC_ADAPT_WDOW  || MULTI_PARAM_CABAC
+Void TDecBinCABAC::decodeBin( UInt& ruiBin, ContextModel &rcCtxModel )
+{
+  UShort uiLPS = TComCABACTables::sm_aucLPSTable[rcCtxModel.getState()>>6][(m_uiRange>>2)-64];
+#if DEBUG
+  {
+    DTRACE_CABAC_VL( g_nSymbolCounter++ )
+    DTRACE_CABAC_T( "\tstate=" )
+    DTRACE_CABAC_V( rcCtxModel.getState() )
+    DTRACE_CABAC_T( "\tLPS=" )
+    DTRACE_CABAC_V( uiLPS )
+    DTRACE_CABAC_T( "\tRange=" )
+    DTRACE_CABAC_V( m_uiRange )
+    DTRACE_CABAC_T( "\n" )
+  }
+#endif
+  m_uiRange -= uiLPS;
+  UInt scaledRange = m_uiRange << 7;
 
+  if( m_uiValue < scaledRange )
+  {
+    // MPS path
+    ruiBin = 1;
+    rcCtxModel.updateMPS();
+    if ( scaledRange >= ( 256 << 7 ) )
+    {
+      return;
+    }
+
+    Int numBits = TComCABACTables::sm_aucRenormTable[ m_uiRange  >> 2 ];
+    m_uiRange <<=  numBits;
+    m_uiValue <<= numBits;
+    m_bitsNeeded += numBits;
+    if ( m_bitsNeeded >= 0 )
+    {
+      m_uiValue += m_pcTComBitstream->readByte() << m_bitsNeeded;
+      m_bitsNeeded -= 8;
+    }
+  }
+  else
+  {
+    // LPS path 
+    ruiBin      = 0;
+    rcCtxModel.updateLPS();
+    UChar numBits = TComCABACTables::sm_aucRenormTable[ uiLPS >> 2 ];
+    if (numBits)
+    {
+      m_uiValue   = ( m_uiValue - scaledRange ) << numBits;
+      m_uiRange   = uiLPS << numBits;
+      m_bitsNeeded += numBits;
+
+      if ( m_bitsNeeded >= 0 )
+      {
+        m_uiValue += m_pcTComBitstream->readByte() << m_bitsNeeded;
+        m_bitsNeeded -= 8;
+      }
+    }
+    else
+    {
+      m_uiValue   = m_uiValue - scaledRange ;
+      m_uiRange   = uiLPS;
+    }
+  }
+}
+#else
 Void
 TDecBinCABAC::decodeBin( UInt& ruiBin, ContextModel &rcCtxModel )
 {
@@ -141,6 +207,7 @@ TDecBinCABAC::decodeBin( UInt& ruiBin, ContextModel &rcCtxModel )
     }
   }
 }
+#endif
 
 Void
 TDecBinCABAC::decodeBinEP( UInt& ruiBin )
