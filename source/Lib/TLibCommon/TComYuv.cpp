@@ -346,7 +346,29 @@ Void TComYuv::subtract( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, cons
   }
 }
 
+#if COM16_C806_OBMC
+UInt TComYuv::sadLuma( TComYuv* pcYuvSrc0 )
+{
+  assert( pcYuvSrc0->getWidth( COMPONENT_Y ) == getWidth( COMPONENT_Y ) );
+  Pel* pSrc0 = pcYuvSrc0->getAddr( COMPONENT_Y );
+  Pel* pSrc1 = getAddr( COMPONENT_Y );
 
+  Int  iSrc0Stride = pcYuvSrc0->getStride( COMPONENT_Y );
+  Int  iSrc1Stride = getStride( COMPONENT_Y );
+  UInt uiSAD = 0;
+  for ( Int y = pcYuvSrc0->getHeight( COMPONENT_Y ) - 1 ; y >= 0; y-- )
+  {
+    for ( Int x = pcYuvSrc0->getWidth( COMPONENT_Y ) - 1 ; x >= 0; x-- )
+    {
+      uiSAD += abs( pSrc0[x] - pSrc1[x] );
+    }
+    pSrc0 += iSrc0Stride;
+    pSrc1 += iSrc1Stride;
+  }
+
+  return( uiSAD );
+}
+#endif
 
 
 Void TComYuv::addAvg( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const UInt iPartUnitIdx, const UInt uiWidth, const UInt uiHeight, const BitDepths &clipBitDepths )

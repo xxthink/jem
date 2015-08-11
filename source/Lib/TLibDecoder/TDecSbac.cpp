@@ -95,6 +95,9 @@ TDecSbac::TDecSbac()
 , m_cCrossComponentPredictionSCModel         ( 1,             1,                      NUM_CROSS_COMPONENT_PREDICTION_CTX   , m_contextModels + m_numContextModels, m_numContextModels)
 , m_ChromaQpAdjFlagSCModel                   ( 1,             1,                      NUM_CHROMA_QP_ADJ_FLAG_CTX           , m_contextModels + m_numContextModels, m_numContextModels)
 , m_ChromaQpAdjIdcSCModel                    ( 1,             1,                      NUM_CHROMA_QP_ADJ_IDC_CTX            , m_contextModels + m_numContextModels, m_numContextModels)
+#if COM16_C806_OBMC
+, m_cCUOBMCFlagSCModel                       ( 1,             1,                      NUM_OBMC_FLAG_CTX                    , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 #if ALF_HM3_REFACTOR
 , m_cCUAlfCtrlFlagSCModel                    ( 1,             1,               NUM_ALF_CTRL_FLAG_CTX         , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cALFFlagSCModel                          ( 1,             1,               NUM_ALF_FLAG_CTX              , m_contextModels + m_numContextModels, m_numContextModels)
@@ -165,6 +168,9 @@ Void TDecSbac::resetEntropy(TComSlice* pSlice)
   m_cCrossComponentPredictionSCModel.initBuffer   ( sliceType, qp, (UChar*)INIT_CROSS_COMPONENT_PREDICTION );
   m_ChromaQpAdjFlagSCModel.initBuffer             ( sliceType, qp, (UChar*)INIT_CHROMA_QP_ADJ_FLAG );
   m_ChromaQpAdjIdcSCModel.initBuffer              ( sliceType, qp, (UChar*)INIT_CHROMA_QP_ADJ_IDC );
+#if COM16_C806_OBMC
+  m_cCUOBMCFlagSCModel.initBuffer                 ( sliceType, qp, (UChar*)INIT_OBMC_FLAG );
+#endif
 #if ALF_HM3_REFACTOR
   m_cCUAlfCtrlFlagSCModel.initBuffer              ( sliceType, qp, (UChar*)INIT_ALF_CTRL_FLAG );
   m_cALFFlagSCModel.initBuffer                    ( sliceType, qp, (UChar*)INIT_ALF_FLAG );
@@ -456,6 +462,28 @@ Void TDecSbac::parseSkipFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth 
   }
 }
 
+#if COM16_C806_OBMC
+Void TDecSbac::parseOBMCFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
+{
+  pcCU->setOBMCFlagSubParts( true, uiAbsPartIdx, uiDepth );
+
+  if ( !pcCU->getSlice()->getSPS()->getOBMC() || !pcCU->isOBMCFlagCoded( uiAbsPartIdx ) )
+  {
+    return;
+  }
+
+  UInt uiSymbol = 0;
+
+  m_pcTDecBinIf->decodeBin( uiSymbol, m_cCUOBMCFlagSCModel.get( 0, 0, 0 ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__OBMC_FLAG) );
+  DTRACE_CABAC_VL( g_nSymbolCounter++ );
+  DTRACE_CABAC_T( "\tOBMCFlag" );
+  DTRACE_CABAC_T( "\tuiSymbol: ");
+  DTRACE_CABAC_V( uiSymbol );
+  DTRACE_CABAC_T( "\n");
+
+  pcCU->setOBMCFlagSubParts( uiSymbol ? true : false, uiAbsPartIdx, uiDepth );
+}
+#endif
 
 /** parse merge flag
  * \param pcCU

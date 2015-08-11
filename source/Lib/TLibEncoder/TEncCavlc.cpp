@@ -576,6 +576,14 @@ Void TEncCavlc::codeSPS( const TComSPS* pcSPS )
   WRITE_FLAG( pcSPS->getAtmvpEnableFlag() ? 1: 0, "atmvp_flag");
   WRITE_CODE( pcSPS->getSubPUTLog2Size(),      3, "log2_sub_pu_tmvp_size" );
 #endif
+#if COM16_C806_OBMC
+  WRITE_FLAG( pcSPS->getOBMC() ? 1 : 0, "obmc_flag" );
+  if( pcSPS->getOBMC() )
+  {
+    assert( pcSPS->getOBMCBlkSize() == 4 || pcSPS->getOBMCBlkSize() == 8 );
+    WRITE_UVLC( pcSPS->getOBMCBlkSize() , "obmc_blk_size" );
+  }
+#endif
 #if ALF_HM3_REFACTOR
   WRITE_FLAG( pcSPS->getUseALF () ? 1 : 0, "use_alf_flag" );
 #endif
@@ -1245,6 +1253,13 @@ Void TEncCavlc::codeSkipFlag( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/ )
 {
   assert(0);
 }
+
+#if COM16_C806_OBMC
+Void TEncCavlc::codeOBMCFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
+{
+  assert(0);
+}
+#endif
 
 Void TEncCavlc::codeSplitFlag   ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/ )
 {

@@ -2988,9 +2988,17 @@ Void TEncSearch::xRestrictBipredMergeCand( TComDataCU* pcCU, UInt puIdx, TComMvF
 
 //! search of the best candidate for inter prediction
 #if AMP_MRG
+#if COM16_C806_OBMC
+Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv, TComYuv* pcRecoYuv DEBUG_STRING_FN_DECLARE(sDebug), TComYuv *pcPredYuvWoOBMC, TComYuv *pcTmpYuv1, TComYuv *pcTmpYuv2, Bool bUseRes, Bool bUseMRG )
+#else
 Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv, TComYuv* pcRecoYuv DEBUG_STRING_FN_DECLARE(sDebug), Bool bUseRes, Bool bUseMRG )
+#endif
+#else
+#if COM16_C806_OBMC
+Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv, TComYuv* pcRecoYuv, TComYuv *pcPredYuvWoOBMC, TComYuv *pcTmpYuv1, TComYuv *pcTmpYuv2, Bool bUseRes )
 #else
 Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv, TComYuv* pcRecoYuv, Bool bUseRes )
+#endif
 #endif
 {
   for(UInt i=0; i<NUM_REF_PIC_LIST_01; i++)
@@ -3060,6 +3068,11 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
 
   for ( Int iPartIdx = 0; iPartIdx < iNumPart; iPartIdx++ )
   {
+#if COM16_C806_OBMC
+    //consider OBMC in motion estimation
+    pcOrgYuv->copyFromPicYuv( pcCU->getPic()->getPicYuvOrg(), pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu() );
+    subBlockOBMC( pcCU, 0, pcOrgYuv, pcTmpYuv1, pcTmpYuv2, true );
+#endif
     Distortion   uiCost[2] = { std::numeric_limits<Distortion>::max(), std::numeric_limits<Distortion>::max() };
     Distortion   uiCostBi  =   std::numeric_limits<Distortion>::max();
     Distortion   uiCostTemp;
@@ -3526,7 +3539,12 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
     motionCompensation ( pcCU, pcPredYuv, REF_PIC_LIST_X, iPartIdx );
 
   } //  end of for ( Int iPartIdx = 0; iPartIdx < iNumPart; iPartIdx++ )
-
+#if COM16_C806_OBMC
+  pcPredYuv->copyToPartYuv( pcPredYuvWoOBMC, 0 );
+  subBlockOBMC( pcCU, 0, pcPredYuv, pcTmpYuv1, pcTmpYuv2 );
+  //re-fetch original YUV
+  pcOrgYuv->copyFromPicYuv( pcCU->getPic()->getPicYuvOrg(), pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu() );
+#endif
   setWpScalingDistParam( pcCU, -1, REF_PIC_LIST_X );
 
   return;
@@ -5446,7 +5464,9 @@ Void  TEncSearch::xAddSymbolBitsInter( TComDataCU* pcCU, UInt& ruiBits )
     m_pcEntropyCoder->encodePredMode( pcCU, 0, true );
     m_pcEntropyCoder->encodePartSize( pcCU, 0, pcCU->getDepth(0), true );
     m_pcEntropyCoder->encodePredInfo( pcCU, 0 );
-
+#if COM16_C806_OBMC
+    m_pcEntropyCoder->encodeOBMCFlag( pcCU, 0, true );
+#endif
     Bool codeDeltaQp = false;
     Bool codeChromaQpAdj = false;
     m_pcEntropyCoder->encodeCoeff   ( pcCU, 0, pcCU->getDepth(0), codeDeltaQp, codeChromaQpAdj );

@@ -59,6 +59,10 @@ TDecCu::TDecCu()
   assert( m_pMvFieldSP[0] != NULL && m_phInterDirSP[0] != NULL );
   assert( m_pMvFieldSP[1] != NULL && m_phInterDirSP[1] != NULL );
 #endif
+#if COM16_C806_OBMC
+  m_ppcTmpYuv1 = NULL;
+  m_ppcTmpYuv2 = NULL;
+#endif
 }
 
 TDecCu::~TDecCu()
@@ -100,6 +104,10 @@ Void TDecCu::create( UInt uiMaxDepth, UInt uiMaxWidth, UInt uiMaxHeight, ChromaF
   m_ppcYuvResi = new TComYuv*[m_uiMaxDepth-1];
   m_ppcYuvReco = new TComYuv*[m_uiMaxDepth-1];
   m_ppcCU      = new TComDataCU*[m_uiMaxDepth-1];
+#if COM16_C806_OBMC
+  m_ppcTmpYuv1 = new TComYuv*[m_uiMaxDepth-1];
+  m_ppcTmpYuv2 = new TComYuv*[m_uiMaxDepth-1];
+#endif
 
   for ( UInt ui = 0; ui < m_uiMaxDepth-1; ui++ )
   {
@@ -118,6 +126,10 @@ Void TDecCu::create( UInt uiMaxDepth, UInt uiMaxWidth, UInt uiMaxHeight, ChromaF
     m_ppcYuvResi[ui] = new TComYuv;    m_ppcYuvResi[ui]->create( uiWidth, uiHeight, chromaFormatIDC );
     m_ppcYuvReco[ui] = new TComYuv;    m_ppcYuvReco[ui]->create( uiWidth, uiHeight, chromaFormatIDC );
     m_ppcCU     [ui] = new TComDataCU; m_ppcCU     [ui]->create( chromaFormatIDC, uiNumPartitions, uiWidth, uiHeight, true, uiMaxWidth >> (m_uiMaxDepth - 1) );
+#if COM16_C806_OBMC
+    m_ppcTmpYuv1[ui] = new TComYuv;    m_ppcTmpYuv1[ui]->create( uiWidth, uiHeight, chromaFormatIDC );
+    m_ppcTmpYuv2[ui] = new TComYuv;    m_ppcTmpYuv2[ui]->create( uiWidth, uiHeight, chromaFormatIDC );
+#endif
   }
 
   m_bDecodeDQP = false;
@@ -139,11 +151,19 @@ Void TDecCu::destroy()
     m_ppcYuvResi[ui]->destroy(); delete m_ppcYuvResi[ui]; m_ppcYuvResi[ui] = NULL;
     m_ppcYuvReco[ui]->destroy(); delete m_ppcYuvReco[ui]; m_ppcYuvReco[ui] = NULL;
     m_ppcCU     [ui]->destroy(); delete m_ppcCU     [ui]; m_ppcCU     [ui] = NULL;
+#if COM16_C806_OBMC
+    m_ppcTmpYuv1[ui]->destroy(); delete m_ppcTmpYuv1[ui]; m_ppcTmpYuv1[ui] = NULL;
+    m_ppcTmpYuv2[ui]->destroy(); delete m_ppcTmpYuv2[ui]; m_ppcTmpYuv2[ui] = NULL;
+#endif
   }
 
   delete [] m_ppcYuvResi; m_ppcYuvResi = NULL;
   delete [] m_ppcYuvReco; m_ppcYuvReco = NULL;
   delete [] m_ppcCU     ; m_ppcCU      = NULL;
+#if COM16_C806_OBMC
+  delete [] m_ppcTmpYuv1; m_ppcTmpYuv1 = NULL;
+  delete [] m_ppcTmpYuv2; m_ppcTmpYuv2 = NULL;
+#endif
 }
 
 // ====================================================================================================================
@@ -289,7 +309,9 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
   {
     m_pcEntropyDecoder->decodeSkipFlag( pcCU, uiAbsPartIdx, uiDepth );
   }
-
+#if COM16_C806_OBMC
+  pcCU->setOBMCFlagSubParts( true, uiAbsPartIdx, uiDepth );
+#endif
 
   if( pcCU->isSkipped(uiAbsPartIdx) )
   {
@@ -362,7 +384,9 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
 
   // prediction mode ( Intra : direction mode, Inter : Mv, reference idx )
   m_pcEntropyDecoder->decodePredInfo( pcCU, uiAbsPartIdx, uiDepth, m_ppcCU[uiDepth]);
-
+#if COM16_C806_OBMC
+  m_pcEntropyDecoder->decodeOBMCFlag( pcCU, uiAbsPartIdx, uiDepth );
+#endif
   // Coefficient decoding
   Bool bCodeDQP = getdQPFlag();
   Bool isChromaQpAdjCoded = getIsChromaQpAdjCoded();
@@ -466,7 +490,9 @@ Void TDecCu::xReconInter( TComDataCU* pcCU, UInt uiDepth )
 
   // inter prediction
   m_pcPrediction->motionCompensation( pcCU, m_ppcYuvReco[uiDepth] );
-
+#if COM16_C806_OBMC
+  m_pcPrediction->subBlockOBMC( pcCU, 0, m_ppcYuvReco[uiDepth], m_ppcTmpYuv1[uiDepth], m_ppcTmpYuv2[uiDepth] );
+#endif
 #if DEBUG_STRING
   const Int debugPredModeMask=DebugStringGetPredModeMask(MODE_INTER);
   if (DebugOptionList::DebugString_Pred.getInt()&debugPredModeMask)

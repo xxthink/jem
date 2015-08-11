@@ -120,6 +120,23 @@ Void TEncEntropy::encodeSkipFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD 
   m_pcEntropyCoderIf->codeSkipFlag( pcCU, uiAbsPartIdx );
 }
 
+#if COM16_C806_OBMC
+Void TEncEntropy::encodeOBMCFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD )
+{
+  if( bRD )
+  {
+    uiAbsPartIdx = 0;
+  }
+
+  if ( !pcCU->getSlice()->getSPS()->getOBMC() || !pcCU->isOBMCFlagCoded( uiAbsPartIdx ) )
+  {
+    return;
+  }
+
+  m_pcEntropyCoderIf->codeOBMCFlag( pcCU, uiAbsPartIdx );
+}
+#endif
+
 //! encode merge flag
 Void TEncEntropy::encodeMergeFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
 {

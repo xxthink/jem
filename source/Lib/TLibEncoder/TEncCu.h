@@ -68,6 +68,9 @@ private:
 
   TComDataCU**            m_ppcBestCU;      ///< Best CUs in each depth
   TComDataCU**            m_ppcTempCU;      ///< Temporary CUs in each depth
+#if COM16_C806_OBMC
+  TComDataCU**            m_ppcTempCUWoOBMC; ///< Temporary CUs in each depth
+#endif
   UChar                   m_uhTotalDepth;
 
   TComYuv**               m_ppcPredYuvBest; ///< Best Prediction Yuv for each depth
@@ -77,7 +80,11 @@ private:
   TComYuv**               m_ppcResiYuvTemp; ///< Temporary Residual Yuv for each depth
   TComYuv**               m_ppcRecoYuvTemp; ///< Temporary Reconstruction Yuv for each depth
   TComYuv**               m_ppcOrigYuv;     ///< Original Yuv for each depth
-
+#if COM16_C806_OBMC
+  TComYuv**               m_ppcTmpYuv1;     ///< Temporary Yuv used for OBMC
+  TComYuv**               m_ppcTmpYuv2;     ///< Temporary Yuv used for OBMC
+  TComYuv**               m_ppcPredYuvWoOBMC; ///< Temporary Prediction Yuv for each depth
+#endif
   //  Data : encoder control
   Bool                    m_bEncodeDQP;
   Bool                    m_bFastDeltaQP;

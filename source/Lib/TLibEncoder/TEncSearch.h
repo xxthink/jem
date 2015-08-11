@@ -198,6 +198,11 @@ public:
                                   TComYuv*    pcResiYuv,
                                   TComYuv*    pcRecoYuv
                                   DEBUG_STRING_FN_DECLARE(sDebug),
+#if COM16_C806_OBMC
+                                  TComYuv*    pcPredYuvWoOBMC, 
+                                  TComYuv*    pcTmpYuv1,
+                                  TComYuv*    pcTmpYuv2,
+#endif
                                   Bool        bUseRes = false
 #if AMP_MRG
                                  ,Bool        bUseMRG = false

@@ -90,6 +90,9 @@ TEncSbac::TEncSbac()
 , m_cCrossComponentPredictionSCModel   ( 1,             1,                      NUM_CROSS_COMPONENT_PREDICTION_CTX   , m_contextModels + m_numContextModels, m_numContextModels)
 , m_ChromaQpAdjFlagSCModel             ( 1,             1,                      NUM_CHROMA_QP_ADJ_FLAG_CTX           , m_contextModels + m_numContextModels, m_numContextModels)
 , m_ChromaQpAdjIdcSCModel              ( 1,             1,                      NUM_CHROMA_QP_ADJ_IDC_CTX            , m_contextModels + m_numContextModels, m_numContextModels)
+#if COM16_C806_OBMC
+, m_cCUOBMCFlagSCModel                 ( 1,             1,                      NUM_OBMC_FLAG_CTX                    , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 #if ALF_HM3_REFACTOR
 , m_bAlfCtrl                           ( false )
 , m_uiMaxAlfCtrlDepth                  ( 0 )
@@ -152,6 +155,9 @@ Void TEncSbac::resetEntropy           (const TComSlice *pSlice)
   m_cCrossComponentPredictionSCModel.initBuffer   ( eSliceType, iQp, (UChar*)INIT_CROSS_COMPONENT_PREDICTION  );
   m_ChromaQpAdjFlagSCModel.initBuffer             ( eSliceType, iQp, (UChar*)INIT_CHROMA_QP_ADJ_FLAG );
   m_ChromaQpAdjIdcSCModel.initBuffer              ( eSliceType, iQp, (UChar*)INIT_CHROMA_QP_ADJ_IDC );
+#if COM16_C806_OBMC
+  m_cCUOBMCFlagSCModel.initBuffer                 ( eSliceType, iQp, (UChar*)INIT_OBMC_FLAG );
+#endif
 #if ALF_HM3_REFACTOR
   m_cCUAlfCtrlFlagSCModel.initBuffer              ( eSliceType, iQp, (UChar*)INIT_ALF_CTRL_FLAG );
   m_cALFFlagSCModel.initBuffer                    ( eSliceType, iQp, (UChar*)INIT_ALF_FLAG );
@@ -219,7 +225,9 @@ SliceType TEncSbac::determineCabacInitIdx(const TComSlice *pSlice)
       curCost += m_cCrossComponentPredictionSCModel.calcCost   ( curSliceType, qp, (UChar*)INIT_CROSS_COMPONENT_PREDICTION );
       curCost += m_ChromaQpAdjFlagSCModel.calcCost             ( curSliceType, qp, (UChar*)INIT_CHROMA_QP_ADJ_FLAG );
       curCost += m_ChromaQpAdjIdcSCModel.calcCost              ( curSliceType, qp, (UChar*)INIT_CHROMA_QP_ADJ_IDC );
-
+#if COM16_C806_OBMC
+      curCost += m_cCUOBMCFlagSCModel.calcCost                 ( curSliceType, qp, (UChar*)INIT_OBMC_FLAG );
+#endif
       if (curCost < bestCost)
       {
         bestSliceType = curSliceType;
@@ -576,6 +584,20 @@ Void TEncSbac::codeSkipFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
   DTRACE_CABAC_V( uiSymbol );
   DTRACE_CABAC_T( "\n");
 }
+
+#if COM16_C806_OBMC
+Void TEncSbac::codeOBMCFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
+{
+  UInt uiSymbol = pcCU->getOBMCFlag( uiAbsPartIdx ) ? 1 : 0;
+
+  m_pcBinIf->encodeBin( uiSymbol, m_cCUOBMCFlagSCModel.get( 0, 0, 0 ) );
+  DTRACE_CABAC_VL( g_nSymbolCounter++ );
+  DTRACE_CABAC_T( "\tOBMCFlag" );
+  DTRACE_CABAC_T( "\tuiSymbol: ");
+  DTRACE_CABAC_V( uiSymbol );
+  DTRACE_CABAC_T( "\n");
+}
+#endif
 
 /** code merge flag
  * \param pcCU

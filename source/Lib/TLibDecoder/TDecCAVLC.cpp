@@ -780,6 +780,14 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
   READ_FLAG( uiCode,    "atmvp_flag"            );                pcSPS->setAtmvpEnableFlag( uiCode ? true : false );
   READ_CODE( 3, uiCode, "log2_sub_pu_tmvp_size" );                pcSPS->setSubPUTLog2Size ( uiCode );
 #endif
+#if COM16_C806_OBMC
+  READ_FLAG( uiCode , "obmc_flag" );       pcSPS->setOBMC( uiCode );
+  if( uiCode )
+  {
+    READ_UVLC( uiCode , "obmc_blk_size" ); pcSPS->setOBMCBlkSize( uiCode );
+    assert( uiCode == 4 || uiCode == 8 );
+  }
+#endif
 #if ALF_HM3_REFACTOR
   READ_FLAG( uiCode , "use_alf_flag" );                           pcSPS->setUseALF ( uiCode ? true : false );
 #endif
@@ -1683,6 +1691,13 @@ Void TDecCavlc::parseSkipFlag( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt
 {
   assert(0);
 }
+
+#if COM16_C806_OBMC
+Void TDecCavlc::parseOBMCFlag( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/ )
+{
+  assert(0);
+}
+#endif
 
 Void TDecCavlc::parseCUTransquantBypassFlag( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/ )
 {

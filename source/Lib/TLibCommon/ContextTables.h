@@ -57,6 +57,9 @@
 #else
 #define NUM_MERGE_IDX_EXT_CTX         1       ///< number of context models for merge index of merge extended
 #endif
+#if COM16_C806_OBMC
+#define NUM_OBMC_FLAG_CTX             1       ///< number of context models for OBMC flag
+#endif
 
 #define NUM_PART_SIZE_CTX             4       ///< number of context models for partition size
 #define NUM_PRED_MODE_CTX             1       ///< number of context models for prediction mode
@@ -225,6 +228,16 @@ INIT_MERGE_IDX_EXT[NUMBER_OF_SLICE_TYPES][NUM_MERGE_IDX_EXT_CTX] =
   { CNU, },
 #endif
 };
+
+#if COM16_C806_OBMC
+static const UChar 
+INIT_OBMC_FLAG[NUMBER_OF_SLICE_TYPES][NUM_OBMC_FLAG_CTX] =  
+{
+  { 201, }, 
+  { 201, }, 
+  { CNU, }, 
+};
+#endif
 
 static const UChar
 INIT_PART_SIZE[NUMBER_OF_SLICE_TYPES][NUM_PART_SIZE_CTX] =

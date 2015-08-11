@@ -391,6 +391,10 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setSubPUTLog2Size ( m_subPUTLog2Size);
   m_cTEncTop.setAtmvp( m_useAtmvpFlag);
 #endif
+#if COM16_C806_OBMC
+  m_cTEncTop.setOBMC( m_useOBMC );
+  m_cTEncTop.setOBMCBlkSize( m_OBMCBlkSize );
+#endif
 #if ALF_HM3_REFACTOR
   m_cTEncTop.setUseALF                       ( m_useALF      );
 #endif

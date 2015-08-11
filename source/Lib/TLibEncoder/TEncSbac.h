@@ -124,6 +124,9 @@ protected:
 public:
   Void codeCUTransquantBypassFlag( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeSkipFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
+#if COM16_C806_OBMC
+  Void codeOBMCFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
+#endif
   Void codeMergeFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeMergeIndex    ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeSplitFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
@@ -221,7 +224,9 @@ private:
 
   ContextModel3DBuffer m_ChromaQpAdjFlagSCModel;
   ContextModel3DBuffer m_ChromaQpAdjIdcSCModel;
-
+#if COM16_C806_OBMC
+  ContextModel3DBuffer m_cCUOBMCFlagSCModel;
+#endif
 #if ALF_HM3_REFACTOR
   Bool          m_bAlfCtrl;
   UInt          m_uiMaxAlfCtrlDepth;
