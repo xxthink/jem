@@ -74,7 +74,11 @@ private:
 public:
   TDecSlice();
   virtual ~TDecSlice();
-  
+
+#if QC_AC_ADAPT_WDOW
+  TComStats*                      m_apcStats; 
+#endif  
+
   Void  init              ( TDecEntropy* pcEntropyDecoder, TDecCu* pcMbDecoder );
   Void  create            ();
   Void  destroy           ();

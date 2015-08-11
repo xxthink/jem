@@ -110,7 +110,11 @@ public:
                  );
   Void  create  ();
   Void  destroy ();
+#if QC_AC_ADAPT_WDOW
+  Void  decompressSlice(TComInputBitstream* pcBitstream, TComPic*& rpcPic, TComStats*  m_apcStats = NULL);
+#else
   Void  decompressSlice(TComInputBitstream* pcBitstream, TComPic*& rpcPic );
+#endif
   Void  filterPicture  (TComPic*& rpcPic );
 
   void setDecodedPictureHashSEIEnabled(Int enabled) { m_decodedPictureHashSEIEnabled = enabled; }

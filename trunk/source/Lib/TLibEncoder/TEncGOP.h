@@ -146,7 +146,11 @@ public:
   Void  destroy     ();
   
   Void  init        ( TEncTop* pcTEncTop );
+#if QC_AC_ADAPT_WDOW
+  Void  compressGOP ( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rcListPic, TComList<TComPicYuv*>& rcListPicYuvRec, std::list<AccessUnit>& accessUnitsInGOP, Bool isField, Bool isTff, TComStats* m_apcStats);
+#else
   Void  compressGOP ( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rcListPic, TComList<TComPicYuv*>& rcListPicYuvRec, std::list<AccessUnit>& accessUnitsInGOP, Bool isField, Bool isTff );
+#endif
   Void  xAttachSliceDataToNalUnit (OutputNALUnit& rNalu, TComOutputBitstream*& rpcBitstreamRedirect);
 
   
@@ -196,6 +200,11 @@ protected:
     m_nestedPictureTimingSEIPresentInAU      = false;
   }
   Void dblMetric( TComPic* pcPic, UInt uiNumSlices );
+#if QC_AC_ADAPT_WDOW
+  public:
+  Int xUpdateTStates (UInt uiSliceType, UInt uiSliceQP,  TComStats* apcStats);  
+#endif
+
 };// END CLASS DEFINITION TEncGOP
 
 // ====================================================================================================================

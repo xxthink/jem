@@ -86,16 +86,38 @@ public:
   Void  parseHrdParameters  (TComHRD *hrd, Bool cprms_present_flag, UInt tempLevelHigh);
   Void  parseSliceHeader    ( TComSlice*& rpcSlice, ParameterSetManagerDecoder *parameterSetManager);
   Void  parseTerminatingBit ( UInt& ruiBit );
-  
+
+#if QC_AC_ADAPT_WDOW
+  Void parseCtxUpdateInfo   (TComSlice*& rpcSlice, TComStats* apcStats )  ;
+  Void xRunDecoding         (Bool * uiCtxMAP, UInt uiNumCtx);
+  Void xLevelDecoding       (Bool * uiCtxMAP, UChar *uiCtxCodeIdx, UInt uiNumCtx);
+#endif
+
   Void  parseMVPIdx         ( Int& riMVPIdx );
   
   Void  parseSkipFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#if QC_IMV
+  Void  parseiMVFlag        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
 #if QC_OBMC
   Void  parseOBMCFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
+#if QC_IC
+  Void  parseICFlag         ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
   Void  parseCUTransquantBypassFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#if ROT_TR
+  Void parseROTIdx       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
+#if CU_LEVEL_MPI
+  Void parseMPIIdx       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
+
   Void parseMergeFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx );
   Void parseMergeIndex      ( TComDataCU* pcCU, UInt& ruiMergeIndex );
+#if QC_FRUC_MERGE
+  Void parseFRUCMgrMode    ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx );
+#endif
   Void parseSplitFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   Void parsePartSize        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   Void parsePredMode        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
@@ -114,7 +136,11 @@ public:
   Void parseMvd             ( TComDataCU* pcCU, UInt uiAbsPartAddr,UInt uiPartIdx,    UInt uiDepth, RefPicList eRefList );
   
   Void parseDeltaQP         ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
-  Void parseCoeffNxN        ( TComDataCU* pcCU, TCoeff* pcCoef, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight, UInt uiDepth, TextType eTType );
+  Void parseCoeffNxN        ( TComDataCU* pcCU, TCoeff* pcCoef, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight, UInt uiDepth, TextType eTType 
+#if ROT_TR
+    , Bool& bCbfCU
+#endif
+    );
   Void parseTransformSkipFlags ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt width, UInt height, UInt uiDepth, TextType eTType);
 
   Void parseIPCMInfo        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth);
@@ -138,6 +164,11 @@ public:
   Void parseAlfCtrlFlag     ( UInt &ruiAlfCtrlFlag );
 #endif
 
+#if QC_AC_ADAPT_WDOW
+  TComStats* m_pcStats;
+  TComStats* getStatesHandle () {return m_pcStats;}
+  Void setStatesHandle ( TComStats* pcStats) {m_pcStats = pcStats ;}
+#endif
 protected:
   Bool  xMoreRbspData();
 };

@@ -318,11 +318,30 @@ protected:
 #if ALF_HM3_QC_REFACTOR
   Bool      m_bUseALF;
 #endif
+#if QC_FRUC_MERGE
+  Int       m_nFRUCMgrMode;
+  Int       m_nFRUCRefineFilter;
+  Int       m_nFURCRefineRange;
+  Int       m_nFRUCSmallBlkRefineDepth;
+#endif
+#if QC_IMV
+  Bool      m_nIMV;
+  Int       m_nIMVMaxCand;
+#endif
 #if QC_EMT
   Int       m_iUseIntraEMT;
   Int       m_iUseInterEMT;
   Int       m_iUseFastIntraEMT;
   Int       m_iUseFastInterEMT;
+#endif
+#if QC_INTRA_4TAP_FILTER
+  Bool      m_bUse4TapIntraFilter;
+#endif
+#if INTRA_BOUNDARY_FILTER
+  Bool      m_bUseBoundaryFilter;
+#endif
+#if QC_USE_65ANG_MODES
+  Bool      m_bUseExtIntraAngMode;
 #endif
 #if QC_LARGE_CTU_FAST
   Int       m_nLCTUFast;
@@ -330,12 +349,14 @@ protected:
 #if QC_OBMC
   Bool      m_bOBMC;
   Int       m_nOBMCBlkSize;
-  Double    m_dOBMCThreshold[2];
+  Int       m_nAOBMCMaxCUSize;
 #endif
 #if QC_LMCHROMA
   Bool      m_bUseLMChroma;
 #endif
-
+#if QC_IC
+  Bool      m_bUseIC;
+#endif
 public:
   TEncCfg()
   : m_puiColumnWidth()
@@ -774,6 +795,24 @@ public:
   Bool      getUseALF                       ()      { return m_bUseALF;     }
 #endif
 
+#if QC_FRUC_MERGE
+  Void setFRUCMgrMode(Int n)    { m_nFRUCMgrMode = n;     }
+  Int  getFRUCMgrMode()         { return m_nFRUCMgrMode;  }
+  Void setFRUCRefineFilter(Int n)  { m_nFRUCRefineFilter = n;     }
+  Int  getFRUCRefineFilter()       { return m_nFRUCRefineFilter;  }
+  Void setFRUCRefineRange(Int n)  { m_nFURCRefineRange = n;     }
+  Int  getFRUCRefineRange()       { return m_nFURCRefineRange;  }
+  Void setFRUCSmallBlkRefineDepth(Int n)  { m_nFRUCSmallBlkRefineDepth = n;     }
+  Int  getFRUCSmallBlkRefineDepth()       { return m_nFRUCSmallBlkRefineDepth;  }
+#endif
+
+#if QC_IMV
+  Void  setIMV(Bool n)  { m_nIMV = n;    }
+  Bool  getIMV()        { return m_nIMV; }
+  Void  setIMVMaxCand(Int n)  { m_nIMVMaxCand = n;    }
+  Int   getIMVMaxCand()       { return m_nIMVMaxCand; }
+#endif
+
 #if QC_LMCHROMA
   Bool getUseLMChroma                       ()      { return m_bUseLMChroma;        }
   Void setUseLMChroma                       ( Bool b ) { m_bUseLMChroma  = b;       }
@@ -799,12 +838,26 @@ public:
   Bool   getOBMC()                           { return m_bOBMC;              }
   Void   setOBMCBlkSize(Int nBlkSize)        { m_nOBMCBlkSize = nBlkSize;   }
   Int    getOBMCBlkSize()                    { return m_nOBMCBlkSize;       }
-  Double* getOBMCThreshold()                 { return m_dOBMCThreshold;     }
-  Void    setOBMCThreshold (Double* d)       { m_dOBMCThreshold[0] = d[0], m_dOBMCThreshold[1] = d[1]; }  
+#endif
+#if QC_INTRA_4TAP_FILTER
+  Bool   getUse4TapIntraFilter ()            { return m_bUse4TapIntraFilter; }
+  Void   setUse4TapIntraFilter ( Bool bUse4TapIntraFilter ) { m_bUse4TapIntraFilter = bUse4TapIntraFilter; }
+#endif
+#if INTRA_BOUNDARY_FILTER
+  Bool   getUseBoundaryFilter ()            { return m_bUseBoundaryFilter; }
+  Void   setUseBoundaryFilter ( Bool bUseBoundaryFilter ) { m_bUseBoundaryFilter = bUseBoundaryFilter; }
+#endif
+#if QC_USE_65ANG_MODES
+  Bool   getUseExtIntraAngModes ()            { return m_bUseExtIntraAngMode; }
+  Void   setUseExtIntraAngModes ( Bool bUseExtIntraAngMode ) { m_bUseExtIntraAngMode = bUseExtIntraAngMode; }
 #endif
 #if QC_LARGE_CTU_FAST
   Void setLCTUFast(Int n)   { m_nLCTUFast = n; }
   Int  getLCTUFast()        { return m_nLCTUFast;  }
+#endif
+#if QC_IC
+  Void   setUseIC( Bool bVal )    { m_bUseIC = bVal; }
+  Bool   getUseIC()               { return m_bUseIC; }
 #endif
 };
 

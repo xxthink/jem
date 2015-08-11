@@ -125,6 +125,17 @@ Void initROM()
     c <<= 1;
   }
 #endif
+
+#if QC_INTRA_4TAP_FILTER
+  for( i=17; i<32; i++ )
+  {
+    for( c=0; c<4; c++ )
+    {
+      g_aiIntraCubicFilter[i][c] = g_aiIntraCubicFilter[32-i][3-c];
+      g_aiIntraGaussFilter[i][c] = g_aiIntraGaussFilter[32-i][3-c];
+    }
+  }
+#endif
 }
 
 Void destroyROM()
@@ -325,14 +336,25 @@ const Short g_as_DST_MAT_4 [4][4]=
 Int g_aiTrSubsetIntra[3][2] = { {DST7, DCT8}, {DST7, DST1}, {DST7, DCT5} };
 Int g_aiTrSubsetInter   [4] =   {DCT8, DST7};
 
-const UChar g_aucTrSetVert[NUM_INTRA_MODE-1] =
+#if QC_USE_65ANG_MODES
+const UChar g_aucTrSetVertExt[NUM_INTRA_MODE-1] =
+{//0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66
+   2, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0
+};
+const UChar g_aucTrSetHorzExt[NUM_INTRA_MODE-1] =
+{//0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66
+   2, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0
+};
+#endif
+const UChar g_aucTrSetVert[35] =
 {//0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34
    2, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 2, 2, 2, 2, 2, 1, 0, 1, 0, 1, 0
 };
-const UChar g_aucTrSetHorz[NUM_INTRA_MODE-1] =
+const UChar g_aucTrSetHorz[35] =
 {//0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34
    2, 1, 0, 1, 0, 1, 0, 1, 2, 2, 2, 2, 2, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0
 };
+
 const UInt g_iEmtSigNumThr = 2;
 #endif
 
@@ -380,6 +402,47 @@ const UChar g_aucIntraModeNumFast[MAX_CU_DEPTH] =
 };
 #endif // FAST_UDI_USE_MPM
 
+#if QC_INTRA_4TAP_FILTER
+Int g_aiIntraCubicFilter[32][4] = {
+  {   0, 256,   0,   0 }, //  0 Integer-Pel
+  {  -3, 252,   8,  -1 }, //  1
+  {  -5, 247,  17,  -3 }, //  2
+  {  -7, 242,  25,  -4 }, //  3
+  {  -9, 236,  34,  -5 }, //  4
+  { -10, 230,  43,  -7 }, //  5
+  { -12, 224,  52,  -8 }, //  6
+  { -13, 217,  61,  -9 }, //  7
+  { -14, 210,  70, -10 }, //  8
+  { -15, 203,  79, -11 }, //  9
+  { -16, 195,  89, -12 }, // 10
+  { -16, 187,  98, -13 }, // 11
+  { -16, 179, 107, -14 }, // 12
+  { -16, 170, 116, -14 }, // 13
+  { -17, 162, 126, -15 }, // 14
+  { -16, 153, 135, -16 }, // 15
+  { -16, 144, 144, -16 }, // 16 Half-Pel
+};
+Int g_aiIntraGaussFilter[32][4] = {
+  {  47, 161,  47,   1 }, //  0 Integer-Pel
+  {  43, 161,  51,   1 }, //  1
+  {  40, 160,  54,   2 }, //  2
+  {  37, 159,  58,   2 }, //  3
+  {  34, 158,  62,   2 }, //  4
+  {  31, 156,  67,   2 }, //  5
+  {  28, 154,  71,   3 }, //  6
+  {  26, 151,  76,   3 }, //  7
+  {  23, 149,  80,   4 }, //  8
+  {  21, 146,  85,   4 }, //  9
+  {  19, 142,  90,   5 }, // 10
+  {  17, 139,  94,   6 }, // 11
+  {  16, 135,  99,   6 }, // 12
+  {  14, 131, 104,   7 }, // 13
+  {  13, 127, 108,   8 }, // 14
+  {  11, 123, 113,   9 }, // 15
+  {  10, 118, 118,  10 }, // 16 Half-Pel
+};
+#endif
+
 // chroma
 
 const UChar g_aucConvertTxtTypeToIdx[4] = { 0, 1, 1, 2 };
@@ -412,16 +475,53 @@ UInt64 g_nSymbolCounter = 0;
 // ====================================================================================================================
 // Scanning order & context model mapping
 // ====================================================================================================================
-
 // scanning order table
 UInt* g_auiSigLastScan[ 3 ][ MAX_CU_DEPTH ];
 
+#if QC_CTX_RESIDUALCODING
+const UInt g_auiGoRiceTable[64] =
+{
+  0, 0, 0, 0,
+  1, 1, 1, 1, 1, 1,
+  2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+  4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4
+};
+const UInt g_sigLastScan8x8[ 3 ][ 4 ] =
+{
+  {0, 2, 1, 3}, 
+  {0, 1, 2, 3},
+  {0, 1, 2, 3},
+};
+#if !QC_T64
+const UInt g_uiLastCtx[ 28 ]    =         //!!!!to be modified for when QC_T64 = 1  
+{
+  0,   1,  2,  2,                         // 4x4    4
+  3,   4,  5,  5, 2,  2,                  // 8x8    6  
+  6,   7,  8,  8, 9,  9, 2, 2,            // 16x16  8
+  10, 11, 12, 12, 13, 13, 14, 14, 2, 2    // 32x32  10
+                                          // 64x64  12    
+};
+#endif
+// Rice parameters for absolute transform levels
+const UInt g_auiGoRiceRange[5] =
+{
+  7, 14, 26, 46, 78
+};
+
+const UInt g_auiGoRicePrefixLen[5] =
+{
+  8, 7, 6, 5, 4
+};
+#else
 const UInt g_sigLastScan8x8[ 3 ][ 4 ] =
 {
   {0, 2, 1, 3},
   {0, 1, 2, 3},
   {0, 2, 1, 3}
 };
+#endif
+
 UInt g_sigLastScanCG32x32[ 64 ];
 #if QC_T64
 UInt g_sigLastScanCG64x64[ 256 ];
@@ -517,6 +617,7 @@ Void initSigLastScan(UInt* pBuffD, UInt* pBuffH, UInt* pBuffV, Int iWidth, Int i
   }
 
   UInt uiCnt = 0;
+#if !QC_CTX_RESIDUALCODING 
   if( iWidth > 2 )
   {
     UInt numBlkSide = iWidth >> 2;
@@ -554,6 +655,7 @@ Void initSigLastScan(UInt* pBuffD, UInt* pBuffH, UInt* pBuffV, Int iWidth, Int i
     }
   }
   else
+#endif
   {
     for(Int iY=0; iY < iHeight; iY++)
     {
@@ -617,5 +719,6 @@ UInt g_scalingListSizeX  [4] = { 4, 8, 16,  32};
 UInt g_scalingListNum[SCALING_LIST_SIZE_NUM]={6,6,6,2};
 #endif
 Int  g_eTTable[4] = {0,3,1,2};
+
 
 //! \}

@@ -50,8 +50,13 @@
 class TComCABACTables
 {
 public:
+#if QC_AC_ADAPT_WDOW || MULTI_PARAM_CABAC
+  const static UShort sm_aucLPSTable[512][64];
+  const static UChar  sm_aucRenormTable[128];
+#else
   const static UChar  sm_aucLPSTable[64][4];
   const static UChar  sm_aucRenormTable[32];
+#endif
 };
 
 
