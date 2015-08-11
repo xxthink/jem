@@ -372,6 +372,10 @@ protected:
   UInt      m_subPUTLog2Size;
   Bool      m_useAtmvpFlag;
 #endif
+#if COM16_C806_OBMC
+  Bool      m_useOBMC;
+  Int       m_OBMCBlkSize;
+#endif
 #if ALF_HM3_REFACTOR
   Bool      m_useALF;                                         ///< flag for using adaptive loop filter
 #endif

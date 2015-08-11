@@ -704,6 +704,10 @@ Void TEncTop::xInitSPS()
   m_cSPS.setAtmvpEnableFlag( m_useAtmvpFlag);
   m_cSPS.setSubPUTLog2Size ( m_subPUTLog2Size );
 #endif
+#if COM16_C806_OBMC
+  m_cSPS.setOBMC( m_useOBMC );
+  m_cSPS.setOBMCBlkSize( m_OBMCBlkSize );
+#endif
 #if ALF_HM3_REFACTOR
   m_cSPS.setUseALF        ( m_useALF           );
 #endif

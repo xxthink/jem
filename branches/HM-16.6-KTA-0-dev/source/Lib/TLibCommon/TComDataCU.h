@@ -133,7 +133,9 @@ private:
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
   UChar*        m_peMergeType;       ///< array of merge Types flags to indicate whehter a block uses sub-PU TMVP
 #endif
-
+#if COM16_C806_OBMC
+  Bool*         m_OBMCFlag;          ///< array of OBMC flags
+#endif
 #if AMP_MRG
   Bool          m_bIsMergeAMP;
 #endif
@@ -338,7 +340,14 @@ public:
   Void          setMergeType         ( UInt uiIdx, UChar e )    { m_peMergeType[uiIdx] = e;      }
   Void          setMergeTypeSubParts ( UChar eMergeType, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth );
 #endif
-
+#if COM16_C806_OBMC
+  Bool*         getOBMCFlag          ()                        { return m_OBMCFlag;          }
+  Bool          getOBMCFlag          (UInt idx)                { return m_OBMCFlag[idx];     }
+  Void          setOBMCFlag          ( UInt idx, Bool OBMC )   { m_OBMCFlag[idx] = OBMC;     }
+  Void          setOBMCFlagSubParts  ( Bool OBMC, UInt absPartIdx, UInt depth );
+  Bool          isOBMCFlagCoded      ( UInt uiAbsPartIdx );
+  Bool          getNeigMotion( UInt uiAbsPartIdx, TComMvField cNeigMvField[2], Int &irNeigPredDir, Int iDir, TComMvField cCurMvField[2], Int &iCurrDir, UInt uiZeroIdx, Bool &bTobeStored);
+#endif
   template <typename T>
   Void          setSubPart            ( T bParameter, T* pbBaseCtu, UInt uiCUAddr, UInt uiCUDepth, UInt uiPUIdx );
 

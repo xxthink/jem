@@ -89,7 +89,7 @@ public:
   Int getRefIdx() const { return  m_iRefIdx;       }
   Int getHor   () const { return  m_acMv.getHor(); }
   Int getVer   () const { return  m_acMv.getVer(); }
-#if COM16_C806_GEN_MRG_IMPROVEMENT 
+#if COM16_C806_GEN_MRG_IMPROVEMENT || COM16_C806_OBMC
   Bool operator== (const TComMvField& rcMv) const
   {
     return (m_acMv.getHor()== rcMv.getHor() && m_acMv.getVer()== rcMv.getVer() && m_iRefIdx == rcMv.getRefIdx());

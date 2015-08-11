@@ -104,7 +104,9 @@ TComDataCU::TComDataCU()
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
   m_peMergeType        = NULL;
 #endif
-
+#if COM16_C806_OBMC
+  m_OBMCFlag           = NULL;
+#endif
 #if ALF_HM3_REFACTOR
   m_puiAlfCtrlFlag     = NULL;
   m_puiTmpAlfCtrlFlag  = NULL;
@@ -147,6 +149,9 @@ Void TComDataCU::create( ChromaFormat chromaFormatIDC, UInt uiNumPartition, UInt
 
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
     m_peMergeType        = (UChar*  )xMalloc(MergeType,   uiNumPartition);
+#endif
+#if COM16_C806_OBMC
+    m_OBMCFlag           = new Bool[ uiNumPartition ];
 #endif
 #if ALF_HM3_REFACTOR
     m_puiAlfCtrlFlag     = (UInt*  )xMalloc(UInt,   uiNumPartition);
@@ -298,6 +303,13 @@ Void TComDataCU::destroy()
     {
       xFree(m_peMergeType ); 
       m_peMergeType      = NULL;  
+    }
+#endif
+#if COM16_C806_OBMC
+    if ( m_OBMCFlag ) 
+    { 
+      delete[] m_OBMCFlag;
+      m_OBMCFlag = NULL; 
     }
 #endif
 #if ALF_HM3_REFACTOR
@@ -506,6 +518,9 @@ Void TComDataCU::initCtu( TComPic* pcPic, UInt ctuRsAddr )
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
   memset( m_peMergeType       , MGR_TYPE_DEFAULT_N,       m_uiNumPartition * sizeof( *m_peMergeType   ) );
 #endif
+#if COM16_C806_OBMC
+  memset( m_OBMCFlag          , true,                     m_uiNumPartition * sizeof( *m_OBMCFlag ) );
+#endif
 #if ALF_HM3_REFACTOR
   memset( m_puiAlfCtrlFlag    , 0,                        m_uiNumPartition * sizeof( *m_puiAlfCtrlFlag ) );
 #endif
@@ -625,6 +640,9 @@ Void TComDataCU::initEstData( const UInt uiDepth, const Int qp, const Bool bTran
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
     m_peMergeType[ui]   = MGR_TYPE_DEFAULT_N;
 #endif
+#if COM16_C806_OBMC
+    m_OBMCFlag[ui]      = true;
+#endif
 #if ALF_HM3_REFACTOR
     m_puiAlfCtrlFlag[ui] = 0;
 #endif
@@ -694,6 +712,9 @@ Void TComDataCU::initSubCU( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth, 
   memset( m_puhMergeIndex,      0, iSizeInUchar );
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
   memset( m_peMergeType,        0, iSizeInUchar );
+#endif
+#if COM16_C806_OBMC
+  memset( m_OBMCFlag,           1, iSizeInBool  );
 #endif
 #if ALF_HM3_REFACTOR
   memset( m_puiAlfCtrlFlag,     0, sizeof( UInt   ) * m_uiNumPartition );
@@ -802,6 +823,9 @@ Void TComDataCU::copySubCU( TComDataCU* pcCU, UInt uiAbsPartIdx )
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
   m_peMergeType         = pcCU->getMergeType()        + uiPart;
 #endif
+#if COM16_C806_OBMC
+  m_OBMCFlag            = pcCU->getOBMCFlag()         + uiPart;
+#endif
   for (UInt ch=0; ch<MAX_NUM_CHANNEL_TYPE; ch++)
   {
     m_puhIntraDir[ch]   = pcCU->getIntraDir(ChannelType(ch)) + uiPart;
@@ -900,6 +924,9 @@ Void TComDataCU::copyInterPredInfoFrom    ( TComDataCU* pcCU, UInt uiAbsPartIdx,
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
   m_peMergeType        = pcCU->getMergeType()             + uiAbsPartIdx;
 #endif
+#if COM16_C806_OBMC
+  m_OBMCFlag           = pcCU->getOBMCFlag ()             + uiAbsPartIdx;
+#endif
   m_apiMVPIdx[eRefPicList] = pcCU->getMVPIdx(eRefPicList) + uiAbsPartIdx;
   m_apiMVPNum[eRefPicList] = pcCU->getMVPNum(eRefPicList) + uiAbsPartIdx;
 
@@ -935,6 +962,9 @@ Void TComDataCU::copyPartFrom( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDept
   memcpy( m_puhMergeIndex       + uiOffset, pcCU->getMergeIndex(),        iSizeInUchar );
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
   memcpy( m_peMergeType         + uiOffset, pcCU->getMergeType(),         iSizeInUchar );
+#endif
+#if COM16_C806_OBMC
+  memcpy( m_OBMCFlag + uiOffset, pcCU->getOBMCFlag(),       sizeof( *m_OBMCFlag )   * uiNumPartition );
 #endif
 #if ALF_HM3_REFACTOR
   memcpy( m_puiAlfCtrlFlag      + uiOffset, pcCU->getAlfCtrlFlag(),       sizeof(*m_puiAlfCtrlFlag) * uiNumPartition  );
@@ -1026,6 +1056,9 @@ Void TComDataCU::copyToPic( UChar uhDepth )
   memcpy( pCtu->getMergeIndex()        + m_absZIdxInCtu, m_puhMergeIndex,       iSizeInUchar );
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
   memcpy( pCtu->getMergeType()         + m_absZIdxInCtu, m_peMergeType,         iSizeInUchar );
+#endif
+#if COM16_C806_OBMC
+  memcpy( pCtu->getOBMCFlag()          + m_absZIdxInCtu, m_OBMCFlag, sizeof( *m_OBMCFlag ) * m_uiNumPartition );
 #endif
 #if ALF_HM3_REFACTOR
   memcpy( pCtu->getAlfCtrlFlag()       + m_absZIdxInCtu, m_puiAlfCtrlFlag,      sizeof( *m_puiAlfCtrlFlag ) * m_uiNumPartition );
@@ -1652,6 +1685,26 @@ Void TComDataCU::setCbfSubParts( UInt uiCbf, ComponentID compID, UInt uiAbsPartI
   memset( m_puhCbf[compID] + uiAbsPartIdx, uiCbf, sizeof( UChar ) * uiCurrPartNumb );
 }
 
+#if COM16_C806_OBMC
+Void TComDataCU::setOBMCFlagSubParts( Bool OBMC, UInt absPartIdx, UInt depth )
+{
+  assert( sizeof( *m_OBMCFlag) == 1 );
+  memset( m_OBMCFlag + absPartIdx, OBMC, m_pcPic->getNumPartitionsInCtu() >> ( depth << 1 ) );
+}
+
+Bool TComDataCU::isOBMCFlagCoded( UInt uiAbsPartIdx )
+{
+  if ( isIntra( uiAbsPartIdx ) || ( getMergeFlag( uiAbsPartIdx ) && getPartitionSize( uiAbsPartIdx ) == SIZE_2Nx2N ) || getWidth( uiAbsPartIdx ) > COM16_C806_AOBMC_MAXCUSIZE )
+  {
+    return false;
+  }
+  else
+  {
+    return true;
+  }
+}
+#endif
+
 /** Sets a coded block flag for all sub-partitions of a partition
  * \param uiCbf          The value of the coded block flag to be set
  * \param compID
@@ -1765,12 +1818,20 @@ template<typename T>
 Void TComDataCU::setSubPart( T uiParameter, T* puhBaseCtu, UInt uiCUAddr, UInt uiCUDepth, UInt uiPUIdx )
 {
   assert( sizeof(T) == 1 ); // Using memset() works only for types of size 1
-
+#if COM16_C806_OBMC
+  UInt uiCurrPartNum  = (m_pcPic->getNumPartitionsInCtu() >> (2 * uiCUDepth));
+  UInt uiCurrPartNumQ = uiCurrPartNum >> 2;
+#else
   UInt uiCurrPartNumQ = (m_pcPic->getNumPartitionsInCtu() >> (2 * uiCUDepth)) >> 2;
+#endif
   switch ( m_pePartSize[ uiCUAddr ] )
   {
     case SIZE_2Nx2N:
+#if COM16_C806_OBMC
+      memset( puhBaseCtu + uiCUAddr, uiParameter, uiCurrPartNum );
+#else
       memset( puhBaseCtu + uiCUAddr, uiParameter, 4 * uiCurrPartNumQ );
+#endif
       break;
     case SIZE_2NxN:
       memset( puhBaseCtu + uiCUAddr, uiParameter, 2 * uiCurrPartNumQ );
@@ -4293,4 +4354,79 @@ Void TComDataCU::copyAlfCtrlFlagFromTmp()
 }
 #endif
 
+#if COM16_C806_OBMC
+// Function for fetching neighboring motions.
+Bool TComDataCU::getNeigMotion( UInt uiAbsPartIdx, TComMvField cNeigMvField[2], Int &irNeigPredDir, Int iDir, TComMvField cCurMvField[2], Int &iCurrDir, UInt uiZeroIdx, Bool &bTobeStored )
+{
+  TComDataCU* pcTmpCU = NULL;
+  UInt uiIdx;
+  if( iDir == 0 ) //above
+  {
+    pcTmpCU = getPUAbove( uiIdx, uiAbsPartIdx + uiZeroIdx );
+  }  
+  else if( iDir == 1 ) //left
+  {
+    pcTmpCU = getPULeft( uiIdx, uiAbsPartIdx + uiZeroIdx );
+  }
+  else if( iDir == 2 ) //below
+  {
+    pcTmpCU = this;
+    uiIdx = g_auiRasterToZscan[g_auiZscanToRaster[uiAbsPartIdx + uiZeroIdx] + getPic()->getNumPartInCtuWidth()] - uiZeroIdx;
+  }
+  else if( iDir == 3 ) //right
+  {
+    pcTmpCU = this;
+    uiIdx = g_auiRasterToZscan[g_auiZscanToRaster[uiAbsPartIdx + uiZeroIdx] + 1] - uiZeroIdx;
+  }
+
+  if( pcTmpCU == NULL || pcTmpCU->isIntra( uiIdx ) )
+  {
+    return false;
+  }
+
+  irNeigPredDir = pcTmpCU->getInterDir( uiIdx );
+  if(irNeigPredDir)
+  { 
+    if( !bTobeStored )
+    {
+      //backup motion information
+      for(UInt iRefList = 0; iRefList < 2; iRefList ++)
+      {
+        TComCUMvField* pTmpMvField = getCUMvField( RefPicList(iRefList) );
+        cCurMvField[iRefList].setMvField( pTmpMvField->getMv( uiAbsPartIdx ), pTmpMvField->getRefIdx( uiAbsPartIdx ) );
+      }
+      iCurrDir = getInterDir( uiAbsPartIdx );
+      bTobeStored = true;
+    }
+    for(UInt iRefList = 0; iRefList < 2; iRefList ++)
+    {
+      TComCUMvField* pTmpMvField = pcTmpCU->getCUMvField( RefPicList(iRefList) );
+      cNeigMvField[iRefList].setMvField( pTmpMvField->getMv( uiIdx ), pTmpMvField->getRefIdx( uiIdx ) );
+    }
+
+    if(irNeigPredDir != iCurrDir)
+    {
+      return true;
+    }
+    else
+    {
+      for(UInt iRefList = 0; iRefList < 2; iRefList ++)
+      {
+        if( iCurrDir & ( 1 << iRefList ) )
+        {       
+          if(!(cCurMvField[iRefList] == cNeigMvField[iRefList]))
+          {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+  }
+  else
+  {
+    return false;
+  }
+}
+#endif
 //! \}

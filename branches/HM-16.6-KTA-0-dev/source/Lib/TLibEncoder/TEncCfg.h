@@ -382,6 +382,10 @@ protected:
   UInt      m_subPUTLog2Size;
   Bool      m_useAtmvpFlag;
 #endif
+#if COM16_C806_OBMC
+  Bool      m_useOBMC;
+  Int       m_OBMCBlkSize;
+#endif
 #if ALF_HM3_REFACTOR
   Bool      m_useALF;
 #endif
@@ -958,6 +962,12 @@ public:
   Void setSubPUTLog2Size                    ( UInt u )      { m_subPUTLog2Size = u; } 
   Void setAtmvp                             ( Bool b )      { m_useAtmvpFlag       = b; }
   Bool getAtmvp                             ()              { return    m_useAtmvpFlag; }
+#endif
+#if COM16_C806_OBMC
+  Void      setOBMC(Bool bOBMC)                                      { m_useOBMC = bOBMC;             }
+  Bool      getOBMC()                                                { return m_useOBMC;              }
+  Void      setOBMCBlkSize(Int nBlkSize)                             { m_OBMCBlkSize = nBlkSize;   }
+  Int       getOBMCBlkSize()                                         { return m_OBMCBlkSize;       }
 #endif
 #if ALF_HM3_REFACTOR
   Void      setUseALF                       ( Bool  b )     { m_useALF   = b; }

@@ -1080,7 +1080,11 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
   ("ATMVP",                                           m_useAtmvpFlag,                                     true, "Advanced TMVP")       
   ("SubPUTempLog2Size",                               m_subPUTLog2Size,                                (UInt)2, "Sub-PU TMVP size index: 2^n")
-#endif    
+#endif
+#if COM16_C806_OBMC
+  ("OBMC",                                            m_useOBMC , true , "overlapped block motion compensation" )
+  ("OBMCBLK",                                         m_OBMCBlkSize , 4 , "block size in overlapped block motion compensation" )
+#endif
 #if ALF_HM3_REFACTOR
   ("ALF", m_useALF, true, "Adaptive Loop Filter")
 #endif
@@ -2497,6 +2501,10 @@ Void TAppEncCfg::xPrintParameter()
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
   printf(" ATMVP:%d, ", m_useAtmvpFlag );
   printf(" SubPUTLog2Size:%d  " , m_subPUTLog2Size  );
+#endif
+#if COM16_C806_OBMC
+  assert( m_OBMCBlkSize == 4 || m_OBMCBlkSize == 8 );
+  printf( " OBMC: %d  OBMCBLK: %d ", m_useOBMC, m_OBMCBlkSize );
 #endif
 #if ALF_HM3_REFACTOR
   printf(" ALF:%d ", m_useALF             );

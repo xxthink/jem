@@ -60,7 +60,10 @@ private:
   TComYuv**           m_ppcYuvResi;       ///< array of residual buffer
   TComYuv**           m_ppcYuvReco;       ///< array of prediction & reconstruction buffer
   TComDataCU**        m_ppcCU;            ///< CU data array
-
+#if COM16_C806_OBMC
+  TComYuv**           m_ppcTmpYuv1;       ///< array of OBMC prediction buffer
+  TComYuv**           m_ppcTmpYuv2;
+#endif
   // access channel
   TComTrQuant*        m_pcTrQuant;
   TComPrediction*     m_pcPrediction;

@@ -134,7 +134,9 @@ public:
 
   //  pcYuvSrc0 - pcYuvSrc1 -> m_apiBuf
   Void         subtract                   ( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const UInt uiTrUnitIdx, const UInt uiPartSize );
-
+#if COM16_C806_OBMC
+  UInt         sadLuma                    ( TComYuv* pcYuvSrc0 );
+#endif
   //  (pcYuvSrc0 + pcYuvSrc1)/2 for YUV partition
   Void         addAvg                     ( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const UInt iPartUnitIdx, const UInt iWidth, const UInt iHeight, const BitDepths &clipBitDepths );
 

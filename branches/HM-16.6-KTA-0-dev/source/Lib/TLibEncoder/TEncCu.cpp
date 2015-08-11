@@ -66,7 +66,12 @@ Void TEncCu::create(UChar uhTotalDepth, UInt uiMaxWidth, UInt uiMaxHeight, Chrom
   m_uhTotalDepth   = uhTotalDepth + 1;
   m_ppcBestCU      = new TComDataCU*[m_uhTotalDepth-1];
   m_ppcTempCU      = new TComDataCU*[m_uhTotalDepth-1];
-
+#if COM16_C806_OBMC
+  m_ppcTempCUWoOBMC  = new TComDataCU*[m_uhTotalDepth-1];
+  m_ppcTmpYuv1       = new TComYuv*[m_uhTotalDepth-1];
+  m_ppcTmpYuv2       = new TComYuv*[m_uhTotalDepth-1];
+  m_ppcPredYuvWoOBMC = new TComYuv*[m_uhTotalDepth-1];
+#endif
   m_ppcPredYuvBest = new TComYuv*[m_uhTotalDepth-1];
   m_ppcResiYuvBest = new TComYuv*[m_uhTotalDepth-1];
   m_ppcRecoYuvBest = new TComYuv*[m_uhTotalDepth-1];
@@ -94,6 +99,13 @@ Void TEncCu::create(UChar uhTotalDepth, UInt uiMaxWidth, UInt uiMaxHeight, Chrom
     m_ppcRecoYuvTemp[i] = new TComYuv; m_ppcRecoYuvTemp[i]->create(uiWidth, uiHeight, chromaFormat);
 
     m_ppcOrigYuv    [i] = new TComYuv; m_ppcOrigYuv    [i]->create(uiWidth, uiHeight, chromaFormat);
+
+#if COM16_C806_OBMC
+    m_ppcTempCUWoOBMC [i] = new TComDataCU; m_ppcTempCUWoOBMC[i]->create( chromaFormat, uiNumPartitions, uiWidth, uiHeight, false, uiMaxWidth >> (m_uhTotalDepth - 1) );
+    m_ppcTmpYuv1      [i] = new TComYuv;    m_ppcTmpYuv1      [i]->create( uiWidth, uiHeight, chromaFormat );
+    m_ppcTmpYuv2      [i] = new TComYuv;    m_ppcTmpYuv2      [i]->create( uiWidth, uiHeight, chromaFormat );
+    m_ppcPredYuvWoOBMC[i] = new TComYuv;    m_ppcPredYuvWoOBMC[i]->create( uiWidth, uiHeight, chromaFormat );
+#endif
   }
 
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
@@ -161,6 +173,25 @@ Void TEncCu::destroy()
     {
       m_ppcOrigYuv[i]->destroy();     delete m_ppcOrigYuv[i];     m_ppcOrigYuv[i] = NULL;
     }
+#if COM16_C806_OBMC
+    if(m_ppcTempCUWoOBMC[i])
+    {
+      m_ppcTempCUWoOBMC[i]->destroy();  delete m_ppcTempCUWoOBMC[i];      m_ppcTempCUWoOBMC[i] = NULL;
+    }
+
+    if(m_ppcTmpYuv1[i])
+    {
+      m_ppcTmpYuv1[i]->destroy();       delete m_ppcTmpYuv1[i]; m_ppcTmpYuv1[i] = NULL;
+    }
+    if(m_ppcTmpYuv2[i])
+    {
+      m_ppcTmpYuv2[i]->destroy();       delete m_ppcTmpYuv2[i]; m_ppcTmpYuv2[i] = NULL;
+    }
+    if(m_ppcPredYuvWoOBMC[i])
+    {
+      m_ppcPredYuvWoOBMC[i]->destroy(); delete m_ppcPredYuvWoOBMC[i]; m_ppcPredYuvWoOBMC[i] = NULL;
+    }
+#endif
   }
   if(m_ppcBestCU)
   {
@@ -223,6 +254,29 @@ Void TEncCu::destroy()
     }
   }
 #endif
+#if COM16_C806_OBMC
+  if(m_ppcTempCUWoOBMC)
+  {
+    delete [] m_ppcTempCUWoOBMC;
+    m_ppcTempCUWoOBMC = NULL;
+  }
+
+  if(m_ppcTmpYuv1)
+  {
+    delete [] m_ppcTmpYuv1;
+    m_ppcTmpYuv1 = NULL;
+  }
+  if(m_ppcTmpYuv2)
+  {
+    delete [] m_ppcTmpYuv2;
+    m_ppcTmpYuv2 = NULL;
+  }
+  if(m_ppcPredYuvWoOBMC)
+  {
+    delete [] m_ppcPredYuvWoOBMC;
+    m_ppcPredYuvWoOBMC = NULL;
+  }
+#endif
 }
 
 /** \param    pcEncTop      pointer of encoder class
@@ -255,7 +309,9 @@ Void TEncCu::compressCtu( TComDataCU* pCtu )
   // initialize CU data
   m_ppcBestCU[0]->initCtu( pCtu->getPic(), pCtu->getCtuRsAddr() );
   m_ppcTempCU[0]->initCtu( pCtu->getPic(), pCtu->getCtuRsAddr() );
-
+#if COM16_C806_OBMC
+  m_ppcTempCUWoOBMC[0]->initCtu( pCtu->getPic(), pCtu->getCtuRsAddr() );
+#endif
   // analysis of CU
   DEBUG_STRING_NEW(sDebug)
 
@@ -772,7 +828,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
       {
         pcSubBestPartCU->initSubCU( rpcTempCU, uiPartUnitIdx, uhNextDepth, iQP );           // clear sub partition datas or init.
         pcSubTempPartCU->initSubCU( rpcTempCU, uiPartUnitIdx, uhNextDepth, iQP );           // clear sub partition datas or init.
-
+#if COM16_C806_OBMC
+        m_ppcTempCUWoOBMC[uhNextDepth]->initSubCU( rpcTempCU, uiPartUnitIdx, uhNextDepth, iQP ); // clear sub partition datas or init.
+#endif
         if( ( pcSubBestPartCU->getCUPelX() < sps.getPicWidthInLumaSamples() ) && ( pcSubBestPartCU->getCUPelY() < sps.getPicHeightInLumaSamples() ) )
         {
           if ( 0 == uiPartUnitIdx) //initialize RD with previous depth buffer
@@ -1053,7 +1111,9 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 
   // prediction Info ( Intra : direction mode, Inter : Mv, reference idx )
   m_pcEntropyCoder->encodePredInfo( pcCU, uiAbsPartIdx );
-
+#if COM16_C806_OBMC
+  m_pcEntropyCoder->encodeOBMCFlag( pcCU, uiAbsPartIdx );
+#endif
   // Encode Coefficients
   Bool bCodeDQP = getdQPFlag();
   Bool codeChromaQpAdj = getCodeChromaQpAdjFlag();
@@ -1261,6 +1321,9 @@ Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTem
           rpcTempCU->setPartSizeSubParts( SIZE_2Nx2N, 0, uhDepth ); // interprets depth relative to CTU level
           rpcTempCU->setMergeFlagSubParts( true, 0, 0, uhDepth ); // interprets depth relative to CTU level
           rpcTempCU->setMergeIndexSubParts( uiMergeCand, 0, 0, uhDepth ); // interprets depth relative to CTU level
+#if COM16_C806_OBMC
+          rpcTempCU->setOBMCFlagSubParts( true, 0, uhDepth );
+#endif
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
           rpcTempCU->setMergeTypeSubParts(eMergeCandTypeNieghors[uiMergeCand] , 0, 0, uhDepth ); 
           if( eMergeCandTypeNieghors[uiMergeCand])
@@ -1292,6 +1355,9 @@ Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTem
 #endif
           // do MC
           m_pcPredSearch->motionCompensation ( rpcTempCU, m_ppcPredYuvTemp[uhDepth] );
+#if COM16_C806_OBMC
+          m_pcPredSearch->subBlockOBMC( rpcTempCU, 0, m_ppcPredYuvTemp[uhDepth], m_ppcTmpYuv1[uhDepth], m_ppcTmpYuv2[uhDepth] );
+#endif
           // estimate residual and encode everything
           m_pcPredSearch->encodeResAndCalcRdInterCU( rpcTempCU,
                                                      m_ppcOrigYuv    [uhDepth],
@@ -1383,12 +1449,22 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
   rpcTempCU->setPartSizeSubParts  ( ePartSize,  0, uhDepth );
   rpcTempCU->setPredModeSubParts  ( MODE_INTER, 0, uhDepth );
   rpcTempCU->setChromaQpAdjSubParts( rpcTempCU->getCUTransquantBypass(0) ? 0 : m_cuChromaQpOffsetIdxPlus1, 0, uhDepth );
-
+#if COM16_C806_OBMC
+  rpcTempCU->setOBMCFlagSubParts( true, 0, uhDepth );
+#endif
 #if AMP_MRG
   rpcTempCU->setMergeAMP (true);
+#if COM16_C806_OBMC
+  m_pcPredSearch->predInterSearch ( rpcTempCU, m_ppcOrigYuv[uhDepth], m_ppcPredYuvTemp[uhDepth], m_ppcResiYuvTemp[uhDepth], m_ppcRecoYuvTemp[uhDepth], m_ppcPredYuvWoOBMC[uhDepth], m_ppcTmpYuv1[uhDepth], m_ppcTmpYuv2[uhDepth], false, bUseMRG );
+#else
   m_pcPredSearch->predInterSearch ( rpcTempCU, m_ppcOrigYuv[uhDepth], m_ppcPredYuvTemp[uhDepth], m_ppcResiYuvTemp[uhDepth], m_ppcRecoYuvTemp[uhDepth] DEBUG_STRING_PASS_INTO(sTest), false, bUseMRG );
+#endif
+#else
+#if COM16_C806_OBMC
+  m_pcPredSearch->predInterSearch ( rpcTempCU, m_ppcOrigYuv[uhDepth], m_ppcPredYuvTemp[uhDepth], m_ppcResiYuvTemp[uhDepth], m_ppcRecoYuvTemp[uhDepth], m_ppcPredYuvWoOBMC[uhDepth], m_ppcTmpYuv1[uhDepth], m_ppcTmpYuv2[uhDepth] );
 #else
   m_pcPredSearch->predInterSearch ( rpcTempCU, m_ppcOrigYuv[uhDepth], m_ppcPredYuvTemp[uhDepth], m_ppcResiYuvTemp[uhDepth], m_ppcRecoYuvTemp[uhDepth] );
+#endif
 #endif
 
 #if AMP_MRG
@@ -1397,8 +1473,40 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
     return;
   }
 #endif
-
-  m_pcPredSearch->encodeResAndCalcRdInterCU( rpcTempCU, m_ppcOrigYuv[uhDepth], m_ppcPredYuvTemp[uhDepth], m_ppcResiYuvTemp[uhDepth], m_ppcResiYuvBest[uhDepth], m_ppcRecoYuvTemp[uhDepth], false DEBUG_STRING_PASS_INTO(sTest) );
+#if COM16_C806_OBMC
+  m_ppcTempCUWoOBMC[uhDepth]->initEstData( uhDepth, rpcTempCU->getQP( 0 ), rpcTempCU->getCUTransquantBypass( 0 ) );
+  m_ppcTempCUWoOBMC[uhDepth]->copyPartFrom( rpcTempCU, 0, uhDepth );
+  Bool bCheckOBMC[2] = { true , true };
+  bCheckOBMC[0] = rpcTempCU->isOBMCFlagCoded( 0 ); // check OBMC off only when the flag is to be coded
+  if( !rpcTempCU->getSlice()->getSPS()->getOBMC() )
+  {
+    bCheckOBMC[1] = false; bCheckOBMC[0] = true;
+  }
+  else if( rpcTempCU->isOBMCFlagCoded( 0 ) )
+  {
+    const Double dOBMCThOn  = 0.0;
+    const Double dOBMCThOff = 1.0;
+    UInt uiSADOBMCOff = m_ppcOrigYuv[uhDepth]->sadLuma( m_ppcPredYuvWoOBMC[uhDepth] );
+    UInt uiSADOBMCOn  = m_ppcOrigYuv[uhDepth]->sadLuma( m_ppcPredYuvTemp[uhDepth] );
+    // OBMC off
+    bCheckOBMC[0] = uiSADOBMCOff * dOBMCThOff < uiSADOBMCOn;
+    // OBMC on
+    bCheckOBMC[1] = !bCheckOBMC[0] || uiSADOBMCOn * dOBMCThOn < uiSADOBMCOff;
+  }
+  for( Int nOBMC = 1 ; nOBMC >= 0 ; nOBMC-- )
+  {
+    if( !bCheckOBMC[nOBMC] )
+    {
+      continue;
+    }
+    rpcTempCU->copyPartFrom( m_ppcTempCUWoOBMC[uhDepth], 0, uhDepth );
+    rpcTempCU->setOBMCFlagSubParts( ( Bool )nOBMC , 0 , uhDepth );
+#endif
+  m_pcPredSearch->encodeResAndCalcRdInterCU( rpcTempCU, m_ppcOrigYuv[uhDepth], 
+#if COM16_C806_OBMC
+    nOBMC == 0 ? m_ppcPredYuvWoOBMC[uhDepth] :
+#endif
+    m_ppcPredYuvTemp[uhDepth], m_ppcResiYuvTemp[uhDepth], m_ppcResiYuvBest[uhDepth], m_ppcRecoYuvTemp[uhDepth], false DEBUG_STRING_PASS_INTO(sTest) );
   rpcTempCU->getTotalCost()  = m_pcRdCost->calcRdCost( rpcTempCU->getTotalBits(), rpcTempCU->getTotalDistortion() );
 
 #if DEBUG_STRING
@@ -1407,6 +1515,10 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
 
   xCheckDQP( rpcTempCU );
   xCheckBestMode(rpcBestCU, rpcTempCU, uhDepth DEBUG_STRING_PASS_INTO(sDebug) DEBUG_STRING_PASS_INTO(sTest));
+#if COM16_C806_OBMC
+  rpcTempCU->initEstData( uhDepth, rpcTempCU->getQP( 0 ), rpcTempCU->getCUTransquantBypass( 0 ) );
+  }
+#endif
 }
 
 Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
@@ -1430,7 +1542,9 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
   UInt uiDepth = rpcTempCU->getDepth( 0 );
 
   rpcTempCU->setSkipFlagSubParts( false, 0, uiDepth );
-
+#if COM16_C806_OBMC
+  rpcTempCU->setOBMCFlagSubParts( false, 0, uiDepth );
+#endif
   rpcTempCU->setPartSizeSubParts( eSize, 0, uiDepth );
   rpcTempCU->setPredModeSubParts( MODE_INTRA, 0, uiDepth );
   rpcTempCU->setChromaQpAdjSubParts( rpcTempCU->getCUTransquantBypass(0) ? 0 : m_cuChromaQpOffsetIdxPlus1, 0, uiDepth );
@@ -1502,7 +1616,9 @@ Void TEncCu::xCheckIntraPCM( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU )
   UInt uiDepth = rpcTempCU->getDepth( 0 );
 
   rpcTempCU->setSkipFlagSubParts( false, 0, uiDepth );
-
+#if COM16_C806_OBMC
+  rpcTempCU->setOBMCFlagSubParts( false, 0, uiDepth );
+#endif
   rpcTempCU->setIPCMFlag(0, true);
   rpcTempCU->setIPCMFlagSubParts (true, 0, rpcTempCU->getDepth(0));
   rpcTempCU->setPartSizeSubParts( SIZE_2Nx2N, 0, uiDepth );

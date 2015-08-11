@@ -58,6 +58,11 @@
 #define COM16_C806_GEN_MRG_IMPROVEMENT                    1
 #endif
 
+#define COM16_C806_OBMC                                   1  ///< Overlapped Block Motion Compensation (OBMC)
+#if COM16_C806_OBMC
+#define COM16_C806_AOBMC_MAXCUSIZE                        16 //   Maximum CU size which can apply OBMC adaptively, larger CUs always apply OBMC
+#endif
+
 #define ALF_HM3_REFACTOR                                  1  ///< Adaptive loop filter with 4x4 block activity adaptation 
 #if ALF_HM3_REFACTOR
 #define COM16_C806_ALF_TEMPPRED_NUM                       6  ///< 0: no temporal prediction
