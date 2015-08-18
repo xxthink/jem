@@ -395,6 +395,9 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setOBMC( m_useOBMC );
   m_cTEncTop.setOBMCBlkSize( m_OBMCBlkSize );
 #endif
+#if VCEG_AZ06_IC
+  m_cTEncTop.setUseIC( m_useIC );
+#endif
 #if ALF_HM3_REFACTOR
   m_cTEncTop.setUseALF                       ( m_useALF      );
 #endif

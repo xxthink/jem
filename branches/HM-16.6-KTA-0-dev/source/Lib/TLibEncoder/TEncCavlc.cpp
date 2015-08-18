@@ -584,6 +584,9 @@ Void TEncCavlc::codeSPS( const TComSPS* pcSPS )
     WRITE_UVLC( pcSPS->getOBMCBlkSize() , "obmc_blk_size" );
   }
 #endif
+#if VCEG_AZ06_IC
+  WRITE_FLAG( pcSPS->getICFlag()? 1: 0, "illumination_comp_flag");
+#endif
 #if ALF_HM3_REFACTOR
   WRITE_FLAG( pcSPS->getUseALF () ? 1 : 0, "use_alf_flag" );
 #endif
@@ -1018,6 +1021,12 @@ Void TEncCavlc::codeSliceHeader         ( TComSlice* pcSlice )
       xCodePredWeightTable( pcSlice );
     }
     assert(pcSlice->getMaxNumMergeCand()<=MRG_MAX_NUM_CANDS);
+#if VCEG_AZ06_IC
+    if ( pcSlice->getSPS()->getICFlag() && pcSlice->getSliceType() != I_SLICE)
+    {
+      WRITE_FLAG( pcSlice->getApplyIC() ? 1 : 0, "slice_ic_enable_flag" );
+    }
+#endif
     if (!pcSlice->isIntra())
     {
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
@@ -1256,6 +1265,13 @@ Void TEncCavlc::codeSkipFlag( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/ )
 
 #if COM16_C806_OBMC
 Void TEncCavlc::codeOBMCFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
+{
+  assert(0);
+}
+#endif
+
+#if VCEG_AZ06_IC
+Void TEncCavlc::codeICFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
 {
   assert(0);
 }

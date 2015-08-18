@@ -42,6 +42,9 @@
 #include "WeightPredAnalysis.h"
 
 #define ABS(a)    ((a) < 0 ? - (a) : (a))
+#if VCEG_AZ06_IC
+#define DTHRESHIC (0.85)
+#endif
 #define DTHRESH (0.99)
 
 WeightPredAnalysis::WeightPredAnalysis()
@@ -303,7 +306,11 @@ Bool WeightPredAnalysis::xSelectWP(TComSlice *const slice, const Int log2Denom)
       }
 
       const Double dRatio = ((Double)iSADWP / (Double)iSADnoWP);
+#if VCEG_AZ06_IC
+      if( dRatio >= (Double) ( slice->getSPS()->getICFlag() ? DTHRESHIC : DTHRESH ) )
+#else
       if(dRatio >= (Double)DTHRESH)
+#endif
       {
         for(Int comp=0; comp<pPic->getNumberValidComponents(); comp++)
         {

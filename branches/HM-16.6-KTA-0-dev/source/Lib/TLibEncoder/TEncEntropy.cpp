@@ -137,6 +137,16 @@ Void TEncEntropy::encodeOBMCFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD 
 }
 #endif
 
+#if VCEG_AZ06_IC
+Void TEncEntropy::encodeICFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
+{
+  if( pcCU->isICFlagCoded( uiAbsPartIdx ) )
+  {
+    m_pcEntropyCoderIf->codeICFlag( pcCU, uiAbsPartIdx );
+  }
+}
+#endif
+
 //! encode merge flag
 Void TEncEntropy::encodeMergeFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
 {

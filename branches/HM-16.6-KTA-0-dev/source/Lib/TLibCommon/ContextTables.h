@@ -61,6 +61,10 @@
 #define NUM_OBMC_FLAG_CTX             1       ///< number of context models for OBMC flag
 #endif
 
+#if VCEG_AZ06_IC
+#define NUM_IC_FLAG_CTX               1       ///< number of context models for illumination compensation flag
+#endif
+
 #define NUM_PART_SIZE_CTX             4       ///< number of context models for partition size
 #define NUM_PRED_MODE_CTX             1       ///< number of context models for prediction mode
 
@@ -236,6 +240,16 @@ INIT_OBMC_FLAG[NUMBER_OF_SLICE_TYPES][NUM_OBMC_FLAG_CTX] =
   { 201, }, 
   { 201, }, 
   { CNU, }, 
+};
+#endif
+
+#if VCEG_AZ06_IC
+static const UChar 
+INIT_IC_FLAG[NUMBER_OF_SLICE_TYPES][NUM_IC_FLAG_CTX] =  
+{
+  { 154 },
+  { 154 },
+  { CNU },
 };
 #endif
 

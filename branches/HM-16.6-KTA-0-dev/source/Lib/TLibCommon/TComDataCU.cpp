@@ -107,6 +107,9 @@ TComDataCU::TComDataCU()
 #if COM16_C806_OBMC
   m_OBMCFlag           = NULL;
 #endif
+#if VCEG_AZ06_IC
+  m_pbICFlag           = NULL;
+#endif
 #if ALF_HM3_REFACTOR
   m_puiAlfCtrlFlag     = NULL;
   m_puiTmpAlfCtrlFlag  = NULL;
@@ -152,6 +155,9 @@ Void TComDataCU::create( ChromaFormat chromaFormatIDC, UInt uiNumPartition, UInt
 #endif
 #if COM16_C806_OBMC
     m_OBMCFlag           = new Bool[ uiNumPartition ];
+#endif
+#if VCEG_AZ06_IC
+    m_pbICFlag           = new Bool[ uiNumPartition ];
 #endif
 #if ALF_HM3_REFACTOR
     m_puiAlfCtrlFlag     = (UInt*  )xMalloc(UInt,   uiNumPartition);
@@ -310,6 +316,13 @@ Void TComDataCU::destroy()
     { 
       delete[] m_OBMCFlag;
       m_OBMCFlag = NULL; 
+    }
+#endif
+#if VCEG_AZ06_IC
+    if ( m_pbICFlag )
+    { 
+      delete [] m_pbICFlag;
+      m_pbICFlag = NULL; 
     }
 #endif
 #if ALF_HM3_REFACTOR
@@ -521,6 +534,9 @@ Void TComDataCU::initCtu( TComPic* pcPic, UInt ctuRsAddr )
 #if COM16_C806_OBMC
   memset( m_OBMCFlag          , true,                     m_uiNumPartition * sizeof( *m_OBMCFlag ) );
 #endif
+#if VCEG_AZ06_IC
+  memset( m_pbICFlag          , false,                    m_uiNumPartition * sizeof( *m_pbICFlag ) );
+#endif
 #if ALF_HM3_REFACTOR
   memset( m_puiAlfCtrlFlag    , 0,                        m_uiNumPartition * sizeof( *m_puiAlfCtrlFlag ) );
 #endif
@@ -643,6 +659,9 @@ Void TComDataCU::initEstData( const UInt uiDepth, const Int qp, const Bool bTran
 #if COM16_C806_OBMC
     m_OBMCFlag[ui]      = true;
 #endif
+#if VCEG_AZ06_IC
+    m_pbICFlag[ui]      = false;
+#endif
 #if ALF_HM3_REFACTOR
     m_puiAlfCtrlFlag[ui] = 0;
 #endif
@@ -715,6 +734,9 @@ Void TComDataCU::initSubCU( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth, 
 #endif
 #if COM16_C806_OBMC
   memset( m_OBMCFlag,           1, iSizeInBool  );
+#endif
+#if VCEG_AZ06_IC
+  memset( m_pbICFlag,           0, iSizeInBool  );
 #endif
 #if ALF_HM3_REFACTOR
   memset( m_puiAlfCtrlFlag,     0, sizeof( UInt   ) * m_uiNumPartition );
@@ -826,6 +848,9 @@ Void TComDataCU::copySubCU( TComDataCU* pcCU, UInt uiAbsPartIdx )
 #if COM16_C806_OBMC
   m_OBMCFlag            = pcCU->getOBMCFlag()         + uiPart;
 #endif
+#if VCEG_AZ06_IC
+  m_pbICFlag            = pcCU->getICFlag()           + uiPart;
+#endif
   for (UInt ch=0; ch<MAX_NUM_CHANNEL_TYPE; ch++)
   {
     m_puhIntraDir[ch]   = pcCU->getIntraDir(ChannelType(ch)) + uiPart;
@@ -927,6 +952,9 @@ Void TComDataCU::copyInterPredInfoFrom    ( TComDataCU* pcCU, UInt uiAbsPartIdx,
 #if COM16_C806_OBMC
   m_OBMCFlag           = pcCU->getOBMCFlag ()             + uiAbsPartIdx;
 #endif
+#if VCEG_AZ06_IC
+  m_pbICFlag           = pcCU->getICFlag()                + uiAbsPartIdx;
+#endif
   m_apiMVPIdx[eRefPicList] = pcCU->getMVPIdx(eRefPicList) + uiAbsPartIdx;
   m_apiMVPNum[eRefPicList] = pcCU->getMVPNum(eRefPicList) + uiAbsPartIdx;
 
@@ -965,6 +993,9 @@ Void TComDataCU::copyPartFrom( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDept
 #endif
 #if COM16_C806_OBMC
   memcpy( m_OBMCFlag + uiOffset, pcCU->getOBMCFlag(),       sizeof( *m_OBMCFlag )   * uiNumPartition );
+#endif
+#if VCEG_AZ06_IC
+  memcpy( m_pbICFlag + uiOffset, pcCU->getICFlag(), iSizeInBool );
 #endif
 #if ALF_HM3_REFACTOR
   memcpy( m_puiAlfCtrlFlag      + uiOffset, pcCU->getAlfCtrlFlag(),       sizeof(*m_puiAlfCtrlFlag) * uiNumPartition  );
@@ -1059,6 +1090,9 @@ Void TComDataCU::copyToPic( UChar uhDepth )
 #endif
 #if COM16_C806_OBMC
   memcpy( pCtu->getOBMCFlag()          + m_absZIdxInCtu, m_OBMCFlag, sizeof( *m_OBMCFlag ) * m_uiNumPartition );
+#endif
+#if VCEG_AZ06_IC
+  memcpy( pCtu->getICFlag()            + m_absZIdxInCtu, m_pbICFlag, iSizeInBool );
 #endif
 #if ALF_HM3_REFACTOR
   memcpy( pCtu->getAlfCtrlFlag()       + m_absZIdxInCtu, m_puiAlfCtrlFlag,      sizeof( *m_puiAlfCtrlFlag ) * m_uiNumPartition );
@@ -1749,6 +1783,35 @@ Void TComDataCU::setPartSizeSubParts( PartSize eMode, UInt uiAbsPartIdx, UInt ui
   assert( sizeof( *m_pePartSize) == 1 );
   memset( m_pePartSize + uiAbsPartIdx, eMode, m_pcPic->getNumPartitionsInCtu() >> ( 2 * uiDepth ) );
 }
+
+#if VCEG_AZ06_IC
+Void TComDataCU::setICFlagSubParts( Bool bICFlag, UInt uiAbsPartIdx, UInt uiDepth )
+{
+  memset( m_pbICFlag + uiAbsPartIdx, bICFlag, (m_pcPic->getNumPartitionsInCtu() >> ( 2 * uiDepth ))*sizeof(Bool) );
+}
+
+Bool TComDataCU::isICFlagCoded( UInt uiAbsPartIdx )
+{
+  if ( isIntra( uiAbsPartIdx ) || !getSlice()->getApplyIC() )
+  {
+    return false;
+  }
+
+  if( getPartitionSize( uiAbsPartIdx ) == SIZE_2Nx2N && getMergeFlag( uiAbsPartIdx ) )
+  {
+    return false;
+  }
+
+#if VCEG_AZ06_IC_SPEEDUP
+  if( getPartitionSize( uiAbsPartIdx ) != SIZE_2Nx2N )
+  {
+    return false;
+  }
+#endif
+
+  return true;
+}
+#endif
 
 Void TComDataCU::setCUTransquantBypassSubParts( Bool flag, UInt uiAbsPartIdx, UInt uiDepth )
 {
@@ -2768,6 +2831,9 @@ Bool TComDataCU::getInterMergeSubPURecursiveCandidate( UInt uiAbsPartIdx, UInt u
 
 //! Construct a list of merging candidates
 Void TComDataCU::getInterMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TComMvField* pcMvFieldNeighbours, UChar* puhInterDirNeighbours, Int& numValidMergeCand
+#if VCEG_AZ06_IC
+  , Bool*           pbICFlag
+#endif
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
   , UChar*          peMergeTypeNeighbors
   , TComMvField*    pcMvFieldSP[2]
@@ -2791,6 +2857,12 @@ Void TComDataCU::getInterMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TComM
     pcMvFieldNeighbours[ ( ui << 1 ) + 1 ].setRefIdx(NOT_VALID);
 #endif
   }
+#if VCEG_AZ06_IC
+  memset( pbICFlag, false, sizeof( Bool )*MRG_MAX_NUM_CANDS );
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  Bool bICFlag = false;
+#endif
+#endif
   numValidMergeCand = getSlice()->getMaxNumMergeCand();
   // compute the location of the current PU
   Int xP, yP, nPSW, nPSH;
@@ -2831,6 +2903,9 @@ Void TComDataCU::getInterMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TComM
   if ( isAvailableA1 )
   {
     abCandIsInter[iCount] = true;
+#if VCEG_AZ06_IC
+    pbICFlag[iCount] = pcCULeft->getICFlag( uiLeftPartIdx );
+#endif
     // get Inter Dir
     puhInterDirNeighbours[iCount] = pcCULeft->getInterDir( uiLeftPartIdx );
     // get Mv from Left
@@ -2860,10 +2935,16 @@ Void TComDataCU::getInterMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TComM
                        pcCUAbove->isDiffMER(xP+nPSW-1, yP-1, xP, yP) &&
                        !( uiPUIdx == 1 && (cCurPS == SIZE_2NxN || cCurPS == SIZE_2NxnU || cCurPS == SIZE_2NxnD) ) &&
                        pcCUAbove->isInter( uiAbovePartIdx );
-
+#if VCEG_AZ06_IC
+  if ( isAvailableB1 && (!isAvailableA1 || !( pcCULeft->hasEqualMotion( uiLeftPartIdx, pcCUAbove, uiAbovePartIdx ) && pcCULeft->getICFlag( uiLeftPartIdx ) == pcCUAbove->getICFlag( uiAbovePartIdx ) ) ) )
+#else
   if ( isAvailableB1 && (!isAvailableA1 || !pcCULeft->hasEqualMotion( uiLeftPartIdx, pcCUAbove, uiAbovePartIdx ) ) )
+#endif
   {
     abCandIsInter[iCount] = true;
+#if VCEG_AZ06_IC
+    pbICFlag[iCount] = pcCUAbove->getICFlag( uiAbovePartIdx );
+#endif
     // get Inter Dir
     puhInterDirNeighbours[iCount] = pcCUAbove->getInterDir( uiAbovePartIdx );
     // get Mv from Left
@@ -2893,13 +2974,25 @@ Void TComDataCU::getInterMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TComM
                        pcCUAboveRight->isDiffMER(xP+nPSW, yP-1, xP, yP) &&
                        pcCUAboveRight->isInter( uiAboveRightPartIdx );
 #if COM16_C806_GEN_MRG_IMPROVEMENT
+#if VCEG_AZ06_IC
+  if ( isAvailableB0 && ( !isAvailableB1 || !( pcCUAbove->hasEqualMotion( uiAbovePartIdx, pcCUAboveRight, uiAboveRightPartIdx ) && pcCUAbove->getICFlag( uiAbovePartIdx ) == pcCUAboveRight->getICFlag( uiAboveRightPartIdx ) ) ) 
+                     && ( !isAvailableA1 || !( pcCULeft->hasEqualMotion( uiLeftPartIdx, pcCUAboveRight, uiAboveRightPartIdx ) && pcCULeft->getICFlag( uiLeftPartIdx ) == pcCUAboveRight->getICFlag( uiAboveRightPartIdx ) ) ) )
+#else
   if ( isAvailableB0 && ( !isAvailableB1 || !pcCUAbove->hasEqualMotion( uiAbovePartIdx, pcCUAboveRight, uiAboveRightPartIdx ) ) 
-                     && ( !isAvailableA1 ||  !pcCULeft->hasEqualMotion( uiLeftPartIdx , pcCUAboveRight, uiAboveRightPartIdx ) ))
+                     && ( !isAvailableA1 || !pcCULeft->hasEqualMotion( uiLeftPartIdx , pcCUAboveRight, uiAboveRightPartIdx ) ))
+#endif
+#else
+#if VCEG_AZ06_IC
+  if ( isAvailableB0 && ( !isAvailableB1 || !( pcCUAbove->hasEqualMotion( uiAbovePartIdx, pcCUAboveRight, uiAboveRightPartIdx ) && pcCUAbove->getICFlag( uiAbovePartIdx ) == pcCUAboveRight->getICFlag( uiAboveRightPartIdx ) ) ) )
 #else
   if ( isAvailableB0 && ( !isAvailableB1 || !pcCUAbove->hasEqualMotion( uiAbovePartIdx, pcCUAboveRight, uiAboveRightPartIdx ) ) )
 #endif
+#endif
   {
     abCandIsInter[iCount] = true;
+#if VCEG_AZ06_IC
+    pbICFlag[iCount] = pcCUAboveRight->getICFlag( uiAboveRightPartIdx );
+#endif
     // get Inter Dir
     puhInterDirNeighbours[iCount] = pcCUAboveRight->getInterDir( uiAboveRightPartIdx );
     // get Mv from Left
@@ -2929,12 +3022,26 @@ Void TComDataCU::getInterMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TComM
                        pcCULeftBottom->isDiffMER(xP-1, yP+nPSH, xP, yP) &&
                        pcCULeftBottom->isInter( uiLeftBottomPartIdx ) ;
 #if COM16_C806_GEN_MRG_IMPROVEMENT
+#if VCEG_AZ06_IC
+  if ( isAvailableA0 
+    && ( !isAvailableA1 || !( pcCULeft->hasEqualMotion( uiLeftPartIdx, pcCULeftBottom, uiLeftBottomPartIdx ) && pcCULeft->getICFlag( uiLeftPartIdx ) == pcCULeftBottom->getICFlag( uiLeftBottomPartIdx ) ) ) 
+    && ( !isAvailableB1 || !( pcCUAbove->hasEqualMotion( uiAbovePartIdx, pcCULeftBottom, uiLeftBottomPartIdx  ) && pcCUAbove->getICFlag( uiAbovePartIdx ) == pcCULeftBottom->getICFlag( uiLeftBottomPartIdx ) ) ) 
+    && ( !isAvailableB0 || !( pcCUAboveRight->hasEqualMotion( uiAboveRightPartIdx, pcCULeftBottom, uiLeftBottomPartIdx ) && pcCUAboveRight->getICFlag( uiAboveRightPartIdx ) == pcCULeftBottom->getICFlag( uiLeftBottomPartIdx ) ) ))
+#else
   if ( isAvailableA0 && ( !isAvailableA1 || !pcCULeft->hasEqualMotion( uiLeftPartIdx, pcCULeftBottom, uiLeftBottomPartIdx ) ) && ( !isAvailableB1 || !pcCUAbove->hasEqualMotion( uiAbovePartIdx, pcCULeftBottom, uiLeftBottomPartIdx  ) ) && (!isAvailableB0 || !pcCUAboveRight->hasEqualMotion( uiAboveRightPartIdx, pcCULeftBottom, uiLeftBottomPartIdx ) ))
+#endif
+#else
+#if VCEG_AZ06_IC
+  if ( isAvailableA0 && ( !isAvailableA1 || !( pcCULeft->hasEqualMotion( uiLeftPartIdx, pcCULeftBottom, uiLeftBottomPartIdx ) && pcCULeft->getICFlag( uiLeftPartIdx ) == pcCULeftBottom->getICFlag( uiLeftBottomPartIdx ) ) ) )
 #else
   if ( isAvailableA0 && ( !isAvailableA1 || !pcCULeft->hasEqualMotion( uiLeftPartIdx, pcCULeftBottom, uiLeftBottomPartIdx ) ) )
 #endif
+#endif
   {
     abCandIsInter[iCount] = true;
+#if VCEG_AZ06_IC
+    pbICFlag[iCount] = pcCULeftBottom->getICFlag( uiLeftBottomPartIdx );
+#endif
     // get Inter Dir
     puhInterDirNeighbours[iCount] = pcCULeftBottom->getInterDir( uiLeftBottomPartIdx );
     // get Mv from Left
@@ -2966,10 +3073,17 @@ Void TComDataCU::getInterMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TComM
     ///////////////////////////////////////////////////////////////////////
     //////GET Motion for the ATMVP candidate based on Temporal Vector//////
     ///////////////////////////////////////////////////////////////////////
-    bAtmvpAva = getInterMergeSubPUTmvpCandidate( uiPUIdx, pcMvFieldSP[0], puhInterDirSP[0], &pcMvFieldNeighbours[iCount<<1], &puhInterDirNeighbours[iCount], cNBTV, bMrgIdxMatchATMVPCan, iPOCAtmvp, pDecCurrCU, uiDecCurrAbsPartIdx);
+    bAtmvpAva = getInterMergeSubPUTmvpCandidate( uiPUIdx, pcMvFieldSP[0], puhInterDirSP[0], &pcMvFieldNeighbours[iCount<<1], &puhInterDirNeighbours[iCount], cNBTV, bMrgIdxMatchATMVPCan,
+#if VCEG_AZ06_IC
+      bICFlag,
+#endif
+      iPOCAtmvp, pDecCurrCU, uiDecCurrAbsPartIdx);
     if ( bAtmvpAva ) 
     {
       abCandIsInter[iCount] = true;
+#if VCEG_AZ06_IC
+      pbICFlag[iCount] = bICFlag;
+#endif
       peMergeTypeNeighbors[iCount] = MGR_TYPE_SUBPU_TMVP;
       if ( bMrgIdxMatchATMVPCan )
       {
@@ -2999,6 +3113,12 @@ Void TComDataCU::getInterMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TComM
         pcMvFieldNeighbours[(iCount<<1)]    =pcMvFieldSP[1][ (iNumPart-1)<<1   ];
         pcMvFieldNeighbours[(iCount<<1)+1]  =pcMvFieldSP[1][((iNumPart-1)<<1)+1];
         abCandIsInter[iCount] = true;
+#if VCEG_AZ06_IC
+        if( getSlice()->getSPS()->getICFlag() )
+        {
+          pbICFlag[iCount] = bAtmvpAva ? !bICFlag : false;
+        }
+#endif
         if ( mrgCandIdx == iCount )
         {
           for (iPartitionIdx = 0; iPartitionIdx < iNumPart; iPartitionIdx++)
@@ -3033,18 +3153,36 @@ Void TComDataCU::getInterMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TComM
                          pcCUAboveLeft->isDiffMER(xP-1, yP-1, xP, yP) &&
                          pcCUAboveLeft->isInter( uiAboveLeftPartIdx );
 #if COM16_C806_GEN_MRG_IMPROVEMENT
+#if VCEG_AZ06_IC
+    if ( isAvailableB2 
+      && ( !isAvailableA1 || !( pcCULeft       ->hasEqualMotion(      uiLeftPartIdx, pcCUAboveLeft, uiAboveLeftPartIdx ) && pcCULeft->getICFlag( uiLeftPartIdx )   == pcCUAboveLeft->getICFlag( uiAboveLeftPartIdx ) ) )
+      && ( !isAvailableB1 || !( pcCUAbove      ->hasEqualMotion(     uiAbovePartIdx, pcCUAboveLeft, uiAboveLeftPartIdx ) && pcCUAbove->getICFlag( uiAbovePartIdx ) == pcCUAboveLeft->getICFlag( uiAboveLeftPartIdx ) ) )
+      && ( !isAvailableA0 || !( pcCULeftBottom ->hasEqualMotion(uiLeftBottomPartIdx, pcCUAboveLeft, uiAboveLeftPartIdx ) && pcCULeftBottom->getICFlag( uiLeftBottomPartIdx ) == pcCUAboveLeft->getICFlag( uiAboveLeftPartIdx ) ) )
+      && ( !isAvailableB0 || !( pcCUAboveRight ->hasEqualMotion(uiAboveRightPartIdx, pcCUAboveLeft, uiAboveLeftPartIdx ) && pcCUAboveRight->getICFlag( uiAboveRightPartIdx ) == pcCUAboveLeft->getICFlag( uiAboveLeftPartIdx ) ) )
+      )
+#else
     if ( isAvailableB2 
         && ( !isAvailableA1 || !pcCULeft       ->hasEqualMotion(      uiLeftPartIdx, pcCUAboveLeft, uiAboveLeftPartIdx ) )
         && ( !isAvailableB1 || !pcCUAbove      ->hasEqualMotion(     uiAbovePartIdx, pcCUAboveLeft, uiAboveLeftPartIdx ) )
         && ( !isAvailableA0 || !pcCULeftBottom ->hasEqualMotion(uiLeftBottomPartIdx, pcCUAboveLeft, uiAboveLeftPartIdx ) )
         && ( !isAvailableB0 || !pcCUAboveRight ->hasEqualMotion(uiAboveRightPartIdx, pcCUAboveLeft, uiAboveLeftPartIdx ) )
        )
+#endif
+#else
+#if VCEG_AZ06_IC
+    if ( isAvailableB2 
+      && ( !isAvailableB1 || !( pcCUAbove      ->hasEqualMotion(     uiAbovePartIdx, pcCUAboveLeft, uiAboveLeftPartIdx ) && pcCUAbove->getICFlag( uiAbovePartIdx ) == pcCUAboveLeft->getICFlag( uiAboveLeftPartIdx ) ) )
+      )
 #else
     if ( isAvailableB2 && ( !isAvailableA1 || !pcCULeft->hasEqualMotion( uiLeftPartIdx, pcCUAboveLeft, uiAboveLeftPartIdx ) )
         && ( !isAvailableB1 || !pcCUAbove->hasEqualMotion( uiAbovePartIdx, pcCUAboveLeft, uiAboveLeftPartIdx ) ) )
 #endif
+#endif
     {
       abCandIsInter[iCount] = true;
+#if VCEG_AZ06_IC
+      pbICFlag[iCount] = pcCUAboveLeft->getICFlag( uiAboveLeftPartIdx );
+#endif
       // get Inter Dir
       puhInterDirNeighbours[iCount] = pcCUAboveLeft->getInterDir( uiAboveLeftPartIdx );
       // get Mv from Left
@@ -3118,27 +3256,50 @@ Void TComDataCU::getInterMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TComM
     Int dir = 0;
     UInt uiArrayAddr = iCount;
     xDeriveCenterIdx( uiPUIdx, uiPartIdxCenter );
+#if VCEG_AZ06_IC
+    Bool abTMVPICFlag[2] = { false, false }, bTMVPICFlag = false;
+    bExistMV = ctuRsAddr >= 0 && xGetColMVP( REF_PIC_LIST_0, ctuRsAddr, uiAbsPartAddr, cColMv, iRefIdx, &abTMVPICFlag[0] );
+#else
     bExistMV = ctuRsAddr >= 0 && xGetColMVP( REF_PIC_LIST_0, ctuRsAddr, uiAbsPartAddr, cColMv, iRefIdx );
+#endif
     if( bExistMV == false )
     {
+#if VCEG_AZ06_IC
+      bExistMV = xGetColMVP( REF_PIC_LIST_0, getCtuRsAddr(), uiPartIdxCenter, cColMv, iRefIdx, &abTMVPICFlag[0] );
+#else
       bExistMV = xGetColMVP( REF_PIC_LIST_0, getCtuRsAddr(), uiPartIdxCenter,  cColMv, iRefIdx );
+#endif
     }
     if( bExistMV )
     {
       dir |= 1;
+#if VCEG_AZ06_IC
+      bTMVPICFlag |= abTMVPICFlag[0];
+#endif
       pcMvFieldNeighbours[ 2 * uiArrayAddr ].setMvField( cColMv, iRefIdx );
     }
 
     if ( getSlice()->isInterB() )
     {
+#if VCEG_AZ06_IC
+      bExistMV = ctuRsAddr >= 0 && xGetColMVP( REF_PIC_LIST_1, ctuRsAddr, uiAbsPartAddr, cColMv, iRefIdx, &abTMVPICFlag[1] );
+#else
       bExistMV = ctuRsAddr >= 0 && xGetColMVP( REF_PIC_LIST_1, ctuRsAddr, uiAbsPartAddr, cColMv, iRefIdx);
+#endif
       if( bExistMV == false )
       {
+#if VCEG_AZ06_IC
+        bExistMV = xGetColMVP( REF_PIC_LIST_1, getCtuRsAddr(), uiPartIdxCenter, cColMv, iRefIdx, &abTMVPICFlag[1] );
+#else
         bExistMV = xGetColMVP( REF_PIC_LIST_1, getCtuRsAddr(), uiPartIdxCenter, cColMv, iRefIdx );
+#endif
       }
       if( bExistMV )
       {
         dir |= 2;
+#if VCEG_AZ06_IC
+        bTMVPICFlag |= abTMVPICFlag[1];
+#endif
         pcMvFieldNeighbours[ 2 * uiArrayAddr + 1 ].setMvField( cColMv, iRefIdx );
       }
     }
@@ -3150,8 +3311,11 @@ Void TComDataCU::getInterMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TComM
       if (bAtmvpAva)
       {
         bAddT = false;
-
+#if VCEG_AZ06_IC
+        if ( dir!= puhInterDirNeighbours[uiAtmvpPos ] || bTMVPICFlag != pbICFlag[uiAtmvpPos] )
+#else
         if ( dir!= puhInterDirNeighbours[uiAtmvpPos ] )
+#endif
         {
           bAddT = true ;
         }
@@ -3182,7 +3346,11 @@ Void TComDataCU::getInterMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TComM
       Int iSpatCan = bAtmvpAva? (iCount-1): iCount;
       for(Int iCanIdx = 0; iCanIdx <iSpatCan; iCanIdx++)
       {
-        if(puhInterDirNeighbours[iCanIdx]== dir && pcMvFieldNeighbours[iCanIdx<<1]==pcMvFieldNeighbours[uiArrayAddr<<1] && pcMvFieldNeighbours[1+ (iCanIdx<<1)]==pcMvFieldNeighbours[1+(uiArrayAddr<<1)])
+        if(puhInterDirNeighbours[iCanIdx]== dir && pcMvFieldNeighbours[iCanIdx<<1]==pcMvFieldNeighbours[uiArrayAddr<<1] && pcMvFieldNeighbours[1+ (iCanIdx<<1)]==pcMvFieldNeighbours[1+(uiArrayAddr<<1)]
+#if VCEG_AZ06_IC
+        && pbICFlag[iCanIdx] == bTMVPICFlag
+#endif
+        )
         {
           bAddT = false;
         }
@@ -3193,7 +3361,9 @@ Void TComDataCU::getInterMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TComM
 #endif
       puhInterDirNeighbours[uiArrayAddr] = dir;
       abCandIsInter[uiArrayAddr] = true;
-
+#if VCEG_AZ06_IC
+      pbICFlag[uiArrayAddr] = bTMVPICFlag;
+#endif
       if ( mrgCandIdx == iCount )
       {
         return;
@@ -3230,7 +3400,9 @@ Void TComDataCU::getInterMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TComM
       {
         abCandIsInter[uiArrayAddr] = true;
         puhInterDirNeighbours[uiArrayAddr] = 3;
-
+#if VCEG_AZ06_IC
+        pbICFlag[uiArrayAddr] = pbICFlag[i] || pbICFlag[j];
+#endif
         // get Mv from cand[i] and cand[j]
         pcMvFieldNeighbours[uiArrayAddr << 1].setMvField(pcMvFieldNeighbours[i<<1].getMv(), pcMvFieldNeighbours[i<<1].getRefIdx());
         pcMvFieldNeighbours[( uiArrayAddr << 1 ) + 1].setMvField(pcMvFieldNeighbours[(j<<1)+1].getMv(), pcMvFieldNeighbours[(j<<1)+1].getRefIdx());
@@ -3269,7 +3441,9 @@ Void TComDataCU::getInterMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TComM
     abCandIsInter[uiArrayAddr] = true;
     puhInterDirNeighbours[uiArrayAddr] = 1;
     pcMvFieldNeighbours[uiArrayAddr << 1].setMvField( TComMv(0, 0), r);
-
+#if VCEG_AZ06_IC
+    pbICFlag[uiArrayAddr] = false;
+#endif
     if ( getSlice()->isInterB() )
     {
       puhInterDirNeighbours[uiArrayAddr] = 3;
@@ -3304,13 +3478,19 @@ Void TComDataCU::getInterMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TComM
  * \param uiDecCurrAbsPartIdx
   */
 Bool TComDataCU::getInterMergeSubPUTmvpCandidate ( UInt uiPUIdx,  TComMvField* pcMvFieldSP, UChar* puhInterDirSP,
-                                                   TComMvField* pcMvFieldDefault, UChar* pcInterDirDefault, TComMv cTMv, Bool bMrgIdxMatchATMVPCan, Int iPocColPic, TComDataCU* pDecCurrCU, UInt uiDecCurrAbsPartIdx)
+                                                   TComMvField* pcMvFieldDefault, UChar* pcInterDirDefault, TComMv cTMv, Bool bMrgIdxMatchATMVPCan, 
+#if VCEG_AZ06_IC
+                                                   Bool& rbICFlag,
+#endif
+                                                   Int iPocColPic, TComDataCU* pDecCurrCU, UInt uiDecCurrAbsPartIdx)
 {
   TComDataCU* pcTempCU;
   Int iTempCUAddr, iTempAbsPartIdx, iTempPosX, iTempPosY;
   Int iPartition     = 0;
   Int iInterDirSaved = 0;
-
+#if VCEG_AZ06_IC
+  Bool bTmpICFlag;
+#endif
   ///////////////////////////////////////////////////////////////////////
   ////////          GET Initial Temporal Vector                  ////////
   ///////////////////////////////////////////////////////////////////////
@@ -3385,10 +3565,17 @@ Bool TComDataCU::getInterMergeSubPUTmvpCandidate ( UInt uiPUIdx,  TComMvField* p
         for( UInt uiCurrRefListId = 0; uiCurrRefListId < (bBSlice ? 2:1) ; uiCurrRefListId++ )
         {
           RefPicList  eCurrRefPicList = RefPicList( uiCurrRefListId );
-          if (deriveScaledMotionTemporalForOneDirection(pcDefaultCU,eCurrRefPicList,cColMv, iTempCenterAbsPartIdx,0 ,pColPic))
+          if (deriveScaledMotionTemporalForOneDirection(pcDefaultCU,eCurrRefPicList,cColMv, iTempCenterAbsPartIdx,0 
+#if VCEG_AZ06_IC
+            , bTmpICFlag
+#endif
+            ,pColPic ))
           {
             cDefaultMvField[uiCurrRefListId].setMvField(cColMv,0);
             bATMVPAvailFlag = true; // keep this variable here for later algrithm tuning
+#if VCEG_AZ06_IC
+            rbICFlag = bTmpICFlag;
+#endif
           }
         }
       }
@@ -3422,7 +3609,11 @@ Bool TComDataCU::getInterMergeSubPUTmvpCandidate ( UInt uiPUIdx,  TComMvField* p
           for( UInt uiCurrRefListId = 0; uiCurrRefListId < (bBSlice ? 2:1); uiCurrRefListId++ )
           {
             RefPicList  eCurrRefPicList = RefPicList( uiCurrRefListId );
-            if (deriveScaledMotionTemporalForOneDirection(pcTempCU,eCurrRefPicList, cColMv, iTempAbsPartIdx, 0, pColPic ))
+            if (deriveScaledMotionTemporalForOneDirection(pcTempCU,eCurrRefPicList, cColMv, iTempAbsPartIdx, 0, 
+#if VCEG_AZ06_IC
+              bTmpICFlag,
+#endif
+              pColPic ))
             {
               pcMvFieldSP[2*iPartition + uiCurrRefListId].setMvField(cColMv,0);
             }                
@@ -3506,7 +3697,11 @@ Void TComDataCU::setInterDirSP( UInt uiDir, UInt uiAbsPartIdx, Int iWidth, Int i
     }
   }
 }
-Bool TComDataCU::deriveScaledMotionTemporalForOneDirection( TComDataCU* pcTempCU,RefPicList eCurrRefPicList, TComMv &cColMv, UInt uiAbsPartIdx, Int iTargetRefIdx, TComPic *pColPic)
+Bool TComDataCU::deriveScaledMotionTemporalForOneDirection( TComDataCU* pcTempCU,RefPicList eCurrRefPicList, TComMv &cColMv, UInt uiAbsPartIdx, Int iTargetRefIdx, 
+#if VCEG_AZ06_IC
+  Bool& rbICFlag,
+#endif
+  TComPic *pColPic)
 {
   Int iColPOC, iColRefPOC, iCurrPOC, iCurrRefPOC, iScale;
   Bool bAllowMirrorMV= false; 
@@ -3563,7 +3758,9 @@ Bool TComDataCU::deriveScaledMotionTemporalForOneDirection( TComDataCU* pcTempCU
     iScale = xGetDistScaleFactor(iCurrPOC, iCurrRefPOC, iColPOC, iColRefPOC);
     if ( iScale != 4096 )
       cColMv=cColMv.scaleMv( iScale );
-
+#if VCEG_AZ06_IC
+    rbICFlag = pcTempCU->getICFlag( uiAbsPartIdx );
+#endif
     return true;
   }
   return false;
@@ -4127,7 +4324,11 @@ Bool TComDataCU::xAddMVPCandOrder( AMVPInfo* pInfo, RefPicList eRefPicList, Int 
   return false;
 }
 
+#if VCEG_AZ06_IC
+Bool TComDataCU::xGetColMVP( RefPicList eRefPicList, Int ctuRsAddr, Int uiPartUnitIdx, TComMv& rcMv, Int& riRefIdx, Bool* bICFlag )
+#else
 Bool TComDataCU::xGetColMVP( RefPicList eRefPicList, Int ctuRsAddr, Int uiPartUnitIdx, TComMv& rcMv, Int& riRefIdx )
+#endif
 {
   UInt uiAbsPartAddr = uiPartUnitIdx;
 
@@ -4179,6 +4380,12 @@ Bool TComDataCU::xGetColMVP( RefPicList eRefPicList, Int ctuRsAddr, Int uiPartUn
     return false;
   }
 
+#if VCEG_AZ06_IC
+  if( bICFlag != NULL )
+  {
+    *bICFlag = pColCtu->getICFlag( uiAbsPartAddr ) ;
+  }
+#endif
   if ( bIsCurrRefLongTerm || bIsColRefLongTerm )
   {
     rcMv = cColMv;

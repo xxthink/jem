@@ -492,6 +492,10 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
     }
   }
 
+#if VCEG_AZ06_IC
+  Bool bICEnabled = rpcTempCU->getSlice()->getApplyIC();
+#endif
+
   TComSlice * pcSlice = rpcTempCU->getPic()->getSlice(rpcTempCU->getPic()->getCurrSliceIdx());
 
   const Bool bBoundary = !( uiRPelX < sps.getPicWidthInLumaSamples() && uiBPelY < sps.getPicHeightInLumaSamples() );
@@ -525,19 +529,36 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
       // do inter modes, SKIP and 2Nx2N
       if( rpcBestCU->getSlice()->getSliceType() != I_SLICE )
       {
+#if VCEG_AZ06_IC
+        for( UInt uiICId = 0; uiICId < ( bICEnabled ? 2 : 1 ); uiICId++ )
+        {
+          Bool bICFlag = uiICId ? true : false;
+#endif
         // 2Nx2N
         if(m_pcEncCfg->getUseEarlySkipDetection())
         {
+#if VCEG_AZ06_IC
+          rpcTempCU->setICFlagSubParts(bICFlag, 0, uiDepth);
+#endif
           xCheckRDCostInter( rpcBestCU, rpcTempCU, SIZE_2Nx2N DEBUG_STRING_PASS_INTO(sDebug) );
           rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );//by Competition for inter_2Nx2N
         }
         // SKIP
+#if VCEG_AZ06_IC
+        if( !bICFlag )
+        {
+#endif
         xCheckRDCostMerge2Nx2N( rpcBestCU, rpcTempCU DEBUG_STRING_PASS_INTO(sDebug), &earlyDetectionSkipMode );//by Merge for inter_2Nx2N
         rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
-
+#if VCEG_AZ06_IC
+        }
+#endif
         if(!m_pcEncCfg->getUseEarlySkipDetection())
         {
           // 2Nx2N, NxN
+#if VCEG_AZ06_IC
+          rpcTempCU->setICFlagSubParts(bICFlag, 0, uiDepth);
+#endif
           xCheckRDCostInter( rpcBestCU, rpcTempCU, SIZE_2Nx2N DEBUG_STRING_PASS_INTO(sDebug) );
           rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
           if(m_pcEncCfg->getUseCbfFastMode())
@@ -545,6 +566,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
             doNotBlockPu = rpcBestCU->getQtRootCbf( 0 ) != 0;
           }
         }
+#if VCEG_AZ06_IC
+        }
+#endif
       }
 
       if (bIsLosslessMode) // Restore loop variable if lossless mode was searched.
@@ -552,7 +576,12 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         iQP = iMinQP;
       }
     }
-
+#if VCEG_AZ06_IC
+    Bool bTestICNon2Nx2N = bICEnabled && rpcBestCU->getICFlag( 0 );
+#if VCEG_AZ06_IC_SPEEDUP
+    bTestICNon2Nx2N = false;
+#endif
+#endif
     if(!earlyDetectionSkipMode)
     {
       for (Int iQP=iMinQP; iQP<=iMaxQP; iQP++)
@@ -569,6 +598,11 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         // do inter modes, NxN, 2NxN, and Nx2N
         if( rpcBestCU->getSlice()->getSliceType() != I_SLICE )
         {
+#if VCEG_AZ06_IC
+          for( UInt uiICId = 0; uiICId < ( bTestICNon2Nx2N ? 2 : 1 ); uiICId++ )
+          {
+            Bool bICFlag = uiICId ? true : false;
+#endif
           // 2Nx2N, NxN
 #if !COM16_C806_HEVC_MOTION_CONSTRAINT_REMOVAL || COM16_C806_DISABLE_4X4_PU
           if(!( (rpcBestCU->getWidth(0)==8) && (rpcBestCU->getHeight(0)==8) ))
@@ -578,6 +612,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
           {
             if( uiDepth == sps.getLog2DiffMaxMinCodingBlockSize() && doNotBlockPu)
             {
+#if VCEG_AZ06_IC
+              rpcTempCU->setICFlagSubParts( bICFlag, 0, uiDepth );
+#endif
               xCheckRDCostInter( rpcBestCU, rpcTempCU, SIZE_NxN DEBUG_STRING_PASS_INTO(sDebug)   );
               rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
             }
@@ -585,6 +622,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 
           if(doNotBlockPu)
           {
+#if VCEG_AZ06_IC
+            rpcTempCU->setICFlagSubParts( bICFlag, 0, uiDepth );
+#endif
             xCheckRDCostInter( rpcBestCU, rpcTempCU, SIZE_Nx2N DEBUG_STRING_PASS_INTO(sDebug)  );
             rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
             if(m_pcEncCfg->getUseCbfFastMode() && rpcBestCU->getPartitionSize(0) == SIZE_Nx2N )
@@ -594,6 +634,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
           }
           if(doNotBlockPu)
           {
+#if VCEG_AZ06_IC
+            rpcTempCU->setICFlagSubParts( bICFlag, 0, uiDepth );
+#endif
             xCheckRDCostInter      ( rpcBestCU, rpcTempCU, SIZE_2NxN DEBUG_STRING_PASS_INTO(sDebug)  );
             rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
             if(m_pcEncCfg->getUseCbfFastMode() && rpcBestCU->getPartitionSize(0) == SIZE_2NxN)
@@ -601,10 +644,18 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
               doNotBlockPu = rpcBestCU->getQtRootCbf( 0 ) != 0;
             }
           }
-
+#if VCEG_AZ06_IC
+          }
+          bTestICNon2Nx2N &= rpcBestCU->getICFlag( 0 );
+#endif
           //! Try AMP (SIZE_2NxnU, SIZE_2NxnD, SIZE_nLx2N, SIZE_nRx2N)
           if(sps.getUseAMP() && uiDepth < sps.getLog2DiffMaxMinCodingBlockSize() )
           {
+#if VCEG_AZ06_IC
+            for( UInt uiICId = 0; uiICId < ( bTestICNon2Nx2N ? 2 : 1 ); uiICId++ )
+            {
+              Bool bICFlag = uiICId ? true : false;
+#endif
 #if AMP_ENC_SPEEDUP
             Bool bTestAMP_Hor = false, bTestAMP_Ver = false;
 
@@ -621,6 +672,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
             {
               if(doNotBlockPu)
               {
+#if VCEG_AZ06_IC
+                rpcTempCU->setICFlagSubParts( bICFlag, 0, uiDepth );
+#endif
                 xCheckRDCostInter( rpcBestCU, rpcTempCU, SIZE_2NxnU DEBUG_STRING_PASS_INTO(sDebug) );
                 rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
                 if(m_pcEncCfg->getUseCbfFastMode() && rpcBestCU->getPartitionSize(0) == SIZE_2NxnU )
@@ -630,6 +684,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
               }
               if(doNotBlockPu)
               {
+#if VCEG_AZ06_IC
+                rpcTempCU->setICFlagSubParts( bICFlag, 0, uiDepth );
+#endif
                 xCheckRDCostInter( rpcBestCU, rpcTempCU, SIZE_2NxnD DEBUG_STRING_PASS_INTO(sDebug) );
                 rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
                 if(m_pcEncCfg->getUseCbfFastMode() && rpcBestCU->getPartitionSize(0) == SIZE_2NxnD )
@@ -643,6 +700,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
             {
               if(doNotBlockPu)
               {
+#if VCEG_AZ06_IC
+                rpcTempCU->setICFlagSubParts( bICFlag, 0, uiDepth );
+#endif
                 xCheckRDCostInter( rpcBestCU, rpcTempCU, SIZE_2NxnU DEBUG_STRING_PASS_INTO(sDebug), true );
                 rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
                 if(m_pcEncCfg->getUseCbfFastMode() && rpcBestCU->getPartitionSize(0) == SIZE_2NxnU )
@@ -652,6 +712,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
               }
               if(doNotBlockPu)
               {
+#if VCEG_AZ06_IC
+                rpcTempCU->setICFlagSubParts( bICFlag, 0, uiDepth );
+#endif
                 xCheckRDCostInter( rpcBestCU, rpcTempCU, SIZE_2NxnD DEBUG_STRING_PASS_INTO(sDebug), true );
                 rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
                 if(m_pcEncCfg->getUseCbfFastMode() && rpcBestCU->getPartitionSize(0) == SIZE_2NxnD )
@@ -667,6 +730,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
             {
               if(doNotBlockPu)
               {
+#if VCEG_AZ06_IC
+                rpcTempCU->setICFlagSubParts( bICFlag, 0, uiDepth );
+#endif
                 xCheckRDCostInter( rpcBestCU, rpcTempCU, SIZE_nLx2N DEBUG_STRING_PASS_INTO(sDebug) );
                 rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
                 if(m_pcEncCfg->getUseCbfFastMode() && rpcBestCU->getPartitionSize(0) == SIZE_nLx2N )
@@ -676,6 +742,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
               }
               if(doNotBlockPu)
               {
+#if VCEG_AZ06_IC
+                rpcTempCU->setICFlagSubParts( bICFlag, 0, uiDepth );
+#endif
                 xCheckRDCostInter( rpcBestCU, rpcTempCU, SIZE_nRx2N DEBUG_STRING_PASS_INTO(sDebug) );
                 rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
               }
@@ -685,6 +754,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
             {
               if(doNotBlockPu)
               {
+#if VCEG_AZ06_IC
+                rpcTempCU->setICFlagSubParts( bICFlag, 0, uiDepth );
+#endif
                 xCheckRDCostInter( rpcBestCU, rpcTempCU, SIZE_nLx2N DEBUG_STRING_PASS_INTO(sDebug), true );
                 rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
                 if(m_pcEncCfg->getUseCbfFastMode() && rpcBestCU->getPartitionSize(0) == SIZE_nLx2N )
@@ -694,6 +766,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
               }
               if(doNotBlockPu)
               {
+#if VCEG_AZ06_IC
+                rpcTempCU->setICFlagSubParts( bICFlag, 0, uiDepth );
+#endif
                 xCheckRDCostInter( rpcBestCU, rpcTempCU, SIZE_nRx2N DEBUG_STRING_PASS_INTO(sDebug), true );
                 rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
               }
@@ -711,6 +786,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
             xCheckRDCostInter( rpcBestCU, rpcTempCU, SIZE_nRx2N );
             rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
 
+#endif
+#if VCEG_AZ06_IC
+          }
 #endif
           }
         }
@@ -1090,6 +1168,9 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
   if( pcCU->isSkipped( uiAbsPartIdx ) )
   {
     m_pcEntropyCoder->encodeMergeIndex( pcCU, uiAbsPartIdx );
+#if VCEG_AZ06_IC
+    m_pcEntropyCoder->encodeICFlag  ( pcCU, uiAbsPartIdx );
+#endif
     finishCU(pcCU,uiAbsPartIdx);
     return;
   }
@@ -1113,6 +1194,9 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
   m_pcEntropyCoder->encodePredInfo( pcCU, uiAbsPartIdx );
 #if COM16_C806_OBMC
   m_pcEntropyCoder->encodeOBMCFlag( pcCU, uiAbsPartIdx );
+#endif
+#if VCEG_AZ06_IC
+  m_pcEntropyCoder->encodeICFlag  ( pcCU, uiAbsPartIdx );
 #endif
   // Encode Coefficients
   Bool bCodeDQP = getdQPFlag();
@@ -1260,6 +1344,9 @@ Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTem
   UChar  eMergeCandTypeNieghors[MRG_MAX_NUM_CANDS];
   memset ( eMergeCandTypeNieghors, MGR_TYPE_DEFAULT_N, sizeof(UChar)*MRG_MAX_NUM_CANDS );
 #endif
+#if VCEG_AZ06_IC
+  Bool abICFlag[MRG_MAX_NUM_CANDS];
+#endif
 
   for( UInt ui = 0; ui < rpcTempCU->getSlice()->getMaxNumMergeCand(); ++ui )
   {
@@ -1279,6 +1366,9 @@ Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTem
 #endif
 
   rpcTempCU->getInterMergeCandidates( 0, 0, cMvFieldNeighbours,uhInterDirNeighbours, numValidMergeCand
+#if VCEG_AZ06_IC
+    , abICFlag
+#endif
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
     , eMergeCandTypeNieghors
     , m_pMvFieldSP
@@ -1323,6 +1413,9 @@ Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTem
           rpcTempCU->setMergeIndexSubParts( uiMergeCand, 0, 0, uhDepth ); // interprets depth relative to CTU level
 #if COM16_C806_OBMC
           rpcTempCU->setOBMCFlagSubParts( true, 0, uhDepth );
+#endif
+#if VCEG_AZ06_IC
+          rpcTempCU->setICFlagSubParts( rpcTempCU->getSlice()->getApplyIC() ? abICFlag[uiMergeCand] : 0, 0, uhDepth );
 #endif
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
           rpcTempCU->setMergeTypeSubParts(eMergeCandTypeNieghors[uiMergeCand] , 0, 0, uhDepth ); 
@@ -1452,6 +1545,9 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
 #if COM16_C806_OBMC
   rpcTempCU->setOBMCFlagSubParts( true, 0, uhDepth );
 #endif
+#if VCEG_AZ06_IC
+  Bool bICFlag = rpcTempCU->getICFlag( 0 );
+#endif
 #if AMP_MRG
   rpcTempCU->setMergeAMP (true);
 #if COM16_C806_OBMC
@@ -1501,6 +1597,9 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
     }
     rpcTempCU->copyPartFrom( m_ppcTempCUWoOBMC[uhDepth], 0, uhDepth );
     rpcTempCU->setOBMCFlagSubParts( ( Bool )nOBMC , 0 , uhDepth );
+#endif
+#if VCEG_AZ06_IC
+    rpcTempCU->setICFlagSubParts( bICFlag, 0, uhDepth );
 #endif
   m_pcPredSearch->encodeResAndCalcRdInterCU( rpcTempCU, m_ppcOrigYuv[uhDepth], 
 #if COM16_C806_OBMC

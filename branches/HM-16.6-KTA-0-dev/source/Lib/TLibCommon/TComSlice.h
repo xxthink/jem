@@ -855,7 +855,9 @@ private:
   static const Int m_winUnitX[NUM_CHROMA_FORMAT];
   static const Int m_winUnitY[NUM_CHROMA_FORMAT];
   TComPTL          m_pcPTL;
-
+#if VCEG_AZ06_IC
+  Bool             m_bICFlag;
+#endif
 #if O0043_BEST_EFFORT_DECODING
   UInt             m_forceDecodeBitDepth; // 0 = do not force the decoder's bit depth, other = force the decoder's bit depth to this value (best effort decoding)
 #endif
@@ -1003,6 +1005,10 @@ public:
   Bool  getOBMC() const                                                                                  { return m_useOBMC;                                                      }
   Void  setOBMCBlkSize( Int nBlkSize )                                                                   { m_OBMCBlkSize = nBlkSize;                                           }
   Int   getOBMCBlkSize() const                                                                           { return m_OBMCBlkSize;                                               }
+#endif
+#if VCEG_AZ06_IC
+  Bool  getICFlag() const                                                                                { return m_bICFlag;                                                    }
+  Void  setICFlag(Bool b)                                                                                { m_bICFlag = b;                                                       }
 #endif
 #if ALF_HM3_REFACTOR
   Bool                   getUseALF () const                                                              { return m_useALF;                                                    } 
@@ -1436,6 +1442,9 @@ private:
   Bool                       m_enableTMVPFlag;
 
   SliceType                  m_encCABACTableIdx;           // Used to transmit table selection across slices.
+#if VCEG_AZ06_IC
+  Bool                       m_bApplyIC;
+#endif
 
 public:
                               TComSlice();
@@ -1449,7 +1458,13 @@ public:
 
   Void                        setPPS( const TComPPS* pcPPS )                         { m_pcPPS = pcPPS; m_iPPSId = (pcPPS) ? pcPPS->getPPSId() : -1; }
   const TComPPS*              getPPS() const                                         { return m_pcPPS;                                               }
-
+#if VCEG_AZ06_IC
+  Void                        setApplyIC( Bool b )                                   { m_bApplyIC = b;                                               }
+  Bool                        getApplyIC()                                           { return m_bApplyIC;                                            }
+#if VCEG_AZ06_IC_SPEEDUP
+  Void                        xSetApplyIC();
+#endif
+#endif
   Void                        setPPSId( Int PPSId )                                  { m_iPPSId = PPSId;                                             }
   Int                         getPPSId() const                                       { return m_iPPSId;                                              }
   Void                        setPicOutputFlag( Bool b   )                           { m_PicOutputFlag = b;                                          }

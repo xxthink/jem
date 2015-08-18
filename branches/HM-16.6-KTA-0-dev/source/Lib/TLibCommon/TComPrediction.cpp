@@ -200,6 +200,14 @@ Void TComPrediction::initTempBuff(ChromaFormat chromaFormatIDC)
   m_puiH = new UInt[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
   m_puiSPAddr = new UInt[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
 #endif
+
+#if VCEG_AZ06_IC
+  m_uiaICShift[0] = 0;
+  for( Int i = 1; i < 64; i++ )
+  {
+    m_uiaICShift[i] = ( (1 << 15) + i/2 ) / i;
+  }
+#endif
 }
 
 // ====================================================================================================================
@@ -531,7 +539,11 @@ Void TComPrediction::motionCompensation ( TComDataCU* pcCU, TComYuv* pcYuvPred, 
     pcCU->getPartIndexAndSize( iPartIdx, uiPartAddr, iWidth, iHeight );
     if ( eRefPicList != REF_PIC_LIST_X )
     {
-      if( pcCU->getSlice()->getPPS()->getUseWP())
+      if( pcCU->getSlice()->getPPS()->getUseWP()
+#if VCEG_AZ06_IC
+        && !pcCU->getICFlag( uiPartAddr )
+#endif
+        )
       {
         xPredInterUni (pcCU, uiPartAddr, iWidth, iHeight, eRefPicList, pcYuvPred, true );
       }
@@ -539,7 +551,11 @@ Void TComPrediction::motionCompensation ( TComDataCU* pcCU, TComYuv* pcYuvPred, 
       {
         xPredInterUni (pcCU, uiPartAddr, iWidth, iHeight, eRefPicList, pcYuvPred );
       }
-      if ( pcCU->getSlice()->getPPS()->getUseWP() )
+      if ( pcCU->getSlice()->getPPS()->getUseWP() 
+#if VCEG_AZ06_IC
+        && !pcCU->getICFlag( uiPartAddr )
+#endif
+        )
       {
         xWeightedPredictionUni( pcCU, pcYuvPred, uiPartAddr, iWidth, iHeight, eRefPicList, pcYuvPred );
       }
@@ -597,7 +613,11 @@ Void TComPrediction::motionCompensation ( TComDataCU* pcCU, TComYuv* pcYuvPred, 
 
     if ( eRefPicList != REF_PIC_LIST_X )
     {
-      if( pcCU->getSlice()->getPPS()->getUseWP())
+      if( pcCU->getSlice()->getPPS()->getUseWP()
+#if VCEG_AZ06_IC
+        && !pcCU->getICFlag( uiPartAddr )
+#endif
+        )
       {
         xPredInterUni (pcCU, uiPartAddr, iWidth, iHeight, eRefPicList, pcYuvPred, true );
       }
@@ -605,7 +625,11 @@ Void TComPrediction::motionCompensation ( TComDataCU* pcCU, TComYuv* pcYuvPred, 
       {
         xPredInterUni (pcCU, uiPartAddr, iWidth, iHeight, eRefPicList, pcYuvPred );
       }
-      if ( pcCU->getSlice()->getPPS()->getUseWP() )
+      if ( pcCU->getSlice()->getPPS()->getUseWP() 
+#if VCEG_AZ06_IC
+        && !pcCU->getICFlag( uiPartAddr )
+#endif
+        )
       {
         xWeightedPredictionUni( pcCU, pcYuvPred, uiPartAddr, iWidth, iHeight, eRefPicList, pcYuvPred );
       }
@@ -665,7 +689,13 @@ Void TComPrediction::xPredInterUni ( TComDataCU* pcCU, UInt uiPartAddr, Int iWid
   for (UInt comp=COMPONENT_Y; comp<pcYuvPred->getNumberValidComponents(); comp++)
   {
     const ComponentID compID=ComponentID(comp);
+#if VCEG_AZ06_IC
+    Bool bICFlag = pcCU->getICFlag( uiPartAddr ) ;
+
+    xPredInterBlk  ( compID, pcCU, pcCU->getSlice()->getRefPic( eRefPicList, iRefIdx )->getPicYuvRec(), uiPartAddr, &cMv, iWidth, iHeight, pcYuvPred, bi, pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID)), bICFlag );
+#else
     xPredInterBlk  (compID,  pcCU, pcCU->getSlice()->getRefPic( eRefPicList, iRefIdx )->getPicYuvRec(), uiPartAddr, &cMv, iWidth, iHeight, pcYuvPred, bi, pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID)) );
+#endif
   }
 }
 
@@ -693,8 +723,14 @@ Void TComPrediction::xPredInterBi ( TComDataCU* pcCU, UInt uiPartAddr, Int iWidt
     }
     else
     {
+#if VCEG_AZ06_IC
+      if ( ( ( pcCU->getSlice()->getPPS()->getUseWP()       && pcCU->getSlice()->getSliceType() == P_SLICE ) || 
+        ( pcCU->getSlice()->getPPS()->getWPBiPred() && pcCU->getSlice()->getSliceType() == B_SLICE ) ) 
+        && !pcCU->getICFlag( uiPartAddr ) )
+#else
       if ( ( pcCU->getSlice()->getPPS()->getUseWP()       && pcCU->getSlice()->getSliceType() == P_SLICE ) ||
            ( pcCU->getSlice()->getPPS()->getWPBiPred()    && pcCU->getSlice()->getSliceType() == B_SLICE ) )
+#endif
       {
         xPredInterUni ( pcCU, uiPartAddr, iWidth, iHeight, eRefPicList, pcMbYuv, true );
       }
@@ -705,11 +741,19 @@ Void TComPrediction::xPredInterBi ( TComDataCU* pcCU, UInt uiPartAddr, Int iWidt
     }
   }
 
-  if ( pcCU->getSlice()->getPPS()->getWPBiPred()    && pcCU->getSlice()->getSliceType() == B_SLICE  )
+  if ( pcCU->getSlice()->getPPS()->getWPBiPred()    && pcCU->getSlice()->getSliceType() == B_SLICE  
+#if VCEG_AZ06_IC
+    && !pcCU->getICFlag( uiPartAddr )
+#endif
+    )
   {
     xWeightedPredictionBi( pcCU, &m_acYuvPred[REF_PIC_LIST_0], &m_acYuvPred[REF_PIC_LIST_1], iRefIdx[REF_PIC_LIST_0], iRefIdx[REF_PIC_LIST_1], uiPartAddr, iWidth, iHeight, pcYuvPred );
   }
-  else if ( pcCU->getSlice()->getPPS()->getUseWP() && pcCU->getSlice()->getSliceType() == P_SLICE )
+  else if ( pcCU->getSlice()->getPPS()->getUseWP() && pcCU->getSlice()->getSliceType() == P_SLICE
+#if VCEG_AZ06_IC
+    && !pcCU->getICFlag( uiPartAddr )
+#endif
+    )
   {
     xWeightedPredictionUni( pcCU, &m_acYuvPred[REF_PIC_LIST_0], uiPartAddr, iWidth, iHeight, REF_PIC_LIST_0, pcYuvPred );
   }
@@ -735,7 +779,11 @@ Void TComPrediction::xPredInterBi ( TComDataCU* pcCU, UInt uiPartAddr, Int iWidt
  */
 
 
-Void TComPrediction::xPredInterBlk(const ComponentID compID, TComDataCU *cu, TComPicYuv *refPic, UInt partAddr, TComMv *mv, Int width, Int height, TComYuv *dstPic, Bool bi, const Int bitDepth )
+Void TComPrediction::xPredInterBlk(const ComponentID compID, TComDataCU *cu, TComPicYuv *refPic, UInt partAddr, TComMv *mv, Int width, Int height, TComYuv *dstPic, Bool bi, const Int bitDepth
+#if VCEG_AZ06_IC
+  , Bool bICFlag
+#endif
+  )
 {
   Int     refStride  = refPic->getStride(compID);
   Int     dstStride  = dstPic->getStride(compID);
@@ -757,11 +805,23 @@ Void TComPrediction::xPredInterBlk(const ComponentID compID, TComDataCU *cu, TCo
 
   if ( yFrac == 0 )
   {
-    m_if.filterHor(compID, ref, refStride, dst,  dstStride, cxWidth, cxHeight, xFrac, !bi, chFmt, bitDepth);
+    m_if.filterHor(compID, ref, refStride, dst,  dstStride, cxWidth, cxHeight, xFrac, 
+#if VCEG_AZ06_IC
+      !bi || bICFlag,
+#else
+      !bi,
+#endif
+      chFmt, bitDepth);
   }
   else if ( xFrac == 0 )
   {
-    m_if.filterVer(compID, ref, refStride, dst, dstStride, cxWidth, cxHeight, yFrac, true, !bi, chFmt, bitDepth);
+    m_if.filterVer(compID, ref, refStride, dst, dstStride, cxWidth, cxHeight, yFrac, true, 
+#if VCEG_AZ06_IC
+      !bi || bICFlag,
+#else
+      !bi,
+#endif
+      chFmt, bitDepth);
   }
   else
   {
@@ -771,9 +831,224 @@ Void TComPrediction::xPredInterBlk(const ComponentID compID, TComDataCU *cu, TCo
     const Int vFilterSize = isLuma(compID) ? NTAPS_LUMA : NTAPS_CHROMA;
 
     m_if.filterHor(compID, ref - ((vFilterSize>>1) -1)*refStride, refStride, tmp, tmpStride, cxWidth, cxHeight+vFilterSize-1, xFrac, false,      chFmt, bitDepth);
-    m_if.filterVer(compID, tmp + ((vFilterSize>>1) -1)*tmpStride, tmpStride, dst, dstStride, cxWidth, cxHeight,               yFrac, false, !bi, chFmt, bitDepth);
+    m_if.filterVer(compID, tmp + ((vFilterSize>>1) -1)*tmpStride, tmpStride, dst, dstStride, cxWidth, cxHeight,               yFrac, false, 
+#if VCEG_AZ06_IC
+      !bi || bICFlag,
+#else
+      !bi,
+#endif
+      chFmt, bitDepth);
   }
+
+#if VCEG_AZ06_IC
+  if( bICFlag )
+  {
+    Int a, b, i, j;
+    const Int iShift = m_ICConstShift;
+    xGetLLSICPrediction( cu, mv, refPic, a, b, compID, bitDepth );
+    
+    dst = dstPic->getAddr( compID, partAddr );
+
+    for ( i = 0; i < cxHeight; i++ )
+    {
+      for ( j = 0; j < cxWidth; j++ )
+      {
+        dst[j] = Clip3( 0, ( 1 << bitDepth ) - 1, ( ( a*dst[j] ) >> iShift ) + b );
+      }
+      dst += dstStride;
+    }
+
+    if(bi)
+    {
+      Pel *dst2      = dstPic->getAddr( compID, partAddr );
+      Int shift = IF_INTERNAL_PREC - bitDepth;
+      for (i = 0; i < cxHeight; i++)
+      {
+        for (j = 0; j < cxWidth; j++)
+        {
+          Short val = dst2[j] << shift;
+          dst2[j] = val - (Short)IF_INTERNAL_OFFS;
+        }
+        dst2 += dstStride;
+      }
+    }
+  }
+#endif
 }
+
+#if VCEG_AZ06_IC
+/** Function for deriving the position of first non-zero binary bit of a value
+ * \param x input value
+ *
+ * This function derives the position of first non-zero binary bit of a value
+ */
+Int GetMSB( UInt x )
+{
+  Int iMSB = 0, bits = ( sizeof( Int ) << 3 ), y = 1;
+
+  while( x > 1 )
+  {
+    bits >>= 1;
+    y = x >> bits;
+
+    if( y )
+    {
+      x = y;
+      iMSB += bits;
+    }
+  }
+
+  iMSB+=y;
+
+  return iMSB;
+}
+
+/** Function for deriving LM illumination compensation.
+ */
+Void TComPrediction::xGetLLSICPrediction( TComDataCU* pcCU, TComMv *pMv, TComPicYuv *pRefPic, Int &a, Int &b, const ComponentID eComp, Int nBitDepth )
+{
+  TComPicYuv *pRecPic = pcCU->getPic()->getPicYuvRec();
+  Pel *pRec = NULL, *pRef = NULL;
+  UInt uiWidth, uiTmpPartIdx;
+  Int iRecStride = pRecPic->getStride( eComp );
+  Int iRefStride = pRefPic->getStride( eComp );
+  Int iRefOffset, iRecOffset, iHor, iVer;
+  Int shiftHor=(2+pRefPic->getComponentScaleX(eComp));
+  Int shiftVer=(2+pRefPic->getComponentScaleY(eComp));
+
+  iHor = ( pMv->getHor() + (1<<(shiftHor-1)) ) >> shiftHor;
+  iVer = ( pMv->getVer() + (1<<(shiftVer-1)) ) >> shiftVer;
+  uiWidth  = ( eComp == COMPONENT_Y ) ? pcCU->getWidth( 0 )  : ( pcCU->getWidth( 0 )  >> 1 );
+  Int j, iCountShift = 0;
+
+  // LLS parameters estimation -->
+
+  Int x = 0, y = 0, xx = 0, xy = 0;
+  Int precShift = std::max( 0, ( nBitDepth - 12 ) );
+  Int iTmpRec, iTmpRef;
+  Int iRefStep, iRecStep;
+  UInt uiStep = 2;//uiWidth > 8 ? 2 : 1;
+  TComDataCU* pNeigCu = NULL;
+  TComMv cMv;
+  Int iMaxNumMinus1 = 30 - 2*min( nBitDepth, 12 ) - 1;
+  while( uiWidth/uiStep > ( 1 << iMaxNumMinus1 ) ) //make sure log2(2*uiWidth/uiStep) + 2*min(g_bitDepthY, 12) <= 30
+  {
+    uiStep <<= 1;
+  }
+
+  for( Int iDir = 0; iDir < 2; iDir++ ) //iDir: 0 - above, 1 - left
+  {
+    if( !iDir )
+    {
+      pNeigCu = pcCU->getPUAbove( uiTmpPartIdx, pcCU->getZorderIdxInCtu() );
+    }
+    else
+    {
+      pNeigCu =  pcCU->getPULeft( uiTmpPartIdx, pcCU->getZorderIdxInCtu() );
+    }
+
+    if( pNeigCu == NULL )
+    {
+      continue;
+    }
+
+    cMv.setHor( iHor << shiftHor ); cMv.setVer( iVer << shiftVer );
+    pNeigCu->clipMv( cMv );
+
+    if( iDir )
+    {
+      iRefOffset = ( cMv.getHor() >> shiftHor ) + ( cMv.getVer() >> shiftVer ) * iRefStride - 1;
+      iRecOffset = -1;
+      iRefStep   = iRefStride*uiStep;
+      iRecStep   = iRecStride*uiStep;
+    }
+    else
+    {
+      iRefOffset = ( cMv.getHor() >> shiftHor ) + ( cMv.getVer() >> shiftVer ) * iRefStride - iRefStride;
+      iRecOffset = -iRecStride;
+      iRefStep   = uiStep;
+      iRecStep   = uiStep;
+    }
+
+    pRef = pRefPic->getAddr( eComp, pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu() ) + iRefOffset;
+    pRec = pRecPic->getAddr( eComp, pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu() ) + iRecOffset;
+
+    for( j = 0; j < uiWidth; j+=uiStep )
+    {
+      iTmpRef = pRef[0] >> precShift;
+      iTmpRec = pRec[0] >> precShift;
+
+      x  += iTmpRef;
+      y  += iTmpRec;
+      xx += iTmpRef*iTmpRef;
+      xy += iTmpRef*iTmpRec;
+
+      pRef += iRefStep;
+      pRec += iRecStep;
+    }
+
+    iCountShift += ( iCountShift ? 1 : g_aucConvertToBit[ uiWidth/uiStep ] + 2 );
+  }
+
+  if( iCountShift == 0 )
+  {
+    a = ( 1 << m_ICConstShift );
+    b = 0;
+    return;
+  }
+
+  xy += xx >> m_ICRegCostShift;
+  xx += xx >> m_ICRegCostShift;
+
+  Int  iCropShift = max( 0, ( nBitDepth - precShift + iCountShift ) - 15 );
+  Int  x1 = x, y1 = y;
+
+  x  >>= iCropShift;
+  y  >>= iCropShift;
+  xy >>= ( iCropShift << 1 );
+  xx >>= ( iCropShift << 1 );
+
+  Int a1 = ( xy << iCountShift ) - ( y * x );
+  Int a2 = ( xx << iCountShift ) - ( x * x );
+
+  x = x1 << precShift;
+  y = y1 << precShift;
+
+  const Int iShift = m_ICConstShift;
+  const Int iShiftA2 = 6;
+  const Int iAccuracyShift = 15;
+  Int iScaleShiftA2 = 0;
+  Int iScaleShiftA1 = 0;
+  Int a1s = a1;
+  Int a2s = a2;
+
+  iScaleShiftA2 = GetMSB( abs( a2 ) ) - iShiftA2;
+  iScaleShiftA1 = iScaleShiftA2 - m_ICShiftDiff;
+
+  if( iScaleShiftA1 < 0 )
+  {
+    iScaleShiftA1 = 0;
+  }
+
+  if( iScaleShiftA2 < 0 )
+  {
+    iScaleShiftA2 = 0;
+  }
+
+  Int iScaleShiftA = iScaleShiftA2 + iAccuracyShift - iShift - iScaleShiftA1;
+
+  a2s = a2 >> iScaleShiftA2;
+  a1s = a1 >> iScaleShiftA1;
+
+  a2s = Clip3( 0 , 63, a2s );
+  Int64 aI64 = ( (Int64) a1s * m_uiaICShift[ a2s ] ) >> iScaleShiftA;
+  a = (Int) aI64;
+  a = Clip3( 0, 1 << ( iShift + 2 ), a );
+  b = (  y - ( ( a * x ) >> iShift ) + ( 1 << ( iCountShift - 1 ) ) ) >> iCountShift;
+  Int iOffset = 1 << ( nBitDepth - 1 );
+  b = Clip3( -iOffset, iOffset - 1, b );
+}
+#endif
 
 Void TComPrediction::xWeightedAverage( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, Int iRefIdx0, Int iRefIdx1, UInt uiPartIdx, Int iWidth, Int iHeight, TComYuv* pcYuvDst, const BitDepths &clipBitDepths )
 {

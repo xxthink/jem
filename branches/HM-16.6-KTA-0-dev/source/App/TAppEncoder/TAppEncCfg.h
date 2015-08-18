@@ -376,6 +376,9 @@ protected:
   Bool      m_useOBMC;
   Int       m_OBMCBlkSize;
 #endif
+#if VCEG_AZ06_IC
+  Bool      m_useIC;
+#endif
 #if ALF_HM3_REFACTOR
   Bool      m_useALF;                                         ///< flag for using adaptive loop filter
 #endif

@@ -1085,6 +1085,9 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   ("OBMC",                                            m_useOBMC , true , "overlapped block motion compensation" )
   ("OBMCBLK",                                         m_OBMCBlkSize , 4 , "block size in overlapped block motion compensation" )
 #endif
+#if VCEG_AZ06_IC
+  ("IlluCompEnable",                                  m_useIC, true, "Enable illumination compensation")
+#endif
 #if ALF_HM3_REFACTOR
   ("ALF", m_useALF, true, "Adaptive Loop Filter")
 #endif
@@ -2505,6 +2508,9 @@ Void TAppEncCfg::xPrintParameter()
 #if COM16_C806_OBMC
   assert( m_OBMCBlkSize == 4 || m_OBMCBlkSize == 8 );
   printf( " OBMC: %d  OBMCBLK: %d ", m_useOBMC, m_OBMCBlkSize );
+#endif
+#if VCEG_AZ06_IC
+  printf( "IlluCompEnable:%d ", m_useIC);
 #endif
 #if ALF_HM3_REFACTOR
   printf(" ALF:%d ", m_useALF             );

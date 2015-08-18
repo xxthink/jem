@@ -388,7 +388,9 @@ __inline Void TEncSearch::xTZSearchHelp( TComPattern* pcPatternKey, IntTZSearchS
   Pel*  piRefSrch;
 
   piRefSrch = rcStruct.piRefY + iSearchY * rcStruct.iYStride + iSearchX;
-
+#if VCEG_AZ06_IC
+  m_cDistParam.bMRFlag = pcPatternKey->getMRFlag();
+#endif  
   //-- jclee for using the SAD function pointer
   m_pcRdCost->setDistParam( pcPatternKey, piRefSrch, rcStruct.iYStride,  m_cDistParam );
 
@@ -894,7 +896,9 @@ Distortion TEncSearch::xPatternRefinement( TComPattern* pcPatternKey,
     cMvTest += rcMvFrac;
 
     setDistParamComp(COMPONENT_Y);
-
+#if VCEG_AZ06_IC
+    m_cDistParam.bMRFlag = pcPatternKey->getMRFlag();
+#endif
     m_cDistParam.pCur = piRefPos;
     m_cDistParam.bitDepth = pcPatternKey->getBitDepthY();
     uiDist = m_cDistParam.DistFunc( &m_cDistParam );
@@ -2874,7 +2878,9 @@ Void TEncSearch::xMergeEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPUI
   UInt uiAbsPartIdx = 0;
   Int iWidth = 0;
   Int iHeight = 0;
-
+#if VCEG_AZ06_IC
+  Bool abICFlag[MRG_MAX_NUM_CANDS];
+#endif
   pcCU->getPartIndexAndSize( iPUIdx, uiAbsPartIdx, iWidth, iHeight );
   UInt uiDepth = pcCU->getDepth( uiAbsPartIdx );
 
@@ -2885,6 +2891,9 @@ Void TEncSearch::xMergeEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPUI
     {
       pcCU->setPartSizeSubParts( SIZE_2Nx2N, 0, uiDepth ); // temporarily set
       pcCU->getInterMergeCandidates( 0, 0, cMvFieldNeighbours,uhInterDirNeighbours, numValidMergeCand
+#if VCEG_AZ06_IC
+      , abICFlag
+#endif
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
       , pMergeTypeNeighbor
       , pcMvFieldSP
@@ -2897,6 +2906,9 @@ Void TEncSearch::xMergeEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPUI
   else
   {
     pcCU->getInterMergeCandidates( uiAbsPartIdx, iPUIdx, cMvFieldNeighbours, uhInterDirNeighbours, numValidMergeCand
+#if VCEG_AZ06_IC
+      , abICFlag
+#endif
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
       , pMergeTypeNeighbor
       , pcMvFieldSP
@@ -3776,18 +3788,32 @@ Distortion TEncSearch::xGetTemplateCost( TComDataCU* pcCU,
   TComPicYuv* pcPicYuvRef = pcCU->getSlice()->getRefPic( eRefPicList, iRefIdx )->getPicYuvRec();
 
   pcCU->clipMv( cMvCand );
-
+#if VCEG_AZ06_IC
+  Bool bICFlag = pcCU->getICFlag( uiPartAddr );
+#endif
   // prediction pattern
-  if ( pcCU->getSlice()->testWeightPred() && pcCU->getSlice()->getSliceType()==P_SLICE )
+  if ( pcCU->getSlice()->testWeightPred() && pcCU->getSlice()->getSliceType()==P_SLICE 
+#if VCEG_AZ06_IC
+    && !bICFlag
+#endif
+    )
   {
     xPredInterBlk( COMPONENT_Y, pcCU, pcPicYuvRef, uiPartAddr, &cMvCand, iSizeX, iSizeY, pcTemplateCand, true, pcCU->getSlice()->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA) );
   }
   else
   {
-    xPredInterBlk( COMPONENT_Y, pcCU, pcPicYuvRef, uiPartAddr, &cMvCand, iSizeX, iSizeY, pcTemplateCand, false, pcCU->getSlice()->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA) );
+    xPredInterBlk( COMPONENT_Y, pcCU, pcPicYuvRef, uiPartAddr, &cMvCand, iSizeX, iSizeY, pcTemplateCand, false, pcCU->getSlice()->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA) 
+#if VCEG_AZ06_IC
+      , bICFlag
+#endif
+      );
   }
 
-  if ( pcCU->getSlice()->testWeightPred() && pcCU->getSlice()->getSliceType()==P_SLICE )
+  if ( pcCU->getSlice()->testWeightPred() && pcCU->getSlice()->getSliceType()==P_SLICE 
+#if VCEG_AZ06_IC
+    && !bICFlag
+#endif
+    )
   {
     xWeightedPredictionUni( pcCU, pcTemplateCand, uiPartAddr, iSizeX, iSizeY, eRefPicList, pcTemplateCand, iRefIdx );
   }
@@ -3824,7 +3850,10 @@ Void TEncSearch::xMotionEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPa
   Double        fWeight       = 1.0;
 
   pcCU->getPartIndexAndSize( iPartIdx, uiPartAddr, iRoiWidth, iRoiHeight );
-
+#if VCEG_AZ06_IC
+  Bool bICFlag = pcCU->getICFlag( uiPartAddr );
+  pcPatternKey->setMRFlag( bICFlag );
+#endif
   if ( bBi )
   {
     TComYuv*  pcYuvOther = &m_acYuvPred[1-(Int)eRefPicList];
@@ -3862,7 +3891,13 @@ Void TEncSearch::xMotionEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPa
 
   m_pcRdCost->setPredictor  ( *pcMvPred );
   m_pcRdCost->setCostScale  ( 2 );
-
+#if VCEG_AZ06_IC
+  if( bICFlag )
+  {
+    m_cDistParam.bApplyWeight = false;
+  }
+  else
+#endif
   setWpScalingDistParam( pcCU, iRefIdxPred, eRefPicList );
   //  Do integer search
   if ( !m_iFastSearch || bBi )
@@ -3963,7 +3998,9 @@ Void TEncSearch::xPatternSearch( TComPattern* pcPatternKey, Pel* piRefY, Int iRe
       m_cDistParam.pCur = piRefSrch;
 
       setDistParamComp(COMPONENT_Y);
-
+#if VCEG_AZ06_IC
+      m_cDistParam.bMRFlag = pcPatternKey->getMRFlag();
+#endif
       m_cDistParam.bitDepth = pcPatternKey->getBitDepthY();
       uiSad = m_cDistParam.DistFunc( &m_cDistParam );
 
@@ -5448,7 +5485,9 @@ Void  TEncSearch::xAddSymbolBitsInter( TComDataCU* pcCU, UInt& ruiBits )
     }
     m_pcEntropyCoder->encodeSkipFlag(pcCU, 0, true);
     m_pcEntropyCoder->encodeMergeIndex(pcCU, 0, true);
-
+#if VCEG_AZ06_IC
+    m_pcEntropyCoder->encodeICFlag( pcCU, 0 );
+#endif
     ruiBits += m_pcEntropyCoder->getNumberOfWrittenBits();
   }
   else
@@ -5466,6 +5505,9 @@ Void  TEncSearch::xAddSymbolBitsInter( TComDataCU* pcCU, UInt& ruiBits )
     m_pcEntropyCoder->encodePredInfo( pcCU, 0 );
 #if COM16_C806_OBMC
     m_pcEntropyCoder->encodeOBMCFlag( pcCU, 0, true );
+#endif
+#if VCEG_AZ06_IC
+    m_pcEntropyCoder->encodeICFlag( pcCU, 0 );
 #endif
     Bool codeDeltaQp = false;
     Bool codeChromaQpAdj = false;

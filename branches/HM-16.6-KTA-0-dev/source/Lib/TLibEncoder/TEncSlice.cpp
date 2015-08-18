@@ -199,7 +199,9 @@ Void TEncSlice::initEncSlice( TComPic* pcPic, Int pocLast, Int pocCurr, Int iGOP
   rpcSlice->initSlice();
   rpcSlice->setPicOutputFlag( true );
   rpcSlice->setPOC( pocCurr );
-
+#if VCEG_AZ06_IC
+  rpcSlice->setApplyIC( false );
+#endif  
   // depth computation based on GOP size
   Int depth;
   {
@@ -716,7 +718,16 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
   }
 #endif
 
-
+#if VCEG_AZ06_IC
+  if ( m_pcCfg->getUseIC() )
+  {
+#if VCEG_AZ06_IC_SPEEDUP
+    pcSlice->xSetApplyIC();
+#else
+    pcSlice->setApplyIC( pcSlice->isIntra() ? false : true );
+#endif
+  }
+#endif
 
   // Adjust initial state if this is the start of a dependent slice.
   {
