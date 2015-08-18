@@ -74,6 +74,9 @@ public:
   Int   iRows;
   Int   iCols;
   Int   iStep;
+#if VCEG_AZ06_IC
+  Bool  bMRFlag;
+#endif
   FpDistFunc DistFunc;
   Int   bitDepth;
 
@@ -97,6 +100,9 @@ public:
     DistFunc = NULL;
     iSubShift = 0;
     bitDepth = 0;
+#if VCEG_AZ06_IC
+    bMRFlag = false;
+#endif
   }
 };
 
@@ -215,10 +221,27 @@ private:
   static Distortion xCalcHADs4x4      ( Pel *piOrg, Pel *piCurr, Int iStrideOrg, Int iStrideCur, Int iStep );
   static Distortion xCalcHADs8x8      ( Pel *piOrg, Pel *piCurr, Int iStrideOrg, Int iStrideCur, Int iStep );
 
+#if VCEG_AZ06_IC
+  static Distortion xGetMRSAD         ( DistParam* pcDtParam );
+  static Distortion xGetMRSAD4        ( DistParam* pcDtParam );
+  static Distortion xGetMRSAD8        ( DistParam* pcDtParam );
+  static Distortion xGetMRSAD16       ( DistParam* pcDtParam );
+  static Distortion xGetMRSAD32       ( DistParam* pcDtParam );
+  static Distortion xGetMRSAD64       ( DistParam* pcDtParam );
+  static Distortion xGetMRSAD16N      ( DistParam* pcDtParam );
+  static Distortion xGetMRSAD12       ( DistParam* pcDtParam );
+  static Distortion xGetMRSAD24       ( DistParam* pcDtParam );
+  static Distortion xGetMRSAD48       ( DistParam* pcDtParam );
+  static Distortion xGetMRHADs        ( DistParam* pcDtParam );
+#endif
 
 public:
 
-  Distortion   getDistPart(Int bitDepth, Pel* piCur, Int iCurStride,  Pel* piOrg, Int iOrgStride, UInt uiBlkWidth, UInt uiBlkHeight, const ComponentID compID, DFunc eDFunc = DF_SSE );
+  Distortion   getDistPart(Int bitDepth, Pel* piCur, Int iCurStride,  Pel* piOrg, Int iOrgStride, UInt uiBlkWidth, UInt uiBlkHeight, const ComponentID compID, DFunc eDFunc = DF_SSE 
+#if VCEG_AZ06_IC
+    , Bool bMRFlag = false
+#endif
+    );
 
 };// END CLASS DEFINITION TComRdCost
 

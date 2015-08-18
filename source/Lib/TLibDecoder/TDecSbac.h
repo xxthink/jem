@@ -113,6 +113,9 @@ public:
 #if COM16_C806_OBMC
   Void parseOBMCFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
+#if VCEG_AZ06_IC
+  Void parseICFlag        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
   Void parseCUTransquantBypassFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   Void parseSplitFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   Void parseMergeFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx );
@@ -196,6 +199,9 @@ private:
   ContextModel3DBuffer m_ChromaQpAdjIdcSCModel;
 #if COM16_C806_OBMC
   ContextModel3DBuffer m_cCUOBMCFlagSCModel;
+#endif
+#if VCEG_AZ06_IC
+  ContextModel3DBuffer m_cCUICFlagSCModel;
 #endif
 #if ALF_HM3_REFACTOR
   ContextModel3DBuffer m_cCUAlfCtrlFlagSCModel;

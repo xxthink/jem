@@ -136,6 +136,9 @@ private:
 #if COM16_C806_OBMC
   Bool*         m_OBMCFlag;          ///< array of OBMC flags
 #endif
+#if VCEG_AZ06_IC
+  Bool*         m_pbICFlag;          ///< array of IC flags
+#endif
 #if AMP_MRG
   Bool          m_bIsMergeAMP;
 #endif
@@ -169,8 +172,11 @@ protected:
   Bool          xAddMVPCandOrder      ( AMVPInfo* pInfo, RefPicList eRefPicList, Int iRefIdx, UInt uiPartUnitIdx, MVP_DIR eDir );
 
   Void          deriveRightBottomIdx        ( UInt uiPartIdx, UInt& ruiPartIdxRB );
+#if VCEG_AZ06_IC
+  Bool          xGetColMVP( RefPicList eRefPicList, Int ctuRsAddr, Int uiPartUnitIdx, TComMv& rcMv, Int& riRefIdx, Bool* bICFlag = NULL );
+#else
   Bool          xGetColMVP( RefPicList eRefPicList, Int ctuRsAddr, Int uiPartUnitIdx, TComMv& rcMv, Int& riRefIdx );
-
+#endif
   /// compute scaling factor from POC difference
   Int           xGetDistScaleFactor   ( Int iCurrPOC, Int iCurrRefPOC, Int iColPOC, Int iColRefPOC );
 
@@ -348,6 +354,13 @@ public:
   Bool          isOBMCFlagCoded      ( UInt uiAbsPartIdx );
   Bool          getNeigMotion( UInt uiAbsPartIdx, TComMvField cNeigMvField[2], Int &irNeigPredDir, Int iDir, TComMvField cCurMvField[2], Int &iCurrDir, UInt uiZeroIdx, Bool &bTobeStored);
 #endif
+#if VCEG_AZ06_IC
+  Bool*         getICFlag            ()                        { return m_pbICFlag;               }
+  Bool          getICFlag            ( UInt uiIdx )            { return m_pbICFlag[uiIdx];        }
+  Void          setICFlag            ( UInt uiIdx, Bool  uh )  { m_pbICFlag[uiIdx] = uh;          }
+  Void          setICFlagSubParts    ( Bool bICFlag,  UInt uiAbsPartIdx, UInt uiDepth );
+  Bool          isICFlagCoded        ( UInt uiAbsPartIdx );
+#endif
   template <typename T>
   Void          setSubPart            ( T bParameter, T* pbBaseCtu, UInt uiCUAddr, UInt uiCUDepth, UInt uiPUIdx );
 
@@ -465,6 +478,9 @@ public:
 
   Bool          hasEqualMotion              ( UInt uiAbsPartIdx, TComDataCU* pcCandCU, UInt uiCandAbsPartIdx );
   Void          getInterMergeCandidates       ( UInt uiAbsPartIdx, UInt uiPUIdx, TComMvField* pcMFieldNeighbours, UChar* puhInterDirNeighbours, Int& numValidMergeCand
+#if VCEG_AZ06_IC
+    , Bool*         pbICFlag
+#endif
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
   , UChar*          peMergeTypeNeighbors
   , TComMvField*    pcMvFieldSP[2]
@@ -478,8 +494,16 @@ public:
   Void          getSPPara(Int iPUWidth, Int iPUHeight, Int& iNumSP, Int& iNumSPInOneLine, Int& iSPWidth, Int& iSPHeight);
   Void          getSPAbsPartIdx(UInt uiBaseAbsPartIdx, Int iWidth, Int iHeight, Int iPartIdx, Int iNumPartLine, UInt& ruiPartAddr );
   Void          setInterDirSP( UInt uiDir, UInt uiAbsPartIdx, Int iWidth, Int iHeight );
-  Bool          deriveScaledMotionTemporalForOneDirection( TComDataCU* pcTempCU,RefPicList eCurrRefPicList, TComMv &cColMv, UInt uiAbsPartIdx, Int iTargetRefIdx, TComPic *pColPic);
-  Bool          getInterMergeSubPUTmvpCandidate ( UInt uiPUIdx,  TComMvField* pcMvFieldSP, UChar* puhInterDirSP, TComMvField* pcMvFieldDefault, UChar* pcInterDirDefault, TComMv cTMv, Bool bMrgIdxMatchATMVPCan, Int iPocColPic =0, TComDataCU* pDecCurrCU = NULL, UInt uiDecCurrAbsPartIdx=0);
+  Bool          getInterMergeSubPUTmvpCandidate ( UInt uiPUIdx,  TComMvField* pcMvFieldSP, UChar* puhInterDirSP, TComMvField* pcMvFieldDefault, UChar* pcInterDirDefault, TComMv cTMv, Bool bMrgIdxMatchATMVPCan, 
+#if VCEG_AZ06_IC
+    Bool& rbICFlag,
+#endif
+    Int iPocColPic =0, TComDataCU* pDecCurrCU = NULL, UInt uiDecCurrAbsPartIdx=0);
+  Bool          deriveScaledMotionTemporalForOneDirection( TComDataCU* pcTempCU,RefPicList eCurrRefPicList, TComMv &cColMv, UInt uiAbsPartIdx, Int iTargetRefIdx, 
+#if VCEG_AZ06_IC
+    Bool& rbICFlag,
+#endif
+    TComPic *pColPic);
   TComPic*      getPicfromPOC (Int iPocColPic);
 
   Void getNeighboringMvField(TComDataCU *pcCU, UInt uiPartIdx, TComMvField *cMvField,UChar *pucInterDir);

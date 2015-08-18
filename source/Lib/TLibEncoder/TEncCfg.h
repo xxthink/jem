@@ -386,6 +386,9 @@ protected:
   Bool      m_useOBMC;
   Int       m_OBMCBlkSize;
 #endif
+#if VCEG_AZ06_IC
+  Bool      m_useIC;
+#endif
 #if ALF_HM3_REFACTOR
   Bool      m_useALF;
 #endif
@@ -968,6 +971,10 @@ public:
   Bool      getOBMC()                                                { return m_useOBMC;              }
   Void      setOBMCBlkSize(Int nBlkSize)                             { m_OBMCBlkSize = nBlkSize;   }
   Int       getOBMCBlkSize()                                         { return m_OBMCBlkSize;       }
+#endif
+#if VCEG_AZ06_IC
+  Void      setUseIC( Bool bVal )                                    { m_useIC = bVal;             }
+  Bool      getUseIC()                                               { return m_useIC;             }
 #endif
 #if ALF_HM3_REFACTOR
   Void      setUseALF                       ( Bool  b )     { m_useALF   = b; }

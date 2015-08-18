@@ -107,6 +107,9 @@ TComSlice::TComSlice()
 , m_LFCrossSliceBoundaryFlag      ( false )
 , m_enableTMVPFlag                ( true )
 , m_encCABACTableIdx              (I_SLICE)
+#if VCEG_AZ06_IC
+, m_bApplyIC                      ( false )
+#endif
 {
   for(UInt i=0; i<NUM_REF_PIC_LIST_01; i++)
   {
@@ -778,6 +781,9 @@ Void TComSlice::copySliceInfo(TComSlice *pSrc)
   m_enableTMVPFlag                = pSrc->m_enableTMVPFlag;
   m_maxNumMergeCand               = pSrc->m_maxNumMergeCand;
   m_encCABACTableIdx              = pSrc->m_encCABACTableIdx;
+#if VCEG_AZ06_IC
+  m_bApplyIC                      = pSrc->m_bApplyIC;
+#endif
 }
 
 
@@ -2246,5 +2252,76 @@ Void calculateParameterSetChangedFlag(Bool &bChanged, const std::vector<UChar> *
     }
   }
 }
+
+#if VCEG_AZ06_IC_SPEEDUP
+Void TComSlice::xSetApplyIC()
+{
+  m_bApplyIC = false;
+
+  if( isIntra() )
+  {
+    return;
+  }
+
+  Int iMaxPelValue = ( 1<< getSPS()->getBitDepth( toChannelType( COMPONENT_Y ) ) ); 
+  Int *aiRefOrgHist;
+  Int *aiCurrHist;
+
+  aiRefOrgHist = new Int[iMaxPelValue];
+  aiCurrHist   = new Int[iMaxPelValue];
+
+  TComPicYuv* pcCurrPicYuv = getPic()->getPicYuvOrg();
+  Int iCurrStride = pcCurrPicYuv->getStride( COMPONENT_Y );
+  Int iWidth = pcCurrPicYuv->getWidth( COMPONENT_Y );
+  Int iHeight = pcCurrPicYuv->getHeight( COMPONENT_Y );
+
+  for( Int dir = 0; dir < ( isInterB() ? 2 : 1 ); dir++ )
+  {
+    RefPicList eRefPicList = dir ? REF_PIC_LIST_1 : REF_PIC_LIST_0;
+    Int numRefPic = getNumRefIdx( eRefPicList );
+
+    for ( Int i = 0 ; i < numRefPic; i++ )
+    {
+      Pel* pRefOrgY   = getRefPic( eRefPicList, i )->getPicYuvOrg()->getAddr( COMPONENT_Y );
+      Int iRefStride  = getRefPic( eRefPicList, i )->getPicYuvOrg()->getStride( COMPONENT_Y );
+      Pel* pCurrY     = pcCurrPicYuv->getAddr( COMPONENT_Y );
+      Int iSumOrgSAD = 0;
+
+      memset(aiRefOrgHist, 0, iMaxPelValue*sizeof(Int) );
+      memset(aiCurrHist, 0, iMaxPelValue*sizeof(Int) );
+
+      double dThresholdOrgSAD = 0.05;
+      // Histogram building - luminance
+      for ( Int y = 0; y < iHeight; y++)
+      {
+        for ( Int x = 0; x < iWidth; x++)
+        {
+          aiCurrHist[pCurrY[x]]++;
+          aiRefOrgHist[pRefOrgY[x]]++;
+        }
+        pCurrY += iCurrStride;
+        pRefOrgY += iRefStride;
+      }
+      // Calc SAD
+      for (Int j = 0; j < iMaxPelValue; j++)
+      {
+        iSumOrgSAD += abs(aiCurrHist[j] - aiRefOrgHist[j]);
+      }
+
+      // Setting
+      if ( iSumOrgSAD > Int(dThresholdOrgSAD * iWidth * iHeight) )
+      {
+        m_bApplyIC = true;
+        break;
+      }
+    }
+  }
+
+  delete [] aiCurrHist;
+  delete [] aiRefOrgHist;
+  aiCurrHist = NULL;
+  aiRefOrgHist = NULL;
+}
+#endif
 
 //! \}

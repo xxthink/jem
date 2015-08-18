@@ -93,6 +93,9 @@ TEncSbac::TEncSbac()
 #if COM16_C806_OBMC
 , m_cCUOBMCFlagSCModel                 ( 1,             1,                      NUM_OBMC_FLAG_CTX                    , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
+#if VCEG_AZ06_IC
+, m_cCUICFlagSCModel                   ( 1,             1,                      NUM_IC_FLAG_CTX                      , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 #if ALF_HM3_REFACTOR
 , m_bAlfCtrl                           ( false )
 , m_uiMaxAlfCtrlDepth                  ( 0 )
@@ -157,6 +160,9 @@ Void TEncSbac::resetEntropy           (const TComSlice *pSlice)
   m_ChromaQpAdjIdcSCModel.initBuffer              ( eSliceType, iQp, (UChar*)INIT_CHROMA_QP_ADJ_IDC );
 #if COM16_C806_OBMC
   m_cCUOBMCFlagSCModel.initBuffer                 ( eSliceType, iQp, (UChar*)INIT_OBMC_FLAG );
+#endif
+#if VCEG_AZ06_IC
+  m_cCUICFlagSCModel.initBuffer                   ( eSliceType, iQp, (UChar*)INIT_IC_FLAG );
 #endif
 #if ALF_HM3_REFACTOR
   m_cCUAlfCtrlFlagSCModel.initBuffer              ( eSliceType, iQp, (UChar*)INIT_ALF_CTRL_FLAG );
@@ -227,6 +233,9 @@ SliceType TEncSbac::determineCabacInitIdx(const TComSlice *pSlice)
       curCost += m_ChromaQpAdjIdcSCModel.calcCost              ( curSliceType, qp, (UChar*)INIT_CHROMA_QP_ADJ_IDC );
 #if COM16_C806_OBMC
       curCost += m_cCUOBMCFlagSCModel.calcCost                 ( curSliceType, qp, (UChar*)INIT_OBMC_FLAG );
+#endif
+#if VCEG_AZ06_IC
+      curCost += m_cCUICFlagSCModel.calcCost                   ( curSliceType, qp, (UChar*)INIT_IC_FLAG );
 #endif
       if (curCost < bestCost)
       {
@@ -593,6 +602,25 @@ Void TEncSbac::codeOBMCFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
   m_pcBinIf->encodeBin( uiSymbol, m_cCUOBMCFlagSCModel.get( 0, 0, 0 ) );
   DTRACE_CABAC_VL( g_nSymbolCounter++ );
   DTRACE_CABAC_T( "\tOBMCFlag" );
+  DTRACE_CABAC_T( "\tuiSymbol: ");
+  DTRACE_CABAC_V( uiSymbol );
+  DTRACE_CABAC_T( "\n");
+}
+#endif
+
+#if VCEG_AZ06_IC
+/** code Illumination Compensation flag
+ * \param pcCU
+ * \param uiAbsPartIdx 
+ * \returns Void
+ */
+Void TEncSbac::codeICFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
+{
+  UInt uiSymbol = pcCU->getICFlag( uiAbsPartIdx ) ? 1 : 0;
+  m_pcBinIf->encodeBin( uiSymbol, m_cCUICFlagSCModel.get( 0, 0, 0 ) );
+
+  DTRACE_CABAC_VL( g_nSymbolCounter++ );
+  DTRACE_CABAC_T( "\tICFlag" );
   DTRACE_CABAC_T( "\tuiSymbol: ");
   DTRACE_CABAC_V( uiSymbol );
   DTRACE_CABAC_T( "\n");

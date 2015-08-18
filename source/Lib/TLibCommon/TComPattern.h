@@ -80,7 +80,9 @@ private:
   TComPatternParam  m_cPatternY;
 //  TComPatternParam  m_cPatternCb;
   //TComPatternParam  m_cPatternCr;
-
+#if VCEG_AZ06_IC
+  Bool              m_bMRFlag;
+#endif
 public:
 
   // ROI & pattern information, (ROI = &pattern[AboveOffset][LeftOffset])
@@ -89,7 +91,10 @@ public:
   Int   getROIYHeight()           { return m_cPatternY.m_iROIHeight;      }
   Int   getPatternLStride()       { return m_cPatternY.m_iPatternStride;  }
   Int   getBitDepthY()            { return m_cPatternY.m_bitDepth; }
-
+#if VCEG_AZ06_IC
+  Bool  getMRFlag()               { return m_bMRFlag; }
+  Void  setMRFlag( Bool bMRFlag ) { m_bMRFlag = bMRFlag; }
+#endif
   // -------------------------------------------------------------------------------------------------------------------
   // initialization functions
   // -------------------------------------------------------------------------------------------------------------------

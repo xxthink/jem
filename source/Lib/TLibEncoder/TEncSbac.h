@@ -127,6 +127,9 @@ public:
 #if COM16_C806_OBMC
   Void codeOBMCFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
 #endif
+#if VCEG_AZ06_IC
+  Void codeICFlag        ( TComDataCU* pcCU, UInt uiAbsPartIdx );
+#endif 
   Void codeMergeFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeMergeIndex    ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeSplitFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
@@ -226,6 +229,9 @@ private:
   ContextModel3DBuffer m_ChromaQpAdjIdcSCModel;
 #if COM16_C806_OBMC
   ContextModel3DBuffer m_cCUOBMCFlagSCModel;
+#endif
+#if VCEG_AZ06_IC
+  ContextModel3DBuffer m_cCUICFlagSCModel;
 #endif
 #if ALF_HM3_REFACTOR
   Bool          m_bAlfCtrl;

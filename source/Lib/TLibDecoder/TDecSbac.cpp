@@ -98,6 +98,9 @@ TDecSbac::TDecSbac()
 #if COM16_C806_OBMC
 , m_cCUOBMCFlagSCModel                       ( 1,             1,                      NUM_OBMC_FLAG_CTX                    , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
+#if VCEG_AZ06_IC
+, m_cCUICFlagSCModel                         ( 1,             1,                      NUM_IC_FLAG_CTX                      , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 #if ALF_HM3_REFACTOR
 , m_cCUAlfCtrlFlagSCModel                    ( 1,             1,               NUM_ALF_CTRL_FLAG_CTX         , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cALFFlagSCModel                          ( 1,             1,               NUM_ALF_FLAG_CTX              , m_contextModels + m_numContextModels, m_numContextModels)
@@ -171,6 +174,9 @@ Void TDecSbac::resetEntropy(TComSlice* pSlice)
 #if COM16_C806_OBMC
   m_cCUOBMCFlagSCModel.initBuffer                 ( sliceType, qp, (UChar*)INIT_OBMC_FLAG );
 #endif
+#if VCEG_AZ06_IC
+  m_cCUICFlagSCModel.initBuffer                   ( sliceType, qp, (UChar*)INIT_IC_FLAG );
+#endif  
 #if ALF_HM3_REFACTOR
   m_cCUAlfCtrlFlagSCModel.initBuffer              ( sliceType, qp, (UChar*)INIT_ALF_CTRL_FLAG );
   m_cALFFlagSCModel.initBuffer                    ( sliceType, qp, (UChar*)INIT_ALF_FLAG );
@@ -482,6 +488,28 @@ Void TDecSbac::parseOBMCFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth 
   DTRACE_CABAC_T( "\n");
 
   pcCU->setOBMCFlagSubParts( uiSymbol ? true : false, uiAbsPartIdx, uiDepth );
+}
+#endif
+
+#if VCEG_AZ06_IC
+/** parse illumination compensation flag
+ * \param pcCU
+ * \param uiAbsPartIdx 
+ * \param uiDepth
+ * \returns Void
+ */
+Void TDecSbac::parseICFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
+{ 
+  UInt uiSymbol = 0;
+  m_pcTDecBinIf->decodeBin( uiSymbol, m_cCUICFlagSCModel.get( 0, 0, 0 ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__IC_FLAG) );
+ 
+  DTRACE_CABAC_VL( g_nSymbolCounter++ );
+  DTRACE_CABAC_T( "\tICFlag" );
+  DTRACE_CABAC_T( "\tuiSymbol: ");
+  DTRACE_CABAC_V( uiSymbol );
+  DTRACE_CABAC_T( "\n");
+
+  pcCU->setICFlagSubParts( uiSymbol ? true : false , uiAbsPartIdx, uiDepth );
 }
 #endif
 

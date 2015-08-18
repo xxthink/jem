@@ -788,6 +788,9 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
     assert( uiCode == 4 || uiCode == 8 );
   }
 #endif
+#if VCEG_AZ06_IC
+  READ_FLAG( uiCode, "illumination_comp_enabled_flag" );             pcSPS->setICFlag(uiCode);
+#endif
 #if ALF_HM3_REFACTOR
   READ_FLAG( uiCode , "use_alf_flag" );                           pcSPS->setUseALF ( uiCode ? true : false );
 #endif
@@ -1370,6 +1373,14 @@ Void TDecCavlc::parseSliceHeader (TComSlice* pcSlice, ParameterSetManager *param
       xParsePredWeightTable(pcSlice, sps);
       pcSlice->initWpScaling(sps);
     }
+#if VCEG_AZ06_IC
+    if (sps->getICFlag()&& pcSlice->getSliceType() != I_SLICE)
+    {
+      UInt uiCodeTmp = 0;
+      READ_FLAG ( uiCodeTmp, "slice_ic_enable_flag" );
+      pcSlice->setApplyIC( uiCodeTmp );
+    }
+#endif
     if (!pcSlice->isIntra())
     {
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
@@ -1694,6 +1705,13 @@ Void TDecCavlc::parseSkipFlag( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt
 
 #if COM16_C806_OBMC
 Void TDecCavlc::parseOBMCFlag( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/ )
+{
+  assert(0);
+}
+#endif
+
+#if VCEG_AZ06_IC
+Void TDecCavlc::parseICFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 {
   assert(0);
 }
