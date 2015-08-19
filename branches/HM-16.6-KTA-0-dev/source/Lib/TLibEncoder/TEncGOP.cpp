@@ -120,9 +120,12 @@ Void  TEncGOP::create()
 Void  TEncGOP::destroy()
 {
 #if COM16_C806_ALF_TEMPPRED_NUM
-  for( Int i = 0; i < COM16_C806_ALF_TEMPPRED_NUM; i++ )
+  if( m_pcCfg->getUseALF() )
   {
-    m_pcAdaptiveLoopFilter->freeALFParam( &m_acStoredAlfPara[i] );
+    for( Int i = 0; i < COM16_C806_ALF_TEMPPRED_NUM; i++ )
+    {
+      m_pcAdaptiveLoopFilter->freeALFParam( &m_acStoredAlfPara[i] );
+    }
   }
 #endif
 }
