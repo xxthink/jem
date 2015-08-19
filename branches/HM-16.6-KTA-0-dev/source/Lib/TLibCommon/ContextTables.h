@@ -178,6 +178,11 @@ static const UInt notFirstGroupNeighbourhoodContextOffset[MAX_NUM_CHANNEL_TYPE] 
 #define NUM_ALF_SVLC_CTX              3       ///< number of context models for ALF SVLC (filter coeff.)
 #endif
 
+#if COM16_C806_EMT
+#define NUM_EMT_TU_IDX_CTX            4       ///< number of context models for EMT TU-level transform index
+#define NUM_EMT_CU_FLAG_CTX           4       ///< number of context models for EMT CU-level flag
+#endif
+
 #define CNU                          154      ///< dummy initialization value for unused context models 'Context model Not Used'
 
 
@@ -389,7 +394,6 @@ INIT_LAST[NUMBER_OF_SLICE_TYPES][NUM_CTX_LAST_FLAG_SETS * NUM_CTX_LAST_FLAG_XY] 
   { ISLICE_LUMA_LAST_POSITION_CONTEXT, ISLICE_CHROMA_LAST_POSITION_CONTEXT },
 };
 
-
 //--------------------------------------------------------------------------------------------------
 
 static const UChar
@@ -575,6 +579,24 @@ static const UChar
   { 185, 185, CNU },
   { CNU, CNU, CNU },
   { CNU, CNU, CNU },
+};
+#endif
+
+#if COM16_C806_EMT
+static const UChar 
+INIT_EMT_TU_IDX[NUMBER_OF_SLICE_TYPES][NUM_EMT_TU_IDX_CTX] =  
+{
+  { CNU,  CNU, CNU,  CNU }, 
+  { CNU,  CNU, CNU,  CNU }, 
+  { CNU,  CNU, CNU,  CNU }, 
+};
+
+static const UChar 
+INIT_EMT_CU_FLAG[NUMBER_OF_SLICE_TYPES][NUM_EMT_CU_FLAG_CTX] = 
+{
+  { CNU,  CNU, CNU,  CNU },
+  { CNU,  CNU, CNU,  CNU },
+  { CNU,  CNU, CNU,  CNU }, 
 };
 #endif
 

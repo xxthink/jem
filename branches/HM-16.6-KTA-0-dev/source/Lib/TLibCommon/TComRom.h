@@ -120,6 +120,20 @@ extern const UChar  g_chroma422IntraAngleMappingTable[NUM_INTRA_MODE];
 
 extern const TMatrixCoeff g_as_DST_MAT_4 [TRANSFORM_NUMBER_OF_DIRECTIONS][4][4];
 
+#if COM16_C806_EMT
+extern Int g_aiTrSubsetIntra[3][2];
+extern Int g_aiTrSubsetInter[4];
+extern const UChar g_aucTrSetVert[35];
+extern const UChar g_aucTrSetHorz[35];
+extern const UInt g_iEmtSigNumThr;
+
+extern TMatrixCoeff g_aiTr4 [NUM_TRANS_TYPE][ 4][ 4];
+extern TMatrixCoeff g_aiTr8 [NUM_TRANS_TYPE][ 8][ 8];
+extern TMatrixCoeff g_aiTr16[NUM_TRANS_TYPE][16][16];
+extern TMatrixCoeff g_aiTr32[NUM_TRANS_TYPE][32][32];
+extern TMatrixCoeff g_aiTr64[NUM_TRANS_TYPE][64][64];
+#endif
+
 // ====================================================================================================================
 // Misc.
 // ====================================================================================================================

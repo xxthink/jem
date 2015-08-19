@@ -134,6 +134,11 @@ public:
   virtual Void codeAlfFlagNum       ( UInt uiCode, UInt minValue ) = 0;
   virtual Void codeAlfCtrlFlag      ( UInt uiSymbol ) = 0;
 #endif
+
+#if COM16_C806_EMT
+  virtual Void codeEmtTuIdx      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
+  virtual Void codeEmtCuFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bRootCbf ) = 0;
+#endif
 };
 
 /// entropy encoder class
@@ -225,6 +230,9 @@ public:
     int **FilterCoeff, int kMinTab[]);
   Int golombEncode(int coeff, int k);
   Int lengthGolomb(int coeffVal, int k);
+#endif
+#if COM16_C806_EMT
+  Void encodeEmtCuFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bCodeCuFlag );
 #endif
 };// END CLASS DEFINITION TEncEntropy
 

@@ -153,6 +153,11 @@ private:
   UInt*         m_puiTmpAlfCtrlFlag;  ///< temporal array of ALF flags
 #endif
 
+#if COM16_C806_EMT
+  UChar*        m_puhEmtTuIdx;        ///< array of TU-level transform indexes
+  UChar*        m_puhEmtCuFlag;       ///< array of CU-level flags enabling EMT
+#endif
+
   // -------------------------------------------------------------------------------------------------------------------
   // misc. variables
   // -------------------------------------------------------------------------------------------------------------------
@@ -397,6 +402,16 @@ public:
   Void          copyAlfCtrlFlagFromTmp();
   UInt          getCtxAlfCtrlFlag               ( UInt   uiAbsPartIdx                                 );
 #endif
+
+#if COM16_C806_EMT
+  UChar*        getEmtTuIdx           ()                        { return m_puhEmtTuIdx;          }
+  UChar         getEmtTuIdx           ( UInt uiIdx )            { return m_puhEmtTuIdx[uiIdx];   }
+  Void          setEmtTuIdxSubParts   ( UInt uiTrMode, UInt uiAbsPartIdx, UInt uiDepth );
+  Void          setEmtTuIdxPartsRange ( UInt uiTrMode, ComponentID compID, UInt uiAbsPartIdx, UInt uiCoveredPartIdxes );
+  UChar*        getEmtCuFlag          ()                        { return m_puhEmtCuFlag;          }
+  UChar         getEmtCuFlag          ( UInt uiIdx )            { return m_puhEmtCuFlag[uiIdx];   }
+  Void          setEmtCuFlagSubParts  ( UInt uiTuOptTrFlag, UInt uiAbsPartIdx, UInt uiDepth );
+#endif  
 
   // -------------------------------------------------------------------------------------------------------------------
   // member functions for accessing partition information

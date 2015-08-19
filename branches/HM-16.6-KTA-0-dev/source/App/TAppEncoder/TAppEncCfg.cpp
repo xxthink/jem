@@ -1091,6 +1091,18 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 #if ALF_HM3_REFACTOR
   ("ALF", m_useALF, true, "Adaptive Loop Filter")
 #endif
+#if COM16_C806_EMT
+  ("EMT,-emt",       m_useEMT,       3,  "Enhanced Multiple Transform (EMT)\n"
+                                          "\t0:  Disable EMT\n"
+                                          "\t1:  Enable only Intra EMT\n"
+                                          "\t2:  Enable only Inter EMT\n"
+                                          "\t3:  Enable both Intra & Inter EMT\n")
+  ("EMTFAST,-femt",  m_useFastEMT,   3,  "Fast methods for Enhanced Multiple Transform (EMT)\n"
+                                          "\t0:  Disable fast methods for EMT\n"
+                                          "\t1:  Enable fast methods only for Intra EMT\n"
+                                          "\t2:  Enable fast methods only for Inter EMT\n"
+                                          "\t3:  Enable fast methods for both Intra & Inter EMT\n")
+#endif
   ;
 
   for(Int i=1; i<MAX_GOP+1; i++)
@@ -1775,6 +1787,11 @@ Void TAppEncCfg::xCheckParameter()
 #if ADAPTIVE_QP_SELECTION
   xConfirmPara( m_bUseAdaptQpSelect == true && m_iQP < 0,                                              "AdaptiveQpSelection must be disabled when QP < 0.");
   xConfirmPara( m_bUseAdaptQpSelect == true && (m_cbQpOffset !=0 || m_crQpOffset != 0 ),               "AdaptiveQpSelection must be disabled when ChromaQpOffset is not equal to 0.");
+#endif
+
+#if COM16_C806_EMT
+  xConfirmPara(     m_useEMT<0 ||     m_useEMT >3, "EMT must be 0, 1, 2 or 3"  );
+  xConfirmPara( m_useFastEMT<0 || m_useFastEMT >3, "FEMT must be 0, 1, 2 or 3" );
 #endif
 
   if( m_usePCM)
@@ -2514,6 +2531,14 @@ Void TAppEncCfg::xPrintParameter()
 #endif
 #if ALF_HM3_REFACTOR
   printf(" ALF:%d ", m_useALF             );
+#endif
+
+#if COM16_C806_EMT
+  printf( " EMT: %1d(intra) %1d(inter) " , m_useEMT&1 , (m_useEMT>>1)&1 );
+  if( m_useEMT )
+  {
+    printf( "FEMT: %1d(intra) %1d(inter) " , (m_useFastEMT&m_useEMT&1) , (m_useFastEMT>>1)&(m_useEMT>>1)&1 );
+  }
 #endif
 
   printf("\n\n");

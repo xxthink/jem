@@ -104,6 +104,10 @@ TEncSbac::TEncSbac()
 , m_cALFUvlcSCModel                    ( 1,             1,               NUM_ALF_UVLC_CTX              , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cALFSvlcSCModel                    ( 1,             1,               NUM_ALF_SVLC_CTX              , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
+#if COM16_C806_EMT
+, m_cEmtTuIdxSCModel                   ( 1,             1,               NUM_EMT_TU_IDX_CTX            , m_contextModels + m_numContextModels, m_numContextModels)
+, m_cEmtCuFlagSCModel                  ( 1,             1,               NUM_EMT_CU_FLAG_CTX           , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 {
   assert( m_numContextModels <= MAX_NUM_CTX_MOD );
 }
@@ -170,6 +174,10 @@ Void TEncSbac::resetEntropy           (const TComSlice *pSlice)
   m_cALFUvlcSCModel.initBuffer                    ( eSliceType, iQp, (UChar*)INIT_ALF_UVLC );
   m_cALFSvlcSCModel.initBuffer                    ( eSliceType, iQp, (UChar*)INIT_ALF_SVLC );
 #endif
+#if COM16_C806_EMT
+  m_cEmtTuIdxSCModel.initBuffer                   ( eSliceType, iQp, (UChar*)INIT_EMT_TU_IDX );
+  m_cEmtCuFlagSCModel.initBuffer                  ( eSliceType, iQp, (UChar*)INIT_EMT_CU_FLAG );
+#endif 
 
   for (UInt statisticIndex = 0; statisticIndex < RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS ; statisticIndex++)
   {
@@ -233,6 +241,10 @@ SliceType TEncSbac::determineCabacInitIdx(const TComSlice *pSlice)
       curCost += m_ChromaQpAdjIdcSCModel.calcCost              ( curSliceType, qp, (UChar*)INIT_CHROMA_QP_ADJ_IDC );
 #if COM16_C806_OBMC
       curCost += m_cCUOBMCFlagSCModel.calcCost                 ( curSliceType, qp, (UChar*)INIT_OBMC_FLAG );
+#endif
+#if COM16_C806_EMT
+      curCost += m_cEmtTuIdxSCModel.calcCost                   ( curSliceType, qp, (UChar*)INIT_EMT_TU_IDX );
+      curCost += m_cEmtCuFlagSCModel.calcCost                  ( curSliceType, qp, (UChar*)INIT_EMT_CU_FLAG );
 #endif
 #if VCEG_AZ06_IC
       curCost += m_cCUICFlagSCModel.calcCost                   ( curSliceType, qp, (UChar*)INIT_IC_FLAG );
@@ -1306,6 +1318,10 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
   // compute number of significant coefficients
   UInt uiNumSig = TEncEntropy::countNonZeroCoeffs(pcCoef, uiWidth * uiHeight);
 
+#if COM16_C806_EMT
+  UInt uiTuNumSig = uiNumSig;
+#endif
+
   if ( uiNumSig == 0 )
   {
     std::cerr << "ERROR: codeCoeffNxN called for empty TU!" << std::endl;
@@ -1611,6 +1627,27 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
   }
 #if ENVIRONMENT_VARIABLE_DEBUG_AND_TEST
   printSBACCoeffData(posLastX, posLastY, uiWidth, uiHeight, compID, uiAbsPartIdx, codingParameters.scanType, pcCoef, pcCU->getSlice()->getFinalized());
+#endif
+
+#if COM16_C806_EMT
+  if ( !pcCU->getTransformSkip( uiAbsPartIdx, compID) && compID == COMPONENT_Y )
+  {
+    if( pcCU->getEmtCuFlag( uiAbsPartIdx ) && pcCU->isIntra( uiAbsPartIdx ) )
+    {
+      if ( uiTuNumSig>g_iEmtSigNumThr )
+      {
+        codeEmtTuIdx( pcCU, uiAbsPartIdx, rTu.GetTransformDepthTotal() ); 
+      }
+      else
+      {
+        assert( pcCU->getEmtTuIdx( uiAbsPartIdx )==0 );
+      }
+    }
+    if( pcCU->getEmtCuFlag( uiAbsPartIdx ) && !pcCU->isIntra( uiAbsPartIdx ) )
+    {
+      codeEmtTuIdx( pcCU, uiAbsPartIdx, rTu.GetTransformDepthTotal() ); 
+    }
+  }
 #endif
 
   return;
@@ -2213,4 +2250,37 @@ Void TEncSbac::codeAlfSvlc       ( Int iCode )
 }
 #endif
 
+#if COM16_C806_EMT
+Void TEncSbac::codeEmtTuIdx( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
+{
+  if ( pcCU->isIntra( uiAbsPartIdx ) && pcCU->getWidth(uiAbsPartIdx) <= EMT_INTRA_MAX_CU )
+  {
+    UChar ucTrIdx = pcCU->getEmtTuIdx( uiAbsPartIdx );
+    m_pcBinIf->encodeBin( ( ucTrIdx & 1 ) ? 1 : 0, m_cEmtTuIdxSCModel.get(0, 0, 0));
+    m_pcBinIf->encodeBin( ( ucTrIdx / 2 ) ? 1 : 0, m_cEmtTuIdxSCModel.get(0, 0, 1));
+  }
+  if ( !pcCU->isIntra( uiAbsPartIdx ) && pcCU->getWidth(uiAbsPartIdx) <= EMT_INTER_MAX_CU )
+  {
+    UChar ucTrIdx = pcCU->getEmtTuIdx( uiAbsPartIdx );
+    m_pcBinIf->encodeBin( ( ucTrIdx & 1 ) ? 1 : 0, m_cEmtTuIdxSCModel.get(0, 0, 2));
+    m_pcBinIf->encodeBin( ( ucTrIdx / 2 ) ? 1 : 0, m_cEmtTuIdxSCModel.get(0, 0, 3));
+  }
+}
+
+Void TEncSbac::codeEmtCuFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bCodeCuFlag )
+{
+  assert( uiDepth < NUM_EMT_CU_FLAG_CTX );
+  
+  if ( pcCU->isIntra( uiAbsPartIdx ) && bCodeCuFlag && pcCU->getWidth(uiAbsPartIdx) <= EMT_INTRA_MAX_CU && pcCU->getSlice()->getSPS()->getUseIntraEMT() )
+  {
+    UChar ucCuFlag = pcCU->getEmtCuFlag( uiAbsPartIdx );
+    m_pcBinIf->encodeBin( ucCuFlag, m_cEmtCuFlagSCModel.get(0, 0, uiDepth));
+  }
+  if( !pcCU->isIntra( uiAbsPartIdx ) && bCodeCuFlag && pcCU->getWidth(uiAbsPartIdx) <= EMT_INTER_MAX_CU && pcCU->getSlice()->getSPS()->getUseInterEMT() )
+  {
+    UChar ucCuFlag = pcCU->getEmtCuFlag( uiAbsPartIdx );
+    m_pcBinIf->encodeBin( ucCuFlag, m_cEmtCuFlagSCModel.get(0, 0, uiDepth));
+  }
+}
+#endif
 //! \}

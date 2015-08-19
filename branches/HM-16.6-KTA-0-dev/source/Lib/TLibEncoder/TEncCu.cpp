@@ -458,6 +458,14 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
   Int iMaxQP;
   Bool isAddLowestQP = false;
 
+#if COM16_C806_EMT
+  Double dBestInterCost = MAX_DOUBLE;
+  Bool   bEarlySkipIntra = false;
+  Bool   bAllIntra = (m_pcEncCfg->getIntraPeriod()==1);
+  Double dIntra2Nx2NCost = MAX_DOUBLE;
+  Double dIntraNxNCost = MAX_DOUBLE;
+#endif
+
   const UInt numberValidComponents = rpcBestCU->getPic()->getNumberValidComponents();
 
   if( uiDepth <= pps.getMaxCuDQPDepth() )
@@ -797,6 +805,13 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         // speedup for inter frames
         Double intraCost = 0.0;
 
+#if COM16_C806_EMT
+        if( rpcBestCU->getSlice()->getSliceType() != I_SLICE && m_pcEncCfg->getUseFastInterEMT() )
+        {
+          dBestInterCost = rpcBestCU->getTotalCost();
+        }
+#endif
+
         if((rpcBestCU->getSlice()->getSliceType() == I_SLICE)                                        ||
             ((!m_pcEncCfg->getDisableIntraPUsInInterSlices()) && (
               (rpcBestCU->getCbf( 0, COMPONENT_Y  ) != 0)                                            ||
@@ -804,16 +819,68 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
              ((rpcBestCU->getCbf( 0, COMPONENT_Cr ) != 0) && (numberValidComponents > COMPONENT_Cr))  // avoid very complex intra if it is unlikely
             )))
         {
+#if COM16_C806_EMT
+          UChar ucEmtUsage = ( ( rpcTempCU->getWidth(0) > EMT_INTRA_MAX_CU ) || ( rpcTempCU->getSlice()->getSPS()->getUseIntraEMT()==0 ) ) ? 1 : 2;
+          for (UChar ucCuFlag = 0; ucCuFlag < ucEmtUsage; ucCuFlag++)
+          {
+            if( ucCuFlag && bEarlySkipIntra && m_pcEncCfg->getUseFastInterEMT() )
+            {
+              continue;
+            }
+            rpcTempCU->setEmtCuFlagSubParts(ucCuFlag, 0, uiDepth);
+            xCheckRDCostIntra( rpcBestCU, rpcTempCU, intraCost, SIZE_2Nx2N DEBUG_STRING_PASS_INTO(sDebug) );
+            if( !ucCuFlag && !rpcBestCU->isIntra(0) && m_pcEncCfg->getUseFastInterEMT() )
+            {
+              static const Double thEmtInterFastSkipIntra = 1.4; // Skip checking Intra if "2Nx2N using DCT2" is worse than best Inter mode
+              if( rpcTempCU->getTotalCost()>thEmtInterFastSkipIntra*dBestInterCost )
+              {
+                bEarlySkipIntra = true;
+              }
+            }
+            if( !ucCuFlag && m_pcEncCfg->getUseFastIntraEMT() )
+            {
+              dIntra2Nx2NCost = (rpcBestCU->isIntra(0) && rpcBestCU->getPartitionSize(0)==SIZE_2Nx2N) ? rpcBestCU->getTotalCost() : rpcTempCU->getTotalCost();
+            }
+            rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
+          }
+#else
           xCheckRDCostIntra( rpcBestCU, rpcTempCU, intraCost, SIZE_2Nx2N DEBUG_STRING_PASS_INTO(sDebug) );
           rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
-          if( uiDepth == sps.getLog2DiffMaxMinCodingBlockSize() )
+#endif
+          if( uiDepth == sps.getLog2DiffMaxMinCodingBlockSize() 
+#if COM16_C806_EMT
+            && !bEarlySkipIntra 
+#endif
+            )
           {
             if( rpcTempCU->getWidth(0) > ( 1 << sps.getQuadtreeTULog2MinSize() ) )
             {
               Double tmpIntraCost;
+#if COM16_C806_EMT
+              for (UChar ucCuFlag = 0; ucCuFlag < ucEmtUsage; ucCuFlag++)
+              {
+                if ( ucCuFlag && bAllIntra && m_pcEncCfg->getUseFastIntraEMT() )
+                {
+                  static const Double thEmtIntraFastSkipNxN = 1.2; // Skip checking "NxN using EMT" if "NxN using DCT2" is worse than "2Nx2N using DCT2"
+                  if ( dIntraNxNCost > thEmtIntraFastSkipNxN*dIntra2Nx2NCost )
+                  {
+                    break;
+                  }
+                }
+                rpcTempCU->setEmtCuFlagSubParts(ucCuFlag, 0, uiDepth);
+                xCheckRDCostIntra( rpcBestCU, rpcTempCU, tmpIntraCost, SIZE_NxN DEBUG_STRING_PASS_INTO(sDebug) );
+                if( !ucCuFlag && m_pcEncCfg->getUseFastIntraEMT() )
+                {
+                  dIntraNxNCost = (rpcBestCU->isIntra(0) && rpcBestCU->getPartitionSize(0)==SIZE_NxN) ? rpcBestCU->getTotalCost() : rpcTempCU->getTotalCost();
+                }
+                intraCost = std::min(intraCost, tmpIntraCost);
+                rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
+              }
+#else
               xCheckRDCostIntra( rpcBestCU, rpcTempCU, tmpIntraCost, SIZE_NxN DEBUG_STRING_PASS_INTO(sDebug)   );
               intraCost = std::min(intraCost, tmpIntraCost);
               rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
+#endif
             }
           }
         }
@@ -1458,7 +1525,11 @@ Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTem
                                                      m_ppcResiYuvTemp[uhDepth],
                                                      m_ppcResiYuvBest[uhDepth],
                                                      m_ppcRecoYuvTemp[uhDepth],
-                                                     (uiNoResidual != 0) DEBUG_STRING_PASS_INTO(tmpStr) );
+                                                     (uiNoResidual != 0) 
+#if COM16_C806_EMT
+                                                     , rpcBestCU->getTotalCost()
+#endif
+                                                     DEBUG_STRING_PASS_INTO(tmpStr) );
 
 #if DEBUG_STRING
           DebugInterPredResiReco(tmpStr, *(m_ppcPredYuvTemp[uhDepth]), *(m_ppcResiYuvBest[uhDepth]), *(m_ppcRecoYuvTemp[uhDepth]), DebugStringGetPredModeMask(rpcTempCU->getPredictionMode(0)));
@@ -1569,6 +1640,7 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
     return;
   }
 #endif
+
 #if COM16_C806_OBMC
   m_ppcTempCUWoOBMC[uhDepth]->initEstData( uhDepth, rpcTempCU->getQP( 0 ), rpcTempCU->getCUTransquantBypass( 0 ) );
   m_ppcTempCUWoOBMC[uhDepth]->copyPartFrom( rpcTempCU, 0, uhDepth );
@@ -1605,7 +1677,12 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
 #if COM16_C806_OBMC
     nOBMC == 0 ? m_ppcPredYuvWoOBMC[uhDepth] :
 #endif
-    m_ppcPredYuvTemp[uhDepth], m_ppcResiYuvTemp[uhDepth], m_ppcResiYuvBest[uhDepth], m_ppcRecoYuvTemp[uhDepth], false DEBUG_STRING_PASS_INTO(sTest) );
+    m_ppcPredYuvTemp[uhDepth], m_ppcResiYuvTemp[uhDepth], m_ppcResiYuvBest[uhDepth], m_ppcRecoYuvTemp[uhDepth], false 
+#if COM16_C806_EMT
+    , rpcBestCU->getTotalCost() 
+#endif
+    DEBUG_STRING_PASS_INTO(sTest) 
+  );
   rpcTempCU->getTotalCost()  = m_pcRdCost->calcRdCost( rpcTempCU->getTotalBits(), rpcTempCU->getTotalDistortion() );
 
 #if DEBUG_STRING

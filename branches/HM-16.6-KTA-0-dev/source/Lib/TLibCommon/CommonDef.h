@@ -190,6 +190,12 @@ static const Int DC_IDX =                                           1; ///< inde
 static const Int NUM_CHROMA_MODE =                                  5; ///< total number of chroma modes
 static const Int DM_CHROMA_IDX =                                   36; ///< chroma mode index for derived from luma intra mode
 
+#if COM16_C806_EMT
+static const UChar INTER_MODE_IDX =                               255; ///< index for inter modes
+static const UInt  EMT_INTRA_MAX_CU =                              32; ///< Max Intra CU size applying EMT, supported values: 8, 16, 32
+static const UInt  EMT_INTER_MAX_CU =                              32; ///< Max Inter CU size applying EMT, supported values: 8, 16, 32
+#endif
+
 static const Int MDCS_ANGLE_LIMIT =                                 4; ///< 0 = Horizontal/vertical only, 1 = Horizontal/vertical +/- 1, 2 = Horizontal/vertical +/- 2 etc...
 static const Int MDCS_MAXIMUM_WIDTH =                               8; ///< (measured in pixels) TUs with width greater than this can only use diagonal scan
 static const Int MDCS_MAXIMUM_HEIGHT =                              8; ///< (measured in pixels) TUs with height greater than this can only use diagonal scan
@@ -243,7 +249,6 @@ static const Int SCALING_LIST_DC =                                16 ; ///< defa
 
 static const Int CONTEXT_STATE_BITS =                              6 ;
 static const Int LAST_SIGNIFICANT_GROUPS =                        10 ;
-
 // ====================================================================================================================
 // Macro functions
 // ====================================================================================================================

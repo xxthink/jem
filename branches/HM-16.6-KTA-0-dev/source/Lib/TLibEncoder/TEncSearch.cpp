@@ -126,6 +126,10 @@ TEncSearch::TEncSearch()
 , m_pTempPel (NULL)
 , m_puiDFilter (NULL)
 , m_isInitialized (false)
+#if COM16_C806_EMT
+, m_puhQTTempEmtTuIdx (NULL)
+, m_puhQTTempEmtCuFlag (NULL)
+#endif
 {
   for (UInt ch=0; ch<MAX_NUM_COMPONENT; ch++)
   {
@@ -143,6 +147,9 @@ TEncSearch::TEncSearch()
     m_ppcQTTempTUArlCoeff[ch]                      = NULL;
 #endif
     m_puhQTTempTransformSkipFlag[ch]               = NULL;
+#if COM16_C806_EMT
+    m_puhQTTempExplicitRdpcmMode[ch]               = NULL;
+#endif
   }
 
   for (Int i=0; i<MAX_NUM_REF_LIST_ADAPT_SR; i++)
@@ -206,6 +213,11 @@ Void TEncSearch::destroy()
   delete[] m_puhQTTempTrIdx;
   delete[] m_pcQTTempTComYuv;
 
+#if COM16_C806_EMT
+  delete[] m_puhQTTempEmtTuIdx;
+  delete[] m_puhQTTempEmtCuFlag;
+#endif
+
   for (UInt ch=0; ch<MAX_NUM_COMPONENT; ch++)
   {
     delete[] m_pSharedPredTransformSkip[ch];
@@ -215,6 +227,9 @@ Void TEncSearch::destroy()
 #endif
     delete[] m_phQTTempCrossComponentPredictionAlpha[ch];
     delete[] m_puhQTTempTransformSkipFlag[ch];
+#if COM16_C806_EMT
+    delete[] m_puhQTTempExplicitRdpcmMode[ch];
+#endif
   }
   m_pcQTTempTransformSkipTComYuv.destroy();
 
@@ -334,9 +349,16 @@ Void TEncSearch::init(TEncCfg*      pcEncCfg,
     m_ppcQTTempTUArlCoeff[ch]                      = new TCoeff[MAX_CU_SIZE*MAX_CU_SIZE];
 #endif
     m_puhQTTempTransformSkipFlag[ch]               = new UChar [uiNumPartitions];
+#if COM16_C806_EMT
+    m_puhQTTempExplicitRdpcmMode[ch]               = new UChar [uiNumPartitions];
+#endif
   }
   m_puhQTTempTrIdx   = new UChar  [uiNumPartitions];
   m_pcQTTempTComYuv  = new TComYuv[uiNumLayersToAllocate];
+#if COM16_C806_EMT
+  m_puhQTTempEmtTuIdx  = new UChar  [uiNumPartitions];
+  m_puhQTTempEmtCuFlag = new UChar  [uiNumPartitions];
+#endif
   for( UInt ui = 0; ui < uiNumLayersToAllocate; ++ui )
   {
     m_pcQTTempTComYuv[ui].create( maxCUWidth, maxCUHeight, pcEncCfg->getChromaFormatIdc() );
@@ -971,6 +993,12 @@ TEncSearch::xEncSubdivCbfQT(TComTU      &rTu,
   if( uiSubdiv )
   {
     TComTURecurse tuRecurse(rTu, false);
+#if COM16_C806_EMT
+    if( 0==uiTrDepth )
+    {
+      m_pcEntropyCoder->encodeEmtCuFlag( pcCU, uiAbsPartIdx, pcCU->getDepth( 0 ), true );
+    }
+#endif
     do
     {
       xEncSubdivCbfQT( tuRecurse, bLuma, bChroma );
@@ -978,6 +1006,12 @@ TEncSearch::xEncSubdivCbfQT(TComTU      &rTu,
   }
   else
   {
+#if COM16_C806_EMT
+    if( 0==uiTrDepth )
+    {
+      m_pcEntropyCoder->encodeEmtCuFlag( pcCU, uiAbsPartIdx, pcCU->getDepth( 0 ), pcCU->getCbf( uiAbsPartIdx, COMPONENT_Y, uiTrMode ) ? true : false );
+    }
+#endif
     //===== Cbfs =====
     if( bLuma )
     {
@@ -1151,6 +1185,9 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
                                             TComTU&     rTu
                                       DEBUG_STRING_FN_DECLARE(sDebug)
                                            ,Int         default0Save1Load2
+#if COM16_C806_EMT
+                                           , UInt*      puiSigNum
+#endif
                                      )
 {
   if (!rTu.ProcessComponentSection(compID))
@@ -1206,6 +1243,10 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
 
 #if DEBUG_STRING
   const Int debugPredModeMask=DebugStringGetPredModeMask(MODE_INTRA);
+#endif
+
+#if COM16_C806_EMT
+  UChar   ucTrIdx      = ( pcCU->getEmtCuFlag(uiAbsPartIdx) && compID==COMPONENT_Y ) ? pcCU->getEmtTuIdx(uiAbsPartIdx) : ( pcCU->getSlice()->getSPS()->getUseIntraEMT() ? DCT2_EMT : DCT2_HEVC );
 #endif
 
   //===== init availability pattern =====
@@ -1294,7 +1335,11 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
 
   //===== transform and quantization =====
   //--- init rate estimation arrays for RDOQ ---
+#if COM16_C806_EMT
+  if( ( useTransformSkip? m_pcEncCfg->getUseRDOQTS() : m_pcEncCfg->getUseRDOQ() ) && !(ucTrIdx>=1 && ucTrIdx<=3) )
+#else
   if( useTransformSkip ? m_pcEncCfg->getUseRDOQTS() : m_pcEncCfg->getUseRDOQ() )
+#endif
   {
     m_pcEntropyCoder->estimateBit( m_pcTrQuant->m_pcEstBitsSbac, uiWidth, uiHeight, chType );
   }
@@ -1316,8 +1361,30 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
 #if ADAPTIVE_QP_SELECTION
     pcArlCoeff,
 #endif
-    uiAbsSum, cQP
-    );
+    uiAbsSum, cQP );
+
+#if COM16_C806_EMT
+  if( ucTrIdx!=DCT2_EMT && ucTrIdx!=DCT2_HEVC )
+  {
+    *puiSigNum = 0;
+    for( UInt uiX = 0; uiX < uiHeight*uiWidth; uiX++ )
+    {
+      if( pcCoeff[uiX] )
+      {
+        (*puiSigNum) ++;
+        if( *puiSigNum>g_iEmtSigNumThr )
+        {
+          break;
+        }
+      }
+    }
+
+    if( ucTrIdx!=0 && *puiSigNum<=g_iEmtSigNumThr && !useTransformSkip )
+    {
+      return;
+    }
+  }
+#endif
 
   //--- inverse transform ---
 
@@ -1472,6 +1539,10 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
 
         bMaintainResidual[RESIDUAL_ENCODER_SIDE] = !(m_pcEncCfg->getUseReconBasedCrossCPredictionEstimate());
 
+#if COM16_C806_EMT
+  UInt    uiSigNum;
+#endif
+
 #if HHI_RQT_INTRA_SPEEDUP
   Int maxTuSize = pcCU->getSlice()->getSPS()->getQuadtreeTULog2MaxSize();
   Int isIntraSlice = (pcCU->getSlice()->getSliceType() == I_SLICE);
@@ -1502,11 +1573,35 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
     bCheckFull    = ( uiLog2TrSize  <= min(maxTuSize,4));
   }
 #endif
+
+#if COM16_C806_EMT && HHI_RQT_INTRA_SPEEDUP
+  // Re-use the selected transform indexes in the previous call of xRecurIntraCodingQT
+  UInt    uiInitTrDepth     = pcCU->getPartitionSize(0) == SIZE_2Nx2N ? 0 : 1;
+  UChar   ucSavedEmtTrIdx   = 0;
+  Bool    bCheckInitTrDepth = false;
+  static UInt uiInitAbsPartIdx;
+  if ( uiTrDepth==uiInitTrDepth )
+  {
+    uiInitAbsPartIdx = uiAbsPartIdx;
+  }
+  if ( !bCheckFirst && uiTrDepth==uiInitTrDepth )
+  {
+    ucSavedEmtTrIdx   = m_puhQTTempEmtTuIdx[uiAbsPartIdx-uiInitAbsPartIdx];
+    bCheckInitTrDepth = true;
+  }
+#endif
+
   Double     dSingleCost                        = MAX_DOUBLE;
   Distortion uiSingleDistLuma                   = 0;
   UInt       uiSingleCbfLuma                    = 0;
   Bool       checkTransformSkip  = pcCU->getSlice()->getPPS()->getUseTransformSkip();
   Int        bestModeId[MAX_NUM_COMPONENT] = { 0, 0, 0};
+#if COM16_C806_EMT
+  UChar   bestTrIdx     = 0;
+  UChar   nNumTrCands   = pcCU->getEmtCuFlag(uiAbsPartIdx) ? 4 : 1;
+  Bool    bAllIntra     = (m_pcEncCfg->getIntraPeriod()==1);
+#endif
+  
   checkTransformSkip           &= TUCompRectHasAssociatedTransformSkipFlag(rTu.getRect(COMPONENT_Y), pcCU->getSlice()->getPPS()->getPpsRangeExtension().getLog2MaxTransformSkipBlockSize());
   checkTransformSkip           &= (!pcCU->getCUTransquantBypass(0));
 
@@ -1532,10 +1627,30 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
 
       for(Int modeId = firstCheckId; modeId < 2; modeId ++)
       {
+#if COM16_C806_EMT
+#if HHI_RQT_INTRA_SPEEDUP
+        UChar numTrIdxCands = ((modeId == firstCheckId && !bCheckInitTrDepth) ? nNumTrCands : 1 );
+#else
+        UChar numTrIdxCands = ((modeId == firstCheckId) ? nNumTrCands : 1 );
+#endif
+
+        for (UChar ucTrIdx = 0; ucTrIdx < numTrIdxCands; ucTrIdx++)
+        {
+          // Skip checking other transform candidates if zero CBF is encountered
+          if( ucTrIdx && !uiSingleCbfLuma && bAllIntra && m_pcEncCfg->getUseFastIntraEMT() )
+          {
+            continue;
+          }
+#endif
+
         DEBUG_STRING_NEW(sModeString)
         Int  default0Save1Load2 = 0;
         singleDistTmpLuma=0;
+#if COM16_C806_EMT
+        if (modeId == firstCheckId && ucTrIdx == 0)
+#else
         if(modeId == firstCheckId)
+#endif
         {
           default0Save1Load2 = 1;
         }
@@ -1544,14 +1659,29 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
           default0Save1Load2 = 2;
         }
 
+#if COM16_C806_EMT
+#if HHI_RQT_INTRA_SPEEDUP
+        pcCU->setEmtTuIdxSubParts( bCheckInitTrDepth?ucSavedEmtTrIdx:ucTrIdx, uiAbsPartIdx, uiFullDepth );
+#else
+        pcCU->setEmtTuIdxSubParts( txIdx, uiAbsPartIdx, uiFullDepth );
+#endif
+#endif
 
         pcCU->setTransformSkipSubParts ( modeId, COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan );
-        xIntraCodingTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaSingle, false, singleDistTmpLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sModeString), default0Save1Load2 );
+        xIntraCodingTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaSingle, false, singleDistTmpLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sModeString), default0Save1Load2
+#if COM16_C806_EMT
+          , &uiSigNum
+#endif
+          );
 
         singleCbfTmpLuma = pcCU->getCbf( uiAbsPartIdx, COMPONENT_Y, uiTrDepth );
 
         //----- determine rate and r-d cost -----
+#if COM16_C806_EMT
+        if( (modeId == 1 && singleCbfTmpLuma == 0) || (modeId==0 && ucTrIdx && ucTrIdx!=DCT2_EMT && uiSigNum<=g_iEmtSigNumThr) )
+#else
         if(modeId == 1 && singleCbfTmpLuma == 0)
+#endif
         {
           //In order not to code TS flag when cbf is zero, the case for TS with cbf being zero is forbidden.
           singleCostTmp = MAX_DOUBLE;
@@ -1567,7 +1697,9 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
           dSingleCost   = singleCostTmp;
           uiSingleDistLuma = singleDistTmpLuma;
           uiSingleCbfLuma = singleCbfTmpLuma;
-
+#if COM16_C806_EMT
+          bestTrIdx     = ucTrIdx;
+#endif
           bestModeId[COMPONENT_Y] = modeId;
           if(bestModeId[COMPONENT_Y] == firstCheckId)
           {
@@ -1592,9 +1724,15 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
         {
           m_pcRDGoOnSbacCoder->load ( m_pppcRDSbacCoder[ uiFullDepth ][ CI_QT_TRAFO_ROOT ] );
         }
+#if COM16_C806_EMT
+        }
+#endif
       }
 
       pcCU ->setTransformSkipSubParts ( bestModeId[COMPONENT_Y], COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan );
+#if COM16_C806_EMT
+      pcCU ->setEmtTuIdxSubParts ( bestTrIdx, uiAbsPartIdx, uiFullDepth );
+#endif
 
       if(bestModeId[COMPONENT_Y] == firstCheckId)
       {
@@ -1606,31 +1744,95 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
     }
     else
     {
+#if COM16_C806_EMT
+#if HHI_RQT_INTRA_SPEEDUP
+      UChar numTrIdxCands = ( !bCheckInitTrDepth ) ? nNumTrCands : 1;
+#else
+      UChar numTrIdxCands = nNumTrCands;
+#endif
+
+      for (UChar ucTrIdx = 0; ucTrIdx < numTrIdxCands; ucTrIdx++)
+      {
+        UInt   singleDistYTmp     = 0;
+        UInt   singleCbfYTmp      = 0;
+        Double singleCostTmp      = 0;
+        Bool   bSaveEmtResults    = ucTrIdx<(numTrIdxCands-1);
+
+        // Skip checking other transform candidates if zero CBF is encountered
+        if ( ucTrIdx && !uiSingleCbfLuma && bAllIntra && m_pcEncCfg->getUseFastIntraEMT() )
+        {
+          continue;
+        }
+#endif
+
       //----- store original entropy coding status -----
+#if COM16_C806_EMT
+      if( bCheckSplit || bSaveEmtResults )
+#else
       if( bCheckSplit )
+#endif
       {
         m_pcRDGoOnSbacCoder->store( m_pppcRDSbacCoder[ uiFullDepth ][ CI_QT_TRAFO_ROOT ] );
       }
+
+#if COM16_C806_EMT
+      Int default0Save1Load2 = numTrIdxCands>1 ? ( bSaveEmtResults ? 1 : 2 ) : 0;
+#endif
+
       //----- code luma/chroma block with given intra prediction mode and store Cbf-----
+#if COM16_C806_EMT
+#if HHI_RQT_INTRA_SPEEDUP
+      pcCU->setEmtTuIdxSubParts( bCheckInitTrDepth?ucSavedEmtTrIdx:ucTrIdx, uiAbsPartIdx, uiFullDepth );
+#else
+      pcCU->setEmtTuIdxSubParts( trIdx, uiAbsPartIdx, uiFullDepth );
+#endif
+      pcCU ->setTransformSkipSubParts ( 0, COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan );
+      xIntraCodingTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaSingle, false, singleDistYTmp, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sDebug), default0Save1Load2, &uiSigNum);
+#else
       dSingleCost   = 0.0;
 
       pcCU ->setTransformSkipSubParts ( 0, COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan );
       xIntraCodingTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaSingle, false, uiSingleDistLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sDebug));
+#endif
 
+#if COM16_C806_EMT
+      if( bCheckSplit || bSaveEmtResults )
+#else
       if( bCheckSplit )
+#endif
       {
+#if COM16_C806_EMT
+        singleCbfYTmp   = pcCU->getCbf( uiAbsPartIdx, COMPONENT_Y, uiTrDepth );
+#else
         uiSingleCbfLuma = pcCU->getCbf( uiAbsPartIdx, COMPONENT_Y, uiTrDepth );
+#endif
       }
       //----- determine rate and r-d cost -----
+#if COM16_C806_EMT
+      if( ucTrIdx && ucTrIdx!=DCT2_EMT && uiSigNum<=g_iEmtSigNumThr )
+      {
+        singleCostTmp = MAX_DOUBLE;
+      }
+      else
+      {
+#endif
       UInt uiSingleBits = xGetIntraBitsQT( rTu, true, false, false );
 
       if(m_pcEncCfg->getRDpenalty() && (uiLog2TrSize==5) && !isIntraSlice)
       {
         uiSingleBits=uiSingleBits*4;
       }
-
+#if COM16_C806_EMT
+      singleCostTmp     = m_pcRdCost->calcRdCost( uiSingleBits, singleDistYTmp );
+      }
+#else
       dSingleCost       = m_pcRdCost->calcRdCost( uiSingleBits, uiSingleDistLuma );
+#endif
 
+#if COM16_C806_EMT
+      if(singleCostTmp < dSingleCost)
+      {
+#endif
       if (pcCU->getSlice()->getPPS()->getPpsRangeExtension().getCrossComponentPredictionEnabledFlag())
       {
         const Int xOffset = rTu.getRect( COMPONENT_Y ).x0;
@@ -1643,6 +1845,34 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
           }
         }
       }
+#if COM16_C806_EMT
+        dSingleCost      = singleCostTmp;
+        uiSingleDistLuma = singleDistYTmp;
+        uiSingleCbfLuma  = singleCbfYTmp;
+        bestTrIdx        = ucTrIdx;
+
+        if( bSaveEmtResults && ( uiSingleCbfLuma || !bAllIntra || !m_pcEncCfg->getUseFastIntraEMT() ) )
+        {
+          xStoreIntraResultQT( COMPONENT_Y, rTu );
+          m_pcRDGoOnSbacCoder->store( m_pppcRDSbacCoder[ uiFullDepth ][ CI_TEMP_BEST ] );
+        }
+      }
+
+      if( bSaveEmtResults && ( uiSingleCbfLuma || !bAllIntra || !m_pcEncCfg->getUseFastIntraEMT() ) )
+      {
+        m_pcRDGoOnSbacCoder->load ( m_pppcRDSbacCoder[ uiFullDepth ][ CI_QT_TRAFO_ROOT ] );
+      }
+      }
+
+      pcCU->setEmtTuIdxSubParts( bestTrIdx, uiAbsPartIdx, uiFullDepth );
+
+      if( bestTrIdx < (numTrIdxCands-1) && ( uiSingleCbfLuma || !bAllIntra || !m_pcEncCfg->getUseFastIntraEMT() ) )
+      {
+        xLoadIntraResultQT( COMPONENT_Y, rTu );
+        pcCU->setCbfSubParts  ( uiSingleCbfLuma << uiTrDepth, COMPONENT_Y, uiAbsPartIdx, uiFullDepth );
+        m_pcRDGoOnSbacCoder->load( m_pppcRDSbacCoder[ uiFullDepth ][ CI_TEMP_BEST ] );
+      }
+#endif
     }
   }
 
@@ -1662,6 +1892,9 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
     Double     dSplitCost      = 0.0;
     Distortion uiSplitDistLuma = 0;
     UInt       uiSplitCbfLuma  = 0;
+#if COM16_C806_EMT
+    Bool    bSplitSelected = true;
+#endif
 
     TComTURecurse tuRecurseChild(rTu, false);
     DEBUG_STRING_NEW(sSplit)
@@ -1675,8 +1908,19 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
 #endif
       DEBUG_STRING_APPEND(sSplit, sChild)
       uiSplitCbfLuma |= pcCU->getCbf( tuRecurseChild.GetAbsPartIdxTU(), COMPONENT_Y, tuRecurseChild.GetTransformDepthRel() );
+#if COM16_C806_EMT
+      if( dSplitCost>dSingleCost && m_pcEncCfg->getUseFastIntraEMT() )
+      {
+        bSplitSelected = false;
+        break;
+      }
+#endif
     } while (tuRecurseChild.nextSection(rTu) );
 
+#if COM16_C806_EMT
+    if( bSplitSelected )
+    {
+#endif
     UInt    uiPartsDiv     = rTu.GetAbsPartIdxNumParts();
     {
       if (uiSplitCbfLuma)
@@ -1695,6 +1939,9 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
     //----- determine rate and r-d cost -----
     UInt uiSplitBits = xGetIntraBitsQT( rTu, true, false, false );
     dSplitCost       = m_pcRdCost->calcRdCost( uiSplitBits, uiSplitDistLuma );
+#if COM16_C806_EMT
+    }
+#endif
 
     //===== compare and set best =====
     if( dSplitCost < dSingleCost )
@@ -1728,6 +1975,9 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
     const TComRectangle &tuRect=rTu.getRect(COMPONENT_Y);
     pcCU->setCbfSubParts  ( uiSingleCbfLuma << uiTrDepth, COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan );
     pcCU ->setTransformSkipSubParts  ( bestModeId[COMPONENT_Y], COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan );
+#if COM16_C806_EMT
+    pcCU->setEmtTuIdxSubParts( bestTrIdx, uiAbsPartIdx, uiFullDepth );
+#endif
 
     //--- set reconstruction for next intra prediction blocks ---
     const UInt  uiQTLayer   = pcCU->getSlice()->getSPS()->getQuadtreeTULog2MaxSize() - uiLog2TrSize;
@@ -2265,23 +2515,52 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
     pcCU->setQPSubParts( pcCU->getSlice()->getSliceQp(), 0, uiDepth );
   }
 
+#if COM16_C806_EMT
+  static Double dBestModeCostStore[4]; // RD cost of the best mode for each PU using DCT2
+  static Double dModeCostStore[4][35]; // RD cost of each mode for each PU using DCT2
+  static UInt   uiSavedRdModeList[4][35], uiSavedNumRdModes[4];
+
+  // Marking EMT usage for faster EMT
+  // 0: EMT not applicable for current CU (pcCU->getWidth(0) <= EMT_INTRA_MAX_CU)
+  // 1: EMT can be applied for current CU, and DCT2 is being checked
+  // 2: EMT is being checked for current CU. Stored results of DCT2 can be utilized for speedup
+  UChar ucEmtUsageFlag = ( pcCU->getWidth(0) <= EMT_INTRA_MAX_CU ? ( pcCU->getEmtCuFlag(0)==1 ? 2 : 1 ) : 0 );
+  Bool  bAllIntra = (m_pcEncCfg->getIntraPeriod()==1);
+
+  if( pcCU->getPartitionSize(0) == SIZE_NxN && !bAllIntra )
+  {
+    ucEmtUsageFlag = 0;
+  }
+#endif
+
   //===== loop over partitions =====
   TComTURecurse tuRecurseCU(pcCU, 0);
   TComTURecurse tuRecurseWithPU(tuRecurseCU, false, (uiInitTrDepth==0)?TComTU::DONT_SPLIT : TComTU::QUAD_SPLIT);
 
+#if COM16_C806_EMT
+  UInt uiPU = 0;
+#endif
   do
   {
     const UInt uiPartOffset=tuRecurseWithPU.GetAbsPartIdxTU();
 //  for( UInt uiPU = 0, uiPartOffset=0; uiPU < uiNumPU; uiPU++, uiPartOffset += uiQNumParts )
   //{
+
+#if COM16_C806_EMT
+    UInt uiRdModeList[FAST_UDI_MAX_RDMODE_NUM];
+    Int numModesForFullRD = m_pcEncCfg->getFastUDIUseMPMEnabled()?g_aucIntraModeNumFast_UseMPM[ uiWidthBit ] : g_aucIntraModeNumFast_NotUseMPM[ uiWidthBit ];
+    if( ucEmtUsageFlag != 2 )
+    {
+#endif
     //===== init pattern for luma prediction =====
     DEBUG_STRING_NEW(sTemp2)
 
     //===== determine set of modes to be tested (using prediction signal only) =====
     Int numModesAvailable     = 35; //total number of Intra modes
+#if !COM16_C806_EMT
     UInt uiRdModeList[FAST_UDI_MAX_RDMODE_NUM];
     Int numModesForFullRD = m_pcEncCfg->getFastUDIUseMPMEnabled()?g_aucIntraModeNumFast_UseMPM[ uiWidthBit ] : g_aucIntraModeNumFast_NotUseMPM[ uiWidthBit ];
-
+#endif
     // this should always be true
     assert (tuRecurseWithPU.ProcessComponentSection(COMPONENT_Y));
     initIntraPatternChType( tuRecurseWithPU, COMPONENT_Y, true DEBUG_STRING_PASS_INTO(sTemp2) );
@@ -2365,6 +2644,49 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         uiRdModeList[i] = i;
       }
     }
+#if COM16_C806_EMT
+    if( ucEmtUsageFlag==1 )
+    {
+      // Store the modes to be checked with RD
+      uiSavedNumRdModes[uiPU] = numModesForFullRD;
+      ::memcpy( uiSavedRdModeList[uiPU], uiRdModeList, numModesForFullRD*sizeof(UInt) );
+    }
+    }
+    else if( ucEmtUsageFlag==2 )
+    {
+      if( bAllIntra && m_pcEncCfg->getUseFastIntraEMT() )
+      {
+        UInt uiWidth = pcCU->getWidth (0) >> uiInitTrDepth;
+        double dThrFastMode;
+        
+        switch(uiWidth)
+        {
+        case  4: dThrFastMode = 1.47; break; // Skip checking   4x4 Intra modes using the R-D cost in the DCT2-pass 
+        case  8: dThrFastMode = 1.28; break; // Skip checking   8x8 Intra modes using the R-D cost in the DCT2-pass
+        case 16: dThrFastMode = 1.12; break; // Skip checking 16x16 Intra modes using the R-D cost in the DCT2-pass
+        case 32: dThrFastMode = 1.06; break; // Skip checking 32x32 Intra modes using the R-D cost in the DCT2-pass
+        default: dThrFastMode = 1.06; break; // Skip checking 32x32 Intra modes using the R-D cost in the DCT2-pass
+        }
+
+        numModesForFullRD=0;
+
+        // Skip checking the modes with much larger R-D cost than the best mode
+        for( Int i=0; i < uiSavedNumRdModes[uiPU]; i++)
+        {
+          if( dModeCostStore[uiPU][i] <= dThrFastMode * dBestModeCostStore[uiPU] )
+          {
+            uiRdModeList[numModesForFullRD++] = uiSavedRdModeList[uiPU][i];
+          }
+        }
+      }
+      else
+      {
+        // Restore the modes to be checked with RD
+        numModesForFullRD = uiSavedNumRdModes[uiPU];
+        ::memcpy( uiRdModeList, uiSavedRdModeList[uiPU], numModesForFullRD*sizeof(UInt) );
+      }
+    }
+#endif
 
     //===== check modes (using r-d costs) =====
 #if HHI_RQT_INTRA_SPEEDUP_MOD
@@ -2410,6 +2732,13 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
       std::cout << "2nd pass [luma,chroma] mode [" << Int(pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiPartOffset)) << "," << Int(pcCU->getIntraDir(CHANNEL_TYPE_CHROMA, uiPartOffset)) << "] cost = " << dPUCost << "\n";
 #endif
 
+#if COM16_C806_EMT
+      if ( 1==ucEmtUsageFlag && m_pcEncCfg->getUseFastIntraEMT() )
+      {
+        dModeCostStore[uiPU][uiMode] = dPUCost;
+      }
+#endif
+
       // check r-d cost
       if( dPUCost < dBestPUCost )
       {
@@ -2421,6 +2750,13 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         uiBestPUMode  = uiOrgMode;
         uiBestPUDistY = uiPUDistY;
         dBestPUCost   = dPUCost;
+
+#if COM16_C806_EMT
+        if ( 1==ucEmtUsageFlag && m_pcEncCfg->getUseFastIntraEMT() )
+        {
+          dBestModeCostStore[uiPU] = dPUCost;
+        }
+#endif
 
         xSetIntraResultLumaQT( pcRecoYuv, tuRecurseWithPU );
 
@@ -2438,7 +2774,10 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         }
 
         UInt uiQPartNum = tuRecurseWithPU.GetAbsPartIdxNumParts();
-
+#if COM16_C806_EMT
+        ::memcpy( m_puhQTTempEmtTuIdx,   pcCU->getEmtTuIdx()+uiPartOffset,  uiQPartNum * sizeof( UChar ) );
+        ::memcpy( m_puhQTTempEmtCuFlag,  pcCU->getEmtCuFlag()+uiPartOffset, uiQPartNum * sizeof( UChar ) );
+#endif
         ::memcpy( m_puhQTTempTrIdx,  pcCU->getTransformIdx()       + uiPartOffset, uiQPartNum * sizeof( UChar ) );
         for (UInt component = 0; component < numberValidComponents; component++)
         {
@@ -2515,6 +2854,10 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 
         const UInt uiQPartNum = tuRecurseWithPU.GetAbsPartIdxNumParts();
         ::memcpy( m_puhQTTempTrIdx,  pcCU->getTransformIdx()       + uiPartOffset, uiQPartNum * sizeof( UChar ) );
+#if COM16_C806_EMT 
+        ::memcpy( m_puhQTTempEmtTuIdx,   pcCU->getEmtTuIdx()+uiPartOffset,  uiQPartNum * sizeof( UChar ) );
+        ::memcpy( m_puhQTTempEmtCuFlag,  pcCU->getEmtCuFlag()+uiPartOffset, uiQPartNum * sizeof( UChar ) );
+#endif
 
         for (UInt component = 0; component < numberValidComponents; component++)
         {
@@ -2534,6 +2877,10 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
     //--- update transform index and cbf ---
     const UInt uiQPartNum = tuRecurseWithPU.GetAbsPartIdxNumParts();
     ::memcpy( pcCU->getTransformIdx()       + uiPartOffset, m_puhQTTempTrIdx,  uiQPartNum * sizeof( UChar ) );
+#if COM16_C806_EMT
+    ::memcpy( pcCU->getEmtTuIdx()      + uiPartOffset, m_puhQTTempEmtTuIdx,   uiQPartNum * sizeof( UChar ) );
+    ::memcpy( pcCU->getEmtCuFlag()     + uiPartOffset, m_puhQTTempEmtCuFlag,  uiQPartNum * sizeof( UChar ) );
+#endif
     for (UInt component = 0; component < numberValidComponents; component++)
     {
       const ComponentID compID = ComponentID(component);
@@ -2562,7 +2909,9 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         }
       }
     }
-
+#if COM16_C806_EMT
+    uiPU++;
+#endif
     //=== update PU data ====
     pcCU->setIntraDirSubParts     ( CHANNEL_TYPE_LUMA, uiBestPUMode, uiPartOffset, uiDepth + uiInitTrDepth );
   } while (tuRecurseWithPU.nextSection(tuRecurseCU));
@@ -4460,7 +4809,11 @@ Void TEncSearch::xPatternSearchFracDIF(
 //! encode residual and calculate rate-distortion for a CU block
 Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg, TComYuv* pcYuvPred,
                                             TComYuv* pcYuvResi, TComYuv* pcYuvResiBest, TComYuv* pcYuvRec,
-                                            Bool bSkipResidual DEBUG_STRING_FN_DECLARE(sDebug) )
+                                            Bool bSkipResidual 
+#if COM16_C806_EMT
+                                            , Double dBestCost
+#endif
+                                            DEBUG_STRING_FN_DECLARE(sDebug) )
 {
   assert ( !pcCU->isIntra(0) );
 
@@ -4523,6 +4876,40 @@ Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg,
 
    pcYuvResi->subtract( pcYuvOrg, pcYuvPred, 0, cuWidthPixels );
 
+#if COM16_C806_EMT
+  Bool bestIsSkip = false;
+  UChar ucBestCuFlag = 0;
+  UChar ucEmtUsage = ( ( cuWidthPixels > EMT_INTER_MAX_CU ) || ( pcCU->getSlice()->getSPS()->getUseInterEMT()==0 ) ) ? 1 : 2;
+#if COM16_C806_OBMC 
+  // Disable EMT when CU-level OBMC control flag is 0
+  if( m_pcEncCfg->getUseFastInterEMT() && pcCU->getSlice()->getSPS()->getOBMC() && pcCU->getOBMCFlag( 0 ) == 0 )
+  {
+    ucEmtUsage = 1;
+  }
+#endif
+  Bool  bZeroCu = false;
+  UInt bestBits = 0;
+  Double dCost, bestCost = MAX_DOUBLE;
+
+  // CU-level optimization
+  for (UChar ucCuFlag = 0; ucCuFlag < ucEmtUsage; ucCuFlag++)
+  {
+    if( ucCuFlag && m_pcEncCfg->getUseFastInterEMT() )
+    {
+      static const Double thEmtInterSkip = 1.1; // Skip checking EMT transforms
+      if ( dCost > thEmtInterSkip * dBestCost )
+      {
+        break;
+      }
+    }
+    if( ucCuFlag && bZeroCu && m_pcEncCfg->getUseFastInterEMT() )
+    {
+      break;
+    }
+    pcCU->setEmtCuFlagSubParts(ucCuFlag, 0, pcCU->getDepth(0));
+    pcCU->setSkipFlagSubParts(false, 0, pcCU->getDepth(0));
+#endif
+
   TComTURecurse tuLevel0(pcCU, 0);
 
   Double     nonZeroCost       = 0;
@@ -4576,6 +4963,22 @@ Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg,
   xAddSymbolBitsInter( pcCU, finalBits );
   // we've now encoded the pcCU, and so have a valid bit cost
 
+#if COM16_C806_EMT
+  if( m_pcEncCfg->getUseFastInterEMT() )
+  {
+    bZeroCu = pcCU->getCbf( 0, COMPONENT_Y ) ? false : true;
+  }
+
+  Distortion uiDist = ( zeroCost < nonZeroCost || !pcCU->getQtRootCbf(0) ) ? zeroDistortion : nonZeroDistortion;
+  dCost = m_pcRdCost->calcRdCost( finalBits, uiDist );
+  if( dCost < bestCost )
+  {
+    bestBits = finalBits;
+    bestCost = dCost;
+    ucBestCuFlag = ucCuFlag;
+    bestIsSkip = (pcCU->getMergeFlag( 0 ) && pcCU->getPartitionSize( 0 ) == SIZE_2Nx2N && !pcCU->getQtRootCbf( 0 ));
+#endif
+
   if ( !pcCU->getQtRootCbf( 0 ) )
   {
     pcYuvResiBest->clear(); // Clear the residual image, if we didn't code it.
@@ -4585,6 +4988,57 @@ Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg,
     xSetInterResidualQTData( pcYuvResiBest, true, tuLevel0 ); // else set the residual image data pcYUVResiBest from the various temp images.
   }
   m_pcRDGoOnSbacCoder->store( m_pppcRDSbacCoder[ pcCU->getDepth( 0 ) ][ CI_TEMP_BEST ] );
+
+#if COM16_C806_EMT
+  if( ucCuFlag < (ucEmtUsage-1) )
+  {
+    // Store current results to the temporary buffer
+    const UInt uiQPartNum = pcCU->getPic()->getNumPartitionsInCtu() >> (pcCU->getDepth(0) << 1);
+    ::memcpy( m_puhQTTempTrIdx, pcCU->getTransformIdx(), uiQPartNum * sizeof(UChar) );
+    const UInt numCoeffY = cuWidthPixels * cuHeightPixels;
+    for( Int i=0; i<pcCU->getPic()->getNumberValidComponents(); i++ )
+    {
+      const ComponentID compID=ComponentID(i);
+      const UInt componentShift   = pcCU->getPic()->getComponentScaleX(compID) + pcCU->getPic()->getComponentScaleY(compID);
+      ::memcpy( m_puhQTTempCbf[compID], pcCU->getCbf(compID), uiQPartNum * sizeof(UChar) );
+      ::memcpy( m_pcQTTempCoeff[compID], pcCU->getCoeff(compID), ( numCoeffY >> componentShift ) * sizeof( TCoeff ) );
+#if ADAPTIVE_QP_SELECTION
+      ::memcpy( m_pcQTTempArlCoeff[compID], pcCU->getArlCoeff(compID), ( numCoeffY >> componentShift ) * sizeof( TCoeff ) );
+#endif
+      ::memcpy( m_puhQTTempExplicitRdpcmMode[compID], pcCU->getExplicitRdpcmMode(compID), uiQPartNum * sizeof( UChar ) );
+      ::memcpy( m_puhQTTempTransformSkipFlag[compID], pcCU->getTransformSkip(compID), uiQPartNum * sizeof( UChar ) );
+      ::memcpy( m_phQTTempCrossComponentPredictionAlpha[compID], pcCU->getCrossComponentPredictionAlpha(compID), uiQPartNum * sizeof( Char ) );
+    }
+  }
+  }
+  }
+#endif
+
+#if COM16_C806_EMT
+  pcCU->setEmtCuFlagSubParts( ucBestCuFlag, 0, pcCU->getDepth(0) );
+  pcCU->setSkipFlagSubParts( bestIsSkip, 0, pcCU->getDepth(0) );
+  if( ucBestCuFlag < (ucEmtUsage-1) )
+  {
+    // Restore the best results from the temporary buffer
+    m_pcRDGoOnSbacCoder->load( m_pppcRDSbacCoder[ pcCU->getDepth( 0 ) ][ CI_TEMP_BEST ] );
+    const UInt uiQPartNum = pcCU->getPic()->getNumPartitionsInCtu() >> (pcCU->getDepth(0) << 1);
+    ::memcpy( pcCU->getTransformIdx(), m_puhQTTempTrIdx, uiQPartNum * sizeof(UChar) );
+    const UInt numCoeffY = cuWidthPixels * cuHeightPixels;
+    for( Int i=0; i<pcCU->getPic()->getNumberValidComponents(); i++ )
+    {
+      const ComponentID compID=ComponentID(i);
+      const UInt componentShift   = pcCU->getPic()->getComponentScaleX(compID) + pcCU->getPic()->getComponentScaleY(compID);
+      ::memcpy( pcCU->getCbf(compID), m_puhQTTempCbf[compID], uiQPartNum * sizeof(UChar) );
+      ::memcpy( pcCU->getCoeff(compID), m_pcQTTempCoeff[compID], ( numCoeffY >> componentShift ) * sizeof( TCoeff ) );
+#if ADAPTIVE_QP_SELECTION
+      ::memcpy( pcCU->getArlCoeff(compID), m_pcQTTempArlCoeff[compID], ( numCoeffY >> componentShift ) * sizeof( TCoeff ) );
+#endif
+      ::memcpy( pcCU->getExplicitRdpcmMode(compID), m_puhQTTempExplicitRdpcmMode[compID], uiQPartNum * sizeof( UChar ) );
+      ::memcpy( pcCU->getTransformSkip(compID), m_puhQTTempTransformSkipFlag[compID], uiQPartNum * sizeof( UChar ) );
+      ::memcpy( pcCU->getCrossComponentPredictionAlpha(compID), m_phQTTempCrossComponentPredictionAlpha[compID], uiQPartNum * sizeof( Char ) );
+    }
+  }
+#endif
 
   pcYuvRec->addClip ( pcYuvPred, pcYuvResiBest, 0, cuWidthPixels, sps.getBitDepths() );
 
@@ -4597,9 +5051,15 @@ Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg,
     finalDistortion += m_pcRdCost->getDistPart( sps.getBitDepth(toChannelType(compID)), pcYuvRec->getAddr(compID ), pcYuvRec->getStride(compID ), pcYuvOrg->getAddr(compID ), pcYuvOrg->getStride(compID), cuWidthPixels >> pcYuvOrg->getComponentScaleX(compID), cuHeightPixels >> pcYuvOrg->getComponentScaleY(compID), compID);
   }
 
+#if COM16_C806_EMT
+  pcCU->getTotalBits()       = bestBits;
+  pcCU->getTotalDistortion() = finalDistortion;
+  pcCU->getTotalCost()       = m_pcRdCost->calcRdCost( bestBits, finalDistortion );
+#else
   pcCU->getTotalBits()       = finalBits;
   pcCU->getTotalDistortion() = finalDistortion;
   pcCU->getTotalCost()       = m_pcRdCost->calcRdCost( finalBits, finalDistortion );
+#endif
 }
 
 
@@ -4653,8 +5113,15 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
   //  Stores the best explicit RDPCM mode for a TU encoded without split
   UInt       bestExplicitRdpcmModeUnSplit[MAX_NUM_COMPONENT][2/*0 = top (or whole TU for non-4:2:2) sub-TU, 1 = bottom sub-TU*/] = {{3,3}, {3,3}, {3,3}};
   Char       bestCrossCPredictionAlpha   [MAX_NUM_COMPONENT][2/*0 = top (or whole TU for non-4:2:2) sub-TU, 1 = bottom sub-TU*/] = {{0,0},{0,0},{0,0}};
+#if COM16_C806_EMT
+  UChar      bestEmtTrIdx                [MAX_NUM_COMPONENT][2/*0 = top (or whole TU for non-4:2:2) sub-TU, 1 = bottom sub-TU*/] = {{0,0},{0,0},{0,0}};
+#endif
 
   m_pcRDGoOnSbacCoder->store( m_pppcRDSbacCoder[ uiDepth ][ CI_QT_TRAFO_ROOT ] );
+
+#if COM16_C806_EMT
+  pcCU->setEmtTuIdxSubParts( 0, uiAbsPartIdx, uiDepth ); // initialization
+#endif
 
   if( bCheckFull )
   {
@@ -4741,15 +5208,31 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
           const Int transformSkipModesToTest    = checkTransformSkip[compID] ? 2 : 1;
           const Int crossCPredictionModesToTest = (preCalcAlpha != 0)        ? 2 : 1; // preCalcAlpha cannot be anything other than 0 if isCrossCPredictionAvailable is false
 
-          const Bool isOneMode                  = (crossCPredictionModesToTest == 1) && (transformSkipModesToTest == 1);
+#if COM16_C806_EMT
+          const Int emtTrIdxToTest              = isLuma(compID) && pcCU->getEmtCuFlag(subTUAbsPartIdx) ? 4 : 1;
+#endif
+          const Bool isOneMode                  = (crossCPredictionModesToTest == 1) && (transformSkipModesToTest == 1)
+#if COM16_C806_EMT
+            && (emtTrIdxToTest == 1)
+#endif
+            ;
+
 
           for (Int transformSkipModeId = 0; transformSkipModeId < transformSkipModesToTest; transformSkipModeId++)
           {
             pcCU->setTransformSkipPartRange(transformSkipModeId, compID, subTUAbsPartIdx, partIdxesPerSubTU);
-
+#if COM16_C806_EMT
+            for (Int emtTrIdx = 0; emtTrIdx < (transformSkipModeId ? 1 : emtTrIdxToTest); emtTrIdx++)
+            {
+              pcCU->setEmtTuIdxPartsRange(emtTrIdx, compID, subTUAbsPartIdx, partIdxesPerSubTU);
+#endif
             for (Int crossCPredictionModeId = 0; crossCPredictionModeId < crossCPredictionModesToTest; crossCPredictionModeId++)
             {
-              const Bool isFirstMode          = (transformSkipModeId == 0) && (crossCPredictionModeId == 0);
+              const Bool isFirstMode          = (transformSkipModeId == 0) && (crossCPredictionModeId == 0)
+#if COM16_C806_EMT
+                && (emtTrIdx == 0)
+#endif
+                ;
               const Bool bUseCrossCPrediction = crossCPredictionModeId != 0;
 
               m_pcRDGoOnSbacCoder->load( m_pppcRDSbacCoder[ uiDepth ][ CI_QT_TRAFO_ROOT ] );
@@ -4968,7 +5451,9 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
                 minCost                  [compID][subTUIndex] = currCompCost;
                 uiBestTransformMode      [compID][subTUIndex] = transformSkipModeId;
                 bestCrossCPredictionAlpha[compID][subTUIndex] = (crossCPredictionModeId == 1) ? pcCU->getCrossComponentPredictionAlpha(subTUAbsPartIdx, compID) : 0;
-
+#if COM16_C806_EMT
+                bestEmtTrIdx             [compID][subTUIndex] = emtTrIdx;
+#endif
                 if (uiAbsSum[compID][subTUIndex] == 0)
                 {
                   if (bUseCrossCPrediction)
@@ -5010,12 +5495,17 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
                 }
               }
             }
+#if COM16_C806_EMT
           }
-
+#endif
+          }
           pcCU->setExplicitRdpcmModePartRange            (   bestExplicitRdpcmModeUnSplit[compID][subTUIndex],                            compID, subTUAbsPartIdx, partIdxesPerSubTU);
           pcCU->setTransformSkipPartRange                (   uiBestTransformMode         [compID][subTUIndex],                            compID, subTUAbsPartIdx, partIdxesPerSubTU );
           pcCU->setCbfPartRange                          ((((uiAbsSum                    [compID][subTUIndex] > 0) ? 1 : 0) << uiTrMode), compID, subTUAbsPartIdx, partIdxesPerSubTU );
           pcCU->setCrossComponentPredictionAlphaPartRange(   bestCrossCPredictionAlpha   [compID][subTUIndex],                            compID, subTUAbsPartIdx, partIdxesPerSubTU );
+#if COM16_C806_EMT
+          pcCU->setEmtTuIdxPartsRange                    (   bestEmtTrIdx                [compID][subTUIndex],                            compID, subTUAbsPartIdx, partIdxesPerSubTU);
+#endif
         } while (TUIterator.nextSection(rTu)); //end of sub-TU loop
       } // processing section
     } // component loop
@@ -5136,9 +5626,20 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
         lastPos=pos;
       }
 #endif
+#if COM16_C806_EMT
+      if( dSubdivCost >= dSingleCost && m_pcEncCfg->getUseFastInterEMT() )
+      {
+        break;
+      }
+#endif
     } while ( tuRecurseChild.nextSection(rTu) ) ;
 
     UInt uiCbfAny=0;
+#if COM16_C806_EMT
+    Bool bSplitSelected = false;
+    if( ( dSubdivCost < dSingleCost && m_pcEncCfg->getUseFastInterEMT() ) || !m_pcEncCfg->getUseFastInterEMT() )
+    {
+#endif
     for(UInt ch = 0; ch < numValidComp; ch++)
     {
       UInt uiYUVCbf = 0;
@@ -5167,12 +5668,17 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
 
     uiSubdivBits = m_pcEntropyCoder->getNumberOfWrittenBits();
     dSubdivCost  = m_pcRdCost->calcRdCost( uiSubdivBits, uiSubdivDist );
-
     if (!bCheckFull || (uiCbfAny && (dSubdivCost < dSingleCost)))
     {
       rdCost += dSubdivCost;
       ruiBits += uiSubdivBits;
       ruiDist += uiSubdivDist;
+#if COM16_C806_EMT
+      if( m_pcEncCfg->getUseFastInterEMT() )
+      {
+        bSplitSelected = true;
+      }
+#endif
 #if DEBUG_STRING
       for(UInt ch = 0; ch < numValidComp; ch++)
       {
@@ -5181,7 +5687,12 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
       }
 #endif
     }
+#if COM16_C806_EMT
+    }
+    if( ( !bSplitSelected && m_pcEncCfg->getUseFastInterEMT() ) || ( !m_pcEncCfg->getUseFastInterEMT() && !(!bCheckFull || (uiCbfAny && (dSubdivCost < dSingleCost))) ) )
+#else
     else
+#endif
     {
       rdCost  += dSingleCost;
       ruiBits += uiSingleBits;
@@ -5221,6 +5732,9 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
             pcCU->setCrossComponentPredictionAlphaPartRange(bestCrossCPredictionAlpha[compID][subTUIndex], compID, uisubTUPartIdx, partIdxesPerSubTU);
             pcCU->setTransformSkipPartRange(uiBestTransformMode[compID][subTUIndex], compID, uisubTUPartIdx, partIdxesPerSubTU);
             pcCU->setExplicitRdpcmModePartRange(bestExplicitRdpcmModeUnSplit[compID][subTUIndex], compID, uisubTUPartIdx, partIdxesPerSubTU);
+#if COM16_C806_EMT
+            pcCU->setEmtTuIdxPartsRange(bestEmtTrIdx[compID][subTUIndex], compID, uisubTUPartIdx, partIdxesPerSubTU);
+#endif
           }
         }
       }

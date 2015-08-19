@@ -107,6 +107,11 @@ enum TComCodingStatisticsType
   STATS__CABAC_BITS__ALF_SVLC,
 #endif
 
+#if COM16_C806_EMT
+  STATS__CABAC_BITS__EMT_CU_FLAG,
+  STATS__CABAC_BITS__EMT_TU_INDX,
+#endif
+
   STATS__NUM_STATS
 };
 
