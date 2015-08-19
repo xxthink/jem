@@ -158,6 +158,11 @@ public:
   Void codeAlfFlagNum    ( UInt uiCode, UInt minValue );
   Void codeAlfCtrlFlag   ( UInt uiSymbol );
 #endif
+
+#if COM16_C806_EMT
+  Void codeEmtTuIdx      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth);
+  Void codeEmtCuFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bRootCbf );
+#endif
 };
 
 //! \}

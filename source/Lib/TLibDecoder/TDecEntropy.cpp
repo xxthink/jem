@@ -505,6 +505,13 @@ Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjC
 
     TComTURecurse tuRecurseChild(rTu, true);
 
+#if COM16_C806_EMT
+    if( 0==uiTrDepth )
+    {
+      m_pcEntropyDecoderIf->parseEmtCuFlag( pcCU, uiAbsPartIdx, uiDepth, true );
+    }
+#endif
+
     do
     {
       xDecodeTransform( bCodeDQP, isChromaQpAdjCoded, tuRecurseChild, quadtreeTULog2MinSizeInCU );
@@ -575,6 +582,13 @@ Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjC
         }
       }
     }
+
+#if COM16_C806_EMT
+    if( 0==uiTrDepth )
+    {
+      m_pcEntropyDecoderIf->parseEmtCuFlag( pcCU, uiAbsPartIdx, uiDepth, cbf[COMPONENT_Y] ? true : false );
+    }
+#endif
 
     if ( validCbf )
     {

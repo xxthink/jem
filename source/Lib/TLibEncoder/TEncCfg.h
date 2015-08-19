@@ -393,6 +393,13 @@ protected:
   Bool      m_useALF;
 #endif
 
+#if COM16_C806_EMT
+  Int       m_useIntraEMT;
+  Int       m_useInterEMT;
+  Int       m_useFastIntraEMT;
+  Int       m_useFastInterEMT;
+#endif
+
   std::string m_summaryOutFilename;                           ///< filename to use for producing summary output file.
   std::string m_summaryPicFilenameBase;                       ///< Base filename to use for producing summary picture output files. The actual filenames used will have I.txt, P.txt and B.txt appended.
   UInt        m_summaryVerboseness;                           ///< Specifies the level of the verboseness of the text output.
@@ -962,9 +969,9 @@ public:
   Void      setSummaryVerboseness(UInt v)                            { m_summaryVerboseness = v; }
   UInt      getSummaryVerboseness( ) const                           { return m_summaryVerboseness; }
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
-  Void setSubPUTLog2Size                    ( UInt u )      { m_subPUTLog2Size = u; } 
-  Void setAtmvp                             ( Bool b )      { m_useAtmvpFlag       = b; }
-  Bool getAtmvp                             ()              { return    m_useAtmvpFlag; }
+  Void setSubPUTLog2Size( UInt u )                                   { m_subPUTLog2Size = u; } 
+  Void setAtmvp( Bool b )                                            { m_useAtmvpFlag = b; }
+  Bool getAtmvp()                                                    { return m_useAtmvpFlag; }
 #endif
 #if COM16_C806_OBMC
   Void      setOBMC(Bool bOBMC)                                      { m_useOBMC = bOBMC;             }
@@ -977,8 +984,19 @@ public:
   Bool      getUseIC()                                               { return m_useIC;             }
 #endif
 #if ALF_HM3_REFACTOR
-  Void      setUseALF                       ( Bool  b )     { m_useALF   = b; }
-  Bool      getUseALF                       ()      { return m_useALF;     }
+  Void      setUseALF( Bool b )                                      { m_useALF   = b; }
+  Bool      getUseALF()                                              { return m_useALF;     }
+#endif
+
+#if COM16_C806_EMT
+  Void      setUseFastIntraEMT(Int n)                                { m_useFastIntraEMT = n;     }
+  Int       getUseFastIntraEMT()                                     { return m_useFastIntraEMT;  }
+  Void      setUseFastInterEMT(Int n)                                { m_useFastInterEMT = n;     }
+  Int       getUseFastInterEMT()                                     { return m_useFastInterEMT;  }
+  Void      setUseIntraEMT(Int n)                                    { m_useIntraEMT = n;     }
+  Int       getUseIntraEMT()                                         { return m_useIntraEMT;  }
+  Void      setUseInterEMT(Int n)                                    { m_useInterEMT = n;     }
+  Int       getUseInterEMT()                                         { return m_useInterEMT;  }
 #endif
 };
 

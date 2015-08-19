@@ -133,6 +133,10 @@ public:
   Void  parseAlfFlagNum     ( UInt& ruiVal, UInt minValue, UInt depth );
   Void  parseAlfCtrlFlag    ( UInt &ruiAlfCtrlFlag );
 #endif
+#if COM16_C806_EMT
+  Void parseEmtTuIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+  Void parseEmtCuFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bRootCbf );
+#endif
 
 protected:
   Bool  xMoreRbspData();

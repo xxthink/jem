@@ -84,6 +84,9 @@ private:
   Pel*            m_pSharedPredTransformSkip[MAX_NUM_COMPONENT];
   TCoeff*         m_pcQTTempTUCoeff[MAX_NUM_COMPONENT];
   UChar*          m_puhQTTempTransformSkipFlag[MAX_NUM_COMPONENT];
+#if COM16_C806_EMT
+  UChar*          m_puhQTTempExplicitRdpcmMode[MAX_NUM_COMPONENT];
+#endif
   TComYuv         m_pcQTTempTransformSkipTComYuv;
 #if ADAPTIVE_QP_SELECTION
   TCoeff*         m_ppcQTTempTUArlCoeff[MAX_NUM_COMPONENT];
@@ -127,6 +130,12 @@ protected:
   TComMv          m_integerMv2Nx2N[NUM_REF_PIC_LIST_01][MAX_NUM_REF];
 
   Bool            m_isInitialized;
+
+#if COM16_C806_EMT
+  UChar*          m_puhQTTempEmtTuIdx;
+  UChar*          m_puhQTTempEmtCuFlag;
+#endif
+
 public:
   TEncSearch();
   virtual ~TEncSearch();
@@ -217,6 +226,9 @@ public:
                                   TComYuv*    pcYuvResiBest,
                                   TComYuv*    pcYuvRec,
                                   Bool        bSkipResidual
+#if COM16_C806_EMT
+                                  , Double dBestCost
+#endif
                                   DEBUG_STRING_FN_DECLARE(sDebug) );
 
   /// set ME search range
@@ -261,6 +273,9 @@ protected:
                                           TComTU        &rTu
                                     DEBUG_STRING_FN_DECLARE(sTest)
                                          ,Int           default0Save1Load2 = 0
+#if COM16_C806_EMT
+                                         ,UInt*         puiSigNum = NULL
+#endif
                                    );
 
   Void  xRecurIntraCodingLumaQT   ( TComYuv*    pcOrgYuv,

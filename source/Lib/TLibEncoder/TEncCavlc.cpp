@@ -590,6 +590,10 @@ Void TEncCavlc::codeSPS( const TComSPS* pcSPS )
 #if ALF_HM3_REFACTOR
   WRITE_FLAG( pcSPS->getUseALF () ? 1 : 0, "use_alf_flag" );
 #endif
+#if COM16_C806_EMT
+  WRITE_FLAG( pcSPS->getUseIntraEMT() != 0 , "use_intra_emt" );
+  WRITE_FLAG( pcSPS->getUseInterEMT() != 0 , "use_inter_emt" );
+#endif
   // KTA tools
 
   Bool sps_extension_present_flag=false;
@@ -1646,6 +1650,18 @@ Void TEncCavlc::xWriteUnaryMaxSymbol( UInt uiSymbol, UInt uiMaxSymbol )
     xWriteFlag( 0 );
   }
   return;
+}
+#endif
+
+#if COM16_C806_EMT
+Void TEncCavlc::codeEmtTuIdx( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
+{
+  assert(0);
+}
+
+Void TEncCavlc::codeEmtCuFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bRootCbf )
+{
+  assert(0);
 }
 #endif
 

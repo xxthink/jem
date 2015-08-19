@@ -781,18 +781,22 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
   READ_CODE( 3, uiCode, "log2_sub_pu_tmvp_size" );                pcSPS->setSubPUTLog2Size ( uiCode );
 #endif
 #if COM16_C806_OBMC
-  READ_FLAG( uiCode , "obmc_flag" );       pcSPS->setOBMC( uiCode );
+  READ_FLAG( uiCode , "obmc_flag" );                              pcSPS->setOBMC( uiCode );
   if( uiCode )
   {
-    READ_UVLC( uiCode , "obmc_blk_size" ); pcSPS->setOBMCBlkSize( uiCode );
+    READ_UVLC( uiCode , "obmc_blk_size" );                        pcSPS->setOBMCBlkSize( uiCode );
     assert( uiCode == 4 || uiCode == 8 );
   }
 #endif
 #if VCEG_AZ06_IC
-  READ_FLAG( uiCode, "illumination_comp_enabled_flag" );             pcSPS->setICFlag(uiCode);
+  READ_FLAG( uiCode, "illumination_comp_enabled_flag" );          pcSPS->setICFlag(uiCode);
 #endif
 #if ALF_HM3_REFACTOR
   READ_FLAG( uiCode , "use_alf_flag" );                           pcSPS->setUseALF ( uiCode ? true : false );
+#endif
+#if COM16_C806_EMT
+  READ_FLAG( uiCode, "use_intra_emt" );                           pcSPS->setUseIntraEMT(uiCode);
+  READ_FLAG( uiCode, "use_inter_emt" );                           pcSPS->setUseInterEMT(uiCode);
 #endif
   // KTA tools
 
@@ -2197,5 +2201,15 @@ Void TDecCavlc::parseAlfSvlc (Int&  riVal)
 }
 #endif
 
+#if COM16_C806_EMT
+Void TDecCavlc::parseEmtTuIdx( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/ )
+{
+  assert(0);
+}
+Void TDecCavlc::parseEmtCuFlag( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/, Bool /*bRootCbf*/ )
+{
+  assert(0);
+}
+#endif
 //! \}
 

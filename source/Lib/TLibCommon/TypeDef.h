@@ -51,6 +51,7 @@
 // KTA tools section start
 ///////////////////////////////////////////////////////////
 #define TEMP_SYNC_HM166_HM14                              1  /// TO be removed later
+
 #define COM16_C806_VCEG_AZ10_SUB_PU_TMVP                  1  ///< CY: sub-block level temporal motion prediction (a.k.a. ATMVP) 
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP                     
 #define COM16_C806_HEVC_MOTION_CONSTRAINT_REMOVAL         1
@@ -71,6 +72,11 @@
 #define ALF_HM3_REFACTOR                                  1  ///< Adaptive loop filter with 4x4 block activity adaptation 
 #if ALF_HM3_REFACTOR
 #define COM16_C806_ALF_TEMPPRED_NUM                       6  ///< 0: no temporal prediction
+#endif
+
+#define COM16_C806_EMT                                    1  ///< Enhanced Multiple Transform (EMT)
+#if COM16_C806_EMT
+#define COM16_C806_TRANS_PREC                             2  ///< Integer transform matrix precision
 #endif
 
 ///////////////////////////////////////////////////////////
@@ -469,6 +475,14 @@ enum COEFF_SCAN_TYPE
   SCAN_VER  = 2,        ///< vertical first scan
   SCAN_NUMBER_OF_TYPES = 3
 };
+
+#if COM16_C806_EMT
+enum TRANS_TYPE
+{
+  DCT2, DCT5, DCT8, DST1, DST7, NUM_TRANS_TYPE,
+  DCT2_HEVC, DCT2_EMT
+};
+#endif
 
 enum COEFF_SCAN_GROUP_TYPE
 {

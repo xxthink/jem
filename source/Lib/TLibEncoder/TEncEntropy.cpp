@@ -193,6 +193,13 @@ Void TEncEntropy::encodeSplitFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiD
   m_pcEntropyCoderIf->codeSplitFlag( pcCU, uiAbsPartIdx, uiDepth );
 }
 
+#if COM16_C806_EMT
+Void TEncEntropy::encodeEmtCuFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bCodeCuFlag )
+{
+  m_pcEntropyCoderIf->codeEmtCuFlag( pcCU, uiAbsPartIdx, uiDepth, bCodeCuFlag );
+}
+#endif
+
 //! encode partition size
 Void TEncEntropy::encodePartSize( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bRD )
 {
@@ -324,6 +331,12 @@ Void TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComT
   if( uiSubdiv )
   {
     TComTURecurse tuRecurseChild(rTu, true);
+#if COM16_C806_EMT
+    if( bFirstCbfOfCU )
+    {
+      m_pcEntropyCoderIf->codeEmtCuFlag( pcCU, uiAbsPartIdx, uiDepth, true );
+    }
+#endif
     do
     {
       xEncodeTransform( bCodeDQP, codeChromaQpAdj, tuRecurseChild );
@@ -351,6 +364,13 @@ Void TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComT
     {
       m_pcEntropyCoderIf->codeQtCbf( rTu, COMPONENT_Y, true ); //luma CBF is always at the lowest level
     }
+
+#if COM16_C806_EMT
+    if( bFirstCbfOfCU )
+    {
+      m_pcEntropyCoderIf->codeEmtCuFlag( pcCU, uiAbsPartIdx, uiDepth, cbf[COMPONENT_Y] ? true : false );
+    }
+#endif
 
     if ( bHaveACodedBlock )
     {
@@ -407,6 +427,12 @@ Void TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComT
 #endif
                 m_pcEntropyCoderIf->codeCoeffNxN( subTUIterator, (pcCU->getCoeff(compID) + subTUIterator.getCoefficientOffset(compID)), compID );
               }
+#if COM16_C806_EMT
+              else if ( isLuma(compID) && cbf[COMPONENT_Y] != 0 )
+              {
+                pcCU->setEmtTuIdxSubParts( DCT2_EMT, uiAbsPartIdx, uiDepth );
+              }
+#endif
             }
             while (subTUIterator.nextSection(rTu));
           }
@@ -421,6 +447,12 @@ Void TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComT
             {
               m_pcEntropyCoderIf->codeCoeffNxN( rTu, (pcCU->getCoeff(compID) + rTu.getCoefficientOffset(compID)), compID );
             }
+#if COM16_C806_EMT
+            else if ( isLuma(compID) && cbf[COMPONENT_Y] != 0 )
+            {
+              pcCU->setEmtTuIdxSubParts( DCT2_EMT, uiAbsPartIdx, uiDepth );
+            }
+#endif
           }
         }
       }

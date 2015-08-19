@@ -114,6 +114,11 @@ TComDataCU::TComDataCU()
   m_puiAlfCtrlFlag     = NULL;
   m_puiTmpAlfCtrlFlag  = NULL;
 #endif
+
+#if COM16_C806_EMT
+  m_puhEmtTuIdx        = NULL;
+  m_puhEmtCuFlag       = NULL;
+#endif
 }
 
 TComDataCU::~TComDataCU()
@@ -161,6 +166,11 @@ Void TComDataCU::create( ChromaFormat chromaFormatIDC, UInt uiNumPartition, UInt
 #endif
 #if ALF_HM3_REFACTOR
     m_puiAlfCtrlFlag     = (UInt*  )xMalloc(UInt,   uiNumPartition);
+#endif
+
+#if COM16_C806_EMT
+    m_puhEmtTuIdx        = (UChar*)xMalloc(UChar, uiNumPartition);
+    m_puhEmtCuFlag       = (UChar*)xMalloc(UChar, uiNumPartition);
 #endif
 
     for (UInt ch=0; ch<MAX_NUM_CHANNEL_TYPE; ch++)
@@ -330,6 +340,20 @@ Void TComDataCU::destroy()
     { 
       xFree(m_puiAlfCtrlFlag);      
       m_puiAlfCtrlFlag = NULL; 
+    }
+#endif
+
+#if COM16_C806_EMT
+    if ( m_puhEmtTuIdx ) 
+    { 
+      xFree(m_puhEmtTuIdx);
+      m_puhEmtTuIdx       = NULL; 
+    }
+
+    if ( m_puhEmtCuFlag )
+    { 
+      xFree(m_puhEmtCuFlag);
+      m_puhEmtCuFlag      = NULL; 
     }
 #endif
 
@@ -541,6 +565,11 @@ Void TComDataCU::initCtu( TComPic* pcPic, UInt ctuRsAddr )
   memset( m_puiAlfCtrlFlag    , 0,                        m_uiNumPartition * sizeof( *m_puiAlfCtrlFlag ) );
 #endif
 
+#if COM16_C806_EMT
+  memset( m_puhEmtTuIdx       , 0,                        m_uiNumPartition * sizeof( *m_puhEmtTuIdx ) );
+  memset( m_puhEmtCuFlag      , 0,                        m_uiNumPartition * sizeof( *m_puhEmtCuFlag ) );
+#endif
+
   for (UInt ch=0; ch<MAX_NUM_CHANNEL_TYPE; ch++)
   {
     memset( m_puhIntraDir[ch] , ((ch==0) ? DC_IDX : 0),   m_uiNumPartition * sizeof( *(m_puhIntraDir[ch]) ) );
@@ -665,7 +694,10 @@ Void TComDataCU::initEstData( const UInt uiDepth, const Int qp, const Bool bTran
 #if ALF_HM3_REFACTOR
     m_puiAlfCtrlFlag[ui] = 0;
 #endif
-
+#if COM16_C806_EMT
+    m_puhEmtTuIdx [ui]  = 0;
+    m_puhEmtCuFlag[ui]  = 0;
+#endif
     for (UInt ch=0; ch<MAX_NUM_CHANNEL_TYPE; ch++)
     {
       m_puhIntraDir[ch][ui] = ((ch==0) ? DC_IDX : 0);
@@ -740,6 +772,10 @@ Void TComDataCU::initSubCU( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth, 
 #endif
 #if ALF_HM3_REFACTOR
   memset( m_puiAlfCtrlFlag,     0, sizeof( UInt   ) * m_uiNumPartition );
+#endif
+#if COM16_C806_EMT
+  memset( m_puhEmtTuIdx,        0, iSizeInUchar );
+  memset( m_puhEmtCuFlag,       0, iSizeInUchar );
 #endif
   for (UInt ch=0; ch<MAX_NUM_CHANNEL_TYPE; ch++)
   {
@@ -858,6 +894,11 @@ Void TComDataCU::copySubCU( TComDataCU* pcCU, UInt uiAbsPartIdx )
 
   m_puhInterDir         = pcCU->getInterDir()         + uiPart;
   m_puhTrIdx            = pcCU->getTransformIdx()     + uiPart;
+
+#if COM16_C806_EMT
+  m_puhEmtTuIdx         = pcCU->getEmtTuIdx()         + uiPart;
+  m_puhEmtCuFlag        = pcCU->getEmtCuFlag()        + uiPart;
+#endif
 
   for(UInt comp=0; comp<MAX_NUM_COMPONENT; comp++)
   {
@@ -1009,6 +1050,11 @@ Void TComDataCU::copyPartFrom( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDept
   memcpy( m_puhInterDir         + uiOffset, pcCU->getInterDir(),          iSizeInUchar );
   memcpy( m_puhTrIdx            + uiOffset, pcCU->getTransformIdx(),      iSizeInUchar );
 
+#if COM16_C806_EMT
+  memcpy( m_puhEmtTuIdx         + uiOffset, pcCU->getEmtTuIdx(),          iSizeInUchar );
+  memcpy( m_puhEmtCuFlag        + uiOffset, pcCU->getEmtCuFlag(),         iSizeInUchar );
+#endif
+
   for(UInt comp=0; comp<numValidComp; comp++)
   {
     memcpy( m_crossComponentPredictionAlpha[comp] + uiOffset, pcCU->getCrossComponentPredictionAlpha(ComponentID(comp)), iSizeInUchar );
@@ -1104,6 +1150,11 @@ Void TComDataCU::copyToPic( UChar uhDepth )
 
   memcpy( pCtu->getInterDir()          + m_absZIdxInCtu, m_puhInterDir,         iSizeInUchar );
   memcpy( pCtu->getTransformIdx()      + m_absZIdxInCtu, m_puhTrIdx,            iSizeInUchar );
+
+#if COM16_C806_EMT
+  memcpy( pCtu->getEmtTuIdx()          + m_absZIdxInCtu, m_puhEmtTuIdx,         iSizeInUchar );
+  memcpy( pCtu->getEmtCuFlag()         + m_absZIdxInCtu, m_puhEmtCuFlag,        iSizeInUchar );
+#endif
 
   for(UInt comp=0; comp<numValidComp; comp++)
   {
@@ -2016,6 +2067,29 @@ Void TComDataCU::setMVPNumSubParts( Int iMVPNum, RefPicList eRefPicList, UInt ui
   setSubPart<Char>( iMVPNum, m_apiMVPNum[eRefPicList], uiAbsPartIdx, uiDepth, uiPartIdx );
 }
 
+#if COM16_C806_EMT
+Void TComDataCU::setEmtTuIdxSubParts( UInt uiTrMode, UInt uiAbsPartIdx, UInt uiDepth )
+{
+  UInt uiCurrPartNumb = m_pcPic->getNumPartitionsInCtu() >> (uiDepth << 1);
+  
+  memset( m_puhEmtTuIdx + uiAbsPartIdx, uiTrMode, sizeof(UChar)*uiCurrPartNumb );
+}
+
+Void TComDataCU::setEmtTuIdxPartsRange( UInt uiTrMode, ComponentID compID, UInt uiAbsPartIdx, UInt uiCoveredPartIdxes )
+{
+  if( COMPONENT_Y==compID )
+  {
+    memset( m_puhEmtTuIdx + uiAbsPartIdx, uiTrMode, (sizeof(Char) * uiCoveredPartIdxes));
+  }
+}
+
+Void TComDataCU::setEmtCuFlagSubParts( UInt uiTrMode, UInt uiAbsPartIdx, UInt uiDepth )
+{
+  UInt uiCurrPartNumb = m_pcPic->getNumPartitionsInCtu() >> (uiDepth << 1);
+  
+  memset( m_puhEmtCuFlag + uiAbsPartIdx, uiTrMode, sizeof(UChar)*uiCurrPartNumb );
+}
+#endif
 
 Void TComDataCU::setTrIdxSubParts( UInt uiTrIdx, UInt uiAbsPartIdx, UInt uiDepth )
 {

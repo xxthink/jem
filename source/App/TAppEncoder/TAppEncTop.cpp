@@ -402,6 +402,13 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setUseALF                       ( m_useALF      );
 #endif
 
+#if COM16_C806_EMT
+  m_cTEncTop.setUseIntraEMT( m_useEMT&1 );
+  m_cTEncTop.setUseFastIntraEMT( m_useFastEMT & m_useEMT & 1 );
+  m_cTEncTop.setUseInterEMT( (m_useEMT>>1)&1 );
+  m_cTEncTop.setUseFastInterEMT( (m_useFastEMT>>1) & (m_useEMT>>1) & 1 );
+#endif
+
   m_cTEncTop.setSummaryOutFilename                                ( m_summaryOutFilename );
   m_cTEncTop.setSummaryPicFilenameBase                            ( m_summaryPicFilenameBase );
   m_cTEncTop.setSummaryVerboseness                                ( m_summaryVerboseness );

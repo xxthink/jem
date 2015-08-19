@@ -383,6 +383,11 @@ protected:
   Bool      m_useALF;                                         ///< flag for using adaptive loop filter
 #endif
 
+#if COM16_C806_EMT
+  Int       m_useEMT;                                         ///< XZ: Enhanced Multiple Transform
+  Int       m_useFastEMT;                                     ///< XZ: Fast Methods of Enhanced Multiple Transform
+#endif
+
   std::string m_summaryOutFilename;                           ///< filename to use for producing summary output file.
   std::string m_summaryPicFilenameBase;                       ///< Base filename to use for producing summary picture output files. The actual filenames used will have I.txt, P.txt and B.txt appended.
   UInt        m_summaryVerboseness;                           ///< Specifies the level of the verboseness of the text output.

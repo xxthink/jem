@@ -715,6 +715,10 @@ Void TEncTop::xInitSPS()
   m_cSPS.setUseALF        ( m_useALF           );
 #endif
 
+#if COM16_C806_EMT
+  m_cSPS.setUseIntraEMT   ( m_useIntraEMT      );
+  m_cSPS.setUseInterEMT   ( m_useInterEMT      );
+#endif
 }
 
 Void TEncTop::xInitHrdParameters()

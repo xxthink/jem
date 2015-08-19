@@ -57,6 +57,59 @@
 // Type definition
 // ====================================================================================================================
 
+#if COM16_C806_EMT
+void fastForwardDCT2_B4 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
+void fastInverseDCT2_B4 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastForwardDCT2_B8 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
+void fastInverseDCT2_B8 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastForwardDCT2_B16(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
+void fastInverseDCT2_B16(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastForwardDCT2_B32(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
+void fastInverseDCT2_B32(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastForwardDCT2_B64(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
+void fastInverseDCT2_B64(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+
+void fastForwardDST7_B4 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
+void fastInverseDST7_B4 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+
+void fastForwardDST7_B8 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
+void fastInverseDST7_B8 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastForwardDST7_B16(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
+void fastInverseDST7_B16(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastForwardDST7_B32(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
+void fastInverseDST7_B32(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+
+void fastForwardDCT5_B4 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
+void fastInverseDCT5_B4 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastForwardDCT5_B8 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
+void fastInverseDCT5_B8 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastForwardDCT5_B16(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
+void fastInverseDCT5_B16(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastForwardDCT5_B32(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
+void fastInverseDCT5_B32(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+
+void fastForwardDCT8_B4 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
+void fastInverseDCT8_B4 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastForwardDCT8_B8 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
+void fastInverseDCT8_B8 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastForwardDCT8_B16(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
+void fastInverseDCT8_B16(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastForwardDCT8_B32(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
+void fastInverseDCT8_B32(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+
+void fastForwardDST1_B4 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
+void fastInverseDST1_B4 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastForwardDST1_B8 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
+void fastInverseDST1_B8 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastForwardDST1_B16(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
+void fastInverseDST1_B16(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastForwardDST1_B32(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
+void fastInverseDST1_B32(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+
+typedef void FwdTrans (TCoeff *, TCoeff *, Int, Int, Int, Int);
+typedef void InvTrans (TCoeff *, TCoeff *, Int, Int, Int, Int, const TCoeff, const TCoeff);
+#endif
+
 typedef struct
 {
   Int significantCoeffGroupBits[NUM_SIG_CG_FLAG_CTX][2 /*Flag = [0|1]*/];
@@ -115,6 +168,11 @@ public:
 #endif
                               );
 
+#if COM16_C806_EMT
+  UChar getEmtTrIdx ( TComTU &rTu, const ComponentID compID );
+  UChar getEmtMode  ( TComTU &rTu, const ComponentID compID );
+#endif
+
   // transform & inverse transform functions
   Void transformNxN(       TComTU         & rTu,
                      const ComponentID      compID,
@@ -125,8 +183,7 @@ public:
                            TCoeff        * rpcArlCoeff,
 #endif
                            TCoeff         & uiAbsSum,
-                     const QpParam        & cQP
-                    );
+                     const QpParam        & cQP );
 
 
   Void invTransformNxN(      TComTU       & rTu,
@@ -135,7 +192,7 @@ public:
                        const UInt           uiStride,
                              TCoeff      *  pcCoeff,
                        const QpParam      & cQP
-                             DEBUG_STRING_FN_DECLAREP(psDebug));
+                             DEBUG_STRING_FN_DECLAREP(psDebug) );
 
   Void invRecurTransformNxN ( const ComponentID compID, TComYuv *pResidual, TComTU &rTu );
 
@@ -235,7 +292,12 @@ protected:
 
 private:
   // forward Transform
-  Void xT   ( const Int channelBitDepth, Bool useDST, Pel* piBlkResi, UInt uiStride, TCoeff* psCoeff, Int iWidth, Int iHeight, const Int maxLog2TrDynamicRange );
+  Void xT   ( const Int channelBitDepth, Bool useDST, Pel* piBlkResi, UInt uiStride, TCoeff* psCoeff, Int iWidth, Int iHeight, const Int maxLog2TrDynamicRange 
+#if COM16_C806_EMT
+    , UChar ucMode
+    , UChar ucTrIdx
+#endif
+    );
 
   // skipping Transform
   Void xTransformSkip ( Pel* piBlkResi, UInt uiStride, TCoeff* psCoeff, TComTU &rTu, const ComponentID component );
@@ -316,7 +378,12 @@ __inline UInt              xGetCodedLevel  ( Double&          rd64CodedCost,
                  const QpParam      &cQP );
 
   // inverse transform
-  Void xIT    ( const Int channelBitDepth, Bool useDST, TCoeff* plCoef, Pel* pResidual, UInt uiStride, Int iWidth, Int iHeight, const Int maxLog2TrDynamicRange );
+  Void xIT    ( const Int channelBitDepth, Bool useDST, TCoeff* plCoef, Pel* pResidual, UInt uiStride, Int iWidth, Int iHeight, const Int maxLog2TrDynamicRange 
+#if COM16_C806_EMT
+    , UChar ucMode
+    , UChar ucTrIdx
+#endif
+    );
 
   // inverse skipping transform
   Void xITransformSkip ( TCoeff* plCoef, Pel* pResidual, UInt uiStride, TComTU &rTu, const ComponentID component );

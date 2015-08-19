@@ -107,6 +107,10 @@ TDecSbac::TDecSbac()
 , m_cALFUvlcSCModel                          ( 1,             1,               NUM_ALF_UVLC_CTX              , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cALFSvlcSCModel                          ( 1,             1,               NUM_ALF_SVLC_CTX              , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
+#if COM16_C806_EMT
+, m_cEmtTuIdxSCModel                         ( 1,             1,               NUM_EMT_TU_IDX_CTX            , m_contextModels + m_numContextModels, m_numContextModels)
+, m_cEmtCuFlagSCModel                        ( 1,             1,               NUM_EMT_CU_FLAG_CTX           , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 {
   assert( m_numContextModels <= MAX_NUM_CTX_MOD );
 }
@@ -182,6 +186,10 @@ Void TDecSbac::resetEntropy(TComSlice* pSlice)
   m_cALFFlagSCModel.initBuffer                    ( sliceType, qp, (UChar*)INIT_ALF_FLAG );
   m_cALFUvlcSCModel.initBuffer                    ( sliceType, qp, (UChar*)INIT_ALF_UVLC );
   m_cALFSvlcSCModel.initBuffer                    ( sliceType, qp, (UChar*)INIT_ALF_SVLC );
+#endif
+#if COM16_C806_EMT
+  m_cEmtTuIdxSCModel.initBuffer                   ( sliceType, qp, (UChar*)INIT_EMT_TU_IDX );
+  m_cEmtCuFlagSCModel.initBuffer                  ( sliceType, qp, (UChar*)INIT_EMT_CU_FLAG );
 #endif
 
   for (UInt statisticIndex = 0; statisticIndex < RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS ; statisticIndex++)
@@ -1311,6 +1319,9 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID )
   const UInt uiHeight=rRect.height;
   TCoeff* pcCoef=(pcCU->getCoeff(compID)+rTu.getCoefficientOffset(compID));
   const TComSPS &sps=*(pcCU->getSlice()->getSPS());
+#if COM16_C806_EMT
+  UInt uiNumSig=0;
+#endif
 
   DTRACE_CABAC_VL( g_nSymbolCounter++ )
   DTRACE_CABAC_T( "\tparseCoeffNxN()\teType=" )
@@ -1685,10 +1696,34 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID )
         }
       }
     }
+#if COM16_C806_EMT
+    uiNumSig += numNonZero;
+#endif
   }
 
 #if ENVIRONMENT_VARIABLE_DEBUG_AND_TEST
   printSBACCoeffData(uiPosLastX, uiPosLastY, uiWidth, uiHeight, compID, uiAbsPartIdx, codingParameters.scanType, pcCoef);
+#endif
+
+#if COM16_C806_EMT
+  if (!pcCU->getTransformSkip( uiAbsPartIdx, compID) && compID == COMPONENT_Y )
+  {
+    if ( pcCU->getEmtCuFlag( uiAbsPartIdx ) && pcCU->isIntra( uiAbsPartIdx ) )
+    {
+      if( uiNumSig > g_iEmtSigNumThr )
+      {
+        parseEmtTuIdx( pcCU, uiAbsPartIdx, rTu.GetTransformDepthTotal() ); 
+      }
+      else
+      {
+        pcCU->setEmtTuIdxSubParts( 0, uiAbsPartIdx, rTu.GetTransformDepthTotal() );
+      }
+    }
+    if ( pcCU->getEmtCuFlag( uiAbsPartIdx ) && !pcCU->isIntra( uiAbsPartIdx ) )
+    {
+      parseEmtTuIdx( pcCU, uiAbsPartIdx, rTu.GetTransformDepthTotal() ); 
+    }
+  }
 #endif
 
   return;
@@ -2109,6 +2144,51 @@ Void TDecSbac::parseAlfSvlc (Int&  riVal)
   }
 
   riVal = i*iSign;
+}
+#endif
+
+#if COM16_C806_EMT
+Void TDecSbac::parseEmtTuIdx( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
+{
+  UChar trIdx = 0;
+
+  if ( pcCU->isIntra( uiAbsPartIdx ) && pcCU->getWidth(uiAbsPartIdx) <= EMT_INTRA_MAX_CU  )
+  {
+    UInt uiSymbol1 = 0, uiSymbol2 = 0;
+    m_pcTDecBinIf->decodeBin( uiSymbol1, m_cEmtTuIdxSCModel.get(0, 0, 0) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__EMT_TU_INDX) );
+    m_pcTDecBinIf->decodeBin( uiSymbol2, m_cEmtTuIdxSCModel.get(0, 0, 1) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__EMT_TU_INDX) );
+    trIdx = (uiSymbol2 << 1) | uiSymbol1; 
+  }
+  if( !pcCU->isIntra( uiAbsPartIdx ) && pcCU->getWidth(uiAbsPartIdx) <= EMT_INTER_MAX_CU )
+  {
+    UInt uiSymbol1 = 0, uiSymbol2 = 0;
+    m_pcTDecBinIf->decodeBin( uiSymbol1, m_cEmtTuIdxSCModel.get(0, 0, 2) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__EMT_TU_INDX) );
+    m_pcTDecBinIf->decodeBin( uiSymbol2, m_cEmtTuIdxSCModel.get(0, 0, 3) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__EMT_TU_INDX) );
+    trIdx = (uiSymbol2 << 1) | uiSymbol1; 
+  }
+
+  pcCU->setEmtTuIdxSubParts( trIdx, uiAbsPartIdx, uiDepth );
+}
+
+Void TDecSbac::parseEmtCuFlag  ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bParseCuFlag )
+{
+  assert( uiDepth < NUM_EMT_CU_FLAG_CTX );
+
+  pcCU->setEmtCuFlagSubParts( 0, uiAbsPartIdx, uiDepth );
+  pcCU->setEmtTuIdxSubParts( DCT2_EMT, uiAbsPartIdx, uiDepth );
+
+  if ( pcCU->isIntra( uiAbsPartIdx ) && bParseCuFlag && pcCU->getWidth(uiAbsPartIdx) <= EMT_INTRA_MAX_CU && pcCU->getSlice()->getSPS()->getUseIntraEMT() )
+  {
+    UInt uiCuFlag = 0;
+    m_pcTDecBinIf->decodeBin( uiCuFlag, m_cEmtCuFlagSCModel.get(0, 0, uiDepth) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__EMT_CU_FLAG) );
+    pcCU->setEmtCuFlagSubParts( uiCuFlag, uiAbsPartIdx, uiDepth );
+  }
+  if( !pcCU->isIntra( uiAbsPartIdx ) && bParseCuFlag && pcCU->getWidth(uiAbsPartIdx) <= EMT_INTER_MAX_CU && pcCU->getSlice()->getSPS()->getUseInterEMT() )
+  {
+    UInt uiCuFlag = 0;
+    m_pcTDecBinIf->decodeBin( uiCuFlag, m_cEmtCuFlagSCModel.get(0, 0, uiDepth) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__EMT_CU_FLAG));
+    pcCU->setEmtCuFlagSubParts( uiCuFlag, uiAbsPartIdx, uiDepth );
+  }
 }
 #endif
 

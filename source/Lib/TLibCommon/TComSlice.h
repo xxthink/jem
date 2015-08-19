@@ -822,6 +822,11 @@ private:
   Bool             m_useALF;
 #endif
 
+#if COM16_C806_EMT
+  Int              m_useIntraEMT;
+  Int              m_useInterEMT;
+#endif
+
   // Parameter
   BitDepths        m_bitDepths;
   Int              m_qpBDOffset[MAX_NUM_CHANNEL_TYPE];
@@ -995,24 +1000,31 @@ public:
 
   // KTA tools
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
-  Bool  getAtmvpEnableFlag() const                                                                       { return m_useAtmvpFlag;                                               }
-  Void  setAtmvpEnableFlag(Bool b)                                                                       { m_useAtmvpFlag = b;                                                  }
-  UInt  getSubPUTLog2Size () const                                                                       { return m_subPUTLog2Size;                                             }
-  Void  setSubPUTLog2Size (UInt u)                                                                       { m_subPUTLog2Size = u;                                                } 
+  Bool                   getAtmvpEnableFlag() const                                                      { return m_useAtmvpFlag;                                               }
+  Void                   setAtmvpEnableFlag(Bool b)                                                      { m_useAtmvpFlag = b;                                                  }
+  UInt                   getSubPUTLog2Size () const                                                      { return m_subPUTLog2Size;                                             }
+  Void                   setSubPUTLog2Size (UInt u)                                                      { m_subPUTLog2Size = u;                                                } 
 #endif
 #if COM16_C806_OBMC
-  Void  setOBMC( Bool bOBMC )                                                                            { m_useOBMC = bOBMC;                                                     }
-  Bool  getOBMC() const                                                                                  { return m_useOBMC;                                                      }
-  Void  setOBMCBlkSize( Int nBlkSize )                                                                   { m_OBMCBlkSize = nBlkSize;                                           }
-  Int   getOBMCBlkSize() const                                                                           { return m_OBMCBlkSize;                                               }
+  Void                   setOBMC( Bool bOBMC )                                                           { m_useOBMC = bOBMC;                                                     }
+  Bool                   getOBMC() const                                                                 { return m_useOBMC;                                                      }
+  Void                   setOBMCBlkSize( Int nBlkSize )                                                  { m_OBMCBlkSize = nBlkSize;                                           }
+  Int                    getOBMCBlkSize() const                                                          { return m_OBMCBlkSize;                                               }
 #endif
 #if VCEG_AZ06_IC
-  Bool  getICFlag() const                                                                                { return m_bICFlag;                                                    }
-  Void  setICFlag(Bool b)                                                                                { m_bICFlag = b;                                                       }
+  Bool                   getICFlag() const                                                               { return m_bICFlag;                                                    }
+  Void                   setICFlag(Bool b)                                                               { m_bICFlag = b;                                                       }
 #endif
 #if ALF_HM3_REFACTOR
   Bool                   getUseALF () const                                                              { return m_useALF;                                                    } 
   Void                   setUseALF ( Bool b )                                                            { m_useALF  = b;                                                      }
+#endif
+
+#if COM16_C806_EMT
+  Void                   setUseIntraEMT(Int n)                                                           { m_useIntraEMT = n;     }
+  Int                    getUseIntraEMT() const                                                          { return m_useIntraEMT;  }
+  Void                   setUseInterEMT(Int n)                                                           { m_useInterEMT = n;     }
+  Int                    getUseInterEMT() const                                                          { return m_useInterEMT;  }
 #endif
   // KTA tools
 

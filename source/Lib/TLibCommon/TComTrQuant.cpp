@@ -54,6 +54,26 @@ typedef struct
   Double d64SigCost_0;
 } coeffGroupRDStats;
 
+#if COM16_C806_EMT
+FwdTrans *fastFwdTrans[16][5] = 
+{
+  {fastForwardDCT2_B4, fastForwardDCT2_B8, fastForwardDCT2_B16, fastForwardDCT2_B32, fastForwardDCT2_B64},
+  {fastForwardDCT5_B4, fastForwardDCT5_B8, fastForwardDCT5_B16, fastForwardDCT5_B32, NULL               },
+  {fastForwardDCT8_B4, fastForwardDCT8_B8, fastForwardDCT8_B16, fastForwardDCT8_B32, NULL               },
+  {fastForwardDST1_B4, fastForwardDST1_B8, fastForwardDST1_B16, fastForwardDST1_B32, NULL               },
+  {fastForwardDST7_B4, fastForwardDST7_B8, fastForwardDST7_B16, fastForwardDST7_B32, NULL               },
+};
+
+InvTrans *fastInvTrans[16][5] = 
+{
+  {fastInverseDCT2_B4, fastInverseDCT2_B8, fastInverseDCT2_B16, fastInverseDCT2_B32, fastInverseDCT2_B64},
+  {fastInverseDCT5_B4, fastInverseDCT5_B8, fastInverseDCT5_B16, fastInverseDCT5_B32, NULL               },
+  {fastInverseDCT8_B4, fastInverseDCT8_B8, fastInverseDCT8_B16, fastInverseDCT8_B32, NULL               },
+  {fastInverseDST1_B4, fastInverseDST1_B8, fastInverseDST1_B16, fastInverseDST1_B32, NULL               },
+  {fastInverseDST7_B4, fastInverseDST7_B8, fastInverseDST7_B16, fastInverseDST7_B32, NULL               },
+};
+#endif
+
 //! \ingroup TLibCommon
 //! \{
 
@@ -233,6 +253,194 @@ Void TComTrQuant::clearSliceARLCnt()
  *  \param uiTrSize transform size (uiTrSize x uiTrSize)
  *  \param uiMode is Intra Prediction mode used in Mode-Dependent DCT/DST only
  */
+#if COM16_C806_EMT
+Void xTr_EMT(Int bitDepth, Pel *block, TCoeff *coeff, UInt uiStride, UInt uiTrSize, Bool useDST, const Int maxLog2TrDynamicRange, UChar ucMode, UChar ucTrIdx)
+{
+  UInt i,j,k;
+  TCoeff iSum;
+  TCoeff tmp[MAX_TU_SIZE * MAX_TU_SIZE];
+  const TMatrixCoeff *iTH, *iTV;
+  UInt uiLog2TrSize = g_aucConvertToBit[ uiTrSize ] + 2;
+
+  Int zo = ( ucMode == INTER_MODE_IDX && uiTrSize>=32 && ucTrIdx != DCT2_EMT ) ? 1 : 0;
+
+  UInt  nTrIdxHor = DCT2, nTrIdxVer = DCT2;
+  if( ucMode != INTER_MODE_IDX && ucTrIdx != DCT2_EMT )
+  {
+    UInt  nTrSubsetHor = g_aucTrSetHorz[ucMode];
+    UInt  nTrSubsetVer = g_aucTrSetVert[ucMode];
+    nTrIdxHor = g_aiTrSubsetIntra[nTrSubsetHor][ucTrIdx &1];
+    nTrIdxVer = g_aiTrSubsetIntra[nTrSubsetVer][ucTrIdx>>1];
+  }
+  if ( ucMode == INTER_MODE_IDX && ucTrIdx != DCT2_EMT )
+  {
+    nTrIdxHor = g_aiTrSubsetInter[ucTrIdx &1];
+    nTrIdxVer = g_aiTrSubsetInter[ucTrIdx>>1];
+  }
+
+  if (uiTrSize==4)
+  {
+    iTH  = g_aiTr4[nTrIdxHor][0];
+    iTV  = g_aiTr4[nTrIdxVer][0];
+  }
+  else if (uiTrSize==8)
+  {
+    iTH  = g_aiTr8[nTrIdxHor][0];
+    iTV  = g_aiTr8[nTrIdxVer][0];
+  }
+  else if (uiTrSize==16)
+  {
+    iTH  = g_aiTr16[nTrIdxHor][0];
+    iTV  = g_aiTr16[nTrIdxVer][0];
+  }
+  else if (uiTrSize==32)
+  {
+    iTH  = g_aiTr32[nTrIdxHor][0];
+    iTV  = g_aiTr32[nTrIdxVer][0];
+  }
+  else
+  {
+    assert(0);
+  }
+
+  const Int TRANSFORM_MATRIX_SHIFT = g_transformMatrixShift[TRANSFORM_FORWARD];
+  
+  Int shift_1st = (uiLog2TrSize +  bitDepth + TRANSFORM_MATRIX_SHIFT) - maxLog2TrDynamicRange + COM16_C806_TRANS_PREC;
+  Int shift_2nd = uiLog2TrSize + TRANSFORM_MATRIX_SHIFT + COM16_C806_TRANS_PREC;
+  const Int add_1st = (shift_1st>0) ? (1<<(shift_1st-1)) : 0;
+  const Int add_2nd = 1<<(shift_2nd-1);
+
+  /* Horizontal transform */
+  for (i=0; i<(uiTrSize>>zo); i++)
+  {
+    for (j=0; j<uiTrSize; j++)
+    {
+      iSum = 0;
+      for (k=0; k<uiTrSize; k++)
+      {
+        iSum += iTH[i*uiTrSize+k]*block[j*uiStride+k];
+      }
+      tmp[i*uiTrSize+j] = (iSum + add_1st)>>shift_1st;
+    }
+  }
+
+  /* Vertical transform */
+  for (i=0; i<(uiTrSize>>zo); i++)
+  {
+    for (j=0; j<(uiTrSize>>zo); j++)
+    {
+      iSum = 0;
+      for (k=0; k<uiTrSize; k++)
+      {
+        iSum += iTV[i*uiTrSize+k]*tmp[j*uiTrSize+k];
+      }
+      coeff[i*uiTrSize+j] = (iSum + add_2nd)>>shift_2nd;
+    }
+  }
+  if(zo)
+  {
+    memset( coeff + uiTrSize*uiTrSize/2, 0, sizeof(TCoeff)*uiTrSize*uiTrSize/2 );
+    coeff += uiTrSize/2;
+    for (j=0; j<uiTrSize/2; j++)
+    {
+      memset( coeff, 0, sizeof(TCoeff)*uiTrSize/2 );
+      coeff += uiTrSize;
+    }
+  }
+}
+
+Void xITr_EMT(Int bitDepth, TCoeff *coeff, Pel *block, UInt uiStride, UInt uiTrSize, Bool useDST, const Int maxLog2TrDynamicRange, UChar ucMode, UChar ucTrIdx)
+{
+  UInt i,j,k;
+  TCoeff iSum;
+  TCoeff tmp[MAX_TU_SIZE * MAX_TU_SIZE];
+  const TMatrixCoeff *iTH, *iTV;
+
+  Int zo = ( ucMode == INTER_MODE_IDX && uiTrSize>=32 && ucTrIdx != DCT2_EMT ) ? 1 : 0;
+
+  UInt  nTrIdxHor = DCT2, nTrIdxVer = DCT2;
+  if( ucMode != INTER_MODE_IDX && ucTrIdx != DCT2_EMT )
+  {
+    UInt  nTrSubsetHor = g_aucTrSetHorz[ucMode];
+    UInt  nTrSubsetVer = g_aucTrSetVert[ucMode];
+    nTrIdxHor = g_aiTrSubsetIntra[nTrSubsetHor][ucTrIdx &1];
+    nTrIdxVer = g_aiTrSubsetIntra[nTrSubsetVer][ucTrIdx>>1];
+  }
+  if ( ucMode == INTER_MODE_IDX && ucTrIdx != DCT2_EMT )
+  {
+    nTrIdxHor = g_aiTrSubsetInter[ucTrIdx &1];
+    nTrIdxVer = g_aiTrSubsetInter[ucTrIdx>>1];
+  }
+
+  if (uiTrSize==4)
+  {
+    iTH  = g_aiTr4[nTrIdxHor][0];
+    iTV  = g_aiTr4[nTrIdxVer][0];
+  }
+  else if (uiTrSize==8)
+  {
+    iTH  = g_aiTr8[nTrIdxHor][0];
+    iTV  = g_aiTr8[nTrIdxVer][0];
+  }
+  else if (uiTrSize==16)
+  {
+    iTH  = g_aiTr16[nTrIdxHor][0];
+    iTV  = g_aiTr16[nTrIdxVer][0];
+  }
+  else if (uiTrSize==32)
+  {
+    iTH  = g_aiTr32[nTrIdxHor][0];
+    iTV  = g_aiTr32[nTrIdxVer][0];
+  }
+  else
+  {
+    assert(0);
+  }
+
+  const Int TRANSFORM_MATRIX_SHIFT = g_transformMatrixShift[TRANSFORM_INVERSE];
+
+
+  Int shift_1st = TRANSFORM_MATRIX_SHIFT + 1 + COM16_C806_TRANS_PREC; //1 has been added to shift_1st at the expense of shift_2nd
+  Int shift_2nd = (TRANSFORM_MATRIX_SHIFT + maxLog2TrDynamicRange - 1) - bitDepth + COM16_C806_TRANS_PREC;
+  const TCoeff clipMinimum = -(1 << maxLog2TrDynamicRange);
+  const TCoeff clipMaximum =  (1 << maxLog2TrDynamicRange) - 1;
+  assert(shift_2nd>=0);
+  const Int add_1st = 1<<(shift_1st-1);
+  const Int add_2nd = (shift_2nd>0) ? (1<<(shift_2nd-1)) : 0;
+
+  /* Horizontal transform */
+  for (i=0; i<uiTrSize; i++)
+  {
+    for (j=0; j<uiTrSize>>zo; j++)
+    {
+      iSum = 0;
+      for (k=0; k<uiTrSize>>zo; k++)
+      {
+        iSum += iTV[k*uiTrSize+i]*coeff[k*uiTrSize+j];
+      }
+
+      // Clipping here is not in the standard, but is used to protect the "Pel" data type into which the inverse-transformed samples will be copied
+      tmp[i*uiTrSize+j] = Clip3<TCoeff>(clipMinimum, clipMaximum, (iSum + add_1st)>>shift_1st);
+    }
+  }
+
+  /* Vertical transform */
+  for (i=0; i<uiTrSize; i++)
+  {
+    for (j=0; j<uiTrSize; j++)
+    {
+      iSum = 0;
+      for (k=0; k<uiTrSize>>zo; k++)
+      {
+        iSum += iTH[k*uiTrSize+j]*tmp[i*uiTrSize+k];
+      }
+
+      block[i*uiStride+j] = Clip3<TCoeff>(std::numeric_limits<Pel>::min(), std::numeric_limits<Pel>::max(), (iSum + add_2nd)>>shift_2nd);
+    }
+  }
+}
+#endif
+
 Void xTr(Int bitDepth, Pel *block, TCoeff *coeff, UInt uiStride, UInt uiTrSize, Bool useDST, const Int maxLog2TrDynamicRange)
 {
   UInt i,j,k;
@@ -240,6 +448,7 @@ Void xTr(Int bitDepth, Pel *block, TCoeff *coeff, UInt uiStride, UInt uiTrSize, 
   TCoeff tmp[MAX_TU_SIZE * MAX_TU_SIZE];
   const TMatrixCoeff *iT;
   UInt uiLog2TrSize = g_aucConvertToBit[ uiTrSize ] + 2;
+
 
   if (uiTrSize==4)
   {
@@ -270,7 +479,6 @@ Void xTr(Int bitDepth, Pel *block, TCoeff *coeff, UInt uiStride, UInt uiTrSize, 
   const Int add_2nd = 1<<(shift_2nd-1);
 
   /* Horizontal transform */
-
   for (i=0; i<uiTrSize; i++)
   {
     for (j=0; j<uiTrSize; j++)
@@ -847,6 +1055,1556 @@ Void partialButterflyInverse32(TCoeff *src, TCoeff *dst, Int shift, Int line, co
   }
 }
 
+/** 4x4 forward transform implemented using partial butterfly structure (1D)
+ *  \param src   input data (residual)
+ *  \param dst   output data (transform coefficients)
+ *  \param shift specifies right shift after 1D transform
+ */
+// ********************************** DCT-II **********************************
+void fastForwardDCT2_B4(TCoeff *src, TCoeff *dst, Int shift, Int line, Int zo, Int use)
+{
+  Int j;
+  Int E[2],O[2];
+  Int add = 1<<(shift-1);
+
+#if COM16_C806_EMT
+  const TMatrixCoeff *iT = use ? g_aiTr4[DCT2][0] : g_aiT4[0][0];
+#else
+  const Short *iT = g_aiT4[0][0];
+#endif
+
+  for (j=0; j<line; j++)
+  {    
+    /* E and O */
+    E[0] = src[0] + src[3];
+    O[0] = src[0] - src[3];
+    E[1] = src[1] + src[2];
+    O[1] = src[1] - src[2];
+
+    dst[0] = (iT[0]*E[0] + iT[1]*E[1] + add)>>shift;
+    dst[2*line] = (iT[8]*E[0] + iT[9]*E[1] + add)>>shift;
+    dst[line] = (iT[4]*O[0] + iT[5]*O[1] + add)>>shift;
+    dst[3*line] = (iT[12]*O[0] + iT[13]*O[1] + add)>>shift;
+
+    src += 4;
+    dst ++;
+  }
+}
+
+void fastInverseDCT2_B4(TCoeff *src, TCoeff *dst, Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)
+{
+  Int j;
+  Int E[2],O[2];
+  Int add = 1<<(shift-1);
+
+#if COM16_C806_EMT
+  const TMatrixCoeff *iT = use ? g_aiTr4[DCT2][0] : g_aiT4[0][0];
+#else
+  const Short *iT = g_aiT4[0][0];
+#endif
+
+  for (j=0; j<line; j++)
+  {    
+    /* Utilizing symmetry properties to the maximum to minimize the number of multiplications */    
+    O[0] = iT[1*4+0]*src[line] + iT[3*4+0]*src[3*line];
+    O[1] = iT[1*4+1]*src[line] + iT[3*4+1]*src[3*line];
+    E[0] = iT[0*4+0]*src[0] + iT[2*4+0]*src[2*line];
+    E[1] = iT[0*4+1]*src[0] + iT[2*4+1]*src[2*line];
+
+    /* Combining even and odd terms at each hierarchy levels to calculate the final spatial domain vector */
+    dst[0] = Clip3( outputMinimum, outputMaximum, (E[0] + O[0] + add)>>shift );
+    dst[1] = Clip3( outputMinimum, outputMaximum, (E[1] + O[1] + add)>>shift );
+    dst[2] = Clip3( outputMinimum, outputMaximum, (E[1] - O[1] + add)>>shift );
+    dst[3] = Clip3( outputMinimum, outputMaximum, (E[0] - O[0] + add)>>shift );
+            
+    src   ++;
+    dst += 4;
+  }
+}
+
+void fastForwardDCT2_B8(TCoeff *src, TCoeff *dst, Int shift, Int line, Int zo, Int use)
+{
+  Int j,k;
+  Int E[4],O[4];
+  Int EE[2],EO[2];
+  Int add = 1<<(shift-1);
+
+#if COM16_C806_EMT
+  const TMatrixCoeff *iT = use ? g_aiTr8[DCT2][0] : g_aiT8[0][0];
+#else
+  const Short *iT = g_aiT8[0][0];
+#endif
+
+  for (j=0; j<line; j++)
+  {  
+    /* E and O*/
+    for (k=0;k<4;k++)
+    {
+      E[k] = src[k] + src[7-k];
+      O[k] = src[k] - src[7-k];
+    }    
+    /* EE and EO */
+    EE[0] = E[0] + E[3];    
+    EO[0] = E[0] - E[3];
+    EE[1] = E[1] + E[2];
+    EO[1] = E[1] - E[2];
+
+    dst[0] = (iT[0]*EE[0] + iT[1]*EE[1] + add)>>shift;
+    dst[4*line] = (iT[32]*EE[0] + iT[33]*EE[1] + add)>>shift; 
+    dst[2*line] = (iT[16]*EO[0] + iT[17]*EO[1] + add)>>shift;
+    dst[6*line] = (iT[48]*EO[0] + iT[49]*EO[1] + add)>>shift; 
+
+    dst[line] = (iT[8]*O[0] + iT[9]*O[1] + iT[10]*O[2] + iT[11]*O[3] + add)>>shift;
+    dst[3*line] = (iT[24]*O[0] + iT[25]*O[1] + iT[26]*O[2] + iT[27]*O[3] + add)>>shift;
+    dst[5*line] = (iT[40]*O[0] + iT[41]*O[1] + iT[42]*O[2] + iT[43]*O[3] + add)>>shift;
+    dst[7*line] = (iT[56]*O[0] + iT[57]*O[1] + iT[58]*O[2] + iT[59]*O[3] + add)>>shift;
+
+    src += 8;
+    dst ++;
+  }
+}
+
+
+void fastInverseDCT2_B8(TCoeff *src, TCoeff *dst, Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)
+{
+  Int j,k;
+  Int E[4],O[4];
+  Int EE[2],EO[2];
+  Int add = 1<<(shift-1);
+
+#if COM16_C806_EMT
+  const TMatrixCoeff *iT = use ? g_aiTr8[DCT2][0] : g_aiT8[0][0];
+#else
+  const Short *iT = g_aiT8[0][0];
+#endif
+
+  for (j=0; j<line; j++) 
+  {    
+    /* Utilizing symmetry properties to the maximum to minimize the number of multiplications */
+    for (k=0;k<4;k++)
+    {
+      O[k] = iT[ 1*8+k]*src[line] + iT[ 3*8+k]*src[3*line] + iT[ 5*8+k]*src[5*line] + iT[ 7*8+k]*src[7*line];
+    }
+
+    EO[0] = iT[2*8+0]*src[ 2*line ] + iT[6*8+0]*src[ 6*line ];
+    EO[1] = iT[2*8+1]*src[ 2*line ] + iT[6*8+1]*src[ 6*line ];
+    EE[0] = iT[0*8+0]*src[ 0      ] + iT[4*8+0]*src[ 4*line ];
+    EE[1] = iT[0*8+1]*src[ 0      ] + iT[4*8+1]*src[ 4*line ];
+
+    /* Combining even and odd terms at each hierarchy levels to calculate the final spatial domain vector */ 
+    E[0] = EE[0] + EO[0];
+    E[3] = EE[0] - EO[0];
+    E[1] = EE[1] + EO[1];
+    E[2] = EE[1] - EO[1];
+    for (k=0;k<4;k++)
+    {
+      dst[ k   ] = Clip3( outputMinimum, outputMaximum, (E[k] + O[k] + add)>>shift );
+      dst[ k+4 ] = Clip3( outputMinimum, outputMaximum, (E[3-k] - O[3-k] + add)>>shift );
+    }   
+    src ++;
+    dst += 8;
+  }
+}
+
+
+void fastForwardDCT2_B16(TCoeff *src, TCoeff *dst, Int shift, Int line, Int zo, Int use)
+{
+  Int j,k;
+  Int E[8],O[8];
+  Int EE[4],EO[4];
+  Int EEE[2],EEO[2];
+  Int add = 1<<(shift-1);
+
+#if COM16_C806_EMT
+  const TMatrixCoeff *iT = use ? g_aiTr16[DCT2][0] : g_aiT16[0][0];
+#else
+  const Short *iT = g_aiT16[0][0];
+#endif
+
+  for (j=0; j<line; j++) 
+  {    
+    /* E and O*/
+    for (k=0;k<8;k++)
+    {
+      E[k] = src[k] + src[15-k];
+      O[k] = src[k] - src[15-k];
+    } 
+    /* EE and EO */
+    for (k=0;k<4;k++)
+    {
+      EE[k] = E[k] + E[7-k];
+      EO[k] = E[k] - E[7-k];
+    }
+    /* EEE and EEO */
+    EEE[0] = EE[0] + EE[3];    
+    EEO[0] = EE[0] - EE[3];
+    EEE[1] = EE[1] + EE[2];
+    EEO[1] = EE[1] - EE[2];
+
+    dst[ 0      ] = (iT[0]*EEE[0] + iT[1]*EEE[1] + add)>>shift;        
+    dst[ 8*line ] = (iT[8*16]*EEE[0] + iT[8*16+1]*EEE[1] + add)>>shift;    
+    dst[ 4*line ] = (iT[4*16]*EEO[0] + iT[4*16+1]*EEO[1] + add)>>shift;        
+    dst[ 12*line] = (iT[12*16]*EEO[0] + iT[12*16+1]*EEO[1] + add)>>shift;
+
+    for (k=2;k<16;k+=4)
+    {
+      dst[ k*line ] = (iT[k*16]*EO[0] + iT[k*16+1]*EO[1] + iT[k*16+2]*EO[2] + iT[k*16+3]*EO[3] + add)>>shift;      
+    }
+
+    for (k=1;k<16;k+=2)
+    {
+      dst[ k*line ] = (iT[k*16]*O[0] + iT[k*16+1]*O[1] + iT[k*16+2]*O[2] + iT[k*16+3]*O[3] + 
+        iT[k*16+4]*O[4] + iT[k*16+5]*O[5] + iT[k*16+6]*O[6] + iT[k*16+7]*O[7] + add)>>shift;
+    }
+
+    src += 16;
+    dst ++; 
+
+  }
+}
+
+
+void fastInverseDCT2_B16(TCoeff *src, TCoeff *dst, Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)
+{
+  Int j,k;
+  Int E[8],O[8];
+  Int EE[4],EO[4];
+  Int EEE[2],EEO[2];
+  Int add = 1<<(shift-1);
+
+#if COM16_C806_EMT
+  const TMatrixCoeff *iT = use ? g_aiTr16[DCT2][0] : g_aiT16[0][0];
+#else
+  const Short *iT = g_aiT16[0][0];
+#endif
+
+  for (j=0; j<line; j++)
+  {    
+    /* Utilizing symmetry properties to the maximum to minimize the number of multiplications */
+    for (k=0;k<8;k++)
+    {
+      O[k] = iT[ 1*16+k]*src[ line] + iT[ 3*16+k]*src[ 3*line] + iT[ 5*16+k]*src[ 5*line] + iT[ 7*16+k]*src[ 7*line] + 
+        iT[ 9*16+k]*src[ 9*line] + iT[11*16+k]*src[11*line] + iT[13*16+k]*src[13*line] + iT[15*16+k]*src[15*line];
+    }
+    for (k=0;k<4;k++)
+    {
+      EO[k] = iT[ 2*16+k]*src[ 2*line] + iT[ 6*16+k]*src[ 6*line] + iT[10*16+k]*src[10*line] + iT[14*16+k]*src[14*line];
+    }
+    EEO[0] = iT[4*16]*src[ 4*line ] + iT[12*16]*src[ 12*line ];
+    EEE[0] = iT[0]*src[ 0      ] + iT[ 8*16]*src[ 8*line  ];
+    EEO[1] = iT[4*16+1]*src[ 4*line ] + iT[12*16+1]*src[ 12*line ];
+    EEE[1] = iT[0*16+1]*src[ 0      ] + iT[ 8*16+1]*src[ 8*line  ];
+
+    /* Combining even and odd terms at each hierarchy levels to calculate the final spatial domain vector */ 
+    for (k=0;k<2;k++)
+    {
+      EE[k] = EEE[k] + EEO[k];
+      EE[k+2] = EEE[1-k] - EEO[1-k];
+    }    
+    for (k=0;k<4;k++)
+    {
+      E[k] = EE[k] + EO[k];
+      E[k+4] = EE[3-k] - EO[3-k];
+    }    
+    for (k=0;k<8;k++)
+    {
+      dst[k]   = Clip3( outputMinimum, outputMaximum, (E[k] + O[k] + add)>>shift );
+      dst[k+8] = Clip3( outputMinimum, outputMaximum, (E[7-k] - O[7-k] + add)>>shift );
+    }   
+    src ++; 
+    dst += 16;
+  }
+}
+
+
+void fastForwardDCT2_B32(TCoeff *src, TCoeff *dst, Int shift, Int line, Int zo, Int use)
+{
+  Int j,k;
+  Int E[16],O[16];
+  Int EE[8],EO[8];
+  Int EEE[4],EEO[4];
+  Int EEEE[2],EEEO[2];
+  Int add = 1<<(shift-1);
+
+#if COM16_C806_EMT
+  const TMatrixCoeff *iT = use ? g_aiTr32[DCT2][0] : g_aiT32[0][0];
+#else
+  const Short *iT = g_aiT32[0][0];
+#endif
+
+  for (j=0; j<line; j++)
+  {    
+    /* E and O*/
+    for (k=0;k<16;k++)
+    {
+      E[k] = src[k] + src[31-k];
+      O[k] = src[k] - src[31-k];
+    } 
+    /* EE and EO */
+    for (k=0;k<8;k++)
+    {
+      EE[k] = E[k] + E[15-k];
+      EO[k] = E[k] - E[15-k];
+    }
+    /* EEE and EEO */
+    for (k=0;k<4;k++)
+    {
+      EEE[k] = EE[k] + EE[7-k];
+      EEO[k] = EE[k] - EE[7-k];
+    }
+    /* EEEE and EEEO */
+    EEEE[0] = EEE[0] + EEE[3];    
+    EEEO[0] = EEE[0] - EEE[3];
+    EEEE[1] = EEE[1] + EEE[2];
+    EEEO[1] = EEE[1] - EEE[2];
+
+    dst[ 0       ] = (iT[ 0*32+0]*EEEE[0] + iT[ 0*32+1]*EEEE[1] + add)>>shift;
+    dst[ 16*line ] = (iT[16*32+0]*EEEE[0] + iT[16*32+1]*EEEE[1] + add)>>shift;
+    dst[ 8*line  ] = (iT[ 8*32+0]*EEEO[0] + iT[ 8*32+1]*EEEO[1] + add)>>shift; 
+    dst[ 24*line ] = (iT[24*32+0]*EEEO[0] + iT[24*32+1]*EEEO[1] + add)>>shift;
+    for (k=4;k<32;k+=8)
+    {
+      dst[ k*line ] = (iT[k*32+0]*EEO[0] + iT[k*32+1]*EEO[1] + iT[k*32+2]*EEO[2] + iT[k*32+3]*EEO[3] + add)>>shift;
+    }       
+    for (k=2;k<32;k+=4)
+    {
+      dst[ k*line ] = (iT[k*32+0]*EO[0] + iT[k*32+1]*EO[1] + iT[k*32+2]*EO[2] + iT[k*32+3]*EO[3] + 
+        iT[k*32+4]*EO[4] + iT[k*32+5]*EO[5] + iT[k*32+6]*EO[6] + iT[k*32+7]*EO[7] + add)>>shift;
+    }       
+    for (k=1;k<32;k+=2)
+    {
+      dst[ k*line ] = (iT[k*32+ 0]*O[ 0] + iT[k*32+ 1]*O[ 1] + iT[k*32+ 2]*O[ 2] + iT[k*32+ 3]*O[ 3] + 
+        iT[k*32+ 4]*O[ 4] + iT[k*32+ 5]*O[ 5] + iT[k*32+ 6]*O[ 6] + iT[k*32+ 7]*O[ 7] +
+        iT[k*32+ 8]*O[ 8] + iT[k*32+ 9]*O[ 9] + iT[k*32+10]*O[10] + iT[k*32+11]*O[11] + 
+        iT[k*32+12]*O[12] + iT[k*32+13]*O[13] + iT[k*32+14]*O[14] + iT[k*32+15]*O[15] + add)>>shift;
+    }
+    src += 32;
+    dst ++;
+  }
+}
+
+
+void fastInverseDCT2_B32(TCoeff *src, TCoeff *dst, Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)
+{
+  Int j,k;
+  Int E[16],O[16];
+  Int EE[8],EO[8];
+  Int EEE[4],EEO[4];
+  Int EEEE[2],EEEO[2];
+  Int add = 1<<(shift-1);
+
+#if COM16_C806_EMT
+  const TMatrixCoeff *iT = use ? g_aiTr32[DCT2][0] : g_aiT32[0][0];
+#else
+  const Short *iT = g_aiT32[0][0];
+#endif
+
+  for (j=0; j<line; j++)
+  {    
+    /* Utilizing symmetry properties to the maximum to minimize the number of multiplications */
+    for (k=0;k<16;k++)
+    {
+      O[k] = iT[ 1*32+k]*src[ line  ] + iT[ 3*32+k]*src[ 3*line  ] + iT[ 5*32+k]*src[ 5*line  ] + iT[ 7*32+k]*src[ 7*line  ] + 
+        iT[ 9*32+k]*src[ 9*line  ] + iT[11*32+k]*src[ 11*line ] + iT[13*32+k]*src[ 13*line ] + iT[15*32+k]*src[ 15*line ] + 
+        iT[17*32+k]*src[ 17*line ] + iT[19*32+k]*src[ 19*line ] + iT[21*32+k]*src[ 21*line ] + iT[23*32+k]*src[ 23*line ] + 
+        iT[25*32+k]*src[ 25*line ] + iT[27*32+k]*src[ 27*line ] + iT[29*32+k]*src[ 29*line ] + iT[31*32+k]*src[ 31*line ];
+    }
+    for (k=0;k<8;k++)
+    {
+      EO[k] = iT[ 2*32+k]*src[ 2*line  ] + iT[ 6*32+k]*src[ 6*line  ] + iT[10*32+k]*src[ 10*line ] + iT[14*32+k]*src[ 14*line ] + 
+        iT[18*32+k]*src[ 18*line ] + iT[22*32+k]*src[ 22*line ] + iT[26*32+k]*src[ 26*line ] + iT[30*32+k]*src[ 30*line ];
+    }
+    for (k=0;k<4;k++)
+    {
+      EEO[k] = iT[4*32+k]*src[ 4*line ] + iT[12*32+k]*src[ 12*line ] + iT[20*32+k]*src[ 20*line ] + iT[28*32+k]*src[ 28*line ];
+    }
+    EEEO[0] = iT[8*32+0]*src[ 8*line ] + iT[24*32+0]*src[ 24*line ];
+    EEEO[1] = iT[8*32+1]*src[ 8*line ] + iT[24*32+1]*src[ 24*line ];
+    EEEE[0] = iT[0*32+0]*src[ 0      ] + iT[16*32+0]*src[ 16*line ];    
+    EEEE[1] = iT[0*32+1]*src[ 0      ] + iT[16*32+1]*src[ 16*line ];
+
+    /* Combining even and odd terms at each hierarchy levels to calculate the final spatial domain vector */
+    EEE[0] = EEEE[0] + EEEO[0];
+    EEE[3] = EEEE[0] - EEEO[0];
+    EEE[1] = EEEE[1] + EEEO[1];
+    EEE[2] = EEEE[1] - EEEO[1];    
+    for (k=0;k<4;k++)
+    {
+      EE[k] = EEE[k] + EEO[k];
+      EE[k+4] = EEE[3-k] - EEO[3-k];
+    }    
+    for (k=0;k<8;k++)
+    {
+      E[k] = EE[k] + EO[k];
+      E[k+8] = EE[7-k] - EO[7-k];
+    }    
+    for (k=0;k<16;k++)
+    {
+      dst[k]    = Clip3( outputMinimum, outputMaximum, (E[k] + O[k] + add)>>shift );
+      dst[k+16] = Clip3( outputMinimum, outputMaximum, (E[15-k] - O[15-k] + add)>>shift );
+    }
+    src ++;
+    dst += 32;
+  }
+}
+
+void fastForwardDCT2_B64(TCoeff *src, TCoeff *dst, Int shift, Int line, Int zo, Int use)
+{
+  Int rnd_factor = 1<<(shift-1);
+  const Int uiTrSize = 64;
+  const TMatrixCoeff *iT = NULL;
+  assert(0);
+
+  Int j, k;
+  Int E[32],O[32];
+  Int EE[16],EO[16];
+  Int EEE[8],EEO[8];
+  Int EEEE[4],EEEO[4];
+  Int EEEEE[2],EEEEO[2];
+  TCoeff *tmp = dst;
+
+  for (j=0; j<(line>>(2==zo?1:0)); j++)
+  {    
+    /* E and O*/
+    for (k=0;k<32;k++)
+    {
+      E[k] = src[k] + src[63-k];
+      O[k] = src[k] - src[63-k];
+    } 
+    /* EE and EO */
+    for (k=0;k<16;k++)
+    {
+      EE[k] = E[k] + E[31-k];
+      EO[k] = E[k] - E[31-k];
+    }
+    /* EEE and EEO */
+    for (k=0;k<8;k++)
+    {
+      EEE[k] = EE[k] + EE[15-k];
+      EEO[k] = EE[k] - EE[15-k];
+    }
+    /* EEEE and EEEO */
+    for (k=0;k<4;k++)
+    {
+      EEEE[k] = EEE[k] + EEE[7-k];
+      EEEO[k] = EEE[k] - EEE[7-k];
+    }
+    /* EEEEE and EEEEO */
+    EEEEE[0] = EEEE[0] + EEEE[3];    
+    EEEEO[0] = EEEE[0] - EEEE[3];
+    EEEEE[1] = EEEE[1] + EEEE[2];
+    EEEEO[1] = EEEE[1] - EEEE[2];
+
+    dst[ 0       ] = (iT[ 0*64+0]*EEEEE[0] + iT[ 0*64+1]*EEEEE[1] + rnd_factor)>>shift;
+    dst[ 16*line ] = (iT[16*64+0]*EEEEO[0] + iT[16*64+1]*EEEEO[1] + rnd_factor)>>shift; 
+    
+    if( !zo )
+    {
+      dst[ 32*line ] = (iT[32*64+0]*EEEEE[0] + iT[32*64+1]*EEEEE[1] + rnd_factor)>>shift;
+      dst[ 48*line ] = (iT[48*64+0]*EEEEO[0] + iT[48*64+1]*EEEEO[1] + rnd_factor)>>shift;
+    }
+    for (k=8;k<(zo?32:64);k+=16)
+    {
+      dst[ k*line ] = (iT[k*64+0]*EEEO[0] + iT[k*64+1]*EEEO[1] + iT[k*64+2]*EEEO[2] + iT[k*64+3]*EEEO[3] + rnd_factor)>>shift;
+    }       
+    for (k=4;k<(zo?32:64);k+=8)
+    {
+      dst[ k*line ] = (iT[k*64+0]*EEO[0] + iT[k*64+1]*EEO[1] + iT[k*64+2]*EEO[2] + iT[k*64+3]*EEO[3] + 
+        iT[k*64+4]*EEO[4] + iT[k*64+5]*EEO[5] + iT[k*64+6]*EEO[6] + iT[k*64+7]*EEO[7] + rnd_factor)>>shift;
+    }       
+    for (k=2;k<(zo?32:64);k+=4)
+    {
+      dst[ k*line ] = (iT[k*64+ 0]*EO[ 0] + iT[k*64+ 1]*EO[ 1] + iT[k*64+ 2]*EO[ 2] + iT[k*64+ 3]*EO[ 3] + 
+        iT[k*64+ 4]*EO[ 4] + iT[k*64+ 5]*EO[ 5] + iT[k*64+ 6]*EO[ 6] + iT[k*64+ 7]*EO[ 7] +
+        iT[k*64+ 8]*EO[ 8] + iT[k*64+ 9]*EO[ 9] + iT[k*64+10]*EO[10] + iT[k*64+11]*EO[11] + 
+        iT[k*64+12]*EO[12] + iT[k*64+13]*EO[13] + iT[k*64+14]*EO[14] + iT[k*64+15]*EO[15] + rnd_factor)>>shift;
+    }
+    for (k=1;k<(zo?32:64);k+=2)
+    {
+      dst[ k*line ] = (iT[k*64+ 0]*O[ 0] + iT[k*64+ 1]*O[ 1] + iT[k*64+ 2]*O[ 2] + iT[k*64+ 3]*O[ 3] + 
+        iT[k*64+ 4]*O[ 4] + iT[k*64+ 5]*O[ 5] + iT[k*64+ 6]*O[ 6] + iT[k*64+ 7]*O[ 7] +
+        iT[k*64+ 8]*O[ 8] + iT[k*64+ 9]*O[ 9] + iT[k*64+10]*O[10] + iT[k*64+11]*O[11] + 
+        iT[k*64+12]*O[12] + iT[k*64+13]*O[13] + iT[k*64+14]*O[14] + iT[k*64+15]*O[15] + 
+        iT[k*64+16]*O[16] + iT[k*64+17]*O[17] + iT[k*64+18]*O[18] + iT[k*64+19]*O[19] + 
+        iT[k*64+20]*O[20] + iT[k*64+21]*O[21] + iT[k*64+22]*O[22] + iT[k*64+23]*O[23] + 
+        iT[k*64+24]*O[24] + iT[k*64+25]*O[25] + iT[k*64+26]*O[26] + iT[k*64+27]*O[27] + 
+        iT[k*64+28]*O[28] + iT[k*64+29]*O[29] + iT[k*64+30]*O[30] + iT[k*64+31]*O[31] + rnd_factor)>>shift;
+    }
+    src += uiTrSize;
+    dst ++;
+  }
+
+  if( zo==2 )
+  {
+    for (j=0; j<uiTrSize/2; j++)
+    {
+      memset( dst, 0, sizeof(TCoeff)*uiTrSize/2 );
+      dst += uiTrSize;
+    }
+  }
+  dst = tmp + uiTrSize*uiTrSize/2;
+  memset( dst, 0, sizeof(TCoeff)*uiTrSize*uiTrSize/2 );
+}
+
+
+void fastInverseDCT2_B64(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)
+{
+  Int rnd_factor = 1<<(shift-1);
+  const Int uiTrSize = 64;
+  const TMatrixCoeff *iT = NULL;
+  assert(0);
+
+  Int j, k;
+  Int E[32],O[32];
+  Int EE[16],EO[16];
+  Int EEE[8],EEO[8];
+  Int EEEE[4],EEEO[4];
+  Int EEEEE[2],EEEEO[2];
+  for (j=0; j<(line>>(2==zo?1:0)); j++)
+  {    
+    /* Utilizing symmetry properties to the maximum to minimize the number of multiplications */
+    for (k=0;k<32;k++)
+    {
+      O[k] = iT[ 1*64+k]*coeff[ line  ] + iT[ 3*64+k]*coeff[ 3*line  ] + iT[ 5*64+k]*coeff[ 5*line  ] + iT[ 7*64+k]*coeff[ 7*line  ] + 
+        iT[ 9*64+k]*coeff[ 9*line  ] + iT[11*64+k]*coeff[ 11*line ] + iT[13*64+k]*coeff[ 13*line ] + iT[15*64+k]*coeff[ 15*line ] + 
+        iT[17*64+k]*coeff[ 17*line ] + iT[19*64+k]*coeff[ 19*line ] + iT[21*64+k]*coeff[ 21*line ] + iT[23*64+k]*coeff[ 23*line ] + 
+        iT[25*64+k]*coeff[ 25*line ] + iT[27*64+k]*coeff[ 27*line ] + iT[29*64+k]*coeff[ 29*line ] + iT[31*64+k]*coeff[ 31*line ] +
+        ( zo ? 0 : (
+        iT[33*64+k]*coeff[ 33*line ] + iT[35*64+k]*coeff[ 35*line ] + iT[37*64+k]*coeff[ 37*line ] + iT[39*64+k]*coeff[ 39*line ] +
+        iT[41*64+k]*coeff[ 41*line ] + iT[43*64+k]*coeff[ 43*line ] + iT[45*64+k]*coeff[ 45*line ] + iT[47*64+k]*coeff[ 47*line ] +
+        iT[49*64+k]*coeff[ 49*line ] + iT[51*64+k]*coeff[ 51*line ] + iT[53*64+k]*coeff[ 53*line ] + iT[55*64+k]*coeff[ 55*line ] +
+        iT[57*64+k]*coeff[ 57*line ] + iT[59*64+k]*coeff[ 59*line ] + iT[61*64+k]*coeff[ 61*line ] + iT[63*64+k]*coeff[ 63*line ] ) );
+    }
+    for (k=0;k<16;k++)
+    {
+      EO[k] = iT[ 2*64+k]*coeff[ 2*line  ] + iT[ 6*64+k]*coeff[ 6*line  ] + iT[10*64+k]*coeff[ 10*line ] + iT[14*64+k]*coeff[ 14*line ] + 
+        iT[18*64+k]*coeff[ 18*line ] + iT[22*64+k]*coeff[ 22*line ] + iT[26*64+k]*coeff[ 26*line ] + iT[30*64+k]*coeff[ 30*line ] + 
+        ( zo ? 0 : (
+        iT[34*64+k]*coeff[ 34*line ] + iT[38*64+k]*coeff[ 38*line ] + iT[42*64+k]*coeff[ 42*line ] + iT[46*64+k]*coeff[ 46*line ] +
+        iT[50*64+k]*coeff[ 50*line ] + iT[54*64+k]*coeff[ 54*line ] + iT[58*64+k]*coeff[ 58*line ] + iT[62*64+k]*coeff[ 62*line ] ) );
+    }
+    for (k=0;k<8;k++)
+    {
+      EEO[k] = iT[4*64+k]*coeff[ 4*line ] + iT[12*64+k]*coeff[ 12*line ] + iT[20*64+k]*coeff[ 20*line ] + iT[28*64+k]*coeff[ 28*line ] +
+        ( zo ? 0 : (
+        iT[36*64+k]*coeff[ 36*line ] + iT[44*64+k]*coeff[ 44*line ] + iT[52*64+k]*coeff[ 52*line ] + iT[60*64+k]*coeff[ 60*line ] ) );
+    }
+    for (k=0;k<4;k++)
+    {
+      EEEO[k] = iT[8*64+k]*coeff[ 8*line ] + iT[24*64+k]*coeff[ 24*line ] + ( zo ? 0 : ( iT[40*64+k]*coeff[ 40*line ] + iT[56*64+k]*coeff[ 56*line ] ) );
+    }
+    EEEEO[0] = iT[16*64+0]*coeff[ 16*line ] + ( zo ? 0 : iT[48*64+0]*coeff[ 48*line ] );
+    EEEEO[1] = iT[16*64+1]*coeff[ 16*line ] + ( zo ? 0 : iT[48*64+1]*coeff[ 48*line ] );
+    EEEEE[0] = iT[ 0*64+0]*coeff[  0      ] + ( zo ? 0 : iT[32*64+0]*coeff[ 32*line ] );    
+    EEEEE[1] = iT[ 0*64+1]*coeff[  0      ] + ( zo ? 0 : iT[32*64+1]*coeff[ 32*line ] );
+
+    /* Combining even and odd terms at each hierarchy levels to calculate the final spatial domain vector */ 
+    for (k=0;k<2;k++)
+    {
+      EEEE[k] = EEEEE[k] + EEEEO[k];
+      EEEE[k+2] = EEEEE[1-k] - EEEEO[1-k];
+    } 
+    for (k=0;k<4;k++)
+    {
+      EEE[k] = EEEE[k] + EEEO[k];
+      EEE[k+4] = EEEE[3-k] - EEEO[3-k];
+    }    
+    for (k=0;k<8;k++)
+    {
+      EE[k] = EEE[k] + EEO[k];
+      EE[k+8] = EEE[7-k] - EEO[7-k];
+    }   
+    for (k=0;k<16;k++)
+    {
+      E[k] = EE[k] + EO[k];
+      E[k+16] = EE[15-k] - EO[15-k];
+    }    
+    for (k=0;k<32;k++)
+    {
+      block[k]    = Clip3( outputMinimum, outputMaximum, (E[k] + O[k] + rnd_factor)>>shift );
+      block[k+32] = Clip3( outputMinimum, outputMaximum, (E[31-k] - O[31-k] + rnd_factor)>>shift );
+    }
+    coeff ++;
+    block += uiTrSize;
+  }
+}
+
+
+// Fast DST Algorithm. Full matrix multiplication for DST and Fast DST algorithm 
+// give identical results
+// ********************************** DST-VII **********************************
+void fastForwardDST7_B4(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo, Int use)  // input block, output coeff
+{
+  Int i;
+  Int rnd_factor = 1<<(shift-1);
+
+#if COM16_C806_EMT
+  const TMatrixCoeff *iT = use ? g_aiTr4[DST7][0] : g_as_DST_MAT_4[0][0];
+#else
+  const Short *iT = g_as_DST_MAT_4[0][0];
+#endif
+
+  Int c[4];
+  for (i=0; i<line; i++)
+  {
+    // Intermediate Variables
+    c[0] = block[0] + block[3];
+    c[1] = block[1] + block[3];
+    c[2] = block[0] - block[1];
+    c[3] = iT[2]* block[2];
+
+    coeff[ 0] =  ( iT[0] * c[0] + iT[1] * c[1]         + c[3]               + rnd_factor ) >> shift;
+    coeff[ 4] =  ( iT[2] * (block[0]+ block[1] - block[3])   + rnd_factor ) >> shift;
+    coeff[ 8] =  ( iT[0] * c[2] + iT[1] * c[0]         - c[3]               + rnd_factor ) >> shift;
+    coeff[12] =  ( iT[1] * c[2] - iT[0] * c[1]         + c[3]               + rnd_factor ) >> shift;
+
+    block+=4;
+    coeff++;
+  }
+}
+
+
+void fastInverseDST7_B4(TCoeff *coeff, TCoeff *block, Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input tmp, output block
+{
+  Int i, c[4];
+  Int rnd_factor = 1<<(shift-1);
+
+#if COM16_C806_EMT
+  const TMatrixCoeff *iT = use ? g_aiTr4[DST7][0] : g_as_DST_MAT_4[0][0];
+#else
+  const Short *iT = g_as_DST_MAT_4[0][0];
+#endif
+
+  for (i=0; i<line; i++)
+  {  
+    // Intermediate Variables
+    c[0] = coeff[0] + coeff[ 8];
+    c[1] = coeff[8] + coeff[12];
+    c[2] = coeff[0] - coeff[12];
+    c[3] = iT[2]* coeff[4];
+
+    block[0] = Clip3( outputMinimum, outputMaximum, ( iT[0] * c[0] + iT[1] * c[1]     + c[3]               + rnd_factor ) >> shift );
+    block[1] = Clip3( outputMinimum, outputMaximum, ( iT[1] * c[2] - iT[0] * c[1]     + c[3]               + rnd_factor ) >> shift );
+    block[2] = Clip3( outputMinimum, outputMaximum, ( iT[2] * (coeff[0] - coeff[8]  + coeff[12])      + rnd_factor ) >> shift );
+    block[3] = Clip3( outputMinimum, outputMaximum, ( iT[1] * c[0] + iT[0] * c[2]     - c[3]               + rnd_factor ) >> shift );
+
+    block+=4;
+    coeff++;
+  }
+}
+
+#if COM16_C806_EMT
+void fastForwardDST7_B8(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo, Int use)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 8;
+  const TMatrixCoeff *iT;
+  TCoeff *pCoef;
+
+  for (i=0; i<line; i++)
+  {
+    pCoef = coeff;
+    iT = g_aiTr8[DST7][0];
+    for (j=0; j<uiTrSize; j++)
+    {
+      iSum = 0;
+      for (k=0; k<uiTrSize; k++)
+      {
+        iSum += iT[k]*block[k];
+      }
+      pCoef[i] = (iSum + rnd_factor)>>shift;
+      pCoef += line;
+      iT += uiTrSize;
+    }
+    block += uiTrSize;
+  }
+}
+
+void fastInverseDST7_B8(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 8;
+  const TMatrixCoeff *iT = g_aiTr8[DST7][0];
+
+  for (i=0; i<line; i++)
+  {
+    for (j=0; j<uiTrSize; j++)
+    {
+      iSum = 0;
+      for (k=0; k<uiTrSize; k++)
+      {
+        iSum += iT[k*uiTrSize+j]*coeff[k*line];
+      }
+      block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+    }
+    block+=uiTrSize;
+    coeff++;
+  }
+}
+
+void fastForwardDST7_B16(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo, Int use)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 16;
+  const TMatrixCoeff *iT;
+  TCoeff *pCoef;
+
+  for (i=0; i<line; i++)
+  {
+    pCoef = coeff;
+    iT = g_aiTr16[DST7][0];
+    for (j=0; j<uiTrSize; j++)
+    {
+      iSum = 0;
+      for (k=0; k<uiTrSize; k++)
+      {
+        iSum += iT[k]*block[k];
+      }
+      pCoef[i] = (iSum + rnd_factor)>>shift;
+      pCoef += line;
+      iT += uiTrSize;
+    }
+    block += uiTrSize;
+  }
+}
+
+void fastInverseDST7_B16(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 16;
+  const TMatrixCoeff *iT = g_aiTr16[DST7][0];
+
+  for (i=0; i<line; i++)
+  {
+    for (j=0; j<uiTrSize; j++)
+    {
+      iSum = 0;
+      for (k=0; k<uiTrSize; k++)
+      {
+        iSum += iT[k*uiTrSize+j]*coeff[k*line];
+      }
+      block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+    }
+    block+=uiTrSize;
+    coeff++;
+  }
+}
+
+void fastForwardDST7_B32(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo, Int use)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 32;
+  const TMatrixCoeff *iT;
+  TCoeff *pCoef;
+
+  if ( zo )
+  {
+    TCoeff *tmp = coeff;
+    for (i=0; i<(line>>(zo-1)); i++)
+    {
+      pCoef = coeff;
+      iT = g_aiTr32[DST7][0];
+      for (j=0; j<uiTrSize/2; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize; k++)
+        {
+          iSum += iT[k]*block[k];
+        }
+        pCoef[i] = (iSum + rnd_factor)>>shift;
+        iT += uiTrSize;
+        pCoef += line;
+      }
+      block+=uiTrSize;
+    }
+
+    coeff += (line>>(zo-1));
+    if( zo==2 )
+    {
+      for (j=0; j<uiTrSize/2; j++)
+      {
+        memset( coeff, 0, sizeof(TCoeff)*uiTrSize/2 );
+        coeff += uiTrSize;
+      }
+    }
+    coeff = tmp + uiTrSize*uiTrSize/2;
+    memset( coeff, 0, sizeof(TCoeff)*uiTrSize*uiTrSize/2 );
+  }
+  else
+  {
+    for (i=0; i<line; i++)
+    {
+      pCoef = coeff;
+      iT = g_aiTr32[DST7][0];
+      for (j=0; j<uiTrSize; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize; k++)
+        {
+          iSum += iT[k]*block[k];
+        }
+        pCoef[i] = (iSum + rnd_factor)>>shift;
+        pCoef += line;
+        iT += uiTrSize;
+      }
+      block += uiTrSize;
+    }
+  }
+}
+
+void fastInverseDST7_B32(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 32;
+  const TMatrixCoeff *iT = g_aiTr32[DST7][0];
+
+  if ( zo )
+  {
+    for (i=0; i<(line>>(zo-1)); i++)
+    {
+      for (j=0; j<uiTrSize; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize/2; k++)
+        {
+          iSum += iT[k*uiTrSize+j]*coeff[k*line];
+        }
+        block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+      }
+      block+=uiTrSize;
+      coeff++;
+    }
+    /*if( zo==2 )
+    {
+      memset( block, 0, sizeof(TCoeff)*uiTrSize*uiTrSize/2 );
+    }*/
+  }
+  else
+  {
+    for (i=0; i<line; i++)
+    {
+      for (j=0; j<uiTrSize; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize; k++)
+        {
+          iSum += iT[k*uiTrSize+j]*coeff[k*line];
+        }
+        block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+      }
+      block+=uiTrSize;
+      coeff++;
+    }
+  }
+}
+
+
+
+
+
+
+// ********************************** DCT-VIII **********************************
+void fastForwardDCT8_B4(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo, Int use)  // input block, output coeff
+{
+  Int i;
+  Int rnd_factor = 1<<(shift-1);
+
+  const TMatrixCoeff *iT = g_aiTr4[DCT8][0];
+
+  Int c[4];
+  for (i=0; i<line; i++)
+  {
+    // Intermediate Variables
+    c[0] = block[0] + block[3];
+    c[1] = block[2] + block[0];
+    c[2] = block[3] - block[2];
+    c[3] = iT[1]* block[1];
+
+    coeff[ 0] =  ( iT[3] * c[0] + iT[2] * c[1]         + c[3]               + rnd_factor ) >> shift;
+    coeff[ 4] =  ( iT[1] * (block[0] - block[2] - block[3])   + rnd_factor ) >> shift;
+    coeff[ 8] =  ( iT[3] * c[2] + iT[2] * c[0]         - c[3]               + rnd_factor ) >> shift;
+    coeff[12] =  ( iT[3] * c[1] - iT[2] * c[2]         - c[3]               + rnd_factor ) >> shift;
+
+    block+=4;
+    coeff++;
+  }
+}
+
+
+void fastInverseDCT8_B4(TCoeff *coeff, TCoeff *block, Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input tmp, output block
+{
+  Int i;
+  Int rnd_factor = 1<<(shift-1);
+
+  const TMatrixCoeff *iT = g_aiTr4[DCT8][0];
+  
+  Int c[4];
+  for (i=0; i<line; i++)
+  {
+    // Intermediate Variables
+    c[0] = coeff[ 0] + coeff[12];
+    c[1] = coeff[ 8] + coeff[ 0];
+    c[2] = coeff[12] - coeff[ 8];
+    c[3] = iT[1]* coeff[4];
+
+    block[0] =  Clip3(outputMinimum, outputMaximum, ( iT[3] * c[0] + iT[2] * c[1]         + c[3]               + rnd_factor ) >> shift);
+    block[1] =  Clip3(outputMinimum, outputMaximum, ( iT[1] * (coeff[0] - coeff[8] - coeff[12])   + rnd_factor ) >> shift);
+    block[2] =  Clip3(outputMinimum, outputMaximum, ( iT[3] * c[2] + iT[2] * c[0]         - c[3]               + rnd_factor ) >> shift);
+    block[3] =  Clip3(outputMinimum, outputMaximum, ( iT[3] * c[1] - iT[2] * c[2]         - c[3]               + rnd_factor ) >> shift);
+
+    block+=4;
+    coeff++;
+  }
+}
+
+void fastForwardDCT8_B8(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo, Int use)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 8;
+  const TMatrixCoeff *iT;
+  TCoeff *pCoef;
+
+  for (i=0; i<line; i++)
+  {
+    pCoef = coeff;
+    iT = g_aiTr8[DCT8][0];
+    for (j=0; j<uiTrSize; j++)
+    {
+      iSum = 0;
+      for (k=0; k<uiTrSize; k++)
+      {
+        iSum += iT[k]*block[k];
+      }
+      pCoef[i] = (iSum + rnd_factor)>>shift;
+      pCoef += line;
+      iT += uiTrSize;
+    }
+    block += uiTrSize;
+  }
+}
+
+void fastInverseDCT8_B8(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 8;
+  const TMatrixCoeff *iT = g_aiTr8[DCT8][0];
+
+  for (i=0; i<line; i++)
+  {
+    for (j=0; j<uiTrSize; j++)
+    {
+      iSum = 0;
+      for (k=0; k<uiTrSize; k++)
+      {
+        iSum += iT[k*uiTrSize+j]*coeff[k*line];
+      }
+      block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+    }
+    block+=uiTrSize;
+    coeff++;
+  }
+}
+
+void fastForwardDCT8_B16(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo, Int use)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 16;
+  const TMatrixCoeff *iT;
+  TCoeff *pCoef;
+
+  for (i=0; i<line; i++)
+  {
+    pCoef = coeff;
+    iT = g_aiTr16[DCT8][0];
+    for (j=0; j<uiTrSize; j++)
+    {
+      iSum = 0;
+      for (k=0; k<uiTrSize; k++)
+      {
+        iSum += iT[k]*block[k];
+      }
+      pCoef[i] = (iSum + rnd_factor)>>shift;
+      pCoef += line;
+      iT += uiTrSize;
+    }
+    block += uiTrSize;
+  }
+}
+
+void fastInverseDCT8_B16(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 16;
+  const TMatrixCoeff *iT = g_aiTr16[DCT8][0];
+
+  for (i=0; i<line; i++)
+  {
+    for (j=0; j<uiTrSize; j++)
+    {
+      iSum = 0;
+      for (k=0; k<uiTrSize; k++)
+      {
+        iSum += iT[k*uiTrSize+j]*coeff[k*line];
+      }
+      block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+    }
+    block+=uiTrSize;
+    coeff++;
+  }
+}
+
+void fastForwardDCT8_B32(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo, Int use)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 32;
+  const TMatrixCoeff *iT;
+  TCoeff *pCoef;
+
+  if ( zo )
+  {
+    TCoeff *tmp = coeff;
+    for (i=0; i<(line>>(zo-1)); i++)
+    {
+      pCoef = coeff;
+      iT = g_aiTr32[DCT8][0];
+      for (j=0; j<uiTrSize/2; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize; k++)
+        {
+          iSum += iT[k]*block[k];
+        }
+        pCoef[i] = (iSum + rnd_factor)>>shift;
+        iT += uiTrSize;
+        pCoef += line;
+      }
+      block+=uiTrSize;
+    }
+
+    coeff += (line>>(zo-1));
+    if( zo==2 )
+    {
+      for (j=0; j<uiTrSize/2; j++)
+      {
+        memset( coeff, 0, sizeof(TCoeff)*uiTrSize/2 );
+        coeff += uiTrSize;
+      }
+    }
+    coeff = tmp + uiTrSize*uiTrSize/2;
+    memset( coeff, 0, sizeof(TCoeff)*uiTrSize*uiTrSize/2 );
+  }
+  else
+  {
+    for (i=0; i<line; i++)
+    {
+      pCoef = coeff;
+      iT = g_aiTr32[DCT8][0];
+      for (j=0; j<uiTrSize; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize; k++)
+        {
+          iSum += iT[k]*block[k];
+        }
+        pCoef[i] = (iSum + rnd_factor)>>shift;
+        pCoef += line;
+        iT += uiTrSize;
+      }
+      block += uiTrSize;
+    }
+  }
+}
+
+void fastInverseDCT8_B32(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 32;
+  const TMatrixCoeff *iT = g_aiTr32[DCT8][0];
+
+  if ( zo )
+  {
+    for (i=0; i<(line>>(zo-1)); i++)
+    {
+      for (j=0; j<uiTrSize; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize/2; k++)
+        {
+          iSum += iT[k*uiTrSize+j]*coeff[k*line];
+        }
+        block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+      }
+      block+=uiTrSize;
+      coeff++;
+    }
+    if( zo==2 )
+    {
+      memset( block, 0, sizeof(TCoeff)*uiTrSize*uiTrSize/2 );
+    }
+  }
+  else
+  {
+    for (i=0; i<line; i++)
+    {
+      for (j=0; j<uiTrSize; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize; k++)
+        {
+          iSum += iT[k*uiTrSize+j]*coeff[k*line];
+        }
+        block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+      }
+      block+=uiTrSize;
+      coeff++;
+    }
+  }
+}
+
+
+
+
+
+// ********************************** DCT-VIII **********************************
+void fastForwardDCT5_B4(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo, Int use)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 4;
+  const TMatrixCoeff *iT;
+  TCoeff *pCoef;
+
+  for (i=0; i<line; i++)
+  {
+    pCoef = coeff;
+    iT = g_aiTr4[DCT5][0];
+    for (j=0; j<uiTrSize; j++)
+    {
+      iSum = 0;
+      for (k=0; k<uiTrSize; k++)
+      {
+        iSum += iT[k]*block[k];
+      }
+      pCoef[i] = (iSum + rnd_factor)>>shift;
+      pCoef += line;
+      iT += uiTrSize;
+    }
+    block += uiTrSize;
+  }
+}
+
+
+void fastInverseDCT5_B4(TCoeff *coeff, TCoeff *block, Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input tmp, output block
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const TMatrixCoeff *iT = g_aiTr4[DCT5][0];
+  const Int uiTrSize = 4;
+
+  for (i=0; i<line; i++)
+  {
+    for (j=0; j<uiTrSize; j++)
+    {
+      iSum = 0;
+      for (k=0; k<uiTrSize; k++)
+      {
+        iSum += iT[k*uiTrSize+j]*coeff[k*line];
+      }
+      block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+    }
+    block+=uiTrSize;
+    coeff++;
+  }
+}
+
+void fastForwardDCT5_B8(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo, Int use)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 8;
+  const TMatrixCoeff *iT;
+  TCoeff *pCoef;
+
+  for (i=0; i<line; i++)
+  {
+    pCoef = coeff;
+    iT = g_aiTr8[DCT5][0];
+    for (j=0; j<uiTrSize; j++)
+    {
+      iSum = 0;
+      for (k=0; k<uiTrSize; k++)
+      {
+        iSum += iT[k]*block[k];
+      }
+      pCoef[i] = (iSum + rnd_factor)>>shift;
+      pCoef += line;
+      iT += uiTrSize;
+    }
+    block += uiTrSize;
+  }
+}
+
+void fastInverseDCT5_B8(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 8;
+  const TMatrixCoeff *iT = g_aiTr8[DCT5][0];
+
+  for (i=0; i<line; i++)
+  {
+    for (j=0; j<uiTrSize; j++)
+    {
+      iSum = 0;
+      for (k=0; k<uiTrSize; k++)
+      {
+        iSum += iT[k*uiTrSize+j]*coeff[k*line];
+      }
+      block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+    }
+    block+=uiTrSize;
+    coeff++;
+  }
+}
+
+void fastForwardDCT5_B16(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo, Int use)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 16;
+  const TMatrixCoeff *iT;
+  TCoeff *pCoef;
+
+  for (i=0; i<line; i++)
+  {
+    pCoef = coeff;
+    iT = g_aiTr16[DCT5][0];
+    for (j=0; j<uiTrSize; j++)
+    {
+      iSum = 0;
+      for (k=0; k<uiTrSize; k++)
+      {
+        iSum += iT[k]*block[k];
+      }
+      pCoef[i] = (iSum + rnd_factor)>>shift;
+      pCoef += line;
+      iT += uiTrSize;
+    }
+    block += uiTrSize;
+  }
+}
+
+void fastInverseDCT5_B16(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 16;
+  const TMatrixCoeff *iT = g_aiTr16[DCT5][0];
+
+  for (i=0; i<line; i++)
+  {
+    for (j=0; j<uiTrSize; j++)
+    {
+      iSum = 0;
+      for (k=0; k<uiTrSize; k++)
+      {
+        iSum += iT[k*uiTrSize+j]*coeff[k*line];
+      }
+      block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+    }
+    block+=uiTrSize;
+    coeff++;
+  }
+}
+
+void fastForwardDCT5_B32(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo, Int use)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 32;
+  const TMatrixCoeff *iT;
+  TCoeff *pCoef;
+
+  for (i=0; i<line; i++)
+  {
+    pCoef = coeff;
+    iT = g_aiTr32[DCT5][0];
+    for (j=0; j<uiTrSize; j++)
+    {
+      iSum = 0;
+      for (k=0; k<uiTrSize; k++)
+      {
+        iSum += iT[k]*block[k];
+      }
+      pCoef[i] = (iSum + rnd_factor)>>shift;
+      pCoef += line;
+      iT += uiTrSize;
+    }
+    block += uiTrSize;
+  }
+}
+
+void fastInverseDCT5_B32(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 32;
+  const TMatrixCoeff *iT = g_aiTr32[DCT5][0];
+
+  for (i=0; i<line; i++)
+  {
+    for (j=0; j<uiTrSize; j++)
+    {
+      iSum = 0;
+      for (k=0; k<uiTrSize; k++)
+      {
+        iSum += iT[k*uiTrSize+j]*coeff[k*line];
+      }
+      block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+    }
+    block+=uiTrSize;
+    coeff++;
+  }
+}
+
+
+// ********************************** DST-I **********************************
+void fastForwardDST1_B4(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo, Int use)  // input block, output coeff
+{
+  Int i;
+  Int rnd_factor = 1<<(shift-1);
+
+  const TMatrixCoeff *iT = g_aiTr4[DST1][0];
+
+  Int E[2],O[2];
+  for (i=0; i<line; i++)
+  {    
+    /* E and O */
+    E[0] = block[0] + block[3];
+    O[0] = block[0] - block[3];
+    E[1] = block[1] + block[2];
+    O[1] = block[1] - block[2];
+
+    coeff[0     ] = (E[0]*iT[0] + E[1]*iT[1] + rnd_factor)>>shift;
+    coeff[line  ] = (O[0]*iT[1] + O[1]*iT[0] + rnd_factor)>>shift;
+    coeff[2*line] = (E[0]*iT[1] - E[1]*iT[0] + rnd_factor)>>shift;
+    coeff[3*line] = (O[0]*iT[0] - O[1]*iT[1] + rnd_factor)>>shift;
+
+    block += 4;
+    coeff ++;
+  }
+}
+
+
+void fastInverseDST1_B4(TCoeff *coeff, TCoeff *block, Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input tmp, output block
+{
+  Int i;
+  Int rnd_factor = 1<<(shift-1);
+
+  const TMatrixCoeff *iT = g_aiTr4[DST1][0];
+
+  Int E[2],O[2];
+  for (i=0; i<line; i++)
+  {    
+    /* E and O */
+    E[0] = coeff[0*4] + coeff[3*4];
+    O[0] = coeff[0*4] - coeff[3*4];
+    E[1] = coeff[1*4] + coeff[2*4];
+    O[1] = coeff[1*4] - coeff[2*4];
+
+    block[0] = Clip3(outputMinimum, outputMaximum, (E[0]*iT[0] + E[1]*iT[1] + rnd_factor)>>shift);
+    block[1] = Clip3(outputMinimum, outputMaximum, (O[0]*iT[1] + O[1]*iT[0] + rnd_factor)>>shift);
+    block[2] = Clip3(outputMinimum, outputMaximum, (E[0]*iT[1] - E[1]*iT[0] + rnd_factor)>>shift);
+    block[3] = Clip3(outputMinimum, outputMaximum, (O[0]*iT[0] - O[1]*iT[1] + rnd_factor)>>shift);
+
+    block += 4;
+    coeff ++;
+  }
+}
+
+void fastForwardDST1_B8(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo, Int use)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 8;
+  const TMatrixCoeff *iT;
+  TCoeff *pCoef;
+
+  for (i=0; i<line; i++)
+  {
+    pCoef = coeff;
+    iT = g_aiTr8[DST1][0];
+    for (j=0; j<uiTrSize; j++)
+    {
+      iSum = 0;
+      for (k=0; k<uiTrSize; k++)
+      {
+        iSum += iT[k]*block[k];
+      }
+      pCoef[i] = (iSum + rnd_factor)>>shift;
+      pCoef += line;
+      iT += uiTrSize;
+    }
+    block += uiTrSize;
+  }
+}
+
+void fastInverseDST1_B8(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 8;
+  const TMatrixCoeff *iT = g_aiTr8[DST1][0];
+
+  for (i=0; i<line; i++)
+  {
+    for (j=0; j<uiTrSize; j++)
+    {
+      iSum = 0;
+      for (k=0; k<uiTrSize; k++)
+      {
+        iSum += iT[k*uiTrSize+j]*coeff[k*line+i];
+      }
+      block[i*uiTrSize+j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+    }
+  }
+}
+
+void fastForwardDST1_B16(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo, Int use)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 16;
+  const TMatrixCoeff *iT;
+  TCoeff *pCoef;
+
+  for (i=0; i<line; i++)
+  {
+    pCoef = coeff;
+    iT = g_aiTr16[DST1][0];
+    for (j=0; j<uiTrSize; j++)
+    {
+      iSum = 0;
+      for (k=0; k<uiTrSize; k++)
+      {
+        iSum += iT[k]*block[k];
+      }
+      pCoef[i] = (iSum + rnd_factor)>>shift;
+      pCoef += line;
+      iT += uiTrSize;
+    }
+    block += uiTrSize;
+  }
+}
+
+void fastInverseDST1_B16(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 16;
+  const TMatrixCoeff *iT = g_aiTr16[DST1][0];
+
+  for (i=0; i<line; i++)
+  {
+    for (j=0; j<uiTrSize; j++)
+    {
+      iSum = 0;
+      for (k=0; k<uiTrSize; k++)
+      {
+        iSum += iT[k*uiTrSize+j]*coeff[k*line+i];
+      }
+      block[i*uiTrSize+j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+    }
+  }
+}
+
+void fastForwardDST1_B32(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo, Int use)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 32;
+  const TMatrixCoeff *iT;
+  TCoeff *pCoef;
+
+  for (i=0; i<line; i++)
+  {
+    pCoef = coeff;
+    iT = g_aiTr32[DST1][0];
+    for (j=0; j<uiTrSize; j++)
+    {
+      iSum = 0;
+      for (k=0; k<uiTrSize; k++)
+      {
+        iSum += iT[k]*block[k];
+      }
+      pCoef[i] = (iSum + rnd_factor)>>shift;
+      pCoef += line;
+      iT += uiTrSize;
+    }
+    block += uiTrSize;
+  }
+}
+
+void fastInverseDST1_B32(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 32;
+  const TMatrixCoeff *iT = g_aiTr32[DST1][0];
+
+  for (i=0; i<line; i++)
+  {
+    for (j=0; j<uiTrSize; j++)
+    {
+      iSum = 0;
+      for (k=0; k<uiTrSize; k++)
+      {
+        iSum += iT[k*uiTrSize+j]*coeff[k*line+i];
+      }
+      block[i*uiTrSize+j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+    }
+  }
+}
+#endif
+
 /** MxN forward transform (2D)
 *  \param bitDepth              [in]  bit depth
 *  \param block                 [in]  residual block
@@ -857,9 +2615,42 @@ Void partialButterflyInverse32(TCoeff *src, TCoeff *dst, Int shift, Int line, co
 *  \param maxLog2TrDynamicRange [in]
 
 */
+
+#if COM16_C806_EMT
+void xTrMxN_EMT(Int bitDepth, TCoeff *block, TCoeff *coeff, Int iWidth, Int iHeight, Bool useDST, const Int maxLog2TrDynamicRange, UChar ucMode, UChar ucTrIdx )
+{
+  const Int TRANSFORM_MATRIX_SHIFT = g_transformMatrixShift[TRANSFORM_FORWARD];
+
+  const Int shift_1st        = ((g_aucConvertToBit[iWidth] + 2) +  bitDepth + TRANSFORM_MATRIX_SHIFT) - maxLog2TrDynamicRange + COM16_C806_TRANS_PREC;
+  const Int shift_2nd        = (g_aucConvertToBit[iHeight] + 2) + TRANSFORM_MATRIX_SHIFT + COM16_C806_TRANS_PREC;
+  const UInt nLog2SizeMinus2 = g_aucConvertToBit[iWidth];
+  const Bool bZeroOut        = ucMode == INTER_MODE_IDX;
+
+  TCoeff tmp[ MAX_TU_SIZE * MAX_TU_SIZE ];
+
+  UInt  nTrIdxHor = DCT2, nTrIdxVer = DCT2;
+  if( ucMode != INTER_MODE_IDX && ucTrIdx != DCT2_EMT )
+  {
+    UInt  nTrSubsetHor = g_aucTrSetHorz[ucMode];
+    UInt  nTrSubsetVer = g_aucTrSetVert[ucMode];
+    nTrIdxHor = g_aiTrSubsetIntra[nTrSubsetHor][ucTrIdx &1];
+    nTrIdxVer = g_aiTrSubsetIntra[nTrSubsetVer][ucTrIdx>>1];
+  }
+  if ( ucMode == INTER_MODE_IDX && ucTrIdx != DCT2_EMT )
+  {
+    nTrIdxHor = g_aiTrSubsetInter[ucTrIdx &1];
+    nTrIdxVer = g_aiTrSubsetInter[ucTrIdx>>1];
+  }
+
+  fastFwdTrans[nTrIdxHor][nLog2SizeMinus2]( block, tmp, shift_1st, iHeight, bZeroOut?1:0, 1 );
+  fastFwdTrans[nTrIdxVer][nLog2SizeMinus2]( tmp, coeff, shift_2nd,  iWidth, bZeroOut?2:0, 1 );
+}
+#endif
+
 Void xTrMxN(Int bitDepth, TCoeff *block, TCoeff *coeff, Int iWidth, Int iHeight, Bool useDST, const Int maxLog2TrDynamicRange)
 {
   const Int TRANSFORM_MATRIX_SHIFT = g_transformMatrixShift[TRANSFORM_FORWARD];
+
 
   const Int shift_1st = ((g_aucConvertToBit[iWidth] + 2) +  bitDepth + TRANSFORM_MATRIX_SHIFT) - maxLog2TrDynamicRange;
   const Int shift_2nd = (g_aucConvertToBit[iHeight] + 2) + TRANSFORM_MATRIX_SHIFT;
@@ -924,6 +2715,40 @@ Void xTrMxN(Int bitDepth, TCoeff *block, TCoeff *coeff, Int iWidth, Int iHeight,
 *  \param useDST                [in]
 *  \param maxLog2TrDynamicRange [in]
 */
+
+#if COM16_C806_EMT
+void xITrMxN_EMT(Int bitDepth, TCoeff *coeff, TCoeff *block, Int iWidth, Int iHeight, Bool useDST, const Int maxLog2TrDynamicRange, UChar ucMode, UChar ucTrIdx )
+{
+  const Int TRANSFORM_MATRIX_SHIFT = g_transformMatrixShift[TRANSFORM_INVERSE];
+
+  const Int shift_1st        = TRANSFORM_MATRIX_SHIFT + 1 + COM16_C806_TRANS_PREC; //1 has been added to shift_1st at the expense of shift_2nd
+  const Int shift_2nd        = (TRANSFORM_MATRIX_SHIFT + maxLog2TrDynamicRange - 1) - bitDepth + COM16_C806_TRANS_PREC;
+  const TCoeff clipMinimum   = -(1 << maxLog2TrDynamicRange);
+  const TCoeff clipMaximum   =  (1 << maxLog2TrDynamicRange) - 1;
+  const UInt nLog2SizeMinus2 = g_aucConvertToBit[iWidth];
+  const Bool bZeroOut        = ucMode == INTER_MODE_IDX;
+
+  TCoeff tmp[ MAX_TU_SIZE * MAX_TU_SIZE ];
+
+  UInt  nTrIdxHor = DCT2, nTrIdxVer = DCT2;
+  if ( ucMode != INTER_MODE_IDX && ucTrIdx != DCT2_EMT )
+  {
+    UInt  nTrSubsetHor = g_aucTrSetHorz[ucMode];
+    UInt  nTrSubsetVer = g_aucTrSetVert[ucMode];
+    nTrIdxHor = g_aiTrSubsetIntra[nTrSubsetHor][ucTrIdx &1];
+    nTrIdxVer = g_aiTrSubsetIntra[nTrSubsetVer][ucTrIdx>>1];
+  }
+  if ( ucMode == INTER_MODE_IDX && ucTrIdx != DCT2_EMT )
+  {
+    nTrIdxHor = g_aiTrSubsetInter[ucTrIdx &1];
+    nTrIdxVer = g_aiTrSubsetInter[ucTrIdx>>1];
+  }
+
+  fastInvTrans[nTrIdxVer][nLog2SizeMinus2]( coeff, tmp, shift_1st,  iWidth, bZeroOut?2:0, 1, clipMinimum, clipMaximum );
+  fastInvTrans[nTrIdxHor][nLog2SizeMinus2]( tmp, block, shift_2nd, iHeight, bZeroOut?1:0, 1, clipMinimum, clipMaximum );
+}
+#endif
+
 Void xITrMxN(Int bitDepth, TCoeff *coeff, TCoeff *block, Int iWidth, Int iHeight, Bool useDST, const Int maxLog2TrDynamicRange)
 {
   const Int TRANSFORM_MATRIX_SHIFT = g_transformMatrixShift[TRANSFORM_INVERSE];
@@ -956,7 +2781,6 @@ Void xITrMxN(Int bitDepth, TCoeff *coeff, TCoeff *block, Int iWidth, Int iHeight
     case  8: partialButterflyInverse8 ( coeff, tmp, shift_1st, iWidth, clipMinimum, clipMaximum); break;
     case 16: partialButterflyInverse16( coeff, tmp, shift_1st, iWidth, clipMinimum, clipMaximum); break;
     case 32: partialButterflyInverse32( coeff, tmp, shift_1st, iWidth, clipMinimum, clipMaximum); break;
-
     default:
       assert(0); exit (1); break;
   }
@@ -980,7 +2804,6 @@ Void xITrMxN(Int bitDepth, TCoeff *coeff, TCoeff *block, Int iWidth, Int iHeight
     case  8: partialButterflyInverse8 ( tmp, block, shift_2nd, iHeight, std::numeric_limits<Pel>::min(), std::numeric_limits<Pel>::max()); break;
     case 16: partialButterflyInverse16( tmp, block, shift_2nd, iHeight, std::numeric_limits<Pel>::min(), std::numeric_limits<Pel>::max()); break;
     case 32: partialButterflyInverse32( tmp, block, shift_2nd, iHeight, std::numeric_limits<Pel>::min(), std::numeric_limits<Pel>::max()); break;
-
     default:
       assert(0); exit (1); break;
   }
@@ -1456,6 +3279,57 @@ Void TComTrQuant::init(   UInt  uiMaxTrSize,
   m_useTransformSkipFast = useTransformSkipFast;
 }
 
+#if COM16_C806_EMT
+UChar TComTrQuant::getEmtTrIdx( TComTU &rTu, const ComponentID compID )
+{
+  TComDataCU* pcCU          = rTu.getCU();
+  const UInt uiAbsPartIdx   = rTu.GetAbsPartIdxTU();
+  UChar ucTrIdx             = DCT2_HEVC;
+
+  if( compID == COMPONENT_Y )
+  {
+    if (  pcCU->isIntra(uiAbsPartIdx) && pcCU->getSlice()->getSPS()->getUseIntraEMT() )
+    {
+      ucTrIdx = pcCU->getEmtCuFlag( uiAbsPartIdx ) ? pcCU->getEmtTuIdx( uiAbsPartIdx ) : DCT2_EMT;
+    }
+    if ( !pcCU->isIntra(uiAbsPartIdx) && pcCU->getSlice()->getSPS()->getUseInterEMT() )
+    {
+      ucTrIdx = pcCU->getEmtCuFlag( uiAbsPartIdx ) ? pcCU->getEmtTuIdx( uiAbsPartIdx ) : DCT2_EMT;
+    }
+  }
+  else
+  {
+    if (  pcCU->isIntra(uiAbsPartIdx) && pcCU->getSlice()->getSPS()->getUseIntraEMT() )
+    {
+      ucTrIdx = DCT2_EMT;
+    }
+    if ( !pcCU->isIntra(uiAbsPartIdx) && pcCU->getSlice()->getSPS()->getUseInterEMT() )
+    {
+      ucTrIdx = DCT2_EMT;
+    }
+  }
+
+  return ucTrIdx;
+}
+
+UChar TComTrQuant::getEmtMode( TComTU &rTu, const ComponentID compID )
+{
+  TComDataCU* pcCU          = rTu.getCU();
+  const UInt uiAbsPartIdx   = rTu.GetAbsPartIdxTU();
+  UChar ucMode              = 0;
+
+  if( pcCU->isIntra( uiAbsPartIdx ) )
+  {
+    ucMode = pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx );
+  }
+  else
+  {
+    ucMode = INTER_MODE_IDX;
+  }
+  
+  return ucMode;
+}
+#endif
 
 Void TComTrQuant::transformNxN(       TComTU        & rTu,
                                 const ComponentID     compID,
@@ -1466,8 +3340,7 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
                                       TCoeff       *  pcArlCoeff,
 #endif
                                       TCoeff        & uiAbsSum,
-                                const QpParam       & cQP
-                              )
+                                const QpParam       & cQP )
 {
   const TComRectangle &rect = rTu.getRect(compID);
   const UInt uiWidth        = rect.width;
@@ -1517,7 +3390,12 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
       else
       {
         const Int channelBitDepth=pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
-        xT( channelBitDepth, rTu.useDST(compID), pcResidual, uiStride, m_plTempCoeff, uiWidth, uiHeight, pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID)) );
+        xT( channelBitDepth, rTu.useDST(compID), pcResidual, uiStride, m_plTempCoeff, uiWidth, uiHeight, pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID)) 
+#if COM16_C806_EMT
+          , getEmtMode ( rTu, compID )
+          , getEmtTrIdx( rTu, compID )
+#endif
+          );
       }
 
 #if DEBUG_TRANSFORM_AND_QUANTISE
@@ -1550,7 +3428,7 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
                                   const UInt           uiStride,
                                         TCoeff       * pcCoeff,
                                   const QpParam       &cQP
-                                        DEBUG_STRING_FN_DECLAREP(psDebug))
+                                        DEBUG_STRING_FN_DECLAREP(psDebug) )
 {
   TComDataCU* pcCU=rTu.getCU();
   const UInt uiAbsPartIdx = rTu.GetAbsPartIdxTU();
@@ -1652,7 +3530,12 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
 #else
       const Int channelBitDepth = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
 #endif
-      xIT( channelBitDepth, rTu.useDST(compID), m_plTempCoeff, pcResidual, uiStride, uiWidth, uiHeight, pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID)) );
+      xIT( channelBitDepth, rTu.useDST(compID), m_plTempCoeff, pcResidual, uiStride, uiWidth, uiHeight, pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID)) 
+#if COM16_C806_EMT
+        , getEmtMode ( rTu, compID )
+        , getEmtTrIdx( rTu, compID )
+#endif
+        );
 
 #if DEBUG_STRING
       if (psDebug)
@@ -1949,11 +3832,23 @@ Void TComTrQuant::invRdpcmNxN( TComTU& rTu, const ComponentID compID, Pel* pcRes
  *  \param iHeight transform height
  *  \param maxLog2TrDynamicRange
  */
-Void TComTrQuant::xT( const Int channelBitDepth, Bool useDST, Pel* piBlkResi, UInt uiStride, TCoeff* psCoeff, Int iWidth, Int iHeight, const Int maxLog2TrDynamicRange )
+Void TComTrQuant::xT( const Int channelBitDepth, Bool useDST, Pel* piBlkResi, UInt uiStride, TCoeff* psCoeff, Int iWidth, Int iHeight, const Int maxLog2TrDynamicRange 
+#if COM16_C806_EMT
+                     , UChar ucMode
+                     , UChar ucTrIdx
+#endif
+                     )
 {
 #if MATRIX_MULT
   if( iWidth == iHeight)
   {
+#if COM16_C806_EMT
+    if( ucTrIdx!=DCT2_HEVC )
+    {
+      xTr_EMT(channelBitDepth, piBlkResi, psCoeff, uiStride, (UInt)iWidth, useDST, maxLog2TrDynamicRange, ucMode, ucTrIdx );
+    }
+    else
+#endif
     xTr(channelBitDepth, piBlkResi, psCoeff, uiStride, (UInt)iWidth, useDST, maxLog2TrDynamicRange);
     return;
   }
@@ -1969,7 +3864,13 @@ Void TComTrQuant::xT( const Int channelBitDepth, Bool useDST, Pel* piBlkResi, UI
       block[(y * iWidth) + x] = piBlkResi[(y * uiStride) + x];
     }
   }
-
+#if COM16_C806_EMT
+  if( ucTrIdx!=DCT2_HEVC )
+  {
+    xTrMxN_EMT(channelBitDepth, block, coeff, iWidth, iHeight, useDST, maxLog2TrDynamicRange, ucMode, ucTrIdx );
+  }
+  else
+#endif
   xTrMxN( channelBitDepth, block, coeff, iWidth, iHeight, useDST, maxLog2TrDynamicRange );
 
   memcpy(psCoeff, coeff, (iWidth * iHeight * sizeof(TCoeff)));
@@ -1985,11 +3886,23 @@ Void TComTrQuant::xT( const Int channelBitDepth, Bool useDST, Pel* piBlkResi, UI
  *  \param iHeight transform height
  *  \param maxLog2TrDynamicRange
  */
-Void TComTrQuant::xIT( const Int channelBitDepth, Bool useDST, TCoeff* plCoef, Pel* pResidual, UInt uiStride, Int iWidth, Int iHeight, const Int maxLog2TrDynamicRange )
+Void TComTrQuant::xIT( const Int channelBitDepth, Bool useDST, TCoeff* plCoef, Pel* pResidual, UInt uiStride, Int iWidth, Int iHeight, const Int maxLog2TrDynamicRange 
+#if COM16_C806_EMT
+                      , UChar ucMode
+                      , UChar ucTrIdx
+#endif
+                      )
 {
 #if MATRIX_MULT
   if( iWidth == iHeight )
   {
+#if COM16_C806_EMT
+    if( ucTrIdx!=DCT2_HEVC )
+    {
+      xITr_EMT(channelBitDepth, plCoef, pResidual, uiStride, (UInt)iWidth, useDST, maxLog2TrDynamicRange, ucMode, ucTrIdx );
+    }
+    else
+#endif
     xITr(channelBitDepth, plCoef, pResidual, uiStride, (UInt)iWidth, useDST, maxLog2TrDynamicRange);
     return;
   }
@@ -2000,6 +3913,13 @@ Void TComTrQuant::xIT( const Int channelBitDepth, Bool useDST, TCoeff* plCoef, P
 
   memcpy(coeff, plCoef, (iWidth * iHeight * sizeof(TCoeff)));
 
+#if COM16_C806_EMT
+  if(ucTrIdx!=DCT2_HEVC)
+  {
+    xITrMxN_EMT( channelBitDepth, coeff, block, iWidth, iHeight, useDST, maxLog2TrDynamicRange, ucMode, ucTrIdx );
+  }
+  else
+#endif
   xITrMxN( channelBitDepth, coeff, block, iWidth, iHeight, useDST, maxLog2TrDynamicRange );
 
   for (Int y = 0; y < iHeight; y++)

@@ -157,6 +157,11 @@ public:
   Void  parseAlfCtrlFlag      ( UInt &ruiAlfCtrlFlag );
 #endif
 
+#if COM16_C806_EMT
+  Void parseEmtTuIdx          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+  Void parseEmtCuFlag         ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bRootCbf );
+#endif
+
   Void  parseExplicitRdpcmMode( TComTU &rTu, ComponentID compID );
 
 private:
@@ -208,6 +213,11 @@ private:
   ContextModel3DBuffer m_cALFFlagSCModel;
   ContextModel3DBuffer m_cALFUvlcSCModel;
   ContextModel3DBuffer m_cALFSvlcSCModel;
+#endif
+
+#if COM16_C806_EMT
+  ContextModel3DBuffer m_cEmtTuIdxSCModel;
+  ContextModel3DBuffer m_cEmtCuFlagSCModel;
 #endif
 
   UInt m_golombRiceAdaptationStatistics[RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS];

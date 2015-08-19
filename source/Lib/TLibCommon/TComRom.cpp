@@ -39,6 +39,9 @@
 #include <memory.h>
 #include <stdlib.h>
 #include <stdio.h>
+#if COM16_C806_EMT
+#include <math.h>
+#endif
 #include <iomanip>
 #include <assert.h>
 #include "TComDataCU.h"
@@ -188,6 +191,58 @@ Void initROM()
     g_aucConvertToBit[ i ] = c;
     c++;
   }
+
+#if COM16_C806_EMT
+  c = 4;
+  for ( i=0; i<5; i++ )
+  {
+    TMatrixCoeff *iT = NULL;
+    const Double s = sqrt((Double)c) * ( 64 << COM16_C806_TRANS_PREC );
+    const Double PI = 3.14159265358979323846;
+
+    switch(i)
+    {
+    case 0: iT = g_aiTr4 [0][0]; break;
+    case 1: iT = g_aiTr8 [0][0]; break;
+    case 2: iT = g_aiTr16[0][0]; break;
+    case 3: iT = g_aiTr32[0][0]; break;
+    case 4: iT = g_aiTr64[0][0]; break;
+    case 5: exit(0); break;
+    }
+
+    for( Int k=0; k<c; k++ )
+    {
+      for( Int n=0; n<c; n++ )
+      {
+        Double w0, w1, v;
+
+        // DCT-II
+        w0 = k==0 ? sqrt(0.5) : 1;
+        v = cos(PI*(n+0.5)*k/c ) * w0 * sqrt(2.0/c);
+        iT[DCT2*c*c + k*c + n] = (Short) ( s * v + ( v > 0 ? 0.5 : -0.5) );
+
+        // DCT-V
+        w0 = ( k==0 ) ? sqrt(0.5) : 1.0;
+        w1 = ( n==0 ) ? sqrt(0.5) : 1.0;
+        v = cos(PI*n*k/(c-0.5)) * w0 * w1 * sqrt(2.0/(c-0.5));
+        iT[DCT5*c*c + k*c + n] = (Short) ( s * v + ( v > 0 ? 0.5 : -0.5) );
+
+        // DCT-VIII
+        v = cos(PI*(k+0.5)*(n+0.5)/(c+0.5) ) * sqrt(2.0/(c+0.5));
+        iT[DCT8*c*c + k*c + n] = (Short) ( s * v + ( v > 0 ? 0.5 : -0.5) );
+
+        // DST-I
+        v = sin(PI*(n+1)*(k+1)/(c+1)) * sqrt(2.0/(c+1));
+        iT[DST1*c*c + k*c + n] = (Short) ( s * v + ( v > 0 ? 0.5 : -0.5) );
+
+        // DST-VII
+        v = sin(PI*(k+0.5)*(n+1)/(c+0.5)) * sqrt(2.0/(c+0.5));
+        iT[DST7*c*c + k*c + n] = (Short) ( s * v + ( v > 0 ? 0.5 : -0.5) );
+      }
+    }
+    c <<= 1;
+  }
+#endif
 
   // initialise scan orders
   for(UInt log2BlockHeight = 0; log2BlockHeight < MAX_CU_DEPTH; log2BlockHeight++)
@@ -448,6 +503,28 @@ const Int g_invQuantScales[SCALING_LIST_REM_NUM] =
   { o, -n,  m, -l,  k, -j,  i, -h,  h, -i,  j, -k,  l, -m,  n, -o, -o,  n, -m,  l, -k,  j, -i,  h, -h,  i, -j,  k, -l,  m, -n,  o}, \
   { E, -D,  C, -B,  A, -z,  y, -x,  w, -v,  u, -t,  s, -r,  q, -p,  p, -q,  r, -s,  t, -u,  v, -w,  x, -y,  z, -A,  B, -C,  D, -E}  \
 }
+
+#if COM16_C806_EMT
+Int g_aiTrSubsetIntra[3][2] = { {DST7, DCT8}, {DST7, DST1}, {DST7, DCT5} };
+Int g_aiTrSubsetInter   [4] =   {DCT8, DST7};
+
+const UChar g_aucTrSetVert[35] =
+{//0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34
+   2, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 2, 2, 2, 2, 2, 1, 0, 1, 0, 1, 0
+};
+const UChar g_aucTrSetHorz[35] =
+{//0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34
+   2, 1, 0, 1, 0, 1, 0, 1, 2, 2, 2, 2, 2, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0
+};
+
+const UInt g_iEmtSigNumThr = 2;
+
+TMatrixCoeff g_aiTr4 [NUM_TRANS_TYPE][ 4][ 4];
+TMatrixCoeff g_aiTr8 [NUM_TRANS_TYPE][ 8][ 8];
+TMatrixCoeff g_aiTr16[NUM_TRANS_TYPE][16][16];
+TMatrixCoeff g_aiTr32[NUM_TRANS_TYPE][32][32];
+TMatrixCoeff g_aiTr64[NUM_TRANS_TYPE][64][64];
+#endif
 
 //--------------------------------------------------------------------------------------------------
 
