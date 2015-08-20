@@ -82,6 +82,8 @@
 #define COM16_C806_TRANS_PREC                             2  ///< Integer transform matrix precision
 #endif
 
+
+#define COM16_C806_SIMD_OPT                               1  ///< SIMD optimization, no impact on RD performance
 ///////////////////////////////////////////////////////////
 // KTA tools section end
 ///////////////////////////////////////////////////////////
