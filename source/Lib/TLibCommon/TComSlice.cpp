@@ -2076,6 +2076,9 @@ const Int* TComScalingList::getScalingListDefaultAddress(UInt sizeId, UInt listI
     case SCALING_LIST_32x32:
       src = (listId < (SCALING_LIST_NUM/NUMBER_OF_PREDICTION_MODES) ) ? g_quantIntraDefault8x8 : g_quantInterDefault8x8;
       break;
+#if COM16_C806_T64
+    case SCALING_LIST_64x64:
+#endif
     default:
       assert(0);
       src = NULL;

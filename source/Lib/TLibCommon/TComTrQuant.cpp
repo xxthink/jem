@@ -262,7 +262,11 @@ Void xTr_EMT(Int bitDepth, Pel *block, TCoeff *coeff, UInt uiStride, UInt uiTrSi
   const TMatrixCoeff *iTH, *iTV;
   UInt uiLog2TrSize = g_aucConvertToBit[ uiTrSize ] + 2;
 
+#if COM16_C806_T64
+  Int zo = ( ( ucMode == INTER_MODE_IDX && uiTrSize>=32 && ucTrIdx != DCT2_EMT ) || uiTrSize==64 ) ? 1 : 0;
+#else
   Int zo = ( ucMode == INTER_MODE_IDX && uiTrSize>=32 && ucTrIdx != DCT2_EMT ) ? 1 : 0;
+#endif
 
   UInt  nTrIdxHor = DCT2, nTrIdxVer = DCT2;
   if( ucMode != INTER_MODE_IDX && ucTrIdx != DCT2_EMT )
@@ -298,6 +302,13 @@ Void xTr_EMT(Int bitDepth, Pel *block, TCoeff *coeff, UInt uiStride, UInt uiTrSi
     iTH  = g_aiTr32[nTrIdxHor][0];
     iTV  = g_aiTr32[nTrIdxVer][0];
   }
+#if COM16_C806_T64
+  else if (uiTrSize==64)
+  {
+    assert( ucTrIdx == DCT2_EMT );
+    iTH = iTV = g_aiTr64[DCT2][0];
+  }
+#endif
   else
   {
     assert(0);
@@ -356,7 +367,11 @@ Void xITr_EMT(Int bitDepth, TCoeff *coeff, Pel *block, UInt uiStride, UInt uiTrS
   TCoeff tmp[MAX_TU_SIZE * MAX_TU_SIZE];
   const TMatrixCoeff *iTH, *iTV;
 
+#if COM16_C806_T64
+  Int zo = ( ( ucMode == INTER_MODE_IDX && uiTrSize>=32 && ucTrIdx != DCT2_EMT ) || uiTrSize==64 ) ? 1 : 0;
+#else
   Int zo = ( ucMode == INTER_MODE_IDX && uiTrSize>=32 && ucTrIdx != DCT2_EMT ) ? 1 : 0;
+#endif
 
   UInt  nTrIdxHor = DCT2, nTrIdxVer = DCT2;
   if( ucMode != INTER_MODE_IDX && ucTrIdx != DCT2_EMT )
@@ -392,6 +407,13 @@ Void xITr_EMT(Int bitDepth, TCoeff *coeff, Pel *block, UInt uiStride, UInt uiTrS
     iTH  = g_aiTr32[nTrIdxHor][0];
     iTV  = g_aiTr32[nTrIdxVer][0];
   }
+#if COM16_C806_T64
+  else if (uiTrSize==64)
+  {
+    assert( ucTrIdx == DCT2_EMT );
+    iTH = iTV = g_aiTr64[DCT2][0];
+  }
+#endif
   else
   {
     assert(0);
@@ -449,6 +471,9 @@ Void xTr(Int bitDepth, Pel *block, TCoeff *coeff, UInt uiStride, UInt uiTrSize, 
   const TMatrixCoeff *iT;
   UInt uiLog2TrSize = g_aucConvertToBit[ uiTrSize ] + 2;
 
+#if COM16_C806_T64
+  Int zo = 0;
+#endif
 
   if (uiTrSize==4)
   {
@@ -466,6 +491,13 @@ Void xTr(Int bitDepth, Pel *block, TCoeff *coeff, UInt uiStride, UInt uiTrSize, 
   {
     iT = g_aiT32[TRANSFORM_FORWARD][0];
   }
+#if COM16_C806_T64
+  else if (uiTrSize==64)
+  {
+    iT = g_aiTr64[DCT2][0];
+    zo = 1;
+  }
+#endif
   else
   {
     assert(0);
@@ -473,13 +505,31 @@ Void xTr(Int bitDepth, Pel *block, TCoeff *coeff, UInt uiStride, UInt uiTrSize, 
 
   const Int TRANSFORM_MATRIX_SHIFT = g_transformMatrixShift[TRANSFORM_FORWARD];
 
-  const Int shift_1st = (uiLog2TrSize +  bitDepth + TRANSFORM_MATRIX_SHIFT) - maxLog2TrDynamicRange;
-  const Int shift_2nd = uiLog2TrSize + TRANSFORM_MATRIX_SHIFT;
+#if !COM16_C806_T64
+  const 
+#endif
+    Int shift_1st = (uiLog2TrSize +  bitDepth + TRANSFORM_MATRIX_SHIFT) - maxLog2TrDynamicRange;
+#if !COM16_C806_T64  
+  const 
+#endif
+    Int shift_2nd = uiLog2TrSize + TRANSFORM_MATRIX_SHIFT;
+#if COM16_C806_T64
+  if( uiTrSize==64 )
+  {
+    shift_1st += COM16_C806_TRANS_PREC;
+    shift_2nd += COM16_C806_TRANS_PREC;
+  }
+#endif
   const Int add_1st = (shift_1st>0) ? (1<<(shift_1st-1)) : 0;
   const Int add_2nd = 1<<(shift_2nd-1);
 
   /* Horizontal transform */
+
+#if COM16_C806_T64
+  for (i=0; i<(uiTrSize>>zo); i++)
+#else
   for (i=0; i<uiTrSize; i++)
+#endif
   {
     for (j=0; j<uiTrSize; j++)
     {
@@ -493,9 +543,17 @@ Void xTr(Int bitDepth, Pel *block, TCoeff *coeff, UInt uiStride, UInt uiTrSize, 
   }
 
   /* Vertical transform */
+#if COM16_C806_T64
+  for (i=0; i<(uiTrSize>>zo); i++)
+#else
   for (i=0; i<uiTrSize; i++)
+#endif
   {
+#if COM16_C806_T64
+    for (j=0; j<(uiTrSize>>zo); j++)
+#else
     for (j=0; j<uiTrSize; j++)
+#endif
     {
       iSum = 0;
       for (k=0; k<uiTrSize; k++)
@@ -505,6 +563,18 @@ Void xTr(Int bitDepth, Pel *block, TCoeff *coeff, UInt uiStride, UInt uiTrSize, 
       coeff[i*uiTrSize+j] = (iSum + add_2nd)>>shift_2nd;
     }
   }
+#if COM16_C806_T64
+  if(zo)
+  {
+    memset( coeff + uiTrSize*uiTrSize/2, 0, sizeof(TCoeff)*uiTrSize*uiTrSize/2 );
+    coeff += uiTrSize/2;
+    for (j=0; j<uiTrSize/2; j++)
+    {
+      memset( coeff, 0, sizeof(TCoeff)*uiTrSize/2 );
+      coeff += uiTrSize;
+    }
+  }
+#endif
 }
 
 /** NxN inverse transform (2D) using brute force matrix multiplication (3 nested loops)
@@ -520,6 +590,9 @@ Void xITr(Int bitDepth, TCoeff *coeff, Pel *block, UInt uiStride, UInt uiTrSize,
   TCoeff iSum;
   TCoeff tmp[MAX_TU_SIZE * MAX_TU_SIZE];
   const TMatrixCoeff *iT;
+#if COM16_C806_T64
+  Int zo = 0;
+#endif
 
   if (uiTrSize==4)
   {
@@ -537,6 +610,13 @@ Void xITr(Int bitDepth, TCoeff *coeff, Pel *block, UInt uiStride, UInt uiTrSize,
   {
     iT = g_aiT32[TRANSFORM_INVERSE][0];
   }
+#if COM16_C806_T64
+  else if (uiTrSize==64)
+  {
+    iT = g_aiTr64[DCT2][0];
+    zo = 1;
+  }
+#endif
   else
   {
     assert(0);
@@ -544,8 +624,21 @@ Void xITr(Int bitDepth, TCoeff *coeff, Pel *block, UInt uiStride, UInt uiTrSize,
 
   const Int TRANSFORM_MATRIX_SHIFT = g_transformMatrixShift[TRANSFORM_INVERSE];
 
-  const Int shift_1st = TRANSFORM_MATRIX_SHIFT + 1; //1 has been added to shift_1st at the expense of shift_2nd
-  const Int shift_2nd = (TRANSFORM_MATRIX_SHIFT + maxLog2TrDynamicRange - 1) - bitDepth;
+#if !COM16_C806_T64
+  const 
+#endif
+    Int shift_1st = TRANSFORM_MATRIX_SHIFT + 1; //1 has been added to shift_1st at the expense of shift_2nd
+#if !COM16_C806_T64
+  const 
+#endif
+    Int shift_2nd = (TRANSFORM_MATRIX_SHIFT + maxLog2TrDynamicRange - 1) - bitDepth;
+#if COM16_C806_T64
+  if( uiTrSize==64 )
+  {
+    shift_1st += COM16_C806_TRANS_PREC;
+    shift_2nd += COM16_C806_TRANS_PREC;
+  }
+#endif
   const TCoeff clipMinimum = -(1 << maxLog2TrDynamicRange);
   const TCoeff clipMaximum =  (1 << maxLog2TrDynamicRange) - 1;
   assert(shift_2nd>=0);
@@ -555,10 +648,18 @@ Void xITr(Int bitDepth, TCoeff *coeff, Pel *block, UInt uiStride, UInt uiTrSize,
   /* Horizontal transform */
   for (i=0; i<uiTrSize; i++)
   {
+#if COM16_C806_T64
+    for (j=0; j<uiTrSize>>zo; j++)
+#else
     for (j=0; j<uiTrSize; j++)
+#endif
     {
       iSum = 0;
+#if COM16_C806_T64
+      for (k=0; k<uiTrSize>>zo; k++)
+#else
       for (k=0; k<uiTrSize; k++)
+#endif
       {
         iSum += iT[k*uiTrSize+i]*coeff[k*uiTrSize+j];
       }
@@ -574,7 +675,11 @@ Void xITr(Int bitDepth, TCoeff *coeff, Pel *block, UInt uiStride, UInt uiTrSize,
     for (j=0; j<uiTrSize; j++)
     {
       iSum = 0;
+#if COM16_C806_T64
+      for (k=0; k<uiTrSize>>zo; k++)
+#else
       for (k=0; k<uiTrSize; k++)
+#endif
       {
         iSum += iT[k*uiTrSize+j]*tmp[i*uiTrSize+k];
       }
@@ -1452,8 +1557,12 @@ void fastForwardDCT2_B64(TCoeff *src, TCoeff *dst, Int shift, Int line, Int zo, 
 {
   Int rnd_factor = 1<<(shift-1);
   const Int uiTrSize = 64;
+#if COM16_C806_T64
+  const TMatrixCoeff *iT = g_aiTr64[DCT2][0];
+#else
   const TMatrixCoeff *iT = NULL;
   assert(0);
+#endif
 
   Int j, k;
   Int E[32],O[32];
@@ -1551,8 +1660,12 @@ void fastInverseDCT2_B64(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int z
 {
   Int rnd_factor = 1<<(shift-1);
   const Int uiTrSize = 64;
+#if COM16_C806_T64
+  const TMatrixCoeff *iT = g_aiTr64[DCT2][0];
+#else
   const TMatrixCoeff *iT = NULL;
   assert(0);
+#endif
 
   Int j, k;
   Int E[32],O[32];
@@ -2624,7 +2737,11 @@ void xTrMxN_EMT(Int bitDepth, TCoeff *block, TCoeff *coeff, Int iWidth, Int iHei
   const Int shift_1st        = ((g_aucConvertToBit[iWidth] + 2) +  bitDepth + TRANSFORM_MATRIX_SHIFT) - maxLog2TrDynamicRange + COM16_C806_TRANS_PREC;
   const Int shift_2nd        = (g_aucConvertToBit[iHeight] + 2) + TRANSFORM_MATRIX_SHIFT + COM16_C806_TRANS_PREC;
   const UInt nLog2SizeMinus2 = g_aucConvertToBit[iWidth];
-  const Bool bZeroOut        = ucMode == INTER_MODE_IDX;
+  const Bool bZeroOut        = ( ucMode == INTER_MODE_IDX
+#if COM16_C806_T64
+    || iWidth==64
+#endif
+    );
 
   TCoeff tmp[ MAX_TU_SIZE * MAX_TU_SIZE ];
 
@@ -2652,8 +2769,22 @@ Void xTrMxN(Int bitDepth, TCoeff *block, TCoeff *coeff, Int iWidth, Int iHeight,
   const Int TRANSFORM_MATRIX_SHIFT = g_transformMatrixShift[TRANSFORM_FORWARD];
 
 
-  const Int shift_1st = ((g_aucConvertToBit[iWidth] + 2) +  bitDepth + TRANSFORM_MATRIX_SHIFT) - maxLog2TrDynamicRange;
-  const Int shift_2nd = (g_aucConvertToBit[iHeight] + 2) + TRANSFORM_MATRIX_SHIFT;
+#if !COM16_C806_T64
+  const
+#endif
+    Int shift_1st = ((g_aucConvertToBit[iWidth] + 2) +  bitDepth + TRANSFORM_MATRIX_SHIFT) - maxLog2TrDynamicRange;
+#if !COM16_C806_T64
+  const 
+#endif
+    Int shift_2nd = (g_aucConvertToBit[iHeight] + 2) + TRANSFORM_MATRIX_SHIFT;
+
+#if COM16_C806_T64
+  if( iWidth==64 )
+  {
+    shift_1st += COM16_C806_TRANS_PREC;
+    shift_2nd += COM16_C806_TRANS_PREC;
+  }
+#endif
 
   assert(shift_1st >= 0);
   assert(shift_2nd >= 0);
@@ -2678,6 +2809,9 @@ Void xTrMxN(Int bitDepth, TCoeff *block, TCoeff *coeff, Int iWidth, Int iHeight,
     case 8:     partialButterfly8 ( block, tmp, shift_1st, iHeight );  break;
     case 16:    partialButterfly16( block, tmp, shift_1st, iHeight );  break;
     case 32:    partialButterfly32( block, tmp, shift_1st, iHeight );  break;
+#if COM16_C806_T64
+    case 64:    fastForwardDCT2_B64( block, tmp, shift_1st, iHeight, 1, 0 );  break;
+#endif
     default:
       assert(0); exit (1); break;
   }
@@ -2700,6 +2834,9 @@ Void xTrMxN(Int bitDepth, TCoeff *block, TCoeff *coeff, Int iWidth, Int iHeight,
     case 8:     partialButterfly8 ( tmp, coeff, shift_2nd, iWidth );    break;
     case 16:    partialButterfly16( tmp, coeff, shift_2nd, iWidth );    break;
     case 32:    partialButterfly32( tmp, coeff, shift_2nd, iWidth );    break;
+#if COM16_C806_T64
+    case 64:    fastForwardDCT2_B64( tmp, coeff, shift_2nd, iWidth, 2, 0 );  break;
+#endif
     default:
       assert(0); exit (1); break;
   }
@@ -2726,7 +2863,11 @@ void xITrMxN_EMT(Int bitDepth, TCoeff *coeff, TCoeff *block, Int iWidth, Int iHe
   const TCoeff clipMinimum   = -(1 << maxLog2TrDynamicRange);
   const TCoeff clipMaximum   =  (1 << maxLog2TrDynamicRange) - 1;
   const UInt nLog2SizeMinus2 = g_aucConvertToBit[iWidth];
-  const Bool bZeroOut        = ucMode == INTER_MODE_IDX;
+  const Bool bZeroOut        = ( ucMode == INTER_MODE_IDX
+#if COM16_C806_T64
+    || iWidth==64
+#endif
+    );
 
   TCoeff tmp[ MAX_TU_SIZE * MAX_TU_SIZE ];
 
@@ -2758,6 +2899,14 @@ Void xITrMxN(Int bitDepth, TCoeff *coeff, TCoeff *block, Int iWidth, Int iHeight
   const TCoeff clipMinimum = -(1 << maxLog2TrDynamicRange);
   const TCoeff clipMaximum =  (1 << maxLog2TrDynamicRange) - 1;
 
+#if COM16_C806_T64
+  if( iWidth==64 )
+  {
+    shift_1st += COM16_C806_TRANS_PREC;
+    shift_2nd += COM16_C806_TRANS_PREC;
+  }
+#endif
+
   assert(shift_1st >= 0);
   assert(shift_2nd >= 0);
 
@@ -2781,6 +2930,9 @@ Void xITrMxN(Int bitDepth, TCoeff *coeff, TCoeff *block, Int iWidth, Int iHeight
     case  8: partialButterflyInverse8 ( coeff, tmp, shift_1st, iWidth, clipMinimum, clipMaximum); break;
     case 16: partialButterflyInverse16( coeff, tmp, shift_1st, iWidth, clipMinimum, clipMaximum); break;
     case 32: partialButterflyInverse32( coeff, tmp, shift_1st, iWidth, clipMinimum, clipMaximum); break;
+#if COM16_C806_T64
+    case 64: fastInverseDCT2_B64( coeff, tmp, shift_1st, iWidth, 2, 0, clipMinimum, clipMaximum); break;
+#endif
     default:
       assert(0); exit (1); break;
   }
@@ -2804,6 +2956,9 @@ Void xITrMxN(Int bitDepth, TCoeff *coeff, TCoeff *block, Int iWidth, Int iHeight
     case  8: partialButterflyInverse8 ( tmp, block, shift_2nd, iHeight, std::numeric_limits<Pel>::min(), std::numeric_limits<Pel>::max()); break;
     case 16: partialButterflyInverse16( tmp, block, shift_2nd, iHeight, std::numeric_limits<Pel>::min(), std::numeric_limits<Pel>::max()); break;
     case 32: partialButterflyInverse32( tmp, block, shift_2nd, iHeight, std::numeric_limits<Pel>::min(), std::numeric_limits<Pel>::max()); break;
+#if COM16_C806_T64
+    case 64: fastInverseDCT2_B64( tmp, block, shift_2nd, iHeight, 1, 0, std::numeric_limits<Pel>::min(), std::numeric_limits<Pel>::max()); break;
+#endif
     default:
       assert(0); exit (1); break;
   }

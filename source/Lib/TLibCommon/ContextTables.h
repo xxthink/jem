@@ -77,7 +77,11 @@
 #define NUM_CHROMA_QP_ADJ_IDC_CTX     1       ///< number of context models for chroma_qp_adjustment_idc
 
 #define NUM_REF_NO_CTX                2       ///< number of context models for reference index
+#if COM16_C806_T64
+#define NUM_TRANS_SUBDIV_FLAG_CTX     4       ///< number of context models for transform subdivision flags
+#else
 #define NUM_TRANS_SUBDIV_FLAG_CTX     3       ///< number of context models for transform subdivision flags
+#endif
 #define NUM_QT_ROOT_CBF_CTX           1       ///< number of context models for QT ROOT CBF
 #define NUM_DELTA_QP_CTX              3       ///< number of context models for dQP
 
@@ -116,7 +120,11 @@ static const UInt notFirstGroupNeighbourhoodContextOffset[MAX_NUM_CHANNEL_TYPE] 
 
 #define NUM_CTX_LAST_FLAG_SETS         2
 
+#if COM16_C806_T64
+#define NUM_CTX_LAST_FLAG_XY          19      ///< number of context models for last coefficient position
+#else
 #define NUM_CTX_LAST_FLAG_XY          15      ///< number of context models for last coefficient position
+#endif
 
 //--------------------------------------------------------------------------------------------------
 
@@ -386,6 +394,21 @@ INIT_QT_ROOT_CBF[NUMBER_OF_SLICE_TYPES][NUM_QT_ROOT_CBF_CTX] =
 #define ISLICE_CHROMA_LAST_POSITION_CONTEXT   108, 123,  63, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU
 
 
+#if COM16_C806_T64
+static const UChar 
+INIT_LAST[NUMBER_OF_SLICE_TYPES][NUM_CTX_LAST_FLAG_SETS * NUM_CTX_LAST_FLAG_XY] =  
+{
+  { BSLICE_LUMA_LAST_POSITION_CONTEXT,    126,  111,  111,   79,
+    BSLICE_CHROMA_LAST_POSITION_CONTEXT,  CNU,  CNU,  CNU,  CNU,
+  }, 
+  { PSLICE_LUMA_LAST_POSITION_CONTEXT,    111,  111,   95,   94,
+    PSLICE_CHROMA_LAST_POSITION_CONTEXT,  CNU,  CNU,  CNU,  CNU,
+  }, 
+  { ISLICE_LUMA_LAST_POSITION_CONTEXT,    143,  127,  111,   79, 
+    ISLICE_CHROMA_LAST_POSITION_CONTEXT,  CNU,  CNU,  CNU,  CNU,
+  }, 
+};
+#else
 static const UChar
 INIT_LAST[NUMBER_OF_SLICE_TYPES][NUM_CTX_LAST_FLAG_SETS * NUM_CTX_LAST_FLAG_XY] =
 {
@@ -393,6 +416,7 @@ INIT_LAST[NUMBER_OF_SLICE_TYPES][NUM_CTX_LAST_FLAG_SETS * NUM_CTX_LAST_FLAG_XY] 
   { PSLICE_LUMA_LAST_POSITION_CONTEXT, PSLICE_CHROMA_LAST_POSITION_CONTEXT },
   { ISLICE_LUMA_LAST_POSITION_CONTEXT, ISLICE_CHROMA_LAST_POSITION_CONTEXT },
 };
+#endif
 
 //--------------------------------------------------------------------------------------------------
 
@@ -508,9 +532,21 @@ INIT_SAO_TYPE_IDX[NUMBER_OF_SLICE_TYPES][NUM_SAO_TYPE_IDX_CTX] =
 static const UChar
 INIT_TRANS_SUBDIV_FLAG[NUMBER_OF_SLICE_TYPES][NUM_TRANS_SUBDIV_FLAG_CTX] =
 {
-  { 224,  167,  122, },
-  { 124,  138,   94, },
-  { 153,  138,  138, },
+  { 224,  167,  122,
+#if COM16_C806_T64
+  122
+#endif
+  },
+  { 124,  138,   94,
+#if COM16_C806_T64
+  94
+#endif
+   },
+  { 153,  138,  138,
+#if COM16_C806_T64
+  138
+#endif
+   },
 };
 
 static const UChar

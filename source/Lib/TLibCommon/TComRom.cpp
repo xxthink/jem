@@ -39,7 +39,7 @@
 #include <memory.h>
 #include <stdlib.h>
 #include <stdio.h>
-#if COM16_C806_EMT
+#if COM16_C806_EMT || COM16_C806_T64
 #include <math.h>
 #endif
 #include <iomanip>
@@ -192,7 +192,7 @@ Void initROM()
     c++;
   }
 
-#if COM16_C806_EMT
+#if COM16_C806_EMT || COM16_C806_T64
   c = 4;
   for ( i=0; i<5; i++ )
   {
@@ -245,9 +245,15 @@ Void initROM()
 #endif
 
   // initialise scan orders
+#if COM16_C806_T64
+  for(UInt log2BlockHeight = 0; log2BlockHeight < MAX_LOG2_TU_SIZE_PLUS_ONE; log2BlockHeight++)
+  {
+    for(UInt log2BlockWidth = 0; log2BlockWidth < MAX_LOG2_TU_SIZE_PLUS_ONE; log2BlockWidth++)
+#else
   for(UInt log2BlockHeight = 0; log2BlockHeight < MAX_CU_DEPTH; log2BlockHeight++)
   {
     for(UInt log2BlockWidth = 0; log2BlockWidth < MAX_CU_DEPTH; log2BlockWidth++)
+#endif
     {
       const UInt blockWidth  = 1 << log2BlockWidth;
       const UInt blockHeight = 1 << log2BlockHeight;
@@ -321,9 +327,15 @@ Void destroyROM()
   {
     for (UInt scanOrderIndex = 0; scanOrderIndex < SCAN_NUMBER_OF_TYPES; scanOrderIndex++)
     {
+#if COM16_C806_T64
+      for (UInt log2BlockWidth = 0; log2BlockWidth < MAX_LOG2_TU_SIZE_PLUS_ONE; log2BlockWidth++)
+      {
+        for (UInt log2BlockHeight = 0; log2BlockHeight < MAX_LOG2_TU_SIZE_PLUS_ONE; log2BlockHeight++)
+#else
       for (UInt log2BlockWidth = 0; log2BlockWidth < MAX_CU_DEPTH; log2BlockWidth++)
       {
         for (UInt log2BlockHeight = 0; log2BlockHeight < MAX_CU_DEPTH; log2BlockHeight++)
+#endif
         {
           delete [] g_scanOrder[groupTypeIndex][scanOrderIndex][log2BlockWidth][log2BlockHeight];
         }
@@ -518,7 +530,9 @@ const UChar g_aucTrSetHorz[35] =
 };
 
 const UInt g_iEmtSigNumThr = 2;
+#endif
 
+#if COM16_C806_EMT || COM16_C806_T64
 TMatrixCoeff g_aiTr4 [NUM_TRANS_TYPE][ 4][ 4];
 TMatrixCoeff g_aiTr8 [NUM_TRANS_TYPE][ 8][ 8];
 TMatrixCoeff g_aiTr16[NUM_TRANS_TYPE][16][16];
@@ -661,7 +675,11 @@ UInt64 g_nSymbolCounter = 0;
 // ====================================================================================================================
 
 // scanning order table
+#if COM16_C806_T64
+UInt* g_scanOrder[SCAN_NUMBER_OF_GROUP_TYPES][SCAN_NUMBER_OF_TYPES][ MAX_LOG2_TU_SIZE_PLUS_ONE ][ MAX_LOG2_TU_SIZE_PLUS_ONE ];
+#else
 UInt* g_scanOrder[SCAN_NUMBER_OF_GROUP_TYPES][SCAN_NUMBER_OF_TYPES][ MAX_CU_DEPTH ][ MAX_CU_DEPTH ];
+#endif
 
 const UInt ctxIndMap4x4[4*4] =
 {
@@ -671,8 +689,13 @@ const UInt ctxIndMap4x4[4*4] =
   7, 7, 8, 8
 };
 
+#if COM16_C806_T64
+const UInt g_uiMinInGroup[  LAST_SIGNIFICANT_GROUPS ] = {0,1,2,3,4,6,8,12,16,24,32,48};
+const UInt g_uiGroupIdx  [  MAX_TU_SIZE ] = {0,1,2,3,4,4,5,5,6,6,6,6,7,7,7,7,8,8,8,8,8,8,8,8,9,9,9,9,9,9,9,9, 10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11};
+#else
 const UInt g_uiMinInGroup[ LAST_SIGNIFICANT_GROUPS ] = {0,1,2,3,4,6,8,12,16,24};
 const UInt g_uiGroupIdx[ MAX_TU_SIZE ]   = {0,1,2,3,4,4,5,5,6,6,6,6,7,7,7,7,8,8,8,8,8,8,8,8,9,9,9,9,9,9,9,9};
+#endif
 
 const Char *MatrixType[SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM] =
 {
@@ -766,7 +789,15 @@ const Int g_quantInterDefault8x8[8*8] =
   24,25,28,33,41,54,71,91
 };
 
-const UInt g_scalingListSize   [SCALING_LIST_SIZE_NUM] = {16,64,256,1024};
-const UInt g_scalingListSizeX  [SCALING_LIST_SIZE_NUM] = { 4, 8, 16,  32};
+const UInt g_scalingListSize   [SCALING_LIST_SIZE_NUM] = {16,64,256,1024
+#if COM16_C806_T64
+  , 4096
+#endif
+};
+const UInt g_scalingListSizeX  [SCALING_LIST_SIZE_NUM] = { 4, 8, 16,  32
+#if COM16_C806_T64
+  , 64
+#endif
+};
 
 //! \}

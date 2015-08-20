@@ -973,7 +973,11 @@ TEncSearch::xEncSubdivCbfQT(TComTU      &rTu,
     assert( uiLog2LumaTrafoSize > pcCU->getQuadtreeTULog2MinSizeInCU(uiAbsPartIdx) );
     if( bLuma )
     {
+#if COM16_C806_T64
+      m_pcEntropyCoder->encodeTransformSubdivFlag( uiSubdiv, pcCU->getSlice()->getSPS()->getQuadtreeTULog2MaxSize() - uiLog2LumaTrafoSize );
+#else
       m_pcEntropyCoder->encodeTransformSubdivFlag( uiSubdiv, 5 - uiLog2LumaTrafoSize );
+#endif
     }
   }
 
@@ -5524,7 +5528,11 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
 
     if( uiLog2TrSize > pcCU->getQuadtreeTULog2MinSizeInCU(uiAbsPartIdx) )
     {
+#if COM16_C806_T64
+      m_pcEntropyCoder->encodeTransformSubdivFlag( 0, pcCU->getSlice()->getSPS()->getQuadtreeTULog2MaxSize() - uiLog2TrSize );
+#else
       m_pcEntropyCoder->encodeTransformSubdivFlag( 0, 5 - uiLog2TrSize );
+#endif
     }
 
     for(UInt ch = 0; ch < numValidComp; ch++)
@@ -5787,7 +5795,11 @@ Void TEncSearch::xEncodeInterResidualQT( const ComponentID compID, TComTU &rTu )
       }
       else
       {
+#if COM16_C806_T64
+        m_pcEntropyCoder->encodeTransformSubdivFlag( bSubdiv, pcCU->getSlice()->getSPS()->getQuadtreeTULog2MaxSize() - uiLog2TrSize );
+#else
         m_pcEntropyCoder->encodeTransformSubdivFlag( bSubdiv, 5 - uiLog2TrSize );
+#endif
       }
     }
 

@@ -60,7 +60,11 @@ Void         destroyROM();
 // flexible conversion from relative to absolute index
 extern       UInt   g_auiZscanToRaster[ MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH ];
 extern       UInt   g_auiRasterToZscan[ MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH ];
+#if COM16_C806_T64
+extern       UInt*  g_scanOrder[SCAN_NUMBER_OF_GROUP_TYPES][SCAN_NUMBER_OF_TYPES][ MAX_LOG2_TU_SIZE_PLUS_ONE ][ MAX_LOG2_TU_SIZE_PLUS_ONE ];
+#else
 extern       UInt*  g_scanOrder[SCAN_NUMBER_OF_GROUP_TYPES][SCAN_NUMBER_OF_TYPES][ MAX_CU_DEPTH ][ MAX_CU_DEPTH ];
+#endif
 
 Void         initZscanToRaster ( Int iMaxDepth, Int iDepth, UInt uiStartVal, UInt*& rpuiCurrIdx );
 Void         initRasterToZscan ( UInt uiMaxCUWidth, UInt uiMaxCUHeight, UInt uiMaxDepth         );
@@ -126,7 +130,9 @@ extern Int g_aiTrSubsetInter[4];
 extern const UChar g_aucTrSetVert[35];
 extern const UChar g_aucTrSetHorz[35];
 extern const UInt g_iEmtSigNumThr;
+#endif
 
+#if COM16_C806_EMT || COM16_C806_T64
 extern TMatrixCoeff g_aiTr4 [NUM_TRANS_TYPE][ 4][ 4];
 extern TMatrixCoeff g_aiTr8 [NUM_TRANS_TYPE][ 8][ 8];
 extern TMatrixCoeff g_aiTr16[NUM_TRANS_TYPE][16][16];

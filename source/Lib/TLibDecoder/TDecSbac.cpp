@@ -1505,6 +1505,12 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID )
     {
       uiSigCoeffGroupFlag[ iCGBlkPos ] = 1;
     }
+#if COM16_C806_T64
+    else if( uiWidth>=64 && ( iCGPosY>=(codingParameters.heightInGroups/2) || iCGPosX>=(codingParameters.widthInGroups/2) ) )
+    {
+      uiSigCoeffGroupFlag[ iCGBlkPos ] = 0;
+    }
+#endif
     else
     {
       UInt uiSigCoeffGroup;
