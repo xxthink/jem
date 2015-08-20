@@ -475,7 +475,11 @@ Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjC
   else
   {
     assert( uiLog2TrafoSize > quadtreeTULog2MinSizeInCU );
+#if COM16_C806_T64
+    m_pcEntropyDecoderIf->parseTransformSubdivFlag( uiSubdiv, pcCU->getSlice()->getSPS()->getQuadtreeTULog2MaxSize() - uiLog2TrafoSize );
+#else
     m_pcEntropyDecoderIf->parseTransformSubdivFlag( uiSubdiv, 5 - uiLog2TrafoSize );
+#endif
   }
 
   for(Int chan=COMPONENT_Cb; chan<numValidComponent; chan++)

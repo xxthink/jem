@@ -75,7 +75,10 @@
 #endif
 
 #define COM16_C806_EMT                                    1  ///< Enhanced Multiple Transform (EMT)
-#if COM16_C806_EMT
+
+#define COM16_C806_T64                                    1  ///< Enable 64x64 Transform
+
+#if COM16_C806_EMT || COM16_C806_T64
 #define COM16_C806_TRANS_PREC                             2  ///< Integer transform matrix precision
 #endif
 
@@ -476,7 +479,7 @@ enum COEFF_SCAN_TYPE
   SCAN_NUMBER_OF_TYPES = 3
 };
 
-#if COM16_C806_EMT
+#if COM16_C806_EMT || COM16_C806_T64
 enum TRANS_TYPE
 {
   DCT2, DCT5, DCT8, DST1, DST7, NUM_TRANS_TYPE,
@@ -513,6 +516,9 @@ enum ScalingListSize
   SCALING_LIST_8x8,
   SCALING_LIST_16x16,
   SCALING_LIST_32x32,
+#if COM16_C806_T64
+  SCALING_LIST_64x64,
+#endif
   SCALING_LIST_SIZE_NUM
 };
 

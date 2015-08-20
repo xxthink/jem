@@ -168,7 +168,11 @@ static const Int MAX_NUM_SPS =                                     16;
 static const Int MAX_NUM_PPS =                                     64;
 
 
+#if COM16_C806_T64
+static const Int MLS_GRP_NUM =                                    256; ///< Max number of coefficient groups, max(16, 256)
+#else
 static const Int MLS_GRP_NUM =                                     64; ///< Max number of coefficient groups, max(16, 64)
+#endif
 static const Int MLS_CG_LOG2_WIDTH =                                2;
 static const Int MLS_CG_LOG2_HEIGHT =                               2;
 static const Int MLS_CG_SIZE =                                      4; ///< Coefficient group size of 4x4; = MLS_CG_LOG2_WIDTH + MLS_CG_LOG2_HEIGHT
@@ -230,7 +234,12 @@ static const Int MAX_CU_DEPTH =                                     6; ///< log2
 static const Int MAX_CU_SIZE =                                     64; ///< = 1<<(MAX_CU_DEPTH)
 static const Int MIN_PU_SIZE =                                      4;
 static const Int MIN_TU_SIZE =                                      4;
+#if COM16_C806_T64
+static const Int MAX_TU_SIZE =                                     64;
+static const Int MAX_LOG2_TU_SIZE_PLUS_ONE =                        7; ///< log2(MAX_TU_SIZE) + 1
+#else
 static const Int MAX_TU_SIZE =                                     32;
+#endif
 static const Int MAX_NUM_PART_IDXS_IN_CTU_WIDTH = MAX_CU_SIZE/MIN_PU_SIZE; ///< maximum number of partition indices across the width of a CTU (or height of a CTU)
 static const Int SCALING_LIST_REM_NUM =                             6;
 
@@ -248,7 +257,11 @@ static const Int LOG2_SCALING_LIST_NEUTRAL_VALUE =                 4 ; ///< log2
 static const Int SCALING_LIST_DC =                                16 ; ///< default DC value
 
 static const Int CONTEXT_STATE_BITS =                              6 ;
+#if COM16_C806_T64
+static const Int LAST_SIGNIFICANT_GROUPS =                        12 ;
+#else
 static const Int LAST_SIGNIFICANT_GROUPS =                        10 ;
+#endif
 // ====================================================================================================================
 // Macro functions
 // ====================================================================================================================

@@ -1478,6 +1478,12 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
     {
       uiSigCoeffGroupFlag[ iCGBlkPos ] = 1;
     }
+#if COM16_C806_T64
+    else if( uiWidth>=64 && ( iCGPosY>=(codingParameters.heightInGroups/2) || iCGPosX>=(codingParameters.widthInGroups/2) ) )
+    {
+      assert( 0 == uiSigCoeffGroupFlag[ iCGBlkPos ] );
+    }
+#endif
     else
     {
       UInt uiSigCoeffGroup   = (uiSigCoeffGroupFlag[ iCGBlkPos ] != 0);
