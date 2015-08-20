@@ -219,7 +219,11 @@ private:
   static Distortion xGetHADs          ( DistParam* pcDtParam );
   static Distortion xCalcHADs2x2      ( Pel *piOrg, Pel *piCurr, Int iStrideOrg, Int iStrideCur, Int iStep );
   static Distortion xCalcHADs4x4      ( Pel *piOrg, Pel *piCurr, Int iStrideOrg, Int iStrideCur, Int iStep );
-  static Distortion xCalcHADs8x8      ( Pel *piOrg, Pel *piCurr, Int iStrideOrg, Int iStrideCur, Int iStep );
+  static Distortion xCalcHADs8x8      ( Pel *piOrg, Pel *piCurr, Int iStrideOrg, Int iStrideCur, Int iStep 
+#if COM16_C806_SIMD_OPT
+    , Int bitDepth
+#endif
+    );
 
 #if VCEG_AZ06_IC
   static Distortion xGetMRSAD         ( DistParam* pcDtParam );
