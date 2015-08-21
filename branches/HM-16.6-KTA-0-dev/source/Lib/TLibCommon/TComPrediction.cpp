@@ -1342,8 +1342,8 @@ Void TComPrediction::subBlockOBMC( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv
 
   if( bTwoPUs )
   {
-#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
     pcCU->getPartIndexAndSize( 1, uiPartAddr, i1stPUWidth, i1stPUHeight );
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
     bAtmvpPU |= (pcCU->getMergeType( uiPartAddr ) == MGR_TYPE_SUBPU_TMVP || pcCU->getMergeType( uiPartAddr ) == MGR_TYPE_SUBPU_TMVP_EXT);
 #endif
     pcCU->getPartIndexAndSize( 0, uiPartAddr, i1stPUWidth, i1stPUHeight );
