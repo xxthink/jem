@@ -400,6 +400,10 @@ protected:
   Int       m_useFastInterEMT;
 #endif
 
+#if COM16_C806_LARGE_CTU
+  Int       m_useFastLCTU;
+#endif
+
   std::string m_summaryOutFilename;                           ///< filename to use for producing summary output file.
   std::string m_summaryPicFilenameBase;                       ///< Base filename to use for producing summary picture output files. The actual filenames used will have I.txt, P.txt and B.txt appended.
   UInt        m_summaryVerboseness;                           ///< Specifies the level of the verboseness of the text output.
@@ -997,6 +1001,10 @@ public:
   Int       getUseIntraEMT()                                         { return m_useIntraEMT;  }
   Void      setUseInterEMT(Int n)                                    { m_useInterEMT = n;     }
   Int       getUseInterEMT()                                         { return m_useInterEMT;  }
+#endif
+#if COM16_C806_LARGE_CTU
+  Void      setUseFastLCTU(Int n)                                    { m_useFastLCTU = n; }
+  Int       getUseFastLCTU()                                         { return m_useFastLCTU;  }
 #endif
 };
 

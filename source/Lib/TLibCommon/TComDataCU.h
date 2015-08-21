@@ -81,8 +81,13 @@ private:
   UInt          m_uiCUPelX;           ///< CU position in a pixel (X)
   UInt          m_uiCUPelY;           ///< CU position in a pixel (Y)
   UInt          m_uiNumPartition;     ///< total number of minimum partitions in a CU
+#if COM16_C806_LARGE_CTU 
+  UShort*       m_puhWidth;           ///< array of widths
+  UShort*       m_puhHeight;          ///< array of heights
+#else
   UChar*        m_puhWidth;           ///< array of widths
   UChar*        m_puhHeight;          ///< array of heights
+#endif
   UChar*        m_puhDepth;           ///< array of depths
   Int           m_unitSize;           ///< size of a "minimum partition"
 
@@ -259,6 +264,15 @@ public:
   Bool*         getCUTransquantBypass ()                        { return m_CUTransquantBypass;        }
   Bool          getCUTransquantBypass( UInt uiIdx )             { return m_CUTransquantBypass[uiIdx]; }
 
+#if COM16_C806_LARGE_CTU
+  UShort*       getWidth              ()                        { return m_puhWidth;          }
+  UShort        getWidth              ( UInt uiIdx )            { return m_puhWidth[uiIdx];   }
+  Void          setWidth              ( UInt uiIdx, UShort uh ) { m_puhWidth[uiIdx] = uh;     }
+
+  UShort*       getHeight             ()                        { return m_puhHeight;         }
+  UShort        getHeight             ( UInt uiIdx )            { return m_puhHeight[uiIdx];  }
+  Void          setHeight             ( UInt uiIdx, UShort uh ) { m_puhHeight[uiIdx] = uh;    }
+#else
   UChar*        getWidth              ()                        { return m_puhWidth;          }
   UChar         getWidth              ( UInt uiIdx )            { return m_puhWidth[uiIdx];   }
   Void          setWidth              ( UInt uiIdx, UChar  uh ) { m_puhWidth[uiIdx] = uh;     }
@@ -266,6 +280,7 @@ public:
   UChar*        getHeight             ()                        { return m_puhHeight;         }
   UChar         getHeight             ( UInt uiIdx )            { return m_puhHeight[uiIdx];  }
   Void          setHeight             ( UInt uiIdx, UChar  uh ) { m_puhHeight[uiIdx] = uh;    }
+#endif
 
   Void          setSizeSubParts       ( UInt uiWidth, UInt uiHeight, UInt uiAbsPartIdx, UInt uiDepth );
 
@@ -553,6 +568,9 @@ public:
   // -------------------------------------------------------------------------------------------------------------------
 
   UInt          getCtxSplitFlag                 ( UInt   uiAbsPartIdx, UInt uiDepth                   );
+#if COM16_C806_LARGE_CTU
+  Void          getMaxMinCUDepth                ( UChar & rucMinDepth , UChar & rucMaxDepth , UInt uiAbsPartIdx );
+#endif
   UInt          getCtxQtCbf                     ( TComTU &rTu, const ChannelType chType );
 
   UInt          getCtxSkipFlag                  ( UInt   uiAbsPartIdx                                 );

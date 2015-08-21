@@ -382,6 +382,9 @@ protected:
 #if ALF_HM3_REFACTOR
   Bool      m_useALF;                                         ///< flag for using adaptive loop filter
 #endif
+#if COM16_C806_LARGE_CTU
+  Int       m_useFastLCTU;
+#endif
 
 #if COM16_C806_EMT
   Int       m_useEMT;                                         ///< XZ: Enhanced Multiple Transform

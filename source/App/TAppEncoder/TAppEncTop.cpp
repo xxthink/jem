@@ -388,25 +388,28 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setHarmonizeGopFirstFieldCoupleEnabled               ( m_bHarmonizeGopFirstFieldCoupleEnabled );
 
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
-  m_cTEncTop.setSubPUTLog2Size ( m_subPUTLog2Size);
-  m_cTEncTop.setAtmvp( m_useAtmvpFlag);
+  m_cTEncTop.setSubPUTLog2Size                                    ( m_subPUTLog2Size);
+  m_cTEncTop.setAtmvp                                             ( m_useAtmvpFlag);
 #endif
 #if COM16_C806_OBMC
-  m_cTEncTop.setOBMC( m_useOBMC );
-  m_cTEncTop.setOBMCBlkSize( m_OBMCBlkSize );
+  m_cTEncTop.setOBMC                                              ( m_useOBMC );
+  m_cTEncTop.setOBMCBlkSize                                       ( m_OBMCBlkSize );
 #endif
 #if VCEG_AZ06_IC
-  m_cTEncTop.setUseIC( m_useIC );
+  m_cTEncTop.setUseIC                                             ( m_useIC );
 #endif
 #if ALF_HM3_REFACTOR
-  m_cTEncTop.setUseALF                       ( m_useALF      );
+  m_cTEncTop.setUseALF                                            ( m_useALF      );
+#endif
+#if COM16_C806_LARGE_CTU
+  m_cTEncTop.setUseFastLCTU                                       ( m_useFastLCTU );
 #endif
 
 #if COM16_C806_EMT
-  m_cTEncTop.setUseIntraEMT( m_useEMT&1 );
-  m_cTEncTop.setUseFastIntraEMT( m_useFastEMT & m_useEMT & 1 );
-  m_cTEncTop.setUseInterEMT( (m_useEMT>>1)&1 );
-  m_cTEncTop.setUseFastInterEMT( (m_useFastEMT>>1) & (m_useEMT>>1) & 1 );
+  m_cTEncTop.setUseIntraEMT                                       ( m_useEMT&1 );
+  m_cTEncTop.setUseFastIntraEMT                                   ( m_useFastEMT & m_useEMT & 1 );
+  m_cTEncTop.setUseInterEMT                                       ( (m_useEMT>>1)&1 );
+  m_cTEncTop.setUseFastInterEMT                                   ( (m_useFastEMT>>1) & (m_useEMT>>1) & 1 );
 #endif
 
   m_cTEncTop.setSummaryOutFilename                                ( m_summaryOutFilename );

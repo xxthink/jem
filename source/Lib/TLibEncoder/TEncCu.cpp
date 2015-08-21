@@ -80,6 +80,13 @@ Void TEncCu::create(UChar uhTotalDepth, UInt uiMaxWidth, UInt uiMaxHeight, Chrom
   m_ppcRecoYuvTemp = new TComYuv*[m_uhTotalDepth-1];
   m_ppcOrigYuv     = new TComYuv*[m_uhTotalDepth-1];
 
+#if COM16_C806_LARGE_CTU
+  for( i = 0 ; i < NUMBER_OF_STORED_RESIDUAL_TYPES ; i++ )
+  {
+    m_resiBuffer[i] = new Pel [MAX_CU_SIZE * MAX_CU_SIZE];
+  }
+#endif
+
   UInt uiNumPartitions;
   for( i=0 ; i<m_uhTotalDepth-1 ; i++)
   {
@@ -254,6 +261,7 @@ Void TEncCu::destroy()
     }
   }
 #endif
+
 #if COM16_C806_OBMC
   if(m_ppcTempCUWoOBMC)
   {
@@ -275,6 +283,17 @@ Void TEncCu::destroy()
   {
     delete [] m_ppcPredYuvWoOBMC;
     m_ppcPredYuvWoOBMC = NULL;
+  }
+#endif
+
+#if COM16_C806_LARGE_CTU
+  for( i = 0 ; i < NUMBER_OF_STORED_RESIDUAL_TYPES ; i++ )
+  {
+    if( m_resiBuffer[i] )
+    {
+      delete [] m_resiBuffer[i];
+      m_resiBuffer[i] = NULL;
+    }
   }
 #endif
 }
@@ -506,9 +525,21 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 
   TComSlice * pcSlice = rpcTempCU->getPic()->getSlice(rpcTempCU->getPic()->getCurrSliceIdx());
 
+#if COM16_C806_LARGE_CTU
+  UChar ucMinDepth = 0 , ucMaxDepth = ( UChar )pcSlice->getSPS()->getLog2DiffMaxMinCodingBlockSize();
+  if( m_pcEncCfg->getUseFastLCTU() )
+  {
+    rpcTempCU->getMaxMinCUDepth( ucMinDepth , ucMaxDepth , rpcTempCU->getZorderIdxInCtu() );
+  }
+#endif
+
   const Bool bBoundary = !( uiRPelX < sps.getPicWidthInLumaSamples() && uiBPelY < sps.getPicHeightInLumaSamples() );
 
-  if ( !bBoundary )
+  if ( !bBoundary 
+#if COM16_C806_LARGE_CTU
+    && ucMinDepth <= uiDepth 
+#endif
+    )
   {
     for (Int iQP=iMinQP; iQP<=iMaxQP; iQP++)
     {
@@ -953,7 +984,12 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
     iMaxQP = iMinQP; // If all TUs are forced into using transquant bypass, do not loop here.
   }
 
-  const Bool bSubBranch = bBoundary || !( m_pcEncCfg->getUseEarlyCU() && rpcBestCU->getTotalCost()!=MAX_DOUBLE && rpcBestCU->isSkipped(0) );
+  const Bool bSubBranch = bBoundary || 
+#if COM16_C806_LARGE_CTU
+    ( !( m_pcEncCfg->getUseEarlyCU() && rpcBestCU->getTotalCost()!=MAX_DOUBLE && rpcBestCU->isSkipped(0) ) && ( !m_pcEncCfg->getUseFastLCTU() || uiDepth < ucMaxDepth ) );
+#else
+    !( m_pcEncCfg->getUseEarlyCU() && rpcBestCU->getTotalCost()!=MAX_DOUBLE && rpcBestCU->isSkipped(0) );
+#endif
 
   if( bSubBranch && uiDepth < sps.getLog2DiffMaxMinCodingBlockSize() && (!getFastDeltaQp() || uiWidth > fastDeltaQPCuMaxSize || bBoundary))
   {
@@ -1398,6 +1434,15 @@ Int  TEncCu::updateCtuDataISlice(TComDataCU* pCtu, Int width, Int height)
  */
 Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU DEBUG_STRING_FN_DECLARE(sDebug), Bool *earlyDetectionSkipMode )
 {
+#if COM16_C806_LARGE_CTU
+  if( m_pcEncCfg->getUseFastLCTU() && rpcTempCU->getHeight( 0 ) * 2 > rpcTempCU->getSlice()->getSPS()->getPicHeightInLumaSamples() )
+  {
+    rpcTempCU->getTotalCost() = MAX_DOUBLE / 4;
+    rpcTempCU->getTotalDistortion() = MAX_INT;
+    xCheckBestMode(rpcBestCU, rpcTempCU, rpcTempCU->getDepth( 0 ));
+    return;
+  }
+#endif
   assert( rpcTempCU->getSlice()->getSliceType() != I_SLICE );
   if(getFastDeltaQp())
   {
@@ -1610,6 +1655,19 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
   // prior to this, rpcTempCU will have just been reset using rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
   UChar uhDepth = rpcTempCU->getDepth( 0 );
 
+#if COM16_C806_LARGE_CTU
+  if( m_pcEncCfg->getUseFastLCTU() )
+  {
+    if( ePartSize != SIZE_2Nx2N && rpcTempCU->getWidth( 0 ) > 64 )
+    {
+      rpcTempCU->getTotalCost() = MAX_DOUBLE / 4;
+      rpcTempCU->getTotalDistortion() = MAX_INT;
+      xCheckBestMode(rpcBestCU, rpcTempCU, uhDepth);
+      return;
+    }
+  }
+#endif
+
   rpcTempCU->setPartSizeSubParts  ( ePartSize,  0, uhDepth );
   rpcTempCU->setPredModeSubParts  ( MODE_INTER, 0, uhDepth );
   rpcTempCU->setChromaQpAdjSubParts( rpcTempCU->getCUTransquantBypass(0) ? 0 : m_cuChromaQpOffsetIdxPlus1, 0, uhDepth );
@@ -1717,6 +1775,19 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
 
   UInt uiDepth = rpcTempCU->getDepth( 0 );
 
+#if COM16_C806_LARGE_CTU
+  if( m_pcEncCfg->getUseFastLCTU() ) 
+  {
+    if( rpcTempCU->getWidth( 0 ) > 64 )
+    {
+      rpcTempCU->getTotalCost() = MAX_DOUBLE / 4;
+      rpcTempCU->getTotalDistortion() = MAX_INT;
+      xCheckBestMode(rpcBestCU, rpcTempCU, uiDepth);
+      return;
+    }
+  }
+#endif
+
   rpcTempCU->setSkipFlagSubParts( false, 0, uiDepth );
 #if COM16_C806_OBMC
   rpcTempCU->setOBMCFlagSubParts( false, 0, uiDepth );
@@ -1725,15 +1796,30 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
   rpcTempCU->setPredModeSubParts( MODE_INTRA, 0, uiDepth );
   rpcTempCU->setChromaQpAdjSubParts( rpcTempCU->getCUTransquantBypass(0) ? 0 : m_cuChromaQpOffsetIdxPlus1, 0, uiDepth );
 
+#if !COM16_C806_LARGE_CTU
   Pel resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE];
+#endif
 
-  m_pcPredSearch->estIntraPredLumaQT( rpcTempCU, m_ppcOrigYuv[uiDepth], m_ppcPredYuvTemp[uiDepth], m_ppcResiYuvTemp[uiDepth], m_ppcRecoYuvTemp[uiDepth], resiLuma DEBUG_STRING_PASS_INTO(sTest) );
+  m_pcPredSearch->estIntraPredLumaQT( rpcTempCU, m_ppcOrigYuv[uiDepth], m_ppcPredYuvTemp[uiDepth], m_ppcResiYuvTemp[uiDepth], m_ppcRecoYuvTemp[uiDepth], 
+#if COM16_C806_LARGE_CTU
+    m_resiBuffer 
+#else
+    resiLuma 
+#endif
+    DEBUG_STRING_PASS_INTO(sTest) );
 
   m_ppcRecoYuvTemp[uiDepth]->copyToPicComponent(COMPONENT_Y, rpcTempCU->getPic()->getPicYuvRec(), rpcTempCU->getCtuRsAddr(), rpcTempCU->getZorderIdxInCtu() );
 
   if (rpcBestCU->getPic()->getChromaFormat()!=CHROMA_400)
   {
-    m_pcPredSearch->estIntraPredChromaQT( rpcTempCU, m_ppcOrigYuv[uiDepth], m_ppcPredYuvTemp[uiDepth], m_ppcResiYuvTemp[uiDepth], m_ppcRecoYuvTemp[uiDepth], resiLuma DEBUG_STRING_PASS_INTO(sTest) );
+    m_pcPredSearch->estIntraPredChromaQT( rpcTempCU, m_ppcOrigYuv[uiDepth], m_ppcPredYuvTemp[uiDepth], m_ppcResiYuvTemp[uiDepth], m_ppcRecoYuvTemp[uiDepth], 
+#if COM16_C806_LARGE_CTU
+      m_resiBuffer 
+#else
+      resiLuma 
+#endif
+      DEBUG_STRING_PASS_INTO(sTest) 
+      );
   }
 
   m_pcEntropyCoder->resetBits();

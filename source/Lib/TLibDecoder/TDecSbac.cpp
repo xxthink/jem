@@ -617,8 +617,13 @@ Void TDecSbac::parsePartSize( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth 
 {
   UInt uiSymbol, uiMode = 0;
   PartSize eMode;
+#if COM16_C806_LARGE_CTU
+  const UShort cuWidth =UShort(pcCU->getSlice()->getSPS()->getMaxCUWidth()>>uiDepth);
+  const UShort cuHeight=UShort(pcCU->getSlice()->getSPS()->getMaxCUHeight()>>uiDepth);
+#else
   const UChar cuWidth =UChar(pcCU->getSlice()->getSPS()->getMaxCUWidth()>>uiDepth);
   const UChar cuHeight=UChar(pcCU->getSlice()->getSPS()->getMaxCUHeight()>>uiDepth);
+#endif
   const Int log2DiffMaxMinCodingBlockSize = pcCU->getSlice()->getSPS()->getLog2DiffMaxMinCodingBlockSize();
 
 #if RExt__DECODER_DEBUG_BIT_STATISTICS

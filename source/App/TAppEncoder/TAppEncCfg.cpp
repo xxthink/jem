@@ -1089,19 +1089,23 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   ("IlluCompEnable",                                  m_useIC, true, "Enable illumination compensation")
 #endif
 #if ALF_HM3_REFACTOR
-  ("ALF", m_useALF, true, "Adaptive Loop Filter")
+  ("ALF",                                             m_useALF, true, "Adaptive Loop Filter")
 #endif
 #if COM16_C806_EMT
-  ("EMT,-emt",       m_useEMT,       3,  "Enhanced Multiple Transform (EMT)\n"
-                                          "\t0:  Disable EMT\n"
-                                          "\t1:  Enable only Intra EMT\n"
-                                          "\t2:  Enable only Inter EMT\n"
-                                          "\t3:  Enable both Intra & Inter EMT\n")
-  ("EMTFAST,-femt",  m_useFastEMT,   3,  "Fast methods for Enhanced Multiple Transform (EMT)\n"
-                                          "\t0:  Disable fast methods for EMT\n"
-                                          "\t1:  Enable fast methods only for Intra EMT\n"
-                                          "\t2:  Enable fast methods only for Inter EMT\n"
-                                          "\t3:  Enable fast methods for both Intra & Inter EMT\n")
+  ("EMT,-emt",                                        m_useEMT,       3,  "Enhanced Multiple Transform (EMT)\n"
+                                                                           "\t0:  Disable EMT\n"
+                                                                           "\t1:  Enable only Intra EMT\n"
+                                                                           "\t2:  Enable only Inter EMT\n"
+                                                                           "\t3:  Enable both Intra & Inter EMT\n")
+  ("EMTFAST,-femt",                                   m_useFastEMT,   3,  "Fast methods for Enhanced Multiple Transform (EMT)\n"
+                                                                           "\t0:  Disable fast methods for EMT\n"
+                                                                           "\t1:  Enable fast methods only for Intra EMT\n"
+                                                                           "\t2:  Enable fast methods only for Inter EMT\n"
+                                                                           "\t3:  Enable fast methods for both Intra & Inter EMT\n")
+#endif
+
+#if COM16_C806_LARGE_CTU
+  ("LCTUFast" ,                                       m_useFastLCTU , 1 , "Fast methods for large CTU" )
 #endif
   ;
 
@@ -1758,6 +1762,18 @@ Void TAppEncCfg::xCheckParameter()
   {
     xConfirmPara( m_iIntraPeriod > 0 && m_iIntraPeriod <= m_iGOPSize ,                      "Intra period must be larger than GOP size for periodic IDR pictures");
   }
+#if COM16_C806_LARGE_CTU
+  if( m_uiMaxCUWidth * 2 > m_iSourceWidth && m_uiMaxCUHeight * 2 > m_iSourceHeight )
+  {
+    while( m_uiMaxCUWidth * 2 > m_iSourceWidth && m_uiMaxCUHeight * 2 > m_iSourceHeight )
+    {
+      m_uiMaxCUWidth >>= 1;
+      m_uiMaxCUHeight >>= 1;
+      m_uiMaxCUDepth--;
+    }
+    printf( "\nWarning: CTU size is reduced to (%dx%d) to better fit picture size (%dx%d)\n" , m_uiMaxCUWidth , m_uiMaxCUHeight , m_iSourceWidth , m_iSourceHeight );
+  }
+#endif
   xConfirmPara( m_uiMaxCUDepth < 1,                                                         "MaxPartitionDepth must be greater than zero");
   xConfirmPara( (m_uiMaxCUWidth  >> m_uiMaxCUDepth) < 4,                                    "Minimum partition width size should be larger than or equal to 8");
   xConfirmPara( (m_uiMaxCUHeight >> m_uiMaxCUDepth) < 4,                                    "Minimum partition height size should be larger than or equal to 8");
@@ -2535,6 +2551,9 @@ Void TAppEncCfg::xPrintParameter()
 #endif
 #if ALF_HM3_REFACTOR
   printf(" ALF:%d ", m_useALF             );
+#endif
+#if COM16_C806_LARGE_CTU
+  printf( "LCTUFast:%d " , m_useFastLCTU );
 #endif
 
 #if COM16_C806_EMT

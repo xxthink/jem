@@ -96,6 +96,12 @@ private:
   UChar         * m_phInterDirSP[2];
 #endif
 
+#if COM16_C806_LARGE_CTU
+  Pel*            m_resiSplitBuffer[MAX_CU_DEPTH][NUMBER_OF_STORED_RESIDUAL_TYPES];
+  Pel*            m_resiSingleBuffer[MAX_CU_DEPTH][NUMBER_OF_STORED_RESIDUAL_TYPES];
+  Pel*            m_resiPUBuffer[NUMBER_OF_STORED_RESIDUAL_TYPES];
+#endif
+
 protected:
   // interface to option
   TEncCfg*        m_pcEncCfg;
@@ -189,7 +195,11 @@ public:
                                   TComYuv*    pcPredYuv,
                                   TComYuv*    pcResiYuv,
                                   TComYuv*    pcRecoYuv,
+#if COM16_C806_LARGE_CTU
+                                  Pel*        resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES]
+#else
                                   Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE]
+#endif
                                   DEBUG_STRING_FN_DECLARE(sDebug));
 
   Void  estIntraPredChromaQT    ( TComDataCU* pcCU,
@@ -197,7 +207,11 @@ public:
                                   TComYuv*    pcPredYuv,
                                   TComYuv*    pcResiYuv,
                                   TComYuv*    pcRecoYuv,
+#if COM16_C806_LARGE_CTU
+                                  Pel*        resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES]
+#else
                                   Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE]
+#endif
                                   DEBUG_STRING_FN_DECLARE(sDebug));
 
   /// encoder estimation - inter prediction (non-skip)
@@ -266,7 +280,11 @@ protected:
   Void  xIntraCodingTUBlock       (       TComYuv*      pcOrgYuv,
                                           TComYuv*      pcPredYuv,
                                           TComYuv*      pcResiYuv,
+#if COM16_C806_LARGE_CTU
+                                          Pel*          resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES],
+#else
                                           Pel           resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE],
+#endif
                                     const Bool          checkCrossCPrediction,
                                           Distortion&   ruiDist,
                                     const ComponentID   compID,
@@ -281,7 +299,11 @@ protected:
   Void  xRecurIntraCodingLumaQT   ( TComYuv*    pcOrgYuv,
                                     TComYuv*    pcPredYuv,
                                     TComYuv*    pcResiYuv,
+#if COM16_C806_LARGE_CTU
+                                    Pel*        resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES],
+#else
                                     Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE],
+#endif
                                     Distortion& ruiDistY,
 #if HHI_RQT_INTRA_SPEEDUP
                                     Bool         bCheckFirst,
@@ -313,7 +335,11 @@ protected:
   Void  xRecurIntraChromaCodingQT ( TComYuv*    pcOrgYuv,
                                     TComYuv*    pcPredYuv,
                                     TComYuv*    pcResiYuv,
+#if COM16_C806_LARGE_CTU
+                                    Pel*        resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES],
+#else
                                     Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE],
+#endif
                                     Distortion& ruiDist,
                                     TComTU      &rTu
                                     DEBUG_STRING_FN_DECLARE(sDebug));

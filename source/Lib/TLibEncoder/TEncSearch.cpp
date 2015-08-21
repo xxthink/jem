@@ -161,6 +161,12 @@ TEncSearch::TEncSearch()
     memset (m_auiMVPIdxCost[i], 0, (AMVP_MAX_NUM_CANDS+1) * sizeof (UInt) );
   }
 
+#if COM16_C806_LARGE_CTU
+  memset( m_resiSplitBuffer , 0 , sizeof( m_resiSplitBuffer ) );
+  memset( m_resiSingleBuffer , 0 , sizeof( m_resiSingleBuffer ) );
+  memset( m_resiPUBuffer , 0 , sizeof( m_resiPUBuffer ) );
+#endif
+
   setWpScalingDistParam( NULL, -1, REF_PIC_LIST_X );
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
   m_pMvFieldSP[0] = new TComMvField[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH*2];
@@ -216,6 +222,30 @@ Void TEncSearch::destroy()
 #if COM16_C806_EMT
   delete[] m_puhQTTempEmtTuIdx;
   delete[] m_puhQTTempEmtCuFlag;
+#endif
+
+#if COM16_C806_LARGE_CTU
+  for( Int n = 0 ; n < NUMBER_OF_STORED_RESIDUAL_TYPES ; n++ )
+  {
+    for( Int depth = 0 ; depth < MAX_CU_DEPTH ; depth++ )
+    {
+      if( m_resiSplitBuffer[depth][n] )
+      {
+        delete [] m_resiSplitBuffer[depth][n];
+        m_resiSplitBuffer[depth][n] = NULL;
+      }
+      if( m_resiSingleBuffer[depth][n] )
+      {
+        delete [] m_resiSingleBuffer[depth][n];
+        m_resiSingleBuffer[depth][n] = NULL;
+      }
+    }
+    if( m_resiPUBuffer[n] )
+    {
+      delete [] m_resiPUBuffer[n];
+      m_resiPUBuffer[n] = NULL;
+    }
+  }
 #endif
 
   for (UInt ch=0; ch<MAX_NUM_COMPONENT; ch++)
@@ -365,6 +395,19 @@ Void TEncSearch::init(TEncCfg*      pcEncCfg,
   }
   m_pcQTTempTransformSkipTComYuv.create( maxCUWidth, maxCUHeight, pcEncCfg->getChromaFormatIdc() );
   m_tmpYuvPred.create(MAX_CU_SIZE, MAX_CU_SIZE, pcEncCfg->getChromaFormatIdc());
+
+#if COM16_C806_LARGE_CTU
+  for( Int n = 0 ; n < NUMBER_OF_STORED_RESIDUAL_TYPES ; n++ )
+  {
+    for( Int depth = 0 ; depth < MAX_CU_DEPTH ; depth++ )
+    {
+      m_resiSplitBuffer[depth][n]   = new Pel [MAX_CU_SIZE*MAX_CU_SIZE];
+      m_resiSingleBuffer[depth][n]  = new Pel [MAX_CU_SIZE*MAX_CU_SIZE];
+    }
+    m_resiPUBuffer[n] = new Pel [MAX_CU_SIZE*MAX_CU_SIZE];
+  }
+#endif
+
   m_isInitialized = true;
 }
 
@@ -1182,7 +1225,11 @@ UInt TEncSearch::xGetIntraBitsQTChroma(TComTU &rTu,
 Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
                                             TComYuv*    pcPredYuv,
                                             TComYuv*    pcResiYuv,
+#if COM16_C806_LARGE_CTU
+                                            Pel*        resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES],
+#else
                                             Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE],
+#endif
                                       const Bool        checkCrossCPrediction,
                                             Distortion& ruiDist,
                                       const ComponentID compID,
@@ -1515,7 +1562,11 @@ Void
 TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
                                     TComYuv*    pcPredYuv,
                                     TComYuv*    pcResiYuv,
+#if COM16_C806_LARGE_CTU
+                                    Pel*        resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES],
+#else
                                     Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE],
+#endif
                                     Distortion& ruiDistY,
 #if HHI_RQT_INTRA_SPEEDUP
                                     Bool        bCheckFirst,
@@ -1532,8 +1583,10 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
         Bool    bCheckFull    = ( uiLog2TrSize  <= pcCU->getSlice()->getSPS()->getQuadtreeTULog2MaxSize() );
         Bool    bCheckSplit   = ( uiLog2TrSize  >  pcCU->getQuadtreeTULog2MinSizeInCU(uiAbsPartIdx) );
 
+#if !COM16_C806_LARGE_CTU
         Pel     resiLumaSplit [NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE];
         Pel     resiLumaSingle[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE];
+#endif
 
         Bool    bMaintainResidual[NUMBER_OF_STORED_RESIDUAL_TYPES];
         for (UInt residualTypeIndex = 0; residualTypeIndex < NUMBER_OF_STORED_RESIDUAL_TYPES; residualTypeIndex++)
@@ -1672,7 +1725,13 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
 #endif
 
         pcCU->setTransformSkipSubParts ( modeId, COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan );
-        xIntraCodingTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaSingle, false, singleDistTmpLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sModeString), default0Save1Load2
+        xIntraCodingTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv, 
+#if COM16_C806_LARGE_CTU
+          m_resiSingleBuffer[uiLog2TrSize],
+#else
+          resiLumaSingle, 
+#endif
+          false, singleDistTmpLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sModeString), default0Save1Load2 
 #if COM16_C806_EMT
           , &uiSigNum
 #endif
@@ -1719,7 +1778,13 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
             {
               if (bMaintainResidual[storedResidualIndex])
               {
-                xStoreCrossComponentPredictionResult(resiLuma[storedResidualIndex], resiLumaSingle[storedResidualIndex], rTu, xOffset, yOffset, MAX_CU_SIZE, MAX_CU_SIZE);
+                xStoreCrossComponentPredictionResult(resiLuma[storedResidualIndex], 
+#if COM16_C806_LARGE_CTU
+                  m_resiSingleBuffer[uiLog2TrSize][storedResidualIndex],
+#else
+                  resiLumaSingle[storedResidualIndex], 
+#endif
+                  rTu, xOffset, yOffset, MAX_CU_SIZE, MAX_CU_SIZE);
               }
             }
           }
@@ -1791,12 +1856,24 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
       pcCU->setEmtTuIdxSubParts( trIdx, uiAbsPartIdx, uiFullDepth );
 #endif
       pcCU ->setTransformSkipSubParts ( 0, COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan );
-      xIntraCodingTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaSingle, false, singleDistYTmp, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sDebug), default0Save1Load2, &uiSigNum);
+      xIntraCodingTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv, 
+#if COM16_C806_LARGE_CTU
+        m_resiSingleBuffer[uiLog2TrSize],
+#else
+        resiLumaSingle, 
+#endif
+        false, singleDistYTmp, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sDebug), default0Save1Load2, &uiSigNum);
 #else
       dSingleCost   = 0.0;
 
       pcCU ->setTransformSkipSubParts ( 0, COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan );
-      xIntraCodingTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaSingle, false, uiSingleDistLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sDebug));
+      xIntraCodingTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv, 
+#if COM16_C806_LARGE_CTU
+        m_resiSingleBuffer[uiLog2TrSize],
+#else
+        resiLumaSingle, 
+#endif
+        false, uiSingleDistLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sDebug));
 #endif
 
 #if COM16_C806_EMT
@@ -1845,7 +1922,13 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
         {
           if (bMaintainResidual[storedResidualIndex])
           {
-            xStoreCrossComponentPredictionResult(resiLuma[storedResidualIndex], resiLumaSingle[storedResidualIndex], rTu, xOffset, yOffset, MAX_CU_SIZE, MAX_CU_SIZE);
+            xStoreCrossComponentPredictionResult(resiLuma[storedResidualIndex], 
+#if COM16_C806_LARGE_CTU
+              m_resiSingleBuffer[uiLog2TrSize][storedResidualIndex],
+#else
+              resiLumaSingle[storedResidualIndex], 
+#endif
+              rTu, xOffset, yOffset, MAX_CU_SIZE, MAX_CU_SIZE);
           }
         }
       }
@@ -1906,9 +1989,21 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
     {
       DEBUG_STRING_NEW(sChild)
 #if HHI_RQT_INTRA_SPEEDUP
-      xRecurIntraCodingLumaQT( pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaSplit, uiSplitDistLuma, bCheckFirst, dSplitCost, tuRecurseChild DEBUG_STRING_PASS_INTO(sChild) );
+      xRecurIntraCodingLumaQT( pcOrgYuv, pcPredYuv, pcResiYuv, 
+#if COM16_C806_LARGE_CTU
+        m_resiSplitBuffer[uiLog2TrSize],
 #else
-      xRecurIntraCodingLumaQT( pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaSplit, uiSplitDistLuma, dSplitCost, tuRecurseChild DEBUG_STRING_PASS_INTO(sChild) );
+        resiLumaSplit, 
+#endif
+        uiSplitDistLuma, bCheckFirst, dSplitCost, tuRecurseChild DEBUG_STRING_PASS_INTO(sChild) );
+#else
+      xRecurIntraCodingLumaQT( pcOrgYuv, pcPredYuv, pcResiYuv, 
+#if COM16_C806_LARGE_CTU
+        m_resiSplitBuffer[uiLog2TrSize],
+#else
+        resiLumaSplit, 
+#endif
+        uiSplitDistLuma, dSplitCost, tuRecurseChild DEBUG_STRING_PASS_INTO(sChild) );
 #endif
       DEBUG_STRING_APPEND(sSplit, sChild)
       uiSplitCbfLuma |= pcCU->getCbf( tuRecurseChild.GetAbsPartIdxTU(), COMPONENT_Y, tuRecurseChild.GetTransformDepthRel() );
@@ -1963,7 +2058,13 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
         {
           if (bMaintainResidual[storedResidualIndex])
           {
-            xStoreCrossComponentPredictionResult(resiLuma[storedResidualIndex], resiLumaSplit[storedResidualIndex], rTu, xOffset, yOffset, MAX_CU_SIZE, MAX_CU_SIZE);
+            xStoreCrossComponentPredictionResult(resiLuma[storedResidualIndex], 
+#if COM16_C806_LARGE_CTU
+              m_resiSplitBuffer[uiLog2TrSize][storedResidualIndex],
+#else
+              resiLumaSplit[storedResidualIndex], 
+#endif
+              rTu, xOffset, yOffset, MAX_CU_SIZE, MAX_CU_SIZE);
           }
         }
       }
@@ -2209,7 +2310,11 @@ Void
 TEncSearch::xRecurIntraChromaCodingQT(TComYuv*    pcOrgYuv,
                                       TComYuv*    pcPredYuv,
                                       TComYuv*    pcResiYuv,
+#if COM16_C806_LARGE_CTU
+                                      Pel*        resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES],
+#else
                                       Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE],
+#endif
                                       Distortion& ruiDist,
                                       TComTU&     rTu
                                       DEBUG_STRING_FN_DECLARE(sDebug))
@@ -2473,7 +2578,11 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
                                TComYuv*    pcPredYuv,
                                TComYuv*    pcResiYuv,
                                TComYuv*    pcRecoYuv,
+#if COM16_C806_LARGE_CTU
+                               Pel*        resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES]
+#else
                                Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE]
+#endif
                                DEBUG_STRING_FN_DECLARE(sDebug))
 {
   const UInt         uiDepth               = pcCU->getDepth(0);
@@ -2488,7 +2597,9 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         Distortion   uiOverallDistY        = 0;
         UInt         CandNum;
         Double       CandCostList[ FAST_UDI_MAX_RDMODE_NUM ];
+#if !COM16_C806_LARGE_CTU
         Pel          resiLumaPU[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE];
+#endif
 
         Bool    bMaintainResidual[NUMBER_OF_STORED_RESIDUAL_TYPES];
         for (UInt residualTypeIndex = 0; residualTypeIndex < NUMBER_OF_STORED_RESIDUAL_TYPES; residualTypeIndex++)
@@ -2727,9 +2838,21 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
       Distortion uiPUDistY = 0;
       Double     dPUCost   = 0.0;
 #if HHI_RQT_INTRA_SPEEDUP
-      xRecurIntraCodingLumaQT( pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaPU, uiPUDistY, true, dPUCost, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sMode) );
+      xRecurIntraCodingLumaQT( pcOrgYuv, pcPredYuv, pcResiYuv, 
+#if COM16_C806_LARGE_CTU
+        m_resiPUBuffer,
 #else
-      xRecurIntraCodingLumaQT( pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaPU, uiPUDistY, dPUCost, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sMode) );
+        resiLumaPU, 
+#endif
+        uiPUDistY, true, dPUCost, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sMode) );
+#else
+      xRecurIntraCodingLumaQT( pcOrgYuv, pcPredYuv, pcResiYuv, 
+#if COM16_C806_LARGE_CTU
+        m_resiPUBuffer,
+#else
+        resiLumaPU, 
+#endif
+        uiPUDistY, dPUCost, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sMode) );
 #endif
 
 #if DEBUG_INTRA_SEARCH_COSTS
@@ -2772,7 +2895,13 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
           {
             if (bMaintainResidual[storedResidualIndex])
             {
-              xStoreCrossComponentPredictionResult(resiLuma[storedResidualIndex], resiLumaPU[storedResidualIndex], tuRecurseWithPU, xOffset, yOffset, MAX_CU_SIZE, MAX_CU_SIZE );
+              xStoreCrossComponentPredictionResult(resiLuma[storedResidualIndex], 
+#if COM16_C806_LARGE_CTU
+                m_resiPUBuffer[storedResidualIndex],
+#else
+                resiLumaPU[storedResidualIndex], 
+#endif
+                tuRecurseWithPU, xOffset, yOffset, MAX_CU_SIZE, MAX_CU_SIZE );
             }
           }
         }
@@ -2831,7 +2960,13 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
       Distortion uiPUDistY = 0;
       Double     dPUCost   = 0.0;
 
-      xRecurIntraCodingLumaQT( pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaPU, uiPUDistY, false, dPUCost, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sModeTree));
+      xRecurIntraCodingLumaQT( pcOrgYuv, pcPredYuv, pcResiYuv, 
+#if COM16_C806_LARGE_CTU
+        m_resiPUBuffer,
+#else
+        resiLumaPU, 
+#endif
+        uiPUDistY, false, dPUCost, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sModeTree));
 
       // check r-d cost
       if( dPUCost < dBestPUCost )
@@ -2851,7 +2986,13 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
           {
             if (bMaintainResidual[storedResidualIndex])
             {
-              xStoreCrossComponentPredictionResult(resiLuma[storedResidualIndex], resiLumaPU[storedResidualIndex], tuRecurseWithPU, xOffset, yOffset, MAX_CU_SIZE, MAX_CU_SIZE );
+              xStoreCrossComponentPredictionResult(resiLuma[storedResidualIndex], 
+#if COM16_C806_LARGE_CTU
+                m_resiPUBuffer[storedResidualIndex],
+#else
+                resiLumaPU[storedResidualIndex], 
+#endif
+                tuRecurseWithPU, xOffset, yOffset, MAX_CU_SIZE, MAX_CU_SIZE );
             }
           }
         }
@@ -2957,7 +3098,11 @@ TEncSearch::estIntraPredChromaQT(TComDataCU* pcCU,
                                  TComYuv*    pcPredYuv,
                                  TComYuv*    pcResiYuv,
                                  TComYuv*    pcRecoYuv,
+#if COM16_C806_LARGE_CTU
+                                 Pel*        resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES]
+#else
                                  Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE]
+#endif
                                  DEBUG_STRING_FN_DECLARE(sDebug))
 {
   const UInt    uiInitTrDepth  = pcCU->getPartitionSize(0) != SIZE_2Nx2N && enable4ChromaPUsInIntraNxNCU(pcOrgYuv->getChromaFormat()) ? 1 : 0;
@@ -3557,6 +3702,17 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
     }
 
     //  Bi-directional prediction
+#if COM16_C806_LARGE_CTU
+    UChar uiMaxCUDepth = 0 , uiMinCUDepth = 0;
+    pcCU->getMaxMinCUDepth( uiMinCUDepth , uiMaxCUDepth , pcCU->getZorderIdxInCtu() );
+    Bool bCheckBi = true;
+    if( m_pcEncCfg->getUseFastLCTU() )
+    {
+      bCheckBi = pcCU->getDepth( 0 ) < uiMaxCUDepth || iRoiWidth * iRoiHeight >= 64;
+    }
+    if( bCheckBi )
+    {
+#endif
     if ( (pcCU->getSlice()->isInterB()) && (pcCU->isBipredRestriction(iPartIdx) == false) )
     {
 
@@ -3713,6 +3869,9 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
         }
       } // for loop-iter
     } // if (B_SLICE)
+#if COM16_C806_LARGE_CTU
+    }
+#endif
 
 #if AMP_MRG
     } //end if bTestNormalMC

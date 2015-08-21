@@ -63,7 +63,11 @@ typedef enum PRED_BUF_E
   NUM_PRED_BUF=2
 } PRED_BUF;
 
+#if COM16_C806_LARGE_CTU
+static const UInt MAX_INTRA_FILTER_DEPTHS=MAX_CU_DEPTH-1;
+#else
 static const UInt MAX_INTRA_FILTER_DEPTHS=5;
+#endif
 
 class TComPrediction : public TComWeightPrediction
 {

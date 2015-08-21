@@ -230,8 +230,13 @@ static const Int RExt__PREDICTION_WEIGHTING_ANALYSIS_DC_PRECISION = 0; ///< Addi
 
 static const Int MAX_TIMECODE_SEI_SETS =                            3; ///< Maximum number of time sets
 
+#if COM16_C806_LARGE_CTU
+static const Int MAX_CU_DEPTH =                                     8; ///< log2(CTUSize)
+static const Int MAX_CU_SIZE =                                    256; ///< = 1<<(MAX_CU_DEPTH)
+#else
 static const Int MAX_CU_DEPTH =                                     6; ///< log2(CTUSize)
 static const Int MAX_CU_SIZE =                                     64; ///< = 1<<(MAX_CU_DEPTH)
+#endif
 static const Int MIN_PU_SIZE =                                      4;
 static const Int MIN_TU_SIZE =                                      4;
 #if COM16_C806_T64
