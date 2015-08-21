@@ -55,6 +55,10 @@ const UChar TComPrediction::m_aucIntraFilter[MAX_NUM_CHANNEL_TYPE][MAX_INTRA_FIL
     1, //16x16
     0, //32x32
     10, //64x64
+#if COM16_C806_LARGE_CTU
+    0, //128x128
+    0, //256x256
+#endif
   },
   { // Chroma
     10, //4xn
@@ -62,8 +66,11 @@ const UChar TComPrediction::m_aucIntraFilter[MAX_NUM_CHANNEL_TYPE][MAX_INTRA_FIL
     1, //16xn
     0, //32xn
     10, //64xn
+#if COM16_C806_LARGE_CTU
+    0, //128x128
+    0, //256x256
+#endif
   }
-
 };
 
 // ====================================================================================================================
@@ -431,7 +438,11 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
   const Int            iHeight     = rect.height;
 
   assert( g_aucConvertToBit[ iWidth ] >= 0 ); //   4x  4
+#if COM16_C806_LARGE_CTU
+  assert( g_aucConvertToBit[ iWidth ] <= MAX_CU_DEPTH - 2 ); 
+#else
   assert( g_aucConvertToBit[ iWidth ] <= 5 ); // 128x128
+#endif
   //assert( iWidth == iHeight  );
 
         Pel *pDst = piPred;

@@ -301,6 +301,11 @@ Void TComRdCost::setDistParam( UInt uiBlkWidth, UInt uiBlkHeight, DFunc eDFunc, 
   // set Block Width / Height
   rcDistParam.iCols    = uiBlkWidth;
   rcDistParam.iRows    = uiBlkHeight;
+#if COM16_C806_LARGE_CTU
+  if( rcDistParam.iCols > 64 )
+    rcDistParam.DistFunc = m_afpDistortFunc[eDFunc];
+  else
+#endif
   rcDistParam.DistFunc = m_afpDistortFunc[eDFunc + g_aucConvertToBit[ rcDistParam.iCols ] + 1 ];
 
   // initialize
@@ -320,6 +325,11 @@ Void TComRdCost::setDistParam( TComPattern* pcPatternKey, Pel* piRefY, Int iRefS
   // set Block Width / Height
   rcDistParam.iCols    = pcPatternKey->getROIYWidth();
   rcDistParam.iRows    = pcPatternKey->getROIYHeight();
+#if COM16_C806_LARGE_CTU
+  if( rcDistParam.iCols > 64 )
+    rcDistParam.DistFunc = m_afpDistortFunc[DF_SAD];
+  else
+#endif
   rcDistParam.DistFunc = m_afpDistortFunc[DF_SAD + g_aucConvertToBit[ rcDistParam.iCols ] + 1 ];
 
   if (rcDistParam.iCols == 12)
@@ -359,6 +369,11 @@ Void TComRdCost::setDistParam( TComPattern* pcPatternKey, Pel* piRefY, Int iRefS
   // set distortion function
   if ( !bHADME )
   {
+#if COM16_C806_LARGE_CTU
+    if( rcDistParam.iCols > 64 )
+      rcDistParam.DistFunc =  m_afpDistortFunc[DF_SADS];
+    else
+#endif
     rcDistParam.DistFunc = m_afpDistortFunc[DF_SADS + g_aucConvertToBit[ rcDistParam.iCols ] + 1 ];
     if (rcDistParam.iCols == 12)
     {
@@ -375,6 +390,11 @@ Void TComRdCost::setDistParam( TComPattern* pcPatternKey, Pel* piRefY, Int iRefS
   }
   else
   {
+#if COM16_C806_LARGE_CTU
+    if( rcDistParam.iCols > 64 )
+      rcDistParam.DistFunc =  m_afpDistortFunc[DF_HADS];
+    else
+#endif
     rcDistParam.DistFunc = m_afpDistortFunc[DF_HADS + g_aucConvertToBit[ rcDistParam.iCols ] + 1 ];
   }
 
@@ -393,6 +413,11 @@ Void TComRdCost::setDistParam( DistParam& rcDP, Int bitDepth, Pel* p1, Int iStri
   rcDP.iStep      = 1;
   rcDP.iSubShift  = 0;
   rcDP.bitDepth   = bitDepth;
+#if COM16_C806_LARGE_CTU
+  if( rcDP.iCols > 64 )
+    rcDP.DistFunc   = m_afpDistortFunc[ ( bHadamard ? DF_HADS : DF_SADS ) ];
+  else
+#endif
   rcDP.DistFunc   = m_afpDistortFunc[ ( bHadamard ? DF_HADS : DF_SADS ) + g_aucConvertToBit[ iWidth ] + 1 ];
 }
 

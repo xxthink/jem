@@ -142,8 +142,13 @@ Void TComDataCU::create( ChromaFormat chromaFormatIDC, UInt uiNumPartition, UInt
   {
     m_phQP               = (Char*     )xMalloc(Char,     uiNumPartition);
     m_puhDepth           = (UChar*    )xMalloc(UChar,    uiNumPartition);
+#if COM16_C806_LARGE_CTU
+    m_puhWidth           = (UShort*   )xMalloc(UShort,   uiNumPartition);
+    m_puhHeight          = (UShort*   )xMalloc(UShort,   uiNumPartition);
+#else
     m_puhWidth           = (UChar*    )xMalloc(UChar,    uiNumPartition);
     m_puhHeight          = (UChar*    )xMalloc(UChar,    uiNumPartition);
+#endif
 
     m_ChromaQpAdj        = new UChar[ uiNumPartition ];
     m_skipFlag           = new Bool[ uiNumPartition ];
@@ -533,8 +538,16 @@ Void TComDataCU::initCtu( TComPic* pcPic, UInt ctuRsAddr )
   memset( m_CUTransquantBypass, false,                      m_uiNumPartition * sizeof( *m_CUTransquantBypass) );
   memset( m_puhDepth          , 0,                          m_uiNumPartition * sizeof( *m_puhDepth ) );
   memset( m_puhTrIdx          , 0,                          m_uiNumPartition * sizeof( *m_puhTrIdx ) );
+#if COM16_C806_LARGE_CTU
+  for( Int n = 0 ; n < m_uiNumPartition ; n++ )
+  {
+    m_puhWidth[n]  = maxCUWidth;
+    m_puhHeight[n] = maxCUHeight;
+  }
+#else
   memset( m_puhWidth          , maxCUWidth,                 m_uiNumPartition * sizeof( *m_puhWidth ) );
   memset( m_puhHeight         , maxCUHeight,                m_uiNumPartition * sizeof( *m_puhHeight ) );
+#endif
   for(UInt i=0; i<NUM_REF_PIC_LIST_01; i++)
   {
     const RefPicList rpl=RefPicList(i);
@@ -652,8 +665,13 @@ Void TComDataCU::initEstData( const UInt uiDepth, const Int qp, const Bool bTran
   m_uiTotalBits        = 0;
   m_uiTotalBins        = 0;
 
+#if COM16_C806_LARGE_CTU
+  const UShort uhWidth  = getSlice()->getSPS()->getMaxCUWidth()  >> uiDepth;
+  const UShort uhHeight = getSlice()->getSPS()->getMaxCUHeight() >> uiDepth;
+#else
   const UChar uhWidth  = getSlice()->getSPS()->getMaxCUWidth()  >> uiDepth;
   const UChar uhHeight = getSlice()->getSPS()->getMaxCUHeight() >> uiDepth;
+#endif
 
   for (UInt ui = 0; ui < m_uiNumPartition; ui++)
   {
@@ -742,8 +760,13 @@ Void TComDataCU::initSubCU( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth, 
   m_ctuRsAddr          = pcCU->getCtuRsAddr();
   m_absZIdxInCtu       = pcCU->getZorderIdxInCtu() + uiPartOffset;
 
+#if COM16_C806_LARGE_CTU
+  const UShort uhWidth  = getSlice()->getSPS()->getMaxCUWidth()  >> uiDepth;
+  const UShort uhHeight = getSlice()->getSPS()->getMaxCUHeight() >> uiDepth;
+#else
   const UChar uhWidth  = getSlice()->getSPS()->getMaxCUWidth()  >> uiDepth;
   const UChar uhHeight = getSlice()->getSPS()->getMaxCUHeight() >> uiDepth;
+#endif
 
   m_uiCUPelX           = pcCU->getCUPelX() + ( uhWidth )*( uiPartUnitIdx &  1 );
   m_uiCUPelY           = pcCU->getCUPelY() + ( uhHeight)*( uiPartUnitIdx >> 1 );
@@ -794,8 +817,16 @@ Void TComDataCU::initSubCU( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth, 
   }
 
   memset( m_puhDepth,     uiDepth, iSizeInUchar );
+#if COM16_C806_LARGE_CTU
+  for( Int n = 0 ; n < iSizeInUchar ; n++ )
+  {
+    m_puhWidth[n] = uhWidth;
+    m_puhHeight[n] = uhHeight;
+  }
+#else
   memset( m_puhWidth,          uhWidth,  iSizeInUchar );
   memset( m_puhHeight,         uhHeight, iSizeInUchar );
+#endif
   memset( m_pbIPCMFlag,        0, iSizeInBool  );
   for (UInt ui = 0; ui < m_uiNumPartition; ui++)
   {
@@ -845,11 +876,22 @@ Void TComDataCU::setOutsideCUPart( UInt uiAbsPartIdx, UInt uiDepth )
   const UInt     uiNumPartition = m_uiNumPartition >> (uiDepth << 1);
   const UInt     uiSizeInUchar  = sizeof( UChar  ) * uiNumPartition;
   const TComSPS &sps            = *(getSlice()->getSPS());
+#if COM16_C806_LARGE_CTU
+  UShort uhWidth  = sps.getMaxCUWidth()  >> uiDepth;
+  UShort uhHeight = sps.getMaxCUHeight() >> uiDepth;
+  memset( m_puhDepth    + uiAbsPartIdx,     uiDepth,  uiSizeInUchar );
+  for( UInt n = 0 ; n < uiSizeInUchar ; n++ )
+  {
+    m_puhWidth[uiAbsPartIdx+n] = uhWidth;
+    m_puhHeight[uiAbsPartIdx+n] = uhHeight;
+  }
+#else
   const UChar    uhWidth        = sps.getMaxCUWidth()  >> uiDepth;
   const UChar    uhHeight       = sps.getMaxCUHeight() >> uiDepth;
   memset( m_puhDepth    + uiAbsPartIdx,     uiDepth,  uiSizeInUchar );
   memset( m_puhWidth    + uiAbsPartIdx,     uhWidth,  uiSizeInUchar );
   memset( m_puhHeight   + uiAbsPartIdx,     uhHeight, uiSizeInUchar );
+#endif
 }
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -1019,6 +1061,9 @@ Void TComDataCU::copyPartFrom( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDept
   UInt uiNumPartition = pcCU->getTotalNumPart();
   Int iSizeInUchar  = sizeof( UChar ) * uiNumPartition;
   Int iSizeInBool   = sizeof( Bool  ) * uiNumPartition;
+#if COM16_C806_LARGE_CTU
+  Int iSizeInUshort = sizeof( UShort ) * uiNumPartition;
+#endif
 
   Int sizeInChar  = sizeof( Char ) * uiNumPartition;
   memcpy( m_skipFlag   + uiOffset, pcCU->getSkipFlag(),       sizeof( *m_skipFlag )   * uiNumPartition );
@@ -1064,8 +1109,13 @@ Void TComDataCU::copyPartFrom( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDept
   }
 
   memcpy( m_puhDepth  + uiOffset, pcCU->getDepth(),  iSizeInUchar );
+#if COM16_C806_LARGE_CTU
+  memcpy( m_puhWidth  + uiOffset, pcCU->getWidth(),  iSizeInUshort );
+  memcpy( m_puhHeight + uiOffset, pcCU->getHeight(), iSizeInUshort );
+#else
   memcpy( m_puhWidth  + uiOffset, pcCU->getWidth(),  iSizeInUchar );
   memcpy( m_puhHeight + uiOffset, pcCU->getHeight(), iSizeInUchar );
+#endif
 
   memcpy( m_pbIPCMFlag + uiOffset, pcCU->getIPCMFlag(), iSizeInBool );
 
@@ -1120,6 +1170,9 @@ Void TComDataCU::copyToPic( UChar uhDepth )
   Int iSizeInUchar  = sizeof( UChar ) * m_uiNumPartition;
   Int iSizeInBool   = sizeof( Bool  ) * m_uiNumPartition;
   Int sizeInChar  = sizeof( Char ) * m_uiNumPartition;
+#if COM16_C806_LARGE_CTU
+  Int sizeInUshort = sizeof( UShort ) * m_uiNumPartition;
+#endif
 
   memcpy( pCtu->getSkipFlag() + m_absZIdxInCtu, m_skipFlag, sizeof( *m_skipFlag ) * m_uiNumPartition );
 
@@ -1165,8 +1218,13 @@ Void TComDataCU::copyToPic( UChar uhDepth )
   }
 
   memcpy( pCtu->getDepth()  + m_absZIdxInCtu, m_puhDepth,  iSizeInUchar );
+#if COM16_C806_LARGE_CTU
+  memcpy( pCtu->getWidth()  + m_absZIdxInCtu, m_puhWidth,  sizeInUshort );
+  memcpy( pCtu->getHeight() + m_absZIdxInCtu, m_puhHeight, sizeInUshort );
+#else
   memcpy( pCtu->getWidth()  + m_absZIdxInCtu, m_puhWidth,  iSizeInUchar );
   memcpy( pCtu->getHeight() + m_absZIdxInCtu, m_puhHeight, iSizeInUchar );
+#endif
 
   for(UInt i=0; i<NUM_REF_PIC_LIST_01; i++)
   {
@@ -1679,6 +1737,20 @@ UInt TComDataCU::getCtxSplitFlag( UInt uiAbsPartIdx, UInt uiDepth )
   pcTempCU = getPUAbove( uiTempPartIdx, m_absZIdxInCtu + uiAbsPartIdx );
   uiCtx += ( pcTempCU ) ? ( ( pcTempCU->getDepth( uiTempPartIdx ) > uiDepth ) ? 1 : 0 ) : 0;
 
+#if COM16_C806_LARGE_CTU
+  UChar ucMinDepth = 0;
+  UChar ucMaxDepth = ( UChar )( getSlice()->getSPS()->getLog2DiffMaxMinCodingBlockSize() );
+  getMaxMinCUDepth( ucMinDepth , ucMaxDepth , uiAbsPartIdx + getZorderIdxInCtu() );
+  if( uiDepth < ucMinDepth )
+  {
+    uiCtx = 3;
+  }
+  else if( uiDepth >= ucMaxDepth + 1 )
+  {    
+    uiCtx = 4;
+  }
+#endif
+
   return uiCtx;
 }
 
@@ -1743,7 +1815,11 @@ UInt TComDataCU::getCtxSkipFlag( UInt uiAbsPartIdx )
 
 UInt TComDataCU::getCtxInterDir( UInt uiAbsPartIdx )
 {
+#if COM16_C806_LARGE_CTU
+  return( Clip3( 0 , 3 , 4 - g_aucConvertToBit[getWidth( uiAbsPartIdx )] ) );
+#else
   return getDepth( uiAbsPartIdx );
+#endif
 }
 
 
@@ -2134,8 +2210,16 @@ Void TComDataCU::setSizeSubParts( UInt uiWidth, UInt uiHeight, UInt uiAbsPartIdx
 {
   UInt uiCurrPartNumb = m_pcPic->getNumPartitionsInCtu() >> (uiDepth << 1);
 
+#if COM16_C806_LARGE_CTU
+  for( UInt n = 0 ; n < uiCurrPartNumb ; n++ )
+  {
+    m_puhWidth[uiAbsPartIdx+n] = uiWidth;
+    m_puhHeight[uiAbsPartIdx+n] = uiHeight;
+  }
+#else
   memset( m_puhWidth  + uiAbsPartIdx, uiWidth,  sizeof(UChar)*uiCurrPartNumb );
   memset( m_puhHeight + uiAbsPartIdx, uiHeight, sizeof(UChar)*uiCurrPartNumb );
+#endif
 }
 
 UChar TComDataCU::getNumPartitions(const UInt uiAbsPartIdx)
@@ -4145,7 +4229,12 @@ UInt TComDataCU::getIntraSizeIdx(UInt uiAbsPartIdx)
 {
   UInt uiShift = ( m_pePartSize[uiAbsPartIdx]==SIZE_NxN ? 1 : 0 );
 
-  UChar uiWidth = m_puhWidth[uiAbsPartIdx]>>uiShift;
+#if COM16_C806_LARGE_CTU
+  UShort
+#else
+  UChar 
+#endif
+    uiWidth = m_puhWidth[uiAbsPartIdx]>>uiShift;
   UInt  uiCnt = 0;
   while( uiWidth )
   {
@@ -4708,6 +4797,74 @@ Bool TComDataCU::getNeigMotion( UInt uiAbsPartIdx, TComMvField cNeigMvField[2], 
   {
     return false;
   }
+}
+#endif
+
+#if COM16_C806_LARGE_CTU
+Void TComDataCU::getMaxMinCUDepth( UChar & rucMinDepth , UChar & rucMaxDepth , UInt uiAbsPartIdx )
+{
+  const UChar ucMaxCUDepth = ( UChar )( getSlice()->getSPS()->getLog2DiffMaxMinCodingBlockSize() );
+  rucMinDepth = ucMaxCUDepth;
+  rucMaxDepth = 0;
+
+  TComDataCU * pNeighbor;
+  UInt uiNeighbor; 
+
+  // left
+  pNeighbor = getPULeft( uiNeighbor , uiAbsPartIdx );
+  if( pNeighbor != NULL )
+  {
+    rucMinDepth = min( rucMinDepth , pNeighbor->getDepth( uiNeighbor ) );
+    rucMaxDepth = max( rucMaxDepth , pNeighbor->getDepth( uiNeighbor ) );
+  }
+  else
+  {
+    rucMinDepth = 0;
+    rucMaxDepth = ucMaxCUDepth;
+  }
+
+  // bottom left
+  pNeighbor = getPUBelowLeft( uiNeighbor , uiAbsPartIdx );
+  if( pNeighbor != NULL )
+  {
+    rucMinDepth = min( rucMinDepth , pNeighbor->getDepth( uiNeighbor ) );
+    rucMaxDepth = max( rucMaxDepth , pNeighbor->getDepth( uiNeighbor ) );
+  }
+  else
+  {
+    rucMinDepth = 0;
+    rucMaxDepth = ucMaxCUDepth;
+  }
+
+  // top
+  pNeighbor = getPUAbove( uiNeighbor , uiAbsPartIdx );
+  if( pNeighbor != NULL )
+  {
+    rucMinDepth = min( rucMinDepth , pNeighbor->getDepth( uiNeighbor ) );
+    rucMaxDepth = max( rucMaxDepth , pNeighbor->getDepth( uiNeighbor ) );
+  }
+  else
+  {
+    rucMinDepth = 0;
+    rucMaxDepth = ucMaxCUDepth;
+  }
+
+  // top right
+  pNeighbor = getPUAboveRight( uiNeighbor , uiAbsPartIdx );
+  if( pNeighbor != NULL )
+  {
+    rucMinDepth = min( rucMinDepth , pNeighbor->getDepth( uiNeighbor ) );
+    rucMaxDepth = max( rucMaxDepth , pNeighbor->getDepth( uiNeighbor ) );
+  }
+  else
+  {
+    rucMinDepth = 0;
+    rucMaxDepth = ucMaxCUDepth;
+  }
+
+  Int nDepthInc = 1;
+  rucMinDepth = rucMinDepth >= nDepthInc ? rucMinDepth - nDepthInc : 0;
+  rucMaxDepth = min( ( UChar )ucMaxCUDepth , ( UChar )( rucMaxDepth + 1 ) );
 }
 #endif
 //! \}

@@ -48,7 +48,11 @@
 
 #define MAX_NUM_CTX_MOD             512       ///< maximum number of supported contexts
 
+#if COM16_C806_LARGE_CTU
+#define NUM_SPLIT_FLAG_CTX            5       ///< number of context models for split flag
+#else
 #define NUM_SPLIT_FLAG_CTX            3       ///< number of context models for split flag
+#endif
 #define NUM_SKIP_FLAG_CTX             3       ///< number of context models for skip flag
 
 #define NUM_MERGE_FLAG_EXT_CTX        1       ///< number of context models for merge flag of merge extended
@@ -188,7 +192,11 @@ static const UInt notFirstGroupNeighbourhoodContextOffset[MAX_NUM_CHANNEL_TYPE] 
 
 #if COM16_C806_EMT
 #define NUM_EMT_TU_IDX_CTX            4       ///< number of context models for EMT TU-level transform index
+#if COM16_C806_LARGE_CTU
+#define NUM_EMT_CU_FLAG_CTX           6       ///< number of context models for EMT CU-level flag
+#else
 #define NUM_EMT_CU_FLAG_CTX           4       ///< number of context models for EMT CU-level flag
+#endif
 #endif
 
 #define CNU                          154      ///< dummy initialization value for unused context models 'Context model Not Used'
@@ -209,11 +217,17 @@ INIT_CU_TRANSQUANT_BYPASS_FLAG[NUMBER_OF_SLICE_TYPES][NUM_CU_TRANSQUANT_BYPASS_F
 
 // initial probability for split flag
 static const UChar
-INIT_SPLIT_FLAG[NUMBER_OF_SLICE_TYPES][NUM_SPLIT_FLAG_CTX] =
+INIT_SPLIT_FLAG[NUMBER_OF_SLICE_TYPES][NUM_SPLIT_FLAG_CTX] =  
 {
+#if COM16_C806_LARGE_CTU
+  { 107,  139,  126, 255, 0, },
+  { 107,  139,  126, 255, 0, }, 
+  { 139,  141,  157, 255, 0, }, 
+#else
   { 107,  139,  126, },
-  { 107,  139,  126, },
-  { 139,  141,  157, },
+  { 107,  139,  126, }, 
+  { 139,  141,  157, }, 
+#endif
 };
 
 static const UChar
@@ -630,9 +644,15 @@ INIT_EMT_TU_IDX[NUMBER_OF_SLICE_TYPES][NUM_EMT_TU_IDX_CTX] =
 static const UChar 
 INIT_EMT_CU_FLAG[NUMBER_OF_SLICE_TYPES][NUM_EMT_CU_FLAG_CTX] = 
 {
+#if COM16_C806_LARGE_CTU
+  { CNU,  CNU, CNU,  CNU, CNU,  CNU },
+  { CNU,  CNU, CNU,  CNU, CNU,  CNU },
+  { CNU,  CNU, CNU,  CNU, CNU,  CNU }, 
+#else
   { CNU,  CNU, CNU,  CNU },
   { CNU,  CNU, CNU,  CNU },
   { CNU,  CNU, CNU,  CNU }, 
+#endif
 };
 #endif
 

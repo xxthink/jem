@@ -641,6 +641,10 @@ const UChar g_aucIntraModeNumFast_UseMPM[MAX_CU_DEPTH] =
   3,  //  16x16
   3,  //  32x32
   3   //  64x64
+#if COM16_C806_LARGE_CTU
+  ,3  //  128x128   
+  ,3  //  256x256
+#endif
 };
 const UChar g_aucIntraModeNumFast_NotUseMPM[MAX_CU_DEPTH] =
 {
@@ -650,6 +654,10 @@ const UChar g_aucIntraModeNumFast_NotUseMPM[MAX_CU_DEPTH] =
   4,  //  16x16   33
   4,  //  32x32   33
   5   //  64x64   33
+#if COM16_C806_LARGE_CTU
+  ,9 //  128x128
+  ,9 //  256x2565
+#endif
 };
 
 const UChar g_chroma422IntraAngleMappingTable[NUM_INTRA_MODE] =

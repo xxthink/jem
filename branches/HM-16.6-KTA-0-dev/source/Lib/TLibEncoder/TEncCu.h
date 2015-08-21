@@ -85,6 +85,10 @@ private:
   TComYuv**               m_ppcTmpYuv2;     ///< Temporary Yuv used for OBMC
   TComYuv**               m_ppcPredYuvWoOBMC; ///< Temporary Prediction Yuv for each depth
 #endif
+#if COM16_C806_LARGE_CTU
+  Pel*                    m_resiBuffer[NUMBER_OF_STORED_RESIDUAL_TYPES];
+#endif
+
   //  Data : encoder control
   Bool                    m_bEncodeDQP;
   Bool                    m_bFastDeltaQP;
