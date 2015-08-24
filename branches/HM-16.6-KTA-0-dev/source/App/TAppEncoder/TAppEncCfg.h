@@ -376,6 +376,10 @@ protected:
   Bool      m_useOBMC;
   Int       m_OBMCBlkSize;
 #endif
+#if VCEG_AZ07_IMV
+  Bool      m_useIMV;
+  Int       m_IMVMaxCand;
+#endif
 #if VCEG_AZ06_IC
   Bool      m_useIC;
 #endif

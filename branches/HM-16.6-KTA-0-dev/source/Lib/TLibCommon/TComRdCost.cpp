@@ -281,8 +281,19 @@ Void TComRdCost::init()
 }
 
 // Static member function
-UInt TComRdCost::xGetExpGolombNumberOfBits( Int iVal )
+UInt TComRdCost::xGetExpGolombNumberOfBits( Int iVal 
+#if VCEG_AZ07_IMV
+  , Int iMvFlag 
+#endif
+  )
 {
+#if VCEG_AZ07_IMV
+  if( iMvFlag )
+  {
+    iVal >>= 2;
+  }
+#endif
+
   assert(iVal != std::numeric_limits<Int>::min());
   UInt uiLength = 1;
   UInt uiTemp   = ( iVal <= 0) ? (UInt(-iVal)<<1)+1: UInt(iVal<<1);

@@ -395,6 +395,10 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setOBMC                                              ( m_useOBMC );
   m_cTEncTop.setOBMCBlkSize                                       ( m_OBMCBlkSize );
 #endif
+#if VCEG_AZ07_IMV
+  m_cTEncTop.setIMV                                               ( m_useIMV );
+  m_cTEncTop.setIMVMaxCand                                        ( m_IMVMaxCand );
+#endif
 #if VCEG_AZ06_IC
   m_cTEncTop.setUseIC                                             ( m_useIC );
 #endif

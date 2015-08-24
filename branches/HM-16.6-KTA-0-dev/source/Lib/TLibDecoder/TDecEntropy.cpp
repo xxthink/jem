@@ -64,6 +64,14 @@ Void TDecEntropy::decodeSkipFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDe
   m_pcEntropyDecoderIf->parseSkipFlag( pcCU, uiAbsPartIdx, uiDepth );
 }
 
+#if VCEG_AZ07_IMV
+Void TDecEntropy::decodeiMVFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
+{
+  assert( pcCU->getSlice()->getSPS()->getIMV() );
+  m_pcEntropyDecoderIf->parseiMVFlag( pcCU, uiAbsPartIdx, uiDepth );
+}
+#endif
+
 #if COM16_C806_OBMC
 Void TDecEntropy::decodeOBMCFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 {
@@ -221,6 +229,9 @@ Void TDecEntropy::decodePUWise( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDept
   }
   Int numValidMergeCand = 0;
   Bool hasMergedCandList = false;
+#if VCEG_AZ07_IMV
+  Bool bNonZeroMvd = false;
+#endif
 
   pcSubCU->copyInterPredInfoFrom( pcCU, uiAbsPartIdx, REF_PIC_LIST_0 );
   pcSubCU->copyInterPredInfoFrom( pcCU, uiAbsPartIdx, REF_PIC_LIST_1 );
@@ -314,6 +325,10 @@ Void TDecEntropy::decodePUWise( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDept
         {
           decodeRefFrmIdxPU( pcCU,    uiSubPartIdx,              uiDepth, uiPartIdx, RefPicList( uiRefListIdx ) );
           decodeMvdPU      ( pcCU,    uiSubPartIdx,              uiDepth, uiPartIdx, RefPicList( uiRefListIdx ) );
+#if VCEG_AZ07_IMV
+          bNonZeroMvd |= ( pcCU->getCUMvField( RefPicList( uiRefListIdx ) )->getMvd( uiSubPartIdx ).getHor() != 0 );
+          bNonZeroMvd |= ( pcCU->getCUMvField( RefPicList( uiRefListIdx ) )->getMvd( uiSubPartIdx ).getVer() != 0 );
+#endif
           decodeMVPIdxPU   ( pcSubCU, uiSubPartIdx-uiAbsPartIdx, uiDepth, uiPartIdx, RefPicList( uiRefListIdx ) );
 #if ENVIRONMENT_VARIABLE_DEBUG_AND_TEST
           if (bDebugPredEnabled)
@@ -336,6 +351,123 @@ Void TDecEntropy::decodePUWise( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDept
       pcCU->setInterDirSubParts( 1, uiSubPartIdx, uiPartIdx, uiDepth);
     }
   }
+
+#if VCEG_AZ07_IMV
+  if( bNonZeroMvd && pcCU->getSlice()->getSPS()->getIMV() )
+  {
+    decodeiMVFlag( pcCU , uiAbsPartIdx , uiDepth );
+  }
+  for ( UInt uiPartIdx = 0, uiSubPartIdx = uiAbsPartIdx; uiPartIdx < uiNumPU; uiPartIdx++, uiSubPartIdx += uiPUOffset )
+  {
+    if( !pcCU->getMergeFlag( uiSubPartIdx ) && pcCU->getiMVFlag( uiSubPartIdx ) )
+    {
+      for ( UInt uiRefListIdx = 0; uiRefListIdx < 2; uiRefListIdx++ )
+      {
+        RefPicList eRefList = RefPicList( uiRefListIdx );
+        if ( pcCU->getSlice()->getNumRefIdx( eRefList ) > 0 && ( pcCU->getInterDir( uiSubPartIdx ) & ( 1 << uiRefListIdx ) ) )
+        {
+          Short iMvdHor = pcCU->getCUMvField( eRefList )->getMvd( uiSubPartIdx ).getHor();
+          Short iMvdVer = pcCU->getCUMvField( eRefList )->getMvd( uiSubPartIdx ).getVer();
+          iMvdHor <<= 2;
+          iMvdVer <<= 2;
+          TComMv cMv( iMvdHor, iMvdVer );
+
+          pcCU->getCUMvField( RefPicList( uiRefListIdx ) )->setAllMvd( cMv, ePartSize, uiSubPartIdx, uiDepth, uiPartIdx );
+
+          AMVPInfo* pAMVPInfo = pcSubCU->getCUMvField( eRefList )->getAMVPInfo();
+          pcSubCU->fillMvpCand(uiPartIdx, uiSubPartIdx - uiAbsPartIdx, eRefList, pcSubCU->getCUMvField( eRefList )->getRefIdx( uiSubPartIdx - uiAbsPartIdx ), pAMVPInfo);
+          m_pcPrediction->getMvPredAMVP( pcSubCU, uiPartIdx, uiSubPartIdx - uiAbsPartIdx, RefPicList( uiRefListIdx ), cMv );
+          cMv += TComMv( iMvdHor, iMvdVer );
+          pcSubCU->getCUMvField( RefPicList( uiRefListIdx ) )->setAllMv( cMv, ePartSize, uiSubPartIdx - uiAbsPartIdx, 0, uiPartIdx);
+        }
+      }
+    }
+#if COM16_C806_HEVC_MOTION_CONSTRAINT_REMOVAL && VCEG_AZ07_IMV
+    else if( pcCU->getMergeFlag( uiSubPartIdx ) && pcCU->getiMVFlag( uiSubPartIdx ) )
+    {
+      UInt uiMergeIndex = pcCU->getMergeIndex(uiSubPartIdx);
+      if ( pcCU->getSlice()->getPPS()->getLog2ParallelMergeLevelMinus2() && ePartSize != SIZE_2Nx2N && pcSubCU->getWidth( 0 ) <= 8 ) 
+      {
+        pcSubCU->setPartSizeSubParts( SIZE_2Nx2N, 0, uiDepth );
+        if ( !hasMergedCandList )
+        {
+          //          pcSubCU->getInterMergeCandidates( 0, 0, cMvFieldNeighbours, uhInterDirNeighbours, numValidMergeCand );
+          pcSubCU->getInterMergeCandidates( 0, 0, cMvFieldNeighbours, uhInterDirNeighbours, numValidMergeCand 
+#if VCEG_AZ06_IC
+            , abICFlag
+#endif
+            , eMergeCandTypeNieghors
+            , m_pMvFieldSP
+            , m_phInterDirSP
+            );
+          hasMergedCandList = true;
+        }
+        pcSubCU->setPartSizeSubParts( ePartSize, 0, uiDepth );
+      }
+      else
+      {
+        uiMergeIndex = pcCU->getMergeIndex(uiSubPartIdx);
+        pcSubCU->getInterMergeCandidates( uiSubPartIdx-uiAbsPartIdx, uiPartIdx, cMvFieldNeighbours, uhInterDirNeighbours, numValidMergeCand 
+#if VCEG_AZ06_IC
+          , abICFlag
+#endif
+          , eMergeCandTypeNieghors
+          , m_pMvFieldSP
+          , m_phInterDirSP
+          );
+      }
+      pcCU->setInterDirSubParts( uhInterDirNeighbours[uiMergeIndex], uiSubPartIdx, uiPartIdx, uiDepth );
+#if VCEG_AZ06_IC
+      if( pcCU->getPartitionSize( uiAbsPartIdx ) == SIZE_2Nx2N )
+      {
+        pcCU->setICFlagSubParts( pcCU->getSlice()->getApplyIC() ? abICFlag[uiMergeIndex] : 0, uiSubPartIdx, uiDepth );
+      }
+#endif
+      TComMv cTmpMv( 0, 0 );
+      for ( UInt uiRefListIdx = 0; uiRefListIdx < 2; uiRefListIdx++ )
+      {        
+        if ( pcCU->getSlice()->getNumRefIdx( RefPicList( uiRefListIdx ) ) > 0 )
+        {
+          pcCU->setMVPIdxSubParts( 0, RefPicList( uiRefListIdx ), uiSubPartIdx, uiPartIdx, uiDepth);
+          pcCU->setMVPNumSubParts( 0, RefPicList( uiRefListIdx ), uiSubPartIdx, uiPartIdx, uiDepth);
+          pcCU->getCUMvField( RefPicList( uiRefListIdx ) )->setAllMvd( cTmpMv, ePartSize, uiSubPartIdx, uiDepth, uiPartIdx );
+          pcCU->getCUMvField( RefPicList( uiRefListIdx ) )->setAllMvField( cMvFieldNeighbours[ 2*uiMergeIndex + uiRefListIdx ], ePartSize, uiSubPartIdx, uiDepth, uiPartIdx );
+        }
+      }
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+      pcCU->setMergeTypeSubParts( eMergeCandTypeNieghors[uiMergeIndex], uiSubPartIdx, uiPartIdx, uiDepth ); 
+      if( eMergeCandTypeNieghors[uiMergeIndex]==MGR_TYPE_SUBPU_TMVP || eMergeCandTypeNieghors[uiMergeIndex]==MGR_TYPE_SUBPU_TMVP_EXT )
+      {
+        Int iWidth, iHeight;
+        UInt uiIdx;
+        pcCU->getPartIndexAndSize( uiPartIdx, uiIdx, iWidth, iHeight, uiSubPartIdx, true );
+
+        UInt uiSPAddr;
+
+        Int iNumSPInOneLine, iNumSP, iSPWidth, iSPHeight;
+        UInt uiSPListIndex =  eMergeCandTypeNieghors[uiMergeIndex]==MGR_TYPE_SUBPU_TMVP ? 0:1;
+        pcCU->getSPPara(iWidth, iHeight, iNumSP, iNumSPInOneLine, iSPWidth, iSPHeight);
+
+        for (Int iPartitionIdx = 0; iPartitionIdx < iNumSP; iPartitionIdx++)
+        {
+          pcCU->getSPAbsPartIdx(uiSubPartIdx, iSPWidth, iSPHeight, iPartitionIdx, iNumSPInOneLine, uiSPAddr);
+          pcCU->setInterDirSP(m_phInterDirSP[uiSPListIndex][iPartitionIdx], uiSPAddr, iSPWidth, iSPHeight);
+          pcCU->getCUMvField( REF_PIC_LIST_0 )->setMvFieldSP(pcCU, uiSPAddr, m_pMvFieldSP[uiSPListIndex][2*iPartitionIdx], iSPWidth, iSPHeight);
+          pcCU->getCUMvField( REF_PIC_LIST_1 )->setMvFieldSP(pcCU, uiSPAddr, m_pMvFieldSP[uiSPListIndex][2*iPartitionIdx + 1], iSPWidth, iSPHeight);
+        }
+      }
+#endif     
+    }
+
+    if ( (pcCU->getInterDir(uiSubPartIdx) == 3) && pcSubCU->isBipredRestriction(uiPartIdx) )
+    {
+      pcCU->getCUMvField( REF_PIC_LIST_1 )->setAllMv( TComMv(0,0), ePartSize, uiSubPartIdx, uiDepth, uiPartIdx);
+      pcCU->getCUMvField( REF_PIC_LIST_1 )->setAllRefIdx( -1, ePartSize, uiSubPartIdx, uiDepth, uiPartIdx);
+      pcCU->setInterDirSubParts( 1, uiSubPartIdx, uiPartIdx, uiDepth);
+    }
+#endif
+  }
+#endif
   return;
 }
 

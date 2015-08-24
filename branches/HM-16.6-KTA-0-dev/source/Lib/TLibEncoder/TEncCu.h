@@ -49,6 +49,9 @@
 #include "TEncEntropy.h"
 #include "TEncSearch.h"
 #include "TEncRateCtrl.h"
+#if VCEG_AZ07_IMV
+#include <set>
+#endif
 //! \ingroup TLibEncoder
 //! \{
 
@@ -70,6 +73,9 @@ private:
   TComDataCU**            m_ppcTempCU;      ///< Temporary CUs in each depth
 #if COM16_C806_OBMC
   TComDataCU**            m_ppcTempCUWoOBMC; ///< Temporary CUs in each depth
+#endif
+#if VCEG_AZ07_IMV
+  TComDataCU**            m_ppcTempCUIMVCache[NUMBER_OF_PART_SIZES]; 
 #endif
   UChar                   m_uhTotalDepth;
 
@@ -150,9 +156,17 @@ protected:
   Void  xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU DEBUG_STRING_FN_DECLARE(sDebug), Bool *earlyDetectionSkipMode );
 
 #if AMP_MRG
-  Void  xCheckRDCostInter   ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, PartSize ePartSize DEBUG_STRING_FN_DECLARE(sDebug), Bool bUseMRG = false  );
+  Void  xCheckRDCostInter   ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, PartSize ePartSize DEBUG_STRING_FN_DECLARE(sDebug), Bool bUseMRG = false 
+#if VCEG_AZ07_IMV
+    , Bool bIMV = false , TComDataCU * pcCUInfo2Reuse = NULL 
+#endif
+    );
 #else
-  Void  xCheckRDCostInter   ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, PartSize ePartSize  );
+  Void  xCheckRDCostInter   ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, PartSize ePartSize 
+#if VCEG_AZ07_IMV
+    , Bool bIMV = false , TComDataCU * pcCUInfo2Reuse = NULL 
+#endif
+    );
 #endif
 
   Void  xCheckRDCostIntra   ( TComDataCU *&rpcBestCU,
@@ -192,6 +206,27 @@ protected:
 #endif
 
   Void  xFillPCMBuffer     ( TComDataCU* pCU, TComYuv* pOrgYuv );
+
+#if VCEG_AZ07_IMV
+private:
+  typedef struct
+  {
+    Double    dRDCost;
+    Bool      bUseMrg;
+    PartSize  eInterPartSize;
+    TComDataCU * pcCUMode;
+  }SModeCand;
+
+  class cmpModeCand
+  {
+  public:
+    bool operator()(const SModeCand & r1 , const SModeCand & r2 ) const
+    {
+      return r1.dRDCost < r2.dRDCost;
+    }
+  };
+  std::set <SModeCand, cmpModeCand> m_setInterCand;
+#endif
 };
 
 //! \}

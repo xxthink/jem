@@ -64,9 +64,11 @@
 #define COM16_C806_AOBMC_MAXCUSIZE                        16 //   Maximum CU size which can apply OBMC adaptively, larger CUs always apply OBMC
 #endif
 
-#define VCEG_AZ06_IC                                      1 ///< Illumination Compensation
+#define VCEG_AZ07_IMV                                     1  ///< Adaptive MV resolution
+
+#define VCEG_AZ06_IC                                      1  ///< Illumination Compensation
 #if VCEG_AZ06_IC
-#define VCEG_AZ06_IC_SPEEDUP                              1 //speedup of IC
+#define VCEG_AZ06_IC_SPEEDUP                              1  //speedup of IC
 #endif
 
 #define ALF_HM3_REFACTOR                                  1  ///< Adaptive loop filter with 4x4 block activity adaptation 

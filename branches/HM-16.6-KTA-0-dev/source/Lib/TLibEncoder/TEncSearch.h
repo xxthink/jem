@@ -370,7 +370,11 @@ protected:
                                     TComMv&     rcMvPred,
                                     Int&        riMVPIdx,
                                     UInt&       ruiBits,
-                                    Distortion& ruiCost );
+                                    Distortion& ruiCost 
+#if VCEG_AZ07_IMV
+                                    , UInt uiPartAddr
+#endif
+                                    );
 
   Distortion xGetTemplateCost    ( TComDataCU*  pcCU,
                                     UInt        uiPartAddr,

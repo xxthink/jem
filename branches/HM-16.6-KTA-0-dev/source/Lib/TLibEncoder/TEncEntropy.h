@@ -81,6 +81,9 @@ public:
 public:
   virtual Void codeCUTransquantBypassFlag( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
   virtual Void codeSkipFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
+#if VCEG_AZ07_IMV
+  virtual Void codeiMVFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
+#endif
 #if COM16_C806_OBMC
   virtual Void codeOBMCFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
 #endif
@@ -168,6 +171,9 @@ public:
   Void encodeSkipFlag          ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
 #if COM16_C806_OBMC
   Void encodeOBMCFlag          ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
+#endif
+#if VCEG_AZ07_IMV
+  Void encodeiMVFlag           ( TComDataCU* pcCU, UInt uiAbsPartIdx );
 #endif
 #if VCEG_AZ06_IC
   Void encodeICFlag            ( TComDataCU* pcCU, UInt uiAbsPartIdx );

@@ -1085,6 +1085,10 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   ("OBMC",                                            m_useOBMC , true , "overlapped block motion compensation" )
   ("OBMCBLK",                                         m_OBMCBlkSize , 4 , "block size in overlapped block motion compensation" )
 #endif
+#if VCEG_AZ07_IMV
+  ("IMV",                                             m_useIMV , true , "adaptive MV precision" )
+  ("IMVMaxCand",                                      m_IMVMaxCand , 4 , "max IMV cand ")
+#endif
 #if VCEG_AZ06_IC
   ("IlluCompEnable",                                  m_useIC, true, "Enable illumination compensation")
 #endif
@@ -2545,6 +2549,10 @@ Void TAppEncCfg::xPrintParameter()
 #if COM16_C806_OBMC
   assert( m_OBMCBlkSize == 4 || m_OBMCBlkSize == 8 );
   printf( " OBMC: %d  OBMCBLK: %d ", m_useOBMC, m_OBMCBlkSize );
+#endif
+#if VCEG_AZ07_IMV
+  printf( " IMV:%d ", m_useIMV );
+  printf( " IMVMaxCand:%d ", m_IMVMaxCand );
 #endif
 #if VCEG_AZ06_IC
   printf( "IlluCompEnable:%d ", m_useIC);

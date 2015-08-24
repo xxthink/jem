@@ -127,6 +127,9 @@ public:
 #if COM16_C806_OBMC
   Void codeOBMCFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
 #endif
+#if VCEG_AZ07_IMV
+  Void codeiMVFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx );
+#endif
 #if VCEG_AZ06_IC
   Void codeICFlag        ( TComDataCU* pcCU, UInt uiAbsPartIdx );
 #endif 
@@ -234,6 +237,9 @@ private:
   ContextModel3DBuffer m_ChromaQpAdjIdcSCModel;
 #if COM16_C806_OBMC
   ContextModel3DBuffer m_cCUOBMCFlagSCModel;
+#endif
+#if VCEG_AZ07_IMV
+  ContextModel3DBuffer m_cCUiMVFlagSCModel;
 #endif
 #if VCEG_AZ06_IC
   ContextModel3DBuffer m_cCUICFlagSCModel;

@@ -584,6 +584,9 @@ Void TEncCavlc::codeSPS( const TComSPS* pcSPS )
     WRITE_UVLC( pcSPS->getOBMCBlkSize() , "obmc_blk_size" );
   }
 #endif
+#if VCEG_AZ07_IMV
+  WRITE_FLAG( pcSPS->getIMV() ? 1 : 0 , "use_imv" ); 
+#endif
 #if VCEG_AZ06_IC
   WRITE_FLAG( pcSPS->getICFlag()? 1: 0, "illumination_comp_flag");
 #endif
@@ -1266,6 +1269,13 @@ Void TEncCavlc::codeSkipFlag( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/ )
 {
   assert(0);
 }
+
+#if VCEG_AZ07_IMV
+Void TEncCavlc::codeiMVFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
+{
+  assert(0);
+}
+#endif
 
 #if COM16_C806_OBMC
 Void TEncCavlc::codeOBMCFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )

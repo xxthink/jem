@@ -93,6 +93,9 @@ TEncSbac::TEncSbac()
 #if COM16_C806_OBMC
 , m_cCUOBMCFlagSCModel                 ( 1,             1,                      NUM_OBMC_FLAG_CTX                    , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
+#if VCEG_AZ07_IMV
+, m_cCUiMVFlagSCModel                  ( 1,             1,                      NUM_IMV_FLAG_CTX                     , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 #if VCEG_AZ06_IC
 , m_cCUICFlagSCModel                   ( 1,             1,                      NUM_IC_FLAG_CTX                      , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
@@ -164,6 +167,9 @@ Void TEncSbac::resetEntropy           (const TComSlice *pSlice)
   m_ChromaQpAdjIdcSCModel.initBuffer              ( eSliceType, iQp, (UChar*)INIT_CHROMA_QP_ADJ_IDC );
 #if COM16_C806_OBMC
   m_cCUOBMCFlagSCModel.initBuffer                 ( eSliceType, iQp, (UChar*)INIT_OBMC_FLAG );
+#endif
+#if VCEG_AZ07_IMV
+  m_cCUiMVFlagSCModel.initBuffer                  ( eSliceType, iQp, (UChar*)INIT_IMV_FLAG );
 #endif
 #if VCEG_AZ06_IC
   m_cCUICFlagSCModel.initBuffer                   ( eSliceType, iQp, (UChar*)INIT_IC_FLAG );
@@ -245,6 +251,9 @@ SliceType TEncSbac::determineCabacInitIdx(const TComSlice *pSlice)
 #if COM16_C806_EMT
       curCost += m_cEmtTuIdxSCModel.calcCost                   ( curSliceType, qp, (UChar*)INIT_EMT_TU_IDX );
       curCost += m_cEmtCuFlagSCModel.calcCost                  ( curSliceType, qp, (UChar*)INIT_EMT_CU_FLAG );
+#endif
+#if VCEG_AZ07_IMV
+      curCost += m_cCUiMVFlagSCModel.calcCost                  ( curSliceType, qp, (UChar*)INIT_IMV_FLAG );
 #endif
 #if VCEG_AZ06_IC
       curCost += m_cCUICFlagSCModel.calcCost                   ( curSliceType, qp, (UChar*)INIT_IC_FLAG );
@@ -639,6 +648,23 @@ Void TEncSbac::codeICFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
 }
 #endif
 
+#if VCEG_AZ07_IMV
+Void TEncSbac::codeiMVFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
+{
+  // get context function is here
+  UInt uiSymbol = pcCU->getiMVFlag( uiAbsPartIdx ) ? 1 : 0;
+  UInt uiCtxiMV = pcCU->getCtxiMVFlag( uiAbsPartIdx ) ;
+  m_pcBinIf->encodeBin( uiSymbol, m_cCUiMVFlagSCModel.get( 0, 0, uiCtxiMV ) );
+  DTRACE_CABAC_VL( g_nSymbolCounter++ );
+  DTRACE_CABAC_T( "\tiMVFlag" );
+  DTRACE_CABAC_T( "\tuiCtxiMV: ");
+  DTRACE_CABAC_V( uiCtxiMV );
+  DTRACE_CABAC_T( "\tuiSymbol: ");
+  DTRACE_CABAC_V( uiSymbol );
+  DTRACE_CABAC_T( "\n");
+}
+#endif
+
 /** code merge flag
  * \param pcCU
  * \param uiAbsPartIdx
@@ -883,9 +909,23 @@ Void TEncSbac::codeMvd( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList
   }
 
   const TComCUMvField* pcCUMvField = pcCU->getCUMvField( eRefList );
+#if VCEG_AZ07_IMV 
+  Int iHor = pcCUMvField->getMvd( uiAbsPartIdx ).getHor();
+  Int iVer = pcCUMvField->getMvd( uiAbsPartIdx ).getVer();
+#else
   const Int iHor = pcCUMvField->getMvd( uiAbsPartIdx ).getHor();
   const Int iVer = pcCUMvField->getMvd( uiAbsPartIdx ).getVer();
+#endif
   ContextModel* pCtx = m_cCUMvdSCModel.get( 0 );
+
+#if VCEG_AZ07_IMV
+  if( pcCU->getiMVFlag( uiAbsPartIdx ) && pcCU->getSlice()->getSPS()->getIMV() )
+  {
+    assert( ( iHor & 0x03 ) == 0 && ( iVer & 0x03 ) == 0 );
+    iHor >>= 2;
+    iVer >>= 2;
+  }
+#endif
 
   m_pcBinIf->encodeBin( iHor != 0 ? 1 : 0, *pCtx );
   m_pcBinIf->encodeBin( iVer != 0 ? 1 : 0, *pCtx );

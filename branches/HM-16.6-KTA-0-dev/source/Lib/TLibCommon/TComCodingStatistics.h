@@ -95,6 +95,9 @@ enum TComCodingStatisticsType
 #if COM16_C806_OBMC
   STATS__CABAC_BITS__OBMC_FLAG,
 #endif
+#if VCEG_AZ07_IMV
+  STATS__CABAC_BITS__IMV_FLAG,
+#endif
 #if VCEG_AZ06_IC
   STATS__CABAC_BITS__IC_FLAG,
 #endif

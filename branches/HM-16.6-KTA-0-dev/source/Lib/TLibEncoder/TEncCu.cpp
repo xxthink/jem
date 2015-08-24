@@ -72,7 +72,13 @@ Void TEncCu::create(UChar uhTotalDepth, UInt uiMaxWidth, UInt uiMaxHeight, Chrom
   m_ppcTmpYuv2       = new TComYuv*[m_uhTotalDepth-1];
   m_ppcPredYuvWoOBMC = new TComYuv*[m_uhTotalDepth-1];
 #endif
-  m_ppcPredYuvBest = new TComYuv*[m_uhTotalDepth-1];
+#if VCEG_AZ07_IMV
+  for( Int size = 0 ; size < NUMBER_OF_PART_SIZES ; size++ )
+  {
+    m_ppcTempCUIMVCache[size] = new TComDataCU*[m_uhTotalDepth-1];
+  }
+#endif
+m_ppcPredYuvBest = new TComYuv*[m_uhTotalDepth-1];
   m_ppcResiYuvBest = new TComYuv*[m_uhTotalDepth-1];
   m_ppcRecoYuvBest = new TComYuv*[m_uhTotalDepth-1];
   m_ppcPredYuvTemp = new TComYuv*[m_uhTotalDepth-1];
@@ -107,6 +113,12 @@ Void TEncCu::create(UChar uhTotalDepth, UInt uiMaxWidth, UInt uiMaxHeight, Chrom
 
     m_ppcOrigYuv    [i] = new TComYuv; m_ppcOrigYuv    [i]->create(uiWidth, uiHeight, chromaFormat);
 
+#if VCEG_AZ07_IMV
+    for( Int size = 0 ; size < NUMBER_OF_PART_SIZES ; size++ )
+    {
+      m_ppcTempCUIMVCache[size][i] = new TComDataCU; m_ppcTempCUIMVCache[size][i]->create( chromaFormat, uiNumPartitions, uiWidth, uiHeight, false, uiMaxWidth >> (m_uhTotalDepth - 1) );
+    }
+#endif
 #if COM16_C806_OBMC
     m_ppcTempCUWoOBMC [i] = new TComDataCU; m_ppcTempCUWoOBMC[i]->create( chromaFormat, uiNumPartitions, uiWidth, uiHeight, false, uiMaxWidth >> (m_uhTotalDepth - 1) );
     m_ppcTmpYuv1      [i] = new TComYuv;    m_ppcTmpYuv1      [i]->create( uiWidth, uiHeight, chromaFormat );
@@ -180,6 +192,15 @@ Void TEncCu::destroy()
     {
       m_ppcOrigYuv[i]->destroy();     delete m_ppcOrigYuv[i];     m_ppcOrigYuv[i] = NULL;
     }
+#if VCEG_AZ07_IMV
+    for( Int size = 0 ; size < NUMBER_OF_PART_SIZES ; size++ )
+    {
+      if(m_ppcTempCUIMVCache[size][i])
+      {
+        m_ppcTempCUIMVCache[size][i]->destroy(); delete m_ppcTempCUIMVCache[size][i]; m_ppcTempCUIMVCache[size][i] = NULL;
+      }
+    }
+#endif
 #if COM16_C806_OBMC
     if(m_ppcTempCUWoOBMC[i])
     {
@@ -262,6 +283,13 @@ Void TEncCu::destroy()
   }
 #endif
 
+#if VCEG_AZ07_IMV
+  for( Int size = 0 ; size < NUMBER_OF_PART_SIZES ; size++ )
+  {
+    delete [] m_ppcTempCUIMVCache[size];
+    m_ppcTempCUIMVCache[size] = NULL;
+  }
+#endif
 #if COM16_C806_OBMC
   if(m_ppcTempCUWoOBMC)
   {
@@ -328,6 +356,12 @@ Void TEncCu::compressCtu( TComDataCU* pCtu )
   // initialize CU data
   m_ppcBestCU[0]->initCtu( pCtu->getPic(), pCtu->getCtuRsAddr() );
   m_ppcTempCU[0]->initCtu( pCtu->getPic(), pCtu->getCtuRsAddr() );
+#if VCEG_AZ07_IMV
+  for( Int size = 0 ; size < NUMBER_OF_PART_SIZES ; size++ )
+  {
+    m_ppcTempCUIMVCache[size][0]->initCtu( pCtu->getPic() , pCtu->getCtuRsAddr() );
+  }
+#endif
 #if COM16_C806_OBMC
   m_ppcTempCUWoOBMC[0]->initCtu( pCtu->getPic(), pCtu->getCtuRsAddr() );
 #endif
@@ -564,6 +598,14 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
       }
 
       rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
+
+#if VCEG_AZ07_IMV
+      m_setInterCand.clear();
+      for( Int n = 0 ; n < NUMBER_OF_PART_SIZES ; n++ )
+      {
+        m_ppcTempCUIMVCache[n][uiDepth]->initEstData( uiDepth , iQP , bIsLosslessMode );
+      }
+#endif
 
       // do inter modes, SKIP and 2Nx2N
       if( rpcBestCU->getSlice()->getSliceType() != I_SLICE )
@@ -832,6 +874,77 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
           }
         }
 
+#if VCEG_AZ07_IMV
+        if( m_pcEncCfg->getIMV() && !rpcBestCU->getSlice()->isIntra() )
+        {
+          // always check SIZE_2Nx2N
+#if VCEG_AZ06_IC
+          for( UInt uiICId = 0; uiICId < ( bICEnabled ? 2 : 1 ); uiICId++ )
+          {
+            Bool bICFlag = uiICId ? true : false;
+            rpcTempCU->setICFlagSubParts(bICFlag, 0, uiDepth);
+#endif
+            xCheckRDCostInter( rpcBestCU, rpcTempCU, SIZE_2Nx2N , false , true );
+            rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
+#if VCEG_AZ06_IC
+          }
+#endif
+          // check other candidates
+          const Char cMinCandNum = 1 , cMaxCandNum = m_pcEncCfg->getIMVMaxCand();
+          Char cMaxNeighboriMVCandNum = max( rpcTempCU->getMaxNeighboriMVCandNum( 0 ) , cMinCandNum );
+          std::set<SModeCand, cmpModeCand>::iterator pos;
+          Char n , nBestCand = 0;
+          for( n = 1 , pos = m_setInterCand.begin() ; n <= cMaxNeighboriMVCandNum  && pos != m_setInterCand.end() ; n++ , pos++ )
+          {
+            Double dCurrentRD = rpcBestCU->getTotalCost();
+
+            if( pos->eInterPartSize == SIZE_2Nx2N )
+            {
+              continue;
+            }
+
+            xCheckRDCostInter( rpcBestCU, rpcTempCU, pos->eInterPartSize , false , true , pos->bUseMrg ? NULL : pos->pcCUMode );
+
+            if( rpcTempCU->getTotalCost() == MAX_DOUBLE )
+            {
+              cMaxNeighboriMVCandNum++;
+            }
+
+            if( rpcBestCU->getTotalCost() < dCurrentRD )
+            {
+              nBestCand = n;
+              rpcBestCU->setiMVCandNumSubParts( nBestCand , 0 , uiDepth );
+              cMaxNeighboriMVCandNum += 1;
+              cMaxNeighboriMVCandNum = min( cMaxCandNum , cMaxNeighboriMVCandNum );
+            }
+            rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
+          }
+          for( ; n <= cMaxNeighboriMVCandNum + 1 && pos != m_setInterCand.end() ; n++ , pos++ )
+          {
+            Double dCurrentRD = rpcBestCU->getTotalCost();
+
+            if( pos->eInterPartSize == SIZE_2Nx2N )
+            {
+              continue;
+            }
+
+            xCheckRDCostInter( rpcBestCU, rpcTempCU, pos->eInterPartSize , false , true , pos->bUseMrg ? NULL : pos->pcCUMode );
+
+            if( rpcTempCU->getTotalCost() == MAX_DOUBLE )
+            {
+              cMaxNeighboriMVCandNum++;
+            }
+
+            if( rpcBestCU->getTotalCost() < dCurrentRD )
+            {
+              nBestCand = n;
+              rpcBestCU->setiMVCandNumSubParts( nBestCand , 0 , uiDepth );
+            }
+            rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
+          }
+        }
+#endif
+
         // do normal intra modes
         // speedup for inter frames
         Double intraCost = 0.0;
@@ -1009,6 +1122,12 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
       {
         pcSubBestPartCU->initSubCU( rpcTempCU, uiPartUnitIdx, uhNextDepth, iQP );           // clear sub partition datas or init.
         pcSubTempPartCU->initSubCU( rpcTempCU, uiPartUnitIdx, uhNextDepth, iQP );           // clear sub partition datas or init.
+#if VCEG_AZ07_IMV
+        for( Int size = 0 ; size < NUMBER_OF_PART_SIZES ; size++ )
+        {
+          m_ppcTempCUIMVCache[size][uhNextDepth]->initSubCU( rpcTempCU, uiPartUnitIdx, uhNextDepth, iQP );
+        }
+#endif
 #if COM16_C806_OBMC
         m_ppcTempCUWoOBMC[uhNextDepth]->initSubCU( rpcTempCU, uiPartUnitIdx, uhNextDepth, iQP ); // clear sub partition datas or init.
 #endif
@@ -1635,9 +1754,17 @@ Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTem
 
 
 #if AMP_MRG
-Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, PartSize ePartSize DEBUG_STRING_FN_DECLARE(sDebug), Bool bUseMRG)
+Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, PartSize ePartSize DEBUG_STRING_FN_DECLARE(sDebug), Bool bUseMRG
+#if VCEG_AZ07_IMV
+  , Bool bIMV , TComDataCU * pcCUInfo2Reuse 
+#endif
+  )
 #else
-Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, PartSize ePartSize )
+Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, PartSize ePartSize 
+#if VCEG_AZ07_IMV
+  , Bool bIMV , TComDataCU * pcCUInfo2Reuse 
+#endif
+  )
 #endif
 {
   DEBUG_STRING_NEW(sTest)
@@ -1677,6 +1804,35 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
 #if VCEG_AZ06_IC
   Bool bICFlag = rpcTempCU->getICFlag( 0 );
 #endif
+#if VCEG_AZ07_IMV
+  rpcTempCU->setiMVFlagSubParts( bIMV,  0, uhDepth );
+  if( bIMV && pcCUInfo2Reuse != NULL )
+  {
+    // reuse the motion info from pcCUInfo2Reuse
+    assert( pcCUInfo2Reuse->getPartitionSize( 0 ) == ePartSize );
+    rpcTempCU->copyPartFrom( pcCUInfo2Reuse , 0 , uhDepth );
+    rpcTempCU->setiMVFlagSubParts( bIMV , 0 , uhDepth );
+    rpcTempCU->resetMVDandMV2Int( true );
+#if VCEG_AZ06_IC
+    bICFlag = rpcTempCU->getICFlag( 0 );
+#endif
+    if( !rpcTempCU->hasSubCUNonZeroMVd() )
+    {
+      return;
+    }
+    else
+    {
+      m_pcPredSearch->motionCompensation( rpcTempCU , m_ppcPredYuvTemp[uhDepth] );
+#if COM16_C806_OBMC
+      m_ppcPredYuvTemp[uhDepth]->copyToPartYuv( m_ppcPredYuvWoOBMC[uhDepth] , 0 );
+      rpcTempCU->setOBMCFlagSubParts( true, 0, uhDepth );
+      m_pcPredSearch->subBlockOBMC( rpcTempCU, 0, m_ppcPredYuvTemp[uhDepth], m_ppcTmpYuv1[uhDepth], m_ppcTmpYuv2[uhDepth] );
+#endif
+    }
+  }
+  else
+  {
+#endif
 #if AMP_MRG
   rpcTempCU->setMergeAMP (true);
 #if COM16_C806_OBMC
@@ -1696,6 +1852,17 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
   if ( !rpcTempCU->getMergeAMP() )
   {
     return;
+  }
+#endif
+
+#if VCEG_AZ07_IMV
+  if( bIMV )
+  {
+    if( !rpcTempCU->hasSubCUNonZeroMVd() )
+    {
+      return;
+    }
+  }
   }
 #endif
 
@@ -1742,6 +1909,22 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
     DEBUG_STRING_PASS_INTO(sTest) 
   );
   rpcTempCU->getTotalCost()  = m_pcRdCost->calcRdCost( rpcTempCU->getTotalBits(), rpcTempCU->getTotalDistortion() );
+#if VCEG_AZ07_IMV
+  if( rpcTempCU->getiMVFlag( 0 ) == 0 )
+  {
+    if( rpcTempCU->getTotalCost() < m_ppcTempCUIMVCache[ePartSize][uhDepth]->getTotalCost() )
+    {
+      SModeCand tmpCand;
+      tmpCand.eInterPartSize = ePartSize;
+      tmpCand.bUseMrg = bUseMRG;
+      tmpCand.dRDCost = rpcTempCU->getTotalCost();
+      m_ppcTempCUIMVCache[ePartSize][uhDepth]->copyPartFrom( rpcTempCU , 0 , uhDepth );
+      m_ppcTempCUIMVCache[ePartSize][uhDepth]->getTotalCost() = tmpCand.dRDCost;
+      tmpCand.pcCUMode = m_ppcTempCUIMVCache[ePartSize][uhDepth];
+      m_setInterCand.insert( tmpCand );
+    }
+  }
+#endif
 
 #if DEBUG_STRING
   DebugInterPredResiReco(sTest, *(m_ppcPredYuvTemp[uhDepth]), *(m_ppcResiYuvBest[uhDepth]), *(m_ppcRecoYuvTemp[uhDepth]), DebugStringGetPredModeMask(rpcTempCU->getPredictionMode(0)));

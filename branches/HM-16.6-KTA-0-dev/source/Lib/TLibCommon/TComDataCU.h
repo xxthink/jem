@@ -136,13 +136,17 @@ private:
   Bool*         m_pbMergeFlag;        ///< array of merge flags
   UChar*        m_puhMergeIndex;      ///< array of merge candidate indices
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
-  UChar*        m_peMergeType;       ///< array of merge Types flags to indicate whehter a block uses sub-PU TMVP
+  UChar*        m_peMergeType;        ///< array of merge Types flags to indicate whehter a block uses sub-PU TMVP
 #endif
 #if COM16_C806_OBMC
-  Bool*         m_OBMCFlag;          ///< array of OBMC flags
+  Bool*         m_OBMCFlag;           ///< array of OBMC flags
+#endif
+#if VCEG_AZ07_IMV
+  Bool*         m_iMVFlag;            ///< array of integer MV flags
+  Char*         m_piMVCandNum;        ///< encoder only array
 #endif
 #if VCEG_AZ06_IC
-  Bool*         m_pbICFlag;          ///< array of IC flags
+  Bool*         m_pbICFlag;           ///< array of IC flags
 #endif
 #if AMP_MRG
   Bool          m_bIsMergeAMP;
@@ -366,6 +370,16 @@ public:
   Void          setMergeType         ( UInt uiIdx, UChar e )    { m_peMergeType[uiIdx] = e;      }
   Void          setMergeTypeSubParts ( UChar eMergeType, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth );
 #endif
+#if VCEG_AZ07_IMV
+  Bool*         getiMVFlag            ()                        { return m_iMVFlag;          }
+  Bool          getiMVFlag            (UInt idx)                { return m_iMVFlag[idx];     }
+  Void          setiMVFlag            ( UInt idx, Bool iMV)     { m_iMVFlag[idx] = iMV;      }
+  Void          setiMVFlagSubParts    ( Bool iMV, UInt absPartIdx, UInt depth );
+  Char*         getiMVCandNum         ()                        { return m_piMVCandNum;          }
+  Char          getiMVCandNum         (UInt idx)                { return m_piMVCandNum[idx];     }
+  Void          setiMVCandNum         ( UInt idx, Char ciMVCandNum)     { m_piMVCandNum[idx] = ciMVCandNum;   }
+  Void          setiMVCandNumSubParts ( Char ciMVCandNum, UInt absPartIdx, UInt depth );
+#endif
 #if COM16_C806_OBMC
   Bool*         getOBMCFlag          ()                        { return m_OBMCFlag;          }
   Bool          getOBMCFlag          (UInt idx)                { return m_OBMCFlag[idx];     }
@@ -541,6 +555,12 @@ public:
   Bool getInterMergeSubPURecursiveCandidate( UInt uiAbsPartIdx, UInt uiPUIdx, TComMvField* pcMvFieldNeighbours, UChar* puhInterDirNeighbours, Int& numValidMergeCand
   , UChar*          peMergeTypeNeighbors  , TComMvField*    pcMvFieldSP[2] , UChar*          puhInterDirSP[2] , Int iCount );
 #endif
+#if VCEG_AZ07_IMV
+  Void          xRoundMV( TComMv & rMV ) { rMV += TComMv( 2 , 2 ); rMV >>= 2; rMV <<= 2; }
+  Char          getMaxNeighboriMVCandNum( UInt uiAbsPartIdx );
+  Bool          resetMVDandMV2Int( UInt uiAbsPartIdx , UInt uiPartIdx , Bool bResetMV );
+  Bool          resetMVDandMV2Int( Bool bResetMV );
+#endif
 
   Void          deriveLeftRightTopIdxGeneral  ( UInt uiAbsPartIdx, UInt uiPartIdx, UInt& ruiPartIdxLT, UInt& ruiPartIdxRT );
   Void          deriveLeftBottomIdxGeneral    ( UInt uiAbsPartIdx, UInt uiPartIdx, UInt& ruiPartIdxLB );
@@ -575,6 +595,10 @@ public:
 
   UInt          getCtxSkipFlag                  ( UInt   uiAbsPartIdx                                 );
   UInt          getCtxInterDir                  ( UInt   uiAbsPartIdx                                 );
+#if VCEG_AZ07_IMV
+  UInt          getCtxiMVFlag                   ( UInt   uiAbsPartIdx                                 );
+  Bool          hasSubCUNonZeroMVd              ();
+#endif
 
   UInt&         getTotalBins            ()                            { return m_uiTotalBins;                              }
   // -------------------------------------------------------------------------------------------------------------------
