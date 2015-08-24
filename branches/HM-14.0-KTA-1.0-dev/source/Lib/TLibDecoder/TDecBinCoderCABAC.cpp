@@ -101,7 +101,7 @@ TDecBinCABAC::copyState( TDecBinIf* pcTDecBinIf )
 Void TDecBinCABAC::decodeBin( UInt& ruiBin, ContextModel &rcCtxModel )
 {
   UShort uiLPS = TComCABACTables::sm_aucLPSTable[rcCtxModel.getState()>>6][(m_uiRange>>2)-64];
-#if DEBUG
+#if DEBUG && !FIX_TRACE
   {
     DTRACE_CABAC_VL( g_nSymbolCounter++ )
     DTRACE_CABAC_T( "\tstate=" )

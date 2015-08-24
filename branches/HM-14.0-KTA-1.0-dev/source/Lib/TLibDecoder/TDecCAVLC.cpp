@@ -1321,9 +1321,12 @@ Void TDecCavlc::parseSliceHeader (TComSlice*& rpcSlice, ParameterSetManagerDecod
 #if QC_SUB_PU_TMVP &&!MERGE_CAND_NUM_PATCH
       READ_UVLC( uiCode, rpcSlice->getSPS()->getAtmvpEnableFlag() ? "six_minus_max_num_merge_cand": "five_minus_max_num_merge_cand");
       rpcSlice->setMaxNumMergeCand(MRG_MAX_NUM_CANDS - ( rpcSlice->getSPS()->getAtmvpEnableFlag() ? 0 : 1) - uiCode);
-      
 #else 
+#if MERGE_CAND_NUM_PATCH && FIX_TRACE
+      READ_UVLC( uiCode, "MAX_minus_slice_max_num_merge_cand");
+#else
       READ_UVLC( uiCode, "five_minus_max_num_merge_cand");
+#endif
       rpcSlice->setMaxNumMergeCand(MRG_MAX_NUM_CANDS - uiCode);
 #endif
 
