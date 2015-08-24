@@ -120,6 +120,23 @@ Void TEncEntropy::encodeSkipFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD 
   m_pcEntropyCoderIf->codeSkipFlag( pcCU, uiAbsPartIdx );
 }
 
+#if VCEG_AZ07_IMV
+Void TEncEntropy::encodeiMVFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
+{
+  assert( pcCU->getSlice()->getSPS()->getIMV() );
+  if ( pcCU->getSlice()->isIntra() )
+  {
+    return;
+  }
+  else if( pcCU->getMergeFlag( uiAbsPartIdx ) && pcCU->getPartitionSize( uiAbsPartIdx ) == SIZE_2Nx2N )
+  {
+    assert( pcCU->getiMVFlag( uiAbsPartIdx ) == 0 );
+    return;
+  }
+  m_pcEntropyCoderIf->codeiMVFlag( pcCU, uiAbsPartIdx );
+}
+#endif
+
 #if COM16_C806_OBMC
 Void TEncEntropy::encodeOBMCFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD )
 {
@@ -531,6 +548,9 @@ Void TEncEntropy::encodePUWise( TComDataCU* pcCU, UInt uiAbsPartIdx )
   UInt uiNumPU = ( ePartSize == SIZE_2Nx2N ? 1 : ( ePartSize == SIZE_NxN ? 4 : 2 ) );
   UInt uiDepth = pcCU->getDepth( uiAbsPartIdx );
   UInt uiPUOffset = ( g_auiPUOffset[UInt( ePartSize )] << ( ( pcCU->getSlice()->getSPS()->getMaxTotalCUDepth() - uiDepth ) << 1 ) ) >> 4;
+#if VCEG_AZ07_IMV
+  Bool bNonZeroMvd = false;
+#endif
 
   for ( UInt uiPartIdx = 0, uiSubPartIdx = uiAbsPartIdx; uiPartIdx < uiNumPU; uiPartIdx++, uiSubPartIdx += uiPUOffset )
   {
@@ -555,6 +575,10 @@ Void TEncEntropy::encodePUWise( TComDataCU* pcCU, UInt uiAbsPartIdx )
         {
           encodeRefFrmIdxPU ( pcCU, uiSubPartIdx, RefPicList( uiRefListIdx ) );
           encodeMvdPU       ( pcCU, uiSubPartIdx, RefPicList( uiRefListIdx ) );
+#if VCEG_AZ07_IMV
+          bNonZeroMvd |= ( pcCU->getCUMvField( RefPicList( uiRefListIdx ) )->getMvd( uiSubPartIdx ).getHor() != 0 );
+          bNonZeroMvd |= ( pcCU->getCUMvField( RefPicList( uiRefListIdx ) )->getMvd( uiSubPartIdx ).getVer() != 0 );
+#endif
           encodeMVPIdxPU    ( pcCU, uiSubPartIdx, RefPicList( uiRefListIdx ) );
 #if ENVIRONMENT_VARIABLE_DEBUG_AND_TEST
           if (bDebugPred)
@@ -571,6 +595,16 @@ Void TEncEntropy::encodePUWise( TComDataCU* pcCU, UInt uiAbsPartIdx )
     }
   }
 
+#if VCEG_AZ07_IMV
+  if( bNonZeroMvd && pcCU->getSlice()->getSPS()->getIMV() )
+  {
+    encodeiMVFlag( pcCU , uiAbsPartIdx );
+  }
+  if( !bNonZeroMvd )
+  {
+    assert( pcCU->getiMVFlag( uiAbsPartIdx ) == 0 );
+  }
+#endif
   return;
 }
 

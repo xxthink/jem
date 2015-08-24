@@ -65,6 +65,9 @@
 #define NUM_OBMC_FLAG_CTX             1       ///< number of context models for OBMC flag
 #endif
 
+#if VCEG_AZ07_IMV
+#define NUM_IMV_FLAG_CTX              3       ///< number of context models for iMV flag
+#endif
 #if VCEG_AZ06_IC
 #define NUM_IC_FLAG_CTX               1       ///< number of context models for illumination compensation flag
 #endif
@@ -259,6 +262,16 @@ INIT_MERGE_IDX_EXT[NUMBER_OF_SLICE_TYPES][NUM_MERGE_IDX_EXT_CTX] =
   { CNU, },
 #endif
 };
+
+#if VCEG_AZ07_IMV
+static const UChar 
+  INIT_IMV_FLAG[NUMBER_OF_SLICE_TYPES][NUM_IMV_FLAG_CTX] =
+{
+  { 197,  185,  201, }, 
+  { 197,  185,  201, }, 
+  { CNU,  CNU,  CNU, }, 
+};
+#endif
 
 #if COM16_C806_OBMC
 static const UChar 

@@ -788,6 +788,9 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
     assert( uiCode == 4 || uiCode == 8 );
   }
 #endif
+#if VCEG_AZ07_IMV
+  READ_FLAG( uiCode , "use_imv" );                                pcSPS->setIMV( uiCode );
+#endif
 #if VCEG_AZ06_IC
   READ_FLAG( uiCode, "illumination_comp_enabled_flag" );          pcSPS->setICFlag(uiCode);
 #endif
@@ -1706,6 +1709,13 @@ Void TDecCavlc::parseSkipFlag( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt
 {
   assert(0);
 }
+
+#if VCEG_AZ07_IMV
+Void TDecCavlc::parseiMVFlag( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/ )
+{
+  assert(0);
+}
+#endif
 
 #if COM16_C806_OBMC
 Void TDecCavlc::parseOBMCFlag( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/ )

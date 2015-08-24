@@ -95,6 +95,9 @@ TDecSbac::TDecSbac()
 , m_cCrossComponentPredictionSCModel         ( 1,             1,                      NUM_CROSS_COMPONENT_PREDICTION_CTX   , m_contextModels + m_numContextModels, m_numContextModels)
 , m_ChromaQpAdjFlagSCModel                   ( 1,             1,                      NUM_CHROMA_QP_ADJ_FLAG_CTX           , m_contextModels + m_numContextModels, m_numContextModels)
 , m_ChromaQpAdjIdcSCModel                    ( 1,             1,                      NUM_CHROMA_QP_ADJ_IDC_CTX            , m_contextModels + m_numContextModels, m_numContextModels)
+#if VCEG_AZ07_IMV
+, m_cCUiMVFlagSCModel                        ( 1,             1,                      NUM_IMV_FLAG_CTX                     , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 #if COM16_C806_OBMC
 , m_cCUOBMCFlagSCModel                       ( 1,             1,                      NUM_OBMC_FLAG_CTX                    , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
@@ -102,14 +105,14 @@ TDecSbac::TDecSbac()
 , m_cCUICFlagSCModel                         ( 1,             1,                      NUM_IC_FLAG_CTX                      , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
 #if ALF_HM3_REFACTOR
-, m_cCUAlfCtrlFlagSCModel                    ( 1,             1,               NUM_ALF_CTRL_FLAG_CTX         , m_contextModels + m_numContextModels, m_numContextModels)
-, m_cALFFlagSCModel                          ( 1,             1,               NUM_ALF_FLAG_CTX              , m_contextModels + m_numContextModels, m_numContextModels)
-, m_cALFUvlcSCModel                          ( 1,             1,               NUM_ALF_UVLC_CTX              , m_contextModels + m_numContextModels, m_numContextModels)
-, m_cALFSvlcSCModel                          ( 1,             1,               NUM_ALF_SVLC_CTX              , m_contextModels + m_numContextModels, m_numContextModels)
+, m_cCUAlfCtrlFlagSCModel                    ( 1,             1,                      NUM_ALF_CTRL_FLAG_CTX                , m_contextModels + m_numContextModels, m_numContextModels)
+, m_cALFFlagSCModel                          ( 1,             1,                      NUM_ALF_FLAG_CTX                     , m_contextModels + m_numContextModels, m_numContextModels)
+, m_cALFUvlcSCModel                          ( 1,             1,                      NUM_ALF_UVLC_CTX                     , m_contextModels + m_numContextModels, m_numContextModels)
+, m_cALFSvlcSCModel                          ( 1,             1,                      NUM_ALF_SVLC_CTX                     , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
 #if COM16_C806_EMT
-, m_cEmtTuIdxSCModel                         ( 1,             1,               NUM_EMT_TU_IDX_CTX            , m_contextModels + m_numContextModels, m_numContextModels)
-, m_cEmtCuFlagSCModel                        ( 1,             1,               NUM_EMT_CU_FLAG_CTX           , m_contextModels + m_numContextModels, m_numContextModels)
+, m_cEmtTuIdxSCModel                         ( 1,             1,                      NUM_EMT_TU_IDX_CTX                   , m_contextModels + m_numContextModels, m_numContextModels)
+, m_cEmtCuFlagSCModel                        ( 1,             1,                      NUM_EMT_CU_FLAG_CTX                  , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
 {
   assert( m_numContextModels <= MAX_NUM_CTX_MOD );
@@ -175,6 +178,9 @@ Void TDecSbac::resetEntropy(TComSlice* pSlice)
   m_cCrossComponentPredictionSCModel.initBuffer   ( sliceType, qp, (UChar*)INIT_CROSS_COMPONENT_PREDICTION );
   m_ChromaQpAdjFlagSCModel.initBuffer             ( sliceType, qp, (UChar*)INIT_CHROMA_QP_ADJ_FLAG );
   m_ChromaQpAdjIdcSCModel.initBuffer              ( sliceType, qp, (UChar*)INIT_CHROMA_QP_ADJ_IDC );
+#if VCEG_AZ07_IMV
+  m_cCUiMVFlagSCModel.initBuffer                  ( sliceType, qp, (UChar*)INIT_IMV_FLAG );
+#endif
 #if COM16_C806_OBMC
   m_cCUOBMCFlagSCModel.initBuffer                 ( sliceType, qp, (UChar*)INIT_OBMC_FLAG );
 #endif
@@ -475,6 +481,36 @@ Void TDecSbac::parseSkipFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth 
     pcCU->setMergeFlagSubParts( true , uiAbsPartIdx, 0, uiDepth );
   }
 }
+
+#if VCEG_AZ07_IMV
+Void TDecSbac::parseiMVFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
+{
+  if( pcCU->getSlice()->isIntra() )
+  {
+    return;
+  }
+  else if( pcCU->getMergeFlag( uiAbsPartIdx ) && pcCU->getPartitionSize( uiAbsPartIdx ) == SIZE_2Nx2N )
+  {
+    return;
+  }
+
+  UInt uiSymbol = 0;
+  UInt uiCtxiMV = pcCU->getCtxiMVFlag( uiAbsPartIdx );
+  m_pcTDecBinIf->decodeBin( uiSymbol, m_cCUiMVFlagSCModel.get( 0, 0, uiCtxiMV ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__IMV_FLAG) );
+  DTRACE_CABAC_VL( g_nSymbolCounter++ );
+  DTRACE_CABAC_T( "\tiMVFlag" );
+  DTRACE_CABAC_T( "\tuiCtxiMV: ");
+  DTRACE_CABAC_V( uiCtxiMV );
+  DTRACE_CABAC_T( "\tuiSymbol: ");
+  DTRACE_CABAC_V( uiSymbol );
+  DTRACE_CABAC_T( "\n");
+
+  if( uiSymbol )
+  {
+    pcCU->setiMVFlagSubParts( true,        uiAbsPartIdx, uiDepth );
+  }
+}
+#endif
 
 #if COM16_C806_OBMC
 Void TDecSbac::parseOBMCFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )

@@ -708,6 +708,10 @@ Void TEncTop::xInitSPS()
   m_cSPS.setOBMC( m_useOBMC );
   m_cSPS.setOBMCBlkSize( m_OBMCBlkSize );
 #endif
+#if VCEG_AZ07_IMV
+  m_cSPS.setIMV( m_useIMV );
+  m_cSPS.setIMVMaxCand( m_IMVMaxCand );
+#endif
 #if VCEG_AZ06_IC
   m_cSPS.setICFlag( m_useIC );
 #endif

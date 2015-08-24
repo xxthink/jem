@@ -89,6 +89,9 @@ public:
 #if COM16_C806_OBMC
   Void  parseOBMCFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
+#if VCEG_AZ07_IMV
+  Void  parseiMVFlag        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
 #if VCEG_AZ06_IC
   Void  parseICFlag         ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif

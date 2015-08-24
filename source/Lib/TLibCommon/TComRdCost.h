@@ -164,7 +164,11 @@ public:
   Distortion calcHAD(Int bitDepth, Pel* pi0, Int iStride0, Pel* pi1, Int iStride1, Int iWidth, Int iHeight );
 
   // for motion cost
-  static UInt    xGetExpGolombNumberOfBits( Int iVal );
+  static UInt    xGetExpGolombNumberOfBits( Int iVal 
+#if VCEG_AZ07_IMV
+    , Int iMvFlag = false
+#endif
+    );
 #if RExt__HIGH_BIT_DEPTH_SUPPORT
   Void    getMotionCost( Bool bSad, Int iAdd, Bool bIsTransquantBypass ) { m_dCost = (bSad ? m_dLambdaMotionSAD[(bIsTransquantBypass && m_costMode==COST_MIXED_LOSSLESS_LOSSY_CODING) ?1:0] + iAdd : m_dLambdaMotionSSE[(bIsTransquantBypass && m_costMode==COST_MIXED_LOSSLESS_LOSSY_CODING)?1:0] + iAdd); }
 #else
@@ -175,12 +179,24 @@ public:
     m_mvPredictor = rcMv;
   }
   Void    setCostScale( Int iCostScale )    { m_iCostScale = iCostScale; }
-  __inline Distortion getCost( Int x, Int y )
+  __inline Distortion getCost( Int x, Int y 
+#if VCEG_AZ07_IMV
+    , Int iMvFlag = false
+#endif
+    )
   {
 #if RExt__HIGH_BIT_DEPTH_SUPPORT
-    return Distortion((m_dCost * getBits(x, y)) / 65536.0);
+    return Distortion((m_dCost * getBits(x, y
+#if VCEG_AZ07_IMV
+      , iMvFlag
+#endif
+      )) / 65536.0);
 #else
-    return m_uiCost * getBits(x, y) >> 16;
+    return m_uiCost * getBits(x, y
+#if VCEG_AZ07_IMV
+      , iMvFlag
+#endif
+      ) >> 16;
 #endif
   }
 #if RExt__HIGH_BIT_DEPTH_SUPPORT
@@ -188,10 +204,22 @@ public:
 #else
   Distortion getCost( UInt b )                 { return ( m_uiCost * b ) >> 16; }
 #endif
-  UInt    getBits( Int x, Int y )
+  UInt    getBits( Int x, Int y 
+#if VCEG_AZ07_IMV
+    , Int iMvFlag
+#endif
+    )
   {
-    return xGetExpGolombNumberOfBits((x << m_iCostScale) - m_mvPredictor.getHor())
-    +      xGetExpGolombNumberOfBits((y << m_iCostScale) - m_mvPredictor.getVer());
+    return xGetExpGolombNumberOfBits((x << m_iCostScale) - m_mvPredictor.getHor()
+#if VCEG_AZ07_IMV
+      , iMvFlag
+#endif
+      )
+    +      xGetExpGolombNumberOfBits((y << m_iCostScale) - m_mvPredictor.getVer()
+#if VCEG_AZ07_IMV
+      , iMvFlag
+#endif
+      );
   }
 
 private:

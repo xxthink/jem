@@ -110,6 +110,9 @@ private:
 public:
 
   Void parseSkipFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#if VCEG_AZ07_IMV
+  Void parseiMVFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
 #if COM16_C806_OBMC
   Void parseOBMCFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
@@ -202,6 +205,9 @@ private:
 
   ContextModel3DBuffer m_ChromaQpAdjFlagSCModel;
   ContextModel3DBuffer m_ChromaQpAdjIdcSCModel;
+#if VCEG_AZ07_IMV
+  ContextModel3DBuffer m_cCUiMVFlagSCModel;
+#endif
 #if COM16_C806_OBMC
   ContextModel3DBuffer m_cCUOBMCFlagSCModel;
 #endif
