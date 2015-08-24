@@ -460,7 +460,11 @@ Void TEncCavlc::codeSPS( TComSPS* pcSPS )
     }
   }
 #if QC_IC
+#if FIX_TRACE
+  WRITE_FLAG( pcSPS->getICFlag()? 1: 0, "illumination_comp_enabled_flag");
+#else
   WRITE_FLAG( pcSPS->getICFlag()? 1: 0, "illumination_comp_flag");
+#endif
 #endif
 #if QC_SUB_PU_TMVP
   WRITE_FLAG( pcSPS->getAtmvpEnableFlag() ? 1: 0, "atmvp_flag");
