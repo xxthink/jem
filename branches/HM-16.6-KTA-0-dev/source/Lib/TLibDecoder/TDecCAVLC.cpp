@@ -801,6 +801,12 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
   READ_FLAG( uiCode, "use_intra_emt" );                           pcSPS->setUseIntraEMT(uiCode);
   READ_FLAG( uiCode, "use_inter_emt" );                           pcSPS->setUseInterEMT(uiCode);
 #endif
+#if VCEG_AZ07_INTRA_4TAP_FILTER
+  READ_FLAG( uiCode, "intra_4tap_filter_enabled_flag" );          pcSPS->setUseIntra4TapFilter( uiCode );
+#endif
+#if VCEG_AZ07_INTRA_BOUNDARY_FILTER
+  READ_FLAG( uiCode, "intra_boundary_filter_enabled_flag" );      pcSPS->setUseIntraBoundaryFilter( uiCode );
+#endif
   // KTA tools
 
   READ_FLAG( uiCode, "sps_extension_present_flag");

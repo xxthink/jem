@@ -830,6 +830,12 @@ private:
   Int              m_useIntraEMT;
   Int              m_useInterEMT;
 #endif
+#if VCEG_AZ07_INTRA_4TAP_FILTER
+  Bool             m_useIntra4TapFilter;
+#endif
+#if VCEG_AZ07_INTRA_BOUNDARY_FILTER
+  Bool             m_useIntraBoundaryFilter;
+#endif
 
   // Parameter
   BitDepths        m_bitDepths;
@@ -1035,6 +1041,15 @@ public:
   Int                    getUseIntraEMT() const                                                          { return m_useIntraEMT;  }
   Void                   setUseInterEMT(Int n)                                                           { m_useInterEMT = n;     }
   Int                    getUseInterEMT() const                                                          { return m_useInterEMT;  }
+#endif
+
+#if VCEG_AZ07_INTRA_4TAP_FILTER
+  Void                   setUseIntra4TapFilter(Bool b)                                                   { m_useIntra4TapFilter = b;    }
+  Bool                   getUseIntra4TapFilter() const                                                   { return m_useIntra4TapFilter; }
+#endif
+#if VCEG_AZ07_INTRA_BOUNDARY_FILTER
+  Void                   setUseIntraBoundaryFilter(Bool b)                                               { m_useIntraBoundaryFilter = b;     }
+  Bool                   getUseIntraBoundaryFilter() const                                               { return m_useIntraBoundaryFilter;  }
 #endif
   // KTA tools
 

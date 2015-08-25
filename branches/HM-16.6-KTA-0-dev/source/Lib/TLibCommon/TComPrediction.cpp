@@ -274,7 +274,10 @@ Void TComPrediction::xPredIntraAng(       Int bitDepth,
                                           Pel* pTrueDst, Int dstStrideTrue,
                                           UInt uiWidth, UInt uiHeight, ChannelType channelType,
                                           UInt dirMode, const Bool bEnableEdgeFilters
-                                  )
+#if VCEG_AZ07_INTRA_4TAP_FILTER
+                                          , Bool enable4TapFilter
+#endif
+                                          )
 {
   Int width=Int(uiWidth);
   Int height=Int(uiHeight);
@@ -394,6 +397,34 @@ Void TComPrediction::xPredIntraAng(       Int bitDepth,
         if (deltaFract)
         {
           // Do linear filtering
+#if VCEG_AZ07_INTRA_4TAP_FILTER
+          if (enable4TapFilter)
+          {
+            Int p[4], x, refMainIndex;
+            const Pel nMin = 0, nMax = (1 << bitDepth) - 1;
+            Int *f = (width<=8) ? g_aiIntraCubicFilter[deltaFract] : g_aiIntraGaussFilter[deltaFract];
+            
+            for (x=0;x<width;x++)
+            {
+              refMainIndex = x+deltaInt+1;
+
+              p[1] = refMain[refMainIndex];
+              p[2] = refMain[refMainIndex+1];
+
+              p[0] = x==0 ? p[1] : refMain[refMainIndex-1];
+              p[3] = x==(width-1) ? p[2] : refMain[refMainIndex+2];
+
+              pDst[y*dstStride+x] =  (Pel)( ( f[0]*p[0] + f[1]*p[1] + f[2]*p[2] + f[3]*p[3] + 128 ) >> 8 );
+
+              if( width<=8 ) // for blocks larger than 8x8, Gaussian interpolation filter with positive coefficients is used, no Clipping is necessary
+              {
+                pDst[y*dstStride+x] =  Clip3( nMin, nMax, pDst[y*dstStride+x] );
+              }
+            }
+          }
+          else
+          {
+#endif
           const Pel *pRM=refMain+deltaInt+1;
           Int lastRefMainPel=*pRM++;
           for (Int x=0;x<width;pRM++,x++)
@@ -402,6 +433,9 @@ Void TComPrediction::xPredIntraAng(       Int bitDepth,
             pDsty[x+0] = (Pel) ( ((32-deltaFract)*lastRefMainPel + deltaFract*thisRefMainPel +16) >> 5 );
             lastRefMainPel=thisRefMainPel;
           }
+#if VCEG_AZ07_INTRA_4TAP_FILTER
+          }
+#endif
         }
         else
         {
@@ -508,12 +542,39 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 #else
       const Int channelsBitDepthForPrediction = rTu.getCU()->getSlice()->getSPS()->getBitDepth(channelType);
 #endif
-      xPredIntraAng( channelsBitDepthForPrediction, ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight, channelType, uiDirMode, enableEdgeFilters );
+#if VCEG_AZ07_INTRA_4TAP_FILTER
+      const Bool              enable4TapFilter     = pcCU->getSlice()->getSPS()->getUseIntra4TapFilter();
+#endif
+#if VCEG_AZ07_INTRA_BOUNDARY_FILTER
+      const Bool              enableBoundaryFilter = pcCU->getSlice()->getSPS()->getUseIntraBoundaryFilter();
+#endif
+      xPredIntraAng( channelsBitDepthForPrediction, ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight, channelType, uiDirMode, enableEdgeFilters 
+#if VCEG_AZ07_INTRA_4TAP_FILTER
+        , enable4TapFilter
+#endif
+        );
 
       if( uiDirMode == DC_IDX )
       {
         xDCPredFiltering( ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight, channelType );
       }
+#if VCEG_AZ07_INTRA_BOUNDARY_FILTER
+      else if( enableBoundaryFilter && isLuma(compID) )
+      {
+        if( uiDirMode == 34 )
+        {
+          xIntraPredFilteringMode34( ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight);
+        }
+        else  if( uiDirMode == 2 )
+        {
+          xIntraPredFilteringMode02( ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight);
+        }
+        else if( ( uiDirMode<=6 && uiDirMode>2 ) || ( uiDirMode>=30 && uiDirMode<34 ) )
+        {
+          xIntraPredFilteringModeDGL( ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight, uiDirMode );
+        }
+      }
+#endif
     }
   }
 
@@ -1196,6 +1257,86 @@ Void TComPrediction::xDCPredFiltering( const Pel* pSrc, Int iSrcStride, Pel* pDs
 
   return;
 }
+
+#if VCEG_AZ07_INTRA_BOUNDARY_FILTER
+Void TComPrediction::xIntraPredFilteringMode34( const Pel* pSrc, Int iSrcStride, Pel*& rpDst, Int iDstStride, Int iWidth, Int iHeight )
+{
+  Pel* pDst = rpDst;
+
+  for ( Int y = 0, iDstStride2 = 0, iSrcStride2 = -1; y < iHeight; y++, iDstStride2+=iDstStride, iSrcStride2+=iSrcStride )
+  {
+    pDst[iDstStride2  ] = (  8 * pDst[iDstStride2  ] + 8 * pSrc[iSrcStride2+iSrcStride  ] + 8 ) >> 4;
+#if VCEG_AZ07_INTRA_BOUNDARY_FILTER_MULTI_LINE
+    pDst[iDstStride2+1] = ( 12 * pDst[iDstStride2+1] + 4 * pSrc[iSrcStride2+iSrcStride*2] + 8 ) >> 4;     
+    pDst[iDstStride2+2] = ( 14 * pDst[iDstStride2+2] + 2 * pSrc[iSrcStride2+iSrcStride*3] + 8 ) >> 4;    
+    pDst[iDstStride2+3] = ( 15 * pDst[iDstStride2+3] +     pSrc[iSrcStride2+iSrcStride*4] + 8 ) >> 4;
+#endif
+  }
+  return;
+}
+
+Void TComPrediction::xIntraPredFilteringMode02( const Pel* pSrc, Int iSrcStride, Pel*& rpDst, Int iDstStride, Int iWidth, Int iHeight )
+{
+  Pel* pDst = rpDst;
+
+  for ( Int x = 0; x < iWidth; x++ )
+  {
+    pDst[x             ] = (  8 * pDst[x             ] + 8 * pSrc[x - iSrcStride + 1] + 8 ) >> 4;
+#if VCEG_AZ07_INTRA_BOUNDARY_FILTER_MULTI_LINE
+    pDst[x+iDstStride  ] = ( 12 * pDst[x+iDstStride  ] + 4 * pSrc[x - iSrcStride + 2] + 8 ) >> 4;
+    pDst[x+iDstStride*2] = ( 14 * pDst[x+iDstStride*2] + 2 * pSrc[x - iSrcStride + 3] + 8 ) >> 4;
+    pDst[x+iDstStride*3] = ( 15 * pDst[x+iDstStride*3] +     pSrc[x - iSrcStride + 4] + 8 ) >> 4; 
+#endif
+  }
+  return;
+}
+
+Void TComPrediction::xIntraPredFilteringModeDGL( const Pel* pSrc, Int iSrcStride, Pel*& rpDst, Int iDstStride, Int iWidth, Int iHeight, UInt uiMode )
+{
+  Pel* pDst = rpDst;
+
+  const Int aucAngPredFilterCoef[4][3] = {
+    { 12, 3, 1 }, 
+    { 12, 1, 3 }, 
+    { 12, 2, 2 },
+    {  8, 6, 2 },  
+  };
+  const Int aucAngPredPosiOffset[4][2] = {
+    { 2, 3 }, 
+    { 1, 2 },
+    { 1, 2 },
+    { 1, 2 },
+  };
+  assert( ( uiMode>=30 && uiMode<34 ) || ( uiMode>2 && uiMode<=6 ) );
+
+  Bool bHorz = (uiMode < 18);
+  UInt deltaAng = bHorz ? (6-uiMode): (uiMode-30);
+
+  const Int *offset = aucAngPredPosiOffset[deltaAng];
+  const Int *filter = aucAngPredFilterCoef[deltaAng];
+
+  if(bHorz)
+  {
+    for ( Int x = 0; x < iWidth; x++ )
+    {
+      pDst[x] = ( filter[0] * pDst[x] 
+      + filter[1] * pSrc[x - iSrcStride + offset[0]] 
+      + filter[2] * pSrc[x - iSrcStride + offset[1]] + 8) >> 4;
+    }
+  }
+  else
+  {
+    for ( Int y = 0; y < iHeight; y++ )
+    {         
+      pDst[y * iDstStride] = ( filter[0] * pDst[y * iDstStride] 
+      + filter[1] * pSrc[(y + offset[0] ) * iSrcStride -1 ] 
+      + filter[2] * pSrc[(y + offset[1] ) * iSrcStride -1 ] + 8) >> 4;        
+    }
+  }
+
+  return;
+}
+#endif
 
 /* Static member function */
 Bool TComPrediction::UseDPCMForFirstPassIntraEstimation(TComTU &rTu, const UInt uiDirMode)

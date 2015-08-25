@@ -408,6 +408,13 @@ protected:
   Int       m_useFastLCTU;
 #endif
 
+#if VCEG_AZ07_INTRA_4TAP_FILTER
+  Bool      m_useIntra4TapFilter;
+#endif
+#if VCEG_AZ07_INTRA_BOUNDARY_FILTER
+  Bool      m_useIntraBoundaryFilter;
+#endif
+
   std::string m_summaryOutFilename;                           ///< filename to use for producing summary output file.
   std::string m_summaryPicFilenameBase;                       ///< Base filename to use for producing summary picture output files. The actual filenames used will have I.txt, P.txt and B.txt appended.
   UInt        m_summaryVerboseness;                           ///< Specifies the level of the verboseness of the text output.
@@ -1015,6 +1022,15 @@ public:
 #if COM16_C806_LARGE_CTU
   Void      setUseFastLCTU(Int n)                                    { m_useFastLCTU = n; }
   Int       getUseFastLCTU()                                         { return m_useFastLCTU;  }
+#endif
+
+#if VCEG_AZ07_INTRA_4TAP_FILTER
+  Bool   getUseIntra4TapFilter ()                                    { return m_useIntra4TapFilter;                }
+  Void   setUseIntra4TapFilter ( Bool bUse4TapIntraFilter )          { m_useIntra4TapFilter = bUse4TapIntraFilter; }
+#endif
+#if VCEG_AZ07_INTRA_BOUNDARY_FILTER
+  Bool   getUseIntraBoundaryFilter ()                                { return m_useIntraBoundaryFilter;                 }
+  Void   setUseIntraBoundaryFilter ( Bool bUseBoundaryFilter )       { m_useIntraBoundaryFilter = bUseBoundaryFilter;   }
 #endif
 };
 

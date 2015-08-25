@@ -416,6 +416,13 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setUseFastInterEMT                                   ( (m_useFastEMT>>1) & (m_useEMT>>1) & 1 );
 #endif
 
+#if VCEG_AZ07_INTRA_4TAP_FILTER
+  m_cTEncTop.setUseIntra4TapFilter                                ( m_useIntra4TapFilter );
+#endif
+#if VCEG_AZ07_INTRA_BOUNDARY_FILTER
+  m_cTEncTop.setUseIntraBoundaryFilter                            ( m_useIntraBoundaryFilter );
+#endif
+
   m_cTEncTop.setSummaryOutFilename                                ( m_summaryOutFilename );
   m_cTEncTop.setSummaryPicFilenameBase                            ( m_summaryPicFilenameBase );
   m_cTEncTop.setSummaryVerboseness                                ( m_summaryVerboseness );

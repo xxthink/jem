@@ -1111,6 +1111,13 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 #if COM16_C806_LARGE_CTU
   ("LCTUFast" ,                                       m_useFastLCTU , 1 , "Fast methods for large CTU" )
 #endif
+
+#if VCEG_AZ07_INTRA_4TAP_FILTER
+  ("IntraFourTapFilter",                              m_useIntra4TapFilter,      true, "Enable Intra 4-tap predicton filter")
+#endif
+#if VCEG_AZ07_INTRA_BOUNDARY_FILTER
+  ("IntraBoundaryFilter",                             m_useIntraBoundaryFilter,  true, "Enable Intra boundary filter")
+#endif
   ;
 
   for(Int i=1; i<MAX_GOP+1; i++)
@@ -2570,6 +2577,13 @@ Void TAppEncCfg::xPrintParameter()
   {
     printf( "FEMT: %1d(intra) %1d(inter) " , (m_useFastEMT&m_useEMT&1) , (m_useFastEMT>>1)&(m_useEMT>>1)&1 );
   }
+#endif
+
+#if VCEG_AZ07_INTRA_4TAP_FILTER
+  printf( "Intra4TapFilter:%d " , m_useIntra4TapFilter );
+#endif
+#if VCEG_AZ07_INTRA_BOUNDARY_FILTER
+  printf( "IntraBoundaryFilter:%d " , m_useIntraBoundaryFilter );
 #endif
 
   printf("\n\n");
