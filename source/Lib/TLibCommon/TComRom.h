@@ -140,6 +140,11 @@ extern TMatrixCoeff g_aiTr32[NUM_TRANS_TYPE][32][32];
 extern TMatrixCoeff g_aiTr64[NUM_TRANS_TYPE][64][64];
 #endif
 
+#if VCEG_AZ07_INTRA_4TAP_FILTER
+extern Int g_aiIntraCubicFilter[32][4];
+extern Int g_aiIntraGaussFilter[32][4];
+#endif
+
 // ====================================================================================================================
 // Misc.
 // ====================================================================================================================

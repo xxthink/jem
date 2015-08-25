@@ -395,6 +395,13 @@ protected:
   Int       m_useFastEMT;                                     ///< XZ: Fast Methods of Enhanced Multiple Transform
 #endif
 
+#if VCEG_AZ07_INTRA_4TAP_FILTER
+  Bool      m_useIntra4TapFilter;
+#endif
+#if VCEG_AZ07_INTRA_BOUNDARY_FILTER
+  Bool      m_useIntraBoundaryFilter;
+#endif
+
   std::string m_summaryOutFilename;                           ///< filename to use for producing summary output file.
   std::string m_summaryPicFilenameBase;                       ///< Base filename to use for producing summary picture output files. The actual filenames used will have I.txt, P.txt and B.txt appended.
   UInt        m_summaryVerboseness;                           ///< Specifies the level of the verboseness of the text output.

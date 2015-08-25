@@ -86,6 +86,11 @@
 
 #define COM16_C806_LARGE_CTU                              1  ///< CTU size larger than 64x64, supporting up to 256x256 CTU size in the software,
 
+#define VCEG_AZ07_INTRA_4TAP_FILTER                       1 ///< Intra 4-tap interpolation filters
+#define VCEG_AZ07_INTRA_BOUNDARY_FILTER                   1 ///< Intra boundary filtering
+#if VCEG_AZ07_INTRA_BOUNDARY_FILTER
+#define VCEG_AZ07_INTRA_BOUNDARY_FILTER_MULTI_LINE        1 /// 0: Filter one boundary line, 1: Filter 4 boundary lines
+#endif
 
 #define COM16_C806_SIMD_OPT                               1  ///< SIMD optimization, no impact on RD performance
 ///////////////////////////////////////////////////////////

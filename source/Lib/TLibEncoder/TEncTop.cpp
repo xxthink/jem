@@ -148,6 +148,13 @@ Void TEncTop::create ()
     m_cAdaptiveLoopFilter.create( getSourceWidth(), getSourceHeight(), getChromaFormatIdc(), m_maxCUWidth, m_maxCUHeight, m_maxTotalCUDepth , m_bitDepth[CHANNEL_TYPE_LUMA] , m_bitDepth[CHANNEL_TYPE_LUMA] );
   }
 #endif
+
+#if VCEG_AZ07_INTRA_4TAP_FILTER
+  m_cSPS.setUseIntra4TapFilter( m_useIntra4TapFilter );
+#endif
+#if VCEG_AZ07_INTRA_BOUNDARY_FILTER
+  m_cSPS.setUseIntraBoundaryFilter( m_useIntraBoundaryFilter );
+#endif
 }
 
 Void TEncTop::destroy ()

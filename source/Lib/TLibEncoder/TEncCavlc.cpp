@@ -597,6 +597,12 @@ Void TEncCavlc::codeSPS( const TComSPS* pcSPS )
   WRITE_FLAG( pcSPS->getUseIntraEMT() != 0 , "use_intra_emt" );
   WRITE_FLAG( pcSPS->getUseInterEMT() != 0 , "use_inter_emt" );
 #endif
+#if VCEG_AZ07_INTRA_4TAP_FILTER
+  WRITE_FLAG( pcSPS->getUseIntra4TapFilter() ? 1 : 0, "intra_4tap_filter_enabled_flag" );
+#endif
+#if VCEG_AZ07_INTRA_BOUNDARY_FILTER
+  WRITE_FLAG( pcSPS->getUseIntraBoundaryFilter() ? 1 : 0, "intra_boundary_filter_enabled_flag" );
+#endif
   // KTA tools
 
   Bool sps_extension_present_flag=false;
