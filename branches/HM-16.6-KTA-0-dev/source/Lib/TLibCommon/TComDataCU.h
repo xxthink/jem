@@ -54,7 +54,12 @@
 
 class TComTU; // forward declaration
 
-static const UInt NUM_MOST_PROBABLE_MODES=3;
+static const UInt NUM_MOST_PROBABLE_MODES=
+#if VCEG_AZ07_INTRA_65ANG_MODES
+  6;
+#else
+  3;
+#endif
 
 // ====================================================================================================================
 // Class definition
@@ -442,6 +447,20 @@ public:
   Void          setEmtCuFlagSubParts  ( UInt uiTuOptTrFlag, UInt uiAbsPartIdx, UInt uiDepth );
 #endif  
 
+#if VCEG_AZ07_INTRA_65ANG_MODES
+  TComDataCU*   getPULeftOffset             ( UInt& uiPartUnitIdx, 
+                                              UInt uiCurrPartUnitIdx, 
+                                              UInt uiPartOffset=0,
+                                              Bool bEnforceSliceRestriction=true, 
+                                              Bool bEnforceTileRestriction=true );
+  TComDataCU*   getPUAboveOffset            ( UInt& uiPartUnitIdx, 
+                                              UInt uiCurrPartUnitIdx, 
+                                              UInt uiPartOffset=0,
+                                              Bool bEnforceSliceRestriction=true, 
+                                              Bool planarAtLCUBoundary = true,
+                                              Bool bEnforceTileRestriction=true );
+#endif
+
   // -------------------------------------------------------------------------------------------------------------------
   // member functions for accessing partition information
   // -------------------------------------------------------------------------------------------------------------------
@@ -581,7 +600,11 @@ public:
   UInt          getIntraSizeIdx                 ( UInt uiAbsPartIdx                                       );
 
   Void          getAllowedChromaDir             ( UInt uiAbsPartIdx, UInt* uiModeList );
-  Void          getIntraDirPredictor            ( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM_MOST_PROBABLE_MODES], const ComponentID compID, Int* piMode = NULL );
+  Void          getIntraDirPredictor            ( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM_MOST_PROBABLE_MODES], const ComponentID compID
+#if VCEG_AZ07_INTRA_65ANG_MODES
+    , Int &iAboveLeftCase
+#endif
+    , Int* piMode = NULL );
 
   // -------------------------------------------------------------------------------------------------------------------
   // member functions for SBAC context

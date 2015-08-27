@@ -50,6 +50,17 @@
 const UChar TComPrediction::m_aucIntraFilter[MAX_NUM_CHANNEL_TYPE][MAX_INTRA_FILTER_DEPTHS] =
 {
   { // Luma
+#if VCEG_AZ07_INTRA_65ANG_MODES
+    20, //4x4
+    14, //8x8
+    2,  //16x16
+    0,  //32x32
+    20, //64x64
+#if COM16_C806_LARGE_CTU
+    0, //128x128
+    0, //256x256
+#endif
+#else
     10, //4x4
     7, //8x8
     1, //16x16
@@ -59,8 +70,20 @@ const UChar TComPrediction::m_aucIntraFilter[MAX_NUM_CHANNEL_TYPE][MAX_INTRA_FIL
     0, //128x128
     0, //256x256
 #endif
+#endif
   },
   { // Chroma
+#if VCEG_AZ07_INTRA_65ANG_MODES
+    20, //4xn
+    14, //8xn
+    2,  //16xn
+    0,  //32xn
+    20, //64xn
+#if COM16_C806_LARGE_CTU
+    0, //128xn
+    0, //256xn
+#endif
+#else
     10, //4xn
     7, //8xn
     1, //16xn
@@ -69,6 +92,7 @@ const UChar TComPrediction::m_aucIntraFilter[MAX_NUM_CHANNEL_TYPE][MAX_INTRA_FIL
 #if COM16_C806_LARGE_CTU
     0, //128x128
     0, //256x256
+#endif
 #endif
   }
 };
@@ -301,15 +325,24 @@ Void TComPrediction::xPredIntraAng(       Int bitDepth,
   }
   else // Do angular predictions
   {
+#if VCEG_AZ07_INTRA_65ANG_MODES
+    const Bool       bIsModeVer         = (dirMode >= DIA_IDX);
+#else
     const Bool       bIsModeVer         = (dirMode >= 18);
+#endif
     const Int        intraPredAngleMode = (bIsModeVer) ? (Int)dirMode - VER_IDX :  -((Int)dirMode - HOR_IDX);
     const Int        absAngMode         = abs(intraPredAngleMode);
     const Int        signAng            = intraPredAngleMode < 0 ? -1 : 1;
     const Bool       edgeFilter         = bEnableEdgeFilters && isLuma(channelType) && (width <= MAXIMUM_INTRA_FILTERED_WIDTH) && (height <= MAXIMUM_INTRA_FILTERED_HEIGHT);
 
     // Set bitshifts and scale the angle parameter to block size
+#if VCEG_AZ07_INTRA_65ANG_MODES
+    static const Int angTable[17]    = {0,    1,    2,    3,    5,    7,    9,   11,   13,   15,   17,   19,   21,   23,   26,   29,   32};
+    static const Int invAngTable[17] = {0, 8192, 4096, 2731, 1638, 1170,  910,  745,  630,  546,  482,  431,  390,  356,  315,  282,  256}; // (256 * 32) / Angle
+#else
     static const Int angTable[9]    = {0,    2,    5,   9,  13,  17,  21,  26,  32};
     static const Int invAngTable[9] = {0, 4096, 1638, 910, 630, 482, 390, 315, 256}; // (256 * 32) / Angle
+#endif
     Int invAngle                    = invAngTable[absAngMode];
     Int absAng                      = angTable[absAngMode];
     Int intraPredAngle              = signAng * absAng;
@@ -446,6 +479,15 @@ Void TComPrediction::xPredIntraAng(       Int bitDepth,
           }
         }
       }
+#if VCEG_AZ07_INTRA_65ANG_MODES
+      if ( edgeFilter && absAng<=1 )
+      {
+        for (Int y=0;y<height;y++)
+        {
+          pDst[y*dstStride] = Clip3(0, (1<<bitDepth)-1, pDst[y*dstStride] + (( refSide[y+1] - refSide[0] ) >> 2) );
+        }
+      }
+#endif
     }
 
     // Flip the block if this is the horizontal mode
@@ -561,7 +603,11 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 #if VCEG_AZ07_INTRA_BOUNDARY_FILTER
       else if( enableBoundaryFilter && isLuma(compID) )
       {
+#if VCEG_AZ07_INTRA_65ANG_MODES
+        if( uiDirMode == VDIA_IDX )
+#else
         if( uiDirMode == 34 )
+#endif
         {
           xIntraPredFilteringMode34( ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight);
         }
@@ -569,7 +615,11 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
         {
           xIntraPredFilteringMode02( ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight);
         }
+#if VCEG_AZ07_INTRA_65ANG_MODES
+        else if( ( uiDirMode<=10 && uiDirMode>2 ) || ( uiDirMode>=(VDIA_IDX-8) && uiDirMode<VDIA_IDX ) )
+#else
         else if( ( uiDirMode<=6 && uiDirMode>2 ) || ( uiDirMode>=30 && uiDirMode<34 ) )
+#endif
         {
           xIntraPredFilteringModeDGL( ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight, uiDirMode );
         }
@@ -1295,6 +1345,21 @@ Void TComPrediction::xIntraPredFilteringModeDGL( const Pel* pSrc, Int iSrcStride
 {
   Pel* pDst = rpDst;
 
+#if VCEG_AZ07_INTRA_65ANG_MODES
+  const Int aucAngPredFilterCoef[8][3] = {
+    { 12, 3, 1 }, { 12, 3, 1 }, 
+    { 12, 1, 3 }, { 12, 2, 2 }, 
+    { 12, 2, 2 }, { 12, 3, 1 },
+    {  8, 6, 2 }, {  8, 7, 1 },  
+  };
+  const Int aucAngPredPosiOffset[8][2] = {
+    { 2, 3 }, { 2, 3 }, 
+    { 1, 2 }, { 1, 2 },
+    { 1, 2 }, { 1, 2 },
+    { 1, 2 }, { 1, 2 },
+  };
+  assert( ( uiMode>=(VDIA_IDX-8) && uiMode<VDIA_IDX ) || ( uiMode>2 && uiMode<=(2+8) ) );
+#else
   const Int aucAngPredFilterCoef[4][3] = {
     { 12, 3, 1 }, 
     { 12, 1, 3 }, 
@@ -1308,9 +1373,15 @@ Void TComPrediction::xIntraPredFilteringModeDGL( const Pel* pSrc, Int iSrcStride
     { 1, 2 },
   };
   assert( ( uiMode>=30 && uiMode<34 ) || ( uiMode>2 && uiMode<=6 ) );
+#endif
 
+#if VCEG_AZ07_INTRA_65ANG_MODES
+  Bool bHorz = (uiMode < DIA_IDX);
+  UInt deltaAng = bHorz ? ((2+8)-uiMode): (uiMode-(VDIA_IDX-8));
+#else
   Bool bHorz = (uiMode < 18);
   UInt deltaAng = bHorz ? (6-uiMode): (uiMode-30);
+#endif
 
   const Int *offset = aucAngPredPosiOffset[deltaAng];
   const Int *filter = aucAngPredFilterCoef[deltaAng];

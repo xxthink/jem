@@ -127,8 +127,13 @@ extern const TMatrixCoeff g_as_DST_MAT_4 [TRANSFORM_NUMBER_OF_DIRECTIONS][4][4];
 #if COM16_C806_EMT
 extern Int g_aiTrSubsetIntra[3][2];
 extern Int g_aiTrSubsetInter[4];
+#if VCEG_AZ07_INTRA_65ANG_MODES
+extern const UChar g_aucTrSetVert[NUM_INTRA_MODE-1];
+extern const UChar g_aucTrSetHorz[NUM_INTRA_MODE-1];
+#else
 extern const UChar g_aucTrSetVert[35];
 extern const UChar g_aucTrSetHorz[35];
+#endif
 extern const UInt g_iEmtSigNumThr;
 #endif
 

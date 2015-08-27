@@ -104,7 +104,11 @@ public:
   virtual Void codeQtRootCbf     ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
   virtual Void codeQtCbfZero     ( TComTU &rTu, const ChannelType chType ) = 0;
   virtual Void codeQtRootCbfZero ( ) = 0;
-  virtual Void codeIntraDirLumaAng( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool isMultiplePU ) = 0;
+  virtual Void codeIntraDirLumaAng( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool isMultiplePU 
+#if VCEG_AZ07_INTRA_65ANG_MODES
+    , Int* piModes = NULL, Int iAboveLeftCase = -1
+#endif
+    ) = 0;
 
   virtual Void codeIntraDirChroma( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
   virtual Void codeInterDir      ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
@@ -189,7 +193,11 @@ public:
   Void encodePartSize          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bRD = false );
   Void encodeIPCMInfo          ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
   Void encodePredInfo          ( TComDataCU* pcCU, UInt uiAbsPartIdx );
-  Void encodeIntraDirModeLuma  ( TComDataCU* pcCU, UInt absPartIdx, Bool isMultiplePU = false );
+  Void encodeIntraDirModeLuma  ( TComDataCU* pcCU, UInt absPartIdx, Bool isMultiplePU = false 
+#if VCEG_AZ07_INTRA_65ANG_MODES
+    , Int* piModes = NULL, Int iAboveLeftCase = -1
+#endif
+    );
 
   Void encodeIntraDirModeChroma( TComDataCU* pcCU, UInt uiAbsPartIdx );
 

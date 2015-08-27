@@ -186,6 +186,18 @@ static const Int RVM_VCEGAM10_M =                                   4;
 
 static const Int FAST_UDI_MAX_RDMODE_NUM =                         35; ///< maximum number of RD comparison in fast-UDI estimation loop
 
+#if VCEG_AZ07_INTRA_65ANG_MODES
+static const Int NUM_INTRA_MODE =                                  68;
+static const Int NUM_DIR =                (((NUM_INTRA_MODE-4)>>2)+1);
+static const Int PLANAR_IDX =                                       0;
+static const Int DC_IDX =                                           1; ///< index for intra DC mode
+static const Int VER_IDX =                          (3*(NUM_DIR-1)+2); ///< index for intra VERTICAL   mode
+static const Int HOR_IDX =                          (1*(NUM_DIR-1)+2); ///< index for intra HORIZONTAL mode
+static const Int DIA_IDX =                          (2*(NUM_DIR-1)+2); ///< index for intra Diagonal mode
+static const Int VDIA_IDX =                         (4*(NUM_DIR-1)+2); ///< index for intra DC mode
+static const Int NUM_CHROMA_MODE =                                  5; ///< total number of chroma modes
+static const Int DM_CHROMA_IDX =                       NUM_INTRA_MODE; ///< chroma mode index for derived from luma intra mode
+#else
 static const Int NUM_INTRA_MODE =                                  36;
 static const Int PLANAR_IDX =                                       0;
 static const Int VER_IDX =                                         26; ///< index for intra VERTICAL   mode
@@ -193,6 +205,7 @@ static const Int HOR_IDX =                                         10; ///< inde
 static const Int DC_IDX =                                           1; ///< index for intra DC mode
 static const Int NUM_CHROMA_MODE =                                  5; ///< total number of chroma modes
 static const Int DM_CHROMA_IDX =                                   36; ///< chroma mode index for derived from luma intra mode
+#endif
 
 #if COM16_C806_EMT
 static const UChar INTER_MODE_IDX =                               255; ///< index for inter modes
@@ -200,7 +213,11 @@ static const UInt  EMT_INTRA_MAX_CU =                              32; ///< Max 
 static const UInt  EMT_INTER_MAX_CU =                              32; ///< Max Inter CU size applying EMT, supported values: 8, 16, 32
 #endif
 
+#if VCEG_AZ07_INTRA_65ANG_MODES
+static const Int MDCS_ANGLE_LIMIT =                                 9; ///< 0 = Horizontal/vertical only, 1 = Horizontal/vertical +/- 1, 2 = Horizontal/vertical +/- 2 etc...
+#else
 static const Int MDCS_ANGLE_LIMIT =                                 4; ///< 0 = Horizontal/vertical only, 1 = Horizontal/vertical +/- 1, 2 = Horizontal/vertical +/- 2 etc...
+#endif
 static const Int MDCS_MAXIMUM_WIDTH =                               8; ///< (measured in pixels) TUs with width greater than this can only use diagonal scan
 static const Int MDCS_MAXIMUM_HEIGHT =                              8; ///< (measured in pixels) TUs with height greater than this can only use diagonal scan
 

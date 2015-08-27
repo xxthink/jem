@@ -2586,6 +2586,10 @@ Void TAppEncCfg::xPrintParameter()
   printf( "IntraBoundaryFilter:%d " , m_useIntraBoundaryFilter );
 #endif
 
+#if VCEG_AZ07_INTRA_65ANG_MODES
+  printf( "ExtIntraAngularMode:1 " );
+#endif
+
   printf("\n\n");
 
   fflush(stdout);

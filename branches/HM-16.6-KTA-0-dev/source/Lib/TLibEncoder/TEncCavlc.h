@@ -124,7 +124,11 @@ public:
   Void codeQtRootCbf     ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeQtCbfZero     ( TComTU &rTu, const ChannelType chType );
   Void codeQtRootCbfZero ( );
-  Void codeIntraDirLumaAng( TComDataCU* pcCU, UInt absPartIdx, Bool isMultiple);
+  Void codeIntraDirLumaAng( TComDataCU* pcCU, UInt absPartIdx, Bool isMultiple
+#if VCEG_AZ07_INTRA_65ANG_MODES
+    , Int* piModes = NULL, Int  iAboveLeftCase = -1
+#endif
+    );
   Void codeIntraDirChroma( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeInterDir      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeRefFrmIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList );

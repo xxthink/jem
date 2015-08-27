@@ -2682,6 +2682,9 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #if COM16_C806_EMT
     UInt uiRdModeList[FAST_UDI_MAX_RDMODE_NUM];
     Int numModesForFullRD = m_pcEncCfg->getFastUDIUseMPMEnabled()?g_aucIntraModeNumFast_UseMPM[ uiWidthBit ] : g_aucIntraModeNumFast_NotUseMPM[ uiWidthBit ];
+#if VCEG_AZ07_INTRA_65ANG_MODES
+    numModesForFullRD -= 1;
+#endif
     if( ucEmtUsageFlag != 2 )
     {
 #endif
@@ -2689,10 +2692,17 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
     DEBUG_STRING_NEW(sTemp2)
 
     //===== determine set of modes to be tested (using prediction signal only) =====
+#if VCEG_AZ07_INTRA_65ANG_MODES
+    Int numModesAvailable     = 67; //total number of Intra modes
+#else
     Int numModesAvailable     = 35; //total number of Intra modes
+#endif
 #if !COM16_C806_EMT
     UInt uiRdModeList[FAST_UDI_MAX_RDMODE_NUM];
     Int numModesForFullRD = m_pcEncCfg->getFastUDIUseMPMEnabled()?g_aucIntraModeNumFast_UseMPM[ uiWidthBit ] : g_aucIntraModeNumFast_NotUseMPM[ uiWidthBit ];
+#if VCEG_AZ07_INTRA_65ANG_MODES
+    numModesForFullRD -= 1;
+#endif
 #endif
     // this should always be true
     assert (tuRecurseWithPU.ProcessComponentSection(COMPONENT_Y));
@@ -2709,6 +2719,20 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
       }
       CandNum = 0;
 
+#if VCEG_AZ07_INTRA_65ANG_MODES
+      Int uiPreds[6] = {-1, -1, -1, -1, -1, -1};
+      Int iAboveLeftCase=0, iMode=-1;
+
+      pcCU->getIntraDirPredictor( uiPartOffset, uiPreds, COMPONENT_Y, iAboveLeftCase, &iMode ); // Pre-calculate the MPMs, so avoid redundant MPM calculations during the SATD loop
+
+      assert( iMode >= 0 );
+      
+      iMode = min(iMode+1, 6);
+
+      Char bSatdChecked[NUM_INTRA_MODE];
+      memset( bSatdChecked, 0, NUM_INTRA_MODE*sizeof(Char) );
+#endif
+
       const TComRectangle &puRect=tuRecurseWithPU.getRect(COMPONENT_Y);
       const UInt uiAbsPartIdx=tuRecurseWithPU.GetAbsPartIdxTU();
 
@@ -2724,6 +2748,15 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         UInt       uiMode = modeIdx;
         Distortion uiSad  = 0;
 
+#if VCEG_AZ07_INTRA_65ANG_MODES
+        if( uiMode>DC_IDX && (uiMode&1) )
+        {
+          // Skip checking extended Angular modes in the first round of SATD
+          continue;
+        }
+        bSatdChecked[uiMode] = true;
+#endif
+
         const Bool bUseFilter=TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, uiMode, puRect.width, puRect.height, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag());
 
         predIntraAng( COMPONENT_Y, uiMode, piOrg, uiStride, piPred, uiStride, tuRecurseWithPU, bUseFilter, TComPrediction::UseDPCMForFirstPassIntraEstimation(tuRecurseWithPU, uiMode) );
@@ -2734,7 +2767,11 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         UInt   iModeBits = 0;
 
         // NB xModeBitsIntra will not affect the mode for chroma that may have already been pre-estimated.
-        iModeBits+=xModeBitsIntra( pcCU, uiMode, uiPartOffset, uiDepth, CHANNEL_TYPE_LUMA );
+        iModeBits+=xModeBitsIntra( pcCU, uiMode, uiPartOffset, uiDepth, CHANNEL_TYPE_LUMA 
+#if VCEG_AZ07_INTRA_65ANG_MODES
+          , uiPreds, iAboveLeftCase
+#endif
+          );
 
         Double cost      = (Double)uiSad + (Double)iModeBits * sqrtLambdaForFirstPass;
 
@@ -2745,12 +2782,46 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         CandNum += xUpdateCandList( uiMode, cost, numModesForFullRD, uiRdModeList, CandCostList );
       }
 
+#if VCEG_AZ07_INTRA_65ANG_MODES
+      UInt uiParentCandList[FAST_UDI_MAX_RDMODE_NUM];
+      memcpy( uiParentCandList, uiRdModeList, sizeof(UInt)*numModesForFullRD );
+
+      // Second round of SATD for extended Angular modes
+      for( Int modeIdx = 0; modeIdx < numModesForFullRD; modeIdx++ )
+      {
+        UInt uiParentMode = uiParentCandList[modeIdx];
+        if( uiParentMode>2 && uiParentMode<(NUM_INTRA_MODE-2) )
+        {
+          for( Int subModeIdx = -1; subModeIdx <= 1; subModeIdx+=2 )
+          {
+            UInt uiMode = uiParentMode + subModeIdx;
+            if( !bSatdChecked[uiMode] )
+            {
+              const Bool bUseFilter=TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, uiMode, puRect.width, puRect.height, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag());
+
+              predIntraAng( COMPONENT_Y, uiMode, piOrg, uiStride, piPred, uiStride, tuRecurseWithPU, bUseFilter, TComPrediction::UseDPCMForFirstPassIntraEstimation(tuRecurseWithPU, uiMode) );
+
+
+              // use hadamard transform here
+              Distortion uiSad = distParam.DistFunc(&distParam);
+              UInt   iModeBits = xModeBitsIntra( pcCU, uiMode, uiPartOffset, uiDepth, CHANNEL_TYPE_LUMA, uiPreds, iAboveLeftCase );
+              Double cost      = (Double)uiSad + (Double)iModeBits * m_pcRdCost->getSqrtLambda();
+              CandNum += xUpdateCandList( uiMode, cost, numModesForFullRD, uiRdModeList, CandCostList );
+
+              bSatdChecked[uiMode] = true; // Mark as checked
+            }
+          }
+        }
+      }
+#endif
+
       if (m_pcEncCfg->getFastUDIUseMPMEnabled())
       {
+#if !VCEG_AZ07_INTRA_65ANG_MODES
         Int uiPreds[NUM_MOST_PROBABLE_MODES] = {-1, -1, -1};
-
         Int iMode = -1;
         pcCU->getIntraDirPredictor( uiPartOffset, uiPreds, COMPONENT_Y, &iMode );
+#endif
 
         const Int numCand = ( iMode >= 0 ) ? iMode : Int(NUM_MOST_PROBABLE_MODES);
 
@@ -6171,7 +6242,11 @@ Void TEncSearch::xSetInterResidualQTData( TComYuv* pcResi, Bool bSpatial, TComTU
 
 
 
-UInt TEncSearch::xModeBitsIntra( TComDataCU* pcCU, UInt uiMode, UInt uiPartOffset, UInt uiDepth, const ChannelType chType )
+UInt TEncSearch::xModeBitsIntra( TComDataCU* pcCU, UInt uiMode, UInt uiPartOffset, UInt uiDepth, const ChannelType chType 
+#if VCEG_AZ07_INTRA_65ANG_MODES
+                                , Int* piModes, Int  iCase
+#endif
+                                )
 {
   // Reload only contexts required for coding intra mode information
   m_pcRDGoOnSbacCoder->loadIntraDirMode( m_pppcRDSbacCoder[uiDepth][CI_CURR_BEST], chType );
@@ -6188,7 +6263,11 @@ UInt TEncSearch::xModeBitsIntra( TComDataCU* pcCU, UInt uiMode, UInt uiPartOffse
   m_pcEntropyCoder->resetBits();
   if (isLuma(chType))
   {
-    m_pcEntropyCoder->encodeIntraDirModeLuma ( pcCU, uiPartOffset);
+    m_pcEntropyCoder->encodeIntraDirModeLuma ( pcCU, uiPartOffset
+#if VCEG_AZ07_INTRA_65ANG_MODES
+    , false, piModes, iCase
+#endif
+      );
   }
   else
   {

@@ -767,6 +767,13 @@ Void TDecSbac::parseIntraDirLumaAng  ( TComDataCU* pcCU, UInt absPartIdx, UInt d
   UInt partOffset = ( pcCU->getPic()->getNumPartitionsInCtu() >> ( pcCU->getDepth(absPartIdx) << 1 ) ) >> 2;
   UInt mpmPred[4],symbol;
   Int j,intraPredMode;
+
+#if VCEG_AZ07_INTRA_65ANG_MODES
+  const UInt uiContextMPM0[4] = { 2, 3, 1, 2 };
+  const UInt uiContextMPM1[4] = { 4, 5, 5, 6 };
+  const UInt uiContextMPM2[4] = { 7, 7, 8, 7 };
+#endif
+
   if (mode==SIZE_NxN)
   {
     depth++;
@@ -781,24 +788,71 @@ Void TDecSbac::parseIntraDirLumaAng  ( TComDataCU* pcCU, UInt absPartIdx, UInt d
   }
   for (j=0;j<partNum;j++)
   {
+#if VCEG_AZ07_INTRA_65ANG_MODES
+    Int preds[6] = {-1, -1, -1, -1, -1, -1};
+    Int iLeftAboveCase=0;
+#else
     Int preds[NUM_MOST_PROBABLE_MODES] = {-1, -1, -1};
-    pcCU->getIntraDirPredictor(absPartIdx+partOffset*j, preds, COMPONENT_Y);
+#endif
+    pcCU->getIntraDirPredictor(absPartIdx+partOffset*j, preds, COMPONENT_Y
+#if VCEG_AZ07_INTRA_65ANG_MODES
+      , iLeftAboveCase
+#endif
+      );
+
     if (mpmPred[j])
     {
+#if VCEG_AZ07_INTRA_65ANG_MODES
+      m_pcTDecBinIf->decodeBin( symbol, m_cCUIntraPredSCModel.get( 0, 0, uiContextMPM0[iLeftAboveCase]) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
+#else
       m_pcTDecBinIf->decodeBinEP( symbol RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
+#endif
       if (symbol)
       {
+#if VCEG_AZ07_INTRA_65ANG_MODES
+        m_pcTDecBinIf->decodeBin( symbol, m_cCUIntraPredSCModel.get( 0, 0, uiContextMPM1[iLeftAboveCase]) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
+        if( symbol )
+        {
+          m_pcTDecBinIf->decodeBin( symbol, m_cCUIntraPredSCModel.get( 0, 0, uiContextMPM2[iLeftAboveCase]) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
+          if( symbol )
+          {
+            m_pcTDecBinIf->decodeBinEP( symbol RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
+            if( symbol )
+            {
+              m_pcTDecBinIf->decodeBinEP( symbol RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
+              symbol++;
+            }
+            symbol++;
+          }
+          symbol++;
+        }
+#else
         m_pcTDecBinIf->decodeBinEP( symbol RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
+#endif
         symbol++;
       }
       intraPredMode = preds[symbol];
     }
     else
     {
+#if VCEG_AZ07_INTRA_65ANG_MODES
+      m_pcTDecBinIf->decodeBinsEP( symbol, 4 RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
+      symbol <<= 2;
+      if( symbol<(NUM_INTRA_MODE-8) )
+      {
+        UInt symbol0;
+        m_pcTDecBinIf->decodeBinsEP( symbol0, 2 RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
+        symbol += symbol0;
+      }
+#else
       m_pcTDecBinIf->decodeBinsEP( symbol, 5 RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
+#endif
       intraPredMode = symbol;
 
       //postponed sorting of MPMs (only in remaining branch)
+#if VCEG_AZ07_INTRA_65ANG_MODES
+      std::sort(preds, preds+6);
+#else
       if (preds[0] > preds[1])
       {
         std::swap(preds[0], preds[1]);
@@ -811,6 +865,7 @@ Void TDecSbac::parseIntraDirLumaAng  ( TComDataCU* pcCU, UInt absPartIdx, UInt d
       {
         std::swap(preds[1], preds[2]);
       }
+#endif
       for ( UInt i = 0; i < NUM_MOST_PROBABLE_MODES; i++ )
       {
         intraPredMode += ( intraPredMode >= preds[i] );

@@ -1341,7 +1341,11 @@ Void TEncCavlc::codeIPCMInfo( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/ )
   assert(0);
 }
 
-Void TEncCavlc::codeIntraDirLumaAng( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, Bool /*isMultiple*/)
+Void TEncCavlc::codeIntraDirLumaAng( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, Bool /*isMultiple*/
+#if VCEG_AZ07_INTRA_65ANG_MODES
+                                    , Int* /*piModes*/, Int /*iCase*/
+#endif
+                                    )
 {
   assert(0);
 }
