@@ -92,6 +92,8 @@
 #define VCEG_AZ07_INTRA_BOUNDARY_FILTER_MULTI_LINE        1 /// 0: Filter one boundary line, 1: Filter 4 boundary lines
 #endif
 
+#define VCEG_AZ07_INTRA_65ANG_MODES                       1 ///< Extended angular intra prediction, including 65 angular modes & 6 MPMs
+
 #define COM16_C806_SIMD_OPT                               1  ///< SIMD optimization, no impact on RD performance
 ///////////////////////////////////////////////////////////
 // KTA tools section end

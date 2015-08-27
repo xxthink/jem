@@ -758,18 +758,47 @@ Void TEncSbac::codeTransformSubdivFlag( UInt uiSymbol, UInt uiCtx )
 }
 
 
-Void TEncSbac::codeIntraDirLumaAng( TComDataCU* pcCU, UInt absPartIdx, Bool isMultiple)
+Void TEncSbac::codeIntraDirLumaAng( TComDataCU* pcCU, UInt absPartIdx, Bool isMultiple
+#if VCEG_AZ07_INTRA_65ANG_MODES
+                                   , Int* piModes, Int iAboveLeftCase
+#endif
+                                   )
 {
   UInt dir[4],j;
+#if VCEG_AZ07_INTRA_65ANG_MODES
+  Int preds[4][NUM_MOST_PROBABLE_MODES] = {{-1, -1, -1, -1, -1, -1},{-1, -1, -1, -1, -1, -1},{-1, -1, -1, -1, -1, -1},{-1, -1, -1, -1, -1, -1}};
+#else
   Int preds[4][NUM_MOST_PROBABLE_MODES] = {{-1, -1, -1},{-1, -1, -1},{-1, -1, -1},{-1, -1, -1}};
+#endif
   Int predIdx[4] ={ -1,-1,-1,-1};
   PartSize mode = pcCU->getPartitionSize( absPartIdx );
   UInt partNum = isMultiple?(mode==SIZE_NxN?4:1):1;
   UInt partOffset = ( pcCU->getPic()->getNumPartitionsInCtu() >> ( pcCU->getDepth(absPartIdx) << 1 ) ) >> 2;
+  
+#if VCEG_AZ07_INTRA_65ANG_MODES
+  const UInt uiContextMPM0[4] = { 2, 3, 1, 2 };
+  const UInt uiContextMPM1[4] = { 4, 5, 5, 6 };
+  const UInt uiContextMPM2[4] = { 7, 7, 8, 7 };
+  Int aiCase[4]={0,0,0,0};
+#endif
+
   for (j=0;j<partNum;j++)
   {
     dir[j] = pcCU->getIntraDir( CHANNEL_TYPE_LUMA, absPartIdx+partOffset*j );
-    pcCU->getIntraDirPredictor(absPartIdx+partOffset*j, preds[j], COMPONENT_Y);
+#if VCEG_AZ07_INTRA_65ANG_MODES
+    if( piModes )
+    {
+      assert( !isMultiple );
+      memcpy( preds[j], piModes, 6*sizeof(Int) );
+      aiCase[j] = iAboveLeftCase;
+    }
+    else
+#endif
+    pcCU->getIntraDirPredictor(absPartIdx+partOffset*j, preds[j], COMPONENT_Y
+#if VCEG_AZ07_INTRA_65ANG_MODES
+    , aiCase[j]
+#endif
+    );
     for(UInt i = 0; i < NUM_MOST_PROBABLE_MODES; i++)
     {
       if(dir[j] == preds[j][i])
@@ -783,14 +812,37 @@ Void TEncSbac::codeIntraDirLumaAng( TComDataCU* pcCU, UInt absPartIdx, Bool isMu
   {
     if(predIdx[j] != -1)
     {
+#if VCEG_AZ07_INTRA_65ANG_MODES
+      m_pcBinIf->encodeBin( predIdx[j] ? 1 : 0, m_cCUIntraPredSCModel.get( 0, 0, uiContextMPM0[aiCase[j]] ) );
+#else
       m_pcBinIf->encodeBinEP( predIdx[j] ? 1 : 0 );
+#endif
       if (predIdx[j])
       {
+#if VCEG_AZ07_INTRA_65ANG_MODES
+        m_pcBinIf->encodeBin( (predIdx[j]-1) ? 1 : 0, m_cCUIntraPredSCModel.get( 0, 0, uiContextMPM1[aiCase[j]] ) );
+        if ( (predIdx[j]-1) )
+        {
+          m_pcBinIf->encodeBin( (predIdx[j]-2) ? 1 : 0, m_cCUIntraPredSCModel.get( 0, 0, uiContextMPM2[aiCase[j]] ) );
+          if (predIdx[j]-2)
+          {
+            m_pcBinIf->encodeBinEP( (predIdx[j]-3) ? 1 : 0 );
+            if (predIdx[j]-3)
+            {
+              m_pcBinIf->encodeBinEP( (predIdx[j]-4) ? 1 : 0 );
+            }
+          }
+        }
+#else
         m_pcBinIf->encodeBinEP( predIdx[j]-1 );
+#endif
       }
     }
     else
     {
+#if VCEG_AZ07_INTRA_65ANG_MODES
+      std::sort(preds[j], preds[j]+6);
+#else
       if (preds[j][0] > preds[j][1])
       {
         std::swap(preds[j][0], preds[j][1]);
@@ -803,11 +855,20 @@ Void TEncSbac::codeIntraDirLumaAng( TComDataCU* pcCU, UInt absPartIdx, Bool isMu
       {
         std::swap(preds[j][1], preds[j][2]);
       }
+#endif
       for(Int i = (Int(NUM_MOST_PROBABLE_MODES) - 1); i >= 0; i--)
       {
         dir[j] = dir[j] > preds[j][i] ? dir[j] - 1 : dir[j];
       }
+#if VCEG_AZ07_INTRA_65ANG_MODES
+      assert( dir[j]<(NUM_INTRA_MODE-7) );
+      if( dir[j]>=(NUM_INTRA_MODE-8) )
+        m_pcBinIf->encodeBinsEP( dir[j]>>2, 4 );
+      else
+        m_pcBinIf->encodeBinsEP( dir[j], 6 );
+#else
       m_pcBinIf->encodeBinsEP( dir[j], 5 );
+#endif
     }
   }
   return;

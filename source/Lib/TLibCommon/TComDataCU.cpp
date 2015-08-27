@@ -1673,11 +1673,93 @@ Void TComDataCU::getAllowedChromaDir( UInt uiAbsPartIdx, UInt uiModeList[NUM_CHR
   {
     if( uiLumaMode == uiModeList[i] )
     {
+#if VCEG_AZ07_INTRA_65ANG_MODES
+      uiModeList[i] = VDIA_IDX; // VER+8 mode
+#else
       uiModeList[i] = 34; // VER+8 mode
+#endif
       break;
     }
   }
 }
+
+#if VCEG_AZ07_INTRA_65ANG_MODES
+TComDataCU* TComDataCU::getPULeftOffset( UInt& uiPartUnitIdx, 
+                                        UInt uiCurrPartUnitIdx, 
+                                        UInt uiPartOffset,
+                                        Bool bEnforceSliceRestriction, 
+                                        Bool bEnforceTileRestriction )
+{
+  UInt uiAbsPartIdx       = g_auiZscanToRaster[uiCurrPartUnitIdx];
+  UInt uiAbsZorderCUIdx   = g_auiZscanToRaster[m_absZIdxInCtu];
+  UInt uiNumPartInCUWidth = m_pcPic->getNumPartInCtuWidth();
+  
+  uiAbsPartIdx += uiPartOffset * uiNumPartInCUWidth;
+
+  if ( !RasterAddress::isZeroCol( uiAbsPartIdx, uiNumPartInCUWidth ) )
+  {
+    uiPartUnitIdx = g_auiRasterToZscan[ uiAbsPartIdx - 1 ];
+    if ( RasterAddress::isEqualCol( uiAbsPartIdx, uiAbsZorderCUIdx, uiNumPartInCUWidth ) )
+    {
+      return m_pcPic->getCtu( getCtuRsAddr() );
+    }
+    else
+    {
+      uiPartUnitIdx -= m_absZIdxInCtu;
+      return this;
+    }
+  }
+  
+  uiPartUnitIdx = g_auiRasterToZscan[ uiAbsPartIdx + uiNumPartInCUWidth - 1 ];
+
+  if ( bEnforceSliceRestriction && !CUIsFromSameSliceAndTile(m_pCtuLeft) )
+  {
+    return NULL;
+  }
+  return m_pCtuLeft;
+}
+
+TComDataCU* TComDataCU::getPUAboveOffset( UInt& uiPartUnitIdx, 
+                                        UInt uiCurrPartUnitIdx, 
+                                        UInt uiPartOffset,
+                                        Bool bEnforceSliceRestriction, 
+                                        Bool planarAtLCUBoundary,
+                                        Bool bEnforceTileRestriction )
+{
+  UInt uiAbsPartIdx       = g_auiZscanToRaster[uiCurrPartUnitIdx];
+  UInt uiAbsZorderCUIdx   = g_auiZscanToRaster[m_absZIdxInCtu];
+  UInt uiNumPartInCUWidth = m_pcPic->getNumPartInCtuWidth();
+  
+  uiAbsPartIdx += uiPartOffset;
+
+  if ( !RasterAddress::isZeroRow( uiAbsPartIdx, uiNumPartInCUWidth ) )
+  {
+    uiPartUnitIdx = g_auiRasterToZscan[ uiAbsPartIdx - uiNumPartInCUWidth ];
+    if ( RasterAddress::isEqualRow( uiAbsPartIdx, uiAbsZorderCUIdx, uiNumPartInCUWidth ) )
+    {
+      return m_pcPic->getCtu( getCtuRsAddr() );
+    }
+    else
+    {
+      uiPartUnitIdx -= m_absZIdxInCtu;
+      return this;
+    }
+  }
+
+  if(planarAtLCUBoundary)
+  {
+    return NULL;
+  }
+  
+  uiPartUnitIdx = g_auiRasterToZscan[ uiAbsPartIdx + m_pcPic->getNumPartitionsInCtu() - uiNumPartInCUWidth ];
+
+  if ( bEnforceSliceRestriction && !CUIsFromSameSliceAndTile(m_pCtuAbove) )
+  {
+    return NULL;
+  }
+  return m_pCtuAbove;
+}
+#endif
 
 /** Get most probable intra modes
 *\param   uiAbsPartIdx    partition index
@@ -1686,17 +1768,83 @@ Void TComDataCU::getAllowedChromaDir( UInt uiAbsPartIdx, UInt uiModeList[NUM_CHR
 *\param   piMode          it is set with MPM mode in case both MPM are equal. It is used to restrict RD search at encode side.
 *\returns Number of MPM
 */
-Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM_MOST_PROBABLE_MODES], const ComponentID compID, Int* piMode  )
+Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM_MOST_PROBABLE_MODES], const ComponentID compID
+#if VCEG_AZ07_INTRA_65ANG_MODES
+                                      , Int &iLeftAboveCase
+#endif
+                                      , Int* piMode  )
 {
   TComDataCU* pcCULeft, *pcCUAbove;
   UInt        LeftPartIdx  = MAX_UINT;
   UInt        AbovePartIdx = MAX_UINT;
   Int         iLeftIntraDir, iAboveIntraDir;
+#if !VCEG_AZ07_INTRA_65ANG_MODES
   const TComSPS *sps=getSlice()->getSPS();
   const UInt partsPerMinCU = 1<<(2*(sps->getMaxTotalCUDepth() - sps->getLog2DiffMaxMinCodingBlockSize()));
+#endif
 
   const ChannelType chType = toChannelType(compID);
+#if !VCEG_AZ07_INTRA_65ANG_MODES
   const ChromaFormat chForm = getPic()->getChromaFormat();
+#endif
+
+#if VCEG_AZ07_INTRA_65ANG_MODES
+  UInt        uiPUWidth   = ( getWidth(uiAbsPartIdx) >> ( getPartitionSize(uiAbsPartIdx)==SIZE_NxN ? 1 : 0 ) );
+  UInt        uiPUHeight  = ( getHeight(uiAbsPartIdx) >> ( getPartitionSize(uiAbsPartIdx)==SIZE_NxN ? 1 : 0 ) );
+
+  UInt        uiCaseIdx   = 0;
+
+  UInt        uiPartIdxLT = m_absZIdxInCtu + uiAbsPartIdx;
+  UInt        uiPartIdxRT = g_auiRasterToZscan [g_auiZscanToRaster[ uiPartIdxLT ] + uiPUWidth / m_pcPic->getMinCUWidth() - 1 ];
+  UInt        uiPartIdxLB = g_auiRasterToZscan [g_auiZscanToRaster[ m_absZIdxInCtu + uiAbsPartIdx ] + ((uiPUHeight / m_pcPic->getMinCUHeight()) - 1)*m_pcPic->getNumPartInCtuWidth()];;
+  UChar       ucTempIntraDir;
+  const UInt  uiNumUnitsInPU = (g_auiZscanToRaster[uiPartIdxLB] - g_auiZscanToRaster[uiPartIdxLT]) / getPic()->getNumPartInCtuWidth() + 1;
+
+  // Initializaiton
+  Int uiLeftIntraDirCnt[NUM_INTRA_MODE], uiAboveIntraDirCnt[NUM_INTRA_MODE];
+  memset( uiLeftIntraDirCnt,  0, sizeof(Int)*NUM_INTRA_MODE );
+  memset( uiAboveIntraDirCnt, 0, sizeof(Int)*NUM_INTRA_MODE );
+  iLeftIntraDir  = DC_IDX;
+  iAboveIntraDir = DC_IDX;
+
+  deriveLeftRightTopIdxGeneral( uiAbsPartIdx, 0, uiPartIdxLT, uiPartIdxRT );
+
+  // Get intra direction from above side
+  UInt uiDirMaxCount = 0;
+  for ( UInt uiOffset = 0; uiOffset < uiNumUnitsInPU; uiOffset++ )
+  {
+    pcCUAbove = getPUAboveOffset( AbovePartIdx, uiPartIdxLT, uiOffset );
+
+    if( pcCUAbove && pcCUAbove->isIntra( AbovePartIdx ) == MODE_INTRA )
+    {
+      ucTempIntraDir = pcCUAbove->getIntraDir( chType, AbovePartIdx );
+      uiAboveIntraDirCnt[ucTempIntraDir] ++;
+      if( uiDirMaxCount<uiAboveIntraDirCnt[ucTempIntraDir] )
+      {
+        uiDirMaxCount  = uiAboveIntraDirCnt[ucTempIntraDir];
+        iAboveIntraDir = ucTempIntraDir;
+      }
+    }
+  }
+
+  // Get intra direction from left side
+  uiDirMaxCount = 0;
+  for ( UInt uiOffset = 0; uiOffset < uiNumUnitsInPU; uiOffset++ )
+  {
+    pcCULeft = getPULeftOffset( LeftPartIdx, uiPartIdxLT, uiOffset );
+
+    if( pcCULeft && pcCULeft->isIntra( LeftPartIdx ) == MODE_INTRA )
+    {
+      ucTempIntraDir = pcCULeft->getIntraDir( chType, LeftPartIdx );
+      uiLeftIntraDirCnt[ucTempIntraDir] ++;
+      if( uiDirMaxCount<uiLeftIntraDirCnt[ucTempIntraDir] )
+      {
+        uiDirMaxCount = uiLeftIntraDirCnt[ucTempIntraDir];
+        iLeftIntraDir = ucTempIntraDir;
+      }
+    }
+  }
+#else
   // Get intra direction of left PU
   pcCULeft = getPULeft( LeftPartIdx, m_absZIdxInCtu + uiAbsPartIdx );
 
@@ -1714,6 +1862,7 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
     AbovePartIdx = getChromasCorrespondingPULumaIdx(AbovePartIdx, chForm, partsPerMinCU);
   }
   iAboveIntraDir = pcCUAbove ? ( pcCUAbove->isIntra( AbovePartIdx ) ? pcCUAbove->getIntraDir( chType, AbovePartIdx ) : DC_IDX ) : DC_IDX;
+#endif
 
   if (isChroma(chType))
   {
@@ -1727,6 +1876,14 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
     }
   }
 
+#if VCEG_AZ07_INTRA_65ANG_MODES
+  const UInt uiHor = HOR_IDX;
+  const UInt uiVer = VER_IDX;
+  const UInt uiDia = DIA_IDX;
+  const Int  iOffset = 62;
+  const Int  iMod = iOffset+3;
+#endif
+
   assert (2<NUM_MOST_PROBABLE_MODES);
   if(iLeftIntraDir == iAboveIntraDir)
   {
@@ -1738,14 +1895,31 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
     if (iLeftIntraDir > 1) // angular modes
     {
       uiIntraDirPred[0] = iLeftIntraDir;
+#if VCEG_AZ07_INTRA_65ANG_MODES
+      uiIntraDirPred[1] = PLANAR_IDX;
+      uiIntraDirPred[2] = ((iLeftIntraDir - 1 ) % iMod) + 2;
+      uiIntraDirPred[3] = ((iLeftIntraDir + iOffset) % iMod) + 2;
+      uiIntraDirPred[4] = ((uiIntraDirPred[2] - 1 ) % iMod) + 2;
+      uiIntraDirPred[5] = DC_IDX;
+      uiCaseIdx         = 0;
+#else
       uiIntraDirPred[1] = ((iLeftIntraDir + 29) % 32) + 2;
       uiIntraDirPred[2] = ((iLeftIntraDir - 1 ) % 32) + 2;
+#endif
     }
     else //non-angular
     {
       uiIntraDirPred[0] = PLANAR_IDX;
       uiIntraDirPred[1] = DC_IDX;
+#if VCEG_AZ07_INTRA_65ANG_MODES
+      uiIntraDirPred[2] = uiVer; 
+      uiIntraDirPred[3] = uiHor; 
+      uiIntraDirPred[4] = 2;
+      uiIntraDirPred[5] = uiDia;
+      uiCaseIdx         = 1;
+#else
       uiIntraDirPred[2] = VER_IDX;
+#endif
     }
   }
   else
@@ -1760,15 +1934,73 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
     if (iLeftIntraDir && iAboveIntraDir ) //both modes are non-planar
     {
       uiIntraDirPred[2] = PLANAR_IDX;
+#if VCEG_AZ07_INTRA_65ANG_MODES
+      Int iMaxDir = max( iAboveIntraDir, iLeftIntraDir );
+      Int iMinDir = min( iAboveIntraDir, iLeftIntraDir );
+      if( iLeftIntraDir==DC_IDX || iAboveIntraDir==DC_IDX )
+      {
+        Int iNonDcMode = iMaxDir;
+        uiIntraDirPred[3] = (( iNonDcMode + iOffset ) % iMod) + 2;
+        uiIntraDirPred[4] = (( iNonDcMode - 1 ) % iMod) + 2;
+        uiIntraDirPred[5] = (( uiIntraDirPred[4] -1 ) % iMod) + 2;
+      }
+      else
+      {
+        uiIntraDirPred[3] = DC_IDX;
+        uiIntraDirPred[4] = (( iMaxDir - 1 ) % iMod) + 2;
+        if( uiIntraDirPred[4] == iMinDir )
+        {
+          uiIntraDirPred[4]++;
+        }
+        uiIntraDirPred[5] = (( iMinDir + iOffset ) % iMod) + 2;
+        if( uiIntraDirPred[5] == iMaxDir )
+        {
+          uiIntraDirPred[5]--;
+        }
+        if( uiIntraDirPred[5] == uiIntraDirPred[4] )
+        {
+          uiIntraDirPred[5] = iMinDir + 1;
+        }
+      }
+      uiCaseIdx = 2;
+#endif
     }
     else
     {
+#if VCEG_AZ07_INTRA_65ANG_MODES
+      Int iMaxDir = max( iAboveIntraDir, iLeftIntraDir );
+      uiIntraDirPred[2] =  (iLeftIntraDir+iAboveIntraDir)<2? uiVer : DC_IDX;
+      if( (iLeftIntraDir+iAboveIntraDir)<2 )
+      {
+        uiIntraDirPred[3] = uiHor;
+        uiIntraDirPred[4] = 2;
+        uiIntraDirPred[5] = uiDia;
+      }
+      else
+      {
+        uiIntraDirPred[3] = ((iMaxDir + iOffset ) % iMod) + 2;
+        uiIntraDirPred[4] = ((iMaxDir - 1 ) % iMod) + 2;
+        uiIntraDirPred[5] = ((uiIntraDirPred[4] - 1 ) % iMod) + 2;
+      }
+      uiCaseIdx = 3;
+#else
       uiIntraDirPred[2] =  (iLeftIntraDir+iAboveIntraDir)<2? VER_IDX : DC_IDX;
+#endif
     }
   }
+#if VCEG_AZ07_INTRA_65ANG_MODES
+  if ( iLeftAboveCase!=-1 )
+  {
+    iLeftAboveCase = uiCaseIdx;
+  }
+#endif
   for (UInt i=0; i<NUM_MOST_PROBABLE_MODES; i++)
   {
+#if VCEG_AZ07_INTRA_65ANG_MODES
+    assert(uiIntraDirPred[i] < (NUM_INTRA_MODE-1));
+#else
     assert(uiIntraDirPred[i] < 35);
+#endif
   }
 }
 
