@@ -72,6 +72,9 @@ Void TEncCu::create(UChar uhTotalDepth, UInt uiMaxWidth, UInt uiMaxHeight, Chrom
   m_ppcTmpYuv2       = new TComYuv*[m_uhTotalDepth-1];
   m_ppcPredYuvWoOBMC = new TComYuv*[m_uhTotalDepth-1];
 #endif
+#if VCEG_AZ07_FRUC_MERGE
+  m_ppcFRUCBufferCU  = new TComDataCU*[m_uhTotalDepth-1];
+#endif
 #if VCEG_AZ07_IMV
   for( Int size = 0 ; size < NUMBER_OF_PART_SIZES ; size++ )
   {
@@ -113,6 +116,9 @@ m_ppcPredYuvBest = new TComYuv*[m_uhTotalDepth-1];
 
     m_ppcOrigYuv    [i] = new TComYuv; m_ppcOrigYuv    [i]->create(uiWidth, uiHeight, chromaFormat);
 
+#if VCEG_AZ07_FRUC_MERGE
+    m_ppcFRUCBufferCU[i] = new TComDataCU; m_ppcFRUCBufferCU[i]->create( chromaFormat, uiNumPartitions, uiWidth, uiHeight, false, uiMaxWidth >> (m_uhTotalDepth - 1) );
+#endif
 #if VCEG_AZ07_IMV
     for( Int size = 0 ; size < NUMBER_OF_PART_SIZES ; size++ )
     {
@@ -192,6 +198,12 @@ Void TEncCu::destroy()
     {
       m_ppcOrigYuv[i]->destroy();     delete m_ppcOrigYuv[i];     m_ppcOrigYuv[i] = NULL;
     }
+#if VCEG_AZ07_FRUC_MERGE
+    if(m_ppcFRUCBufferCU[i])
+    {
+      m_ppcFRUCBufferCU[i]->destroy();  delete m_ppcFRUCBufferCU[i];      m_ppcFRUCBufferCU[i] = NULL;
+    }
+#endif
 #if VCEG_AZ07_IMV
     for( Int size = 0 ; size < NUMBER_OF_PART_SIZES ; size++ )
     {
@@ -283,6 +295,13 @@ Void TEncCu::destroy()
   }
 #endif
 
+#if VCEG_AZ07_FRUC_MERGE
+  if(m_ppcFRUCBufferCU)
+  {
+    delete [] m_ppcFRUCBufferCU;
+    m_ppcFRUCBufferCU = NULL;
+  }
+#endif
 #if VCEG_AZ07_IMV
   for( Int size = 0 ; size < NUMBER_OF_PART_SIZES ; size++ )
   {
@@ -364,6 +383,9 @@ Void TEncCu::compressCtu( TComDataCU* pCtu )
 #endif
 #if COM16_C806_OBMC
   m_ppcTempCUWoOBMC[0]->initCtu( pCtu->getPic(), pCtu->getCtuRsAddr() );
+#endif
+#if VCEG_AZ07_FRUC_MERGE
+  m_ppcFRUCBufferCU[0]->initCtu( pCtu->getPic(), pCtu->getCtuRsAddr() );
 #endif
   // analysis of CU
   DEBUG_STRING_NEW(sDebug)
@@ -634,6 +656,18 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #if VCEG_AZ06_IC
         }
 #endif
+
+#if VCEG_AZ07_FRUC_MERGE
+        if( rpcTempCU->getSlice()->getSPS()->getUseFRUCMgrMode() )
+        {
+#if VCEG_AZ06_IC
+          rpcTempCU->setICFlagSubParts(bICFlag, 0, uiDepth);
+#endif
+          xCheckRDCostMerge2Nx2NFRUC( rpcBestCU, rpcTempCU , &earlyDetectionSkipMode );
+          rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
+        }
+#endif
+
         if(!m_pcEncCfg->getUseEarlySkipDetection())
         {
           // 2Nx2N, NxN
@@ -1131,6 +1165,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #if COM16_C806_OBMC
         m_ppcTempCUWoOBMC[uhNextDepth]->initSubCU( rpcTempCU, uiPartUnitIdx, uhNextDepth, iQP ); // clear sub partition datas or init.
 #endif
+#if VCEG_AZ07_FRUC_MERGE
+        m_ppcFRUCBufferCU[uhNextDepth]->initSubCU( rpcTempCU, uiPartUnitIdx, uhNextDepth, iQP ); 
+#endif
         if( ( pcSubBestPartCU->getCUPelX() < sps.getPicWidthInLumaSamples() ) && ( pcSubBestPartCU->getCUPelY() < sps.getPicHeightInLumaSamples() ) )
         {
           if ( 0 == uiPartUnitIdx) //initialize RD with previous depth buffer
@@ -1389,6 +1426,10 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 
   if( pcCU->isSkipped( uiAbsPartIdx ) )
   {
+#if VCEG_AZ07_FRUC_MERGE
+    m_pcEntropyCoder->encodeFRUCMgrMode( pcCU , uiAbsPartIdx , 0 );
+    if( !pcCU->getFRUCMgrMode( uiAbsPartIdx ) )
+#endif
     m_pcEntropyCoder->encodeMergeIndex( pcCU, uiAbsPartIdx );
 #if VCEG_AZ06_IC
     m_pcEntropyCoder->encodeICFlag  ( pcCU, uiAbsPartIdx );
@@ -1752,6 +1793,68 @@ Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTem
   DEBUG_STRING_APPEND(sDebug, bestStr)
 }
 
+#if VCEG_AZ07_FRUC_MERGE
+Void TEncCu::xCheckRDCostMerge2Nx2NFRUC( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU , Bool *earlyDetectionSkipMode )
+{
+  UChar uhDepth = rpcTempCU->getDepth( 0 );
+  const UChar uhFRUCME[2] = { FRUC_MERGE_BILATERALMV , FRUC_MERGE_TEMPLATE };
+#if VCEG_AZ06_IC
+  Bool bICFlag = rpcTempCU->getICFlag( 0 );
+#endif
+  for( Int nME = 0 ; nME < 2 ; nME++ )
+  {
+    rpcTempCU->setPartSizeSubParts( SIZE_2Nx2N, 0, uhDepth ); 
+    rpcTempCU->setPredModeSubParts( MODE_INTER, 0, uhDepth ); // interprets depth relative to LCU level
+    rpcTempCU->setCUTransquantBypassSubParts( false,     0, uhDepth );
+    rpcTempCU->setMergeFlagSubParts( true, 0, 0, uhDepth ); // interprets depth relative to LCU level
+    rpcTempCU->setMergeIndexSubParts( 0, 0, 0, uhDepth ); // interprets depth relative to LCU level
+    rpcTempCU->setFRUCMgrModeSubParts( uhFRUCME[nME] , 0 , 0 , uhDepth );
+#if VCEG_AZ06_IC
+    rpcTempCU->setICFlagSubParts( bICFlag, 0, uhDepth );
+#endif
+    Bool bAvailable = m_pcPredSearch->deriveFRUCMV( rpcTempCU , uhDepth , 0 , 0 ); 
+    m_ppcFRUCBufferCU[uhDepth]->copyPartFrom( rpcTempCU , 0 , uhDepth );
+    if( bAvailable )
+    {
+      UInt iteration = 1 + !rpcTempCU->isLosslessCoded(0) ;
+      for( UInt uiNoResidual = 0; uiNoResidual < iteration; uiNoResidual++ )
+      {
+        if( uiNoResidual > 0 )
+        {
+          rpcTempCU->copyPartFrom( m_ppcFRUCBufferCU[uhDepth] , 0 , uhDepth );
+        }
+        // do MC
+        m_pcPredSearch->motionCompensation ( rpcTempCU, m_ppcPredYuvTemp[uhDepth] );
+#if COM16_C806_OBMC
+        m_pcPredSearch->subBlockOBMC( rpcTempCU, 0, m_ppcPredYuvTemp[uhDepth], m_ppcTmpYuv1[uhDepth], m_ppcTmpYuv2[uhDepth] );
+#endif
+        // estimate residual and encode everything
+        m_pcPredSearch->encodeResAndCalcRdInterCU( rpcTempCU,
+          m_ppcOrigYuv    [uhDepth],
+          m_ppcPredYuvTemp[uhDepth],
+          m_ppcResiYuvTemp[uhDepth],
+          m_ppcResiYuvBest[uhDepth],
+          m_ppcRecoYuvTemp[uhDepth],
+          (uiNoResidual? true:false)
+#if COM16_C806_EMT
+          , rpcBestCU->getTotalCost()
+#endif
+          );
+
+        if ( uiNoResidual == 0 && rpcTempCU->getQtRootCbf(0) == 0 )
+        {
+          uiNoResidual++;
+        }
+        rpcTempCU->setSkipFlagSubParts( rpcTempCU->getQtRootCbf(0) == 0, 0, uhDepth );
+        Int orgQP = rpcTempCU->getQP( 0 );
+        xCheckDQP( rpcTempCU );
+        xCheckBestMode(rpcBestCU, rpcTempCU, uhDepth);
+        rpcTempCU->initEstData( uhDepth, orgQP, false );
+      }
+    }
+  }
+}
+#endif
 
 #if AMP_MRG
 Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, PartSize ePartSize DEBUG_STRING_FN_DECLARE(sDebug), Bool bUseMRG
@@ -1812,7 +1915,11 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
     assert( pcCUInfo2Reuse->getPartitionSize( 0 ) == ePartSize );
     rpcTempCU->copyPartFrom( pcCUInfo2Reuse , 0 , uhDepth );
     rpcTempCU->setiMVFlagSubParts( bIMV , 0 , uhDepth );
-    rpcTempCU->resetMVDandMV2Int( true );
+    rpcTempCU->resetMVDandMV2Int( true 
+#if VCEG_AZ07_FRUC_MERGE
+      , m_pcPredSearch
+#endif
+      );
 #if VCEG_AZ06_IC
     bICFlag = rpcTempCU->getICFlag( 0 );
 #endif

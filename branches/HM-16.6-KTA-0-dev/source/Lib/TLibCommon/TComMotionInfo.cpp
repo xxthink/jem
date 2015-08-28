@@ -39,7 +39,7 @@
 #include "TComMotionInfo.h"
 #include "assert.h"
 #include <stdlib.h>
-#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP || VCEG_AZ07_FRUC_MERGE
 #include "TComDataCU.h"
 #include "TComPic.h"
 #endif
@@ -352,7 +352,7 @@ Void TComCUMvField::compress(Char* pePredMode, Int scale)
   }
 }
 
-#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP || VCEG_AZ07_FRUC_MERGE
 Void TComCUMvField::setMvFieldSP( TComDataCU* pcCU, UInt uiAbsPartIdx, TComMvField cMvField, Int iWidth, Int iHeight  )
 {
   uiAbsPartIdx += pcCU->getZorderIdxInCtu();

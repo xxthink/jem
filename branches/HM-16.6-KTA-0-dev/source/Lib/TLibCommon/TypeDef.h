@@ -66,6 +66,11 @@
 
 #define VCEG_AZ07_IMV                                     1  ///< Adaptive MV resolution
 
+#define VCEG_AZ07_FRUC_MERGE                              1  ///< Merge mode based on frame rate up-conversion (FRUC)
+#if VCEG_AZ07_FRUC_MERGE
+#define VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE          1  ///< additional precision bit for MV storage
+#endif
+
 #define VCEG_AZ06_IC                                      1  ///< Illumination Compensation
 #if VCEG_AZ06_IC
 #define VCEG_AZ06_IC_SPEEDUP                              1  //speedup of IC

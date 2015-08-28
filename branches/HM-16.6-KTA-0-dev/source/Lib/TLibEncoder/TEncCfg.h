@@ -386,6 +386,12 @@ protected:
   Bool      m_useOBMC;
   Int       m_OBMCBlkSize;
 #endif
+#if VCEG_AZ07_FRUC_MERGE
+  Int       m_useFRUCMgrMode;
+  Int       m_FRUCRefineFilter;
+  Int       m_FURCRefineRange;
+  Int       m_FRUCSmallBlkRefineDepth;
+#endif
 #if VCEG_AZ07_IMV
   Bool      m_useIMV;
   Int       m_IMVMaxCand;
@@ -993,6 +999,16 @@ public:
   Bool      getOBMC()                                                { return m_useOBMC;              }
   Void      setOBMCBlkSize(Int nBlkSize)                             { m_OBMCBlkSize = nBlkSize;   }
   Int       getOBMCBlkSize()                                         { return m_OBMCBlkSize;       }
+#endif
+#if VCEG_AZ07_FRUC_MERGE
+  Void      setFRUCMgrMode(Int n)                                    { m_useFRUCMgrMode = n;     }
+  Int       getFRUCMgrMode()                                         { return m_useFRUCMgrMode;  }
+  Void      setFRUCRefineFilter(Int n)                               { m_FRUCRefineFilter = n;     }
+  Int       getFRUCRefineFilter()                                    { return m_FRUCRefineFilter;  }
+  Void      setFRUCRefineRange(Int n)                                { m_FURCRefineRange = n;     }
+  Int       getFRUCRefineRange()                                     { return m_FURCRefineRange;  }
+  Void      setFRUCSmallBlkRefineDepth(Int n)                        { m_FRUCSmallBlkRefineDepth = n;     }
+  Int       getFRUCSmallBlkRefineDepth()                             { return m_FRUCSmallBlkRefineDepth;  }
 #endif
 #if VCEG_AZ07_IMV
   Void      setIMV(Bool n)                                           { m_useIMV = n;    }

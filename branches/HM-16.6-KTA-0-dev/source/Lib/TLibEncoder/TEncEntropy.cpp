@@ -182,6 +182,12 @@ Void TEncEntropy::encodeMergeIndex( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bR
   m_pcEntropyCoderIf->codeMergeIndex( pcCU, uiAbsPartIdx );
 }
 
+#if VCEG_AZ07_FRUC_MERGE
+Void TEncEntropy::encodeFRUCMgrMode( TComDataCU* pcCU, UInt uiAbsPartIdx , UInt uiPUIdx )
+{ 
+  m_pcEntropyCoderIf->codeFRUCMgrMode( pcCU, uiAbsPartIdx , uiPUIdx );
+}
+#endif
 
 //! encode prediction mode
 Void TEncEntropy::encodePredMode( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD )
@@ -565,6 +571,10 @@ Void TEncEntropy::encodePUWise( TComDataCU* pcCU, UInt uiAbsPartIdx )
     encodeMergeFlag( pcCU, uiSubPartIdx );
     if ( pcCU->getMergeFlag( uiSubPartIdx ) )
     {
+#if VCEG_AZ07_FRUC_MERGE
+      encodeFRUCMgrMode( pcCU, uiSubPartIdx , uiPartIdx );
+      if( !pcCU->getFRUCMgrMode( uiSubPartIdx ) )
+#endif
       encodeMergeIndex( pcCU, uiSubPartIdx );
 #if ENVIRONMENT_VARIABLE_DEBUG_AND_TEST
       if (bDebugPred)

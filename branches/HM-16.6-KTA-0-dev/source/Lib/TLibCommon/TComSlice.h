@@ -825,6 +825,15 @@ private:
 #if ALF_HM3_REFACTOR
   Bool             m_useALF;
 #endif
+#if VCEG_AZ07_FRUC_MERGE
+  Int              m_useFRUCMgrMode;
+  Int              m_FRUCRefineFilter;
+  Int              m_FURCRefineRange;
+  Int              m_FRUCSmallBlkRefineDepth;
+#endif
+#if VCEG_AZ06_IC
+  Bool             m_bICFlag;
+#endif
 
 #if COM16_C806_EMT
   Int              m_useIntraEMT;
@@ -870,9 +879,6 @@ private:
   static const Int m_winUnitX[NUM_CHROMA_FORMAT];
   static const Int m_winUnitY[NUM_CHROMA_FORMAT];
   TComPTL          m_pcPTL;
-#if VCEG_AZ06_IC
-  Bool             m_bICFlag;
-#endif
 #if O0043_BEST_EFFORT_DECODING
   UInt             m_forceDecodeBitDepth; // 0 = do not force the decoder's bit depth, other = force the decoder's bit depth to this value (best effort decoding)
 #endif
@@ -1026,6 +1032,16 @@ public:
   Bool                   getIMV() const                                                                  { return m_useIMV;                                                       }
   Void                   setIMVMaxCand(Int n)                                                            { m_IMVMaxCand = n;                                                   }
   Int                    getIMVMaxCand()                                                                 { return m_IMVMaxCand;                                                }
+#endif
+#if VCEG_AZ07_FRUC_MERGE
+  Void                   setUseFRUCMgrMode(Int n)                                                        { m_useFRUCMgrMode = n;                                               }
+  Bool                   getUseFRUCMgrMode() const                                                       { return m_useFRUCMgrMode;                                            }
+  Void                   setFRUCRefineFilter(Int n)                                                      { m_FRUCRefineFilter = n;                                             }
+  Int                    getFRUCRefineFilter() const                                                     { return m_FRUCRefineFilter;                                          }
+  Void                   setFRUCRefineRange(Int n)                                                       { m_FURCRefineRange = n;                                              }
+  Int                    getFRUCRefineRange() const                                                      { return m_FURCRefineRange;                                           }
+  Void                   setFRUCSmallBlkRefineDepth(Int n)                                               { m_FRUCSmallBlkRefineDepth = n;                                      }
+  Int                    getFRUCSmallBlkRefineDepth() const                                              { return m_FRUCSmallBlkRefineDepth;                                   }
 #endif
 #if VCEG_AZ06_IC
   Bool                   getICFlag() const                                                               { return m_bICFlag;                                                    }
@@ -1425,6 +1441,13 @@ private:
   Bool                       m_bIsUsedAsLongTerm[NUM_REF_PIC_LIST_01][MAX_NUM_REF+1];
   Int                        m_iDepth;
 
+#if VCEG_AZ07_FRUC_MERGE
+  Int                        m_iFrucRefIdxPair[2][MAX_NUM_REF+1];
+  Bool                       m_bFrucRefIdxPairValid;
+  static Int                 m_iScaleFactor[256][256];
+  static Bool                m_bScaleFactorValid;
+#endif
+
   // referenced slice?
   Bool                       m_bRefenced;
 
@@ -1501,6 +1524,10 @@ public:
 #if VCEG_AZ06_IC_SPEEDUP
   Void                        xSetApplyIC();
 #endif
+#endif
+#if VCEG_AZ07_FRUC_MERGE
+  Int                         getRefIdx4MVPair( RefPicList eCurRefPicList , Int nCurRefIdx );
+  inline Int                  getScaleFactor( Int iTDB , Int iTDD )                  { return TComSlice::m_iScaleFactor[128+iTDB][128+iTDD];         }
 #endif
   Void                        setPPSId( Int PPSId )                                  { m_iPPSId = PPSId;                                             }
   Int                         getPPSId() const                                       { return m_iPPSId;                                              }

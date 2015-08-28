@@ -104,6 +104,9 @@ public:
   Void          setCheckLTMSBPresent     (Bool b ) {m_bCheckLTMSB=b;}
   Bool          getCheckLTMSBPresent     () { return m_bCheckLTMSB;}
 
+#if VCEG_AZ07_FRUC_MERGE
+  Void          initFRUCMVP()         { return m_picSym.initFRUCMVP();  }
+#endif
   TComPicSym*   getPicSym()           { return  &m_picSym;    }
   TComSlice*    getSlice(Int i)       { return  m_picSym.getSlice(i);  }
   Int           getPOC() const        { return  m_picSym.getSlice(m_uiCurrSliceIdx)->getPOC();  }

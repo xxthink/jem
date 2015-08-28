@@ -68,6 +68,10 @@ TDecSbac::TDecSbac()
 , m_cCUSkipFlagSCModel                       ( 1,             1,                      NUM_SKIP_FLAG_CTX                    , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUMergeFlagExtSCModel                   ( 1,             1,                      NUM_MERGE_FLAG_EXT_CTX               , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUMergeIdxExtSCModel                    ( 1,             1,                      NUM_MERGE_IDX_EXT_CTX                , m_contextModels + m_numContextModels, m_numContextModels)
+#if VCEG_AZ07_FRUC_MERGE
+, m_cCUFRUCMgrModeSCModel                    ( 1,             1,                      NUM_FRUCMGRMODE_CTX                  , m_contextModels + m_numContextModels, m_numContextModels)
+, m_cCUFRUCMESCModel                         ( 1,             1,                      NUM_FRUCME_CTX                       , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 , m_cCUPartSizeSCModel                       ( 1,             1,                      NUM_PART_SIZE_CTX                    , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUPredModeSCModel                       ( 1,             1,                      NUM_PRED_MODE_CTX                    , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUIntraPredSCModel                      ( 1,             1,                      NUM_INTRA_PREDICT_CTX                , m_contextModels + m_numContextModels, m_numContextModels)
@@ -151,6 +155,10 @@ Void TDecSbac::resetEntropy(TComSlice* pSlice)
   m_cCUSkipFlagSCModel.initBuffer                 ( sliceType, qp, (UChar*)INIT_SKIP_FLAG );
   m_cCUMergeFlagExtSCModel.initBuffer             ( sliceType, qp, (UChar*)INIT_MERGE_FLAG_EXT );
   m_cCUMergeIdxExtSCModel.initBuffer              ( sliceType, qp, (UChar*)INIT_MERGE_IDX_EXT );
+#if VCEG_AZ07_FRUC_MERGE
+  m_cCUFRUCMgrModeSCModel.initBuffer              ( sliceType, qp, (UChar*)INIT_FRUCMGRMODEBIN1 );
+  m_cCUFRUCMESCModel.initBuffer                   ( sliceType, qp, (UChar*)INIT_FRUCMGRMODEBIN2 );
+#endif
   m_cCUPartSizeSCModel.initBuffer                 ( sliceType, qp, (UChar*)INIT_PART_SIZE );
   m_cCUPredModeSCModel.initBuffer                 ( sliceType, qp, (UChar*)INIT_PRED_MODE );
   m_cCUIntraPredSCModel.initBuffer                ( sliceType, qp, (UChar*)INIT_INTRA_PRED_MODE );
@@ -616,6 +624,33 @@ Void TDecSbac::parseMergeIndex ( TComDataCU* pcCU, UInt& ruiMergeIndex )
   DTRACE_CABAC_T( "\n" )
 }
 
+#if VCEG_AZ07_FRUC_MERGE
+Void TDecSbac::parseFRUCMgrMode ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx )
+{
+  if( !pcCU->getSlice()->getSPS()->getUseFRUCMgrMode() )
+    return;
+
+  UChar uhFRUCMode = FRUC_MERGE_OFF;
+  UInt uiFirstBin = 0;
+  UInt uiSecondBin = 0;
+  m_pcTDecBinIf->decodeBin( uiFirstBin, m_cCUFRUCMgrModeSCModel.get( 0 , 0 , pcCU->getCtxFRUCMgrMode( uiAbsPartIdx ) ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__FRUC_MERGE_IDX) );
+  if( uiFirstBin )
+  {
+    if( pcCU->getSlice()->isInterP() )
+    {
+      uhFRUCMode = FRUC_MERGE_TEMPLATE;
+    }
+    else
+    {
+      m_pcTDecBinIf->decodeBin( uiSecondBin , m_cCUFRUCMESCModel.get( 0 , 0 , pcCU->getCtxFRUCME( uiAbsPartIdx ) ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__FRUC_MERGE_IDX) );
+      uhFRUCMode = uiSecondBin ? FRUC_MERGE_BILATERALMV : FRUC_MERGE_TEMPLATE;
+    }
+  }
+
+  pcCU->setFRUCMgrModeSubParts( uhFRUCMode , uiAbsPartIdx, uiPUIdx, uiDepth );
+}
+#endif
+
 Void TDecSbac::parseMVPIdx      ( Int& riMVPIdx )
 {
   UInt uiSymbol;
@@ -1025,7 +1060,12 @@ Void TDecSbac::parseMvd( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiPartIdx, UI
 
   }
 
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+  TComMv cMv( uiHorSign ? -Int( uiHorAbs ): uiHorAbs, uiVerSign ? -Int( uiVerAbs ) : uiVerAbs );
+  cMv <<= VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE;
+#else
   const TComMv cMv( uiHorSign ? -Int( uiHorAbs ): uiHorAbs, uiVerSign ? -Int( uiVerAbs ) : uiVerAbs );
+#endif
   pcCU->getCUMvField( eRefList )->setAllMvd( cMv, pcCU->getPartitionSize( uiAbsPartIdx ), uiAbsPartIdx, uiDepth, uiPartIdx );
   return;
 }

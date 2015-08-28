@@ -135,6 +135,9 @@ public:
 #endif 
   Void codeMergeFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeMergeIndex    ( TComDataCU* pcCU, UInt uiAbsPartIdx );
+#if VCEG_AZ07_FRUC_MERGE
+  Void codeFRUCMgrMode   ( TComDataCU* pcCU, UInt uiAbsPartIdx , UInt uiPUIdx );
+#endif
   Void codeSplitFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   Void codeMVPIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList );
 
@@ -208,6 +211,10 @@ private:
   ContextModel3DBuffer m_cCUSkipFlagSCModel;
   ContextModel3DBuffer m_cCUMergeFlagExtSCModel;
   ContextModel3DBuffer m_cCUMergeIdxExtSCModel;
+#if VCEG_AZ07_FRUC_MERGE
+  ContextModel3DBuffer m_cCUFRUCMgrModeSCModel;
+  ContextModel3DBuffer m_cCUFRUCMESCModel;
+#endif
   ContextModel3DBuffer m_cCUPartSizeSCModel;
   ContextModel3DBuffer m_cCUPredModeSCModel;
   ContextModel3DBuffer m_cCUIntraPredSCModel;

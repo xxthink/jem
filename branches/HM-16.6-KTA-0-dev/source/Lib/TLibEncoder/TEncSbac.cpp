@@ -63,6 +63,10 @@ TEncSbac::TEncSbac()
 , m_cCUSkipFlagSCModel                 ( 1,             1,                      NUM_SKIP_FLAG_CTX                    , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUMergeFlagExtSCModel             ( 1,             1,                      NUM_MERGE_FLAG_EXT_CTX               , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUMergeIdxExtSCModel              ( 1,             1,                      NUM_MERGE_IDX_EXT_CTX                , m_contextModels + m_numContextModels, m_numContextModels)
+#if VCEG_AZ07_FRUC_MERGE
+, m_cCUFRUCMgrModeSCModel              ( 1,             1,                      NUM_FRUCMGRMODE_CTX                  , m_contextModels + m_numContextModels, m_numContextModels)
+, m_cCUFRUCMESCModel                   ( 1,             1,                      NUM_FRUCME_CTX                       , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 , m_cCUPartSizeSCModel                 ( 1,             1,                      NUM_PART_SIZE_CTX                    , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUPredModeSCModel                 ( 1,             1,                      NUM_PRED_MODE_CTX                    , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUIntraPredSCModel                ( 1,             1,                      NUM_INTRA_PREDICT_CTX                , m_contextModels + m_numContextModels, m_numContextModels)
@@ -138,6 +142,10 @@ Void TEncSbac::resetEntropy           (const TComSlice *pSlice)
   m_cCUSkipFlagSCModel.initBuffer                 ( eSliceType, iQp, (UChar*)INIT_SKIP_FLAG );
   m_cCUMergeFlagExtSCModel.initBuffer             ( eSliceType, iQp, (UChar*)INIT_MERGE_FLAG_EXT);
   m_cCUMergeIdxExtSCModel.initBuffer              ( eSliceType, iQp, (UChar*)INIT_MERGE_IDX_EXT);
+#if VCEG_AZ07_FRUC_MERGE
+  m_cCUFRUCMgrModeSCModel.initBuffer              ( eSliceType, iQp, (UChar*)INIT_FRUCMGRMODEBIN1 );
+  m_cCUFRUCMESCModel.initBuffer                   ( eSliceType, iQp, (UChar*)INIT_FRUCMGRMODEBIN2 );
+#endif
   m_cCUPartSizeSCModel.initBuffer                 ( eSliceType, iQp, (UChar*)INIT_PART_SIZE );
   m_cCUPredModeSCModel.initBuffer                 ( eSliceType, iQp, (UChar*)INIT_PRED_MODE );
   m_cCUIntraPredSCModel.initBuffer                ( eSliceType, iQp, (UChar*)INIT_INTRA_PRED_MODE );
@@ -218,6 +226,10 @@ SliceType TEncSbac::determineCabacInitIdx(const TComSlice *pSlice)
       curCost += m_cCUSkipFlagSCModel.calcCost                 ( curSliceType, qp, (UChar*)INIT_SKIP_FLAG );
       curCost += m_cCUMergeFlagExtSCModel.calcCost             ( curSliceType, qp, (UChar*)INIT_MERGE_FLAG_EXT);
       curCost += m_cCUMergeIdxExtSCModel.calcCost              ( curSliceType, qp, (UChar*)INIT_MERGE_IDX_EXT);
+#if VCEG_AZ07_FRUC_MERGE
+      curCost += m_cCUFRUCMgrModeSCModel.calcCost              ( curSliceType, qp, (UChar*)INIT_FRUCMGRMODEBIN1);
+      curCost += m_cCUFRUCMESCModel.calcCost                   ( curSliceType, qp, (UChar*)INIT_FRUCMGRMODEBIN2);
+#endif
       curCost += m_cCUPartSizeSCModel.calcCost                 ( curSliceType, qp, (UChar*)INIT_PART_SIZE );
       curCost += m_cCUPredModeSCModel.calcCost                 ( curSliceType, qp, (UChar*)INIT_PRED_MODE );
       curCost += m_cCUIntraPredSCModel.calcCost                ( curSliceType, qp, (UChar*)INIT_INTRA_PRED_MODE );
@@ -724,6 +736,30 @@ Void TEncSbac::codeMergeIndex( TComDataCU* pcCU, UInt uiAbsPartIdx )
   DTRACE_CABAC_T( "\n" );
 }
 
+#if VCEG_AZ07_FRUC_MERGE
+Void TEncSbac::codeFRUCMgrMode( TComDataCU* pcCU, UInt uiAbsPartIdx , UInt uiPUIdx )
+{
+  if( !pcCU->getSlice()->getSPS()->getUseFRUCMgrMode() )
+    return;
+
+  UInt uiFirstBin = pcCU->getFRUCMgrMode( uiAbsPartIdx ) != FRUC_MERGE_OFF;
+  m_pcBinIf->encodeBin( uiFirstBin, m_cCUFRUCMgrModeSCModel.get( 0 ,  0 , pcCU->getCtxFRUCMgrMode( uiAbsPartIdx ) ) );
+
+  if( uiFirstBin )
+  {
+    if( pcCU->getSlice()->isInterP() )
+    {
+      assert( pcCU->getFRUCMgrMode( uiAbsPartIdx ) == FRUC_MERGE_TEMPLATE );
+    }
+    else
+    {
+      UInt uiSecondBin = pcCU->getFRUCMgrMode( uiAbsPartIdx ) == FRUC_MERGE_BILATERALMV;
+      m_pcBinIf->encodeBin( uiSecondBin , m_cCUFRUCMESCModel.get( 0 , 0 , pcCU->getCtxFRUCME( uiAbsPartIdx ) ) );
+    }
+  }
+}
+#endif
+
 Void TEncSbac::codeSplitFlag   ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 {
   if( uiDepth == pcCU->getSlice()->getSPS()->getLog2DiffMaxMinCodingBlockSize() )
@@ -970,7 +1006,7 @@ Void TEncSbac::codeMvd( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList
   }
 
   const TComCUMvField* pcCUMvField = pcCU->getCUMvField( eRefList );
-#if VCEG_AZ07_IMV 
+#if VCEG_AZ07_IMV || VCEG_AZ07_FRUC_MERGE
   Int iHor = pcCUMvField->getMvd( uiAbsPartIdx ).getHor();
   Int iVer = pcCUMvField->getMvd( uiAbsPartIdx ).getVer();
 #else
@@ -978,6 +1014,13 @@ Void TEncSbac::codeMvd( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList
   const Int iVer = pcCUMvField->getMvd( uiAbsPartIdx ).getVer();
 #endif
   ContextModel* pCtx = m_cCUMvdSCModel.get( 0 );
+
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+  assert( iHor == ( iHor >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE ) );
+  assert( iVer == ( iVer >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE ) );
+  iHor >>= VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE;
+  iVer >>= VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE;
+#endif
 
 #if VCEG_AZ07_IMV
   if( pcCU->getiMVFlag( uiAbsPartIdx ) && pcCU->getSlice()->getSPS()->getIMV() )

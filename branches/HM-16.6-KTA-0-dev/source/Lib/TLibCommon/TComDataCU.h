@@ -53,6 +53,9 @@
 //! \{
 
 class TComTU; // forward declaration
+#if VCEG_AZ07_FRUC_MERGE
+class TComPrediction;
+#endif
 
 static const UInt NUM_MOST_PROBABLE_MODES=
 #if VCEG_AZ07_INTRA_65ANG_MODES
@@ -112,6 +115,9 @@ private:
   UChar*         m_puhTransformSkip[MAX_NUM_COMPONENT];///< array of transform skipping flags
   UChar*         m_puhCbf[MAX_NUM_COMPONENT];          ///< array of coded block flags (CBF)
   TComCUMvField  m_acCUMvField[NUM_REF_PIC_LIST_01];    ///< array of motion vectors.
+#if VCEG_AZ07_FRUC_MERGE
+  TComCUMvField  m_acFRUCUniLateralMVField[2];
+#endif
   TCoeff*        m_pcTrCoeff[MAX_NUM_COMPONENT];       ///< array of transform coefficient buffers (0->Y, 1->Cb, 2->Cr)
 #if ADAPTIVE_QP_SELECTION
   TCoeff*        m_pcArlCoeff[MAX_NUM_COMPONENT];  // ARL coefficient buffer (0->Y, 1->Cb, 2->Cr)
@@ -145,6 +151,9 @@ private:
 #endif
 #if COM16_C806_OBMC
   Bool*         m_OBMCFlag;           ///< array of OBMC flags
+#endif
+#if VCEG_AZ07_FRUC_MERGE
+  UChar*        m_puhFRUCMgrMode;
 #endif
 #if VCEG_AZ07_IMV
   Bool*         m_iMVFlag;            ///< array of integer MV flags
@@ -333,6 +342,13 @@ public:
   UInt          getQuadtreeTULog2MinSizeInCU( UInt uiIdx );
 
   TComCUMvField* getCUMvField         ( RefPicList e )          { return  &m_acCUMvField[e];  }
+#if VCEG_AZ07_FRUC_MERGE
+  TComCUMvField* getFRUCUniLateralMVField        ( RefPicList e )          { return  &m_acFRUCUniLateralMVField[e]; }
+  TComMv        scaleMV( const TComMv & rColMV , Int iCurrPOC, Int iCurrRefPOC, Int iColPOC, Int iColRefPOC );
+  Bool          isSameMVField( RefPicList eListA , TComMvField & rMVFieldA , RefPicList eListB , TComMvField & rMVFieldB );
+  Bool          getMvPair( RefPicList eCurRefPicList , const TComMvField & rCurMvField , TComMvField & rMvPair );
+  Bool          getBlockBelowRight( UInt uiAbsPartIdx, Int nCurBlkWidth , Int nCurBlkHeight , UInt & rCUAddr , UInt & rBRAbsPartIdx );
+#endif
 
   TCoeff*       getCoeff              (ComponentID component)   { return m_pcTrCoeff[component]; }
 
@@ -374,6 +390,12 @@ public:
   UChar         getMergeType         ( UInt uiIdx )             { return m_peMergeType[uiIdx];   }
   Void          setMergeType         ( UInt uiIdx, UChar e )    { m_peMergeType[uiIdx] = e;      }
   Void          setMergeTypeSubParts ( UChar eMergeType, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth );
+#endif
+#if VCEG_AZ07_FRUC_MERGE
+  UChar*        getFRUCMgrMode          ()                      { return m_puhFRUCMgrMode;               }
+  UChar         getFRUCMgrMode          ( UInt uiIdx )          { return m_puhFRUCMgrMode[uiIdx];        }
+  Void          setFRUCMgrMode          ( UInt uiIdx, UChar b ) { m_puhFRUCMgrMode[uiIdx] = b;           }
+  Void          setFRUCMgrModeSubParts  ( UChar uhFRUCMgrMode, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth );
 #endif
 #if VCEG_AZ07_IMV
   Bool*         getiMVFlag            ()                        { return m_iMVFlag;          }
@@ -478,7 +500,11 @@ public:
 
   Void          getMvField            ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefPicList, TComMvField& rcMvField );
 
-  Void          fillMvpCand           ( UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefPicList, Int iRefIdx, AMVPInfo* pInfo );
+  Void          fillMvpCand           ( UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefPicList, Int iRefIdx, AMVPInfo* pInfo 
+#if VCEG_AZ07_FRUC_MERGE
+    , TComPrediction * pPred = NULL
+#endif
+    );
   Bool          isDiffMER             ( Int xN, Int yN, Int xP, Int yP);
   Void          getPartPosition       ( UInt partIdx, Int& xP, Int& yP, Int& nPSW, Int& nPSH);
 
@@ -575,10 +601,27 @@ public:
   , UChar*          peMergeTypeNeighbors  , TComMvField*    pcMvFieldSP[2] , UChar*          puhInterDirSP[2] , Int iCount );
 #endif
 #if VCEG_AZ07_IMV
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+  Void          xRoundMV( TComMv & rMV ) 
+  { 
+    rMV += TComMv( 2 << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE , 2 << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE ); 
+    rMV >>= ( 2 + VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE ); 
+    rMV <<= ( 2 + VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE ); 
+  }
+#else
   Void          xRoundMV( TComMv & rMV ) { rMV += TComMv( 2 , 2 ); rMV >>= 2; rMV <<= 2; }
+#endif
   Char          getMaxNeighboriMVCandNum( UInt uiAbsPartIdx );
-  Bool          resetMVDandMV2Int( UInt uiAbsPartIdx , UInt uiPartIdx , Bool bResetMV );
-  Bool          resetMVDandMV2Int( Bool bResetMV );
+  Bool          resetMVDandMV2Int( UInt uiAbsPartIdx , UInt uiPartIdx , Bool bResetMV 
+#if VCEG_AZ07_FRUC_MERGE
+    , TComPrediction * pPred
+#endif
+    );
+  Bool          resetMVDandMV2Int( Bool bResetMV 
+#if VCEG_AZ07_FRUC_MERGE
+    , TComPrediction * pPred
+#endif
+    );
 #endif
 
   Void          deriveLeftRightTopIdxGeneral  ( UInt uiAbsPartIdx, UInt uiPartIdx, UInt& ruiPartIdxLT, UInt& ruiPartIdxRT );
@@ -618,6 +661,10 @@ public:
 
   UInt          getCtxSkipFlag                  ( UInt   uiAbsPartIdx                                 );
   UInt          getCtxInterDir                  ( UInt   uiAbsPartIdx                                 );
+#if VCEG_AZ07_FRUC_MERGE
+  UInt          getCtxFRUCMgrMode               ( UInt   uiAbsPartIdx                                 );
+  UInt          getCtxFRUCME                    ( UInt   uiAbsPartIdx                                 );
+#endif
 #if VCEG_AZ07_IMV
   UInt          getCtxiMVFlag                   ( UInt   uiAbsPartIdx                                 );
   Bool          hasSubCUNonZeroMVd              ();

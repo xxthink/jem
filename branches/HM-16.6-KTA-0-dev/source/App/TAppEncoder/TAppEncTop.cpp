@@ -395,6 +395,12 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setOBMC                                              ( m_useOBMC );
   m_cTEncTop.setOBMCBlkSize                                       ( m_OBMCBlkSize );
 #endif
+#if VCEG_AZ07_FRUC_MERGE
+  m_cTEncTop.setFRUCMgrMode                                       ( m_useFRUCMgrMode );
+  m_cTEncTop.setFRUCRefineFilter                                  ( m_FRUCRefineFilter );
+  m_cTEncTop.setFRUCRefineRange                                   ( m_FURCRefineRange << ( 2 + VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE ) );
+  m_cTEncTop.setFRUCSmallBlkRefineDepth                           ( m_FRUCSmallBlkRefineDepth );
+#endif
 #if VCEG_AZ07_IMV
   m_cTEncTop.setIMV                                               ( m_useIMV );
   m_cTEncTop.setIMVMaxCand                                        ( m_IMVMaxCand );

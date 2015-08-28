@@ -95,6 +95,12 @@ private:
   TComMvField   * m_pMvFieldSP[2];
   UChar         * m_phInterDirSP[2];
 #endif
+#if VCEG_AZ07_FRUC_MERGE
+  TComMvField   * m_pMvFieldFRUC;
+  UChar         * m_phInterDirFRUC;
+  UChar         * m_phFRUCRefineDist[2];
+  UChar         * m_phFRUCSBlkRefineDist[2];
+#endif
 
 #if COM16_C806_LARGE_CTU
   Pel*            m_resiSplitBuffer[MAX_CU_DEPTH][NUMBER_OF_STORED_RESIDUAL_TYPES];
@@ -410,6 +416,18 @@ protected:
                                   , UChar*          puhInterDirSP[2]
 #endif
                                    );
+
+#if VCEG_AZ07_FRUC_MERGE
+  Void xFRUCMgrEstimation         ( TComDataCU* pcCU, 
+                                    TComYuv* pcYuvOrg, 
+                                    Int iPUIdx, 
+                                    TComMvField* pacMvField, 
+                                    UChar * phInterDir , 
+                                    UChar ** phFRUCRefineDist , 
+                                    UChar ** phFRUCSBlkRefineDist ,
+                                    UInt& ruiMinCost , 
+                                    UChar & ruhFRUCMode );
+#endif
 
   Void xRestrictBipredMergeCand   ( TComDataCU*     pcCU,
                                     UInt            puIdx,

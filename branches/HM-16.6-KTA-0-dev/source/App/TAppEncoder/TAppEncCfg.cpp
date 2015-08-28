@@ -1089,6 +1089,12 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   ("IMV",                                             m_useIMV , true , "adaptive MV precision" )
   ("IMVMaxCand",                                      m_IMVMaxCand , 4 , "max IMV cand ")
 #endif
+#if VCEG_AZ07_FRUC_MERGE
+  ("FRUC" ,                                           m_useFRUCMgrMode , 1 , "frame rate up-conversion based merge mode" )
+  ("FRUCF" ,                                          m_FRUCRefineFilter , 1 , "whether bilinear filter is used in FRUC" )
+  ("FRUCR" ,                                          m_FURCRefineRange , 8 , "search range (in pixel) of FRUC refinement" )
+  ("FRUCRDepth" ,                                     m_FRUCSmallBlkRefineDepth , 3 , "depth of FRUC refinement" )
+#endif
 #if VCEG_AZ06_IC
   ("IlluCompEnable",                                  m_useIC, true, "Enable illumination compensation")
 #endif
@@ -2556,6 +2562,9 @@ Void TAppEncCfg::xPrintParameter()
 #if COM16_C806_OBMC
   assert( m_OBMCBlkSize == 4 || m_OBMCBlkSize == 8 );
   printf( " OBMC: %d  OBMCBLK: %d ", m_useOBMC, m_OBMCBlkSize );
+#endif
+#if VCEG_AZ07_FRUC_MERGE
+  printf( "FRUC:%d FRUCF:%d FRUCR:%d FRUCRDepth:%d " , m_useFRUCMgrMode ,m_FRUCRefineFilter , m_FURCRefineRange , m_FRUCSmallBlkRefineDepth );
 #endif
 #if VCEG_AZ07_IMV
   printf( " IMV:%d ", m_useIMV );

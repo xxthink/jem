@@ -376,6 +376,12 @@ protected:
   Bool      m_useOBMC;
   Int       m_OBMCBlkSize;
 #endif
+#if VCEG_AZ07_FRUC_MERGE
+  Int       m_useFRUCMgrMode;
+  Int       m_FRUCRefineFilter;
+  Int       m_FURCRefineRange;
+  Int       m_FRUCSmallBlkRefineDepth;
+#endif
 #if VCEG_AZ07_IMV
   Bool      m_useIMV;
   Int       m_IMVMaxCand;

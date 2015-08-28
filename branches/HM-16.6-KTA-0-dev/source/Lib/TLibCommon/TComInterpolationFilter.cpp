@@ -58,6 +58,40 @@
 // Tables
 // ====================================================================================================================
 
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE == 1
+// from SHVC upsampling filter
+const Short TComInterpolationFilter::m_lumaFilter[8][NTAPS_LUMA] =
+{
+  {  0, 0,   0, 64,  0,   0,  0,  0 },
+  { -1, 2,  -5, 62,  8,  -3,  1,  0 },
+  { -1, 4, -10, 58, 17,  -5,  1,  0 },
+  { -1, 3,  -9, 47, 31, -10,  4, -1 },
+  { -1, 4, -11, 40, 40, -11,  4, -1 }, 
+  { -1, 4, -10, 31, 47,  -9,  3, -1 },
+  {  0, 1,  -5, 17, 58, -10,  4, -1 },
+  {  0, 1,  -3,  8, 62,  -5,  2, -1 },
+};
+
+const Short TComInterpolationFilter::m_chromaFilter[16][NTAPS_CHROMA] =
+{
+  {  0, 64,  0,  0 },
+  { -2, 62,  4,  0 },
+  { -2, 58, 10, -2 },
+  { -4, 56, 14, -2 },
+  { -4, 54, 16, -2 }, 
+  { -6, 52, 20, -2 }, 
+  { -6, 46, 28, -4 }, 
+  { -4, 42, 30, -4 },
+  { -4, 36, 36, -4 }, 
+  { -4, 30, 42, -4 }, 
+  { -4, 28, 46, -6 },
+  { -2, 20, 52, -6 }, 
+  { -2, 16, 54, -4 },
+  { -2, 14, 56, -4 },
+  { -2, 10, 58, -2 }, 
+  {  0,  4, 62, -2 }  
+};
+#else
 const TFilterCoeff TComInterpolationFilter::m_lumaFilter[LUMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS][NTAPS_LUMA] =
 {
   {  0, 0,   0, 64,  0,   0, 0,  0 },
@@ -77,6 +111,32 @@ const TFilterCoeff TComInterpolationFilter::m_chromaFilter[CHROMA_INTERPOLATION_
   { -2, 16, 54, -4 },
   { -2, 10, 58, -2 }
 };
+#endif
+
+#if VCEG_AZ07_FRUC_MERGE
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE == 1
+const Short TComInterpolationFilter::m_lumaFilterBilinear[8][NTAPS_LUMA_FRUC] =
+{
+  { 64,  0, },
+  { 56,  8, },
+  { 48, 16, },
+  { 40, 24, },
+  { 32, 32, },
+  { 24, 40, },
+  { 16, 48, },
+  {  8, 56, },
+};
+#else
+const Short TComInterpolationFilter::m_lumaFilterBilinear[4][NTAPS_LUMA_FRUC] =
+{
+  { 64,  0, },
+  { 48, 16, },
+  { 32, 32, },
+  { 16, 48, },
+};
+#endif
+
+#endif
 
 #if COM16_C806_SIMD_OPT
 inline __m128i simdInterpolateLuma4( Short const *src , Int srcStride , __m128i *mmCoeff , const __m128i & mmOffset , Int shift )
@@ -401,56 +461,56 @@ Void TComInterpolationFilter::filter(Int bitDepth, Pel const *src, Int srcStride
       }
       return;
     }
-  }
-  else if( N == 2 && !( width & 0x07 ) )
-  {
-    Short minVal = 0;
-    __m128i mmOffset = _mm_set1_epi32( offset );
-    __m128i mmCoeff[2];
-    __m128i mmMin = _mm_set1_epi16( minVal );
-    __m128i mmMax = _mm_set1_epi16( maxVal );
-    for( Int n = 0 ; n < 2 ; n++ )
-      mmCoeff[n] = _mm_set1_epi16( c[n] );
-    for( row = 0 ; row < height ; row++ )
+    else if( N == 2 && !( width & 0x07 ) )
     {
-      for( col = 0 ; col < width ; col += 8 )
+      Short minVal = 0;
+      __m128i mmOffset = _mm_set1_epi32( offset );
+      __m128i mmCoeff[2];
+      __m128i mmMin = _mm_set1_epi16( minVal );
+      __m128i mmMax = _mm_set1_epi16( maxVal );
+      for( Int n = 0 ; n < 2 ; n++ )
+        mmCoeff[n] = _mm_set1_epi16( c[n] );
+      for( row = 0 ; row < height ; row++ )
       {
-        __m128i mmFiltered = simdInterpolateLuma2P8( src + col , cStride , mmCoeff , mmOffset , shift );
-        if( isLast )
+        for( col = 0 ; col < width ; col += 8 )
         {
-          mmFiltered = simdClip3( mmMin , mmMax , mmFiltered );
+          __m128i mmFiltered = simdInterpolateLuma2P8( src + col , cStride , mmCoeff , mmOffset , shift );
+          if( isLast )
+          {
+            mmFiltered = simdClip3( mmMin , mmMax , mmFiltered );
+          }
+          _mm_storeu_si128( ( __m128i * )( dst + col ) , mmFiltered );
         }
-        _mm_storeu_si128( ( __m128i * )( dst + col ) , mmFiltered );
+        src += srcStride;
+        dst += dstStride;
       }
-      src += srcStride;
-      dst += dstStride;
+      return;
     }
-    return;
-  }
-  else if( N == 2 && !( width & 0x03 ) )
-  {
-    Short minVal = 0;
-    __m128i mmOffset = _mm_set1_epi32( offset );
-    __m128i mmCoeff[8];
-    __m128i mmMin = _mm_set1_epi16( minVal );
-    __m128i mmMax = _mm_set1_epi16( maxVal );
-    for( Int n = 0 ; n < 2 ; n++ )
-      mmCoeff[n] = _mm_set1_epi16( c[n] );
-    for( row = 0 ; row < height ; row++ )
+    else if( N == 2 && !( width & 0x03 ) )
     {
-      for( col = 0 ; col < width ; col += 4 )
+      Short minVal = 0;
+      __m128i mmOffset = _mm_set1_epi32( offset );
+      __m128i mmCoeff[8];
+      __m128i mmMin = _mm_set1_epi16( minVal );
+      __m128i mmMax = _mm_set1_epi16( maxVal );
+      for( Int n = 0 ; n < 2 ; n++ )
+        mmCoeff[n] = _mm_set1_epi16( c[n] );
+      for( row = 0 ; row < height ; row++ )
       {
-        __m128i mmFiltered = simdInterpolateLuma2P4( src + col , cStride , mmCoeff , mmOffset , shift );
-        if( isLast )
+        for( col = 0 ; col < width ; col += 4 )
         {
-          mmFiltered = simdClip3( mmMin , mmMax , mmFiltered );
+          __m128i mmFiltered = simdInterpolateLuma2P4( src + col , cStride , mmCoeff , mmOffset , shift );
+          if( isLast )
+          {
+            mmFiltered = simdClip3( mmMin , mmMax , mmFiltered );
+          }
+          _mm_storel_epi64( ( __m128i * )( dst + col ) , mmFiltered );
         }
-        _mm_storel_epi64( ( __m128i * )( dst + col ) , mmFiltered );
+        src += srcStride;
+        dst += dstStride;
       }
-      src += srcStride;
-      dst += dstStride;
+      return;
     }
-    return;
   }
 #endif
 
@@ -574,7 +634,11 @@ Void TComInterpolationFilter::filterVer(Int bitDepth, Pel *src, Int srcStride, P
  * \param  fmt        Chroma format
  * \param  bitDepth   Bit depth
  */
-Void TComInterpolationFilter::filterHor(const ComponentID compID, Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Int frac, Bool isLast, const ChromaFormat fmt, const Int bitDepth )
+Void TComInterpolationFilter::filterHor(const ComponentID compID, Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Int frac, Bool isLast, const ChromaFormat fmt, const Int bitDepth 
+#if VCEG_AZ07_FRUC_MERGE
+  , Int nFilterIdx
+#endif
+  )
 {
   if ( frac == 0 )
   {
@@ -582,13 +646,26 @@ Void TComInterpolationFilter::filterHor(const ComponentID compID, Pel *src, Int 
   }
   else if (isLuma(compID))
   {
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+    assert(frac >= 0 && frac < (LUMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS<<VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE));
+#else
     assert(frac >= 0 && frac < LUMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS);
+#endif
+#if VCEG_AZ07_FRUC_MERGE
+    if( nFilterIdx == 1 )
+      filterHor<NTAPS_LUMA_FRUC>(bitDepth, src, srcStride, dst, dstStride, width, height, isLast, m_lumaFilterBilinear[frac]);
+    else
+#endif
     filterHor<NTAPS_LUMA>(bitDepth, src, srcStride, dst, dstStride, width, height, isLast, m_lumaFilter[frac]);
   }
   else
   {
     const UInt csx = getComponentScaleX(compID, fmt);
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+    assert(frac >=0 && csx<2 && (frac<<(1-csx)) < (CHROMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS<<VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE));
+#else
     assert(frac >=0 && csx<2 && (frac<<(1-csx)) < CHROMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS);
+#endif
     filterHor<NTAPS_CHROMA>(bitDepth, src, srcStride, dst, dstStride, width, height, isLast, m_chromaFilter[frac<<(1-csx)]);
   }
 }
@@ -610,7 +687,11 @@ Void TComInterpolationFilter::filterHor(const ComponentID compID, Pel *src, Int 
  * \param  fmt        Chroma format
  * \param  bitDepth   Bit depth
  */
-Void TComInterpolationFilter::filterVer(const ComponentID compID, Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Int frac, Bool isFirst, Bool isLast, const ChromaFormat fmt, const Int bitDepth )
+Void TComInterpolationFilter::filterVer(const ComponentID compID, Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Int frac, Bool isFirst, Bool isLast, const ChromaFormat fmt, const Int bitDepth 
+#if VCEG_AZ07_FRUC_MERGE
+  , Int nFilterIdx
+#endif
+  )
 {
   if ( frac == 0 )
   {
@@ -618,13 +699,26 @@ Void TComInterpolationFilter::filterVer(const ComponentID compID, Pel *src, Int 
   }
   else if (isLuma(compID))
   {
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+    assert(frac >= 0 && frac < (LUMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS<<VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE));
+#else
     assert(frac >= 0 && frac < LUMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS);
+#endif
+#if VCEG_AZ07_FRUC_MERGE
+    if( nFilterIdx == 1 )
+      filterVer<NTAPS_LUMA_FRUC>(bitDepth, src, srcStride, dst, dstStride, width, height, isFirst, isLast, m_lumaFilterBilinear[frac]);
+    else
+#endif
     filterVer<NTAPS_LUMA>(bitDepth, src, srcStride, dst, dstStride, width, height, isFirst, isLast, m_lumaFilter[frac]);
   }
   else
   {
     const UInt csy = getComponentScaleY(compID, fmt);
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+    assert(frac >=0 && csy<2 && (frac<<(1-csy)) < (CHROMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS<<VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE));
+#else
     assert(frac >=0 && csy<2 && (frac<<(1-csy)) < CHROMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS);
+#endif
     filterVer<NTAPS_CHROMA>(bitDepth, src, srcStride, dst, dstStride, width, height, isFirst, isLast, m_chromaFilter[frac<<(1-csy)]);
   }
 }

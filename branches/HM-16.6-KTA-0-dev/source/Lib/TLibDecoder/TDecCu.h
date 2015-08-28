@@ -122,6 +122,10 @@ protected:
   Void setIsChromaQpAdjCoded    ( Bool b )                { m_IsChromaQpAdjCoded = b;           }
 
   Void xFillPCMBuffer           (TComDataCU* pCU, UInt depth);
+
+#if VCEG_AZ07_FRUC_MERGE
+  Void xDeriveCUMV              ( TComDataCU * pcCU , UInt uiAbsPartIdx , UInt uiDepth );
+#endif
 };
 
 //! \}

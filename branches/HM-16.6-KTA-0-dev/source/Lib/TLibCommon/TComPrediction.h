@@ -43,11 +43,17 @@
 #include "TComYuv.h"
 #include "TComInterpolationFilter.h"
 #include "TComWeightPrediction.h"
+#if VCEG_AZ07_FRUC_MERGE
+#include "TComRdCost.h"
+#include <list>
+#endif
 
 // forward declaration
 class TComMv;
 class TComTU; 
-
+#if VCEG_AZ07_FRUC_MERGE
+class TComMvField;
+#endif
 //! \ingroup TLibCommon
 //! \{
 
@@ -107,10 +113,33 @@ protected:
     );
   Void xPredIntraPlanar         ( const Pel* pSrc, Int srcStride, Pel* rpDst, Int dstStride, UInt width, UInt height );
 
+#if VCEG_AZ07_FRUC_MERGE
+  TComRdCost              m_cFRUCRDCost;
+  std::list <TComMvField> m_listMVFieldCand[2];
+  TComYuv                 m_cYuvPredFrucTemplate[2];      // 0: top, 1: left
+  Bool                    m_bFrucTemplateAvailabe[2];
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  UChar                   m_eMergeCandTypeNieghors[MRG_MAX_NUM_CANDS];
+  TComMvField *           m_cMvFieldSP[2];
+  UChar *                 m_uhInterDirSP[2];
+#endif
+#endif
+
   // motion compensation functions
-  Void xPredInterUni            ( TComDataCU* pcCU,                          UInt uiPartAddr,               Int iWidth, Int iHeight, RefPicList eRefPicList, TComYuv* pcYuvPred, Bool bi=false          );
-  Void xPredInterBi             ( TComDataCU* pcCU,                          UInt uiPartAddr,               Int iWidth, Int iHeight,                         TComYuv* pcYuvPred          );
+  Void xPredInterUni            ( TComDataCU* pcCU,                          UInt uiPartAddr,               Int iWidth, Int iHeight, RefPicList eRefPicList, TComYuv* pcYuvPred, Bool bi=false          
+#if VCEG_AZ07_FRUC_MERGE
+    , Bool bOBMC = false
+#endif
+    );
+  Void xPredInterBi             ( TComDataCU* pcCU,                          UInt uiPartAddr,               Int iWidth, Int iHeight,                         TComYuv* pcYuvPred          
+#if VCEG_AZ07_FRUC_MERGE
+    , Bool bOBMC = false
+#endif
+    );
   Void xPredInterBlk(const ComponentID compID, TComDataCU *cu, TComPicYuv *refPic, UInt partAddr, TComMv *mv, Int width, Int height, TComYuv *dstPic, Bool bi, const Int bitDepth
+#if VCEG_AZ07_FRUC_MERGE
+    , Int nFRUCMode = FRUC_MERGE_OFF
+#endif
 #if VCEG_AZ06_IC
     , Bool bICFlag      = false
 #endif
@@ -137,6 +166,36 @@ protected:
   Void xSubtractOBMC ( TComDataCU* pcCU, Int uiAbsPartIdx, TComYuv* pcYuvPredDst, TComYuv* pcYuvPredSrc, Int iWidth, Int iHeight, Int iDir, Bool bOBMCSimp );
   Void xSubBlockMotionCompensation ( TComDataCU* pcCU, TComYuv* pcYuvPred, Int uiPartAddr, Int iWidth, Int iHeight  );
 #endif
+#if VCEG_AZ07_FRUC_MERGE
+  Bool xFrucFindBlkMv( TComDataCU * pCU , UInt uiPUIdx );
+  Bool xFrucFindBlkMv4Pred( TComDataCU * pCU , UInt uiPUIdx , RefPicList eTargetRefPicList , Int nTargetRefIdx );
+  Bool xFrucRefineSubBlkMv( TComDataCU * pCU , UInt uiDepth , UInt uiPUIdx , Bool bTM );
+
+  Void xFrucCollectBlkStartMv( TComDataCU * pCU , UInt uiPUIdx , RefPicList eTargetRefList = REF_PIC_LIST_0 , Int nTargetRefIdx = -1 );
+  Void xFrucCollectSubBlkStartMv( TComDataCU * pCU , UInt uiAbsPartIdx , RefPicList eRefPicList , const TComMvField & rMvStart , Int nSubBlkWidth , Int nSubBlkHeight 
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+    , UInt uiSubBlkRasterIdx , UInt uiSubBlkRasterStep
+#endif
+    );
+
+  UInt xFrucFindBestMvFromList( TComMvField * pBestMvField , RefPicList & rBestRefPicList , TComDataCU * pCU , UInt uiAbsPartIdx , const TComMvField & rMvStart , Int nBlkWidth , Int nBlkHeight , Bool bTM , Bool bMvCost );
+
+  UInt xFrucRefineMv( TComMvField * pBestMvField , RefPicList eCurRefPicList , UInt uiMinCost , Int nSearchMethod , TComDataCU * pCU , UInt uiAbsPartIdx , const TComMvField & rMvStart , Int nBlkWidth , Int nBlkHeight , Bool bTM );
+  template<Int SearchPattern>
+  UInt xFrucRefineMvSearch( TComMvField * pBestMvField , RefPicList eCurRefPicList , TComDataCU * pCU , UInt uiAbsPartIdx , TComMvField const & rMvStart , Int nBlkWidth , Int nBlkHeight , UInt uiMinDist , Bool bTM , Int nSearchStepShift , UInt uiMaxSearchRounds = MAX_UINT );
+
+  UInt xFrucGetMvCost( const TComMv & rMvStart , const TComMv & rMvCur , Int nSearchRange , Int nWeighting );
+  UInt xFrucGetBilaMatchCost( TComDataCU * pcCU , UInt uiAbsPartIdx , Int nWidth , Int nHeight , RefPicList eCurRefPicList , const TComMvField & rCurMvField , TComMvField & rPairMVField , UInt uiMVCost );
+  UInt xFrucGetTempMatchCost( TComDataCU * pcCU , UInt uiAbsPartIdx , Int nWidth , Int nHeight , RefPicList eCurRefPicList , const TComMvField & rCurMvField , UInt uiMVCost );
+
+  Void xFrucInsertMv2StartList( const TComMvField & rMvField , std::list<TComMvField> & rList );
+  Bool xFrucIsInList( const TComMvField & rMvField , std::list<TComMvField> & rList );
+
+  Bool xFrucGetCurBlkTemplate( TComDataCU * pCU , UInt uiAbsPartIdx , Int nCurBlkWidth , Int nCurBlkHeight );
+  Bool xFrucIsTopTempAvailable( TComDataCU * pCU , UInt uiAbsPartIdx );
+  Bool xFrucIsLeftTempAvailable( TComDataCU * pCU , UInt uiAbsPartIdx );
+  Int  xFrucGetSubBlkSize( TComDataCU * pcCU , UInt uiAbsPartIdx , Int nBlkWidth , Int nBlkHeight );
+#endif
 #if VCEG_AZ06_IC
   Void xGetLLSICPrediction( TComDataCU* pcCU, TComMv *pMv, TComPicYuv *pRefPic, Int &a, Int &b, const ComponentID eComp, Int nBitDepth );
 #endif
@@ -152,6 +211,10 @@ public:
 
   // inter
   Void motionCompensation         ( TComDataCU*  pcCU, TComYuv* pcYuvPred, RefPicList eRefPicList = REF_PIC_LIST_X, Int iPartIdx = -1 );
+
+#if VCEG_AZ07_FRUC_MERGE
+  Bool deriveFRUCMV( TComDataCU * pCU , UInt uiDepth , UInt uiAbsPartIdx , UInt uiPUIdx , Int nTargetRefIdx = -1 , RefPicList eTargetRefList = REF_PIC_LIST_0 );
+#endif
 
   // motion vector prediction
   Void getMvPredAMVP              ( TComDataCU* pcCU, UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefPicList, TComMv& rcMvPred );
