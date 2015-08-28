@@ -2847,7 +2847,12 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
               // use hadamard transform here
               Distortion uiSad = distParam.DistFunc(&distParam);
               UInt   iModeBits = xModeBitsIntra( pcCU, uiMode, uiPartOffset, uiDepth, CHANNEL_TYPE_LUMA, uiPreds, iAboveLeftCase );
-              Double cost      = (Double)uiSad + (Double)iModeBits * m_pcRdCost->getSqrtLambda();
+              Double cost      = (Double)uiSad + (Double)iModeBits * sqrtLambdaForFirstPass;
+              
+#if DEBUG_INTRA_SEARCH_COSTS
+              std::cout << "1st pass mode for extended angular mode " << uiMode << " SAD = " << uiSad << ", mode bits = " << iModeBits << ", cost = " << cost << "\n";
+#endif
+              
               CandNum += xUpdateCandList( uiMode, cost, numModesForFullRD, uiRdModeList, CandCostList );
 
               bSatdChecked[uiMode] = true; // Mark as checked
