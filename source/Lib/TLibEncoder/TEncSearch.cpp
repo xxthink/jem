@@ -176,6 +176,16 @@ TEncSearch::TEncSearch()
   assert( m_pMvFieldSP[0] != NULL && m_phInterDirSP[0] != NULL );
   assert( m_pMvFieldSP[1] != NULL && m_phInterDirSP[1] != NULL );
 #endif
+
+#if VCEG_AZ07_FRUC_MERGE
+  m_pMvFieldFRUC = new TComMvField[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH*2];
+  m_phInterDirFRUC = new UChar[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
+  m_phFRUCRefineDist[0] = new UChar[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
+  m_phFRUCRefineDist[1] = new UChar[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
+  m_phFRUCSBlkRefineDist[0] = new UChar[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
+  m_phFRUCSBlkRefineDist[1] = new UChar[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
+  assert( m_pMvFieldFRUC != NULL && m_phInterDirFRUC != NULL );
+#endif
 }
 
 
@@ -278,6 +288,38 @@ Void TEncSearch::destroy()
       delete [] m_phInterDirSP[ui];
       m_phInterDirSP[ui] = NULL;
     }
+  }
+#endif
+#if VCEG_AZ07_FRUC_MERGE
+  if( m_pMvFieldFRUC != NULL )
+  {
+    delete [] m_pMvFieldFRUC;
+    m_pMvFieldFRUC = NULL;
+  }
+  if( m_phInterDirFRUC != NULL )
+  {
+    delete [] m_phInterDirFRUC;
+    m_phInterDirFRUC = NULL;
+  }
+  if( m_phFRUCRefineDist[0] != NULL )
+  {
+    delete [] m_phFRUCRefineDist[0];
+    m_phFRUCRefineDist[0] = NULL;
+  }
+  if( m_phFRUCRefineDist[1] != NULL )
+  {
+    delete [] m_phFRUCRefineDist[1];
+    m_phFRUCRefineDist[1] = NULL;
+  }
+  if( m_phFRUCSBlkRefineDist[0] != NULL )
+  {
+    delete [] m_phFRUCSBlkRefineDist[0];
+    m_phFRUCSBlkRefineDist[0] = NULL;
+  }
+  if( m_phFRUCSBlkRefineDist[1] != NULL )
+  {
+    delete [] m_phFRUCSBlkRefineDist[1];
+    m_phFRUCSBlkRefineDist[1] = NULL;
   }
 #endif
 }
@@ -3562,6 +3604,50 @@ Void TEncSearch::xMergeEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPUI
   }
 }
 
+#if VCEG_AZ07_FRUC_MERGE
+Void TEncSearch::xFRUCMgrEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPUIdx, TComMvField* pacMvField, 
+  UChar * phInterDir , UChar ** phFRUCRefineDist , UChar ** phFRUCSBlkRefineDist ,
+  UInt& ruiMinCost , UChar & ruhFRUCMode )
+{
+  UInt uiAbsPartIdx = 0;
+  Int iWidth = 0;
+  Int iHeight = 0; 
+  pcCU->getPartIndexAndSize( iPUIdx, uiAbsPartIdx, iWidth, iHeight );
+  UInt uiDepth = pcCU->getDepth( uiAbsPartIdx );
+  ruiMinCost = MAX_UINT;
+
+  const UChar uhFRUCME[2] = { FRUC_MERGE_BILATERALMV , FRUC_MERGE_TEMPLATE };
+  pcCU->setMergeFlagSubParts( true, uiAbsPartIdx, iPUIdx, uiDepth );
+  for( Int nME = 0 ; nME < 2 ; nME++ )
+  {
+    pcCU->setFRUCMgrModeSubParts( uhFRUCME[nME] , uiAbsPartIdx , iPUIdx , uiDepth );
+    Bool bAvailable = deriveFRUCMV( pcCU , uiDepth , uiAbsPartIdx , iPUIdx );
+    if( bAvailable )
+    {
+      UInt uiCostCand = 0;
+      xGetInterPredictionError( pcCU, pcYuvOrg, iPUIdx, uiCostCand, m_pcEncCfg->getUseHADME() );
+      UInt uiBitsCand = 1;
+      UInt uiCost = uiCostCand + m_pcRdCost->getCost( uiBitsCand );
+      if( uiCost < ruiMinCost )
+      {
+        ruiMinCost = uiCost;
+        ruhFRUCMode = uhFRUCME[nME];
+        for( Int y = 0 , yRasterOffset = 0 ; y < iHeight ; y += 4 , yRasterOffset += pcCU->getPic()->getNumPartInCtuWidth() )
+        {
+          for( Int x = 0 , xRasterOffset = 0 ; x < iWidth ; x += 4 , xRasterOffset++ )
+          {
+            UInt idx = g_auiRasterToZscan[g_auiZscanToRaster[pcCU->getZorderIdxInCtu() + uiAbsPartIdx] + yRasterOffset + xRasterOffset] - pcCU->getZorderIdxInCtu();
+            pacMvField[idx<<1].setMvField( pcCU->getCUMvField( REF_PIC_LIST_0 )->getMv( idx ) , pcCU->getCUMvField( REF_PIC_LIST_0 )->getRefIdx( idx ) );
+            pacMvField[(idx<<1)+1].setMvField( pcCU->getCUMvField( REF_PIC_LIST_1 )->getMv( idx ) , pcCU->getCUMvField( REF_PIC_LIST_1 )->getRefIdx( idx ) );
+            phInterDir[idx] = pcCU->getInterDir( idx );
+          }
+        }
+      }
+    }
+  }
+}
+#endif
+
 /** convert bi-pred merge candidates to uni-pred
  * \param pcCU
  * \param puIdx
@@ -3747,7 +3833,12 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
             uiCostTemp -= m_pcRdCost->getCost( uiBitsTempL0[pcCU->getSlice()->getList1IdxToList0Idx( iRefIdxTemp )] );
             /*correct the bit-rate part of the current ref*/
             m_pcRdCost->setPredictor  ( cMvPred[iRefList][iRefIdxTemp] );
-            uiBitsTemp += m_pcRdCost->getBits( cMvTemp[1][iRefIdxTemp].getHor(), cMvTemp[1][iRefIdxTemp].getVer() 
+            uiBitsTemp += m_pcRdCost->getBits( 
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+              cMvTemp[1][iRefIdxTemp].getHor() >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE , cMvTemp[1][iRefIdxTemp].getVer() >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE 
+#else
+              cMvTemp[1][iRefIdxTemp].getHor(), cMvTemp[1][iRefIdxTemp].getVer() 
+#endif
 #if VCEG_AZ07_IMV
               , pcCU->getiMVFlag( uiPartAddr )
 #endif
@@ -4117,9 +4208,44 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
 #endif 
         );
 
-      if ( uiMRGCost < uiMECost )
+#if VCEG_AZ07_FRUC_MERGE
+      UInt uiFRUCMgrCost = MAX_UINT;
+      UChar uhFRUCMode = 0;
+      if( pcCU->getSlice()->getSPS()->getUseFRUCMgrMode() )
+      {
+        xFRUCMgrEstimation( pcCU, pcOrgYuv, iPartIdx, 
+          m_pMvFieldFRUC, m_phInterDirFRUC , m_phFRUCRefineDist , m_phFRUCSBlkRefineDist ,
+          uiFRUCMgrCost , uhFRUCMode );
+      }
+#endif
+
+      if ( uiMRGCost < uiMECost 
+#if VCEG_AZ07_FRUC_MERGE
+        || uiFRUCMgrCost < uiMECost
+#endif
+        )
       {
         // set Merge result
+#if VCEG_AZ07_FRUC_MERGE
+        if( uiFRUCMgrCost < uiMRGCost )
+        {
+          pcCU->setFRUCMgrModeSubParts( uhFRUCMode, uiPartAddr, iPartIdx, pcCU->getDepth( uiPartAddr ) );
+          pcCU->setMergeFlagSubParts ( true, uiPartAddr, iPartIdx, pcCU->getDepth( uiPartAddr ) );
+          for( Int y = 0 , yRasterOffset = 0 ; y < iRoiHeight ; y += 4 , yRasterOffset += pcCU->getPic()->getNumPartInCtuWidth() )
+          {
+            for( Int x = 0 , xRasterOffset = 0 ; x < iRoiWidth ; x += 4 , xRasterOffset++  )
+            {
+              UInt idx = g_auiRasterToZscan[g_auiZscanToRaster[pcCU->getZorderIdxInCtu() + uiPartAddr] + yRasterOffset + xRasterOffset] - pcCU->getZorderIdxInCtu();
+              pcCU->getCUMvField( REF_PIC_LIST_0 )->setMvFieldSP( pcCU , idx , m_pMvFieldFRUC[idx<<1] , 4 , 4 );
+              pcCU->getCUMvField( REF_PIC_LIST_1 )->setMvFieldSP( pcCU , idx , m_pMvFieldFRUC[(idx<<1)+1] , 4 , 4 );
+              pcCU->setInterDir( idx , m_phInterDirFRUC[idx] );
+            }
+          }
+        }
+        else
+        {
+          pcCU->setFRUCMgrModeSubParts( FRUC_MERGE_OFF, uiPartAddr, iPartIdx, pcCU->getDepth( uiPartAddr ) );
+#endif
         pcCU->setMergeFlagSubParts ( true,          uiPartAddr, iPartIdx, pcCU->getDepth( uiPartAddr ) );
         pcCU->setMergeIndexSubParts( uiMRGIndex,    uiPartAddr, iPartIdx, pcCU->getDepth( uiPartAddr ) );
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
@@ -4153,6 +4279,9 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
         }
 #endif
+#if VCEG_AZ07_FRUC_MERGE
+        }
+#endif
         pcCU->getCUMvField(REF_PIC_LIST_0)->setAllMvd    ( cMvZero,            ePartSize, uiPartAddr, 0, iPartIdx );
         pcCU->getCUMvField(REF_PIC_LIST_1)->setAllMvd    ( cMvZero,            ePartSize, uiPartAddr, 0, iPartIdx );
 
@@ -4166,6 +4295,9 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
         // set ME result
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
         pcCU->setMergeTypeSubParts( MGR_TYPE_DEFAULT_N , uiPartAddr, iPartIdx, pcCU->getDepth( uiPartAddr ) ); 
+#endif
+#if VCEG_AZ07_FRUC_MERGE
+        pcCU->setFRUCMgrModeSubParts( FRUC_MERGE_OFF, uiPartAddr, iPartIdx, pcCU->getDepth( uiPartAddr ) );
 #endif
         pcCU->setMergeFlagSubParts( false,        uiPartAddr, iPartIdx, pcCU->getDepth( uiPartAddr ) );
         pcCU->setInterDirSubParts ( uiMEInterDir, uiPartAddr, iPartIdx, pcCU->getDepth( uiPartAddr ) );
@@ -4208,7 +4340,11 @@ Void TEncSearch::xEstimateMvPredAMVP( TComDataCU* pcCU, TComYuv* pcOrgYuv, UInt 
   // Fill the MV Candidates
   if (!bFilled)
   {
-    pcCU->fillMvpCand( uiPartIdx, uiPartAddr, eRefPicList, iRefIdx, pcAMVPInfo );
+    pcCU->fillMvpCand( uiPartIdx, uiPartAddr, eRefPicList, iRefIdx, pcAMVPInfo 
+#if VCEG_AZ07_FRUC_MERGE
+      , this
+#endif
+      );
   }
 
   // initialize Mvp index & Mvp
@@ -4366,7 +4502,12 @@ Void TEncSearch::xCheckBestMVP ( TComDataCU* pcCU, RefPicList eRefPicList, TComM
   Int iBestMVPIdx = riMVPIdx;
 
   m_pcRdCost->setPredictor( rcMvPred );
-  Int iOrgMvBits  = m_pcRdCost->getBits(cMv.getHor(), cMv.getVer()
+  Int iOrgMvBits  = m_pcRdCost->getBits(
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+    cMv.getHor() >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE, cMv.getVer() >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+#else
+    cMv.getHor(), cMv.getVer()
+#endif
 #if VCEG_AZ07_IMV
     , pcCU->getiMVFlag( uiPartAddr )
 #endif
@@ -4383,7 +4524,12 @@ Void TEncSearch::xCheckBestMVP ( TComDataCU* pcCU, RefPicList eRefPicList, TComM
 
     m_pcRdCost->setPredictor( pcAMVPInfo->m_acMvCand[iMVPIdx] );
 
-    Int iMvBits = m_pcRdCost->getBits(cMv.getHor(), cMv.getVer()
+    Int iMvBits = m_pcRdCost->getBits(
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+      cMv.getHor() >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE, cMv.getVer() >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+#else
+      cMv.getHor(), cMv.getVer()
+#endif
 #if VCEG_AZ07_IMV
       , pcCU->getiMVFlag( uiPartAddr )
 #endif
@@ -4442,6 +4588,9 @@ Distortion TEncSearch::xGetTemplateCost( TComDataCU* pcCU,
   else
   {
     xPredInterBlk( COMPONENT_Y, pcCU, pcPicYuvRef, uiPartAddr, &cMvCand, iSizeX, iSizeY, pcTemplateCand, false, pcCU->getSlice()->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA) 
+#if VCEG_AZ07_FRUC_MERGE
+      , false
+#endif
 #if VCEG_AZ06_IC
       , bICFlag
 #endif
@@ -4570,11 +4719,22 @@ Void TEncSearch::xMotionEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPa
   xPatternSearchFracDIF( bIsLosslessCoded, pcPatternKey, piRefY, iRefStride, &rcMv, cMvHalf, cMvQter, ruiCost );
 
   m_pcRdCost->setCostScale( 0 );
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+  rcMv <<= ( 2 + VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE );
+  rcMv += (cMvHalf <<= ( VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE + 1 ) );
+  rcMv += (cMvQter <<= VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE );
+#else
   rcMv <<= 2;
   rcMv += (cMvHalf <<= 1);
   rcMv +=  cMvQter;
+#endif
 
-  UInt uiMvBits = m_pcRdCost->getBits( rcMv.getHor(), rcMv.getVer() 
+  UInt uiMvBits = m_pcRdCost->getBits( 
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+    rcMv.getHor() >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE, rcMv.getVer() >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+#else
+    rcMv.getHor(), rcMv.getVer() 
+#endif
 #if VCEG_AZ07_IMV
     , pcCU->getiMVFlag( uiPartAddr )
 #endif
@@ -4590,6 +4750,9 @@ Void TEncSearch::xMotionEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPa
 Void TEncSearch::xSetSearchRange ( TComDataCU* pcCU, TComMv& cMvPred, Int iSrchRng, TComMv& rcMvSrchRngLT, TComMv& rcMvSrchRngRB )
 {
   Int  iMvShift = 2;
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+  iMvShift += VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE;
+#endif
   TComMv cTmpMvPred = cMvPred;
   pcCU->clipMv( cTmpMvPred );
 
@@ -4733,6 +4896,9 @@ Void TEncSearch::xTZSearch( TComDataCU*  pcCU,
   UInt uiSearchRange = m_iSearchRange;
   pcCU->clipMv( rcMv );
   rcMv >>= 2;
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+  rcMv >>= VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE;
+#endif
   // init TZSearchStruct
   IntTZSearchStruct cStruct;
   cStruct.iYStride    = iRefStride;
@@ -4750,6 +4916,9 @@ Void TEncSearch::xTZSearch( TComDataCU*  pcCU,
       TComMv cMv = m_acMvPredictors[index];
       pcCU->clipMv( cMv );
       cMv >>= 2;
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+      cMv >>= VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE;
+#endif
       xTZSearchHelp( pcPatternKey, cStruct, cMv.getHor(), cMv.getVer(), 0, 0 );
     }
   }
@@ -4764,8 +4933,14 @@ Void TEncSearch::xTZSearch( TComDataCU*  pcCU,
   {
     TComMv integerMv2Nx2NPred = *pIntegerMv2Nx2NPred;
     integerMv2Nx2NPred <<= 2;
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+    integerMv2Nx2NPred <<= VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE;
+#endif
     pcCU->clipMv( integerMv2Nx2NPred );
     integerMv2Nx2NPred >>= 2;
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+    integerMv2Nx2NPred >>= VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE;
+#endif
     xTZSearchHelp(pcPatternKey, cStruct, integerMv2Nx2NPred.getHor(), integerMv2Nx2NPred.getVer(), 0, 0);
 
     // reset search range
@@ -4774,6 +4949,9 @@ Void TEncSearch::xTZSearch( TComDataCU*  pcCU,
     Int iSrchRng = m_iSearchRange;
     TComMv currBestMv(cStruct.iBestX, cStruct.iBestY );
     currBestMv <<= 2;
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+    currBestMv <<= VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE;
+#endif
     xSetSearchRange( pcCU, currBestMv, iSrchRng, cMvSrchRngLT, cMvSrchRngRB );
     iSrchRngHorLeft   = cMvSrchRngLT.getHor();
     iSrchRngHorRight  = cMvSrchRngRB.getHor();
@@ -5168,6 +5346,10 @@ Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg,
     }
 
     m_pcEntropyCoder->encodeSkipFlag(pcCU, 0, true);
+#if VCEG_AZ07_FRUC_MERGE
+    m_pcEntropyCoder->encodeFRUCMgrMode( pcCU, 0 , 0 );
+    if( !pcCU->getFRUCMgrMode( 0 ) )
+#endif
     m_pcEntropyCoder->encodeMergeIndex( pcCU, 0, true );
 
     UInt uiBits = m_pcEntropyCoder->getNumberOfWrittenBits();
@@ -6330,6 +6512,10 @@ Void  TEncSearch::xAddSymbolBitsInter( TComDataCU* pcCU, UInt& ruiBits )
       m_pcEntropyCoder->encodeCUTransquantBypassFlag(pcCU, 0, true);
     }
     m_pcEntropyCoder->encodeSkipFlag(pcCU, 0, true);
+#if VCEG_AZ07_FRUC_MERGE
+    m_pcEntropyCoder->encodeFRUCMgrMode( pcCU, 0 , 0 );
+    if( !pcCU->getFRUCMgrMode( 0 ) )
+#endif
     m_pcEntropyCoder->encodeMergeIndex(pcCU, 0, true);
 #if VCEG_AZ06_IC
     m_pcEntropyCoder->encodeICFlag( pcCU, 0 );
@@ -6390,7 +6576,13 @@ Void TEncSearch::xExtDIFUpSamplingH( TComPattern* pattern )
   const ChromaFormat chFmt = m_filteredBlock[0][0].getChromaFormat();
 
   m_if.filterHor(COMPONENT_Y, srcPtr, srcStride, m_filteredBlockTmp[0].getAddr(COMPONENT_Y), intStride, width+1, height+filterSize, 0, false, chFmt, pattern->getBitDepthY());
-  m_if.filterHor(COMPONENT_Y, srcPtr, srcStride, m_filteredBlockTmp[2].getAddr(COMPONENT_Y), intStride, width+1, height+filterSize, 2, false, chFmt, pattern->getBitDepthY());
+  m_if.filterHor(COMPONENT_Y, srcPtr, srcStride, m_filteredBlockTmp[2].getAddr(COMPONENT_Y), intStride, width+1, height+filterSize, 
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+    2 << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE,
+#else
+    2, 
+#endif
+    false, chFmt, pattern->getBitDepthY());
 
   intPtr = m_filteredBlockTmp[0].getAddr(COMPONENT_Y) + halfFilterSize * intStride + 1;
   dstPtr = m_filteredBlock[0][0].getAddr(COMPONENT_Y);
@@ -6398,7 +6590,13 @@ Void TEncSearch::xExtDIFUpSamplingH( TComPattern* pattern )
 
   intPtr = m_filteredBlockTmp[0].getAddr(COMPONENT_Y) + (halfFilterSize-1) * intStride + 1;
   dstPtr = m_filteredBlock[2][0].getAddr(COMPONENT_Y);
-  m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width+0, height+1, 2, false, true, chFmt, pattern->getBitDepthY());
+  m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width+0, height+1, 
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+    2 << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE,
+#else
+    2, 
+#endif
+    false, true, chFmt, pattern->getBitDepthY());
 
   intPtr = m_filteredBlockTmp[2].getAddr(COMPONENT_Y) + halfFilterSize * intStride;
   dstPtr = m_filteredBlock[0][2].getAddr(COMPONENT_Y);
@@ -6406,7 +6604,13 @@ Void TEncSearch::xExtDIFUpSamplingH( TComPattern* pattern )
 
   intPtr = m_filteredBlockTmp[2].getAddr(COMPONENT_Y) + (halfFilterSize-1) * intStride;
   dstPtr = m_filteredBlock[2][2].getAddr(COMPONENT_Y);
-  m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width+1, height+1, 2, false, true, chFmt, pattern->getBitDepthY());
+  m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width+1, height+1, 
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+    2 << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE,
+#else
+    2, 
+#endif
+    false, true, chFmt, pattern->getBitDepthY());
 }
 
 
@@ -6450,7 +6654,13 @@ Void TEncSearch::xExtDIFUpSamplingQ( TComPattern* pattern, TComMv halfPelRef )
   {
     srcPtr += 1;
   }
-  m_if.filterHor(COMPONENT_Y, srcPtr, srcStride, intPtr, intStride, width, extHeight, 1, false, chFmt, pattern->getBitDepthY());
+  m_if.filterHor(COMPONENT_Y, srcPtr, srcStride, intPtr, intStride, width, extHeight, 
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+    1 << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE,
+#else
+    1, 
+#endif
+    false, chFmt, pattern->getBitDepthY());
 
   // Horizontal filter 3/4
   srcPtr = pattern->getROIY() - halfFilterSize*srcStride - 1;
@@ -6463,7 +6673,13 @@ Void TEncSearch::xExtDIFUpSamplingQ( TComPattern* pattern, TComMv halfPelRef )
   {
     srcPtr += 1;
   }
-  m_if.filterHor(COMPONENT_Y, srcPtr, srcStride, intPtr, intStride, width, extHeight, 3, false, chFmt, pattern->getBitDepthY());
+  m_if.filterHor(COMPONENT_Y, srcPtr, srcStride, intPtr, intStride, width, extHeight, 
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+    3 << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE,
+#else
+    3, 
+#endif
+    false, chFmt, pattern->getBitDepthY());
 
   // Generate @ 1,1
   intPtr = m_filteredBlockTmp[1].getAddr(COMPONENT_Y) + (halfFilterSize-1) * intStride;
@@ -6472,12 +6688,24 @@ Void TEncSearch::xExtDIFUpSamplingQ( TComPattern* pattern, TComMv halfPelRef )
   {
     intPtr += intStride;
   }
-  m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 1, false, true, chFmt, pattern->getBitDepthY());
+  m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+    1 << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE,
+#else
+    1, 
+#endif
+    false, true, chFmt, pattern->getBitDepthY());
 
   // Generate @ 3,1
   intPtr = m_filteredBlockTmp[1].getAddr(COMPONENT_Y) + (halfFilterSize-1) * intStride;
   dstPtr = m_filteredBlock[3][1].getAddr(COMPONENT_Y);
-  m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 3, false, true, chFmt, pattern->getBitDepthY());
+  m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+    3 << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE,
+#else
+    3, 
+#endif
+    false, true, chFmt, pattern->getBitDepthY());
 
   if (halfPelRef.getVer() != 0)
   {
@@ -6488,7 +6716,13 @@ Void TEncSearch::xExtDIFUpSamplingQ( TComPattern* pattern, TComMv halfPelRef )
     {
       intPtr += intStride;
     }
-    m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 2, false, true, chFmt, pattern->getBitDepthY());
+    m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+      2 << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE,
+#else
+      2, 
+#endif
+      false, true, chFmt, pattern->getBitDepthY());
 
     // Generate @ 2,3
     intPtr = m_filteredBlockTmp[3].getAddr(COMPONENT_Y) + (halfFilterSize-1) * intStride;
@@ -6497,7 +6731,13 @@ Void TEncSearch::xExtDIFUpSamplingQ( TComPattern* pattern, TComMv halfPelRef )
     {
       intPtr += intStride;
     }
-    m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 2, false, true, chFmt, pattern->getBitDepthY());
+    m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+      2 << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE,
+#else
+      2, 
+#endif
+      false, true, chFmt, pattern->getBitDepthY());
   }
   else
   {
@@ -6525,7 +6765,13 @@ Void TEncSearch::xExtDIFUpSamplingQ( TComPattern* pattern, TComMv halfPelRef )
     {
       intPtr += intStride;
     }
-    m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 1, false, true, chFmt, pattern->getBitDepthY());
+    m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+      1 << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE,
+#else
+      1, 
+#endif
+      false, true, chFmt, pattern->getBitDepthY());
 
     // Generate @ 3,2
     intPtr = m_filteredBlockTmp[2].getAddr(COMPONENT_Y) + (halfFilterSize-1) * intStride;
@@ -6538,7 +6784,13 @@ Void TEncSearch::xExtDIFUpSamplingQ( TComPattern* pattern, TComMv halfPelRef )
     {
       intPtr += intStride;
     }
-    m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 3, false, true, chFmt, pattern->getBitDepthY());
+    m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+      3 << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE,
+#else
+      3, 
+#endif
+      false, true, chFmt, pattern->getBitDepthY());
   }
   else
   {
@@ -6549,7 +6801,13 @@ Void TEncSearch::xExtDIFUpSamplingQ( TComPattern* pattern, TComMv halfPelRef )
     {
       intPtr += intStride;
     }
-    m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 1, false, true, chFmt, pattern->getBitDepthY());
+    m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+      1 << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE,
+#else
+      1, 
+#endif
+      false, true, chFmt, pattern->getBitDepthY());
 
     // Generate @ 3,0
     intPtr = m_filteredBlockTmp[0].getAddr(COMPONENT_Y) + (halfFilterSize-1) * intStride + 1;
@@ -6558,7 +6816,13 @@ Void TEncSearch::xExtDIFUpSamplingQ( TComPattern* pattern, TComMv halfPelRef )
     {
       intPtr += intStride;
     }
-    m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 3, false, true, chFmt, pattern->getBitDepthY());
+    m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+      3 << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE,
+#else
+      3, 
+#endif
+      false, true, chFmt, pattern->getBitDepthY());
   }
 
   // Generate @ 1,3
@@ -6568,12 +6832,24 @@ Void TEncSearch::xExtDIFUpSamplingQ( TComPattern* pattern, TComMv halfPelRef )
   {
     intPtr += intStride;
   }
-  m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 1, false, true, chFmt, pattern->getBitDepthY());
+  m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+    1 << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE,
+#else
+    1, 
+#endif
+    false, true, chFmt, pattern->getBitDepthY());
 
   // Generate @ 3,3
   intPtr = m_filteredBlockTmp[3].getAddr(COMPONENT_Y) + (halfFilterSize-1) * intStride;
   dstPtr = m_filteredBlock[3][3].getAddr(COMPONENT_Y);
-  m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 3, false, true, chFmt, pattern->getBitDepthY());
+  m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+    3 << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE,
+#else
+    3, 
+#endif
+    false, true, chFmt, pattern->getBitDepthY());
 }
 
 

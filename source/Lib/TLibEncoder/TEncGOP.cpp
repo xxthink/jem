@@ -1439,6 +1439,13 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     const Int numSubstreams        = numSubstreamRows * numSubstreamsColumns;
     std::vector<TComOutputBitstream> substreamsOut(numSubstreams);
 
+#if VCEG_AZ07_FRUC_MERGE
+    if( pcSlice->getSPS()->getUseFRUCMgrMode() && !pcSlice->isIntra() )
+    {
+      pcPic->initFRUCMVP();
+    }
+#endif
+
     // now compress (trial encode) the various slice segments (slices, and dependent slices)
     {
       const UInt numberOfCtusInFrame=pcPic->getPicSym()->getNumberOfCtusInFrame();

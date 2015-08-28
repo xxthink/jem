@@ -46,6 +46,9 @@
 
 #define NTAPS_LUMA        8 ///< Number of taps for luma
 #define NTAPS_CHROMA      4 ///< Number of taps for chroma
+#if VCEG_AZ07_FRUC_MERGE
+#define NTAPS_LUMA_FRUC   2
+#endif
 #define IF_INTERNAL_PREC 14 ///< Number of bits for internal precision
 #define IF_FILTER_PREC    6 ///< Log2 of sum of filter taps
 #define IF_INTERNAL_OFFS (1<<(IF_INTERNAL_PREC-1)) ///< Offset used internally
@@ -55,8 +58,20 @@
  */
 class TComInterpolationFilter
 {
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE == 1
+  static const Short m_lumaFilter[8][NTAPS_LUMA];     ///< Luma filter taps
+  static const Short m_chromaFilter[16][NTAPS_CHROMA]; ///< Chroma filter taps
+#else
   static const TFilterCoeff m_lumaFilter[LUMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS][NTAPS_LUMA];     ///< Luma filter taps
   static const TFilterCoeff m_chromaFilter[CHROMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS][NTAPS_CHROMA]; ///< Chroma filter taps
+#endif
+#if VCEG_AZ07_FRUC_MERGE
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE == 1
+  static const Short m_lumaFilterBilinear[8][NTAPS_LUMA_FRUC];     ///< Luma filter taps
+#else
+  static const Short m_lumaFilterBilinear[4][NTAPS_LUMA_FRUC];     ///< Luma filter taps
+#endif
+#endif
 
   static Void filterCopy(Int bitDepth, const Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Bool isFirst, Bool isLast);
 
@@ -72,8 +87,16 @@ public:
   TComInterpolationFilter() {}
   ~TComInterpolationFilter() {}
 
-  Void filterHor(const ComponentID compID, Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Int frac,               Bool isLast, const ChromaFormat fmt, const Int bitDepth );
-  Void filterVer(const ComponentID compID, Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Int frac, Bool isFirst, Bool isLast, const ChromaFormat fmt, const Int bitDepth );
+  Void filterHor(const ComponentID compID, Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Int frac,               Bool isLast, const ChromaFormat fmt, const Int bitDepth 
+#if VCEG_AZ07_FRUC_MERGE
+    , Int nFilterIdx = 0
+#endif
+    );
+  Void filterVer(const ComponentID compID, Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Int frac, Bool isFirst, Bool isLast, const ChromaFormat fmt, const Int bitDepth 
+#if VCEG_AZ07_FRUC_MERGE
+    , Int nFilterIdx = 0
+#endif
+    );
 };
 
 //! \}

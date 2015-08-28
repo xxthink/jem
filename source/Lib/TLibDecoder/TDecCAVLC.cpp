@@ -791,6 +791,15 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
 #if VCEG_AZ07_IMV
   READ_FLAG( uiCode , "use_imv" );                                pcSPS->setIMV( uiCode );
 #endif
+#if VCEG_AZ07_FRUC_MERGE
+  READ_FLAG( uiCode , "fruc_merge_mode" );                        pcSPS->setUseFRUCMgrMode( uiCode );
+  if( pcSPS->getUseFRUCMgrMode() )
+  {
+    READ_UVLC( uiCode , "fruc_refine_filter" );                   pcSPS->setFRUCRefineFilter( uiCode );
+    READ_UVLC( uiCode , "fruc_refine_range_in_pixel" );           pcSPS->setFRUCRefineRange( uiCode << ( 2 + VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE ) );
+    READ_UVLC( uiCode , "fruc_small_blk_refine_depth" );          pcSPS->setFRUCSmallBlkRefineDepth( uiCode );
+  }
+#endif
 #if VCEG_AZ06_IC
   READ_FLAG( uiCode, "illumination_comp_enabled_flag" );          pcSPS->setICFlag(uiCode);
 #endif
@@ -1866,6 +1875,13 @@ Void TDecCavlc::parseMergeIndex ( TComDataCU* /*pcCU*/, UInt& /*ruiMergeIndex*/ 
 {
   assert(0);
 }
+
+#if VCEG_AZ07_FRUC_MERGE
+Void TDecCavlc::parseFRUCMgrMode ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/, UInt /*uiPUIdx*/ )
+{
+  assert(0);
+}
+#endif
 
 // ====================================================================================================================
 // Protected member functions

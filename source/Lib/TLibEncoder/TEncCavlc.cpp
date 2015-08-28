@@ -587,6 +587,15 @@ Void TEncCavlc::codeSPS( const TComSPS* pcSPS )
 #if VCEG_AZ07_IMV
   WRITE_FLAG( pcSPS->getIMV() ? 1 : 0 , "use_imv" ); 
 #endif
+#if VCEG_AZ07_FRUC_MERGE
+  WRITE_FLAG( pcSPS->getUseFRUCMgrMode() , "fruc_merge_mode" );
+  if( pcSPS->getUseFRUCMgrMode() )
+  {
+    WRITE_UVLC( pcSPS->getFRUCRefineFilter() , "fruc_refine_filter" );
+    WRITE_UVLC( pcSPS->getFRUCRefineRange() >> ( 2 + VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE ) , "fruc_refine_range_in_pixel" );
+    WRITE_UVLC( pcSPS->getFRUCSmallBlkRefineDepth() , "fruc_small_blk_refine_depth" );
+  }
+#endif
 #if VCEG_AZ06_IC
   WRITE_FLAG( pcSPS->getICFlag()? 1: 0, "illumination_comp_flag");
 #endif
@@ -1260,6 +1269,13 @@ Void TEncCavlc::codeMergeIndex    ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/ 
 {
   assert(0);
 }
+
+#if VCEG_AZ07_FRUC_MERGE
+Void TEncCavlc::codeFRUCMgrMode  ( TComDataCU* pcCU, UInt uiAbsPartIdx , UInt uiPUIdx )
+{
+  assert(0);
+}
+#endif
 
 Void TEncCavlc::codeInterModeFlag( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/, UInt /*uiEncMode*/ )
 {

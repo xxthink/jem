@@ -705,6 +705,13 @@ Bool TDecTop::xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisp
     m_cTrQuant.setUseScalingList(false);
   }
 
+#if VCEG_AZ07_FRUC_MERGE
+  if( pcSlice->getSPS()->getUseFRUCMgrMode() && !pcSlice->isIntra() )
+  {
+    m_pcPic->initFRUCMVP();
+  }
+#endif
+
   //  Decode a picture
   m_cGopDecoder.decompressSlice(&(nalu.getBitstream()), m_pcPic);
 

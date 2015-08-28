@@ -45,6 +45,11 @@
 //! \ingroup TLibCommon
 //! \{
 
+#if VCEG_AZ07_FRUC_MERGE
+Bool TComSlice::m_bScaleFactorValid = false;
+Int TComSlice::m_iScaleFactor[256][256];
+#endif
+
 TComSlice::TComSlice()
 : m_iPPSId                        ( -1 )
 , m_PicOutputFlag                 ( true )
@@ -145,6 +150,25 @@ TComSlice::TComSlice()
   {
     m_saoEnabledFlag[ch] = false;
   }
+
+#if VCEG_AZ07_FRUC_MERGE
+  m_bFrucRefIdxPairValid = false;
+  if( TComSlice::m_bScaleFactorValid == false )
+  {
+    for( Int iTDB = -128 ; iTDB <= 127 ; iTDB++ )
+    {
+      for( Int iTDD = -128 ; iTDD <= 127 ; iTDD++ )
+      {
+        if( iTDD == 0 )
+          continue;
+        Int iX        = (0x4000 + abs(iTDD/2)) / iTDD;
+        Int iScale    = Clip3( -4096, 4095, (iTDB * iX + 32) >> 6 );
+        TComSlice::m_iScaleFactor[128+iTDB][128+iTDD] = iScale;
+      }
+    }
+    TComSlice::m_bScaleFactorValid = true;
+  }
+#endif
 }
 
 TComSlice::~TComSlice()
@@ -1471,6 +1495,53 @@ Void  TComSlice::initWpScaling(const TComSPS *sps)
     }
   }
 }
+
+#if VCEG_AZ07_FRUC_MERGE
+Int TComSlice::getRefIdx4MVPair( RefPicList eCurRefPicList , Int nCurRefIdx )
+{
+  assert( isInterB() );
+  if( !m_bFrucRefIdxPairValid )
+  {
+    memset( m_iFrucRefIdxPair , -1 , sizeof( m_iFrucRefIdxPair ) );
+    for( Int nRefPicList = 0 ; nRefPicList < 2 ; nRefPicList++ )
+    {
+      for( Int nRefIdx = 0 ; nRefIdx < getNumRefIdx( ( RefPicList )nRefPicList ) ; nRefIdx++ )
+      {
+        Int nRefPOC = getRefPOC( ( RefPicList )nRefPicList , nRefIdx );
+        Int nTargetPOC = ( getPOC() << 1 ) - nRefPOC;
+        RefPicList eTargetRefPicList = RefPicList( 1 - nRefPicList );
+        Int nTargetRefIdx = getNumRefIdx( eTargetRefPicList ) - 1;
+        for( ; nTargetRefIdx >= 0 ; nTargetRefIdx-- )
+        {
+          if( nTargetPOC == getRefPOC( eTargetRefPicList , nTargetRefIdx ) )
+          {
+            m_iFrucRefIdxPair[nRefPicList][nRefIdx] = nTargetRefIdx;
+          }
+        }
+
+        if( m_iFrucRefIdxPair[nRefPicList][nRefIdx] == -1 && getCheckLDC() )
+        {
+          Int nMinDeltaPOC = MAX_INT;
+          nTargetRefIdx = -1;
+          for( Int nTmpIdx = getNumRefIdx( eTargetRefPicList ) - 1 ; nTmpIdx >= 0 ; nTmpIdx-- )
+          {
+            Int nTmpPOC = getRefPOC( eTargetRefPicList , nTmpIdx );
+            if( nRefPOC != nTmpPOC && abs( nTmpPOC - getPOC() ) < nMinDeltaPOC )
+            {
+              nMinDeltaPOC = abs( nTmpPOC - getPOC() );
+              nTargetRefIdx = nTmpIdx;
+            }
+          }
+          m_iFrucRefIdxPair[nRefPicList][nRefIdx] = nTargetRefIdx;
+        }
+      }
+    }
+    m_bFrucRefIdxPairValid = true;
+  }
+
+  return( m_iFrucRefIdxPair[eCurRefPicList][nCurRefIdx] );
+}
+#endif
 
 // ------------------------------------------------------------------------------------------------
 // Video parameter set (VPS)

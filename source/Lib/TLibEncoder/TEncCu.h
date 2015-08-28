@@ -74,6 +74,9 @@ private:
 #if COM16_C806_OBMC
   TComDataCU**            m_ppcTempCUWoOBMC; ///< Temporary CUs in each depth
 #endif
+#if VCEG_AZ07_FRUC_MERGE
+  TComDataCU**            m_ppcFRUCBufferCU;      
+#endif
 #if VCEG_AZ07_IMV
   TComDataCU**            m_ppcTempCUIMVCache[NUMBER_OF_PART_SIZES]; 
 #endif
@@ -154,6 +157,9 @@ protected:
   Void  xCheckBestMode      ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, UInt uiDepth DEBUG_STRING_FN_DECLARE(sParent) DEBUG_STRING_FN_DECLARE(sTest) DEBUG_STRING_PASS_INTO(Bool bAddSizeInfo=true));
 
   Void  xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU DEBUG_STRING_FN_DECLARE(sDebug), Bool *earlyDetectionSkipMode );
+#if VCEG_AZ07_FRUC_MERGE
+  Void  xCheckRDCostMerge2Nx2NFRUC( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU , Bool *earlyDetectionSkipMode );
+#endif
 
 #if AMP_MRG
   Void  xCheckRDCostInter   ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, PartSize ePartSize DEBUG_STRING_FN_DECLARE(sDebug), Bool bUseMRG = false 

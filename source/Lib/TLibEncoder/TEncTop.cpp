@@ -715,6 +715,12 @@ Void TEncTop::xInitSPS()
   m_cSPS.setOBMC( m_useOBMC );
   m_cSPS.setOBMCBlkSize( m_OBMCBlkSize );
 #endif
+#if VCEG_AZ07_FRUC_MERGE
+  m_cSPS.setUseFRUCMgrMode( m_useFRUCMgrMode );
+  m_cSPS.setFRUCRefineFilter( m_FRUCRefineFilter );
+  m_cSPS.setFRUCRefineRange( m_FURCRefineRange );
+  m_cSPS.setFRUCSmallBlkRefineDepth( m_FRUCSmallBlkRefineDepth );
+#endif
 #if VCEG_AZ07_IMV
   m_cSPS.setIMV( m_useIMV );
   m_cSPS.setIMVMaxCand( m_IMVMaxCand );

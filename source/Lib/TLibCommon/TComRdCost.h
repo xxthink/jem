@@ -210,12 +210,22 @@ public:
 #endif
     )
   {
-    return xGetExpGolombNumberOfBits((x << m_iCostScale) - m_mvPredictor.getHor()
+    return xGetExpGolombNumberOfBits((x << m_iCostScale) 
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+      - ( m_mvPredictor.getHor() >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE )
+#else
+      - m_mvPredictor.getHor()
+#endif
 #if VCEG_AZ07_IMV
       , iMvFlag
 #endif
       )
-    +      xGetExpGolombNumberOfBits((y << m_iCostScale) - m_mvPredictor.getVer()
+    +      xGetExpGolombNumberOfBits((y << m_iCostScale) 
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+      - ( m_mvPredictor.getVer() >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE )
+#else
+    - m_mvPredictor.getVer()
+#endif
 #if VCEG_AZ07_IMV
       , iMvFlag
 #endif

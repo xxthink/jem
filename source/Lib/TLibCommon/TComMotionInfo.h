@@ -43,7 +43,7 @@
 #include "CommonDef.h"
 #include "TComMv.h"
 
-#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP || VCEG_AZ07_FRUC_MERGE
 class TComDataCU;
 class TComPic;
 #endif
@@ -89,7 +89,7 @@ public:
   Int getRefIdx() const { return  m_iRefIdx;       }
   Int getHor   () const { return  m_acMv.getHor(); }
   Int getVer   () const { return  m_acMv.getVer(); }
-#if COM16_C806_GEN_MRG_IMPROVEMENT || COM16_C806_OBMC
+#if COM16_C806_GEN_MRG_IMPROVEMENT || COM16_C806_OBMC || VCEG_AZ07_FRUC_MERGE
   Bool operator== (const TComMvField& rcMv) const
   {
     return (m_acMv.getHor()== rcMv.getHor() && m_acMv.getVer()== rcMv.getVer() && m_iRefIdx == rcMv.getRefIdx());
@@ -138,6 +138,10 @@ public:
   TComMv const & getMv    ( Int iIdx ) const { return  m_pcMv    [iIdx]; }
   TComMv const & getMvd   ( Int iIdx ) const { return  m_pcMvd   [iIdx]; }
   Int            getRefIdx( Int iIdx ) const { return  m_piRefIdx[iIdx]; }
+#if VCEG_AZ07_FRUC_MERGE
+  Void           setMv    ( TComMv  cMv,     Int iIdx ) { m_pcMv    [iIdx] = cMv;     }
+  Void           setRefIdx( Int     iRefIdx, Int iIdx ) { m_piRefIdx[iIdx] = iRefIdx; }
+#endif
 
   AMVPInfo* getAMVPInfo () { return &m_cAMVPInfo; }
 
@@ -149,7 +153,7 @@ public:
   Void    setAllMvd    ( TComMv const & rcMvd,        PartSize eCUMode, Int iPartAddr, UInt uiDepth, Int iPartIdx=0 );
   Void    setAllRefIdx ( Int iRefIdx,                 PartSize eMbMode, Int iPartAddr, UInt uiDepth, Int iPartIdx=0 );
   Void    setAllMvField( TComMvField const & mvField, PartSize eMbMode, Int iPartAddr, UInt uiDepth, Int iPartIdx=0 );
-#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP || VCEG_AZ07_FRUC_MERGE
   Void    setMvFieldSP ( TComDataCU* pcCU, UInt uiAbsPartIdx, TComMvField cMvField, Int iWidth, Int iHeight  );
 #endif
 

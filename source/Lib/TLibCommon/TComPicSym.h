@@ -136,6 +136,9 @@ public:
   const TComSPS&     getSPS()                 const                        { return m_sps; }
   const TComPPS&     getPPS()                 const                        { return m_pps; }
 
+#if VCEG_AZ07_FRUC_MERGE
+  Void               initFRUCMVP();
+#endif
   TComSlice *        swapSliceObject(TComSlice* p, UInt i)                 { p->setSPS(&m_sps); p->setPPS(&m_pps); TComSlice *pTmp=m_apSlices[i];m_apSlices[i] = p; pTmp->setSPS(0); pTmp->setPPS(0); return pTmp; }
   UInt               getNumAllocatedSlice() const                          { return UInt(m_apSlices.size());       }
   Void               allocateNewSlice();

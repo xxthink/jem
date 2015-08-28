@@ -284,6 +284,15 @@ static const Int LAST_SIGNIFICANT_GROUPS =                        12 ;
 #else
 static const Int LAST_SIGNIFICANT_GROUPS =                        10 ;
 #endif
+#if VCEG_AZ07_FRUC_MERGE
+static const Int FRUC_MERGE_OFF =                                0x0 ;
+static const Int FRUC_MERGE_BILATERALMV =                        0x01;
+static const Int FRUC_MERGE_TEMPLATE =                           0x02;
+static const Int FRUC_MERGE_TEMPLATE_SIZE =                        4 ;
+static const Int FRUC_MERGE_REFINE_MVWEIGHT =                      4 ;
+static const Int FRUC_MERGE_REFINE_MINBLKSIZE =                    4 ;
+#endif
+
 // ====================================================================================================================
 // Macro functions
 // ====================================================================================================================

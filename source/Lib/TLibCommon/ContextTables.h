@@ -68,6 +68,10 @@
 #if VCEG_AZ07_IMV
 #define NUM_IMV_FLAG_CTX              3       ///< number of context models for iMV flag
 #endif
+#if VCEG_AZ07_FRUC_MERGE
+#define NUM_FRUCMGRMODE_CTX           3
+#define NUM_FRUCME_CTX                3
+#endif
 #if VCEG_AZ06_IC
 #define NUM_IC_FLAG_CTX               1       ///< number of context models for illumination compensation flag
 #endif
@@ -266,6 +270,24 @@ INIT_MERGE_IDX_EXT[NUMBER_OF_SLICE_TYPES][NUM_MERGE_IDX_EXT_CTX] =
   { CNU, },
 #endif
 };
+
+#if VCEG_AZ07_FRUC_MERGE
+static const UChar
+  INIT_FRUCMGRMODEBIN1[NUMBER_OF_SLICE_TYPES][NUM_FRUCMGRMODE_CTX] = 
+{
+  { 197,  185,  201 }, 
+  { 197,  185,  201 }, 
+  { CNU,  CNU,  CNU }, 
+};
+
+static const UChar
+  INIT_FRUCMGRMODEBIN2[NUMBER_OF_SLICE_TYPES][NUM_FRUCME_CTX] = 
+{
+  { 197,  185,  201 }, 
+  { 197,  185,  201 }, 
+  { CNU,  CNU,  CNU }, 
+};
+#endif
 
 #if VCEG_AZ07_IMV
 static const UChar 
