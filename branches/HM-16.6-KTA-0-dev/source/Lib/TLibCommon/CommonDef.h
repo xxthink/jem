@@ -184,7 +184,11 @@ static const Int LEVEL_RANGE =                                     30; ///< G382
 
 static const Int RVM_VCEGAM10_M =                                   4;
 
+#if VCEG_AZ07_INTRA_65ANG_MODES
+static const Int FAST_UDI_MAX_RDMODE_NUM =                         67; ///< maximum number of RD comparison in fast-UDI estimation loop
+#else
 static const Int FAST_UDI_MAX_RDMODE_NUM =                         35; ///< maximum number of RD comparison in fast-UDI estimation loop
+#endif
 
 #if VCEG_AZ07_INTRA_65ANG_MODES
 static const Int NUM_INTRA_MODE =                                  68;
