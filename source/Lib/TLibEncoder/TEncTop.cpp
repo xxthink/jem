@@ -736,6 +736,9 @@ Void TEncTop::xInitSPS()
   m_cSPS.setUseIntraEMT   ( m_useIntraEMT      );
   m_cSPS.setUseInterEMT   ( m_useInterEMT      );
 #endif
+#if COM16_C806_LMCHROMA
+  m_cSPS.setUseLMChroma   ( m_useLMChroma      );  
+#endif
 }
 
 Void TEncTop::xInitHrdParameters()

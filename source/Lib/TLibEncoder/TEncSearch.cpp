@@ -272,6 +272,9 @@ Void TEncSearch::destroy()
 #endif
   }
   m_pcQTTempTransformSkipTComYuv.destroy();
+#if COM16_C806_LMCHROMA
+  m_pcQTTempResiTComYuv.destroy();
+#endif
 
   m_tmpYuvPred.destroy();
   m_isInitialized = false;
@@ -388,7 +391,12 @@ Void TEncSearch::init(TEncCfg*      pcEncCfg,
   }
 
   const ChromaFormat cform=pcEncCfg->getChromaFormatIdc();
+#if COM16_C806_LMCHROMA
+  const Int bitDepth = pcEncCfg->getBitDepth(CHANNEL_TYPE_LUMA);
+  initTempBuff(cform, bitDepth);
+#else
   initTempBuff(cform);
+#endif
 
   m_pTempPel = new Pel[maxCUWidth*maxCUHeight];
 
@@ -449,7 +457,9 @@ Void TEncSearch::init(TEncCfg*      pcEncCfg,
     m_resiPUBuffer[n] = new Pel [MAX_CU_SIZE*MAX_CU_SIZE];
   }
 #endif
-
+#if COM16_C806_LMCHROMA
+  m_pcQTTempResiTComYuv.create( MAX_CU_SIZE, MAX_CU_SIZE, pcEncCfg->getChromaFormatIdc() );
+#endif
   m_isInitialized = true;
 }
 
@@ -1372,8 +1382,24 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
     initIntraPatternChType( rTu, compID, bUseFilteredPredictions DEBUG_STRING_PASS_INTO(sDebug) );
 
     //===== get prediction signal =====
-    predIntraAng( compID, uiChFinalMode, piOrg, uiStride, piPred, uiStride, rTu, bUseFilteredPredictions );
+#if COM16_C806_LMCHROMA
+    if( uiChFinalMode == LM_CHROMA_IDX )
+    {
+      getLumaRecPixels( rTu, uiWidth, uiHeight );
+      predLMIntraChroma( rTu, compID, piPred, uiStride, uiWidth, uiHeight ); 
+    }
+    else
+    {
+#endif
+      predIntraAng( compID, uiChFinalMode, piOrg, uiStride, piPred, uiStride, rTu, bUseFilteredPredictions );
 
+#if COM16_C806_LMCHROMA
+      if( compID == COMPONENT_Cr && pcCU->getSlice()->getSPS()->getUseLMChroma() )
+      { 
+        addCrossColorResi( rTu, compID, piPred, uiStride, uiWidth, uiHeight, pcResiYuv->getAddr( COMPONENT_Cb, uiAbsPartIdx ), pcResiYuv->getStride(COMPONENT_Cb) );
+      }
+    }
+#endif
     // save prediction
     if( default0Save1Load2 == 1 )
     {
@@ -1466,6 +1492,20 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
 
 #if RDOQ_CHROMA_LAMBDA
   m_pcTrQuant->selectLambda     (compID);
+#endif
+
+#if COM16_C806_CR_FROM_CB_LAMBDA_ADJUSTMENT
+  if ( uiChFinalMode != LM_CHROMA_IDX && pcCU->getSlice()->getSPS()->getUseLMChroma() )
+  {
+    if (compID == COMPONENT_Cb)
+    {
+      m_pcTrQuant->setLambda ( m_pcTrQuant->getlambda() * 15/16);
+    }
+    else if (compID == COMPONENT_Cr)
+    {
+      m_pcTrQuant->setLambda ( m_pcTrQuant->getlambda() * 16/15);
+    }
+  }
 #endif
 
   m_pcTrQuant->transformNxN     ( rTu, compID, piResi, uiStride, pcCoeff,
@@ -2210,8 +2250,11 @@ TEncSearch::xSetIntraResultLumaQT(TComYuv* pcRecoYuv, TComTU &rTu)
 }
 
 
-Void
-TEncSearch::xStoreIntraResultQT(const ComponentID compID, TComTU &rTu )
+#if COM16_C806_LMCHROMA
+Void TEncSearch::xStoreIntraResultQT( const ComponentID compID, TComTU &rTu, TComYuv* pcResiYuv)
+#else
+Void TEncSearch::xStoreIntraResultQT(const ComponentID compID, TComTU &rTu )
+#endif
 {
   TComDataCU *pcCU=rTu.getCU();
   const UInt uiTrDepth = rTu.GetTransformDepthRel();
@@ -2242,11 +2285,22 @@ TEncSearch::xStoreIntraResultQT(const ComponentID compID, TComTU &rTu )
       m_pcQTTempTComYuv[ uiQTLayer ].copyPartToPartComponent( compID, &m_pcQTTempTransformSkipTComYuv, uiAbsPartIdx, tuRect.width, tuRect.height );
     }
   }
+
+#if COM16_C806_LMCHROMA
+  if ( compID == COMPONENT_Cb && pcCU->getSlice()->getSPS()->getUseLMChroma())
+  {
+    const TComRectangle &tuRect=rTu.getRect(compID);
+    pcResiYuv->copyPartToPartComponent(compID, &m_pcQTTempResiTComYuv, uiAbsPartIdx,  tuRect.width, tuRect.height);
+  }
+#endif
 }
 
 
-Void
-TEncSearch::xLoadIntraResultQT(const ComponentID compID, TComTU &rTu)
+#if COM16_C806_LMCHROMA
+Void TEncSearch::xLoadIntraResultQT(const ComponentID compID, TComTU &rTu, TComYuv* pcResiYuv)
+#else
+Void TEncSearch::xLoadIntraResultQT(const ComponentID compID, TComTU &rTu)
+#endif
 {
   TComDataCU *pcCU=rTu.getCU();
   const UInt uiTrDepth = rTu.GetTransformDepthRel();
@@ -2296,6 +2350,14 @@ TEncSearch::xLoadIntraResultQT(const ComponentID compID, TComTU &rTu)
       }
     }
   }
+
+#if COM16_C806_LMCHROMA
+  if ( compID==COMPONENT_Cb && pcCU->getSlice()->getSPS()->getUseLMChroma())
+  {
+    const TComRectangle &tuRect=rTu.getRect(compID);
+    m_pcQTTempResiTComYuv.copyPartToPartComponent(compID, pcResiYuv, uiAbsPartIdx,  tuRect.width, tuRect.height);
+  }
+#endif
 }
 
 Void
@@ -2506,7 +2568,11 @@ TEncSearch::xRecurIntraChromaCodingQT(TComYuv*    pcOrgYuv,
 
               if (!isOneMode && !isLastMode)
               {
+#if COM16_C806_LMCHROMA
+                xStoreIntraResultQT(compID, TUIterator, pcResiYuv);
+#else
                 xStoreIntraResultQT(compID, TUIterator);
+#endif
                 m_pcRDGoOnSbacCoder->store( m_pppcRDSbacCoder[ uiFullDepth ][ CI_TEMP_BEST ] );
               }
             }
@@ -2520,7 +2586,11 @@ TEncSearch::xRecurIntraChromaCodingQT(TComYuv*    pcOrgYuv,
 
         if(bestModeId < totalModesToTest)
         {
+#if COM16_C806_LMCHROMA
+          xLoadIntraResultQT(compID, TUIterator, pcResiYuv);
+#else
           xLoadIntraResultQT(compID, TUIterator);
+#endif
           pcCU->setCbfPartRange( singleCbfC << uiTrDepth, compID, subTUAbsPartIdx, partIdxesPerSubTU );
 
           m_pcRDGoOnSbacCoder->load( m_pppcRDSbacCoder[ uiFullDepth ][ CI_TEMP_BEST ] );
@@ -3284,6 +3354,12 @@ TEncSearch::estIntraPredChromaQT(TComDataCU* pcCU,
 
         for( UInt uiMode = uiMinMode; uiMode < uiMaxMode; uiMode++ )
         {
+#if COM16_C806_LMCHROMA
+          if ( !pcCU->getSlice()->getSPS()->getUseLMChroma() && uiModeList[uiMode] == LM_CHROMA_IDX )
+          {
+            continue;
+          }
+#endif
           //----- restore context models -----
           m_pcRDGoOnSbacCoder->load( m_pppcRDSbacCoder[uiDepthCU][CI_CURR_BEST] );
           

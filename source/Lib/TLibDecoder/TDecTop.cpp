@@ -356,8 +356,11 @@ Void TDecTop::xActivateParameterSets()
 #endif
     m_cSAO.create( sps->getPicWidthInLumaSamples(), sps->getPicHeightInLumaSamples(), sps->getChromaFormatIdc(), sps->getMaxCUWidth(), sps->getMaxCUHeight(), sps->getMaxTotalCUDepth(), pps->getPpsRangeExtension().getLog2SaoOffsetScale(CHANNEL_TYPE_LUMA), pps->getPpsRangeExtension().getLog2SaoOffsetScale(CHANNEL_TYPE_CHROMA) );
     m_cLoopFilter.create( sps->getMaxTotalCUDepth() );
+#if COM16_C806_LMCHROMA
+    m_cPrediction.initTempBuff(sps->getChromaFormatIdc(), sps->getBitDepth(CHANNEL_TYPE_LUMA));
+#else
     m_cPrediction.initTempBuff(sps->getChromaFormatIdc());
-
+#endif
 
     Bool isField = false;
     Bool isTopField = false;

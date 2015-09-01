@@ -428,6 +428,9 @@ Void TAppEncTop::xInitLibCfg()
 #if VCEG_AZ07_INTRA_BOUNDARY_FILTER
   m_cTEncTop.setUseIntraBoundaryFilter                            ( m_useIntraBoundaryFilter );
 #endif
+#if COM16_C806_LMCHROMA
+  m_cTEncTop.setUseLMChroma                                       ( m_useLMChroma );
+#endif
 
   m_cTEncTop.setSummaryOutFilename                                ( m_summaryOutFilename );
   m_cTEncTop.setSummaryPicFilenameBase                            ( m_summaryPicFilenameBase );

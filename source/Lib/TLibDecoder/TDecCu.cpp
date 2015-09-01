@@ -621,7 +621,24 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
 
   //===== get prediction signal =====
 
-  m_pcPrediction->predIntraAng( compID,   uiChFinalMode, 0 /* Decoder does not have an original image */, 0, piPred, uiStride, rTu, bUseFilteredPredictions );
+#if COM16_C806_LMCHROMA
+  if( uiChFinalMode == LM_CHROMA_IDX )
+  {
+    m_pcPrediction->getLumaRecPixels( rTu, uiWidth, uiHeight );
+    m_pcPrediction->predLMIntraChroma( rTu, compID, piPred, uiStride, uiWidth, uiHeight );
+  }
+  else
+  {
+#endif  
+    m_pcPrediction->predIntraAng( compID,   uiChFinalMode, 0 /* Decoder does not have an original image */, 0, piPred, uiStride, rTu, bUseFilteredPredictions );
+
+#if COM16_C806_LMCHROMA
+    if( compID == COMPONENT_Cr && pcCU->getSlice()->getSPS()->getUseLMChroma() )
+    { 
+      m_pcPrediction->addCrossColorResi( rTu, compID, piPred, uiStride, uiWidth, uiHeight, pcResiYuv->getAddr( COMPONENT_Cb, uiAbsPartIdx ), pcResiYuv->getStride(COMPONENT_Cb) );
+    }
+  }
+#endif
 
 #if DEBUG_STRING
   ss << sTemp;

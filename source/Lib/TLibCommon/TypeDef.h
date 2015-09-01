@@ -89,6 +89,11 @@
 #define COM16_C806_TRANS_PREC                             2  ///< Integer transform matrix precision
 #endif
 
+#define COM16_C806_LMCHROMA                               1  ///< Cross component prediction: predict chroma from luma or Cr from Cb with linear model
+#if COM16_C806_LMCHROMA
+#define COM16_C806_CR_FROM_CB_LAMBDA_ADJUSTMENT           1
+
+#endif
 #define COM16_C806_LARGE_CTU                              1  ///< CTU size larger than 64x64, supporting up to 256x256 CTU size in the software,
 
 #define VCEG_AZ07_INTRA_4TAP_FILTER                       1 ///< Intra 4-tap interpolation filters

@@ -193,6 +193,10 @@ protected:
   Int       m_loopFilterTcOffsetDiv2;                       ///< tc offset for deblocking filter
   Bool      m_DeblockingFilterMetric;                         ///< blockiness metric in encoder
 
+#if COM16_C806_LMCHROMA
+  Bool      m_useLMChroma;                                    ///< JL: Cross component prediction, chroma from luma or Cr from Cb with linear model
+#endif
+
   // coding tools (PCM)
   Bool      m_usePCM;                                         ///< flag for using IPCM
   UInt      m_pcmLog2MaxSize;                                 ///< log2 of maximum PCM block size

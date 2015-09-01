@@ -1728,12 +1728,23 @@ Void TComDataCU::getAllowedChromaDir( UInt uiAbsPartIdx, UInt uiModeList[NUM_CHR
   uiModeList[1] = VER_IDX;
   uiModeList[2] = HOR_IDX;
   uiModeList[3] = DC_IDX;
+
+#if COM16_C806_LMCHROMA
+  uiModeList[4] = LM_CHROMA_IDX;
+  uiModeList[5] = DM_CHROMA_IDX;
+  assert(5<NUM_CHROMA_MODE);
+#else
   uiModeList[4] = DM_CHROMA_IDX;
   assert(4<NUM_CHROMA_MODE);
+#endif
 
   UInt uiLumaMode = getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx );
 
+#if COM16_C806_LMCHROMA
+  for( Int i = 0; i < NUM_CHROMA_MODE - 2; i++ )
+#else
   for( Int i = 0; i < NUM_CHROMA_MODE - 1; i++ )
+#endif
   {
     if( uiLumaMode == uiModeList[i] )
     {
@@ -1838,7 +1849,7 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
 #endif
                                       , Int* piMode  )
 {
-  TComDataCU* pcCULeft, *pcCUAbove;
+  TComDataCU* pcCULeft = NULL, *pcCUAbove = NULL;
   UInt        LeftPartIdx  = MAX_UINT;
   UInt        AbovePartIdx = MAX_UINT;
   Int         iLeftIntraDir, iAboveIntraDir;

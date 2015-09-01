@@ -199,7 +199,12 @@ static const Int VER_IDX =                          (3*(NUM_DIR-1)+2); ///< inde
 static const Int HOR_IDX =                          (1*(NUM_DIR-1)+2); ///< index for intra HORIZONTAL mode
 static const Int DIA_IDX =                          (2*(NUM_DIR-1)+2); ///< index for intra Diagonal mode
 static const Int VDIA_IDX =                         (4*(NUM_DIR-1)+2); ///< index for intra DC mode
+#if COM16_C806_LMCHROMA
+static const Int NUM_CHROMA_MODE =                                  6; ///< total number of chroma modes
+static const Int LM_CHROMA_IDX =                 (NUM_INTRA_MODE - 1); ///< chroma mode index for derived from LM mode
+#else
 static const Int NUM_CHROMA_MODE =                                  5; ///< total number of chroma modes
+#endif
 static const Int DM_CHROMA_IDX =                       NUM_INTRA_MODE; ///< chroma mode index for derived from luma intra mode
 #else
 static const Int NUM_INTRA_MODE =                                  36;
@@ -207,7 +212,12 @@ static const Int PLANAR_IDX =                                       0;
 static const Int VER_IDX =                                         26; ///< index for intra VERTICAL   mode
 static const Int HOR_IDX =                                         10; ///< index for intra HORIZONTAL mode
 static const Int DC_IDX =                                           1; ///< index for intra DC mode
+#if COM16_C806_LMCHROMA
+static const Int NUM_CHROMA_MODE =                                  6; ///< total number of chroma modes
+static const Int LM_CHROMA_IDX =                                   35; ///< chroma mode index for derived from LM mode
+#else
 static const Int NUM_CHROMA_MODE =                                  5; ///< total number of chroma modes
+#endif
 static const Int DM_CHROMA_IDX =                                   36; ///< chroma mode index for derived from luma intra mode
 #endif
 
@@ -243,6 +253,9 @@ static const Int MAX_QP_OFFSET_LIST_SIZE =                          6; ///< Maxi
 // Cost mode support
 static const Int LOSSLESS_AND_MIXED_LOSSLESS_RD_COST_TEST_QP =      0; ///< QP to use for lossless coding.
 static const Int LOSSLESS_AND_MIXED_LOSSLESS_RD_COST_TEST_QP_PRIME =4; ///< QP' to use for mixed_lossy_lossless coding.
+#if COM16_C806_LMCHROMA
+static const Int CR_FROM_CB_REG_COST_SHIFT =                        9;     
+#endif
 
 static const Int RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS =     4;
 static const Int RExt__GOLOMB_RICE_INCREMENT_DIVISOR =              4;

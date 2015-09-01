@@ -816,6 +816,9 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
 #if VCEG_AZ07_INTRA_BOUNDARY_FILTER
   READ_FLAG( uiCode, "intra_boundary_filter_enabled_flag" );      pcSPS->setUseIntraBoundaryFilter( uiCode );
 #endif
+#if COM16_C806_LMCHROMA
+  READ_FLAG( uiCode, "cross_component_prediction_enabled_flag" ); pcSPS->setUseLMChroma ( uiCode ? true : false );
+#endif
   // KTA tools
 
   READ_FLAG( uiCode, "sps_extension_present_flag");
