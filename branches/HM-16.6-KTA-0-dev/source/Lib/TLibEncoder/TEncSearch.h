@@ -88,6 +88,11 @@ private:
   UChar*          m_puhQTTempExplicitRdpcmMode[MAX_NUM_COMPONENT];
 #endif
   TComYuv         m_pcQTTempTransformSkipTComYuv;
+
+#if COM16_C806_LMCHROMA
+  TComYuv         m_pcQTTempResiTComYuv;
+#endif
+
 #if ADAPTIVE_QP_SELECTION
   TCoeff*         m_ppcQTTempTUArlCoeff[MAX_NUM_COMPONENT];
 #endif
@@ -352,8 +357,13 @@ protected:
 
   Void  xSetIntraResultChromaQT   ( TComYuv*    pcRecoYuv, TComTU &rTu);
 
+#if COM16_C806_LMCHROMA
+  Void  xStoreIntraResultQT       ( const ComponentID compID, TComTU &rTu, TComYuv* pcResiYuv = NULL);
+  Void  xLoadIntraResultQT        ( const ComponentID compID, TComTU &rTu, TComYuv* pcResiYuv = NULL);
+#else
   Void  xStoreIntraResultQT       ( const ComponentID compID, TComTU &rTu);
   Void  xLoadIntraResultQT        ( const ComponentID compID, TComTU &rTu);
+#endif
 
 
   // -------------------------------------------------------------------------------------------------------------------

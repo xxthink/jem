@@ -420,6 +420,9 @@ protected:
 #if VCEG_AZ07_INTRA_BOUNDARY_FILTER
   Bool      m_useIntraBoundaryFilter;
 #endif
+#if COM16_C806_LMCHROMA
+  Bool      m_useLMChroma;
+#endif
 
   std::string m_summaryOutFilename;                           ///< filename to use for producing summary output file.
   std::string m_summaryPicFilenameBase;                       ///< Base filename to use for producing summary picture output files. The actual filenames used will have I.txt, P.txt and B.txt appended.
@@ -588,6 +591,9 @@ public:
 
   //==== Tool list ========
   Void      setBitDepth( const ChannelType chType, Int internalBitDepthForChannel ) { m_bitDepth[chType] = internalBitDepthForChannel; }
+#if COM16_C806_LMCHROMA
+  Int       getBitDepth( const ChannelType chType)  { return m_bitDepth[chType]; }
+#endif
   Void      setUseASR                       ( Bool  b )     { m_bUseASR     = b; }
   Void      setUseHADME                     ( Bool  b )     { m_bUseHADME   = b; }
   Void      setUseRDOQ                      ( Bool  b )     { m_useRDOQ    = b; }
@@ -1047,6 +1053,10 @@ public:
 #if VCEG_AZ07_INTRA_BOUNDARY_FILTER
   Bool   getUseIntraBoundaryFilter ()                                { return m_useIntraBoundaryFilter;                 }
   Void   setUseIntraBoundaryFilter ( Bool bUseBoundaryFilter )       { m_useIntraBoundaryFilter = bUseBoundaryFilter;   }
+#endif
+#if COM16_C806_LMCHROMA
+  Bool getUseLMChroma ()                                             { return m_useLMChroma;        }
+  Void setUseLMChroma ( Bool b )                                     { m_useLMChroma  = b;       }
 #endif
 };
 

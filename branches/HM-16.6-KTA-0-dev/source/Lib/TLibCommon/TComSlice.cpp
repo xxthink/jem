@@ -1619,6 +1619,9 @@ TComSPS::TComSPS()
 #if ALF_HM3_REFACTOR
 , m_useALF                   (false)
 #endif
+#if COM16_C806_LMCHROMA
+, m_useLMChroma              (false)
+#endif
 , m_bPCMFilterDisableFlag     (false)
 , m_uiBitsForPOC              (  8)
 , m_numLongTermRefPicSPS      (  0)

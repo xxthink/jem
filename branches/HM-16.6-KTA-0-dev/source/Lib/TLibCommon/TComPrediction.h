@@ -99,6 +99,10 @@ protected:
   Pel*   m_pLumaRecBuffer;       ///< array for downsampled reconstructed luma sample
   Int    m_iLumaRecStride;       ///< stride of #m_pLumaRecBuffer array
 
+#if COM16_C806_LMCHROMA
+  UInt m_uiaLMShift[ 32 ];       // Table for multiplication to substitue of division operation
+#endif
+
 #if VCEG_AZ06_IC
   UInt   m_uiaICShift[ 64 ];     // Table for multiplication to substitue of division operation
   static const Int m_ICRegCostShift = 7;
@@ -205,7 +209,11 @@ public:
 #if COM16_C806_OBMC
   Void subBlockOBMC ( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv *pcYuvPred, TComYuv *pcYuvTmpPred1, TComYuv *pcYuvTmpPred2, Bool bOBMC4ME = false );
 #endif
+#if COM16_C806_LMCHROMA
+  Void    initTempBuff(ChromaFormat chromaFormatIDC, Int bitDepthY);
+#else
   Void    initTempBuff(ChromaFormat chromaFormatIDC);
+#endif
 
   ChromaFormat getChromaFormat() const { return m_cYuvPredTemp.getChromaFormat(); }
 
@@ -221,6 +229,14 @@ public:
 
   // Angular Intra
   Void predIntraAng               ( const ComponentID compID, UInt uiDirMode, Pel *piOrg /* Will be null for decoding */, UInt uiOrgStride, Pel* piPred, UInt uiStride, TComTU &rTu, const Bool bUseFilteredPredSamples, const Bool bUseLosslessDPCM = false );
+
+#if COM16_C806_LMCHROMA
+  Void predLMIntraChroma ( TComTU& rTu, ComponentID compID, Pel* pPred, UInt uiPredStride, UInt uiCWidth, UInt uiCHeight );
+  Void getLumaRecPixels  ( TComTU& rTu, UInt uiCWidth, UInt uiCHeight );
+  Void addCrossColorResi ( TComTU& rTu, ComponentID compID, Pel* piPred, UInt uiPredStride, UInt uiWidth, UInt uiHeight, Pel* piResi, UInt uiResiStride );
+  Void xGetLMParameters  ( TComTU& rTu,  ComponentID compID, UInt uiWidth, UInt uiHeight, Int iPredType, Int &a, Int &b, Int &iShift );
+  Void xCalcLMParameters ( Int x, Int y, Int xx, Int xy, Int iCountShift, Int iPredType, Int bitDepth, Int &a, Int &b, Int &iShift );
+#endif
 
   Pel  predIntraGetPredValDC      ( const Pel* pSrc, Int iSrcStride, UInt iWidth, UInt iHeight);
 

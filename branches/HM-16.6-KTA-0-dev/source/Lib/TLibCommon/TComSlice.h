@@ -845,7 +845,9 @@ private:
 #if VCEG_AZ07_INTRA_BOUNDARY_FILTER
   Bool             m_useIntraBoundaryFilter;
 #endif
-
+#if COM16_C806_LMCHROMA
+  Bool             m_useLMChroma;
+#endif
   // Parameter
   BitDepths        m_bitDepths;
   Int              m_qpBDOffset[MAX_NUM_CHANNEL_TYPE];
@@ -1066,6 +1068,10 @@ public:
 #if VCEG_AZ07_INTRA_BOUNDARY_FILTER
   Void                   setUseIntraBoundaryFilter(Bool b)                                               { m_useIntraBoundaryFilter = b;     }
   Bool                   getUseIntraBoundaryFilter() const                                               { return m_useIntraBoundaryFilter;  }
+#endif
+#if COM16_C806_LMCHROMA
+  Bool                   getUseLMChroma ()  const                                                        { return m_useLMChroma;        }
+  Void                   setUseLMChroma ( Bool b )                                                       { m_useLMChroma  = b;          }
 #endif
   // KTA tools
 

@@ -925,11 +925,31 @@ Void TDecSbac::parseIntraDirChroma( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt ui
   }
   else
   {
-    UInt uiIPredMode;
-    m_pcTDecBinIf->decodeBinsEP( uiIPredMode, 2 RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
-    UInt uiAllowedChromaDir[ NUM_CHROMA_MODE ];
-    pcCU->getAllowedChromaDir( uiAbsPartIdx, uiAllowedChromaDir );
-    uiSymbol = uiAllowedChromaDir[ uiIPredMode ];
+#if COM16_C806_LMCHROMA
+    if( pcCU->getSlice()->getSPS()->getUseLMChroma() )
+    {
+      m_pcTDecBinIf->decodeBin( uiSymbol, m_cCUChromaPredSCModel.get( 0, 0, 1 ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
+    }
+    else
+    {
+      uiSymbol = 1;
+    }
+
+    if( uiSymbol == 0 )
+    {
+      uiSymbol = LM_CHROMA_IDX;
+    } 
+    else
+    {
+#endif
+      UInt uiIPredMode;
+      m_pcTDecBinIf->decodeBinsEP( uiIPredMode, 2 RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
+      UInt uiAllowedChromaDir[ NUM_CHROMA_MODE ];
+      pcCU->getAllowedChromaDir( uiAbsPartIdx, uiAllowedChromaDir );
+      uiSymbol = uiAllowedChromaDir[ uiIPredMode ];
+#if COM16_C806_LMCHROMA
+    }
+#endif
   }
 
   pcCU->setIntraDirSubParts( CHANNEL_TYPE_CHROMA, uiSymbol, uiAbsPartIdx, uiDepth );

@@ -1124,6 +1124,9 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 #if VCEG_AZ07_INTRA_BOUNDARY_FILTER
   ("IntraBoundaryFilter",                             m_useIntraBoundaryFilter,  true, "Enable Intra boundary filter")
 #endif
+#if COM16_C806_LMCHROMA
+  ("LMChroma",                                        m_useLMChroma,            true, "Cross component prediction: predict chroma from luma or Cr from Cb with linear model")
+#endif
   ;
 
   for(Int i=1; i<MAX_GOP+1; i++)
@@ -1611,6 +1614,16 @@ Void TAppEncCfg::xCheckParameter()
   xConfirmPara(m_bitDepthConstraint<maxBitDepth, "The internalBitDepth must not be greater than the bitDepthConstraint value");
   xConfirmPara(m_chromaFormatConstraint<m_chromaFormatIDC, "The chroma format used must not be greater than the chromaFormatConstraint value");
 
+#if COM16_C806_LMCHROMA
+  if (m_chromaFormatIDC != CHROMA_420)
+  {
+    if (m_useLMChroma)
+    {
+      printf("LMChroma must be off for non-420 chroma format input\n");
+      m_useLMChroma = false;
+    }
+  }
+#endif
   if (m_profile==Profile::MAINREXT || m_profile==Profile::HIGHTHROUGHPUTREXT)
   {
     xConfirmPara(m_lowerBitRateConstraintFlag==false && m_intraConstraintFlag==false, "The lowerBitRateConstraint flag cannot be false when intraConstraintFlag is false");
@@ -2598,7 +2611,9 @@ Void TAppEncCfg::xPrintParameter()
 #if VCEG_AZ07_INTRA_65ANG_MODES
   printf( "ExtIntraAngularMode:1 " );
 #endif
-
+#if COM16_C806_LMCHROMA
+  printf("LMC:%d ", m_useLMChroma        );
+#endif
   printf("\n\n");
 
   fflush(stdout);

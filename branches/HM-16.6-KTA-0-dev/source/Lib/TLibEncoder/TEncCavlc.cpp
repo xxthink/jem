@@ -612,6 +612,9 @@ Void TEncCavlc::codeSPS( const TComSPS* pcSPS )
 #if VCEG_AZ07_INTRA_BOUNDARY_FILTER
   WRITE_FLAG( pcSPS->getUseIntraBoundaryFilter() ? 1 : 0, "intra_boundary_filter_enabled_flag" );
 #endif
+#if COM16_C806_LMCHROMA
+  WRITE_FLAG( pcSPS->getUseLMChroma () ? 1 : 0,                "cross_component_prediction_enabled_flag" );
+#endif
   // KTA tools
 
   Bool sps_extension_present_flag=false;

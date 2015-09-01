@@ -199,7 +199,11 @@ Void TComPrediction::destroy()
 #endif
 }
 
+#if COM16_C806_LMCHROMA
+Void TComPrediction::initTempBuff(ChromaFormat chromaFormatIDC, Int bitDepthY)
+#else
 Void TComPrediction::initTempBuff(ChromaFormat chromaFormatIDC)
+#endif
 {
   // if it has been initialised before, but the chroma format has changed, release the memory and start again.
   if( m_piYuvExt[COMPONENT_Y][PRED_BUF_UNFILTERED] != NULL && m_cYuvPredTemp.getChromaFormat()!=chromaFormatIDC)
@@ -252,6 +256,14 @@ Void TComPrediction::initTempBuff(ChromaFormat chromaFormatIDC)
       m_pLumaRecBuffer = new Pel[ m_iLumaRecStride * m_iLumaRecStride ];
     }
   }
+
+#if COM16_C806_LMCHROMA
+  Int shift = bitDepthY + 4;   
+  for( Int i = 32; i < 64; i++ )
+  {
+    m_uiaLMShift[i-32] = ( ( 1 << shift ) + i/2 ) / i;
+  }
+#endif
 
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
   m_puiW = new UInt[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
@@ -3064,4 +3076,442 @@ UInt TComPrediction::xFrucGetMvCost( const TComMv & rMvStart , const TComMv & rM
 }
 
 #endif
+
+#if COM16_C806_LMCHROMA
+
+Int   isAboveAvailable      ( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxRT, Bool* bValidFlags ); // ??? to be updated
+Int   isLeftAvailable       ( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxLB, Bool* bValidFlags ); 
+
+/** Function for deriving chroma LM intra prediction.
+ * \param pcPattern pointer to neighbouring pixel access pattern
+ * \param piSrc pointer to reconstructed chroma sample array
+ * \param pPred pointer for the prediction sample array
+ * \param uiPredStride the stride of the prediction sample array
+ * \param uiCWidth the width of the chroma block
+ * \param uiCHeight the height of the chroma block
+ *
+ * This function derives the prediction samples for chroma LM mode (chroma intra coding)
+ */
+Void TComPrediction::predLMIntraChroma( TComTU& rTu, const ComponentID compID, Pel* pPred, UInt uiPredStride, UInt uiCWidth, UInt uiCHeight )
+{
+  // LLS parameters estimation -->
+  Int a, b, iShift;
+  xGetLMParameters( rTu, compID, uiCWidth, uiCHeight, 0, a, b, iShift );
+
+  // get prediction -->
+  Int  iLumaStride = m_iLumaRecStride;
+  Pel  *pLuma = m_pLumaRecBuffer + iLumaStride + 1;
+
+  const TComSPS &sps = *(rTu.getCU()->getSlice()->getSPS());
+  Int maxV = (1 << sps.getBitDepth(CHANNEL_TYPE_CHROMA)) - 1;
+
+  for( Int i = 0; i < uiCHeight; i++ )
+  {
+    for( Int j = 0; j < uiCWidth; j++ )
+    {
+      pPred[j] = Clip3(0, maxV, ( ( a * pLuma[j] ) >> iShift ) + b );
+    }
+
+    pPred += uiPredStride;
+    pLuma += iLumaStride;
+  }
+  // <-- end of get prediction
+}
+
+/** Function for deriving downsampled luma sample of current chroma block and its above, left causal pixel
+ * \param pcPattern pointer to neighbouring pixel access pattern
+ * \param uiCWidth the width of the chroma block
+ * \param uiCHeight the height of the chroma block
+ * \param bLeftPicBoundary indication of the chroma block located on the left picture boundary
+ *
+ * This function derives downsampled luma sample of current chroma block and its above, left causal pixel
+ */
+Void TComPrediction::getLumaRecPixels( TComTU& rTu, UInt uiCWidth, UInt uiCHeight )
+{
+  Pel* pDst0 = m_pLumaRecBuffer + m_iLumaRecStride + 1;
+  Int iDstStride = m_iLumaRecStride;
+
+  TComDataCU *pcCU=rTu.getCU();
+  const UInt uiZorderIdxInPart=rTu.GetAbsPartIdxTU();
+  Pel *pRecSrc0 = pcCU->getPic()->getPicYuvRec()->getAddr(COMPONENT_Y, pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu()+uiZorderIdxInPart);
+  Int iRecStride = pcCU->getPic()->getPicYuvRec()->getStride(COMPONENT_Y);;
+
+  Int iRecStride2 = iRecStride << 1;
+
+  Pel* pDst;  
+  Pel* piSrc;
+
+  const TComSPS &sps = *(pcCU->getSlice()->getSPS());
+  const UInt uiTuWidth        = rTu.getRect(COMPONENT_Y).width;
+  const UInt uiTuHeight       = rTu.getRect(COMPONENT_Y).height;
+  const Int  iBaseUnitSize    = sps.getMaxCUWidth() >> sps.getMaxTotalCUDepth();
+  const Int  iUnitWidth       = iBaseUnitSize;
+  const Int  iUnitHeight      = iBaseUnitSize;
+  const Int  iTUWidthInUnits  = uiTuWidth  / iUnitWidth;
+  const Int  iTUHeightInUnits = uiTuHeight / iUnitHeight;
+
+  const Int  iPartIdxStride   = pcCU->getPic()->getNumPartInCtuWidth();
+  const UInt uiPartIdxLT      = pcCU->getZorderIdxInCtu() + uiZorderIdxInPart;
+  const UInt uiPartIdxRT      = g_auiRasterToZscan[ g_auiZscanToRaster[ uiPartIdxLT ] +   iTUWidthInUnits  - 1                   ];
+  const UInt uiPartIdxLB      = g_auiRasterToZscan[ g_auiZscanToRaster[ uiPartIdxLT ] + ((iTUHeightInUnits - 1) * iPartIdxStride)];
+  
+  Bool tempbuf[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*4+1];
+  Int availlableUnit = isLeftAvailable ( pcCU, uiPartIdxLT, uiPartIdxLB, tempbuf+MAX_NUM_PART_IDXS_IN_CTU_WIDTH);
+  Bool bLeftAvaillable = availlableUnit == iTUWidthInUnits ? true : false; 
+  availlableUnit = isAboveAvailable( pcCU, uiPartIdxLT, uiPartIdxRT, tempbuf+MAX_NUM_PART_IDXS_IN_CTU_WIDTH);
+  Bool bAboveAvaillable = availlableUnit == iTUHeightInUnits ? true : false; 
+
+  if (bAboveAvaillable)
+  {
+    pDst = pDst0 - iDstStride;  
+    piSrc = pRecSrc0 - iRecStride2;
+
+    for (Int i = 0; i < uiCWidth; i++)
+    {
+      if(i == 0 && !bLeftAvaillable)
+      {
+        pDst[i] = ( piSrc[2*i] + piSrc[2*i + iRecStride] + 1) >> 1;
+      }
+      else
+      {
+         pDst[i] = ( ((piSrc[2*i]              * 2 ) + piSrc[2*i - 1]              + piSrc[2*i + 1]             )
+        + ((piSrc[2*i + iRecStride] * 2 ) + piSrc[2*i - 1 + iRecStride] + piSrc[2*i + 1 + iRecStride])
+        + 4) >> 3;
+      }
+    }
+  }
+
+  if (bLeftAvaillable)
+  {
+    pDst = pDst0 - 1;  
+    piSrc = pRecSrc0 - 3;
+    for (Int j = 0; j < uiCHeight; j++)
+    {
+      pDst[0] = (  (piSrc[1]              *2 + piSrc[0]          + piSrc[2]             ) 
+        + (piSrc[1 + iRecStride] *2 + piSrc[iRecStride] + piSrc[2 + iRecStride])
+        + 4) >> 3;
+      piSrc += iRecStride2; 
+      pDst += iDstStride;    
+    }
+  }
+
+  // inner part from reconstructed picture buffer
+  for( Int j = 0; j < uiCHeight; j++ )
+  {
+    for (Int i = 0; i < uiCWidth; i++)
+    {
+      if(i==0 && !bLeftAvaillable)
+      {
+        pDst0[i] = ( pRecSrc0[2*i] + pRecSrc0[2*i + iRecStride] + 1) >> 1;
+      }
+      else
+      {
+        pDst0[i] = ( pRecSrc0[2*i]              * 2 + pRecSrc0[2*i + 1]                 + pRecSrc0[2*i -1 ] 
+        + pRecSrc0[2*i + iRecStride]* 2 + pRecSrc0[2*i + 1 + iRecStride] + pRecSrc0[2*i -1 + iRecStride]
+        + 4) >> 3;
+      }
+    }
+    pDst0 += iDstStride;
+    pRecSrc0 += iRecStride2;
+  }
+}
+
+/** Function for deriving LM parameter for predciton of Cr from Cb.
+ * \param pcPattern pointer to neighbouring pixel access pattern
+ * \param uiWidth the width of the chroma block
+ * \param uiHeight the height of the chroma block
+ * \param a the weight of the linear prediction model
+ * \param b the offset of the linear prediction model
+ * \param iShift the shifting bits of of the linear prediction model
+ *
+ * This function derives the parameters of linear prediction model
+ */
+Void TComPrediction::addCrossColorResi( TComTU& rTu, const ComponentID compID, Pel* piPred, UInt uiPredStride, UInt uiWidth, UInt uiHeight, Pel* piResi, UInt uiResiStride )
+{
+  Int a, b, iShift;
+
+  xGetLMParameters( rTu, compID, uiWidth, uiHeight, 1, a, b, iShift );
+
+  Int offset = 1 << (iShift - 1);
+
+  if (a >= 0)
+  {
+    return;
+  }
+
+  const TComSPS &sps = *(rTu.getCU()->getSlice()->getSPS());
+  Int maxV = (1 << sps.getBitDepth(CHANNEL_TYPE_CHROMA)) - 1;
+
+  Pel*  pPred   = piPred;
+  Pel*  pResi   = piResi;
+
+  for( UInt uiY = 0; uiY < uiHeight; uiY++ )
+  {
+    for( UInt uiX = 0; uiX < uiWidth; uiX++ )
+    {
+      pPred[ uiX ] = Clip3(0, maxV, pPred[ uiX ] + (( pResi[ uiX ] * a + offset) >> iShift  ) );
+    }
+    pPred += uiPredStride;
+    pResi += uiResiStride;
+  }
+}
+
+/** Function for deriving the positon of first non-zero binary bit of a value
+ * \param x input value
+ *
+ * This function derives the positon of first non-zero binary bit of a value
+ */
+Int GetFloorLog2( UInt x )
+{
+  int bits = -1;
+  while( x > 0 )
+  {
+    bits ++;
+    x >>= 1;
+  }
+  return bits;
+}
+
+/** Function for deriving the parameters of linear prediction model.
+ * \param x, y, xx, yy sum of reference samples of source component, target component, square of source component and multiplication of source component and target component
+ * \param iCountShift, count of reference samples
+ * \param iPredType indication of the cross-componennt preidciton type, 0: chroma from luma, 1: Cr from Cb
+ * \param a the weight of the linear prediction model
+ * \param b the offset of the linear prediction model
+ * \param iShift the shifting bits of of the linear prediction model
+ *
+ * This function derives the parameters of linear prediction model
+ */
+
+Void TComPrediction::xCalcLMParameters( Int x, Int y, Int xx, Int xy, Int iCountShift, Int iPredType, Int bitDepth, Int &a, Int &b, Int &iShift )
+{
+  Int avgX =  x  >> iCountShift;
+  Int avgY =  y  >> iCountShift;
+
+  Int RErrX = x & ( ( 1 << iCountShift ) - 1 );
+  Int RErrY =  y & ( ( 1 << iCountShift ) - 1 );
+
+  Int iB = 7;
+  iShift = 13 - iB;
+
+  UInt uiInternalBitDepth = bitDepth; // need consider different bit depth later ????????????
+
+  if( iCountShift == 0 )
+  {
+    a = 0;
+    b = 1 << (uiInternalBitDepth - 1);
+    iShift = 0;
+  }
+  else
+  {
+    Int a1 = xy - ( avgX*avgY << iCountShift ) - avgX*RErrY - avgY*RErrX;
+    Int a2 = xx - ( avgX*avgX << iCountShift ) - 2*avgX*RErrX ;
+
+    if ( iPredType == 1) // Cr residual predicted from Cb residual, Cr from Cb
+    {
+      a1 += -1*( xx >> (CR_FROM_CB_REG_COST_SHIFT + 1 ));
+      a2 += xx >> CR_FROM_CB_REG_COST_SHIFT;
+    }
+
+    const Int iShiftA1 = uiInternalBitDepth - 2;
+    const Int iShiftA2 = 5;
+    const Int iAccuracyShift = uiInternalBitDepth + 4;
+
+    Int iScaleShiftA2 = 0;
+    Int iScaleShiftA1 = 0;
+    Int a1s = a1;
+    Int a2s = a2;
+
+    iScaleShiftA1 = a1 == 0 ? 0 : GetFloorLog2( abs( a1 ) ) - iShiftA1;
+    iScaleShiftA2 = a2 == 0 ? 0 : GetFloorLog2( abs( a2 ) ) - iShiftA2;
+
+    if( iScaleShiftA1 < 0 )
+    {
+      iScaleShiftA1 = 0;
+    }
+    
+    if( iScaleShiftA2 < 0 )
+    {
+      iScaleShiftA2 = 0;
+    }
+
+    Int iScaleShiftA = iScaleShiftA2 + iAccuracyShift - iShift - iScaleShiftA1;
+
+    a2s = a2 >> iScaleShiftA2;
+
+    a1s = a1 >> iScaleShiftA1;
+
+    if (a2s >= 32)
+    {
+      UInt a2t = m_uiaLMShift[ a2s - 32 ] ;
+     // a2t = ClipC( a2t );  //???????????? to be updated
+      a = a1s * a2t;
+    }
+    else
+    {
+      a = 0;
+    }
+    
+    if( iScaleShiftA < 0 )
+    {
+      a = a << -iScaleShiftA;
+    }
+    else
+    {
+      a = a >> iScaleShiftA;
+    }
+    a = Clip3(-( 1 << (15-iB) ), ( 1 << (15-iB )) - 1, a);
+    a = a << iB;
+   
+    Short n = 0;
+    if (a != 0)
+    {
+      n = GetFloorLog2(abs( a ) + ( (a < 0 ? -1 : 1) - 1)/2 ) - 5;
+    }
+    
+    iShift =(iShift+iB)-n;
+    a = a>>n;
+
+    b =  avgY - ( (  a * avgX ) >> iShift );
+  }   
+
+}
+/** Function for deriving LM parameter for predciton of Cr from Cb.
+ * \param pcPattern pointer to neighbouring pixel access pattern
+ * \param uiWidth the width of the chroma block
+ * \param uiHeight the height of the chroma block
+ * \param a the weight of the linear prediction model
+ * \param b the offset of the linear prediction model
+ * \param iShift the shifting bits of of the linear prediction model
+ *
+ * This function derives the parameters of linear prediction model
+ */
+Void TComPrediction::xGetLMParameters( TComTU& rTu, const ComponentID compID, UInt uiWidth, UInt uiHeight, Int iPredType, Int &a, Int &b, Int &iShift )
+{
+  Pel *pSrcColor0, *pCurChroma0; 
+  Int iSrcStride, iCurStride;
+
+  TComDataCU *pcCU=rTu.getCU();
+  const TComSPS &sps = *(pcCU->getSlice()->getSPS());
+  const UInt uiZorderIdxInPart=rTu.GetAbsPartIdxTU();
+  const UInt uiTuWidth        = rTu.getRect(compID).width;
+  const UInt uiTuHeight       = rTu.getRect(compID).height;
+  const Int  iBaseUnitSize    = sps.getMaxCUWidth() >> sps.getMaxTotalCUDepth();
+  const Int  iUnitWidth       = iBaseUnitSize  >> pcCU->getPic()->getPicYuvRec()->getComponentScaleX(compID);
+  const Int  iUnitHeight      = iBaseUnitSize  >> pcCU->getPic()->getPicYuvRec()->getComponentScaleY(compID);
+  const Int  iTUWidthInUnits  = uiTuWidth  / iUnitWidth;
+  const Int  iTUHeightInUnits = uiTuHeight / iUnitHeight;
+
+  const Int  iPartIdxStride   = pcCU->getPic()->getNumPartInCtuWidth();
+  const UInt uiPartIdxLT      = pcCU->getZorderIdxInCtu() + uiZorderIdxInPart;
+  const UInt uiPartIdxRT      = g_auiRasterToZscan[ g_auiZscanToRaster[ uiPartIdxLT ] +   iTUWidthInUnits  - 1                   ];
+  const UInt uiPartIdxLB      = g_auiRasterToZscan[ g_auiZscanToRaster[ uiPartIdxLT ] + ((iTUHeightInUnits - 1) * iPartIdxStride)];
+
+  Bool tempbuf[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*4+1];
+  Int availlableUnit = isLeftAvailable ( pcCU, uiPartIdxLT, uiPartIdxLB, tempbuf+MAX_NUM_PART_IDXS_IN_CTU_WIDTH);
+  Bool bLeftAvaillable = availlableUnit == iTUWidthInUnits ? true : false; 
+  availlableUnit = isAboveAvailable( pcCU, uiPartIdxLT, uiPartIdxRT, tempbuf+MAX_NUM_PART_IDXS_IN_CTU_WIDTH);
+  Bool bAboveAvaillable = availlableUnit == iTUHeightInUnits ? true : false; 
+
+  if (iPredType == 0) //chroma from luma
+  {
+    iSrcStride = m_iLumaRecStride;
+    pSrcColor0 = m_pLumaRecBuffer + iSrcStride + 1;
+
+    pCurChroma0  = m_piYuvExt[compID][PRED_BUF_UNFILTERED];
+    iCurStride   = 2 * uiWidth+ 1;
+    pCurChroma0 += iCurStride + 1;
+  }
+  else
+  {
+    assert (compID == COMPONENT_Cr);
+
+//    pSrcColor0   = pcPattern->getAdiCbBuf( uiWidth, uiHeight, getPredicBuf() );
+    pSrcColor0   = m_piYuvExt[COMPONENT_Cb][PRED_BUF_UNFILTERED];
+    pCurChroma0  = m_piYuvExt[COMPONENT_Cr][PRED_BUF_UNFILTERED];
+//    pCurChroma0  = pcPattern->getAdiCrBuf( uiWidth, uiHeight, getPredicBuf() ); 
+
+    iSrcStride = 2 * uiWidth+ 1;
+    iCurStride = 2 * uiWidth+ 1;
+
+    pSrcColor0  += iSrcStride + 1;
+    pCurChroma0 += iCurStride + 1;
+  }
+
+  Int x = 0, y = 0, xx = 0, xy = 0;
+  Int i, j;
+  Int iCountShift = 0;
+  UInt uiInternalBitDepth = sps.getBitDepth(CHANNEL_TYPE_CHROMA); 
+
+  Pel *pSrc = pSrcColor0 - iSrcStride;
+  Pel *pCur = pCurChroma0 - iCurStride;
+
+  if (bAboveAvaillable)
+  {
+    for( j = 0; j < uiWidth; j++ )
+    {
+      x += pSrc[j];
+      y += pCur[j];
+      xx += pSrc[j] * pSrc[j];
+      xy += pSrc[j] * pCur[j];
+    }
+  }
+
+  if (bLeftAvaillable)
+  {
+    pSrc  = pSrcColor0 - 1;
+    pCur = pCurChroma0 - 1;
+
+    for( i = 0; i < uiHeight; i++ )
+    {
+      x += pSrc[0];
+      y += pCur[0];
+      xx += pSrc[0] * pSrc[0];
+      xy += pSrc[0] * pCur[0];
+
+      pSrc += iSrcStride;
+      pCur += iCurStride;
+    }
+  }
+  
+  if (bLeftAvaillable && bAboveAvaillable)
+  {
+    iCountShift = g_aucConvertToBit[ uiWidth ] + 3;
+  }
+  else if (bLeftAvaillable || bAboveAvaillable)
+  {
+    iCountShift = g_aucConvertToBit[ uiWidth ] + 2;
+  }
+  else
+  {
+     a = 0;
+     if (iPredType == 0)
+     {
+        b = 1 << (uiInternalBitDepth - 1);
+     }
+     else
+     {  
+       b = 0;
+     }
+     iShift = 0;
+     return;
+  }
+
+  Int iTempShift = uiInternalBitDepth + iCountShift - 15;
+
+  if( iTempShift > 0 )
+  {
+    x  = ( x +  ( 1 << ( iTempShift - 1 ) ) ) >> iTempShift;
+    y  = ( y +  ( 1 << ( iTempShift - 1 ) ) ) >> iTempShift;
+    xx = ( xx + ( 1 << ( iTempShift - 1 ) ) ) >> iTempShift;
+    xy = ( xy + ( 1 << ( iTempShift - 1 ) ) ) >> iTempShift;
+    iCountShift -= iTempShift;
+  }
+
+  // LLS parameters estimation -->
+  xCalcLMParameters( x, y, xx, xy, iCountShift, iPredType, uiInternalBitDepth, a, b, iShift );
+}
+
+#endif
+
 //! \}
