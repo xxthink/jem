@@ -455,7 +455,11 @@ Void TDecTop::xParsePrefixSEImessages()
 }
 
 
-Bool TDecTop::xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisplay )
+Bool TDecTop::xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisplay
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+                         , TComStats*  m_apcStats
+#endif
+  )
 {
   m_apcSlicePilot->initSlice(); // the slice pilot is an object to prepare for a new slice
                                 // it is not associated with picture, sps or pps structures.
@@ -485,6 +489,9 @@ Bool TDecTop::xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisp
 #endif
 
   m_cEntropyDecoder.decodeSliceHeader (m_apcSlicePilot, &m_parameterSetManager, m_prevTid0POC);
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+  m_cEntropyDecoder.decodeCtxUpdateInfo ( m_apcSlicePilot, m_apcStats ) ;    
+#endif
 
   // set POC for dependent slices in skipped pictures
   if(m_apcSlicePilot->getDependentSliceSegmentFlag() && m_prevSliceSkipped)
@@ -716,7 +723,11 @@ Bool TDecTop::xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisp
 #endif
 
   //  Decode a picture
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+  m_cGopDecoder.decompressSlice(&(nalu.getBitstream()), m_pcPic, m_apcStats);
+#else
   m_cGopDecoder.decompressSlice(&(nalu.getBitstream()), m_pcPic);
+#endif
 
   m_bFirstSliceInPicture = false;
   m_uiSliceIdx++;
@@ -749,7 +760,11 @@ Void TDecTop::xDecodePPS(const std::vector<UChar> &naluData)
   m_parameterSetManager.storePPS( pps, naluData);
 }
 
-Bool TDecTop::decode(InputNALUnit& nalu, Int& iSkipFrame, Int& iPOCLastDisplay)
+Bool TDecTop::decode(InputNALUnit& nalu, Int& iSkipFrame, Int& iPOCLastDisplay
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+                   , TComStats*  m_apcStats
+#endif
+  )
 {
   // ignore all NAL units of layers > 0
   if (nalu.m_nuhLayerId > 0)
@@ -807,7 +822,11 @@ Bool TDecTop::decode(InputNALUnit& nalu, Int& iSkipFrame, Int& iPOCLastDisplay)
     case NAL_UNIT_CODED_SLICE_RADL_R:
     case NAL_UNIT_CODED_SLICE_RASL_N:
     case NAL_UNIT_CODED_SLICE_RASL_R:
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+      return xDecodeSlice(nalu, iSkipFrame, iPOCLastDisplay, m_apcStats);
+#else
       return xDecodeSlice(nalu, iSkipFrame, iPOCLastDisplay);
+#endif
       break;
 
     case NAL_UNIT_EOS:

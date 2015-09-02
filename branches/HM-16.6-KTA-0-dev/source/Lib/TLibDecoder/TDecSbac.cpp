@@ -101,11 +101,11 @@ TDecSbac::TDecSbac()
 , m_cCrossComponentPredictionSCModel         ( 1,             1,                      NUM_CROSS_COMPONENT_PREDICTION_CTX   , m_contextModels + m_numContextModels, m_numContextModels)
 , m_ChromaQpAdjFlagSCModel                   ( 1,             1,                      NUM_CHROMA_QP_ADJ_FLAG_CTX           , m_contextModels + m_numContextModels, m_numContextModels)
 , m_ChromaQpAdjIdcSCModel                    ( 1,             1,                      NUM_CHROMA_QP_ADJ_IDC_CTX            , m_contextModels + m_numContextModels, m_numContextModels)
-#if VCEG_AZ07_IMV
-, m_cCUiMVFlagSCModel                        ( 1,             1,                      NUM_IMV_FLAG_CTX                     , m_contextModels + m_numContextModels, m_numContextModels)
-#endif
 #if COM16_C806_OBMC
 , m_cCUOBMCFlagSCModel                       ( 1,             1,                      NUM_OBMC_FLAG_CTX                    , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
+#if VCEG_AZ07_IMV 
+, m_cCUiMVFlagSCModel                        ( 1,             1,                      NUM_IMV_FLAG_CTX                     , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
 #if VCEG_AZ06_IC
 , m_cCUICFlagSCModel                         ( 1,             1,                      NUM_IC_FLAG_CTX                      , m_contextModels + m_numContextModels, m_numContextModels)
@@ -131,6 +131,20 @@ TDecSbac::~TDecSbac()
 // ====================================================================================================================
 // Public member functions
 // ====================================================================================================================
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+Void TDecSbac::xUpdateWindowSize (SliceType eSliceType, Int uiQPIdx, TComStats* apcStats)
+{
+  if( uiQPIdx == -1 )
+  {
+    return;
+  }
+  Int iCtxNr = getCtxNumber();
+  for(UInt i=0; i< iCtxNr; i++)
+  {
+    m_contextModels[i].setWindowSize(apcStats->m_uiCtxCodeIdx[eSliceType][uiQPIdx][i]);
+  }
+}
+#endif
 
 Void TDecSbac::resetEntropy(TComSlice* pSlice)
 {
@@ -216,6 +230,9 @@ Void TDecSbac::resetEntropy(TComSlice* pSlice)
   }
 
   m_pcTDecBinIf->start();
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+  xUpdateWindowSize (pSlice->getSliceType(), pSlice->getCtxMapQPIdx(), pSlice->getStatsHandle()); 
+#endif
 }
 
 Void TDecSbac::parseTerminatingBit( UInt& ruiBit )

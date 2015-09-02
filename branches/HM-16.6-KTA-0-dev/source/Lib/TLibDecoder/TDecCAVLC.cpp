@@ -1534,10 +1534,12 @@ Void TDecCavlc::parseSliceHeader (TComSlice* pcSlice, ParameterSetManager *param
       READ_CODE(8,ignore,"slice_segment_header_extension_data_byte");
     }
   }
+#if !VCEG_AZ07_BAC_ADAPT_WDOW
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
   TComCodingStatistics::IncrementStatisticEP(STATS__BYTE_ALIGNMENT_BITS,m_pcBitstream->readByteAlignment(),0);
 #else
   m_pcBitstream->readByteAlignment();
+#endif
 #endif
 
   pcSlice->clearSubstreamSizes();
@@ -2127,6 +2129,91 @@ Void TDecCavlc::parseExplicitRdpcmMode( TComTU& /*rTu*/, ComponentID /*compID*/ 
 {
   assert(0);
 }
+
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+Void TDecCavlc::xRunDecoding ( Bool * uiCtxMAP,  UInt uiNumCtx )
+{
+  UInt uiRun = 0, uiIndex = 0;
+  while (uiIndex < uiNumCtx)
+  {
+    READ_UVLC (uiRun, "CtxUpdateMap");
+    uiIndex += uiRun;
+    if (uiIndex >= uiNumCtx)
+    {
+      break;
+    }
+    uiCtxMAP[uiIndex]=1;
+    uiIndex++;
+  }
+}
+Void TDecCavlc::xLevelDecoding( Bool * uiCtxMAP, UChar *uiCtxCodeIdx, UInt uiNumCtx)
+{
+  Int i;
+  UInt uiIdx;
+  for (i = 0; i< uiNumCtx; i++)
+  {
+    if (uiCtxMAP[i])
+    {
+      READ_UVLC(uiIdx, "wind diff");
+#if (ALPHA0!=6)
+      uiCtxCodeIdx[i] = (UChar)((uiIdx+4 >=ALPHA0) ? (uiIdx+5): (uiIdx+4));
+#else
+      uiCtxCodeIdx[i] = (UChar)(uiIdx ==2 ? (uiIdx+5):(uiIdx+4));
+#endif
+    }
+    else
+    {
+      assert(uiCtxCodeIdx[i] == ALPHA0);
+    }
+  }
+}
+Void TDecCavlc:: parseCtxUpdateInfo (TComSlice*& rpcSlice, TComStats* apcStats )  
+{
+  UInt uiUpdate = 0;
+  READ_FLAG( uiUpdate, "cabac_newWindow_flag" ); 
+
+  if (uiUpdate == 0)
+  {
+    rpcSlice->setCtxMapQPIdx(-1);
+    m_pcBitstream->readByteAlignment();
+    return;
+  }
+
+  UInt bReuse = 0;
+  READ_FLAG( bReuse, "cabac_reusePrevFrame_flag" ); 
+
+  //start for verifications
+  Int  iQP = -1;
+
+  UInt uiSliceType = rpcSlice->getSliceType();
+  UInt uiSliceQP   = rpcSlice->getSliceQp()  ;
+
+  for (UInt k = 0; k < NUM_QP_PROB; k++)
+  {
+    if (apcStats-> aaQPUsed[uiSliceType][k].used ==true && apcStats-> aaQPUsed[uiSliceType][k].QP == uiSliceQP)
+    {
+      iQP  = k;   
+      break;
+    }
+  } 
+
+  rpcSlice->setCtxMapQPIdx(iQP);
+  apcStats->m_uiNumCtx[uiSliceType][iQP] = NUM_CTX_PBSLICE;
+
+  if(!bReuse)
+  {
+    for (int i =0; i<MAX_NUM_CTX_MOD;i++)
+    {
+      apcStats->m_uiCtxMAP[uiSliceType][iQP][i] = 0;
+      apcStats->m_uiCtxCodeIdx[uiSliceType][iQP][i] = ALPHA0; 
+    }
+    xRunDecoding   (apcStats->m_uiCtxMAP[uiSliceType][iQP], apcStats->m_uiNumCtx[uiSliceType][iQP]);
+    xLevelDecoding (apcStats->m_uiCtxMAP[uiSliceType][iQP], apcStats->m_uiCtxCodeIdx[uiSliceType][iQP], apcStats->m_uiNumCtx[uiSliceType][iQP]);
+  }
+  m_pcBitstream->readByteAlignment();
+  return;
+}
+#endif
 
 #if ALF_HM3_REFACTOR
 Void TDecCavlc::xReadUnaryMaxSymbol( UInt& ruiSymbol, UInt uiMaxSymbol )

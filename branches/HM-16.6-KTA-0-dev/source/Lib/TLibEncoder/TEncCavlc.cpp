@@ -1704,4 +1704,65 @@ Void TEncCavlc::codeEmtCuFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
 }
 #endif
 
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+Void TEncCavlc::xRunCoding(Bool * uiCtxMAP, UInt uiNumCtx)
+{
+  UInt uiRun = 0,   uiTotal = uiNumCtx, uiRunMode=1;
+  Int iIndex =  0;
+
+  while (iIndex < uiTotal)
+  {
+    while (uiRunMode)
+    {
+      if (uiCtxMAP[iIndex] == false)
+        uiRun++;
+      else if (uiCtxMAP[iIndex] == true)
+      {
+        uiRunMode = 0;
+        iIndex++;
+        break;
+      }
+      if (iIndex == uiTotal-1)
+        uiRunMode = 0;
+
+      iIndex++;
+    }
+    WRITE_UVLC(uiRun, "CtxUpdateMap");
+    uiRun = 0;
+    uiRunMode = 1;
+  }
+}
+Void TEncCavlc::xCtxCodewordCoding(Bool * uiCtxMAP, UChar * uiCtxCodeIdx, UInt uiNumCtx)
+{
+   Int i;
+   for (i = 0; i <uiNumCtx; i++ )
+   {
+     if (uiCtxMAP[i])
+     {
+       WRITE_UVLC ( (UInt) ((uiCtxCodeIdx[i]-4)>2?2:(uiCtxCodeIdx[i]-4)), "wind diff");
+     }
+   }
+}
+Void TEncCavlc:: codeCtxUpdateInfo           (TComSlice* pcSlice,  TComStats* apcStats)
+ {
+   Int  iQP = pcSlice->getCtxMapQPIdx();
+   Int uiSliceType = pcSlice->getSliceType();
+   if (iQP == -1 || apcStats->m_uiNumCtx[uiSliceType][iQP] == 0 )
+   {
+     WRITE_FLAG( 0, "cabac_newWindow_flag" );
+     return;
+   }
+
+   WRITE_FLAG( 1, "cabac_newWindow_flag" ); 
+   UInt bReuse = (apcStats-> aaQPUsed[uiSliceType][iQP].firstUsed==false)?1:0;
+   WRITE_FLAG( bReuse, "cabac_reusePrevFrame_flag" );
+
+   if(!bReuse)
+   {
+     xRunCoding( apcStats->m_uiCtxMAP[uiSliceType][iQP], NUM_CTX_PBSLICE);
+     xCtxCodewordCoding(apcStats->m_uiCtxMAP[uiSliceType][iQP], apcStats->m_uiCtxCodeIdx[uiSliceType][iQP],NUM_CTX_PBSLICE);
+   }
+}
+#endif
+
 //! \}

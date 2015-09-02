@@ -103,9 +103,11 @@
 #endif
 
 #define VCEG_AZ07_INTRA_65ANG_MODES                       1 ///< Extended angular intra prediction, including 65 angular modes & 6 MPMs
-#define VCEG_AZ07_ECABAC                                  1 /// CABAC improvements
+
+#define VCEG_AZ07_ECABAC                                  1  /// CABAC improvements
 #if VCEG_AZ07_ECABAC
-#define VCEG_AZ07_CTX_RESIDUALCODING                      1 /// new ctx for residual coding
+#define VCEG_AZ07_CTX_RESIDUALCODING                      1  /// new ctx for residual coding
+#define VCEG_AZ07_BAC_ADAPT_WDOW                          1
 #endif
 
 #define COM16_C806_SIMD_OPT                               1  ///< SIMD optimization, no impact on RD performance
@@ -890,6 +892,14 @@ struct TComSEIMasteringDisplay
   UShort    whitePoint[2];
 };
 
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+typedef struct _QPFLAG
+{
+  UInt      QP;       
+  Bool      used;      //same QP, same type has appearaed
+  Bool      firstUsed; //same QP, same type was firstly signaled
+} QPFlag;
+#endif
 //! \}
 
 #endif

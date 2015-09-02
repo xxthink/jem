@@ -168,13 +168,21 @@ public:
                TComPicYuv* pcPicYuvOrg,
                TComPicYuv* pcPicYuvTrueOrg, const InputColourSpaceConversion snrCSC, // used for SNR calculations. Picture in original colour space.
                TComList<TComPicYuv*>& rcListPicYuvRecOut,
-               std::list<AccessUnit>& accessUnitsOut, Int& iNumEncoded );
+               std::list<AccessUnit>& accessUnitsOut, Int& iNumEncoded 
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+              ,TComStats* m_apcStats
+#endif
+               );
 
   /// encode several number of pictures until end-of-sequence
   Void encode( Bool bEos, TComPicYuv* pcPicYuvOrg,
                TComPicYuv* pcPicYuvTrueOrg, const InputColourSpaceConversion snrCSC, // used for SNR calculations. Picture in original colour space.
                TComList<TComPicYuv*>& rcListPicYuvRecOut,
-               std::list<AccessUnit>& accessUnitsOut, Int& iNumEncoded, Bool isTff);
+               std::list<AccessUnit>& accessUnitsOut, Int& iNumEncoded, Bool isTff
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+              ,TComStats* m_apcStats
+#endif
+               );
 
   Void printSummary(Bool isField) { m_cGOPEncoder.printOutSummary (m_uiNumAllPicCoded, isField, m_printMSEBasedSequencePSNR, m_printSequenceMSE, m_cSPS.getBitDepths()); }
 

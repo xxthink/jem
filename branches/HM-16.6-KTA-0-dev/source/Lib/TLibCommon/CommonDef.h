@@ -310,7 +310,12 @@ static const Int FRUC_MERGE_REFINE_MVWEIGHT =                      4 ;
 static const Int FRUC_MERGE_REFINE_MINBLKSIZE =                    4 ;
 #endif
 #if VCEG_AZ07_CTX_RESIDUALCODING
-static const Int MAX_GR_ORDER_RESIDUAL        =                   10 ;
+static const Int MAX_GR_ORDER_RESIDUAL =                          10 ;
+#endif
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+static const Int ALPHA0 =                                           6; ///< 2^ALPHA0 is "window size" for probability up-date
+static const Int CABAC_NUM_BINS =                              100000; ///< max number of bins for window calculation
+static const Int NUM_WDOW =                                         4; ///< could be 16, 32, 64, 128
 #endif
 // ====================================================================================================================
 // Macro functions

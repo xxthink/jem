@@ -65,6 +65,12 @@ class TDecSbac : public TDecEntropyIf
 public:
   TDecSbac();
   virtual ~TDecSbac();
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+  TComStats* m_pcStats;
+  TComStats* getStatesHandle      ()                    { return m_pcStats;          }
+  Void setStatesHandle            ( TComStats* pcStats) { m_pcStats = pcStats;       }
+  Int  getCtxNumber               ()                    { return m_numContextModels; }
+#endif
 
   Void  init                      ( TDecBinIf* p )    { m_pcTDecBinIf = p; }
   Void  uninit                    (              )    { m_pcTDecBinIf = 0; }
@@ -79,6 +85,10 @@ public:
   Void  parseVPS                  ( TComVPS* /*pcVPS*/ ) {}
   Void  parseSPS                  ( TComSPS* /*pcSPS*/ ) {}
   Void  parsePPS                  ( TComPPS* /*pcPPS*/ ) {}
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+  Void parseCtxUpdateInfo         ( TComSlice*& rpcSlice,  TComStats* apcStats )   {}
+  Void xUpdateWindowSize          ( SliceType eSliceType, Int uiQPIdx, TComStats* apcStats );  
+#endif
 
   Void  parseSliceHeader          ( TComSlice* /*pcSlice*/, ParameterSetManager* /*parameterSetManager*/, const Int /*prevTid0POC*/) {}
   Void  parseTerminatingBit       ( UInt& ruiBit );
@@ -214,11 +224,11 @@ private:
 
   ContextModel3DBuffer m_ChromaQpAdjFlagSCModel;
   ContextModel3DBuffer m_ChromaQpAdjIdcSCModel;
-#if VCEG_AZ07_IMV
-  ContextModel3DBuffer m_cCUiMVFlagSCModel;
-#endif
 #if COM16_C806_OBMC
   ContextModel3DBuffer m_cCUOBMCFlagSCModel;
+#endif
+#if VCEG_AZ07_IMV 
+  ContextModel3DBuffer m_cCUiMVFlagSCModel;
 #endif
 #if VCEG_AZ06_IC
   ContextModel3DBuffer m_cCUICFlagSCModel;

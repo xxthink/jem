@@ -409,4 +409,19 @@ UInt TComInputBitstream::readByteAlignment()
   return numBits+1;
 }
 
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+TComStats::TComStats()
+{
+  for (Int k = 0; k < 3; k++)
+    for (Int i=0; i<NUM_QP_PROB; i++)
+    {
+      aaQPUsed[k][i].QP = 0;
+      aaQPUsed[k][i].used = false;
+      aaQPUsed[k][i].firstUsed = false;
+    }
+}
+TComStats::~TComStats()
+{
+}
+#endif
 //! \}

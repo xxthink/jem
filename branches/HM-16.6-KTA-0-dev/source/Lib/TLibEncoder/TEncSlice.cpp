@@ -659,6 +659,9 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
   m_dPicRdCost      = 0; // NOTE: This is a write-only variable!
   m_uiPicDist       = 0;
 
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+  m_pcEntropyCoder->setStatsHandle ( pcSlice->getStatsHandle() );
+#endif  
   m_pcEntropyCoder->setEntropyCoder   ( m_pppcRDSbacCoder[0][CI_CURR_BEST] );
   m_pcEntropyCoder->resetEntropy      ( pcSlice );
 
@@ -956,6 +959,10 @@ Void TEncSlice::encodeSlice   ( TComPic* pcPic, TComOutputBitstream* pcSubstream
   const Bool wavefrontsEnabled       = pcSlice->getPPS()->getEntropyCodingSyncEnabledFlag();
 
   // initialise entropy coder for the slice
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+  TComStats*  pcStats = pcSlice->getStatsHandle();
+  m_pcEntropyCoder->setStatsHandle ( pcStats );
+#endif 
   m_pcSbacCoder->init( (TEncBinIf*)m_pcBinCABAC );
   m_pcEntropyCoder->setEntropyCoder ( m_pcSbacCoder );
   m_pcEntropyCoder->resetEntropy    ( pcSlice );
@@ -975,6 +982,14 @@ Void TEncSlice::encodeSlice   ( TComPic* pcPic, TComOutputBitstream* pcSubstream
   g_bJustDoIt = g_bEncDecTraceDisable;
 #endif
 
+#if VCEG_AZ07_BAC_ADAPT_WDOW 
+  Int iQPIdx = pcSlice->getQPIdx();
+  TEncBinCABAC* pEncBin = m_pcEntropyCoder->getCABACCoder()->getBinIf()->getTEncBinCABAC();
+  if(iQPIdx != -1)
+  {
+    pEncBin->allocateMemoryforBinStrings();
+  }
+#endif
 
   if (depSliceSegmentsEnabled)
   {
@@ -1048,6 +1063,7 @@ Void TEncSlice::encodeSlice   ( TComPic* pcPic, TComOutputBitstream* pcSubstream
       {
         m_pcEntropyCoder->setAlfCtrl(false);
       }
+
       m_pcEntropyCoder->encodeAlfParam(&alfParam,pcSlice->getSPS()->getMaxTotalCUDepth());
       if(alfParam.cu_control_flag)
       {
@@ -1149,6 +1165,14 @@ Void TEncSlice::encodeSlice   ( TComPic* pcPic, TComOutputBitstream* pcSubstream
   }
   
   numBinsCoded = m_pcBinCABAC->getBinsCoded();
+
+#if VCEG_AZ07_BAC_ADAPT_WDOW 
+  if(iQPIdx != -1)
+  {
+    xGenUpdateMap    (pcSlice->getSliceType(), pcSlice->getQPIdx(), pcStats);
+    pEncBin->freeMemoryforBinStrings();
+  }
+#endif
 }
 
 Void TEncSlice::calculateBoundingCtuTsAddrForSlice(UInt &startCtuTSAddrSlice, UInt &boundingCtuTSAddrSlice, Bool &haveReachedTileBoundary,
@@ -1280,4 +1304,99 @@ Double TEncSlice::xGetQPValueAccordingToLambda ( Double lambda )
   return 4.2005*log(lambda) + 13.7122;
 }
 
+#if VCEG_AZ07_BAC_ADAPT_WDOW 
+Void TEncSlice::xContextWdowSizeUpdateDecision(TEncSbac* pTestEncSbac, UInt &uiCtxStartPos, ContextModel* pSliceCtx, Bool *uiCtxMap, UChar *uiCtxCodeIdx, Bool** pCodedBinStr, Int* pCounter)
+{
+  //derive the best window size
+  UInt uiBestW = 0, currBits = 0, minBits = MAX_UINT;
+  Bool* pBinStr  = pCodedBinStr[uiCtxStartPos];
+  UInt  uiStrlen = pCounter[uiCtxStartPos];
+  if(uiStrlen==0)
+  {
+    uiCtxMap[uiCtxStartPos] = 0;
+    uiCtxStartPos += 1;
+    return;
+  }
+
+
+  for(UInt uiW = 0; uiW < NUM_WDOW; uiW++)
+  {
+   //initilization        
+    pTestEncSbac->getEncBinIf()->start(); 
+    currBits = pTestEncSbac->getNumberOfWrittenBits();
+
+    ContextModel cCurrCtx = pSliceCtx[uiCtxStartPos];  
+    cCurrCtx.setWindowSize(uiW + 4);    
+
+
+    for(UInt k = 0; k < uiStrlen; k ++)
+    {         
+      UInt val = pBinStr[k];
+      pTestEncSbac->getEncBinIf()->encodeBin(val, cCurrCtx);
+    }
+    currBits = pTestEncSbac->getNumberOfWrittenBits()-currBits;
+
+    if(currBits < minBits)
+    {
+      minBits = currBits;
+      uiBestW = uiW;
+    }   
+  }
+
+  if( uiBestW != (ALPHA0 - 4) )
+  {
+    uiCtxMap[uiCtxStartPos] = 1;
+    uiCtxCodeIdx[uiCtxStartPos] =(UChar) (uiBestW + 4); //the best window size, to be signalled
+  }
+  else
+  {
+    uiCtxMap[uiCtxStartPos] = 0;
+    uiCtxCodeIdx[uiCtxStartPos] = ALPHA0;
+  }
+  uiCtxStartPos += 1;
+}
+
+Void TEncSlice::xGenUpdateMap (UInt uiSliceType, Int iQP,  TComStats* apcStats)
+{
+  UInt uiCtxStartPos = 0;
+  Bool bUpdate       = false;
+
+  TEncSbac*     pSbacCoder   =  m_pcEntropyCoder->getCABACCoder();  
+  TEncBinCABAC* pEncBinCABAC = pSbacCoder->getBinIf()->getTEncBinCABAC();
+  Bool** pCodedBinStr        = pEncBinCABAC->getCodedBinStr();
+  Int*   pCounter            = pEncBinCABAC->getCodedNumBins();
+  Int    iCtxNr              = pSbacCoder->getCtxNumber();
+
+  ContextModel* pCtx         =  pSbacCoder->getContextModel();
+  pEncBinCABAC->setUpdateStr(false);
+
+  TEncSbac*     pTestEncSbac        = new TEncSbac;  
+  TEncBinCABAC* pcTestBinCoderCABAC = new TEncBinCABAC;
+  TComOutputBitstream* pBitIf       = new TComOutputBitstream;
+
+  pTestEncSbac->init(pcTestBinCoderCABAC);
+  pTestEncSbac->setBitstream(pBitIf);
+
+  for(UInt i=0; i<iCtxNr; i++)
+  {
+    xContextWdowSizeUpdateDecision(pTestEncSbac, uiCtxStartPos, pCtx, apcStats->m_uiCtxMAP[uiSliceType][iQP], apcStats->m_uiCtxCodeIdx[uiSliceType][iQP], pCodedBinStr, pCounter);
+    if(bUpdate==false && apcStats->m_uiCtxMAP[uiSliceType][iQP][i])
+    {
+      bUpdate = true;
+    }
+  }
+  apcStats->m_uiNumCtx[uiSliceType][iQP] = uiCtxStartPos; 
+  assert( uiCtxStartPos == iCtxNr );
+
+  if(bUpdate==false)
+  {
+    apcStats->m_uiNumCtx[uiSliceType][iQP]= 0; 
+  }
+
+  if(pTestEncSbac)        {delete pTestEncSbac;             pTestEncSbac        = NULL;      }
+  if(pcTestBinCoderCABAC) {delete pcTestBinCoderCABAC;      pcTestBinCoderCABAC = NULL;      }
+  if(pBitIf)              {delete pBitIf;                   pBitIf              = NULL;      }
+
+}
+#endif
 //! \}

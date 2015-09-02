@@ -72,6 +72,12 @@ public:
   virtual Void  parseSPS                  ( TComSPS* pcSPS )     = 0;
   virtual Void  parsePPS                  ( TComPPS* pcPPS )     = 0;
 
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+  virtual TComStats* getStatesHandle      ( )                    = 0;
+  virtual Void setStatesHandle            ( TComStats* pcStats)  = 0;
+  virtual Void parseCtxUpdateInfo         ( TComSlice*& rpcSlice, TComStats* apcStats )   = 0;
+#endif
+
   virtual Void parseSliceHeader          ( TComSlice* pcSlice, ParameterSetManager *parameterSetManager, const Int prevTid0POC)       = 0;
 
   virtual Void parseTerminatingBit       ( UInt& ruilsLast )                                     = 0;
@@ -162,6 +168,13 @@ public:
   TDecEntropy();
   ~TDecEntropy();
 #endif
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+  TComStats* m_pcStats;
+  Void       updateStates   ( SliceType uiSliceType, UInt uiSliceQP, TComStats*  apcStats);
+  Void       setStatsHandle ( TComStats*  pcStats)  { m_pcStats = pcStats; }
+  TComStats* getStatsHandle ( )                     { return m_pcStats; }
+#endif 
+
   Void init (TComPrediction* p) {m_pcPrediction = p;}
   Void decodePUWise       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, TComDataCU* pcSubCU );
   Void decodeInterDirPU   ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPartIdx );
@@ -171,7 +184,16 @@ public:
 
   Void    setEntropyDecoder           ( TDecEntropyIf* p );
   Void    setBitstream                ( TComInputBitstream* p ) { m_pcEntropyDecoderIf->setBitstream(p);                    }
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+  Void    resetEntropy                ( TComSlice* p )       
+  {
+    m_pcEntropyDecoderIf->setStatesHandle (m_pcStats);
+    m_pcEntropyDecoderIf->resetEntropy(p);  
+  }
+  Void    decodeCtxUpdateInfo         ( TComSlice*& rpcSlice, TComStats* apcStats )  { m_pcEntropyDecoderIf->parseCtxUpdateInfo( rpcSlice, apcStats); }
+#else
   Void    resetEntropy                ( TComSlice* p)           { m_pcEntropyDecoderIf->resetEntropy(p);                    }
+#endif
 
   Void    decodeVPS                   ( TComVPS* pcVPS ) { m_pcEntropyDecoderIf->parseVPS(pcVPS); }
   Void    decodeSPS                   ( TComSPS* pcSPS ) { m_pcEntropyDecoderIf->parseSPS(pcSPS); }

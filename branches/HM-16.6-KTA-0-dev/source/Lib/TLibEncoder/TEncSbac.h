@@ -105,6 +105,11 @@ public:
                     , Bool aboveMergeAvail
                     , Bool onlyEstMergeInfo = false
                     );
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+  Int  getCtxNumber()     { return m_numContextModels; }
+  Void codeCtxUpdateInfo  ( TComSlice* pcSlice,  TComStats* apcStats );
+  Void xUpdateWindowSize  ( SliceType eSliceType, Int iQPIdx, TComStats* apcStats);
+#endif
 
 private:
   Void  xWriteUnarySymbol    ( UInt uiSymbol, ContextModel* pcSCModel, Int iOffset );
@@ -272,6 +277,16 @@ private:
 #endif
 
   UInt m_golombRiceAdaptationStatistics[RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS];
+
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+public:
+  TComStats* m_pcStats;
+  TComStats* getStatesHandle ()              { return m_pcStats;          }
+  Void setStatesHandle ( TComStats* pcStats) { m_pcStats = pcStats;       }
+  Int getContextModelNum()                   { return m_numContextModels; }
+  ContextModel*  getContextModel()           { return m_contextModels;    }
+  TEncBinIf*     getBinIf       ()           { return m_pcBinIf;          }
+#endif
 };
 
 //! \}

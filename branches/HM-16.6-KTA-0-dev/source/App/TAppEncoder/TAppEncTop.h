@@ -61,6 +61,9 @@ private:
   TEncTop                    m_cTEncTop;                    ///< encoder class
   TVideoIOYuv                m_cTVideoIOYuvInputFile;       ///< input YUV file
   TVideoIOYuv                m_cTVideoIOYuvReconFile;       ///< output reconstruction file
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+  TComStats*                 m_apcStats;                    ///< class
+#endif  
 
   TComList<TComPicYuv*>      m_cListPicYuvRec;              ///< list of reconstruction YUV files
 

@@ -39,6 +39,9 @@
 #include "TLibCommon/TComRom.h"
 #include "TLibCommon/Debug.h"
 
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+#include <string.h>
+#endif
 //! \ingroup TLibEncoder
 //! \{
 
@@ -48,6 +51,9 @@ TEncBinCABAC::TEncBinCABAC()
 , m_binCountIncrement( 0 )
 #if FAST_BIT_EST
 , m_fracBits( 0 )
+#endif
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+, m_bUpdateStr( false )
 #endif
 {
 }
@@ -184,6 +190,51 @@ UInt TEncBinCABAC::getNumWrittenBits()
  * \param binValue   bin value
  * \param rcCtxModel context model
  */
+#if VCEG_AZ07_BAC_ADAPT_WDOW 
+Void TEncBinCABAC::encodeBin( UInt binValue, ContextModel &rcCtxModel )
+{
+  m_uiBinsCoded += m_binCountIncrement;
+  rcCtxModel.setBinsCoded( 1 );
+  UInt uiCtxIdx = rcCtxModel.getIdx();
+  if(m_bUpdateStr && m_iCounter[uiCtxIdx] < CABAC_NUM_BINS)
+  {
+    m_pbCodedString[uiCtxIdx][m_iCounter[uiCtxIdx]] = (binValue==1? true:false);
+    m_iCounter[uiCtxIdx] ++;
+  }
+  UShort uiLPS = TComCABACTables::sm_aucLPSTable[rcCtxModel.getState()>>6][(m_uiRange>>2)-64];
+  m_uiRange    -= uiLPS;
+
+  if( binValue == 0 )
+  {
+    rcCtxModel.updateLPS();    
+    Int numBits = TComCABACTables::sm_aucRenormTable[ uiLPS >> 2 ];
+    if (numBits)
+    {
+      m_uiLow     = ( m_uiLow + m_uiRange ) << numBits;
+      m_uiRange   = uiLPS << numBits;
+      m_bitsLeft -= numBits;
+    }
+    else
+    {
+      m_uiLow     =  m_uiLow + m_uiRange ;
+      m_uiRange   = uiLPS ;
+    }
+  }
+  else
+  {
+    rcCtxModel.updateMPS(); 
+    if ( m_uiRange >= 256 )
+    {
+      return;
+    }
+    Int numBits = TComCABACTables::sm_aucRenormTable[ m_uiRange >> 2 ];
+    m_uiLow <<= numBits;
+    m_uiRange <<= numBits;
+    m_bitsLeft -= numBits;
+  }
+  testAndWriteOut();
+}
+#else
 Void TEncBinCABAC::encodeBin( UInt binValue, ContextModel &rcCtxModel )
 {
   //{
@@ -246,6 +297,7 @@ Void TEncBinCABAC::encodeBin( UInt binValue, ContextModel &rcCtxModel )
   g_debugCounter++;
 #endif
 }
+#endif
 
 /**
  * \brief Encode equiprobable bin
@@ -442,5 +494,49 @@ Void TEncBinCABAC::writeOut()
     }
   }
 }
+
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+Void TEncBinCABAC::freeMemoryforBinStrings ()
+{
+  if(m_iCounter)     
+  {
+    free(m_iCounter);
+    m_iCounter = NULL;
+  }
+  if (m_pbCodedString)
+  {
+    if (m_pbCodedString[0])
+    {
+      free (m_pbCodedString[0]); 
+    }
+    free (m_pbCodedString);
+    m_pbCodedString = NULL;
+  }
+}
+Void TEncBinCABAC::allocateMemoryforBinStrings()
+{
+  setUpdateStr(true);
+  if((m_iCounter = (Int*)calloc(NUM_CTX_PBSLICE, sizeof(Int))) == NULL)
+  {
+    printf("get_mem2Dpel: array2D");
+    exit(-1);
+  }
+  memset(m_iCounter, 0, NUM_CTX_PBSLICE*sizeof(Int));
+
+  if((m_pbCodedString = (Bool**) calloc(NUM_CTX_PBSLICE, sizeof(Bool*))) == NULL)
+  {
+    printf("get_mem2Dpel: array2D");
+    exit(-1);
+  }
+  if((m_pbCodedString[0] = (Bool* )calloc(NUM_CTX_PBSLICE*CABAC_NUM_BINS,sizeof(Bool ))) == NULL)
+  {
+    printf("get_mem2Dpel: array2D");
+    exit(-1);
+  }
+
+  for(Int k=1 ; k<NUM_CTX_PBSLICE ; k++)
+    m_pbCodedString[k] =  m_pbCodedString[k-1] + CABAC_NUM_BINS  ;
+}
+#endif
 
 //! \}

@@ -1186,4 +1186,26 @@ Void TDecEntropy::decodeAlfCtrlParam( ALFParam* pAlfParam )
 
 #endif
 
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+Void TDecEntropy::updateStates   ( SliceType uiSliceType, UInt uiSliceQP, TComStats*  apcStats)
+{
+  Int k;
+  for (k = 0; k < NUM_QP_PROB; k++)
+  {
+    if (apcStats-> aaQPUsed[uiSliceType][k].used ==true && apcStats-> aaQPUsed[uiSliceType][k].QP == uiSliceQP)
+    {
+      apcStats-> aaQPUsed[uiSliceType][k].firstUsed = false;
+      break;
+    }
+    else if (apcStats-> aaQPUsed[uiSliceType][k].used ==false)
+    {
+      apcStats-> aaQPUsed[uiSliceType][k].used = true;
+      apcStats-> aaQPUsed[uiSliceType][k].QP = uiSliceQP;
+      apcStats-> aaQPUsed[uiSliceType][k].firstUsed = true;
+      break;
+    }
+  }
+}
+#endif
+
 //! \}

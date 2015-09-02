@@ -102,7 +102,63 @@ TDecBinCABAC::copyState( const TDecBinIf* pcTDecBinIf )
   m_bitsNeeded= pcTDecBinCABAC->m_bitsNeeded;
 }
 
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if RExt__DECODER_DEBUG_BIT_STATISTICS
+Void TDecBinCABAC::decodeBin( UInt& ruiBin, ContextModel &rcCtxModel, const TComCodingStatisticsClassType &whichStat )
+#else
+Void TDecBinCABAC::decodeBin( UInt& ruiBin, ContextModel &rcCtxModel )
+#endif
+{
+  UShort uiLPS = TComCABACTables::sm_aucLPSTable[rcCtxModel.getState()>>6][(m_uiRange>>2)-64];
+  m_uiRange -= uiLPS;
+  UInt scaledRange = m_uiRange << 7;
 
+  if( m_uiValue < scaledRange )
+  {
+    // MPS path
+    ruiBin = 1;
+    rcCtxModel.updateMPS();
+    if ( scaledRange >= ( 256 << 7 ) )
+    {
+      return;
+    }
+
+    Int numBits = TComCABACTables::sm_aucRenormTable[ m_uiRange  >> 2 ];
+    m_uiRange <<=  numBits;
+    m_uiValue <<= numBits;
+    m_bitsNeeded += numBits;
+    if ( m_bitsNeeded >= 0 )
+    {
+      m_uiValue += m_pcTComBitstream->readByte() << m_bitsNeeded;
+      m_bitsNeeded -= 8;
+    }
+  }
+  else
+  {
+    // LPS path 
+    ruiBin      = 0;
+    rcCtxModel.updateLPS();
+    UChar numBits = TComCABACTables::sm_aucRenormTable[ uiLPS >> 2 ];
+    if (numBits)
+    {
+      m_uiValue   = ( m_uiValue - scaledRange ) << numBits;
+      m_uiRange   = uiLPS << numBits;
+      m_bitsNeeded += numBits;
+
+      if ( m_bitsNeeded >= 0 )
+      {
+        m_uiValue += m_pcTComBitstream->readByte() << m_bitsNeeded;
+        m_bitsNeeded -= 8;
+      }
+    }
+    else
+    {
+      m_uiValue   = m_uiValue - scaledRange ;
+      m_uiRange   = uiLPS;
+    }
+  }
+}
+#else
 
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
 Void TDecBinCABAC::decodeBin( UInt& ruiBin, ContextModel &rcCtxModel, const TComCodingStatisticsClassType &whichStat )
@@ -178,7 +234,7 @@ Void TDecBinCABAC::decodeBin( UInt& ruiBin, ContextModel &rcCtxModel )
   g_debugCounter++;
 #endif
 }
-
+#endif
 
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
 Void TDecBinCABAC::decodeBinEP( UInt& ruiBin, const TComCodingStatisticsClassType &whichStat )

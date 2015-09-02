@@ -67,6 +67,9 @@ private:
 
   TDecSbac        m_lastSliceSegmentEndContextState;    ///< context storage for state at the end of the previous slice-segment (used for dependent slices only).
   TDecSbac        m_entropyCodingSyncContextState;      ///< context storate for state of contexts at the wavefront/WPP/entropy-coding-sync second CTU of tile-row
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+  TComStats*      m_apcStats; 
+#endif
 
 public:
   TDecSlice();

@@ -103,6 +103,10 @@ public:
   Void destroyEncData();
   Void initRDOCabacCoder(TEncSbac* pcRDGoOnSbacCoder, TComSlice* pcSlice) ;
   Void SAOProcess(TComPic* pPic, Bool* sliceEnabled, const Double *lambdas, const Bool bTestSAODisableAtPictureLevel, const Double saoEncodingRate, const Double saoEncodingRateChroma, Bool isPreDBFSamplesUsed);
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+  Void setEntropyCoder (TEncEntropy* pcEntropyCoder)  {m_pcEntropyCoder = pcEntropyCoder;}
+#endif
+
 public: //methods
   Void getPreDBFStatistics(TComPic* pPic);
 private: //methods
@@ -134,6 +138,9 @@ private: //members
   Double                 m_saoDisabledRate[MAX_NUM_COMPONENT][MAX_TLAYER];
   Int                    m_skipLinesR[MAX_NUM_COMPONENT][NUM_SAO_NEW_TYPES];
   Int                    m_skipLinesB[MAX_NUM_COMPONENT][NUM_SAO_NEW_TYPES];
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+  TEncEntropy*           m_pcEntropyCoder;
+#endif
 };
 
 

@@ -93,6 +93,11 @@ public:
   Void  codeTilesWPPEntryPoint( TComSlice* pSlice );
   Void  codeTerminatingBit      ( UInt uilsLast );
   Void  codeSliceFinish         ();
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+  Void codeCtxUpdateInfo        ( TComSlice* pcSlice,  TComStats* apcStats );
+  Void xRunCoding               ( Bool * uiCtxMAP, UInt uiNumCtx );
+  Void xCtxCodewordCoding       ( Bool * uiCtxMAP, UChar * uiCtxCodeIdx, UInt uiNumCtx );
+#endif
 
   Void codeMVPIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList );
   Void codeSAOBlkParam(SAOBlkParam& /*saoBlkParam*/, const BitDepths& /*bitDepths*/, Bool* /*sliceEnabled*/, Bool /*leftMergeAvail*/, Bool /*aboveMergeAvail*/, Bool /*onlyEstMergeInfo*/ = false){printf("only supported in CABAC"); assert(0); exit(-1);}
@@ -153,6 +158,11 @@ public:
   Void xCodeScalingList ( const TComScalingList* scalingList, UInt sizeId, UInt listId);
 
   Void codeExplicitRdpcmMode( TComTU &rTu, const ComponentID compID );
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+  TComStats* m_pcStats;
+  TComStats* getStatesHandle ( )                    { return m_pcStats;    }
+  Void setStatesHandle       ( TComStats* pcStats ) { m_pcStats = pcStats; }
+#endif
 
 #if ALF_HM3_REFACTOR
   Void xWriteUnaryMaxSymbol( UInt uiSymbol, UInt uiMaxSymbol );

@@ -450,6 +450,9 @@ Void TAppEncTop::xCreateLib()
 
   // Neo Decoder
   m_cTEncTop.create();
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+  m_apcStats = new TComStats ();  
+#endif 
 }
 
 Void TAppEncTop::xDestroyLib()
@@ -457,6 +460,14 @@ Void TAppEncTop::xDestroyLib()
   // Video I/O
   m_cTVideoIOYuvInputFile.close();
   m_cTVideoIOYuvReconFile.close();
+
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+  if ( m_apcStats )
+  {
+    delete m_apcStats;   
+    m_apcStats =NULL;
+  }              
+#endif  
 
   // Neo Decoder
   m_cTEncTop.destroy();
@@ -547,11 +558,19 @@ Void TAppEncTop::encode()
     // call encoding function for one frame
     if ( m_isField )
     {
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+      m_cTEncTop.encode( bEos, flush ? 0 : pcPicYuvOrg, flush ? 0 : &cPicYuvTrueOrg, snrCSC, m_cListPicYuvRec, outputAccessUnits, iNumEncoded, m_isTopFieldFirst, m_apcStats);
+#else
       m_cTEncTop.encode( bEos, flush ? 0 : pcPicYuvOrg, flush ? 0 : &cPicYuvTrueOrg, snrCSC, m_cListPicYuvRec, outputAccessUnits, iNumEncoded, m_isTopFieldFirst );
+#endif
     }
     else
     {
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+      m_cTEncTop.encode( bEos, flush ? 0 : pcPicYuvOrg, flush ? 0 : &cPicYuvTrueOrg, snrCSC, m_cListPicYuvRec, outputAccessUnits, iNumEncoded, m_apcStats);
+#else
       m_cTEncTop.encode( bEos, flush ? 0 : pcPicYuvOrg, flush ? 0 : &cPicYuvTrueOrg, snrCSC, m_cListPicYuvRec, outputAccessUnits, iNumEncoded );
+#endif
     }
 
     // write bistream to file if necessary
