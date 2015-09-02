@@ -131,10 +131,12 @@ public:
 
   virtual ~TEncEntropyIf() {}
 
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
   virtual TComStats* getStatesHandle () = 0;
   virtual Void setStatesHandle   ( TComStats* pcStats ) = 0;
+#if VCEG_AZ07_BAC_ADAPT_WDOW 
   virtual Void codeCtxUpdateInfo ( TComSlice* pcSlice,  TComStats* apcStats ) = 0;
+#endif
 #endif
 
 #if ALF_HM3_REFACTOR
@@ -160,7 +162,7 @@ public:
 /// entropy encoder class
 class TEncEntropy
 {
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
 private:
   TComStats*                      m_pcStats;
 #endif
@@ -170,7 +172,7 @@ public:
   Void    setBitstream              ( TComBitIf* p )          { m_pcEntropyCoderIf->setBitstream(p);  }
   Void    resetBits                 ()                        { m_pcEntropyCoderIf->resetBits();      }
   UInt    getNumberOfWrittenBits    ()                        { return m_pcEntropyCoderIf->getNumberOfWrittenBits(); }
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
   Void    resetEntropy              (const TComSlice *pSlice)                        
   {
     m_pcEntropyCoderIf->setStatesHandle (m_pcStats);
@@ -256,7 +258,7 @@ public:
 
   static Int countNonZeroCoeffs( TCoeff* pcCoef, UInt uiSize );
 
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
   Void setStatsHandle       ( TComStats*  pcStats)  { m_pcStats=pcStats; }
   TComStats* getStatsHandle ()                      { return m_pcStats;  }
 #endif 

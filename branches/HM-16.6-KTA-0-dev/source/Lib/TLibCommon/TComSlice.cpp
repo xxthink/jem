@@ -2405,7 +2405,7 @@ Void TComSlice::xSetApplyIC()
 }
 #endif
 
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
 Void TComSlice::initStatsGlobal()
 {
   {
@@ -2423,6 +2423,36 @@ Void TComSlice::initStatsGlobal()
       }
     }
     setCtxMapQPIdx(iQP);
+#if VCEG_AZ07_INIT_PREVFRAME
+    if(iQP==-1)
+    {
+      for (k = 0; k < NUM_QP_PROB; k++)
+      {
+        if(pcStats-> aaQPUsed[uiSliceType][k].used==false)
+        {
+          iQP= k;
+          break;
+        }
+      }
+    }
+    setCtxMapQPIdxforStore(iQP);
+
+    if( uiSliceType == I_SLICE )
+    {
+      pcStats->m_uiLastIPOC = this->getPOC();
+      for(UInt uitype= 0; uitype < 2; uitype++)
+      {
+        for (k = 0; k < NUM_QP_PROB; k++)
+        {
+          pcStats-> aaQPUsed[uitype][k].resetInit = -1;
+        }
+      }
+    }
+    else if(this->getPOC() > pcStats->m_uiLastIPOC)
+    {
+      pcStats-> aaQPUsed[uiSliceType][k].resetInit ++;
+    }
+#endif
   }
 }
 #endif

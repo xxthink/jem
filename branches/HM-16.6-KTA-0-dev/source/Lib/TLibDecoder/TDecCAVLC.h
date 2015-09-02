@@ -132,6 +132,8 @@ public:
   Void parseCtxUpdateInfo   ( TComSlice*& rpcSlice, TComStats* apcStats );
   Void xRunDecoding         ( Bool * uiCtxMAP, UInt uiNumCtx );
   Void xLevelDecoding       ( Bool * uiCtxMAP, UChar *uiCtxCodeIdx, UInt uiNumCtx );
+#endif
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
   Void setStatesHandle      ( TComStats* pcStats) { m_pcStats = pcStats; }
   TComStats* getStatesHandle()                    { return m_pcStats; }
 #endif
@@ -153,7 +155,7 @@ public:
 
 protected:
   Bool  xMoreRbspData();
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
   TComStats* m_pcStats;
 #endif
 

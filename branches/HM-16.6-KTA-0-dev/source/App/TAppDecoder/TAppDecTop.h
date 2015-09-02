@@ -62,7 +62,7 @@ private:
   // class interface
   TDecTop                         m_cTDecTop;                     ///< decoder class
   TVideoIOYuv                     m_cTVideoIOYuvReconFile;        ///< reconstruction YUV class
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
   TComStats*                      m_apcStats;                     
 #endif
   // for output control

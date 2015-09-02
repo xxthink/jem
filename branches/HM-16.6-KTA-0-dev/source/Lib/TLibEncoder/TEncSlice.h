@@ -136,7 +136,11 @@ public:
 
 #if VCEG_AZ07_BAC_ADAPT_WDOW 
   Void xGenUpdateMap   (UInt uiSliceType, Int iQP,  TComStats* apcStats);
+#if VCEG_AZ07_INIT_PREVFRAME
+  Void xContextWdowSizeUpdateDecision ( TEncSbac* pTestEncSbac, UInt &uiCtxStartPos, ContextModel* pSliceCtx, Bool *uiCtxMap, UChar *uiCtxCodeIdx, Bool** pCodedBinStr, Int* pCounter, UShort* uiCTX );
+#else
   Void xContextWdowSizeUpdateDecision (TEncSbac* pTestEncSbac, UInt &uiCtxStartPos, ContextModel* pSliceCtx, Bool *uiCtxMap, UChar *uiCtxCodeIdx, Bool** pCodedBinStr, Int* pCounter);
+#endif
 #endif
 
 private:

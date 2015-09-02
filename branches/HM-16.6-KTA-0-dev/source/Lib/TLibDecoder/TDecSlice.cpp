@@ -141,6 +141,13 @@ Void TDecSlice::decompressSlice(TComInputBitstream** ppcSubstreams, TComPic* pcP
 
     m_pcEntropyDecoder->setBitstream( ppcSubstreams[uiSubStrm] );
 
+#if VCEG_AZ07_INIT_PREVFRAME
+    if( pcSlice->getSliceType() != I_SLICE && ctuTsAddr == 0 )
+    {
+      pcSbacDecoder->loadContextsFromPrev( pcSlice->getStatsHandle(), pcSlice->getSliceType(), pcSlice->getCtxMapQPIdx(), true, pcSlice->getCtxMapQPIdxforStore(), (pcSlice->getPOC() > pcSlice->getStatsHandle()->m_uiLastIPOC)  ); 
+    }
+#endif
+
 #if ALF_HM3_REFACTOR
     if ( pcSlice->getSPS()->getUseALF() && ctuRsAddr == 0 )
     {
@@ -174,6 +181,8 @@ Void TDecSlice::decompressSlice(TComInputBitstream** ppcSubstreams, TComPic* pcP
         }
       }
     }
+
+
 
 #if ENC_DEC_TRACE
     g_bJustDoIt = g_bEncDecTraceEnable;
@@ -253,7 +262,20 @@ Void TDecSlice::decompressSlice(TComInputBitstream** ppcSubstreams, TComPic* pcP
       pcSbacDecoder->parseRemainingBytes(true);
 #endif
     }
-
+#if VCEG_AZ07_INIT_PREVFRAME
+    if( pcSlice->getSliceType() != I_SLICE )
+    {
+      UInt uiTargetCUAddr = pcPic->getFrameWidthInCtus()/2 + pcPic->getNumberOfCtusInFrame()/2;
+      if( uiTargetCUAddr >= pcPic->getNumberOfCtusInFrame() )
+      {
+        uiTargetCUAddr = pcPic->getNumberOfCtusInFrame() - 1;
+      }
+      if( ctuTsAddr == uiTargetCUAddr)
+      {        
+        pcSbacDecoder->loadContextsFromPrev( pcSlice->getStatsHandle(), pcSlice->getSliceType(), pcSlice->getCtxMapQPIdxforStore(), false ); 
+      }
+    }
+#endif
   }
 
   assert(isLastCtuOfSliceSegment == true);

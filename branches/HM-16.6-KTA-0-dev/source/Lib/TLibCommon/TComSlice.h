@@ -45,7 +45,7 @@
 #include "TComRom.h"
 #include "TComList.h"
 #include "TComChromaFormat.h"
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
 #include "TLibCommon/TComBitStream.h"
 #endif
 //! \ingroup TLibCommon
@@ -1464,10 +1464,13 @@ private:
   const TComSPS*             m_pcSPS;
   const TComPPS*             m_pcPPS;
   TComPic*                   m_pcPic;
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
   TComStats*                 m_pcStats; 
   Int                        m_iCtxQPIdx;
   Int                        m_iQPIdx;
+#if VCEG_AZ07_INIT_PREVFRAME
+  Int                        m_iCtxQPIdxStore;
+#endif
 #endif
 
   Bool                       m_colFromL0Flag;  // collocated picture from List0 flag
@@ -1747,7 +1750,7 @@ public:
   Void                        setEncCABACTableIdx( SliceType idx )                   { m_encCABACTableIdx = idx;                                     }
   SliceType                   getEncCABACTableIdx() const                            { return m_encCABACTableIdx;                                    }
 
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
   Void setStatsHandle ( TComStats*  pcStats)                                         { m_pcStats=pcStats; }
   Void initStatsGlobal(); 
   TComStats* getStatsHandle () const                                                 { return m_pcStats;  }
@@ -1756,6 +1759,10 @@ public:
   Void      setQPIdx        (Int iQPIdx)                                             { m_iQPIdx    = iQPIdx; }
   Int       getQPIdx        ()                                                       {  return  m_iQPIdx;    }
   Int       getCtxMapQPIdx  ()             const                                     {  return  m_iCtxQPIdx; }
+#if VCEG_AZ07_INIT_PREVFRAME
+  Void      setCtxMapQPIdxforStore  (Int iQPIdx)                                     { m_iCtxQPIdxStore = iQPIdx; }  
+  Int       getCtxMapQPIdxforStore  ()     const                                     {  return  m_iCtxQPIdxStore; }
+#endif
 #endif
 
 

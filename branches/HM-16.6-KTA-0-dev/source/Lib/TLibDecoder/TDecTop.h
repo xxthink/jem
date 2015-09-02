@@ -129,7 +129,7 @@ public:
 
   Void  init();
   Bool  decode(InputNALUnit& nalu, Int& iSkipFrame, Int& iPOCLastDisplay
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
              , TComStats*  m_apcStats
 #endif
     );
@@ -155,7 +155,9 @@ protected:
   Void  xCreateLostPicture (Int iLostPOC);
 
   Void      xActivateParameterSets();
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
 #if VCEG_AZ07_BAC_ADAPT_WDOW
+#endif
   Bool      xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisplay, TComStats*  m_apcStats);
 #else
   Bool      xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisplay);

@@ -155,7 +155,7 @@ public:
   Void  init        ( TEncTop* pcTEncTop );
   Void  compressGOP ( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rcListPic, TComList<TComPicYuv*>& rcListPicYuvRec,
                       std::list<AccessUnit>& accessUnitsInGOP, Bool isField, Bool isTff, const InputColourSpaceConversion snr_conversion, const Bool printFrameMSE 
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
                       ,TComStats* m_apcStats
 #endif
                       );
@@ -172,7 +172,7 @@ public:
   TEncSlice*  getSliceEncoder()   { return m_pcSliceEncoder; }
   NalUnitType getNalUnitType( Int pocCurr, Int lastIdr, Bool isField );
   Void arrangeLongtermPicturesInRPS(TComSlice *, TComList<TComPic*>& );
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
   Int xUpdateTStates ( UInt uiSliceType, UInt uiSliceQP,  TComStats* apcStats );  
 #endif
 

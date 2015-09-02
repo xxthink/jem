@@ -2525,4 +2525,38 @@ Void TDecSbac::parseEmtCuFlag  ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDep
 }
 #endif
 
+#if VCEG_AZ07_INIT_PREVFRAME
+Void TDecSbac::loadContextsFromPrev (TComStats* apcStats, SliceType eSliceType, Int iQPIdx, Bool bFromGloble, Int iQPIdxRst, Bool bAfterLastISlice )
+{
+  if(bFromGloble)
+  {
+    if(iQPIdx==-1 || (bAfterLastISlice && !apcStats->aaQPUsed[eSliceType][iQPIdxRst].resetInit))
+    {
+      return;
+    }
+    Int iCtxNr = getCtxNumber();
+    for(UInt i = 0; i < iCtxNr; i++)
+    {
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+      m_contextModels[i].setState(apcStats->m_uiCtxProbIdx[eSliceType][iQPIdx][0][i]);
+#else
+      m_contextModels[i].setState( (UChar) apcStats->m_uiCtxProbIdx[eSliceType][iQPIdx][0][i] );
+#endif
+    }
+  }
+  else
+  {
+    Int iCtxNr = getCtxNumber();
+    for(UInt i = 0; i < iCtxNr; i++)
+    {
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+      apcStats->m_uiCtxProbIdx[eSliceType][iQPIdx][0][i] = m_contextModels[i].getState();
+#else
+      apcStats->m_uiCtxProbIdx[eSliceType][iQPIdx][0][i] = (UShort) m_contextModels[i].getOrigState();
+#endif
+    }
+  }
+}
+#endif
+
 //! \}

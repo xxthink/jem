@@ -45,7 +45,7 @@
 // ====================================================================================================================
 // Constants
 // ====================================================================================================================
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
 #define MAX_NUM_CTX_MOD             384       ///< number of context models for last coefficient position
 #else
 #define MAX_NUM_CTX_MOD             512       ///< maximum number of supported contexts
@@ -224,7 +224,7 @@ static const UInt notFirstGroupNeighbourhoodContextOffset[MAX_NUM_CHANNEL_TYPE] 
 #endif
 #endif
 
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
 #define NUM_QP_PROB                  5                //could be set to N (N>5, depending on the allowed QPs in a coded sequence)
 #define NUM_CTX_PBSLICE              MAX_NUM_CTX_MOD //could be set to the exact number of used contexts later
 #endif

@@ -65,7 +65,7 @@ class TDecSbac : public TDecEntropyIf
 public:
   TDecSbac();
   virtual ~TDecSbac();
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
   TComStats* m_pcStats;
   TComStats* getStatesHandle      ()                    { return m_pcStats;          }
   Void setStatesHandle            ( TComStats* pcStats) { m_pcStats = pcStats;       }
@@ -176,6 +176,10 @@ public:
 #if COM16_C806_EMT
   Void parseEmtTuIdx          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   Void parseEmtCuFlag         ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bRootCbf );
+#endif
+
+#if VCEG_AZ07_INIT_PREVFRAME
+  Void  loadContextsFromPrev  ( TComStats* apcStats, SliceType eSliceType, Int iQPIdx, Bool bFromGloble, Int iQPIdxRst =-1, Bool bAfterLastISlice= false );
 #endif
 
   Void  parseExplicitRdpcmMode( TComTU &rTu, ComponentID compID );
