@@ -88,7 +88,9 @@ TDecSbac::TDecSbac()
 , m_cCuCtxLastX                              ( 1,             NUM_CTX_LAST_FLAG_SETS, NUM_CTX_LAST_FLAG_XY                 , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCuCtxLastY                              ( 1,             NUM_CTX_LAST_FLAG_SETS, NUM_CTX_LAST_FLAG_XY                 , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUOneSCModel                            ( 1,             1,                      NUM_ONE_FLAG_CTX                     , m_contextModels + m_numContextModels, m_numContextModels)
+#if !VCEG_AZ07_CTX_RESIDUALCODING
 , m_cCUAbsSCModel                            ( 1,             1,                      NUM_ABS_FLAG_CTX                     , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 , m_cMVPIdxSCModel                           ( 1,             1,                      NUM_MVP_IDX_CTX                      , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cSaoMergeSCModel                         ( 1,             1,                      NUM_SAO_MERGE_FLAG_CTX               , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cSaoTypeIdxSCModel                       ( 1,             1,                      NUM_SAO_TYPE_IDX_CTX                 , m_contextModels + m_numContextModels, m_numContextModels)
@@ -174,7 +176,9 @@ Void TDecSbac::resetEntropy(TComSlice* pSlice)
   m_cCuCtxLastX.initBuffer                        ( sliceType, qp, (UChar*)INIT_LAST );
   m_cCuCtxLastY.initBuffer                        ( sliceType, qp, (UChar*)INIT_LAST );
   m_cCUOneSCModel.initBuffer                      ( sliceType, qp, (UChar*)INIT_ONE_FLAG );
+#if !VCEG_AZ07_CTX_RESIDUALCODING
   m_cCUAbsSCModel.initBuffer                      ( sliceType, qp, (UChar*)INIT_ABS_FLAG );
+#endif
   m_cMVPIdxSCModel.initBuffer                     ( sliceType, qp, (UChar*)INIT_MVP_IDX );
   m_cSaoMergeSCModel.initBuffer                   ( sliceType, qp, (UChar*)INIT_SAO_MERGE_FLAG );
   m_cSaoTypeIdxSCModel.initBuffer                 ( sliceType, qp, (UChar*)INIT_SAO_TYPE_IDX );
@@ -336,7 +340,6 @@ Void TDecSbac::xReadUnarySymbol( UInt& ruiSymbol, ContextModel* pcSCModel, Int i
   ruiSymbol = uiSymbol;
 }
 
-
 /** Parsing of coeff_abs_level_remaing
  * \param rSymbol                 reference to coeff_abs_level_remaing
  * \param rParam                  reference to parameter
@@ -374,8 +377,11 @@ Void TDecSbac::xReadCoefRemainExGolomb ( UInt &rSymbol, UInt &rParam, const Bool
   codeWord  = 1 - codeWord;
   prefix -= codeWord;
   codeWord=0;
-
+#if VCEG_AZ07_CTX_RESIDUALCODING
+  if ( prefix < g_auiGoRiceRange[rParam] )
+#else
   if (prefix < COEF_REMAIN_BIN_REDUCTION )
+#endif
   {
     m_pcTDecBinIf->decodeBinsEP(codeWord,rParam RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(whichStat));
     rSymbol = (prefix<<rParam) + codeWord;
@@ -393,11 +399,15 @@ Void TDecSbac::xReadCoefRemainExGolomb ( UInt &rSymbol, UInt &rParam, const Bool
   }
   else
   {
+#if VCEG_AZ07_CTX_RESIDUALCODING
+    m_pcTDecBinIf->decodeBinsEP(codeWord,prefix-g_auiGoRiceRange[rParam]+rParam RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(whichStat));
+    rSymbol = ( ((1<<(prefix-g_auiGoRiceRange[rParam])) + g_auiGoRiceRange[rParam] -1 ) << rParam ) + codeWord;
+#else
     m_pcTDecBinIf->decodeBinsEP(codeWord,prefix-COEF_REMAIN_BIN_REDUCTION+rParam RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(whichStat));
     rSymbol = (((1<<(prefix-COEF_REMAIN_BIN_REDUCTION))+COEF_REMAIN_BIN_REDUCTION-1)<<rParam)+codeWord;
+#endif
   }
 }
-
 
 /** Parse I_PCM information.
  * \param pcCU
@@ -1406,6 +1416,50 @@ Void TDecSbac::parseLastSignificantXY( UInt& uiPosLastX, UInt& uiPosLastY, Int w
     swap( width, height );
   }
 
+#if VCEG_AZ07_CTX_RESIDUALCODING && !COM16_C806_T64
+// posX
+  Int widthCtx = component ? 4 : width;
+  const UInt *puiCtxIdxX = g_uiLastCtx + ( g_aucConvertToBit[ widthCtx ] * ( g_aucConvertToBit[ widthCtx ] + 3 ) );
+
+  for( uiPosLastX = 0; uiPosLastX < g_uiGroupIdx[ width - 1 ]; uiPosLastX++ )
+  {
+    if ( component  )
+    {
+      m_pcTDecBinIf->decodeBin( uiLast, *( pCtxX + (uiPosLastX>>g_aucConvertToBit[ width ])  ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
+    }
+    else
+    {
+      m_pcTDecBinIf->decodeBin( uiLast, *( pCtxX + puiCtxIdxX[ uiPosLastX ] ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
+    }
+
+    if( !uiLast )
+    {
+      break;
+    }
+  }
+
+  // posY
+
+  Int heightCtx = component ? 4 : height;
+  const UInt *puiCtxIdxY = g_uiLastCtx + ( g_aucConvertToBit[ heightCtx ] * ( g_aucConvertToBit[ heightCtx ] + 3 ) );
+
+  for( uiPosLastY = 0; uiPosLastY < g_uiGroupIdx[ height - 1 ]; uiPosLastY++ )
+  {
+    if (component)
+    {
+      m_pcTDecBinIf->decodeBin( uiLast, *( pCtxY + (uiPosLastY>>g_aucConvertToBit[ height ]) ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
+    }
+    else
+    {
+      m_pcTDecBinIf->decodeBin( uiLast, *( pCtxY + puiCtxIdxY[ uiPosLastY ] ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
+    }
+
+    if( !uiLast )
+    {
+      break;
+    }
+  }
+#else
   Int blkSizeOffsetX, blkSizeOffsetY, shiftX, shiftY;
   getLastSignificantContextParameters(component, width, height, blkSizeOffsetX, blkSizeOffsetY, shiftX, shiftY);
 
@@ -1434,7 +1488,7 @@ Void TDecSbac::parseLastSignificantXY( UInt& uiPosLastX, UInt& uiPosLastY, Int w
       break;
     }
   }
-
+#endif
   // EP-coded part
 
   if ( uiPosLastX > 3 )
@@ -1523,9 +1577,12 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID )
 
   const ChannelType  chType            = toChannelType(compID);
   const UInt         uiLog2BlockWidth  = g_aucConvertToBit[ uiWidth  ] + 2;
+#if !VCEG_AZ07_CTX_RESIDUALCODING
   const UInt         uiLog2BlockHeight = g_aucConvertToBit[ uiHeight ] + 2;
+#endif
   const UInt         uiMaxNumCoeff     = uiWidth * uiHeight;
   const UInt         uiMaxNumCoeffM1   = uiMaxNumCoeff - 1;
+
 
   const ChannelType  channelType       = toChannelType(compID);
   const Bool         extendedPrecision = sps.getSpsRangeExtension().getExtendedPrecisionProcessingFlag();
@@ -1592,7 +1649,6 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID )
   }
 
   //--------------------------------------------------------------------------------------------------
-
   const Bool  bUseGolombRiceParameterAdaptation = sps.getSpsRangeExtension().getPersistentRiceAdaptationEnabledFlag();
         UInt &currentGolombRiceStatistic        = m_golombRiceAdaptationStatistics[rTu.getGolombRiceStatisticsIndex(compID)];
 
@@ -1618,10 +1674,19 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID )
   }
 
   ContextModel * const baseCoeffGroupCtx = m_cCUSigCoeffGroupSCModel.get( 0, isChroma(chType) );
+#if VCEG_AZ07_CTX_RESIDUALCODING
+  UInt uiPrevGRParam = 0;
+  UInt iOffsetonTU = (g_aucConvertToBit[ uiWidth ] > 2 ? 2:g_aucConvertToBit[ uiWidth ])*NUM_SIG_FLAG_CTX_LUMA_TU;
+  ContextModel * const baseCtx = (chType == CHANNEL_TYPE_LUMA) ? m_cCUSigSCModel.get( 0, 0 ) + iOffsetonTU : m_cCUSigSCModel.get( 0, 0 ) + NUM_SIG_FLAG_CTX_LUMA;
+  ContextModel * const greXCtx = (chType == CHANNEL_TYPE_LUMA) ? m_cCUOneSCModel.get( 0, 0 ) : m_cCUOneSCModel.get( 0, 0 ) + NUM_ONE_FLAG_CTX_LUMA;
+#else
   ContextModel * const baseCtx = m_cCUSigSCModel.get( 0, 0 ) + getSignificanceMapContextOffset(compID);
+#endif
 
   const Int  iLastScanSet  = uiScanPosLast >> MLS_CG_SIZE;
+#if !VCEG_AZ07_CTX_RESIDUALCODING
   UInt c1                  = 1;
+#endif
   UInt uiGoRiceParam       = 0;
 
 
@@ -1629,12 +1694,23 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID )
   memset( uiSigCoeffGroupFlag, 0, sizeof(UInt) * MLS_GRP_NUM );
 
   Int  iScanPosSig             = (Int) uiScanPosLast;
+#if VCEG_AZ07_CTX_RESIDUALCODING
+  Bool bHor8x8 = uiWidth == 8 && uiHeight == 8 && codingParameters.scanType == SCAN_HOR;
+  Bool bVer8x8 = uiWidth == 8 && uiHeight == 8 && codingParameters.scanType == SCAN_VER;
+  Bool bNonZig8x8 = bHor8x8 || bVer8x8; 
+#endif
   for( Int iSubSet = iLastScanSet; iSubSet >= 0; iSubSet-- )
   {
     Int  iSubPos   = iSubSet << MLS_CG_SIZE;
+#if !VCEG_AZ07_CTX_RESIDUALCODING
     uiGoRiceParam  = currentGolombRiceStatistic / RExt__GOLOMB_RICE_INCREMENT_DIVISOR;
+#endif
     Bool updateGolombRiceStatistics = bUseGolombRiceParameterAdaptation; //leave the statistics at 0 when not using the adaptation system
     Int numNonZero = 0;
+#if VCEG_AZ07_CTX_RESIDUALCODING
+    UInt ctxG1 = 0;
+    UInt ctxG2 = 0;
+#endif
 
     Int lastNZPosInCG  = -1;
     Int firstNZPosInCG = 1 << MLS_CG_SIZE;
@@ -1656,6 +1732,13 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID )
     Int iCGBlkPos = codingParameters.scanCG[ iSubSet ];
     Int iCGPosY   = iCGBlkPos / codingParameters.widthInGroups;
     Int iCGPosX   = iCGBlkPos - (iCGPosY * codingParameters.widthInGroups);
+#if VCEG_AZ07_CTX_RESIDUALCODING
+    if(bNonZig8x8)
+    {
+      iCGPosY = (bHor8x8 ? iCGBlkPos : 0);
+      iCGPosX = (bVer8x8 ? iCGBlkPos : 0);
+    }
+#endif
 
     if( iSubSet == iLastScanSet || iSubSet == 0)
     {
@@ -1670,13 +1753,19 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID )
     else
     {
       UInt uiSigCoeffGroup;
+#if VCEG_AZ07_CTX_RESIDUALCODING
+      UInt uiCtxSig  = TComTrQuant::getSigCoeffGroupCtxInc( uiSigCoeffGroupFlag, iCGPosX, iCGPosY, codingParameters.widthInGroups, codingParameters.heightInGroups, codingParameters.scanType);
+#else
       UInt uiCtxSig  = TComTrQuant::getSigCoeffGroupCtxInc( uiSigCoeffGroupFlag, iCGPosX, iCGPosY, codingParameters.widthInGroups, codingParameters.heightInGroups );
+#endif
       m_pcTDecBinIf->decodeBin( uiSigCoeffGroup, baseCoeffGroupCtx[ uiCtxSig ] RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype_group) );
       uiSigCoeffGroupFlag[ iCGBlkPos ] = uiSigCoeffGroup;
     }
 
     // decode significant_coeff_flag
+#if !VCEG_AZ07_CTX_RESIDUALCODING
     const Int patternSigCtx = TComTrQuant::calcPatternSigCtx(uiSigCoeffGroupFlag, iCGPosX, iCGPosY, codingParameters.widthInGroups, codingParameters.heightInGroups);
+#endif
 
     UInt uiBlkPos, uiSig, uiCtxSig;
     for( ; iScanPosSig >= iSubPos; iScanPosSig-- )
@@ -1688,7 +1777,11 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID )
       {
         if( iScanPosSig > iSubPos || iSubSet == 0  || numNonZero )
         {
+#if VCEG_AZ07_CTX_RESIDUALCODING
+          uiCtxSig  = TComTrQuant::getGrtZeroCtxInc( pcCoef, uiBlkPos, uiWidth, uiHeight, chType );
+#else
           uiCtxSig  = TComTrQuant::getSigCtxInc( patternSigCtx, codingParameters, iScanPosSig, uiLog2BlockWidth, uiLog2BlockHeight, chType );
+#endif
           m_pcTDecBinIf->decodeBin( uiSig, baseCtx[ uiCtxSig ] RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype_map) );
         }
         else
@@ -1714,13 +1807,15 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID )
       Bool signHidden = ( lastNZPosInCG - firstNZPosInCG >= SBH_THRESHOLD );
 
       absSum = 0;
-
+#if VCEG_AZ07_CTX_RESIDUALCODING
+      UInt uiBin;
+#else
       const UInt uiCtxSet = getContextSetIndex(compID, iSubSet, (c1 == 0));
       c1 = 1;
       UInt uiBin;
 
       ContextModel *baseCtxMod = m_cCUOneSCModel.get( 0, 0 ) + (NUM_ONE_FLAG_CTX_PER_SET * uiCtxSet);
-
+#endif
       Int absCoeff[1 << MLS_CG_SIZE];
 
       for ( Int i = 0; i < numNonZero; i++)
@@ -1732,10 +1827,20 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID )
 
       for( Int idx = 0; idx < numC1Flag; idx++ )
       {
+#if VCEG_AZ07_CTX_RESIDUALCODING
+        if( idx || iSubSet != iLastScanSet)
+        {
+          ctxG1 = TComTrQuant::getGrtOneCtxInc( pcCoef, pos[idx], uiWidth, uiHeight, chType );
+        }
+        m_pcTDecBinIf->decodeBin( uiBin, greXCtx[ ctxG1 ] RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype_gt1) );
+#else
         m_pcTDecBinIf->decodeBin( uiBin, baseCtxMod[c1] RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype_gt1) );
+#endif
         if( uiBin == 1 )
         {
+#if !VCEG_AZ07_CTX_RESIDUALCODING
           c1 = 0;
+#endif
           if (firstC2FlagIdx == -1)
           {
             firstC2FlagIdx = idx;
@@ -1745,26 +1850,43 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID )
             escapeDataPresentInGroup = true;
           }
         }
+#if VCEG_AZ07_CTX_RESIDUALCODING
+        pcCoef[ pos[idx] ] += uiBin ;
+#else
         else if( (c1 < 3) && (c1 > 0) )
         {
           c1++;
         }
+#endif
         absCoeff[ idx ] = uiBin + 1;
       }
 
+#if !VCEG_AZ07_CTX_RESIDUALCODING
       if (c1 == 0)
       {
         baseCtxMod = m_cCUAbsSCModel.get( 0, 0 ) + (NUM_ABS_FLAG_CTX_PER_SET * uiCtxSet);
+#endif
         if ( firstC2FlagIdx != -1)
         {
+#if VCEG_AZ07_CTX_RESIDUALCODING
+          if( firstC2FlagIdx || iSubSet != iLastScanSet )
+          {
+            ctxG2 = TComTrQuant::getGrtTwoCtxInc( pcCoef, pos[firstC2FlagIdx], uiWidth, uiHeight, chType );
+          }
+          m_pcTDecBinIf->decodeBin( uiBin, greXCtx[ ctxG2 ] RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype_gt2) );
+          pcCoef[ pos[firstC2FlagIdx] ] += uiBin ;
+#else
           m_pcTDecBinIf->decodeBin( uiBin, baseCtxMod[0] RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype_gt2) );
+#endif
           absCoeff[ firstC2FlagIdx ] = uiBin + 2;
           if (uiBin != 0)
           {
             escapeDataPresentInGroup = true;
           }
         }
+#if !VCEG_AZ07_CTX_RESIDUALCODING
       }
+#endif
 
       escapeDataPresentInGroup = escapeDataPresentInGroup || (numNonZero > C1FLAG_NUMBER);
 
@@ -1779,7 +1901,7 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID )
       {
         m_pcTDecBinIf->align();
       }
-
+#if !VCEG_AZ07_CTX_RESIDUALCODING
       UInt coeffSigns;
       if ( signHidden && beValid )
       {
@@ -1791,7 +1913,7 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID )
         m_pcTDecBinIf->decodeBinsEP( coeffSigns, numNonZero RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype_signs) );
         coeffSigns <<= 32 - numNonZero;
       }
-
+#endif
       Int iFirstCoeff2 = 1;
       if (escapeDataPresentInGroup)
       {
@@ -1802,15 +1924,33 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID )
           if( absCoeff[ idx ] == baseLevel)
           {
             UInt uiLevel;
+#if VCEG_AZ07_CTX_RESIDUALCODING
+            if( updateGolombRiceStatistics && iSubSet == iLastScanSet )
+            {
+              uiGoRiceParam = currentGolombRiceStatistic / RExt__GOLOMB_RICE_INCREMENT_DIVISOR;
+            }
+            else
+            {
+              uiGoRiceParam = TComTrQuant::getRemainCoeffCtxInc( pcCoef, pos[idx], uiWidth, uiHeight );
+              if(bUseGolombRiceParameterAdaptation)
+              {
+                uiGoRiceParam = max(uiPrevGRParam, uiGoRiceParam);
+              }
+            }
+            uiPrevGRParam = max(0, (Int)uiGoRiceParam - 1);
             xReadCoefRemainExGolomb( uiLevel, uiGoRiceParam, extendedPrecision, maxLog2TrDynamicRange RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype_escs) );
-
+            pcCoef[ pos[idx] ] = uiLevel + baseLevel;
+#else
+            xReadCoefRemainExGolomb( uiLevel, uiGoRiceParam, extendedPrecision, maxLog2TrDynamicRange RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype_escs) );
+#endif
             absCoeff[ idx ] = uiLevel + baseLevel;
 
+#if !VCEG_AZ07_CTX_RESIDUALCODING
             if (absCoeff[idx] > (3 << uiGoRiceParam))
             {
               uiGoRiceParam = bUseGolombRiceParameterAdaptation ? (uiGoRiceParam + 1) : (std::min<UInt>((uiGoRiceParam + 1), 4));
             }
-
+#endif
             if (updateGolombRiceStatistics)
             {
               const UInt initialGolombRiceParameter = currentGolombRiceStatistic / RExt__GOLOMB_RICE_INCREMENT_DIVISOR;
@@ -1826,6 +1966,7 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID )
 
               updateGolombRiceStatistics = false;
             }
+
           }
 
           if(absCoeff[ idx ] >= 2)
@@ -1835,6 +1976,19 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID )
         }
       }
 
+#if VCEG_AZ07_CTX_RESIDUALCODING
+      UInt coeffSigns;
+      if ( signHidden && beValid )
+      {
+        m_pcTDecBinIf->decodeBinsEP( coeffSigns, numNonZero-1 RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype_signs) );
+        coeffSigns <<= 32 - (numNonZero-1);
+      }
+      else
+      {
+        m_pcTDecBinIf->decodeBinsEP( coeffSigns, numNonZero RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype_signs) );
+        coeffSigns <<= 32 - numNonZero;
+      }
+#endif
       for( Int idx = 0; idx < numNonZero; idx++ )
       {
         Int blkPos = pos[ idx ];

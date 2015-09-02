@@ -41,6 +41,9 @@
 
 #include <map>
 #include <algorithm>
+#if VCEG_AZ07_CTX_RESIDUALCODING
+#include <math.h>
+#endif
 
 #if ENVIRONMENT_VARIABLE_DEBUG_AND_TEST
 #include "../TLibCommon/Debug.h"
@@ -83,7 +86,9 @@ TEncSbac::TEncSbac()
 , m_cCuCtxLastX                        ( 1,             NUM_CTX_LAST_FLAG_SETS, NUM_CTX_LAST_FLAG_XY                 , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCuCtxLastY                        ( 1,             NUM_CTX_LAST_FLAG_SETS, NUM_CTX_LAST_FLAG_XY                 , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUOneSCModel                      ( 1,             1,                      NUM_ONE_FLAG_CTX                     , m_contextModels + m_numContextModels, m_numContextModels)
+#if !VCEG_AZ07_CTX_RESIDUALCODING
 , m_cCUAbsSCModel                      ( 1,             1,                      NUM_ABS_FLAG_CTX                     , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 , m_cMVPIdxSCModel                     ( 1,             1,                      NUM_MVP_IDX_CTX                      , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cSaoMergeSCModel                   ( 1,             1,                      NUM_SAO_MERGE_FLAG_CTX               , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cSaoTypeIdxSCModel                 ( 1,             1,                      NUM_SAO_TYPE_IDX_CTX                 , m_contextModels + m_numContextModels, m_numContextModels)
@@ -161,7 +166,9 @@ Void TEncSbac::resetEntropy           (const TComSlice *pSlice)
   m_cCuCtxLastX.initBuffer                        ( eSliceType, iQp, (UChar*)INIT_LAST );
   m_cCuCtxLastY.initBuffer                        ( eSliceType, iQp, (UChar*)INIT_LAST );
   m_cCUOneSCModel.initBuffer                      ( eSliceType, iQp, (UChar*)INIT_ONE_FLAG );
+#if !VCEG_AZ07_CTX_RESIDUALCODING
   m_cCUAbsSCModel.initBuffer                      ( eSliceType, iQp, (UChar*)INIT_ABS_FLAG );
+#endif
   m_cMVPIdxSCModel.initBuffer                     ( eSliceType, iQp, (UChar*)INIT_MVP_IDX );
   m_cCUTransSubdivFlagSCModel.initBuffer          ( eSliceType, iQp, (UChar*)INIT_TRANS_SUBDIV_FLAG );
   m_cSaoMergeSCModel.initBuffer                   ( eSliceType, iQp, (UChar*)INIT_SAO_MERGE_FLAG );
@@ -245,7 +252,9 @@ SliceType TEncSbac::determineCabacInitIdx(const TComSlice *pSlice)
       curCost += m_cCuCtxLastX.calcCost                        ( curSliceType, qp, (UChar*)INIT_LAST );
       curCost += m_cCuCtxLastY.calcCost                        ( curSliceType, qp, (UChar*)INIT_LAST );
       curCost += m_cCUOneSCModel.calcCost                      ( curSliceType, qp, (UChar*)INIT_ONE_FLAG );
+#if !VCEG_AZ07_CTX_RESIDUALCODING
       curCost += m_cCUAbsSCModel.calcCost                      ( curSliceType, qp, (UChar*)INIT_ABS_FLAG );
+#endif
       curCost += m_cMVPIdxSCModel.calcCost                     ( curSliceType, qp, (UChar*)INIT_MVP_IDX );
       curCost += m_cCUTransSubdivFlagSCModel.calcCost          ( curSliceType, qp, (UChar*)INIT_TRANS_SUBDIV_FLAG );
       curCost += m_cSaoMergeSCModel.calcCost                   ( curSliceType, qp, (UChar*)INIT_SAO_MERGE_FLAG );
@@ -398,12 +407,16 @@ Void TEncSbac::xWriteEpExGolomb( UInt uiSymbol, UInt uiCount )
  * \param useLimitedPrefixLength
  * \param maxLog2TrDynamicRange 
  */
+
 Void TEncSbac::xWriteCoefRemainExGolomb ( UInt symbol, UInt &rParam, const Bool useLimitedPrefixLength, const Int maxLog2TrDynamicRange )
 {
   Int codeNumber  = (Int)symbol;
   UInt length;
-
+#if VCEG_AZ07_CTX_RESIDUALCODING
+  if (codeNumber < (g_auiGoRiceRange[rParam] << rParam))
+#else
   if (codeNumber < (COEF_REMAIN_BIN_REDUCTION << rParam))
+#endif
   {
     length = codeNumber>>rParam;
     m_pcBinIf->encodeBinsEP( (1<<(length+1))-2 , length+1);
@@ -444,14 +457,21 @@ Void TEncSbac::xWriteCoefRemainExGolomb ( UInt symbol, UInt &rParam, const Bool 
   else
   {
     length = rParam;
+#if VCEG_AZ07_CTX_RESIDUALCODING
+    codeNumber  = codeNumber - ( g_auiGoRiceRange[rParam] << rParam);
+#else
     codeNumber  = codeNumber - ( COEF_REMAIN_BIN_REDUCTION << rParam);
+#endif
 
     while (codeNumber >= (1<<length))
     {
       codeNumber -=  (1<<(length++));
     }
-
+#if VCEG_AZ07_CTX_RESIDUALCODING
+    m_pcBinIf->encodeBinsEP((1<<(g_auiGoRiceRange[rParam] + length + 1 - rParam))-2, g_auiGoRiceRange[rParam] + length + 1 - rParam);
+#else
     m_pcBinIf->encodeBinsEP((1<<(COEF_REMAIN_BIN_REDUCTION+length+1-rParam))-2,COEF_REMAIN_BIN_REDUCTION+length+1-rParam);
+#endif
     m_pcBinIf->encodeBinsEP(codeNumber,length);
   }
 }
@@ -1388,6 +1408,59 @@ Void TEncSbac::codeLastSignificantXY( UInt uiPosX, UInt uiPosY, Int width, Int h
   ContextModel *pCtxX = m_cCuCtxLastX.get( 0, toChannelType(component) );
   ContextModel *pCtxY = m_cCuCtxLastY.get( 0, toChannelType(component) );
 
+#if VCEG_AZ07_CTX_RESIDUALCODING && !COM16_C806_T64
+  Int widthCtx = component ? 4: width;
+  const UInt *puiCtxIdxX = g_uiLastCtx + ( g_aucConvertToBit[ widthCtx ] * ( g_aucConvertToBit[ widthCtx ] + 3 ) );
+
+  for( uiCtxLast = 0; uiCtxLast < uiGroupIdxX; uiCtxLast++ )
+  {
+    if (component)
+    {
+      m_pcBinIf->encodeBin( 1, *( pCtxX + (uiCtxLast >> g_aucConvertToBit[ width ]) ) );
+    }
+    else
+    {
+      m_pcBinIf->encodeBin( 1, *( pCtxX + puiCtxIdxX[ uiCtxLast ] ) );
+    }
+  }
+  if( uiGroupIdxX < g_uiGroupIdx[ width - 1 ])
+  {
+    if ( component )
+    {
+      m_pcBinIf->encodeBin( 0, *( pCtxX + (uiCtxLast >> g_aucConvertToBit[ width ]) ) );
+    }
+    else
+    {
+      m_pcBinIf->encodeBin( 0, *( pCtxX + puiCtxIdxX[ uiCtxLast ] ) );
+    }
+  }
+
+  // posY
+  Int heightCtx = component ? 4: height;
+  const UInt *puiCtxIdxY = g_uiLastCtx + ( g_aucConvertToBit[ heightCtx ] * ( g_aucConvertToBit[ heightCtx ] + 3 ) );
+  for( uiCtxLast = 0; uiCtxLast < uiGroupIdxY; uiCtxLast++ )
+  {
+    if (component)
+    {
+      m_pcBinIf->encodeBin( 1, *( pCtxY + (uiCtxLast >>  g_aucConvertToBit[ height ])));
+    }
+    else
+    {
+      m_pcBinIf->encodeBin( 1, *( pCtxY + puiCtxIdxY[ uiCtxLast ] ) );
+    }
+  }
+  if( uiGroupIdxY < g_uiGroupIdx[ height - 1 ])
+  {
+    if (component)
+    {
+      m_pcBinIf->encodeBin( 0, *( pCtxY + (uiCtxLast >> g_aucConvertToBit[ height ]) ) );
+    }
+    else
+    {
+      m_pcBinIf->encodeBin( 0, *( pCtxY + puiCtxIdxY[ uiCtxLast ] ) );
+    }
+   }
+#else
   Int blkSizeOffsetX, blkSizeOffsetY, shiftX, shiftY;
   getLastSignificantContextParameters(component, width, height, blkSizeOffsetX, blkSizeOffsetY, shiftX, shiftY);
 
@@ -1414,7 +1487,7 @@ Void TEncSbac::codeLastSignificantXY( UInt uiPosX, UInt uiPosY, Int width, Int h
   {
     m_pcBinIf->encodeBin( 0, *( pCtxY + blkSizeOffsetY + (uiCtxLast >>shiftY) ) );
   }
-
+#endif
   // EP-coded part
 
   if ( uiGroupIdxX > 3 )
@@ -1504,10 +1577,13 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
 
   const ChannelType  chType            = toChannelType(compID);
   const UInt         uiLog2BlockWidth  = g_aucConvertToBit[ uiWidth  ] + 2;
+#if !VCEG_AZ07_CTX_RESIDUALCODING
   const UInt         uiLog2BlockHeight = g_aucConvertToBit[ uiHeight ] + 2;
+#endif
 
   const ChannelType  channelType       = toChannelType(compID);
   const Bool         extendedPrecision = sps.getSpsRangeExtension().getExtendedPrecisionProcessingFlag();
+
 
   const Bool         alignCABACBeforeBypass = sps.getSpsRangeExtension().getCabacBypassAlignmentEnabledFlag();
   const Int          maxLog2TrDynamicRange  = sps.getMaxLog2TrDynamicRange(channelType);
@@ -1563,7 +1639,6 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
   }
 
   //--------------------------------------------------------------------------------------------------
-
   const Bool  bUseGolombRiceParameterAdaptation = sps.getSpsRangeExtension().getPersistentRiceAdaptationEnabledFlag();
         UInt &currentGolombRiceStatistic        = m_golombRiceAdaptationStatistics[rTu.getGolombRiceStatisticsIndex(compID)];
 
@@ -1571,6 +1646,11 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
   TUEntropyCodingParameters codingParameters;
   getTUEntropyCodingParameters(codingParameters, rTu, compID);
 
+#if VCEG_AZ07_CTX_RESIDUALCODING
+  Bool bHor8x8 = uiWidth == 8 && uiHeight == 8 && codingParameters.scanType == SCAN_HOR;
+  Bool bVer8x8 = uiWidth == 8 && uiHeight == 8 && codingParameters.scanType == SCAN_VER;
+  Bool bNonZig8x8 = bHor8x8 || bVer8x8; 
+#endif
   //----- encode significance map -----
 
   // Find position of last coefficient
@@ -1592,6 +1672,16 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
       UInt uiPosX   = posLast - ( uiPosY << uiLog2BlockWidth );
 
       UInt uiBlkIdx = (codingParameters.widthInGroups * (uiPosY >> MLS_CG_LOG2_HEIGHT)) + (uiPosX >> MLS_CG_LOG2_WIDTH);
+#if VCEG_AZ07_CTX_RESIDUALCODING 
+      if( bHor8x8 )
+      {
+        uiBlkIdx = uiPosY >> 1;
+      }
+      else if( bVer8x8)
+      {
+        uiBlkIdx = uiPosX >> 1;
+      }
+#endif
       uiSigCoeffGroupFlag[ uiBlkIdx ] = 1;
 
       uiNumSig--;
@@ -1604,12 +1694,22 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
   codeLastSignificantXY(posLastX, posLastY, uiWidth, uiHeight, compID, codingParameters.scanType);
 
   //===== code significance flag =====
+#if VCEG_AZ07_CTX_RESIDUALCODING
+  UInt uiPrevGRParam = 0; 
+  ContextModel * const baseCoeffGroupCtx = m_cCUSigCoeffGroupSCModel.get( 0, chType );
+  UInt uiOffsetonTU = uiLog2BlockWidth==2 ? 0: NUM_SIG_FLAG_CTX_LUMA_TU << ( min(1, (Int)(uiLog2BlockWidth - 3)) );
+  ContextModel * const baseCtx = (chType == CHANNEL_TYPE_LUMA) ? m_cCUSigSCModel.get( 0, 0 ) + uiOffsetonTU : m_cCUSigSCModel.get( 0, 0 ) + NUM_SIG_FLAG_CTX_LUMA;
+  ContextModel * const greXCtx = (chType == CHANNEL_TYPE_LUMA) ? m_cCUOneSCModel.get( 0, 0 ) : m_cCUOneSCModel.get( 0, 0 ) + NUM_ONE_FLAG_CTX_LUMA;
+#else
   ContextModel * const baseCoeffGroupCtx = m_cCUSigCoeffGroupSCModel.get( 0, chType );
   ContextModel * const baseCtx = m_cCUSigSCModel.get( 0, 0 ) + getSignificanceMapContextOffset(compID);
+#endif
 
   const Int  iLastScanSet  = scanPosLast >> MLS_CG_SIZE;
 
+#if !VCEG_AZ07_CTX_RESIDUALCODING
   UInt c1                  = 1;
+#endif
   UInt uiGoRiceParam       = 0;
   Int  iScanPosSig         = scanPosLast;
 
@@ -1617,11 +1717,18 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
   {
     Int numNonZero = 0;
     Int  iSubPos   = iSubSet << MLS_CG_SIZE;
+#if !VCEG_AZ07_CTX_RESIDUALCODING
     uiGoRiceParam  = currentGolombRiceStatistic / RExt__GOLOMB_RICE_INCREMENT_DIVISOR;
+#endif
     Bool updateGolombRiceStatistics = bUseGolombRiceParameterAdaptation; //leave the statistics at 0 when not using the adaptation system
     UInt coeffSigns = 0;
 
     Int absCoeff[1 << MLS_CG_SIZE];
+#if VCEG_AZ07_CTX_RESIDUALCODING
+    Int pos     [1 << MLS_CG_SIZE];
+    UInt ctxG1     = 0;
+    UInt ctxG2     = 0;
+#endif
 
     Int lastNZPosInCG  = -1;
     Int firstNZPosInCG = 1 << MLS_CG_SIZE;
@@ -1631,6 +1738,9 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
     if( iScanPosSig == scanPosLast )
     {
       absCoeff[ 0 ] = Int(abs( pcCoef[ posLast ] ));
+#if VCEG_AZ07_CTX_RESIDUALCODING
+      pos[numNonZero]= posLastX + (posLastY<< uiLog2BlockWidth);
+#endif
       coeffSigns    = ( pcCoef[ posLast ] < 0 );
       numNonZero    = 1;
       lastNZPosInCG  = iScanPosSig;
@@ -1642,6 +1752,14 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
     Int iCGBlkPos = codingParameters.scanCG[ iSubSet ];
     Int iCGPosY   = iCGBlkPos / codingParameters.widthInGroups;
     Int iCGPosX   = iCGBlkPos - (iCGPosY * codingParameters.widthInGroups);
+
+#if VCEG_AZ07_CTX_RESIDUALCODING
+    if(bNonZig8x8 )
+    {
+      iCGPosY = (bHor8x8 ? iCGBlkPos : 0);
+      iCGPosX = (bVer8x8 ? iCGBlkPos : 0);
+    }
+#endif
 
     if( iSubSet == iLastScanSet || iSubSet == 0)
     {
@@ -1656,14 +1774,20 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
     else
     {
       UInt uiSigCoeffGroup   = (uiSigCoeffGroupFlag[ iCGBlkPos ] != 0);
+#if VCEG_AZ07_CTX_RESIDUALCODING
+      UInt uiCtxSig  = TComTrQuant::getSigCoeffGroupCtxInc( uiSigCoeffGroupFlag, iCGPosX, iCGPosY, codingParameters.widthInGroups, codingParameters.heightInGroups, codingParameters.scanType );
+#else
       UInt uiCtxSig  = TComTrQuant::getSigCoeffGroupCtxInc( uiSigCoeffGroupFlag, iCGPosX, iCGPosY, codingParameters.widthInGroups, codingParameters.heightInGroups );
+#endif
       m_pcBinIf->encodeBin( uiSigCoeffGroup, baseCoeffGroupCtx[ uiCtxSig ] );
     }
 
     // encode significant_coeff_flag
     if( uiSigCoeffGroupFlag[ iCGBlkPos ] )
     {
+#if !VCEG_AZ07_CTX_RESIDUALCODING
       const Int patternSigCtx = TComTrQuant::calcPatternSigCtx(uiSigCoeffGroupFlag, iCGPosX, iCGPosY, codingParameters.widthInGroups, codingParameters.heightInGroups);
+#endif
 
       UInt uiBlkPos, uiSig, uiCtxSig;
       for( ; iScanPosSig >= iSubPos; iScanPosSig-- )
@@ -1672,11 +1796,18 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
         uiSig     = (pcCoef[ uiBlkPos ] != 0);
         if( iScanPosSig > iSubPos || iSubSet == 0 || numNonZero )
         {
+#if VCEG_AZ07_CTX_RESIDUALCODING
+          uiCtxSig  = TComTrQuant::getGrtZeroCtxInc( pcCoef, codingParameters.scan[iScanPosSig], uiWidth, uiHeight, chType );
+#else
           uiCtxSig  = TComTrQuant::getSigCtxInc( patternSigCtx, codingParameters, iScanPosSig, uiLog2BlockWidth, uiLog2BlockHeight, chType );
+#endif
           m_pcBinIf->encodeBin( uiSig, baseCtx[ uiCtxSig ] );
         }
         if( uiSig )
         {
+#if VCEG_AZ07_CTX_RESIDUALCODING
+          pos[ numNonZero ]      = uiBlkPos;  
+#endif
           absCoeff[ numNonZero ] = Int(abs( pcCoef[ uiBlkPos ] ));
           coeffSigns = 2 * coeffSigns + ( pcCoef[ uiBlkPos ] < 0 );
           numNonZero++;
@@ -1697,21 +1828,32 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
     {
       Bool signHidden = ( lastNZPosInCG - firstNZPosInCG >= SBH_THRESHOLD );
 
+#if !VCEG_AZ07_CTX_RESIDUALCODING
       const UInt uiCtxSet = getContextSetIndex(compID, iSubSet, (c1 == 0));
       c1 = 1;
 
       ContextModel *baseCtxMod = m_cCUOneSCModel.get( 0, 0 ) + (NUM_ONE_FLAG_CTX_PER_SET * uiCtxSet);
+#endif
 
       Int numC1Flag = min(numNonZero, C1FLAG_NUMBER);
       Int firstC2FlagIdx = -1;
       for( Int idx = 0; idx < numC1Flag; idx++ )
       {
         UInt uiSymbol = absCoeff[ idx ] > 1;
+#if VCEG_AZ07_CTX_RESIDUALCODING 
+        if(idx || iSubSet != iLastScanSet)
+        {
+          ctxG1 = TComTrQuant::getGrtOneCtxInc( pcCoef, pos[idx], uiWidth, uiHeight, chType );
+        }
+        m_pcBinIf->encodeBin( uiSymbol, greXCtx[ ctxG1 ] );
+#else
         m_pcBinIf->encodeBin( uiSymbol, baseCtxMod[c1] );
+#endif
         if( uiSymbol )
         {
+#if !VCEG_AZ07_CTX_RESIDUALCODING
           c1 = 0;
-
+#endif
           if (firstC2FlagIdx == -1)
           {
             firstC2FlagIdx = idx;
@@ -1721,33 +1863,45 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
             escapeDataPresentInGroup = true;
           }
         }
+#if !VCEG_AZ07_CTX_RESIDUALCODING
         else if( (c1 < 3) && (c1 > 0) )
         {
           c1++;
         }
+#endif
       }
-
+#if !VCEG_AZ07_CTX_RESIDUALCODING
       if (c1 == 0)
       {
         baseCtxMod = m_cCUAbsSCModel.get( 0, 0 ) + (NUM_ABS_FLAG_CTX_PER_SET * uiCtxSet);
+#endif
         if ( firstC2FlagIdx != -1)
         {
           UInt symbol = absCoeff[ firstC2FlagIdx ] > 2;
+#if VCEG_AZ07_CTX_RESIDUALCODING
+          if( firstC2FlagIdx || iSubSet != iLastScanSet )
+          {
+            ctxG2 = TComTrQuant::getGrtTwoCtxInc( pcCoef, pos[firstC2FlagIdx], uiWidth, uiHeight, chType );
+          }
+          m_pcBinIf->encodeBin( symbol, greXCtx[ ctxG2 ] );
+#else
           m_pcBinIf->encodeBin( symbol, baseCtxMod[0] );
+#endif
           if (symbol != 0)
           {
             escapeDataPresentInGroup = true;
           }
         }
+#if !VCEG_AZ07_CTX_RESIDUALCODING
       }
-
+#endif
       escapeDataPresentInGroup = escapeDataPresentInGroup || (numNonZero > C1FLAG_NUMBER);
 
       if (escapeDataPresentInGroup && alignCABACBeforeBypass)
       {
         m_pcBinIf->align();
       }
-
+#if !VCEG_AZ07_CTX_RESIDUALCODING
       if( beValid && signHidden )
       {
         m_pcBinIf->encodeBinsEP( (coeffSigns >> 1), numNonZero-1 );
@@ -1756,7 +1910,7 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
       {
         m_pcBinIf->encodeBinsEP( coeffSigns, numNonZero );
       }
-
+#endif
       Int iFirstCoeff2 = 1;
       if (escapeDataPresentInGroup)
       {
@@ -1767,14 +1921,28 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
           if( absCoeff[ idx ] >= baseLevel)
           {
             const UInt escapeCodeValue = absCoeff[idx] - baseLevel;
-
+#if VCEG_AZ07_CTX_RESIDUALCODING
+            if( updateGolombRiceStatistics && iSubSet == iLastScanSet )
+            {
+              uiGoRiceParam = currentGolombRiceStatistic / RExt__GOLOMB_RICE_INCREMENT_DIVISOR;
+            }
+            else
+            {
+              uiGoRiceParam = TComTrQuant::getRemainCoeffCtxInc( pcCoef, pos[idx], uiWidth, uiHeight);
+              if(bUseGolombRiceParameterAdaptation)
+              {
+                uiGoRiceParam = max(uiPrevGRParam , uiGoRiceParam);
+              }
+            }
+            uiPrevGRParam = max(0, (Int)uiGoRiceParam - 1);
+#endif
             xWriteCoefRemainExGolomb( escapeCodeValue, uiGoRiceParam, extendedPrecision, maxLog2TrDynamicRange );
-
+#if !VCEG_AZ07_CTX_RESIDUALCODING 
             if (absCoeff[idx] > (3 << uiGoRiceParam))
             {
               uiGoRiceParam = bUseGolombRiceParameterAdaptation ? (uiGoRiceParam + 1) : (std::min<UInt>((uiGoRiceParam + 1), 4));
             }
-
+#endif
             if (updateGolombRiceStatistics)
             {
               const UInt initialGolombRiceParameter = currentGolombRiceStatistic / RExt__GOLOMB_RICE_INCREMENT_DIVISOR;
@@ -1790,6 +1958,7 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
 
               updateGolombRiceStatistics = false;
             }
+
           }
 
           if(absCoeff[ idx ] >= 2)
@@ -1798,6 +1967,16 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
           }
         }
       }
+#if VCEG_AZ07_CTX_RESIDUALCODING
+      if( beValid && signHidden )
+      {
+        m_pcBinIf->encodeBinsEP( (coeffSigns >> 1), numNonZero-1 );
+      }
+      else
+      {
+        m_pcBinIf->encodeBinsEP( coeffSigns, numNonZero );
+      }
+#endif
     }
   }
 #if ENVIRONMENT_VARIABLE_DEBUG_AND_TEST
@@ -2094,7 +2273,7 @@ Void TEncSbac::estSignificantMapBit( estBitsSbacStruct* pcEstBitsSbac, Int width
   const UInt lastComponent  = ((isLuma(chType)) ? (COMPONENT_Y) : (COMPONENT_Cb));
 
   //----------------------------------------------------------
-
+#if !VCEG_AZ07_CTX_RESIDUALCODING
   Int firstCtx = MAX_INT;
   Int numCtx   = MAX_INT;
 
@@ -2113,13 +2292,18 @@ Void TEncSbac::estSignificantMapBit( estBitsSbacStruct* pcEstBitsSbac, Int width
     firstCtx = significanceMapContextSetStart[chType][CONTEXT_TYPE_NxN];
     numCtx   = significanceMapContextSetSize [chType][CONTEXT_TYPE_NxN];
   }
-
+#endif
   //--------------------------------------------------------------------------------------------------
 
   //fill the data for the significace map
 
   for (UInt component = firstComponent; component <= lastComponent; component++)
   {
+#if VCEG_AZ07_CTX_RESIDUALCODING
+    Int firstCtx   = !component  ? (g_aucConvertToBit[ width ] > 2 ? 2 : g_aucConvertToBit[width]) * NUM_SIG_FLAG_CTX_LUMA_TU : 0;
+    Int numCtx     = !component  ? NUM_SIG_FLAG_CTX_LUMA_TU : NUM_SIG_FLAG_CTX_CHROMA;
+    Int iCtxOffset = !component  ? 0 : NUM_SIG_FLAG_CTX_LUMA;
+#else
     const UInt contextOffset = getSignificanceMapContextOffset(ComponentID(component));
 
     if (firstCtx > 0)
@@ -2129,20 +2313,26 @@ Void TEncSbac::estSignificantMapBit( estBitsSbacStruct* pcEstBitsSbac, Int width
         pcEstBitsSbac->significantBits[ contextOffset ][ bin ] = m_cCUSigSCModel.get( 0, 0, contextOffset ).getEntropyBits( bin );
       }
     }
-
+#endif
     // This could be made optional, but would require this function to have knowledge of whether the
     // TU is transform-skipped or transquant-bypassed and whether the SPS flag is set
+#if !VCEG_AZ07_CTX_RESIDUALCODING
     for( UInt bin = 0; bin < 2; bin++ )
     {
       const Int ctxIdx = significanceMapContextSetStart[chType][CONTEXT_TYPE_SINGLE];
       pcEstBitsSbac->significantBits[ contextOffset + ctxIdx ][ bin ] = m_cCUSigSCModel.get( 0, 0, (contextOffset + ctxIdx) ).getEntropyBits( bin );
     }
+#endif
 
     for ( Int ctxIdx = firstCtx; ctxIdx < firstCtx + numCtx; ctxIdx++ )
     {
       for( UInt uiBin = 0; uiBin < 2; uiBin++ )
       {
+#if VCEG_AZ07_CTX_RESIDUALCODING
+        pcEstBitsSbac->significantBits[ ctxIdx ][ uiBin ] = m_cCUSigSCModel.get(  0, 0, iCtxOffset + ctxIdx ).getEntropyBits( uiBin );
+#else
         pcEstBitsSbac->significantBits[ contextOffset + ctxIdx ][ uiBin ] = m_cCUSigSCModel.get(  0, 0, (contextOffset + ctxIdx) ).getEntropyBits( uiBin );
+#endif
       }
     }
   }
@@ -2167,6 +2357,11 @@ Void TEncSbac::estLastSignificantPositionBit( estBitsSbacStruct* pcEstBitsSbac, 
   const UInt firstComponent = ((isLuma(chType)) ? (COMPONENT_Y) : (COMPONENT_Cb));
   const UInt lastComponent  = ((isLuma(chType)) ? (COMPONENT_Y) : (COMPONENT_Cb));
 
+#if VCEG_AZ07_CTX_RESIDUALCODING && !COM16_C806_T64
+  const UInt uiLog2BlockWidthIdx = g_aucConvertToBit[ width ];
+  const UInt  ctxWidth   = isLuma(chType) ? width : 4;
+  const UInt *puiCtxXIdx = g_uiLastCtx + (g_aucConvertToBit[ ctxWidth ] * (g_aucConvertToBit[ ctxWidth ] + 3 ) );   
+#endif
   //--------------------------------------------------------------------------------------------------
 
   //fill the data for the last-significant-coefficient position
@@ -2176,9 +2371,10 @@ Void TEncSbac::estLastSignificantPositionBit( estBitsSbacStruct* pcEstBitsSbac, 
     const ComponentID component = ComponentID(componentIndex);
 
     Int iBitsX = 0, iBitsY = 0;
-
+#if !VCEG_AZ07_CTX_RESIDUALCODING || COM16_C806_T64
     Int blkSizeOffsetX, blkSizeOffsetY, shiftX, shiftY;
     getLastSignificantContextParameters(ComponentID(component), width, height, blkSizeOffsetX, blkSizeOffsetY, shiftX, shiftY);
+#endif
 
     Int ctx;
 
@@ -2195,7 +2391,11 @@ Void TEncSbac::estLastSignificantPositionBit( estBitsSbacStruct* pcEstBitsSbac, 
 
     for (ctx = 0; ctx < g_uiGroupIdx[ width - 1 ]; ctx++)
     {
+#if VCEG_AZ07_CTX_RESIDUALCODING && !COM16_C806_T64
+      Int ctxOffset = isLuma(chType)? puiCtxXIdx[ ctx ]: (ctx >> uiLog2BlockWidthIdx );
+#else
       Int ctxOffset = blkSizeOffsetX + (ctx >>shiftX);
+#endif
       lastXBitsArray[ ctx ] = iBitsX + pCtxX[ ctxOffset ].getEntropyBits( 0 );
       iBitsX += pCtxX[ ctxOffset ].getEntropyBits( 1 );
     }
@@ -2205,10 +2405,18 @@ Void TEncSbac::estLastSignificantPositionBit( estBitsSbacStruct* pcEstBitsSbac, 
     //------------------------------------------------
 
     //Y-coordinate
-
+#if VCEG_AZ07_CTX_RESIDUALCODING && !COM16_C806_T64
+    const UInt uiLog2BlockheightIdx = g_aucConvertToBit[ height ];
+    const UInt  ctxHeight  = isLuma(chType) ? height : 4;
+    const UInt* puiCtxYIdx = g_uiLastCtx + (g_aucConvertToBit[ ctxHeight ] * (g_aucConvertToBit[ ctxHeight ] + 3 ) );   
+#endif
     for (ctx = 0; ctx < g_uiGroupIdx[ height - 1 ]; ctx++)
     {
+#if VCEG_AZ07_CTX_RESIDUALCODING && !COM16_C806_T64
+      Int ctxOffset = isLuma(chType)? puiCtxYIdx[ ctx ]: (ctx >> uiLog2BlockheightIdx );
+#else
       Int ctxOffset = blkSizeOffsetY + (ctx >>shiftY);
+#endif
       lastYBitsArray[ ctx ] = iBitsY + pCtxY[ ctxOffset ].getEntropyBits( 0 );
       iBitsY += pCtxY[ ctxOffset ].getEntropyBits( 1 );
     }
@@ -2229,25 +2437,34 @@ Void TEncSbac::estLastSignificantPositionBit( estBitsSbacStruct* pcEstBitsSbac, 
  */
 Void TEncSbac::estSignificantCoefficientsBit( estBitsSbacStruct* pcEstBitsSbac, ChannelType chType )
 {
+#if VCEG_AZ07_CTX_RESIDUALCODING
+  const UInt oneStopIndex  = ((isLuma(chType)) ? (NUM_ONE_FLAG_CTX_LUMA) : (NUM_ONE_FLAG_CTX_CHROMA));
+  ContextModel *ctxOne = m_cCUOneSCModel.get(0, 0) + ((isLuma(chType)) ? (0) : (NUM_ONE_FLAG_CTX_LUMA));
+  for (Int ctxIdx = 0; ctxIdx < oneStopIndex; ctxIdx++)
+#else
   ContextModel *ctxOne = m_cCUOneSCModel.get(0, 0);
   ContextModel *ctxAbs = m_cCUAbsSCModel.get(0, 0);
 
   const UInt oneStartIndex = ((isLuma(chType)) ? (0)                     : (NUM_ONE_FLAG_CTX_LUMA));
   const UInt oneStopIndex  = ((isLuma(chType)) ? (NUM_ONE_FLAG_CTX_LUMA) : (NUM_ONE_FLAG_CTX));
+
   const UInt absStartIndex = ((isLuma(chType)) ? (0)                     : (NUM_ABS_FLAG_CTX_LUMA));
   const UInt absStopIndex  = ((isLuma(chType)) ? (NUM_ABS_FLAG_CTX_LUMA) : (NUM_ABS_FLAG_CTX));
 
+
   for (Int ctxIdx = oneStartIndex; ctxIdx < oneStopIndex; ctxIdx++)
+#endif
   {
     pcEstBitsSbac->m_greaterOneBits[ ctxIdx ][ 0 ] = ctxOne[ ctxIdx ].getEntropyBits( 0 );
     pcEstBitsSbac->m_greaterOneBits[ ctxIdx ][ 1 ] = ctxOne[ ctxIdx ].getEntropyBits( 1 );
   }
-
+#if !VCEG_AZ07_CTX_RESIDUALCODING
   for (Int ctxIdx = absStartIndex; ctxIdx < absStopIndex; ctxIdx++)
   {
     pcEstBitsSbac->m_levelAbsBits[ ctxIdx ][ 0 ] = ctxAbs[ ctxIdx ].getEntropyBits( 0 );
     pcEstBitsSbac->m_levelAbsBits[ ctxIdx ][ 1 ] = ctxAbs[ ctxIdx ].getEntropyBits( 1 );
   }
+#endif
 }
 
 /**

@@ -280,6 +280,16 @@ Void initROM()
 
         g_scanOrder[SCAN_UNGROUPED][scanType][log2BlockWidth][log2BlockHeight] = new UInt[totalValues];
 
+#if VCEG_AZ07_CTX_RESIDUALCODING
+        if (scanType == SCAN_VER && log2BlockWidth == 1 && log2BlockHeight == 1) 
+        {
+          for (UInt scanPosition = 0; scanPosition < totalValues; scanPosition++)
+          {
+            g_scanOrder[SCAN_UNGROUPED][scanTypeIndex][log2BlockWidth][log2BlockHeight][scanPosition] = g_scanOrder[SCAN_UNGROUPED][scanTypeIndex - 1][log2BlockWidth][log2BlockHeight][scanPosition];
+          }
+          continue;
+        }
+#endif
         ScanGenerator fullBlockScan(blockWidth, blockHeight, blockWidth, scanType);
 
         for (UInt scanPosition = 0; scanPosition < totalValues; scanPosition++)
@@ -291,21 +301,37 @@ Void initROM()
       //--------------------------------------------------------------------------------------------------
 
       //grouped scan orders
-
+#if VCEG_AZ07_CTX_RESIDUALCODING
+      UInt  groupWidth                 = 1           << MLS_CG_LOG2_WIDTH;
+      UInt  groupHeight                = 1           << MLS_CG_LOG2_HEIGHT;
+      UInt  widthInGroups              = blockWidth  >> MLS_CG_LOG2_WIDTH;
+      UInt  heightInGroups             = blockHeight >> MLS_CG_LOG2_HEIGHT;
+#else
       const UInt  groupWidth           = 1           << MLS_CG_LOG2_WIDTH;
       const UInt  groupHeight          = 1           << MLS_CG_LOG2_HEIGHT;
       const UInt  widthInGroups        = blockWidth  >> MLS_CG_LOG2_WIDTH;
       const UInt  heightInGroups       = blockHeight >> MLS_CG_LOG2_HEIGHT;
+#endif
 
       const UInt  groupSize            = groupWidth    * groupHeight;
       const UInt  totalGroups          = widthInGroups * heightInGroups;
-
       for (UInt scanTypeIndex = 0; scanTypeIndex < SCAN_NUMBER_OF_TYPES; scanTypeIndex++)
       {
         const COEFF_SCAN_TYPE scanType = COEFF_SCAN_TYPE(scanTypeIndex);
 
         g_scanOrder[SCAN_GROUPED_4x4][scanType][log2BlockWidth][log2BlockHeight] = new UInt[totalValues];
-
+#if VCEG_AZ07_CTX_RESIDUALCODING
+        Bool bHorVerCGScan = (scanType && log2BlockWidth == 3 && log2BlockHeight == 3) ;
+        if ( bHorVerCGScan ) 
+        {
+          for (UInt scanPosition = 0; scanPosition < totalValues; scanPosition++)
+          {
+            g_scanOrder[SCAN_GROUPED_4x4][scanType][log2BlockWidth][log2BlockHeight][scanPosition] = g_scanOrder[SCAN_UNGROUPED][scanType][log2BlockWidth][log2BlockHeight][scanPosition];
+          }
+        }
+        else
+        {
+#endif
         ScanGenerator fullBlockScan(widthInGroups, heightInGroups, groupWidth, scanType);
 
         for (UInt groupIndex = 0; groupIndex < totalGroups; groupIndex++)
@@ -325,6 +351,9 @@ Void initROM()
 
           fullBlockScan.GetNextIndex(0,0);
         }
+#if VCEG_AZ07_CTX_RESIDUALCODING
+        }
+#endif
       }
 
       //--------------------------------------------------------------------------------------------------
@@ -365,7 +394,28 @@ UInt g_auiRasterToPelX  [ MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CT
 UInt g_auiRasterToPelY  [ MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH ] = { 0, };
 
 const UInt g_auiPUOffset[NUMBER_OF_PART_SIZES] = { 0, 8, 4, 4, 2, 10, 1, 5};
-
+#if VCEG_AZ07_CTX_RESIDUALCODING
+const UInt g_sigLastScan8x8[ 3 ][ 4 ] =
+{
+  {0, 2, 1, 3}, 
+  {0, 1, 2, 3},
+  {0, 1, 2, 3},
+};
+const UInt g_auiGoRiceRange[MAX_GR_ORDER_RESIDUAL] =
+{
+  6, 5, 6, COEF_REMAIN_BIN_REDUCTION, COEF_REMAIN_BIN_REDUCTION, COEF_REMAIN_BIN_REDUCTION, COEF_REMAIN_BIN_REDUCTION, COEF_REMAIN_BIN_REDUCTION, COEF_REMAIN_BIN_REDUCTION, COEF_REMAIN_BIN_REDUCTION
+};
+#if !COM16_C806_T64
+const UInt g_uiLastCtx[ 28 ]    =         //!!!!to be modified for when COM16_C806_T64 = 1  
+{
+  0,   1,  2,  2,                         // 4x4    4
+  3,   4,  5,  5, 2,  2,                  // 8x8    6  
+  6,   7,  8,  8, 9,  9, 2, 2,            // 16x16  8
+  10, 11, 12, 12, 13, 13, 14, 14, 2, 2    // 32x32  10
+                                          // 64x64  12    
+};
+#endif
+#endif
 Void initZscanToRaster ( Int iMaxDepth, Int iDepth, UInt uiStartVal, UInt*& rpuiCurrIdx )
 {
   Int iStride = 1 << ( iMaxDepth - 1 );

@@ -109,6 +109,16 @@ extern const UInt   ctxIndMap4x4[4*4];
 extern const UInt   g_uiGroupIdx[ MAX_TU_SIZE ];
 extern const UInt   g_uiMinInGroup[ LAST_SIGNIFICANT_GROUPS ];
 
+#if VCEG_AZ07_CTX_RESIDUALCODING
+// ====================================================================================================================
+// coefficients coding
+// ====================================================================================================================
+extern const UInt   g_auiGoRiceRange[MAX_GR_ORDER_RESIDUAL];                  //!< maximum value coded with Rice codes
+#if !COM16_C806_T64
+extern const UInt   g_uiLastCtx[ 28 ];
+#endif
+#endif
+
 // ====================================================================================================================
 // Intra prediction table
 // ====================================================================================================================

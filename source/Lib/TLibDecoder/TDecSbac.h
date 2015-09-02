@@ -198,7 +198,9 @@ private:
   ContextModel3DBuffer m_cCuCtxLastX;
   ContextModel3DBuffer m_cCuCtxLastY;
   ContextModel3DBuffer m_cCUOneSCModel;
+#if !VCEG_AZ07_CTX_RESIDUALCODING
   ContextModel3DBuffer m_cCUAbsSCModel;
+#endif
 
   ContextModel3DBuffer m_cMVPIdxSCModel;
 

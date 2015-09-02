@@ -103,6 +103,10 @@
 #endif
 
 #define VCEG_AZ07_INTRA_65ANG_MODES                       1 ///< Extended angular intra prediction, including 65 angular modes & 6 MPMs
+#define VCEG_AZ07_ECABAC                                  1 /// CABAC improvements
+#if VCEG_AZ07_ECABAC
+#define VCEG_AZ07_CTX_RESIDUALCODING                      1 /// new ctx for residual coding
+#endif
 
 #define COM16_C806_SIMD_OPT                               1  ///< SIMD optimization, no impact on RD performance
 ///////////////////////////////////////////////////////////
@@ -517,6 +521,7 @@ enum COEFF_SCAN_GROUP_TYPE
   SCAN_NUMBER_OF_GROUP_TYPES = 2
 };
 
+#if !VCEG_AZ07_CTX_RESIDUALCODING
 enum SignificanceMapContextType
 {
   CONTEXT_TYPE_4x4    = 0,
@@ -525,6 +530,7 @@ enum SignificanceMapContextType
   CONTEXT_TYPE_SINGLE = 3,
   CONTEXT_NUMBER_OF_TYPES = 4
 };
+#endif
 
 enum ScalingListMode
 {
