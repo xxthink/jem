@@ -597,7 +597,7 @@ Void TEncCavlc::codeSPS( const TComSPS* pcSPS )
   }
 #endif
 #if VCEG_AZ06_IC
-  WRITE_FLAG( pcSPS->getICFlag()? 1: 0, "illumination_comp_flag");
+  WRITE_FLAG( pcSPS->getICFlag()? 1: 0, "illumination_comp_enabled_flag");
 #endif
 #if ALF_HM3_REFACTOR
   WRITE_FLAG( pcSPS->getUseALF () ? 1 : 0, "use_alf_flag" );
