@@ -409,8 +409,12 @@ UInt TComInputBitstream::readByteAlignment()
   return numBits+1;
 }
 
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_INIT_PREVFRAME || VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_INIT_PREVFRAME
+TComStats::TComStats(UInt uiNLCUW, UInt uiNLCUH)
+#elif VCEG_AZ07_BAC_ADAPT_WDOW
 TComStats::TComStats()
+#endif
 {
   for (Int k = 0; k < 3; k++)
     for (Int i=0; i<NUM_QP_PROB; i++)
@@ -418,10 +422,53 @@ TComStats::TComStats()
       aaQPUsed[k][i].QP = 0;
       aaQPUsed[k][i].used = false;
       aaQPUsed[k][i].firstUsed = false;
+#if VCEG_AZ07_INIT_PREVFRAME
+      aaQPUsed[k][i].resetInit = -1;
+#endif
     }
+#if VCEG_AZ07_INIT_PREVFRAME
+    m_uiLastIPOC = -1;
+    for(Int i = 0; i < 2; i++)
+    {
+      for(Int j=0; j< NUM_QP_PROB; j++)  
+      {
+        if( ( m_uiCtxProbIdx[i][j] = (UShort**)calloc(uiNLCUH, sizeof(UShort*))) == NULL )
+        {
+          printf("get_mem2Dpel: array2D");
+          exit(-1);
+        }
+        if( (( m_uiCtxProbIdx[i][j])[0] = (UShort* )calloc( uiNLCUH*uiNLCUW, sizeof( UShort ))) == NULL )
+        {
+          printf("get_mem2Dpel: array2D");
+          exit(-1);
+        }
+
+        for(Int k=1 ; k<uiNLCUH ; k++)
+        {
+          m_uiCtxProbIdx[i][j][k] =  m_uiCtxProbIdx[i][j][k-1] + uiNLCUW;
+        }
+      }
+    }
+#endif
 }
 TComStats::~TComStats()
 {
+#if VCEG_AZ07_INIT_PREVFRAME
+  for(Int i=0; i<2; i++)
+  {
+    for(Int j=0; j< NUM_QP_PROB; j++)
+    {
+      if (m_uiCtxProbIdx[i][j])
+      {
+        if (m_uiCtxProbIdx[i][j][0])
+        {
+          free (m_uiCtxProbIdx[i][j][0]);
+        }
+        free (m_uiCtxProbIdx[i][j]);
+      }
+    }
+  }
+#endif
 }
 #endif
 //! \}

@@ -72,10 +72,12 @@ public:
   virtual Void  parseSPS                  ( TComSPS* pcSPS )     = 0;
   virtual Void  parsePPS                  ( TComPPS* pcPPS )     = 0;
 
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
   virtual TComStats* getStatesHandle      ( )                    = 0;
   virtual Void setStatesHandle            ( TComStats* pcStats)  = 0;
+#if VCEG_AZ07_BAC_ADAPT_WDOW 
   virtual Void parseCtxUpdateInfo         ( TComSlice*& rpcSlice, TComStats* apcStats )   = 0;
+#endif
 #endif
 
   virtual Void parseSliceHeader          ( TComSlice* pcSlice, ParameterSetManager *parameterSetManager, const Int prevTid0POC)       = 0;
@@ -168,7 +170,7 @@ public:
   TDecEntropy();
   ~TDecEntropy();
 #endif
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
   TComStats* m_pcStats;
   Void       updateStates   ( SliceType uiSliceType, UInt uiSliceQP, TComStats*  apcStats);
   Void       setStatsHandle ( TComStats*  pcStats)  { m_pcStats = pcStats; }
@@ -184,13 +186,15 @@ public:
 
   Void    setEntropyDecoder           ( TDecEntropyIf* p );
   Void    setBitstream                ( TComInputBitstream* p ) { m_pcEntropyDecoderIf->setBitstream(p);                    }
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
   Void    resetEntropy                ( TComSlice* p )       
   {
     m_pcEntropyDecoderIf->setStatesHandle (m_pcStats);
     m_pcEntropyDecoderIf->resetEntropy(p);  
   }
+#if VCEG_AZ07_BAC_ADAPT_WDOW
   Void    decodeCtxUpdateInfo         ( TComSlice*& rpcSlice, TComStats* apcStats )  { m_pcEntropyDecoderIf->parseCtxUpdateInfo( rpcSlice, apcStats); }
+#endif
 #else
   Void    resetEntropy                ( TComSlice* p)           { m_pcEntropyDecoderIf->resetEntropy(p);                    }
 #endif

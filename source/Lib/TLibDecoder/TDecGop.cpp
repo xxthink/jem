@@ -116,7 +116,7 @@ Void TDecGop::init( TDecEntropy*            pcEntropyDecoder,
 // Public member functions
 // ====================================================================================================================
 Void TDecGop::decompressSlice(TComInputBitstream* pcBitstream, TComPic* pcPic
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
                             , TComStats*  m_apcStats
 #endif
   )
@@ -130,7 +130,7 @@ Void TDecGop::decompressSlice(TComInputBitstream* pcBitstream, TComPic* pcPic
   clock_t iBeforeTime = clock();
   m_pcSbacDecoder->init( (TDecBinIf*)m_pcBinCABAC );
   m_pcEntropyDecoder->setEntropyDecoder (m_pcSbacDecoder);
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
   pcSlice->setStatsHandle( m_apcStats );
   m_pcEntropyDecoder->setStatsHandle ( m_apcStats );
 #endif
@@ -175,12 +175,18 @@ Void TDecGop::decompressSlice(TComInputBitstream* pcBitstream, TComPic* pcPic
   }
 #endif
 
+#if VCEG_AZ07_INIT_PREVFRAME
+  pcSlice->setStatsHandle(m_apcStats);
+  pcSlice->initStatsGlobal();
+#endif
+
   m_pcSliceDecoder->decompressSlice( ppcSubstreams, pcPic, m_pcSbacDecoder
 #if ALF_HM3_REFACTOR
     , m_cAlfParam
 #endif
     );
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
   m_pcEntropyDecoder->updateStates (pcSlice->getSliceType(), pcSlice->getSliceQp(), m_apcStats);
 #endif
 

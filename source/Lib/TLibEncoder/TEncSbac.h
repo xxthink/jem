@@ -105,10 +105,15 @@ public:
                     , Bool aboveMergeAvail
                     , Bool onlyEstMergeInfo = false
                     );
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
   Int  getCtxNumber()     { return m_numContextModels; }
   Void codeCtxUpdateInfo  ( TComSlice* pcSlice,  TComStats* apcStats );
+#endif
+#if VCEG_AZ07_BAC_ADAPT_WDOW
   Void xUpdateWindowSize  ( SliceType eSliceType, Int iQPIdx, TComStats* apcStats);
+#endif
+#if VCEG_AZ07_INIT_PREVFRAME
+  Void loadContextsFromPrev ( TComStats* apcStats, SliceType eSliceType, Int iQPIdx, Bool bFromGloble, Int iQPIdxRst =-1, Bool bAfterLastISlice= false );
 #endif
 
 private:
@@ -278,14 +283,16 @@ private:
 
   UInt m_golombRiceAdaptationStatistics[RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS];
 
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
 public:
   TComStats* m_pcStats;
-  TComStats* getStatesHandle ()              { return m_pcStats;          }
-  Void setStatesHandle ( TComStats* pcStats) { m_pcStats = pcStats;       }
-  Int getContextModelNum()                   { return m_numContextModels; }
-  ContextModel*  getContextModel()           { return m_contextModels;    }
-  TEncBinIf*     getBinIf       ()           { return m_pcBinIf;          }
+  TComStats* getStatesHandle ()    { return m_pcStats;             }
+  Void setStatesHandle ( TComStats* pcStats ) { m_pcStats = pcStats;}
+  Int getContextModelNum()         { return m_numContextModels;    }
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+  ContextModel*  getContextModel() { return m_contextModels;       }
+  TEncBinIf* getBinIf  ()          { return m_pcBinIf;             }
+#endif
 #endif
 };
 

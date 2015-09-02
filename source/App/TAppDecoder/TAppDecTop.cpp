@@ -160,7 +160,7 @@ Void TAppDecTop::decode()
       }
       else
       {
-#if VCEG_AZ07_BAC_ADAPT_WDOW 
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
         bNewPicture = m_cTDecTop.decode(nalu, m_iSkipFrame, m_iPOCLastDisplay, m_apcStats);     
 #else
         bNewPicture = m_cTDecTop.decode(nalu, m_iSkipFrame, m_iPOCLastDisplay);
@@ -267,7 +267,9 @@ Void TAppDecTop::xCreateDecLib()
 {
   // create decoder class
   m_cTDecTop.create();
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_INIT_PREVFRAME
+  m_apcStats = new TComStats (1, NUM_CTX_PBSLICE);  
+#elif VCEG_AZ07_BAC_ADAPT_WDOW
   m_apcStats = new TComStats; 
 #endif
 }
@@ -278,7 +280,7 @@ Void TAppDecTop::xDestroyDecLib()
   {
     m_cTVideoIOYuvReconFile. close();
   }
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
   if (m_apcStats)
   {
     delete m_apcStats;

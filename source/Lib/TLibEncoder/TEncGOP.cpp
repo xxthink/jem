@@ -1027,7 +1027,7 @@ static UInt calculateCollocatedFromL1Flag(TEncCfg *pCfg, const Int GOPid, const 
 Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rcListPic,
                            TComList<TComPicYuv*>& rcListPicYuvRecOut, std::list<AccessUnit>& accessUnitsInGOP,
                            Bool isField, Bool isTff, const InputColourSpaceConversion snr_conversion, const Bool printFrameMSE
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
                          , TComStats* m_apcStats
 #endif
                            )
@@ -1459,7 +1459,7 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
       for(UInt nextCtuTsAddr = 0; nextCtuTsAddr < numberOfCtusInFrame; )
       {
         m_pcSliceEncoder->precompressSlice( pcPic );
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
         pcSlice->setStatsHandle( m_apcStats );
         pcSlice->initStatsGlobal( );              
 #endif  
@@ -1650,9 +1650,11 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
 
       tmpBitsBeforeWriting = m_pcEntropyCoder->getNumberOfWrittenBits();
       m_pcEntropyCoder->encodeSliceHeader(pcSlice);
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
+#if VCEG_AZ07_BAC_ADAPT_WDOW 
       m_pcEntropyCoder->setStatsHandle( m_apcStats );       
       m_pcEntropyCoder->encodeCtxUpdateInfo( pcSlice, m_apcStats );
+#endif
       Int iQPIdx = xUpdateTStates (pcSlice->getSliceType(), pcSlice->getSliceQp(), m_apcStats);
       pcSlice->setQPIdx(iQPIdx);
 #endif
@@ -2648,7 +2650,7 @@ Void TEncGOP::applyDeblockingFilterMetric( TComPic* pcPic, UInt uiNumSlices )
   free(rowSAD);
 }
 
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
 Int TEncGOP::xUpdateTStates (UInt uiSliceType, UInt uiSliceQP, TComStats* apcStats )
 { 
   Int iQP = 0, k;
@@ -2666,11 +2668,13 @@ Int TEncGOP::xUpdateTStates (UInt uiSliceType, UInt uiSliceQP, TComStats* apcSta
       apcStats-> aaQPUsed[uiSliceType][k].used = true;
       apcStats-> aaQPUsed[uiSliceType][k].QP = uiSliceQP;
       apcStats-> aaQPUsed[uiSliceType][k].firstUsed = true;
+#if VCEG_AZ07_BAC_ADAPT_WDOW
       for (Int index=0; index < MAX_NUM_CTX_MOD; index++) 
       {
         apcStats->m_uiCtxMAP[uiSliceType][iQP][index]     = 0;
         apcStats->m_uiCtxCodeIdx[uiSliceType][iQP][index] = ALPHA0;
       }
+#endif
       break;
     }
   }

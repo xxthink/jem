@@ -456,7 +456,7 @@ Void TDecTop::xParsePrefixSEImessages()
 
 
 Bool TDecTop::xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisplay
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
                          , TComStats*  m_apcStats
 #endif
   )
@@ -723,7 +723,7 @@ Bool TDecTop::xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisp
 #endif
 
   //  Decode a picture
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
   m_cGopDecoder.decompressSlice(&(nalu.getBitstream()), m_pcPic, m_apcStats);
 #else
   m_cGopDecoder.decompressSlice(&(nalu.getBitstream()), m_pcPic);
@@ -761,7 +761,7 @@ Void TDecTop::xDecodePPS(const std::vector<UChar> &naluData)
 }
 
 Bool TDecTop::decode(InputNALUnit& nalu, Int& iSkipFrame, Int& iPOCLastDisplay
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
                    , TComStats*  m_apcStats
 #endif
   )
@@ -822,7 +822,7 @@ Bool TDecTop::decode(InputNALUnit& nalu, Int& iSkipFrame, Int& iPOCLastDisplay
     case NAL_UNIT_CODED_SLICE_RADL_R:
     case NAL_UNIT_CODED_SLICE_RASL_N:
     case NAL_UNIT_CODED_SLICE_RASL_R:
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
       return xDecodeSlice(nalu, iSkipFrame, iPOCLastDisplay, m_apcStats);
 #else
       return xDecodeSlice(nalu, iSkipFrame, iPOCLastDisplay);

@@ -158,7 +158,7 @@ public:
   Void xCodeScalingList ( const TComScalingList* scalingList, UInt sizeId, UInt listId);
 
   Void codeExplicitRdpcmMode( TComTU &rTu, const ComponentID compID );
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
   TComStats* m_pcStats;
   TComStats* getStatesHandle ( )                    { return m_pcStats;    }
   Void setStatesHandle       ( TComStats* pcStats ) { m_pcStats = pcStats; }

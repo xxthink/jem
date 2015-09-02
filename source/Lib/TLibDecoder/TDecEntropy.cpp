@@ -1186,7 +1186,7 @@ Void TDecEntropy::decodeAlfCtrlParam( ALFParam* pAlfParam )
 
 #endif
 
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
 Void TDecEntropy::updateStates   ( SliceType uiSliceType, UInt uiSliceQP, TComStats*  apcStats)
 {
   Int k;

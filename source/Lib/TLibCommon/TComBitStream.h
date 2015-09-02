@@ -47,7 +47,7 @@
 #include <stdio.h>
 #include "CommonDef.h"
 
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
 #include <fstream>
 #include <iostream>
 using namespace std;
@@ -59,17 +59,26 @@ using namespace std;
 // ====================================================================================================================
 // Class definition
 // ====================================================================================================================
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
 class TComStats
 {
 public:
+#if VCEG_AZ07_INIT_PREVFRAME
+  TComStats(UInt uiNLCUW, UInt uiNLCUH);
+#else
   TComStats();
+#endif
   virtual ~TComStats();
  
   Bool   m_uiCtxMAP[3][NUM_QP_PROB][MAX_NUM_CTX_MOD];
   UInt   m_uiNumCtx[3][NUM_QP_PROB];
   UChar  m_uiCtxCodeIdx[3][NUM_QP_PROB][MAX_NUM_CTX_MOD];
   QPFlag aaQPUsed[3][NUM_QP_PROB];
+
+#if VCEG_AZ07_INIT_PREVFRAME
+  UShort** m_uiCtxProbIdx[2][NUM_QP_PROB]; //[B/PSlice][QPindex][NUM_LCU][MAX_NUM_CTX_MOD]
+  UInt     m_uiLastIPOC;
+#endif
 };
 #endif
 /// pure virtual class for basic bit handling
@@ -82,7 +91,7 @@ public:
   virtual Void        resetBits             ()                                    = 0;
   virtual UInt        getNumberOfWrittenBits() const = 0;
   virtual Int         getNumBitsUntilByteAligned() const = 0;
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
   virtual TComStats*  getStatsHandle            () = 0;
 #endif 
   virtual ~TComBitIf() {}
@@ -106,7 +115,7 @@ class TComOutputBitstream : public TComBitIf
   UInt m_num_held_bits; /// number of bits not flushed to bytestream.
   UChar m_held_bits; /// the bits held and not flushed to bytestream.
                              /// this value is always msb-aligned, bigendian.
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
   TComStats*  m_pcStats;     ///< class
 #endif 
 
@@ -181,7 +190,7 @@ public:
   //! returns the number of start code emulations contained in the current buffer
   Int countStartCodeEmulations();
 
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
   Void setStatsHandle ( TComStats*  pcStats)  { m_pcStats = pcStats; }
   TComStats* getStatsHandle ()                { return    m_pcStats; }
 #endif 

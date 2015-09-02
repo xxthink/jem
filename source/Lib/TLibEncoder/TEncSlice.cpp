@@ -659,7 +659,7 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
   m_dPicRdCost      = 0; // NOTE: This is a write-only variable!
   m_uiPicDist       = 0;
 
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
   m_pcEntropyCoder->setStatsHandle ( pcSlice->getStatsHandle() );
 #endif  
   m_pcEntropyCoder->setEntropyCoder   ( m_pppcRDSbacCoder[0][CI_CURR_BEST] );
@@ -787,6 +787,14 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
     m_pcEntropyCoder->setEntropyCoder ( m_pcRDGoOnSbacCoder );
     m_pcEntropyCoder->setBitstream( &tempBitCounter );
     tempBitCounter.resetBits();
+
+#if VCEG_AZ07_INIT_PREVFRAME
+    if( pcSlice->getSliceType() != I_SLICE && ctuTsAddr == 0 )
+    {
+      m_pppcRDSbacCoder[0][CI_CURR_BEST]->loadContextsFromPrev( pcSlice->getStatsHandle(), pcSlice->getSliceType(), pcSlice->getCtxMapQPIdx(), true, pcSlice->getCtxMapQPIdxforStore(), (pcSlice->getPOC() >  pcSlice->getStatsHandle()->m_uiLastIPOC) ); 
+    }
+#endif
+
     m_pcRDGoOnSbacCoder->load( m_pppcRDSbacCoder[0][CI_CURR_BEST] ); // this copy is not strictly necessary here, but indicates that the GoOnSbacCoder
                                                                      // is reset to a known state before every decision process.
 
@@ -959,7 +967,7 @@ Void TEncSlice::encodeSlice   ( TComPic* pcPic, TComOutputBitstream* pcSubstream
   const Bool wavefrontsEnabled       = pcSlice->getPPS()->getEntropyCodingSyncEnabledFlag();
 
   // initialise entropy coder for the slice
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
   TComStats*  pcStats = pcSlice->getStatsHandle();
   m_pcEntropyCoder->setStatsHandle ( pcStats );
 #endif 
@@ -1050,6 +1058,12 @@ Void TEncSlice::encodeSlice   ( TComPic* pcPic, TComOutputBitstream* pcSubstream
         }
       }
     }
+#if VCEG_AZ07_INIT_PREVFRAME
+    if( pcSlice->getSliceType() != I_SLICE && ctuRsAddr == 0 )
+    {
+      m_pcSbacCoder->loadContextsFromPrev( pcSlice->getStatsHandle(), pcSlice->getSliceType(), pcSlice->getCtxMapQPIdx(), true, pcSlice->getCtxMapQPIdxforStore(), (pcSlice->getPOC() > pcSlice->getStatsHandle()->m_uiLastIPOC) ); 
+    }
+#endif
 
 #if ALF_HM3_REFACTOR
     if( pcSlice->getSPS()->getUseALF() && ctuRsAddr == 0 )
@@ -1122,6 +1136,18 @@ Void TEncSlice::encodeSlice   ( TComPic* pcPic, TComOutputBitstream* pcSubstream
     {
       m_entropyCodingSyncContextState.loadContexts( m_pcSbacCoder );
     }
+
+#if VCEG_AZ07_INIT_PREVFRAME
+    UInt uiTargetCUAddr = pcPic->getFrameWidthInCtus()/2 + pcPic->getNumberOfCtusInFrame()/2;
+    if( uiTargetCUAddr >= pcPic->getNumberOfCtusInFrame() )
+    {
+      uiTargetCUAddr = pcPic->getNumberOfCtusInFrame() - 1;
+    }
+    if( pcSlice->getSliceType() != I_SLICE && ctuTsAddr ==  uiTargetCUAddr )
+    {
+      m_pcSbacCoder->loadContextsFromPrev( pcSlice->getStatsHandle(), pcSlice->getSliceType(), pcSlice->getCtxMapQPIdxforStore(), false ); 
+    }
+#endif
 
     // terminate the sub-stream, if required (end of slice-segment, end of tile, end of wavefront-CTU-row):
     if (ctuTsAddr+1 == boundingCtuTsAddr ||
@@ -1305,7 +1331,11 @@ Double TEncSlice::xGetQPValueAccordingToLambda ( Double lambda )
 }
 
 #if VCEG_AZ07_BAC_ADAPT_WDOW 
+#if VCEG_AZ07_INIT_PREVFRAME
+Void TEncSlice::xContextWdowSizeUpdateDecision(TEncSbac* pTestEncSbac, UInt &uiCtxStartPos, ContextModel* pSliceCtx, Bool *uiCtxMap, UChar *uiCtxCodeIdx, Bool** pCodedBinStr, Int* pCounter, UShort* uiCTX)
+#else
 Void TEncSlice::xContextWdowSizeUpdateDecision(TEncSbac* pTestEncSbac, UInt &uiCtxStartPos, ContextModel* pSliceCtx, Bool *uiCtxMap, UChar *uiCtxCodeIdx, Bool** pCodedBinStr, Int* pCounter)
+#endif
 {
   //derive the best window size
   UInt uiBestW = 0, currBits = 0, minBits = MAX_UINT;
@@ -1326,6 +1356,13 @@ Void TEncSlice::xContextWdowSizeUpdateDecision(TEncSbac* pTestEncSbac, UInt &uiC
     currBits = pTestEncSbac->getNumberOfWrittenBits();
 
     ContextModel cCurrCtx = pSliceCtx[uiCtxStartPos];  
+#if VCEG_AZ07_INIT_PREVFRAME
+    if(uiCTX != NULL)
+    {
+      cCurrCtx.setState(uiCTX[uiCtxStartPos]);
+    }
+#endif
+
     cCurrCtx.setWindowSize(uiW + 4);    
 
 
@@ -1379,7 +1416,12 @@ Void TEncSlice::xGenUpdateMap (UInt uiSliceType, Int iQP,  TComStats* apcStats)
 
   for(UInt i=0; i<iCtxNr; i++)
   {
+#if VCEG_AZ07_INIT_PREVFRAME
+    xContextWdowSizeUpdateDecision(pTestEncSbac, uiCtxStartPos, pCtx, apcStats->m_uiCtxMAP[uiSliceType][iQP], apcStats->m_uiCtxCodeIdx[uiSliceType][iQP], pCodedBinStr, pCounter, (uiSliceType != I_SLICE ?apcStats->m_uiCtxProbIdx[uiSliceType][iQP][0]: NULL));
+#else
     xContextWdowSizeUpdateDecision(pTestEncSbac, uiCtxStartPos, pCtx, apcStats->m_uiCtxMAP[uiSliceType][iQP], apcStats->m_uiCtxCodeIdx[uiSliceType][iQP], pCodedBinStr, pCounter);
+#endif
+
     if(bUpdate==false && apcStats->m_uiCtxMAP[uiSliceType][iQP][i])
     {
       bUpdate = true;

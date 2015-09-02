@@ -107,7 +107,8 @@
 #define VCEG_AZ07_ECABAC                                  1  /// CABAC improvements
 #if VCEG_AZ07_ECABAC
 #define VCEG_AZ07_CTX_RESIDUALCODING                      1  /// new ctx for residual coding
-#define VCEG_AZ07_BAC_ADAPT_WDOW                          1
+#define VCEG_AZ07_BAC_ADAPT_WDOW                          1  /// binary arithmetic code with adaptive window sizes
+#define VCEG_AZ07_INIT_PREVFRAME                          1  /// context states initialized from previously coded frames
 #endif
 
 #define COM16_C806_SIMD_OPT                               1  ///< SIMD optimization, no impact on RD performance
@@ -892,12 +893,15 @@ struct TComSEIMasteringDisplay
   UShort    whitePoint[2];
 };
 
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
 typedef struct _QPFLAG
 {
   UInt      QP;       
   Bool      used;      //same QP, same type has appearaed
   Bool      firstUsed; //same QP, same type was firstly signaled
+#if VCEG_AZ07_INIT_PREVFRAME
+  UInt      resetInit; //for the first B/P frame after intra slice, no init update
+#endif
 } QPFlag;
 #endif
 //! \}

@@ -105,6 +105,9 @@ public:
 
   static Int getEntropyBitsTrm( Int val ) { return m_entropyBits[val][0]; }
   Void  init         ( Int qp, Int initValue     );
+#if VCEG_AZ07_INIT_PREVFRAME
+  Void  setState     ( UShort uiState )  { iP1 = uiState;        }
+#endif
   Void  setIdx       ( UInt i )          { m_iCtxIdx = i;        }
   Void  setWindowSize( UChar ucWdow )    { m_ucWdow   =  ucWdow ;} 
   UInt  getIdx       ()                  { return m_iCtxIdx;     }
@@ -114,6 +117,10 @@ public:
   ~ContextModel ()                        {}
 
   UChar getState  ()                { return ( m_ucState >> 1 ); }                    ///< get current state
+#if VCEG_AZ07_INIT_PREVFRAME
+  UChar getOrigState ()             { return m_ucState;          } 
+  Void  setState  ( UChar uiState ) { m_ucState = uiState;       }
+#endif
   UChar getMps    ()                { return ( m_ucState  & 1 ); }                    ///< get curret MPS
   Void  setStateAndMps( UChar ucState, UChar ucMPS) { m_ucState = (ucState << 1) + ucMPS; } ///< set state and MPS
 

@@ -111,7 +111,7 @@ public:
   Void  create  ();
   Void  destroy ();
   Void  decompressSlice(TComInputBitstream* pcBitstream, TComPic* pcPic 
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
     , TComStats*  m_apcStats 
 #endif
     );

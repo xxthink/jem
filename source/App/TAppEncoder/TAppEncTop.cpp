@@ -450,8 +450,10 @@ Void TAppEncTop::xCreateLib()
 
   // Neo Decoder
   m_cTEncTop.create();
-#if VCEG_AZ07_BAC_ADAPT_WDOW
-  m_apcStats = new TComStats ();  
+#if VCEG_AZ07_INIT_PREVFRAME
+  m_apcStats=new TComStats (1, NUM_CTX_PBSLICE);  
+#elif VCEG_AZ07_BAC_ADAPT_WDOW
+  m_apcStats = new TComStats ();
 #endif 
 }
 
@@ -461,7 +463,7 @@ Void TAppEncTop::xDestroyLib()
   m_cTVideoIOYuvInputFile.close();
   m_cTVideoIOYuvReconFile.close();
 
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
   if ( m_apcStats )
   {
     delete m_apcStats;   
@@ -558,7 +560,7 @@ Void TAppEncTop::encode()
     // call encoding function for one frame
     if ( m_isField )
     {
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
       m_cTEncTop.encode( bEos, flush ? 0 : pcPicYuvOrg, flush ? 0 : &cPicYuvTrueOrg, snrCSC, m_cListPicYuvRec, outputAccessUnits, iNumEncoded, m_isTopFieldFirst, m_apcStats);
 #else
       m_cTEncTop.encode( bEos, flush ? 0 : pcPicYuvOrg, flush ? 0 : &cPicYuvTrueOrg, snrCSC, m_cListPicYuvRec, outputAccessUnits, iNumEncoded, m_isTopFieldFirst );
@@ -566,7 +568,7 @@ Void TAppEncTop::encode()
     }
     else
     {
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
       m_cTEncTop.encode( bEos, flush ? 0 : pcPicYuvOrg, flush ? 0 : &cPicYuvTrueOrg, snrCSC, m_cListPicYuvRec, outputAccessUnits, iNumEncoded, m_apcStats);
 #else
       m_cTEncTop.encode( bEos, flush ? 0 : pcPicYuvOrg, flush ? 0 : &cPicYuvTrueOrg, snrCSC, m_cListPicYuvRec, outputAccessUnits, iNumEncoded );
