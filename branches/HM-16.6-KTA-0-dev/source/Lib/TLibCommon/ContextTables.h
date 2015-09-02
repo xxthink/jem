@@ -107,12 +107,16 @@
 //--------------------------------------------------------------------------------------------------
 
 // context size definitions for significance map
-
+#if VCEG_AZ07_CTX_RESIDUALCODING
+#define NUM_SIG_FLAG_CTX_LUMA         54      ///< number of context models for luma sig flag
+#define NUM_SIG_FLAG_CTX_CHROMA       12      ///< number of context models for chroma sig flag
+#define NUM_SIG_FLAG_CTX_LUMA_TU      18      ///< number of context models for luma sig flag per TU
+#else
 #define NUM_SIG_FLAG_CTX_LUMA        28       ///< number of context models for luma sig flag
 #define NUM_SIG_FLAG_CTX_CHROMA      16       ///< number of context models for chroma sig flag
 
 //                                                                                                           |----Luma-----|  |---Chroma----|
-static const UInt significanceMapContextSetStart         [MAX_NUM_CHANNEL_TYPE][CONTEXT_NUMBER_OF_TYPES] = { {0,  9, 21, 27}, {0,  9, 12, 15} };
+static const UInt significanceMapContextSetStart         [MAX_NUM_CHANNEL_TYPE][CONTEXT_NUMBER_OF_TYPES] = { {0,  9, 21, 27}, {0,  9, 12, 15} }; 
 static const UInt significanceMapContextSetSize          [MAX_NUM_CHANNEL_TYPE][CONTEXT_NUMBER_OF_TYPES] = { {9, 12,  6,  1}, {9,  3,  3,  1} };
 static const UInt nonDiagonalScan8x8ContextOffset        [MAX_NUM_CHANNEL_TYPE]                          = {  6,               0              };
 static const UInt notFirstGroupNeighbourhoodContextOffset[MAX_NUM_CHANNEL_TYPE]                          = {  3,               0              };
@@ -126,7 +130,7 @@ static const UInt notFirstGroupNeighbourhoodContextOffset[MAX_NUM_CHANNEL_TYPE] 
 
 #define FIRST_SIG_FLAG_CTX_LUMA                   0
 #define FIRST_SIG_FLAG_CTX_CHROMA     (FIRST_SIG_FLAG_CTX_LUMA + NUM_SIG_FLAG_CTX_LUMA)
-
+#endif
 #define NUM_SIG_FLAG_CTX              (NUM_SIG_FLAG_CTX_LUMA + NUM_SIG_FLAG_CTX_CHROMA)       ///< number of context models for sig flag
 
 //--------------------------------------------------------------------------------------------------
@@ -144,7 +148,7 @@ static const UInt notFirstGroupNeighbourhoodContextOffset[MAX_NUM_CHANNEL_TYPE] 
 //--------------------------------------------------------------------------------------------------
 
 // context size definitions for greater-than-one and greater-than-two maps
-
+#if !VCEG_AZ07_CTX_RESIDUALCODING
 #define NUM_ONE_FLAG_CTX_PER_SET       4      ///< number of context models for greater than 1 flag in a set
 #define NUM_ABS_FLAG_CTX_PER_SET       1      ///< number of context models for greater than 2 flag in a set
 
@@ -154,20 +158,27 @@ static const UInt notFirstGroupNeighbourhoodContextOffset[MAX_NUM_CHANNEL_TYPE] 
 #define NUM_CTX_SETS_CHROMA            2      ///< number of context model sets for combined chrominance
 
 #define FIRST_CTX_SET_LUMA             0      ///< index of first luminance context set
-
+#endif
 //------------------
 
+#if VCEG_AZ07_CTX_RESIDUALCODING
+#define NUM_ONE_FLAG_CTX_LUMA          16
+#define NUM_ONE_FLAG_CTX_CHROMA        6                                                       ///< number of context models for greater than 1 flag of chroma
+#else
 #define NUM_ONE_FLAG_CTX_LUMA         (NUM_ONE_FLAG_CTX_PER_SET * NUM_CTX_SETS_LUMA)           ///< number of context models for greater than 1 flag of luma
 #define NUM_ONE_FLAG_CTX_CHROMA       (NUM_ONE_FLAG_CTX_PER_SET * NUM_CTX_SETS_CHROMA)         ///< number of context models for greater than 1 flag of chroma
 
 #define NUM_ABS_FLAG_CTX_LUMA         (NUM_ABS_FLAG_CTX_PER_SET * NUM_CTX_SETS_LUMA)           ///< number of context models for greater than 2 flag of luma
 #define NUM_ABS_FLAG_CTX_CHROMA       (NUM_ABS_FLAG_CTX_PER_SET * NUM_CTX_SETS_CHROMA)         ///< number of context models for greater than 2 flag of chroma
+#endif
 
 #define NUM_ONE_FLAG_CTX              (NUM_ONE_FLAG_CTX_LUMA + NUM_ONE_FLAG_CTX_CHROMA)        ///< number of context models for greater than 1 flag
+#if !VCEG_AZ07_CTX_RESIDUALCODING
 #define NUM_ABS_FLAG_CTX              (NUM_ABS_FLAG_CTX_LUMA + NUM_ABS_FLAG_CTX_CHROMA)        ///< number of context models for greater than 2 flag
 
-#define FIRST_CTX_SET_CHROMA          (FIRST_CTX_SET_LUMA + NUM_CTX_SETS_LUMA)                 ///< index of first chrominance context set
 
+#define FIRST_CTX_SET_CHROMA          (FIRST_CTX_SET_LUMA + NUM_CTX_SETS_LUMA)                 ///< index of first chrominance context set
+#endif
 //--------------------------------------------------------------------------------------------------
 
 // context size definitions for CBF
@@ -442,7 +453,16 @@ INIT_QT_ROOT_CBF[NUMBER_OF_SLICE_TYPES][NUM_QT_ROOT_CBF_CTX] =
 //--------------------------------------------------------------------------------------------------
 
 //Initialisation for last-significant-position
-
+#if VCEG_AZ07_CTX_RESIDUALCODING && !COM16_C806_T64
+//                                           |------------------------------Luminance----------------------------------|
+#define BSLICE_LUMA_LAST_POSITION_CONTEXT     110, 110,  94, 110, 140, 140, 111, 126, 126, 125, 126, 127, 143, 126, 125
+#define PSLICE_LUMA_LAST_POSITION_CONTEXT     111, 125, 124, 111, 111, 111, 111, 126, 126, 110, 111, 141, 127, 111, 125
+#define ISLICE_LUMA_LAST_POSITION_CONTEXT     125,  95, 109, 110, 125, 110, 125, 125, 110, 110, 154, 140, 140, 111, 111
+//                                           |------------------------------Chrominance--------------------------------|
+#define BSLICE_CHROMA_LAST_POSITION_CONTEXT   108, 108,  62, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU
+#define PSLICE_CHROMA_LAST_POSITION_CONTEXT   109,  94,  63, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU
+#define ISLICE_CHROMA_LAST_POSITION_CONTEXT   123,  93,  77, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU
+#else
 //                                           |------------------------------Luminance----------------------------------|
 #define BSLICE_LUMA_LAST_POSITION_CONTEXT     125, 110, 124, 110,  95,  94, 125, 111, 111,  79, 125, 126, 111, 111,  79
 #define PSLICE_LUMA_LAST_POSITION_CONTEXT     125, 110,  94, 110,  95,  79, 125, 111, 110,  78, 110, 111, 111,  95,  94
@@ -451,9 +471,9 @@ INIT_QT_ROOT_CBF[NUMBER_OF_SLICE_TYPES][NUM_QT_ROOT_CBF_CTX] =
 #define BSLICE_CHROMA_LAST_POSITION_CONTEXT   108, 123,  93, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU
 #define PSLICE_CHROMA_LAST_POSITION_CONTEXT   108, 123, 108, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU
 #define ISLICE_CHROMA_LAST_POSITION_CONTEXT   108, 123,  63, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU
+#endif
 
-
-#if COM16_C806_T64
+#if COM16_C806_T64 
 static const UChar 
 INIT_LAST[NUMBER_OF_SLICE_TYPES][NUM_CTX_LAST_FLAG_SETS * NUM_CTX_LAST_FLAG_XY] =  
 {
@@ -482,6 +502,17 @@ INIT_LAST[NUMBER_OF_SLICE_TYPES][NUM_CTX_LAST_FLAG_SETS * NUM_CTX_LAST_FLAG_XY] 
 static const UChar
 INIT_SIG_CG_FLAG[NUMBER_OF_SLICE_TYPES][2 * NUM_SIG_CG_FLAG_CTX] =
 {
+#if VCEG_AZ07_CTX_RESIDUALCODING
+  { 122, 143,
+    91, 141,
+  },
+  { 78, 111,
+    60, 140,
+  },
+  { 135, 155,
+    104, 139,
+  },
+#else
   { 121,  140,
     61,  154,
   },
@@ -491,13 +522,24 @@ INIT_SIG_CG_FLAG[NUMBER_OF_SLICE_TYPES][2 * NUM_SIG_CG_FLAG_CTX] =
   {  91,  171,
     134,  141,
   },
+#endif
 };
 
 
 //--------------------------------------------------------------------------------------------------
 
 //Initialisation for significance map
+#if VCEG_AZ07_CTX_RESIDUALCODING 
+//                                          |-------------------------------------------- 4x4 ---------------------------------------|-------------------------------------------- 8x8 ---------------------------------------|-------------------------------------------- 16x16&above---------------------------------|
+#define BSLICE_LUMA_SIGNIFICANCE_CONTEXT     107, 139, 154, 140, 140, 141, 108, 154, 125, 155, 126, 127, 139, 155, 155, 141, 156, 143, 107, 139, 154, 140, 140, 141, 108, 154, 125, 155, 126, 127, 139, 155, 155, 141, 156, 143, 107, 139, 154, 140, 140, 141, 108, 154, 125, 155, 126, 127, 139, 155, 155, 141, 156, 143
+#define PSLICE_LUMA_SIGNIFICANCE_CONTEXT     121, 167, 153, 139, 154, 140, 137, 168, 139, 154, 169, 155, 167, 169, 169, 184, 199, 156, 121, 167, 153, 139, 154, 140, 137, 168, 139, 154, 169, 155, 167, 169, 169, 184, 199, 156, 121, 167, 153, 139, 154, 140, 137, 168, 139, 154, 169, 155, 167, 169, 169, 184, 199, 156
+#define ISLICE_LUMA_SIGNIFICANCE_CONTEXT     152, 139, 154, 154, 169, 155, 182, 154, 169, 184, 155, 141, 168, 214, 199, 170, 170, 171, 152, 139, 154, 154, 169, 155, 182, 154, 169, 184, 155, 141, 168, 214, 199, 170, 170, 171, 152, 139, 154, 154, 169, 155, 182, 154, 169, 184, 155, 141, 168, 214, 199, 170, 170, 171
 
+#define BSLICE_CHROMA_SIGNIFICANCE_CONTEXT   137, 154, 154, 155, 155, 156, 124, 185, 156, 171, 142, 158
+#define PSLICE_CHROMA_SIGNIFICANCE_CONTEXT   136, 153, 139, 154, 125, 140, 122, 154, 184, 185, 171, 157
+#define ISLICE_CHROMA_SIGNIFICANCE_CONTEXT   167, 154, 169, 140, 155, 141, 153, 171, 185, 156, 171, 172
+
+#else
 //                                          |-DC-|  |-----------------4x4------------------|  |------8x8 Diagonal Scan------|  |----8x8 Non-Diagonal Scan----|  |-NxN First group-|  |-NxN Other group-| |-Single context-|
 //                                          |    |  |                                      |  |-First Group-| |-Other Group-|  |-First Group-| |-Other Group-|  |                 |  |                 | |                |
 #define BSLICE_LUMA_SIGNIFICANCE_CONTEXT     170,    154, 139, 153, 139, 123, 123,  63, 124,   166, 183, 140,  136, 153, 154,   166, 183, 140,  136, 153, 154,   166,   183,   140,   136,   153,   154,        140
@@ -508,7 +550,7 @@ INIT_SIG_CG_FLAG[NUMBER_OF_SLICE_TYPES][2 * NUM_SIG_CG_FLAG_CTX] =
 #define BSLICE_CHROMA_SIGNIFICANCE_CONTEXT   170,    153, 138, 138, 122, 121, 122, 121, 167,   151,  183,  140,   151,  183,  140,        140
 #define PSLICE_CHROMA_SIGNIFICANCE_CONTEXT   170,    153, 123, 123, 107, 121, 107, 121, 167,   151,  183,  140,   151,  183,  140,        140
 #define ISLICE_CHROMA_SIGNIFICANCE_CONTEXT   140,    139, 182, 182, 152, 136, 152, 136, 153,   136,  139,  111,   136,  139,  111,        111
-
+#endif
 //------------------------------------------------
 
 static const UChar
@@ -523,11 +565,20 @@ INIT_SIG_FLAG[NUMBER_OF_SLICE_TYPES][NUM_SIG_FLAG_CTX] =
 //--------------------------------------------------------------------------------------------------
 
 //Initialisation for greater-than-one flags and greater-than-two flags
+#if VCEG_AZ07_CTX_RESIDUALCODING          
+#define BSLICE_LUMA_ONE_CONTEXT    121, 135, 123, 124, 139, 125,  92, 124, 154, 125, 155, 138, 169, 155, 170, 156
+#define PSLICE_LUMA_ONE_CONTEXT    165,  75, 152, 153, 139, 154, 121, 138, 139, 154, 140, 167, 183, 169, 170, 156
+#define ISLICE_LUMA_ONE_CONTEXT    196, 105, 152, 153, 139, 154, 136, 138, 139, 169, 140, 196, 183, 169, 170, 171
 
+#define BSLICE_CHROMA_ONE_CONTEXT  166, 152, 140, 170, 171, 157
+#define PSLICE_CHROMA_ONE_CONTEXT  193, 181, 169, 170, 171, 172
+#define ISLICE_CHROMA_ONE_CONTEXT  195, 181, 169, 170, 156, 157
+#else
 //                                 |------Set 0-------| |------Set 1-------| |------Set 2-------| |------Set 3-------|
 #define BSLICE_LUMA_ONE_CONTEXT     154, 196, 167, 167,  154, 152, 167, 182,  182, 134, 149, 136,  153, 121, 136, 122
 #define PSLICE_LUMA_ONE_CONTEXT     154, 196, 196, 167,  154, 152, 167, 182,  182, 134, 149, 136,  153, 121, 136, 137
 #define ISLICE_LUMA_ONE_CONTEXT     140,  92, 137, 138,  140, 152, 138, 139,  153,  74, 149,  92,  139, 107, 122, 152
+
 
 #define BSLICE_LUMA_ABS_CONTEXT     107,                 167,                  91,                 107
 #define PSLICE_LUMA_ABS_CONTEXT     107,                 167,                  91,                 122
@@ -541,7 +592,7 @@ INIT_SIG_FLAG[NUMBER_OF_SLICE_TYPES][NUM_SIG_FLAG_CTX] =
 #define BSLICE_CHROMA_ABS_CONTEXT   107,                 167
 #define PSLICE_CHROMA_ABS_CONTEXT   107,                 167
 #define ISLICE_CHROMA_ABS_CONTEXT   152,                 152
-
+#endif
 
 //------------------------------------------------
 
@@ -553,6 +604,7 @@ INIT_ONE_FLAG[NUMBER_OF_SLICE_TYPES][NUM_ONE_FLAG_CTX] =
   { ISLICE_LUMA_ONE_CONTEXT, ISLICE_CHROMA_ONE_CONTEXT },
 };
 
+#if !VCEG_AZ07_CTX_RESIDUALCODING 
 static const UChar
 INIT_ABS_FLAG[NUMBER_OF_SLICE_TYPES][NUM_ABS_FLAG_CTX] =
 {
@@ -560,7 +612,7 @@ INIT_ABS_FLAG[NUMBER_OF_SLICE_TYPES][NUM_ABS_FLAG_CTX] =
   { PSLICE_LUMA_ABS_CONTEXT, PSLICE_CHROMA_ABS_CONTEXT },
   { ISLICE_LUMA_ABS_CONTEXT, ISLICE_CHROMA_ABS_CONTEXT },
 };
-
+#endif
 
 //--------------------------------------------------------------------------------------------------
 

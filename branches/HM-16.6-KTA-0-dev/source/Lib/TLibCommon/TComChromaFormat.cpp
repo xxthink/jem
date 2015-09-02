@@ -106,7 +106,9 @@ Void getTUEntropyCodingParameters(      TUEntropyCodingParameters &result,
   const UInt                 uiAbsPartIdx    = rTu.GetAbsPartIdxTU(component);
   const UInt                 log2BlockWidth  = g_aucConvertToBit[area.width]  + 2;
   const UInt                 log2BlockHeight = g_aucConvertToBit[area.height] + 2;
+#if !VCEG_AZ07_CTX_RESIDUALCODING
   const ChannelType          channelType     = toChannelType(component);
+#endif
 
   result.scanType = COEFF_SCAN_TYPE(pcCU->getCoefScanIdx(uiAbsPartIdx, area.width, area.height, component));
 
@@ -130,7 +132,7 @@ Void getTUEntropyCodingParameters(      TUEntropyCodingParameters &result,
   //------------------------------------------------
 
   //set the significance map context selection parameters
-
+#if !VCEG_AZ07_CTX_RESIDUALCODING
   if (pcCU->getSlice()->getSPS()->getSpsRangeExtension().getTransformSkipContextEnabledFlag()
       && (pcCU->getCUTransquantBypass(uiAbsPartIdx) || (pcCU->getTransformSkip(uiAbsPartIdx, component) != 0)))
   {
@@ -155,7 +157,7 @@ Void getTUEntropyCodingParameters(      TUEntropyCodingParameters &result,
       result.firstSignificanceMapContext = significanceMapContextSetStart[channelType][CONTEXT_TYPE_NxN];
     }
   }
-
+#endif
   //------------------------------------------------
 }
 

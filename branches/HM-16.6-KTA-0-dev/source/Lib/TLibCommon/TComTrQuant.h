@@ -117,8 +117,9 @@ typedef struct
   Int lastXBits[MAX_NUM_CHANNEL_TYPE][LAST_SIGNIFICANT_GROUPS];
   Int lastYBits[MAX_NUM_CHANNEL_TYPE][LAST_SIGNIFICANT_GROUPS];
   Int m_greaterOneBits[NUM_ONE_FLAG_CTX][2 /*Flag = [0|1]*/];
+#if !VCEG_AZ07_CTX_RESIDUALCODING
   Int m_levelAbsBits[NUM_ABS_FLAG_CTX][2 /*Flag = [0|1]*/];
-
+#endif
   Int blockCbpBits[NUM_QT_CBF_CTX_SETS * NUM_QT_CBF_CTX_PER_SET][2 /*Flag = [0|1]*/];
   Int blockRootCbpBits[4][2 /*Flag = [0|1]*/];
 
@@ -220,7 +221,40 @@ public:
   Void setRDOQOffset( UInt uiRDOQOffset ) { m_uiRDOQOffset = uiRDOQOffset; }
 
   estBitsSbacStruct* m_pcEstBitsSbac;
-
+#if VCEG_AZ07_CTX_RESIDUALCODING
+  static Int getGrtZeroCtxInc   (  TCoeff*                         pcCoeff,
+                                   const Int                       scanPosition,
+                                   Int                             width,
+                                   Int                             height,
+                                   const ChannelType               chanType
+                                );
+  static Int getGrtOneCtxInc    ( TCoeff*                         pcCoeff,
+                                  const Int                       scanPosition,
+                                  Int                             width,
+                                  Int                             height,
+                                  const ChannelType               chanType
+                                );
+  static Int getGrtTwoCtxInc    ( TCoeff*                         pcCoeff,
+                                  const Int                       scanPosition,
+                                  Int                             width,
+                                  Int                             height,
+                                  const ChannelType               chanType
+                                 );
+  static Int getRemainCoeffCtxInc( TCoeff*                         pcCoeff,
+                                   const Int                       scanPosition,
+                                   Int                             width,
+                                   Int                             height
+                                 );
+  static Int      getSigCtxInc   ( TCoeff*                         pcCoeff,
+                                   const Int                       scanPosition,
+                                   Int                             width,
+                                   Int                             height,
+                                   const ChannelType               chanType,
+                                   UInt&                           sumOne,
+                                   UInt&                           sumTwo,
+                                   UInt&                           sumAbs
+                                  );
+#else  
   static Int      calcPatternSigCtx( const UInt* sigCoeffGroupFlag, UInt uiCGPosX, UInt uiCGPosY, UInt widthInGroups, UInt heightInGroups );
 
   static Int      getSigCtxInc     ( Int                              patternSigCtx,
@@ -230,12 +264,19 @@ public:
                                      const Int                        log2BlockHeight,
                                      const ChannelType                chanType
                                     );
-
+#endif
   static UInt getSigCoeffGroupCtxInc  (const UInt*  uiSigCoeffGroupFlag,
                                        const UInt   uiCGPosX,
                                        const UInt   uiCGPosY,
+#if VCEG_AZ07_CTX_RESIDUALCODING
+                                             UInt   widthInGroups,
+                                             UInt   heightInGroups,
+                                       COEFF_SCAN_TYPE   scanIdx
+#else
                                        const UInt   widthInGroups,
-                                       const UInt   heightInGroups);
+                                       const UInt   heightInGroups
+#endif
+                                       );
 
   Void initScalingList                      ();
   Void destroyScalingList                   ();

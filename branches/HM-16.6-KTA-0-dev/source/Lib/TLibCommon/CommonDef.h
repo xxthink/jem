@@ -309,7 +309,9 @@ static const Int FRUC_MERGE_TEMPLATE_SIZE =                        4 ;
 static const Int FRUC_MERGE_REFINE_MVWEIGHT =                      4 ;
 static const Int FRUC_MERGE_REFINE_MINBLKSIZE =                    4 ;
 #endif
-
+#if VCEG_AZ07_CTX_RESIDUALCODING
+static const Int MAX_GR_ORDER_RESIDUAL        =                   10 ;
+#endif
 // ====================================================================================================================
 // Macro functions
 // ====================================================================================================================

@@ -4235,13 +4235,18 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
   {
     iTransformShift = std::max<Int>(0, iTransformShift);
   }
-
   const Bool bUseGolombRiceParameterAdaptation = pcCU->getSlice()->getSPS()->getSpsRangeExtension().getPersistentRiceAdaptationEnabledFlag();
+#if VCEG_AZ07_CTX_RESIDUALCODING
+  UInt uiPrevGRParam = 0;
+#endif
   const UInt initialGolombRiceParameter        = m_pcEstBitsSbac->golombRiceAdaptationStatistics[rTu.getGolombRiceStatisticsIndex(compID)] / RExt__GOLOMB_RICE_INCREMENT_DIVISOR;
         UInt uiGoRiceParam                     = initialGolombRiceParameter;
-  Double     d64BlockUncodedCost               = 0;
+
+        Double     d64BlockUncodedCost               = 0;
   const UInt uiLog2BlockWidth                  = g_aucConvertToBit[ uiWidth  ] + 2;
+#if !VCEG_AZ07_CTX_RESIDUALCODING
   const UInt uiLog2BlockHeight                 = g_aucConvertToBit[ uiHeight ] + 2;
+#endif
   const UInt uiMaxNumCoeff                     = uiWidth * uiHeight;
   assert(compID<MAX_NUM_COMPONENT);
 
@@ -4285,20 +4290,30 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
   TUEntropyCodingParameters codingParameters;
   getTUEntropyCodingParameters(codingParameters, rTu, compID);
   const UInt uiCGSize = (1 << MLS_CG_SIZE);
+#if VCEG_AZ07_CTX_RESIDUALCODING
+  Bool bHor8x8 = uiWidth == 8 && uiHeight == 8 && codingParameters.scanType == SCAN_HOR;
+  Bool bVer8x8 = uiWidth == 8 && uiHeight == 8 && codingParameters.scanType == SCAN_VER;
+  Bool bNonZig8x8 = bHor8x8 || bVer8x8; 
+#endif
 
   Double pdCostCoeffGroupSig[ MLS_GRP_NUM ];
   UInt uiSigCoeffGroupFlag[ MLS_GRP_NUM ];
   Int iCGLastScanPos = -1;
-
+#if VCEG_AZ07_CTX_RESIDUALCODING
+  UInt uiOffsetonTU = (compID == COMPONENT_Y) ? (uiLog2BlockWidth==2 ? 0: NUM_SIG_FLAG_CTX_LUMA_TU << ( min(1, (Int)(uiLog2BlockWidth - 3)))) : 0 ; 
+#else
   UInt    uiCtxSet            = 0;
   Int     c1                  = 1;
   Int     c2                  = 0;
+#endif
   Double  d64BaseCost         = 0;
   Int     iLastScanPos        = -1;
 
   UInt    c1Idx     = 0;
   UInt    c2Idx     = 0;
+#if !VCEG_AZ07_CTX_RESIDUALCODING
   Int     baseLevel;
+#endif
 
   memset( pdCostCoeffGroupSig,   0, sizeof(Double) * MLS_GRP_NUM );
   memset( uiSigCoeffGroupFlag,   0, sizeof(UInt) * MLS_GRP_NUM );
@@ -4307,18 +4322,28 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
   Int iScanPos;
   coeffGroupRDStats rdStats;
 
+#if VCEG_AZ07_CTX_RESIDUALCODING
+  const UInt significanceMapContextOffset = 0; 
+#else
   const UInt significanceMapContextOffset = getSignificanceMapContextOffset(compID);
+#endif
 
   for (Int iCGScanPos = uiCGNum-1; iCGScanPos >= 0; iCGScanPos--)
   {
     UInt uiCGBlkPos = codingParameters.scanCG[ iCGScanPos ];
     UInt uiCGPosY   = uiCGBlkPos / codingParameters.widthInGroups;
     UInt uiCGPosX   = uiCGBlkPos - (uiCGPosY * codingParameters.widthInGroups);
-
+#if VCEG_AZ07_CTX_RESIDUALCODING
+    if( bNonZig8x8 )
+    {
+      uiCGPosY = (bHor8x8 ? uiCGBlkPos : 0);
+      uiCGPosX = (bVer8x8 ? uiCGBlkPos : 0);
+    }
+#endif
     memset( &rdStats, 0, sizeof (coeffGroupRDStats));
-
+#if !VCEG_AZ07_CTX_RESIDUALCODING
     const Int patternSigCtx = TComTrQuant::calcPatternSigCtx(uiSigCoeffGroupFlag, uiCGPosX, uiCGPosY, codingParameters.widthInGroups, codingParameters.heightInGroups);
-
+#endif
     for (Int iScanPosinCG = uiCGSize-1; iScanPosinCG >= 0; iScanPosinCG--)
     {
       iScanPos = iCGScanPos*uiCGSize + iScanPosinCG;
@@ -4349,7 +4374,9 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
       if ( uiMaxAbsLevel > 0 && iLastScanPos < 0 )
       {
         iLastScanPos            = iScanPos;
+#if !VCEG_AZ07_CTX_RESIDUALCODING
         uiCtxSet                = getContextSetIndex(compID, (iScanPos >> MLS_CG_SIZE), 0);
+#endif
         iCGLastScanPos          = iCGScanPos;
       }
 
@@ -4357,9 +4384,13 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
       {
         //===== coefficient level estimation =====
         UInt  uiLevel;
+#if VCEG_AZ07_CTX_RESIDUALCODING
+        UInt  uiOneCtx = 0;
+        UInt  uiAbsCtx = 0;
+#else
         UInt  uiOneCtx         = (NUM_ONE_FLAG_CTX_PER_SET * uiCtxSet) + c1;
         UInt  uiAbsCtx         = (NUM_ABS_FLAG_CTX_PER_SET * uiCtxSet) + c2;
-
+#endif
         if( iScanPos == iLastScanPos )
         {
           uiLevel              = xGetCodedLevel( pdCostCoeff[ iScanPos ], pdCostCoeff0[ iScanPos ], pdCostSig[ iScanPos ],
@@ -4369,8 +4400,15 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
         }
         else
         {
+#if VCEG_AZ07_CTX_RESIDUALCODING
+          UShort uiCtxSig      = uiOffsetonTU + getSigCtxInc( piDstCoeff, codingParameters.scan[iScanPos], uiWidth, uiHeight, channelType, uiOneCtx, uiAbsCtx, uiGoRiceParam ) ;
+          if(bUseGolombRiceParameterAdaptation)
+          {
+            uiGoRiceParam = max(uiPrevGRParam, uiGoRiceParam);
+          }
+#else
           UShort uiCtxSig      = significanceMapContextOffset + getSigCtxInc( patternSigCtx, codingParameters, iScanPos, uiLog2BlockWidth, uiLog2BlockHeight, channelType );
-
+#endif
           uiLevel              = xGetCodedLevel( pdCostCoeff[ iScanPos ], pdCostCoeff0[ iScanPos ], pdCostSig[ iScanPos ],
                                                   lLevelDouble, uiMaxAbsLevel, uiCtxSig, uiOneCtx, uiAbsCtx, uiGoRiceParam,
                                                   c1Idx, c2Idx, iQBits, errorScale, 0, extendedPrecision, maxLog2TrDynamicRange
@@ -4378,7 +4416,9 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
 
           sigRateDelta[ uiBlkPos ] = m_pcEstBitsSbac->significantBits[ uiCtxSig ][ 1 ] - m_pcEstBitsSbac->significantBits[ uiCtxSig ][ 0 ];
         }
-
+#if VCEG_AZ07_CTX_RESIDUALCODING
+        uiPrevGRParam = max(0, (Int)uiGoRiceParam - 1);
+#endif
         deltaU[ uiBlkPos ]        = TCoeff((lLevelDouble - (Intermediate_Int(uiLevel) << iQBits)) >> (iQBits-8));
 
         if( uiLevel > 0 )
@@ -4394,6 +4434,7 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
         piDstCoeff[ uiBlkPos ] = uiLevel;
         d64BaseCost           += pdCostCoeff [ iScanPos ];
 
+#if !VCEG_AZ07_CTX_RESIDUALCODING
         baseLevel = (c1Idx < C1FLAG_NUMBER) ? (2 + (c2Idx < C2FLAG_NUMBER)) : 1;
         if( uiLevel >= baseLevel )
         {
@@ -4402,12 +4443,20 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
             uiGoRiceParam = bUseGolombRiceParameterAdaptation ? (uiGoRiceParam + 1) : (std::min<UInt>((uiGoRiceParam + 1), 4));
           }
         }
+#endif
         if ( uiLevel >= 1)
         {
           c1Idx ++;
+#if VCEG_AZ07_CTX_RESIDUALCODING
+          if( uiLevel>1)
+          {
+            c2Idx ++;
+          }
+#endif
         }
 
         //===== update bin model =====
+#if !VCEG_AZ07_CTX_RESIDUALCODING
         if( uiLevel > 1 )
         {
           c1 = 0;
@@ -4418,16 +4467,22 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
         {
           c1++;
         }
+#endif
 
         //===== context set update =====
         if( ( iScanPos % uiCGSize == 0 ) && ( iScanPos > 0 ) )
         {
+#if VCEG_AZ07_CTX_RESIDUALCODING
+          c1Idx = 0;
+          c2Idx = 0; 
+#else
           uiCtxSet          = getContextSetIndex(compID, ((iScanPos - 1) >> MLS_CG_SIZE), (c1 == 0)); //(iScanPos - 1) because we do this **before** entering the final group
           c1                = 1;
           c2                = 0;
           c1Idx             = 0;
           c2Idx             = 0;
           uiGoRiceParam     = initialGolombRiceParameter;
+#endif
         }
       }
       else
@@ -4457,7 +4512,11 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
       {
         if (uiSigCoeffGroupFlag[ uiCGBlkPos ] == 0)
         {
+#if VCEG_AZ07_CTX_RESIDUALCODING
+          UInt  uiCtxSig = getSigCoeffGroupCtxInc( uiSigCoeffGroupFlag, uiCGPosX, uiCGPosY, codingParameters.widthInGroups, codingParameters.heightInGroups, codingParameters.scanType );
+#else
           UInt  uiCtxSig = getSigCoeffGroupCtxInc( uiSigCoeffGroupFlag, uiCGPosX, uiCGPosY, codingParameters.widthInGroups, codingParameters.heightInGroups );
+#endif
           d64BaseCost += xGetRateSigCoeffGroup(0, uiCtxSig) - rdStats.d64SigCost;;
           pdCostCoeffGroupSig[ iCGScanPos ] = xGetRateSigCoeffGroup(0, uiCtxSig);
         }
@@ -4474,8 +4533,11 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
             Double d64CostZeroCG = d64BaseCost;
 
             // add SigCoeffGroupFlag cost to total cost
+#if VCEG_AZ07_CTX_RESIDUALCODING
+            UInt  uiCtxSig = getSigCoeffGroupCtxInc( uiSigCoeffGroupFlag, uiCGPosX, uiCGPosY, codingParameters.widthInGroups, codingParameters.heightInGroups, codingParameters.scanType );
+#else
             UInt  uiCtxSig = getSigCoeffGroupCtxInc( uiSigCoeffGroupFlag, uiCGPosX, uiCGPosY, codingParameters.widthInGroups, codingParameters.heightInGroups );
-
+#endif
             if (iCGScanPos < iCGLastScanPos)
             {
               d64BaseCost  += xGetRateSigCoeffGroup(1, uiCtxSig);
@@ -4745,7 +4807,286 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
   }
 }
 
+#if VCEG_AZ07_CTX_RESIDUALCODING
+Int TComTrQuant::getGrtZeroCtxInc( TCoeff*                         pcCoeff,
+                                   const Int                       rasterPosition,
+                                   Int                             width,
+                                   Int                             height,
+                                  const ChannelType                chanType                                  
+                                  )
+{
+  const UInt log2BlockWidth = g_aucConvertToBit[ width  ] + 2;
+  const UInt posY           = rasterPosition >> log2BlockWidth;
+  const UInt posX           = rasterPosition - (posY << log2BlockWidth);
 
+  const TCoeff *pData  = pcCoeff + posX + posY * width;
+  const Int  widthM1   = width  - 1;
+  const Int  heightM1  = height - 1;
+  const Int  diag      = posX + posY;
+
+  Int numPos = 0;
+  if( posX < widthM1 )
+  {
+    numPos += pData[ 1 ] != 0;
+    if( posX < widthM1 - 1 )
+    {
+      numPos += pData[ 2 ] != 0;
+    }
+    if( posY < heightM1 )
+    {
+       numPos += pData[ width + 1 ] != 0;
+    }
+  }
+  if( posY < heightM1 )
+  {
+    numPos += pData[ width ] != 0;
+    if( posY < heightM1 - 1 )
+    {
+      numPos += pData[ 2 * width ] != 0;
+    }
+  }
+
+  const Int ctxIdx = min( numPos, 5 );
+        Int ctxOfs = diag < 2 ? 6 : 0;
+
+  if( chanType == CHANNEL_TYPE_LUMA )
+  {
+    ctxOfs += diag < 5 ? 6 : 0;
+  }
+  return ctxOfs + ctxIdx;
+}
+Int TComTrQuant::getGrtOneCtxInc ( TCoeff*                         pcCoeff,                                   
+                                   const Int                       rasterPosition,
+                                   Int                             width,
+                                   Int                             height,
+                                   const ChannelType               chanType
+                                   )
+{
+  const UInt log2BlockWidth = g_aucConvertToBit[ width  ] + 2;
+  const UInt posY           = rasterPosition >> log2BlockWidth;
+  const UInt posX           = rasterPosition - (posY << log2BlockWidth);
+
+  const TCoeff *pData  = pcCoeff + posX + (posY << log2BlockWidth);
+  const Int  widthM1   = width  - 1;
+  const Int  heightM1  = height - 1;
+  UInt  diag           = posX + posY;
+  Int sumAbsOne        = 0;
+
+  if( posX < widthM1 )
+  {
+    sumAbsOne += abs( pData[ 1 ] )>1;
+    if( posX < widthM1 - 1 )
+    {
+      sumAbsOne += abs( pData[ 2 ] )>1;
+    }
+    if( posY < heightM1 )
+    {
+      sumAbsOne += abs( pData[ width + 1 ] )>1;
+    }
+  }
+  if( posY < heightM1 )
+  {
+    sumAbsOne += abs( pData[ width ] )>1;
+    if( posY < heightM1 - 1 )
+    {
+      sumAbsOne += abs( pData[ 2 * width ] )>1;
+    }
+  }
+
+   sumAbsOne       = min<UInt>( sumAbsOne, 4 ) + 1;
+   if(chanType == CHANNEL_TYPE_LUMA)
+   {
+     sumAbsOne   += diag < 3 ? 10 : ( diag < 10 ? 5 : 0 );
+   }
+
+  return sumAbsOne;
+}
+Int TComTrQuant::getGrtTwoCtxInc ( TCoeff*                         pcCoeff,                                  
+                                   const Int                       rasterPosition,
+                                   Int                             width,
+                                   Int                             height,
+                                  const ChannelType                chanType
+                                  )
+{
+  const UInt log2BlockWidth = g_aucConvertToBit[ width  ] + 2;
+  const UInt posY           = rasterPosition >> log2BlockWidth;
+  const UInt posX           = rasterPosition - (posY << log2BlockWidth);
+
+  const TCoeff *pData  = pcCoeff + posX + (posY << log2BlockWidth);
+  const Int  widthM1   = width  - 1;
+  const Int  heightM1  = height - 1;
+  UInt diag            = posX + posY; 
+
+  Int sumAbsTwo = 0;
+  if( posX < widthM1 )
+  {
+    sumAbsTwo += abs( pData[ 1 ] )>2;
+    if( posX < widthM1 - 1 )
+    {
+      sumAbsTwo += abs( pData[ 2 ] )>2;
+    }
+    if( posY < heightM1 )
+    {
+      sumAbsTwo += abs( pData[ width + 1 ] )>2;
+    }
+  }
+  if( posY < heightM1 )
+  {
+    sumAbsTwo += abs( pData[ width ] )>2;
+    if( posY < heightM1 - 1 )
+    {
+      sumAbsTwo += abs( pData[ 2 * width ] )>2;
+    }
+  }
+ 
+  sumAbsTwo  = min<UInt>( sumAbsTwo, 4 ) + 1;
+  if( chanType == CHANNEL_TYPE_LUMA )
+  {  
+    sumAbsTwo += diag < 3 ? 10 : ( diag < 10 ? 5 : 0 );
+  }
+
+  return sumAbsTwo;
+}
+Int TComTrQuant::getRemainCoeffCtxInc(   TCoeff*                            pcCoeff,
+                                   const Int                          rasterPosition,
+                                         Int                                   width,
+                                         Int                                   height
+                                  )
+{
+  const UInt log2BlockWidth = g_aucConvertToBit[ width  ] + 2;
+  const UInt posY           = rasterPosition >> log2BlockWidth;
+  const UInt posX           = rasterPosition - (posY << log2BlockWidth);
+
+  const TCoeff *pData  = pcCoeff + posX + (posY << log2BlockWidth);
+  const Int  widthM1   = width  - 1;
+  const Int  heightM1  = height - 1;
+  
+  Int numPos = 0;
+  Int sumAbsAll = 0;
+  if( posX < widthM1 )
+  {
+    sumAbsAll += abs( pData[ 1 ] );
+    numPos += pData[ 1 ] != 0;
+    if( posX < widthM1 - 1 )
+    {
+      sumAbsAll += abs( pData[ 2 ] );
+      numPos += pData[ 2 ] != 0;
+    }
+    if( posY < heightM1 )
+    {
+      sumAbsAll += abs( pData[ width + 1 ] );
+      numPos += pData[ width + 1 ] != 0;
+    }
+  }
+  if( posY < heightM1 )
+  {
+    sumAbsAll += abs( pData[ width ] );
+    numPos += pData[ width ] != 0;
+    if( posY < heightM1 - 1 )
+    {
+      sumAbsAll += abs( pData[ 2 * width ] );
+      numPos += pData[ 2 * width ] != 0;
+    }
+  }
+
+  UInt uiVal = (sumAbsAll - numPos);
+  UInt iOrder;
+  for( iOrder = 0; iOrder < MAX_GR_ORDER_RESIDUAL; iOrder ++ )
+  {
+    if( (1 << (iOrder + 3)) > (uiVal + 4))
+    {
+      break;
+    }
+  }
+  return ( iOrder == MAX_GR_ORDER_RESIDUAL ? (MAX_GR_ORDER_RESIDUAL - 1): iOrder);
+}
+Int TComTrQuant::getSigCtxInc    ( TCoeff*                         pcCoeff,
+                                  const Int                        rasterPosition,
+                                   Int                             width,
+                                   Int                             height,
+                                  const ChannelType                chanType,
+                                   UInt&                           sumOne,
+                                   UInt&                           sumTwo,
+                                   UInt&                           sumAbs
+                                  )
+{
+  const UInt log2BlockWidth = g_aucConvertToBit[ width  ] + 2;
+  const UInt posY           = rasterPosition >> log2BlockWidth;
+  const UInt posX           = rasterPosition - (posY << log2BlockWidth);
+
+  const TCoeff *pData  = pcCoeff + posX + (posY << log2BlockWidth);
+  const Int  widthM1   = width  - 1;
+  const Int  heightM1  = height - 1;
+  const Int  diag      = posX + posY;
+
+  Int sumAbsOne = 0;
+  Int sumAbsTwo = 0;
+  Int numPos = 0;
+  Int sumAbsAll = 0;
+  if( posX < widthM1 )
+  {
+    sumAbsOne += abs( pData[ 1 ] )>1;
+    sumAbsTwo += abs( pData[ 1 ] )>2;
+    sumAbsAll += abs( pData[ 1 ] );
+
+    numPos += pData[ 1 ] != 0;
+    if( posX < widthM1 - 1 )
+    {
+      sumAbsOne += abs( pData[ 2 ] )>1;
+      sumAbsTwo += abs( pData[ 2 ] )>2;
+      sumAbsAll += abs( pData[ 2 ] );
+      numPos += pData[ 2 ] != 0;
+    }
+    if( posY < heightM1 )
+    {
+      sumAbsOne += abs( pData[ width + 1 ] )>1;
+      sumAbsTwo += abs( pData[ width + 1 ] )>2;
+      sumAbsAll += abs( pData[ width + 1 ] );
+      numPos += pData[ width + 1 ] != 0;
+    }
+  }
+  if( posY < heightM1 )
+  {
+    sumAbsOne += abs( pData[ width ] )>1;
+    sumAbsTwo += abs( pData[ width ] )>2;
+    sumAbsAll += abs( pData[ width ] );
+    numPos += pData[ width ] != 0;
+    if( posY < heightM1 - 1 )
+    {
+      sumAbsOne += abs( pData[ 2 * width ] )>1;
+      sumAbsTwo += abs( pData[ 2 * width ] )>2;
+      sumAbsAll += abs( pData[ 2 * width ] );
+      numPos += pData[ 2 * width ] != 0;
+    }
+  }
+
+  Int ctxIdx = min( numPos, 5 );
+  Int ctxOfs = diag < 2 ? 6 : 0;
+  sumOne     = min<UInt>( sumAbsOne, 4 ) + 1;
+  sumTwo     = min<UInt>( sumAbsTwo, 4 ) + 1;
+
+  UInt uiVal = (sumAbsAll - numPos);
+  UInt iOrder;
+  for( iOrder = 0; iOrder < MAX_GR_ORDER_RESIDUAL; iOrder ++ )
+  {
+    if( (1 << (iOrder + 3)) > (uiVal + 4))
+    {
+      break;
+    }
+  }
+  sumAbs = ( iOrder == MAX_GR_ORDER_RESIDUAL ? (MAX_GR_ORDER_RESIDUAL - 1): iOrder);
+
+  if( chanType == CHANNEL_TYPE_LUMA )
+  {
+    Int  iOfs = diag < 3 ? 10 : ( diag < 10 ? 5 : 0 );
+    ctxOfs += ((diag < 5 ? 6 : 0));
+    sumOne            +=  iOfs;
+    sumTwo            +=  iOfs;
+  }
+
+  return ctxOfs + ctxIdx;
+}
+#else
 /** Pattern decision for context derivation process of significant_coeff_flag
  * \param sigCoeffGroupFlag pointer to prior coded significant coeff group
  * \param uiCGPosX column of current coefficient group
@@ -4887,7 +5228,7 @@ Int TComTrQuant::getSigCtxInc    (       Int                        patternSigCt
   return codingParameters.firstSignificanceMapContext + offset;
 }
 
-
+#endif
 /** Get the best level in RD sense
  *
  * \returns best quantized transform level for given scan position
@@ -4980,7 +5321,11 @@ __inline Int TComTrQuant::xGetICRate         ( const UInt    uiAbsLevel,
   {
     UInt symbol     = uiAbsLevel - baseLevel;
     UInt length;
+#if VCEG_AZ07_CTX_RESIDUALCODING
+    if ( symbol < (g_auiGoRiceRange[ui16AbsGoRice] << ui16AbsGoRice) )
+#else
     if (symbol < (COEF_REMAIN_BIN_REDUCTION << ui16AbsGoRice))
+#endif
     {
       length = symbol>>ui16AbsGoRice;
       iRate += (length+1+ui16AbsGoRice)<< 15;
@@ -5004,12 +5349,20 @@ __inline Int TComTrQuant::xGetICRate         ( const UInt    uiAbsLevel,
     else
     {
       length = ui16AbsGoRice;
+#if VCEG_AZ07_CTX_RESIDUALCODING
+      symbol  = symbol - ( g_auiGoRiceRange[ui16AbsGoRice] << ui16AbsGoRice);
+#else
       symbol  = symbol - ( COEF_REMAIN_BIN_REDUCTION << ui16AbsGoRice);
+#endif
       while (symbol >= (1<<length))
       {
         symbol -=  (1<<(length++));
       }
+#if VCEG_AZ07_CTX_RESIDUALCODING
+      iRate += (g_auiGoRiceRange[ui16AbsGoRice] + length + 1 - ui16AbsGoRice + length)<< 15;
+#else
       iRate += (COEF_REMAIN_BIN_REDUCTION+length+1-ui16AbsGoRice+length)<< 15;
+#endif
     }
 
     if (c1Idx < C1FLAG_NUMBER)
@@ -5018,7 +5371,11 @@ __inline Int TComTrQuant::xGetICRate         ( const UInt    uiAbsLevel,
 
       if (c2Idx < C2FLAG_NUMBER)
       {
+#if VCEG_AZ07_CTX_RESIDUALCODING
+        iRate += m_pcEstBitsSbac->m_greaterOneBits[ ui16CtxNumAbs ][ 1 ];
+#else
         iRate += m_pcEstBitsSbac->m_levelAbsBits[ ui16CtxNumAbs ][ 1 ];
+#endif
       }
     }
   }
@@ -5029,7 +5386,11 @@ __inline Int TComTrQuant::xGetICRate         ( const UInt    uiAbsLevel,
   else if( uiAbsLevel == 2 )
   {
     iRate += m_pcEstBitsSbac->m_greaterOneBits[ ui16CtxNumOne ][ 1 ];
+#if VCEG_AZ07_CTX_RESIDUALCODING
+    iRate += m_pcEstBitsSbac->m_greaterOneBits[ ui16CtxNumAbs ][ 0 ];
+#else
     iRate += m_pcEstBitsSbac->m_levelAbsBits[ ui16CtxNumAbs ][ 0 ];
+#endif
   }
   else
   {
@@ -5108,12 +5469,33 @@ __inline Double TComTrQuant::xGetIEPRate      (                                 
 UInt TComTrQuant::getSigCoeffGroupCtxInc  (const UInt*  uiSigCoeffGroupFlag,
                                            const UInt   uiCGPosX,
                                            const UInt   uiCGPosY,
+#if VCEG_AZ07_CTX_RESIDUALCODING
+                                                 UInt   widthInGroups,
+                                                 UInt   heightInGroups,
+                                           COEFF_SCAN_TYPE   scanIdx
+#else
                                            const UInt   widthInGroups,
-                                           const UInt   heightInGroups)
+                                           const UInt   heightInGroups
+#endif
+                                           )
 {
   UInt sigRight = 0;
   UInt sigLower = 0;
-
+#if VCEG_AZ07_CTX_RESIDUALCODING
+  if( widthInGroups == 2 && heightInGroups == 2 ) // 8x8
+  {
+    if( scanIdx == SCAN_HOR )  
+    {
+      widthInGroups  = 1;
+      heightInGroups = 4;
+    }
+    else if( scanIdx == SCAN_VER )
+    {
+      widthInGroups  = 4;
+      heightInGroups = 1;
+    }
+  }
+#endif
   if (uiCGPosX < (widthInGroups  - 1))
   {
     sigRight = ((uiSigCoeffGroupFlag[ (uiCGPosY * widthInGroups) + uiCGPosX + 1 ] != 0) ? 1 : 0);

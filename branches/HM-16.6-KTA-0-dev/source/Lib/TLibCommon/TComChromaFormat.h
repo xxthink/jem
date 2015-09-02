@@ -198,12 +198,13 @@ static inline Int getScalingListType(const PredMode predMode, const ComponentID 
 //======================================================================================================================
 
 //context variable source tables
-
+#if !VCEG_AZ07_CTX_RESIDUALCODING
 static const UInt significanceMapContextStartTable[MAX_NUM_CHANNEL_TYPE] = {FIRST_SIG_FLAG_CTX_LUMA, FIRST_SIG_FLAG_CTX_CHROMA};
 static const UInt contextSetStartTable            [MAX_NUM_CHANNEL_TYPE] = {FIRST_CTX_SET_LUMA,      FIRST_CTX_SET_CHROMA     };
+#endif
 static const UInt CBFContextStartTable            [MAX_NUM_CHANNEL_TYPE] = {FIRST_CBF_CTX_LUMA,      FIRST_CBF_CTX_CHROMA     };
 
-
+#if !VCEG_AZ07_CTX_RESIDUALCODING || COM16_C806_T64
 //------------------------------------------------
 
 //Function for last-significant-coefficient context selection parameters
@@ -224,8 +225,9 @@ static inline Void getLastSignificantContextParameters (const ComponentID  compo
   result_shiftX  = (isChroma(component)) ? convertedWidth  : ((convertedWidth  + 3) >> 2);
   result_shiftY  = (isChroma(component)) ? convertedHeight : ((convertedHeight + 3) >> 2);
 }
+#endif
 
-
+#if !VCEG_AZ07_CTX_RESIDUALCODING
 //------------------------------------------------
 
 //Function for significance map context index offset selection
@@ -249,7 +251,7 @@ static inline UInt getContextSetIndex (const ComponentID  component,
 
   return contextSetStartTable[toChannelType(component)] + notFirstSubsetOffset + foundAGreaterThan1Offset;
 }
-
+#endif
 
 //------------------------------------------------
 
