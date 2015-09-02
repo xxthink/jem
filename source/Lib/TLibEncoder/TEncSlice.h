@@ -134,6 +134,11 @@ public:
 
   SliceType getEncCABACTableIdx() const           { return m_encCABACTableIdx;        }
 
+#if VCEG_AZ07_BAC_ADAPT_WDOW 
+  Void xGenUpdateMap   (UInt uiSliceType, Int iQP,  TComStats* apcStats);
+  Void xContextWdowSizeUpdateDecision (TEncSbac* pTestEncSbac, UInt &uiCtxStartPos, ContextModel* pSliceCtx, Bool *uiCtxMap, UChar *uiCtxCodeIdx, Bool** pCodedBinStr, Int* pCounter);
+#endif
+
 private:
   Double  xGetQPValueAccordingToLambda ( Double lambda );
 };

@@ -131,6 +131,12 @@ public:
 
   virtual ~TEncEntropyIf() {}
 
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+  virtual TComStats* getStatesHandle () = 0;
+  virtual Void setStatesHandle   ( TComStats* pcStats ) = 0;
+  virtual Void codeCtxUpdateInfo ( TComSlice* pcSlice,  TComStats* apcStats ) = 0;
+#endif
+
 #if ALF_HM3_REFACTOR
   virtual Bool getAlfCtrl()                = 0;
   virtual UInt getMaxAlfCtrlDepth()                = 0;
@@ -154,12 +160,26 @@ public:
 /// entropy encoder class
 class TEncEntropy
 {
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+private:
+  TComStats*                      m_pcStats;
+#endif
+
 public:
   Void    setEntropyCoder           ( TEncEntropyIf* e );
   Void    setBitstream              ( TComBitIf* p )          { m_pcEntropyCoderIf->setBitstream(p);  }
   Void    resetBits                 ()                        { m_pcEntropyCoderIf->resetBits();      }
   UInt    getNumberOfWrittenBits    ()                        { return m_pcEntropyCoderIf->getNumberOfWrittenBits(); }
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+  Void    resetEntropy              (const TComSlice *pSlice)                        
+  {
+    m_pcEntropyCoderIf->setStatesHandle (m_pcStats);
+    m_pcEntropyCoderIf->resetEntropy(pSlice);  
+  }
+#else
   Void    resetEntropy              (const TComSlice *pSlice) { m_pcEntropyCoderIf->resetEntropy(pSlice);  }
+#endif
+
   SliceType determineCabacInitIdx   (const TComSlice *pSlice) { return m_pcEntropyCoderIf->determineCabacInitIdx(pSlice); }
 
   Void    encodeSliceHeader         ( TComSlice* pcSlice );
@@ -167,6 +187,10 @@ public:
   Void    encodeTerminatingBit      ( UInt uiIsLast );
   Void    encodeSliceFinish         ();
   TEncEntropyIf*      m_pcEntropyCoderIf;
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+  TEncSbac* getCABACCoder  ( ) { return (TEncSbac*)m_pcEntropyCoderIf; }
+  Void encodeCtxUpdateInfo ( TComSlice* pcSlice,  TComStats* apcStats );
+#endif
 
 public:
   Void encodeVPS               ( const TComVPS* pcVPS);
@@ -231,6 +255,11 @@ public:
   Void encodeSAOBlkParam(SAOBlkParam& saoBlkParam, const BitDepths &bitDepths, Bool* sliceEnabled, Bool leftMergeAvail, Bool aboveMergeAvail){m_pcEntropyCoderIf->codeSAOBlkParam(saoBlkParam, bitDepths, sliceEnabled, leftMergeAvail, aboveMergeAvail, false);}
 
   static Int countNonZeroCoeffs( TCoeff* pcCoef, UInt uiSize );
+
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+  Void setStatsHandle       ( TComStats*  pcStats)  { m_pcStats=pcStats; }
+  TComStats* getStatsHandle ()                      { return m_pcStats;  }
+#endif 
 
 #if ALF_HM3_REFACTOR
   Void encodeAlfParam(ALFParam* pAlfParam, UInt uiMaxTotalCUDepth);

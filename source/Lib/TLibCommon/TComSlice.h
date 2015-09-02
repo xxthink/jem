@@ -45,7 +45,9 @@
 #include "TComRom.h"
 #include "TComList.h"
 #include "TComChromaFormat.h"
-
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+#include "TLibCommon/TComBitStream.h"
+#endif
 //! \ingroup TLibCommon
 //! \{
 
@@ -1462,6 +1464,12 @@ private:
   const TComSPS*             m_pcSPS;
   const TComPPS*             m_pcPPS;
   TComPic*                   m_pcPic;
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+  TComStats*                 m_pcStats; 
+  Int                        m_iCtxQPIdx;
+  Int                        m_iQPIdx;
+#endif
+
   Bool                       m_colFromL0Flag;  // collocated picture from List0 flag
 
   Bool                       m_noOutputPriorPicsFlag;
@@ -1738,6 +1746,18 @@ public:
 
   Void                        setEncCABACTableIdx( SliceType idx )                   { m_encCABACTableIdx = idx;                                     }
   SliceType                   getEncCABACTableIdx() const                            { return m_encCABACTableIdx;                                    }
+
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+  Void setStatsHandle ( TComStats*  pcStats)                                         { m_pcStats=pcStats; }
+  Void initStatsGlobal(); 
+  TComStats* getStatsHandle () const                                                 { return m_pcStats;  }
+
+  Void      setCtxMapQPIdx  (Int iQPIdx)                                             { m_iCtxQPIdx = iQPIdx; }
+  Void      setQPIdx        (Int iQPIdx)                                             { m_iQPIdx    = iQPIdx; }
+  Int       getQPIdx        ()                                                       {  return  m_iQPIdx;    }
+  Int       getCtxMapQPIdx  ()             const                                     {  return  m_iCtxQPIdx; }
+#endif
+
 
 protected:
   TComPic*                    xGetRefPic        (TComList<TComPic*>& rcListPic, Int poc);

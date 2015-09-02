@@ -81,6 +81,10 @@ TComSlice::TComSlice()
 , m_pcSPS                         ( NULL )
 , m_pcPPS                         ( NULL )
 , m_pcPic                         ( NULL )
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+, m_iCtxQPIdx                     ( -1 )
+, m_iQPIdx                        ( -1 )
+#endif
 , m_colFromL0Flag                 ( true )
 , m_noOutputPriorPicsFlag         ( false )
 , m_noRaslOutputFlag              ( false )
@@ -2398,6 +2402,28 @@ Void TComSlice::xSetApplyIC()
   delete [] aiRefOrgHist;
   aiCurrHist = NULL;
   aiRefOrgHist = NULL;
+}
+#endif
+
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+Void TComSlice::initStatsGlobal()
+{
+  {
+    Int iQP = -1,  k;
+    Int uiSliceType = getSliceType();
+    Int uiSliceQP   = getSliceQp  ();
+    TComStats* pcStats = getStatsHandle();
+
+    for (k = 0; k < NUM_QP_PROB; k++)
+    {
+      if (pcStats-> aaQPUsed[uiSliceType][k].used ==true && pcStats-> aaQPUsed[uiSliceType][k].QP == uiSliceQP)
+      {
+        iQP  = k;
+        break;
+      }
+    }
+    setCtxMapQPIdx(iQP);
+  }
 }
 #endif
 

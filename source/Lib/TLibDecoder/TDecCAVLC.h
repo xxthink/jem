@@ -128,6 +128,13 @@ public:
   Void xDecodeScalingList    ( TComScalingList *scalingList, UInt sizeId, UInt listId);
 
   Void  parseExplicitRdpcmMode( TComTU &rTu, ComponentID compID );
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+  Void parseCtxUpdateInfo   ( TComSlice*& rpcSlice, TComStats* apcStats );
+  Void xRunDecoding         ( Bool * uiCtxMAP, UInt uiNumCtx );
+  Void xLevelDecoding       ( Bool * uiCtxMAP, UChar *uiCtxCodeIdx, UInt uiNumCtx );
+  Void setStatesHandle      ( TComStats* pcStats) { m_pcStats = pcStats; }
+  TComStats* getStatesHandle()                    { return m_pcStats; }
+#endif
 
 #if ALF_HM3_REFACTOR
   Void  xReadUnaryMaxSymbol ( UInt& ruiSymbol, UInt uiMaxSymbol );
@@ -146,6 +153,9 @@ public:
 
 protected:
   Bool  xMoreRbspData();
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+  TComStats* m_pcStats;
+#endif
 
 };
 

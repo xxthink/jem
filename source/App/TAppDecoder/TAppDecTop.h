@@ -62,7 +62,9 @@ private:
   // class interface
   TDecTop                         m_cTDecTop;                     ///< decoder class
   TVideoIOYuv                     m_cTVideoIOYuvReconFile;        ///< reconstruction YUV class
-
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+  TComStats*                      m_apcStats;                     
+#endif
   // for output control
   Int                             m_iPOCLastDisplay;              ///< last POC in display order
   std::ofstream                   m_seiMessageFileStream;         ///< Used for outputing SEI messages.

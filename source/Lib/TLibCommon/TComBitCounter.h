@@ -65,7 +65,9 @@ public:
   Void        resetBits             ()                                        { m_uiBitCounter = 0;               }
   UInt        getNumberOfWrittenBits() const                                  { return m_uiBitCounter; }
   Int         getNumBitsUntilByteAligned() const                              { return (8 - m_uiBitCounter) & 0x7;}
-
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+  TComStats*  getStatsHandle ()                                               { return NULL; }
+#endif 
 };
 
 //! \}

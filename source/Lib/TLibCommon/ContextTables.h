@@ -45,8 +45,11 @@
 // ====================================================================================================================
 // Constants
 // ====================================================================================================================
-
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+#define MAX_NUM_CTX_MOD             384       ///< number of context models for last coefficient position
+#else
 #define MAX_NUM_CTX_MOD             512       ///< maximum number of supported contexts
+#endif
 
 #if COM16_C806_LARGE_CTU
 #define NUM_SPLIT_FLAG_CTX            5       ///< number of context models for split flag
@@ -219,6 +222,11 @@ static const UInt notFirstGroupNeighbourhoodContextOffset[MAX_NUM_CHANNEL_TYPE] 
 #else
 #define NUM_EMT_CU_FLAG_CTX           4       ///< number of context models for EMT CU-level flag
 #endif
+#endif
+
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+#define NUM_QP_PROB                  5                //could be set to N (N>5, depending on the allowed QPs in a coded sequence)
+#define NUM_CTX_PBSLICE              MAX_NUM_CTX_MOD //could be set to the exact number of used contexts later
 #endif
 
 #define CNU                          154      ///< dummy initialization value for unused context models 'Context model Not Used'

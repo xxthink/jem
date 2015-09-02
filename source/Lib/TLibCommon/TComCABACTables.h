@@ -51,8 +51,13 @@
 class TComCABACTables
 {
 public:
+#if VCEG_AZ07_BAC_ADAPT_WDOW 
+  const static UShort sm_aucLPSTable[512][64];
+  const static UChar  sm_aucRenormTable[128];
+#else
   const static UChar  sm_aucLPSTable[1 << CONTEXT_STATE_BITS][4];
   const static UChar  sm_aucRenormTable[32];
+#endif
 };
 
 

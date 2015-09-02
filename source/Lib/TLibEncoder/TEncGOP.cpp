@@ -1026,7 +1026,11 @@ static UInt calculateCollocatedFromL1Flag(TEncCfg *pCfg, const Int GOPid, const 
 // ====================================================================================================================
 Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rcListPic,
                            TComList<TComPicYuv*>& rcListPicYuvRecOut, std::list<AccessUnit>& accessUnitsInGOP,
-                           Bool isField, Bool isTff, const InputColourSpaceConversion snr_conversion, const Bool printFrameMSE )
+                           Bool isField, Bool isTff, const InputColourSpaceConversion snr_conversion, const Bool printFrameMSE
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+                         , TComStats* m_apcStats
+#endif
+                           )
 {
   // TODO: Split this function up.
 
@@ -1455,6 +1459,11 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
       for(UInt nextCtuTsAddr = 0; nextCtuTsAddr < numberOfCtusInFrame; )
       {
         m_pcSliceEncoder->precompressSlice( pcPic );
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+        pcSlice->setStatsHandle( m_apcStats );
+        pcSlice->initStatsGlobal( );              
+#endif  
+
         m_pcSliceEncoder->compressSlice   ( pcPic, false, false );
 
         const UInt curSliceSegmentEnd = pcSlice->getSliceSegmentCurEndCtuTsAddr();
@@ -1539,6 +1548,9 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
       TComBitCounter tempBitCounter;
       tempBitCounter.resetBits();
       m_pcEncTop->getRDGoOnSbacCoder()->setBitstream(&tempBitCounter);
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+      m_pcSAO->setEntropyCoder(m_pcEntropyCoder);
+#endif
       m_pcSAO->initRDOCabacCoder(m_pcEncTop->getRDGoOnSbacCoder(), pcSlice);
       m_pcSAO->SAOProcess(pcPic, sliceEnabled, pcPic->getSlice(0)->getLambdas(), m_pcCfg->getTestSAODisableAtPictureLevel(), m_pcCfg->getSaoEncodingRate(), m_pcCfg->getSaoEncodingRateChroma(), m_pcCfg->getSaoCtuBoundary());
       m_pcSAO->PCMLFDisableProcess(pcPic);
@@ -1638,11 +1650,19 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
 
       tmpBitsBeforeWriting = m_pcEntropyCoder->getNumberOfWrittenBits();
       m_pcEntropyCoder->encodeSliceHeader(pcSlice);
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+      m_pcEntropyCoder->setStatsHandle( m_apcStats );       
+      m_pcEntropyCoder->encodeCtxUpdateInfo( pcSlice, m_apcStats );
+      Int iQPIdx = xUpdateTStates (pcSlice->getSliceType(), pcSlice->getSliceQp(), m_apcStats);
+      pcSlice->setQPIdx(iQPIdx);
+#endif
+
       actualHeadBits += ( m_pcEntropyCoder->getNumberOfWrittenBits() - tmpBitsBeforeWriting );
 
       pcSlice->setFinalized(true);
 
       pcSlice->clearSubstreamSizes(  );
+
       {
         UInt numBinsCoded = 0;
         m_pcSliceEncoder->encodeSlice(pcPic, &(substreamsOut[0]), numBinsCoded
@@ -2627,5 +2647,45 @@ Void TEncGOP::applyDeblockingFilterMetric( TComPic* pcPic, UInt uiNumSlices )
   free(colSAD);
   free(rowSAD);
 }
+
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+Int TEncGOP::xUpdateTStates (UInt uiSliceType, UInt uiSliceQP, TComStats* apcStats )
+{ 
+  Int iQP = 0, k;
+  for (k = 0; k < NUM_QP_PROB; k++)
+  {
+    if (apcStats-> aaQPUsed[uiSliceType][k].used ==true && apcStats-> aaQPUsed[uiSliceType][k].QP == uiSliceQP)
+    {
+      iQP  = k;
+      apcStats-> aaQPUsed[uiSliceType][k].firstUsed = false;
+      break;
+    }
+    else if (apcStats-> aaQPUsed[uiSliceType][k].used ==false)
+    {
+      iQP = k;
+      apcStats-> aaQPUsed[uiSliceType][k].used = true;
+      apcStats-> aaQPUsed[uiSliceType][k].QP = uiSliceQP;
+      apcStats-> aaQPUsed[uiSliceType][k].firstUsed = true;
+      for (Int index=0; index < MAX_NUM_CTX_MOD; index++) 
+      {
+        apcStats->m_uiCtxMAP[uiSliceType][iQP][index]     = 0;
+        apcStats->m_uiCtxCodeIdx[uiSliceType][iQP][index] = ALPHA0;
+      }
+      break;
+    }
+  }
+
+  iQP = -1;
+  for (k = 0; k < NUM_QP_PROB; k++)
+  {
+    if (apcStats-> aaQPUsed[uiSliceType][k].firstUsed ==true && apcStats-> aaQPUsed[uiSliceType][k].used ==true && apcStats-> aaQPUsed[uiSliceType][k].QP == uiSliceQP)
+    {
+      iQP  = k;
+      break;
+    }
+  }
+  return iQP;
+}
+#endif
 
 //! \}

@@ -206,7 +206,9 @@ Void TEncSbac::resetEntropy           (const TComSlice *pSlice)
   }
 
   m_pcBinIf->start();
-
+#if VCEG_AZ07_BAC_ADAPT_WDOW 
+  xUpdateWindowSize (pSlice->getSliceType(), pSlice->getCtxMapQPIdx(), pSlice->getStatsHandle());
+#endif
   return;
 }
 
@@ -2675,4 +2677,24 @@ Void TEncSbac::codeEmtCuFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth,
   }
 }
 #endif
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+Void TEncSbac::xUpdateWindowSize ( SliceType eSliceType, Int uiQPIdx, TComStats* apcStats )
+{
+  if( uiQPIdx == -1 )
+  {
+    return;
+  }
+  Int iCtxNr = getCtxNumber();
+  for(UInt i=0; i<iCtxNr; i++)
+  {
+    m_contextModels[i].setWindowSize(apcStats->m_uiCtxCodeIdx[eSliceType][uiQPIdx][i]);
+  }
+}
+Void TEncSbac::codeCtxUpdateInfo  ( TComSlice* pcSlice,  TComStats* apcStats )
+{
+  assert(0);
+  return;
+}
+#endif
+
 //! \}

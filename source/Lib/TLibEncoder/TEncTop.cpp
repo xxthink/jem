@@ -69,7 +69,7 @@ TEncTop::TEncTop()
 
   m_iMaxRefPicNum     = 0;
 
-#if FAST_BIT_EST
+#if FAST_BIT_EST && !VCEG_AZ07_BAC_ADAPT_WDOW
   ContextModel::buildNextStateTable();
 #endif
 }
@@ -335,7 +335,11 @@ Void TEncTop::deletePicBuffer()
  \retval  accessUnitsOut      list of output access units
  \retval  iNumEncoded         number of encoded pictures
  */
-Void TEncTop::encode( Bool flush, TComPicYuv* pcPicYuvOrg, TComPicYuv* pcPicYuvTrueOrg, const InputColourSpaceConversion snrCSC, TComList<TComPicYuv*>& rcListPicYuvRecOut, std::list<AccessUnit>& accessUnitsOut, Int& iNumEncoded )
+Void TEncTop::encode( Bool flush, TComPicYuv* pcPicYuvOrg, TComPicYuv* pcPicYuvTrueOrg, const InputColourSpaceConversion snrCSC, TComList<TComPicYuv*>& rcListPicYuvRecOut, std::list<AccessUnit>& accessUnitsOut, Int& iNumEncoded 
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+                     ,TComStats* m_apcStats
+#endif
+  )
 {
   if (pcPicYuvOrg != NULL)
   {
@@ -365,7 +369,11 @@ Void TEncTop::encode( Bool flush, TComPicYuv* pcPicYuvOrg, TComPicYuv* pcPicYuvT
   }
 
   // compress GOP
-  m_cGOPEncoder.compressGOP(m_iPOCLast, m_iNumPicRcvd, m_cListPic, rcListPicYuvRecOut, accessUnitsOut, false, false, snrCSC, m_printFrameMSE);
+  m_cGOPEncoder.compressGOP(m_iPOCLast, m_iNumPicRcvd, m_cListPic, rcListPicYuvRecOut, accessUnitsOut, false, false, snrCSC, m_printFrameMSE
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+                          , m_apcStats
+#endif
+    );
 
   if ( m_RCEnableRateControl )
   {
@@ -399,7 +407,11 @@ Void separateFields(Pel* org, Pel* dstField, UInt stride, UInt width, UInt heigh
 
 }
 
-Void TEncTop::encode(Bool flush, TComPicYuv* pcPicYuvOrg, TComPicYuv* pcPicYuvTrueOrg, const InputColourSpaceConversion snrCSC, TComList<TComPicYuv*>& rcListPicYuvRecOut, std::list<AccessUnit>& accessUnitsOut, Int& iNumEncoded, Bool isTff)
+Void TEncTop::encode(Bool flush, TComPicYuv* pcPicYuvOrg, TComPicYuv* pcPicYuvTrueOrg, const InputColourSpaceConversion snrCSC, TComList<TComPicYuv*>& rcListPicYuvRecOut, std::list<AccessUnit>& accessUnitsOut, Int& iNumEncoded, Bool isTff
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+                   , TComStats* m_apcStats
+#endif
+  )
 {
   iNumEncoded = 0;
 
@@ -467,7 +479,11 @@ Void TEncTop::encode(Bool flush, TComPicYuv* pcPicYuvOrg, TComPicYuv* pcPicYuvTr
     if ( m_iNumPicRcvd && ((flush&&fieldNum==1) || (m_iPOCLast/2)==0 || m_iNumPicRcvd==m_iGOPSize ) )
     {
       // compress GOP
-      m_cGOPEncoder.compressGOP(m_iPOCLast, m_iNumPicRcvd, m_cListPic, rcListPicYuvRecOut, accessUnitsOut, true, isTff, snrCSC, m_printFrameMSE);
+      m_cGOPEncoder.compressGOP(m_iPOCLast, m_iNumPicRcvd, m_cListPic, rcListPicYuvRecOut, accessUnitsOut, true, isTff, snrCSC, m_printFrameMSE
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+                              , m_apcStats
+#endif
+        );
 
       iNumEncoded += m_iNumPicRcvd;
       m_uiNumAllPicCoded += m_iNumPicRcvd;

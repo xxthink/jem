@@ -51,6 +51,13 @@ static const Bool bDebugPredEnabled = DebugOptionList::DebugPred.getInt()!=0;
 
 //! \ingroup TLibEncoder
 //! \{
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+Void TEncEntropy::encodeCtxUpdateInfo( TComSlice* pcSlice,  TComStats* apcStats )
+{
+  m_pcEntropyCoderIf->codeCtxUpdateInfo( pcSlice, apcStats );
+  return;
+}
+#endif
 
 Void TEncEntropy::setEntropyCoder ( TEncEntropyIf* e )
 {

@@ -110,7 +110,11 @@ public:
                  );
   Void  create  ();
   Void  destroy ();
-  Void  decompressSlice(TComInputBitstream* pcBitstream, TComPic* pcPic );
+  Void  decompressSlice(TComInputBitstream* pcBitstream, TComPic* pcPic 
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+    , TComStats*  m_apcStats 
+#endif
+    );
   Void  filterPicture  (TComPic* pcPic );
 
   Void setDecodedPictureHashSEIEnabled(Int enabled) { m_decodedPictureHashSEIEnabled = enabled; }

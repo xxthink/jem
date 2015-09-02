@@ -80,6 +80,13 @@ public:
   UInt  getBinsCoded              ()              { return m_uiBinsCoded;                }
   Void  setBinCountingEnableFlag  ( Bool bFlag )  { m_binCountIncrement = bFlag ? 1 : 0; }
   Bool  getBinCountingEnableFlag  ()              { return m_binCountIncrement != 0;     }
+#if VCEG_AZ07_BAC_ADAPT_WDOW 
+  Void  allocateMemoryforBinStrings  ();  
+  Void  freeMemoryforBinStrings      ();  
+  Void  setUpdateStr                 ( Bool bUpdated ) { m_bUpdateStr = bUpdated; }
+  Bool**getCodedBinStr()             { return m_pbCodedString; };
+  Int*  getCodedNumBins()            { return m_iCounter     ; };
+#endif
 
 #if FAST_BIT_EST
 protected:
@@ -99,6 +106,11 @@ private:
   Int                 m_binCountIncrement;
 #if FAST_BIT_EST
   UInt64 m_fracBits;
+#endif
+#if VCEG_AZ07_BAC_ADAPT_WDOW 
+  Bool                m_bUpdateStr;
+  Bool**              m_pbCodedString;
+  Int *               m_iCounter;  
 #endif
 };
 

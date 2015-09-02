@@ -128,7 +128,11 @@ public:
   Void setDecodedPictureHashSEIEnabled(Int enabled) { m_cGopDecoder.setDecodedPictureHashSEIEnabled(enabled); }
 
   Void  init();
-  Bool  decode(InputNALUnit& nalu, Int& iSkipFrame, Int& iPOCLastDisplay);
+  Bool  decode(InputNALUnit& nalu, Int& iSkipFrame, Int& iPOCLastDisplay
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+             , TComStats*  m_apcStats
+#endif
+    );
   Void  deletePicBuffer();
 
   
@@ -151,7 +155,11 @@ protected:
   Void  xCreateLostPicture (Int iLostPOC);
 
   Void      xActivateParameterSets();
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+  Bool      xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisplay, TComStats*  m_apcStats);
+#else
   Bool      xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisplay);
+#endif
   Void      xDecodeVPS(const std::vector<UChar> &naluData);
   Void      xDecodeSPS(const std::vector<UChar> &naluData);
   Void      xDecodePPS(const std::vector<UChar> &naluData);
