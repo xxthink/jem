@@ -110,6 +110,10 @@ TComPrediction::TComPrediction()
   m_puiH = NULL;
   m_puiSPAddr = NULL;
 #endif
+#if VCEG_AZ07_FRUC_MERGE && COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+  memset( m_cMvFieldSP , 0 , sizeof( m_cMvFieldSP ) );
+  memset( m_uhInterDirSP , 0 , sizeof( m_uhInterDirSP ) );
+#endif
   for(UInt ch=0; ch<MAX_NUM_COMPONENT; ch++)
   {
     for(UInt buf=0; buf<2; buf++)
@@ -266,16 +270,22 @@ Void TComPrediction::initTempBuff(ChromaFormat chromaFormatIDC)
 #endif
 
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
-  m_puiW = new UInt[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
-  m_puiH = new UInt[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
-  m_puiSPAddr = new UInt[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
+  if( m_puiSPAddr == NULL )
+  {
+    m_puiW = new UInt[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
+    m_puiH = new UInt[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
+    m_puiSPAddr = new UInt[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
+  }
 #endif
 
 #if VCEG_AZ07_FRUC_MERGE && COM16_C806_VCEG_AZ10_SUB_PU_TMVP
-  m_cMvFieldSP[0] = new TComMvField[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH*2];
-  m_cMvFieldSP[1] = new TComMvField[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH*2];
-  m_uhInterDirSP[0] = new UChar[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
-  m_uhInterDirSP[1] = new UChar[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
+  if( m_cMvFieldSP[0] == NULL )
+  {
+    m_cMvFieldSP[0] = new TComMvField[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH*2];
+    m_cMvFieldSP[1] = new TComMvField[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH*2];
+    m_uhInterDirSP[0] = new UChar[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
+    m_uhInterDirSP[1] = new UChar[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
+  }
 #endif
 
 #if VCEG_AZ06_IC

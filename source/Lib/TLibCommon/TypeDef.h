@@ -50,7 +50,10 @@
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////
-#define TEMP_SYNC_HM166_HM14                              1  /// TO be removed later
+#define ALF_HM3_REFACTOR                                  1  ///< Adaptive loop filter with 4x4 block activity adaptation 
+#if ALF_HM3_REFACTOR
+#define COM16_C806_ALF_TEMPPRED_NUM                       6  ///< 0: no temporal prediction
+#endif
 
 #define COM16_C806_VCEG_AZ10_SUB_PU_TMVP                  1  ///< CY: sub-block level temporal motion prediction (a.k.a. ATMVP) 
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP                     
@@ -64,6 +67,23 @@
 #define COM16_C806_AOBMC_MAXCUSIZE                        16 //   Maximum CU size which can apply OBMC adaptively, larger CUs always apply OBMC
 #endif
 
+#define COM16_C806_EMT                                    1  ///< Enhanced Multiple Transform (EMT)
+
+#define COM16_C806_T64                                    1  ///< Enable 64x64 Transform
+
+#if COM16_C806_EMT || COM16_C806_T64
+#define COM16_C806_TRANS_PREC                             2  ///< Integer transform matrix precision
+#endif
+
+#define COM16_C806_LARGE_CTU                              1  ///< CTU size larger than 64x64, supporting up to 256x256 CTU size in the software,
+
+#define COM16_C806_LMCHROMA                               1  ///< Cross component prediction: predict chroma from luma or Cr from Cb with linear model
+#if COM16_C806_LMCHROMA
+#define COM16_C806_CR_FROM_CB_LAMBDA_ADJUSTMENT           1
+#endif
+
+#define COM16_C806_SIMD_OPT                               1  ///< SIMD optimization, no impact on RD performance
+
 #define VCEG_AZ07_IMV                                     1  ///< Adaptive MV resolution
 
 #define VCEG_AZ07_FRUC_MERGE                              1  ///< Merge mode based on frame rate up-conversion (FRUC)
@@ -75,26 +95,6 @@
 #if VCEG_AZ06_IC
 #define VCEG_AZ06_IC_SPEEDUP                              1  //speedup of IC
 #endif
-
-#define ALF_HM3_REFACTOR                                  1  ///< Adaptive loop filter with 4x4 block activity adaptation 
-#if ALF_HM3_REFACTOR
-#define COM16_C806_ALF_TEMPPRED_NUM                       6  ///< 0: no temporal prediction
-#endif
-
-#define COM16_C806_EMT                                    1  ///< Enhanced Multiple Transform (EMT)
-
-#define COM16_C806_T64                                    1  ///< Enable 64x64 Transform
-
-#if COM16_C806_EMT || COM16_C806_T64
-#define COM16_C806_TRANS_PREC                             2  ///< Integer transform matrix precision
-#endif
-
-#define COM16_C806_LMCHROMA                               1  ///< Cross component prediction: predict chroma from luma or Cr from Cb with linear model
-#if COM16_C806_LMCHROMA
-#define COM16_C806_CR_FROM_CB_LAMBDA_ADJUSTMENT           1
-
-#endif
-#define COM16_C806_LARGE_CTU                              1  ///< CTU size larger than 64x64, supporting up to 256x256 CTU size in the software,
 
 #define VCEG_AZ07_INTRA_4TAP_FILTER                       1 ///< Intra 4-tap interpolation filters
 #define VCEG_AZ07_INTRA_BOUNDARY_FILTER                   1 ///< Intra boundary filtering
@@ -111,7 +111,6 @@
 #define VCEG_AZ07_INIT_PREVFRAME                          1  /// context states initialized from previously coded frames
 #endif
 
-#define COM16_C806_SIMD_OPT                               1  ///< SIMD optimization, no impact on RD performance
 ///////////////////////////////////////////////////////////
 // KTA tools section end
 ///////////////////////////////////////////////////////////

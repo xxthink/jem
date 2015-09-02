@@ -3767,19 +3767,23 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
 #endif
 #endif
 {
+#if !COM16_C806_LARGE_CTU
   for(UInt i=0; i<NUM_REF_PIC_LIST_01; i++)
   {
     m_acYuvPred[i].clear();
   }
   m_cYuvPredTemp.clear();
   pcPredYuv->clear();
+#endif
 
   if ( !bUseRes )
   {
     pcResiYuv->clear();
   }
 
+#if !COM16_C806_LARGE_CTU
   pcRecoYuv->clear();
+#endif
 
   TComMv       cMvSrchRngLT;
   TComMv       cMvSrchRngRB;
@@ -4452,7 +4456,10 @@ Void TEncSearch::xEstimateMvPredAMVP( TComDataCU* pcCU, TComYuv* pcOrgYuv, UInt 
     return;
   }
 
+#if !COM16_C806_LARGE_CTU
   m_cYuvPredTemp.clear();
+#endif
+
   //-- Check Minimum Cost.
   for ( i = 0 ; i < pcAMVPInfo->iN; i++)
   {
@@ -4467,7 +4474,9 @@ Void TEncSearch::xEstimateMvPredAMVP( TComDataCU* pcCU, TComYuv* pcOrgYuv, UInt 
     }
   }
 
+#if !COM16_C806_LARGE_CTU
   m_cYuvPredTemp.clear();
+#endif
 
   // Setting Best MVP
   rcMvPred = cBestMv;
@@ -4780,12 +4789,10 @@ Void TEncSearch::xMotionEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPa
   {
     rcMv = *pcMvPred;
     const TComMv *pIntegerMv2Nx2NPred=0;
-#if !TEMP_SYNC_HM166_HM14
     if (pcCU->getPartitionSize(0) != SIZE_2Nx2N || pcCU->getDepth(0) != 0)
     {
       pIntegerMv2Nx2NPred = &(m_integerMv2Nx2N[eRefPicList][iRefIdxPred]);
     }
-#endif
     xPatternSearchFast  ( pcCU, pcPatternKey, piRefY, iRefStride, &cMvSrchRngLT, &cMvSrchRngRB, rcMv, ruiCost, pIntegerMv2Nx2NPred );
     if (pcCU->getPartitionSize(0) == SIZE_2Nx2N)
     {
@@ -5913,10 +5920,6 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
                                                           pcResi->getStride(compID), tuCompRect.width, tuCompRect.height, compID); // initialized with zero residual distortion
                 }
 
-#if TEMP_SYNC_HM166_HM14
-                m_pcRDGoOnSbacCoder->load( m_pppcRDSbacCoder[ uiDepth ][ CI_QT_TRAFO_ROOT ] );
-                m_pcEntropyCoder->resetBits();
-#endif
                 m_pcEntropyCoder->encodeQtCbfZero( TUIterator, toChannelType(compID) );
 
                 if ( isCrossCPredictionAvailable )
