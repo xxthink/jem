@@ -237,15 +237,6 @@ Void TEncBinCABAC::encodeBin( UInt binValue, ContextModel &rcCtxModel )
 #else
 Void TEncBinCABAC::encodeBin( UInt binValue, ContextModel &rcCtxModel )
 {
-  //{
-  //  DTRACE_CABAC_VL( g_nSymbolCounter++ )
-  //  DTRACE_CABAC_T( "\tstate=" )
-  //  DTRACE_CABAC_V( ( rcCtxModel.getState() << 1 ) + rcCtxModel.getMps() )
-  //  DTRACE_CABAC_T( "\tsymbol=" )
-  //  DTRACE_CABAC_V( binValue )
-  //  DTRACE_CABAC_T( "\n" )
-  //}
-
 #if DEBUG_CABAC_BINS
   const UInt startingRange = m_uiRange;
 #endif
@@ -306,14 +297,6 @@ Void TEncBinCABAC::encodeBin( UInt binValue, ContextModel &rcCtxModel )
  */
 Void TEncBinCABAC::encodeBinEP( UInt binValue )
 {
-  if (false)
-  {
-    DTRACE_CABAC_VL( g_nSymbolCounter++ )
-    DTRACE_CABAC_T( "\tEPsymbol=" )
-    DTRACE_CABAC_V( binValue )
-    DTRACE_CABAC_T( "\n" )
-  }
-
   m_uiBinsCoded += m_binCountIncrement;
 
   if (m_uiRange == 256)
@@ -341,17 +324,6 @@ Void TEncBinCABAC::encodeBinEP( UInt binValue )
 Void TEncBinCABAC::encodeBinsEP( UInt binValues, Int numBins )
 {
   m_uiBinsCoded += numBins & -m_binCountIncrement;
-
-  if (false)
-  {
-    for ( Int i = 0; i < numBins; i++ )
-    {
-      DTRACE_CABAC_VL( g_nSymbolCounter++ )
-      DTRACE_CABAC_T( "\tEPsymbol=" )
-      DTRACE_CABAC_V( ( binValues >> ( numBins - 1 - i ) ) & 1 )
-      DTRACE_CABAC_T( "\n" )
-    }
-  }
 
   if (m_uiRange == 256)
   {
