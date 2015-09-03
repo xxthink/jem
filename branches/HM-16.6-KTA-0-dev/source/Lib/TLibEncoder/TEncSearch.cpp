@@ -5475,7 +5475,7 @@ Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg,
 #endif
   Bool  bZeroCu = false;
   UInt bestBits = 0;
-  Double dCost, bestCost = MAX_DOUBLE;
+  Double dCost = 0, bestCost = MAX_DOUBLE;
 
   // CU-level optimization
   for (UChar ucCuFlag = 0; ucCuFlag < ucEmtUsage; ucCuFlag++)
