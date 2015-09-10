@@ -282,7 +282,11 @@
 #define SCAN_SET_SIZE                     16
 #define LOG2_SCAN_SET_SIZE                4
 
+#if QC_USE_65ANG_MODES
+#define FAST_UDI_MAX_RDMODE_NUM               67          ///< maximum number of RD comparison in fast-UDI estimation loop
+#else
 #define FAST_UDI_MAX_RDMODE_NUM               35          ///< maximum number of RD comparison in fast-UDI estimation loop 
+#endif
 
 #define ZERO_MVD_EST                          0           ///< Zero Mvd Estimation in normal mode
 
