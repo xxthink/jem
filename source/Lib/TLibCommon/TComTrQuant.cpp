@@ -1825,7 +1825,7 @@ void fastForwardDST7_B8(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo
       iSum = 0;
       for (k=0; k<uiTrSize; k++)
       {
-        iSum += iT[k]*block[k];
+        iSum += block[k]*iT[k];
       }
       pCoef[i] = (iSum + rnd_factor)>>shift;
       pCoef += line;
@@ -1850,7 +1850,7 @@ void fastInverseDST7_B8(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo
       iSum = 0;
       for (k=0; k<uiTrSize; k++)
       {
-        iSum += iT[k*uiTrSize+j]*coeff[k*line];
+        iSum += coeff[k*line]*iT[k*uiTrSize+j];
       }
       block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
     }
@@ -1877,7 +1877,7 @@ void fastForwardDST7_B16(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int z
       iSum = 0;
       for (k=0; k<uiTrSize; k++)
       {
-        iSum += iT[k]*block[k];
+        iSum += block[k]*iT[k];
       }
       pCoef[i] = (iSum + rnd_factor)>>shift;
       pCoef += line;
@@ -1902,7 +1902,7 @@ void fastInverseDST7_B16(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int z
       iSum = 0;
       for (k=0; k<uiTrSize; k++)
       {
-        iSum += iT[k*uiTrSize+j]*coeff[k*line];
+        iSum += coeff[k*line]*iT[k*uiTrSize+j];
       }
       block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
     }
@@ -1932,7 +1932,7 @@ void fastForwardDST7_B32(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int z
         iSum = 0;
         for (k=0; k<uiTrSize; k++)
         {
-          iSum += iT[k]*block[k];
+          iSum += block[k]*iT[k];
         }
         pCoef[i] = (iSum + rnd_factor)>>shift;
         iT += uiTrSize;
@@ -1964,7 +1964,7 @@ void fastForwardDST7_B32(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int z
         iSum = 0;
         for (k=0; k<uiTrSize; k++)
         {
-          iSum += iT[k]*block[k];
+          iSum += block[k]*iT[k];
         }
         pCoef[i] = (iSum + rnd_factor)>>shift;
         pCoef += line;
@@ -1992,7 +1992,7 @@ void fastInverseDST7_B32(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int z
         iSum = 0;
         for (k=0; k<uiTrSize/2; k++)
         {
-          iSum += iT[k*uiTrSize+j]*coeff[k*line];
+          iSum += coeff[k*line]*iT[k*uiTrSize+j];
         }
         block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
       }
@@ -2013,7 +2013,7 @@ void fastInverseDST7_B32(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int z
         iSum = 0;
         for (k=0; k<uiTrSize; k++)
         {
-          iSum += iT[k*uiTrSize+j]*coeff[k*line];
+          iSum += coeff[k*line]*iT[k*uiTrSize+j];
         }
         block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
       }
@@ -2100,7 +2100,7 @@ void fastForwardDCT8_B8(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo
       iSum = 0;
       for (k=0; k<uiTrSize; k++)
       {
-        iSum += iT[k]*block[k];
+        iSum += block[k]*iT[k];
       }
       pCoef[i] = (iSum + rnd_factor)>>shift;
       pCoef += line;
@@ -2125,7 +2125,7 @@ void fastInverseDCT8_B8(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo
       iSum = 0;
       for (k=0; k<uiTrSize; k++)
       {
-        iSum += iT[k*uiTrSize+j]*coeff[k*line];
+        iSum += coeff[k*line]*iT[k*uiTrSize+j];
       }
       block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
     }
@@ -2152,7 +2152,7 @@ void fastForwardDCT8_B16(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int z
       iSum = 0;
       for (k=0; k<uiTrSize; k++)
       {
-        iSum += iT[k]*block[k];
+        iSum += block[k]*iT[k];
       }
       pCoef[i] = (iSum + rnd_factor)>>shift;
       pCoef += line;
@@ -2177,7 +2177,7 @@ void fastInverseDCT8_B16(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int z
       iSum = 0;
       for (k=0; k<uiTrSize; k++)
       {
-        iSum += iT[k*uiTrSize+j]*coeff[k*line];
+        iSum += coeff[k*line]*iT[k*uiTrSize+j];
       }
       block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
     }
@@ -2207,7 +2207,7 @@ void fastForwardDCT8_B32(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int z
         iSum = 0;
         for (k=0; k<uiTrSize; k++)
         {
-          iSum += iT[k]*block[k];
+          iSum += block[k]*iT[k];
         }
         pCoef[i] = (iSum + rnd_factor)>>shift;
         iT += uiTrSize;
@@ -2239,7 +2239,7 @@ void fastForwardDCT8_B32(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int z
         iSum = 0;
         for (k=0; k<uiTrSize; k++)
         {
-          iSum += iT[k]*block[k];
+          iSum += block[k]*iT[k];
         }
         pCoef[i] = (iSum + rnd_factor)>>shift;
         pCoef += line;
@@ -2267,7 +2267,7 @@ void fastInverseDCT8_B32(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int z
         iSum = 0;
         for (k=0; k<uiTrSize/2; k++)
         {
-          iSum += iT[k*uiTrSize+j]*coeff[k*line];
+          iSum += coeff[k*line]*iT[k*uiTrSize+j];
         }
         block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
       }
@@ -2288,7 +2288,7 @@ void fastInverseDCT8_B32(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int z
         iSum = 0;
         for (k=0; k<uiTrSize; k++)
         {
-          iSum += iT[k*uiTrSize+j]*coeff[k*line];
+          iSum += coeff[k*line]*iT[k*uiTrSize+j];
         }
         block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
       }
@@ -2321,7 +2321,7 @@ void fastForwardDCT5_B4(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo
       iSum = 0;
       for (k=0; k<uiTrSize; k++)
       {
-        iSum += iT[k]*block[k];
+        iSum += block[k]*iT[k];
       }
       pCoef[i] = (iSum + rnd_factor)>>shift;
       pCoef += line;
@@ -2347,7 +2347,7 @@ void fastInverseDCT5_B4(TCoeff *coeff, TCoeff *block, Int shift, Int line, Int z
       iSum = 0;
       for (k=0; k<uiTrSize; k++)
       {
-        iSum += iT[k*uiTrSize+j]*coeff[k*line];
+        iSum += coeff[k*line]*iT[k*uiTrSize+j];
       }
       block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
     }
@@ -2374,7 +2374,7 @@ void fastForwardDCT5_B8(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo
       iSum = 0;
       for (k=0; k<uiTrSize; k++)
       {
-        iSum += iT[k]*block[k];
+        iSum += block[k]*iT[k];
       }
       pCoef[i] = (iSum + rnd_factor)>>shift;
       pCoef += line;
@@ -2399,7 +2399,7 @@ void fastInverseDCT5_B8(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo
       iSum = 0;
       for (k=0; k<uiTrSize; k++)
       {
-        iSum += iT[k*uiTrSize+j]*coeff[k*line];
+        iSum += coeff[k*line]*iT[k*uiTrSize+j];
       }
       block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
     }
@@ -2426,7 +2426,7 @@ void fastForwardDCT5_B16(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int z
       iSum = 0;
       for (k=0; k<uiTrSize; k++)
       {
-        iSum += iT[k]*block[k];
+        iSum += block[k]*iT[k];
       }
       pCoef[i] = (iSum + rnd_factor)>>shift;
       pCoef += line;
@@ -2451,7 +2451,7 @@ void fastInverseDCT5_B16(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int z
       iSum = 0;
       for (k=0; k<uiTrSize; k++)
       {
-        iSum += iT[k*uiTrSize+j]*coeff[k*line];
+        iSum += coeff[k*line]*iT[k*uiTrSize+j];
       }
       block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
     }
@@ -2478,7 +2478,7 @@ void fastForwardDCT5_B32(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int z
       iSum = 0;
       for (k=0; k<uiTrSize; k++)
       {
-        iSum += iT[k]*block[k];
+        iSum += block[k]*iT[k];
       }
       pCoef[i] = (iSum + rnd_factor)>>shift;
       pCoef += line;
@@ -2503,7 +2503,7 @@ void fastInverseDCT5_B32(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int z
       iSum = 0;
       for (k=0; k<uiTrSize; k++)
       {
-        iSum += iT[k*uiTrSize+j]*coeff[k*line];
+        iSum += coeff[k*line]*iT[k*uiTrSize+j];
       }
       block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
     }
@@ -2585,7 +2585,7 @@ void fastForwardDST1_B8(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo
       iSum = 0;
       for (k=0; k<uiTrSize; k++)
       {
-        iSum += iT[k]*block[k];
+        iSum += block[k]*iT[k];
       }
       pCoef[i] = (iSum + rnd_factor)>>shift;
       pCoef += line;
@@ -2610,7 +2610,7 @@ void fastInverseDST1_B8(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo
       iSum = 0;
       for (k=0; k<uiTrSize; k++)
       {
-        iSum += iT[k*uiTrSize+j]*coeff[k*line+i];
+        iSum += coeff[k*line+i]*iT[k*uiTrSize+j];
       }
       block[i*uiTrSize+j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
     }
@@ -2635,7 +2635,7 @@ void fastForwardDST1_B16(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int z
       iSum = 0;
       for (k=0; k<uiTrSize; k++)
       {
-        iSum += iT[k]*block[k];
+        iSum += block[k]*iT[k];
       }
       pCoef[i] = (iSum + rnd_factor)>>shift;
       pCoef += line;
@@ -2660,7 +2660,7 @@ void fastInverseDST1_B16(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int z
       iSum = 0;
       for (k=0; k<uiTrSize; k++)
       {
-        iSum += iT[k*uiTrSize+j]*coeff[k*line+i];
+        iSum += coeff[k*line+i]*iT[k*uiTrSize+j];
       }
       block[i*uiTrSize+j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
     }
@@ -2685,7 +2685,7 @@ void fastForwardDST1_B32(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int z
       iSum = 0;
       for (k=0; k<uiTrSize; k++)
       {
-        iSum += iT[k]*block[k];
+        iSum += block[k]*iT[k];
       }
       pCoef[i] = (iSum + rnd_factor)>>shift;
       pCoef += line;
@@ -2710,7 +2710,7 @@ void fastInverseDST1_B32(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int z
       iSum = 0;
       for (k=0; k<uiTrSize; k++)
       {
-        iSum += iT[k*uiTrSize+j]*coeff[k*line+i];
+        iSum += coeff[k*line+i]*iT[k*uiTrSize+j];
       }
       block[i*uiTrSize+j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
     }

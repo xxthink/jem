@@ -1739,7 +1739,11 @@ Void TEncCavlc::xCtxCodewordCoding(Bool * uiCtxMAP, UChar * uiCtxCodeIdx, UInt u
    {
      if (uiCtxMAP[i])
      {
+#if (ALPHA0!=6)
+       WRITE_UVLC ( (UInt) (uiCtxCodeIdx[i]>ALPHA0?(uiCtxCodeIdx[i]-5):(uiCtxCodeIdx[i]-4)), "wind diff");
+#else
        WRITE_UVLC ( (UInt) ((uiCtxCodeIdx[i]-4)>2?2:(uiCtxCodeIdx[i]-4)), "wind diff");
+#endif
      }
    }
 }
