@@ -102,7 +102,7 @@ TDecBinCABAC::copyState( const TDecBinIf* pcTDecBinIf )
   m_bitsNeeded= pcTDecBinCABAC->m_bitsNeeded;
 }
 
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW  || VCEG_AZ05_MULTI_PARAM_CABAC
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
 Void TDecBinCABAC::decodeBin( UInt& ruiBin, ContextModel &rcCtxModel, const TComCodingStatisticsClassType &whichStat )
 #else
