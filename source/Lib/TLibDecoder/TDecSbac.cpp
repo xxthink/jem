@@ -2537,7 +2537,7 @@ Void TDecSbac::loadContextsFromPrev (TComStats* apcStats, SliceType eSliceType, 
     Int iCtxNr = getCtxNumber();
     for(UInt i = 0; i < iCtxNr; i++)
     {
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW  || VCEG_AZ05_MULTI_PARAM_CABAC
       m_contextModels[i].setState(apcStats->m_uiCtxProbIdx[eSliceType][iQPIdx][0][i]);
 #else
       m_contextModels[i].setState( (UChar) apcStats->m_uiCtxProbIdx[eSliceType][iQPIdx][0][i] );
@@ -2549,7 +2549,7 @@ Void TDecSbac::loadContextsFromPrev (TComStats* apcStats, SliceType eSliceType, 
     Int iCtxNr = getCtxNumber();
     for(UInt i = 0; i < iCtxNr; i++)
     {
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW  || VCEG_AZ05_MULTI_PARAM_CABAC
       apcStats->m_uiCtxProbIdx[eSliceType][iQPIdx][0][i] = m_contextModels[i].getState();
 #else
       apcStats->m_uiCtxProbIdx[eSliceType][iQPIdx][0][i] = (UShort) m_contextModels[i].getOrigState();

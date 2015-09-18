@@ -111,6 +111,7 @@
 #define VCEG_AZ07_INIT_PREVFRAME                          1  /// context states initialized from previously coded frames
 #endif
 
+#define VCEG_AZ05_MULTI_PARAM_CABAC                       1  /// CABAC probability estimation with 2 windows 
 ///////////////////////////////////////////////////////////
 // KTA tools section end
 ///////////////////////////////////////////////////////////

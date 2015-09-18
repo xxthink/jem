@@ -46,7 +46,7 @@ using namespace std;
 // ====================================================================================================================
 // Public member functions
 // ====================================================================================================================
-#if VCEG_AZ07_BAC_ADAPT_WDOW 
+#if VCEG_AZ07_BAC_ADAPT_WDOW  || VCEG_AZ05_MULTI_PARAM_CABAC 
 const UShort m_MappedProb[128] =
 { 
    614,    647,    681,    718,    756,    797,    839,    884,    932,    982,   1034,   1089,   1148,   1209,   1274,   1342,
@@ -72,16 +72,19 @@ Void ContextModel::init( Int qp, Int initValue )
   Int  slope      = (initValue>>4)*5 - 45;
   Int  offset     = ((initValue&15)<<3)-16;
   Int  initState  =  min( max( 1, ( ( ( slope * qp ) >> 4 ) + offset ) ), 126 );
-#if VCEG_AZ07_BAC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ05_MULTI_PARAM_CABAC
   iP1             = m_MappedProb[initState];
   m_ucWdow        = ALPHA0;
+#if VCEG_AZ05_MULTI_PARAM_CABAC
+  iP0 = m_MappedProb[initState];
+#endif
 #else
   UInt mpState    = (initState >= 64 );
   m_ucState       = ( (mpState? (initState - 64):(63 - initState)) <<1) + mpState;
 #endif
 }
 
-#if !VCEG_AZ07_BAC_ADAPT_WDOW
+#if !VCEG_AZ07_BAC_ADAPT_WDOW && !VCEG_AZ05_MULTI_PARAM_CABAC
 const UChar ContextModel::m_aucNextStateMPS[ ContextModel::m_totalStates ] =
 {
   2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,

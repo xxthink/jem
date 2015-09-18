@@ -450,7 +450,19 @@ TComStats::TComStats()
       }
     }
 #endif
+  for (int iQP=0;  iQP< NUM_QP_PROB; iQP++)
+  {
+    for (int uiSliceType=0;  uiSliceType< 3; uiSliceType++)
+    {
+      for (int i =0; i<MAX_NUM_CTX_MOD;i++)
+      {
+        m_uiCtxMAP[uiSliceType][iQP][i] = 0;
+        m_uiCtxCodeIdx[uiSliceType][iQP][i] = ALPHA0; 
+      }
+    }
+  }
 }
+
 TComStats::~TComStats()
 {
 #if VCEG_AZ07_INIT_PREVFRAME

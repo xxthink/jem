@@ -190,9 +190,10 @@ UInt TEncBinCABAC::getNumWrittenBits()
  * \param binValue   bin value
  * \param rcCtxModel context model
  */
-#if VCEG_AZ07_BAC_ADAPT_WDOW 
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ05_MULTI_PARAM_CABAC 
 Void TEncBinCABAC::encodeBin( UInt binValue, ContextModel &rcCtxModel )
 {
+#if !VCEG_AZ05_MULTI_PARAM_CABAC
   m_uiBinsCoded += m_binCountIncrement;
   rcCtxModel.setBinsCoded( 1 );
   UInt uiCtxIdx = rcCtxModel.getIdx();
@@ -201,6 +202,7 @@ Void TEncBinCABAC::encodeBin( UInt binValue, ContextModel &rcCtxModel )
     m_pbCodedString[uiCtxIdx][m_iCounter[uiCtxIdx]] = (binValue==1? true:false);
     m_iCounter[uiCtxIdx] ++;
   }
+#endif
   UShort uiLPS = TComCABACTables::sm_aucLPSTable[rcCtxModel.getState()>>6][(m_uiRange>>2)-64];
   m_uiRange    -= uiLPS;
 

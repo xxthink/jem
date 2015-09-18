@@ -69,7 +69,7 @@ TEncTop::TEncTop()
 
   m_iMaxRefPicNum     = 0;
 
-#if FAST_BIT_EST && !VCEG_AZ07_BAC_ADAPT_WDOW
+#if FAST_BIT_EST && !VCEG_AZ07_BAC_ADAPT_WDOW && ! VCEG_AZ05_MULTI_PARAM_CABAC
   ContextModel::buildNextStateTable();
 #endif
 }
