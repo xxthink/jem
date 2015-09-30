@@ -127,8 +127,13 @@ m_ppcPredYuvBest = new TComYuv*[m_uhTotalDepth-1];
 #endif
 #if COM16_C806_OBMC
     m_ppcTempCUWoOBMC [i] = new TComDataCU; m_ppcTempCUWoOBMC[i]->create( chromaFormat, uiNumPartitions, uiWidth, uiHeight, false, uiMaxWidth >> (m_uhTotalDepth - 1) );
+#if VCEG_AZ05_BIO
+    m_ppcTmpYuv1      [i] = new TComYuv;    m_ppcTmpYuv1      [i]->create( uiWidth+4, uiHeight+4, chromaFormat );
+    m_ppcTmpYuv2      [i] = new TComYuv;    m_ppcTmpYuv2      [i]->create( uiWidth+4, uiHeight+4, chromaFormat );
+#else
     m_ppcTmpYuv1      [i] = new TComYuv;    m_ppcTmpYuv1      [i]->create( uiWidth, uiHeight, chromaFormat );
     m_ppcTmpYuv2      [i] = new TComYuv;    m_ppcTmpYuv2      [i]->create( uiWidth, uiHeight, chromaFormat );
+#endif
     m_ppcPredYuvWoOBMC[i] = new TComYuv;    m_ppcPredYuvWoOBMC[i]->create( uiWidth, uiHeight, chromaFormat );
 #endif
   }

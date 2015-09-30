@@ -371,11 +371,19 @@ UInt TComYuv::sadLuma( TComYuv* pcYuvSrc0 )
 #endif
 
 
-Void TComYuv::addAvg( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const UInt iPartUnitIdx, const UInt uiWidth, const UInt uiHeight, const BitDepths &clipBitDepths )
+Void TComYuv::addAvg( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const UInt iPartUnitIdx, const UInt uiWidth, const UInt uiHeight, const BitDepths &clipBitDepths 
+#if VCEG_AZ05_BIO                  
+  ,bool bBIOapplied
+#endif
+)
 {
   for(Int comp=0; comp<getNumberValidComponents(); comp++)
   {
     const ComponentID compID=ComponentID(comp);
+#if VCEG_AZ05_BIO
+    if(!bBIOapplied || compID!=COMPONENT_Y)
+    {
+#endif 
     const Pel* pSrc0  = pcYuvSrc0->getAddr( compID, iPartUnitIdx );
     const Pel* pSrc1  = pcYuvSrc1->getAddr( compID, iPartUnitIdx );
     Pel* pDst   = getAddr( compID, iPartUnitIdx );
@@ -425,6 +433,9 @@ Void TComYuv::addAvg( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const 
         pDst  += iDstStride;
       }
     }
+#if VCEG_AZ05_BIO
+    }
+#endif 
   }
 }
 
