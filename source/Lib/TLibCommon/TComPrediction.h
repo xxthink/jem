@@ -86,7 +86,7 @@ private:
 #endif
 
 protected:
-  #if VCEG_AZ05_BIO  
+#if VCEG_AZ05_BIO  
   Pel*   m_pGradX0;
   Pel*   m_pGradY0;
   Pel*   m_pGradX1;
