@@ -112,6 +112,7 @@
 #endif
 
 #define VCEG_AZ05_MULTI_PARAM_CABAC                       1  /// CABAC probability estimation with 2 windows 
+#define VCEG_AZ05_BIO                                     1  /// bi-directional optical flow
 ///////////////////////////////////////////////////////////
 // KTA tools section end
 ///////////////////////////////////////////////////////////

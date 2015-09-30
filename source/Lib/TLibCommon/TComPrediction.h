@@ -86,6 +86,15 @@ private:
 #endif
 
 protected:
+  #if VCEG_AZ05_BIO  
+  Pel*   m_pGradX0;
+  Pel*   m_pGradY0;
+  Pel*   m_pGradX1;
+  Pel*   m_pGradY1;
+  Pel*   m_pPred0 ;
+  Pel*   m_pPred1 ;
+  Int    iRefListIdx;
+#endif
   Pel*      m_piYuvExt[MAX_NUM_COMPONENT][NUM_PRED_BUF];
   Int       m_iYuvExtSize;
 
@@ -130,7 +139,25 @@ protected:
 #endif
 
   // motion compensation functions
-  Void xPredInterUni            ( TComDataCU* pcCU,                          UInt uiPartAddr,               Int iWidth, Int iHeight, RefPicList eRefPicList, TComYuv* pcYuvPred, Bool bi=false          
+#if VCEG_AZ05_BIO  
+#define BIO_FILTER_LENGTH                 6
+#define BIO_FILTER_LENGTH_MINUS_1         (BIO_FILTER_LENGTH-1)
+#define BIO_FILTER_HALF_LENGTH_MINUS_1    ((BIO_FILTER_LENGTH>>1)-1)
+  Void  xPredInterFrac(Pel* ref,Pel* dst,Int dstStride,Int refStride,Int xFrac,Int yFrac,Int width, Int height,Bool bi,ChromaFormat chFmt, const Int bitDepth);
+  Void  xGradFilterX(Pel*  piRefY, Int iRefStride,Pel*  piDstY,Int iDstStride, Int iWidth, Int iHeight,Int iMVyFrac,Int iMVxFrac, const Int bitDepth);
+  Void  xGradFilterY(Pel*  piRefY, Int iRefStride,Pel*  piDstY,Int iDstStride, Int iWidth, Int iHeight,Int iMVyFrac,Int iMVxFrac, const Int bitDepth);
+  __inline Void gradFilter2DVer (Pel* piSrc, Int iSrcStride,  Int iWidth, Int iHeight, Int iDstStride,  Pel*& rpiDst, Int iMv, const Int iShift);
+  __inline Void gradFilter2DHor (Pel* piSrc, Int iSrcStride,  Int iWidth, Int iHeight, Int iDstStride,  Pel*& rpiDst, Int iMV, const Int iShift);
+  __inline Void fracFilter2DHor(Pel* piSrc, Int iSrcStride,  Int iWidth, Int iHeight, Int iDstStride,  Pel*& rpiDst, Int iMV, const Int iShift);
+  __inline Void fracFilter2DVer(Pel* piSrc, Int iSrcStride,  Int iWidth, Int iHeight, Int iDstStride,  Pel*& rpiDst, Int iMv, const Int iShift);
+  __inline Void gradFilter1DHor (Pel* piSrc, Int iSrcStride,  Int iWidth, Int iHeight, Int iDstStride,  Pel*& rpiDst, Int iMV, const Int iShift);
+  __inline Void gradFilter1DVer (Pel* piSrc, Int iSrcStride,  Int iWidth, Int iHeight, Int iDstStride,  Pel*& rpiDst, Int iMV, const Int iShift);
+#endif
+  Void xPredInterUni            ( TComDataCU* pcCU,                          UInt uiPartAddr,               Int iWidth, Int iHeight, RefPicList eRefPicList, TComYuv* pcYuvPred
+#if VCEG_AZ05_BIO
+    , Bool bBIOApplied =false
+#endif
+    , Bool bi=false          
 #if VCEG_AZ07_FRUC_MERGE
     , Bool bOBMC = false
 #endif
@@ -141,6 +168,9 @@ protected:
 #endif
     );
   Void xPredInterBlk(const ComponentID compID, TComDataCU *cu, TComPicYuv *refPic, UInt partAddr, TComMv *mv, Int width, Int height, TComYuv *dstPic, Bool bi, const Int bitDepth
+#if VCEG_AZ05_BIO                  
+    , Bool bBIOapplied =false
+#endif
 #if VCEG_AZ07_FRUC_MERGE
     , Int nFRUCMode = FRUC_MERGE_OFF
 #endif
@@ -148,7 +178,11 @@ protected:
     , Bool bICFlag      = false
 #endif
     );
-  Void xWeightedAverage         ( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, Int iRefIdx0, Int iRefIdx1, UInt uiPartAddr, Int iWidth, Int iHeight, TComYuv* pcYuvDst, const BitDepths &clipBitDepths  );
+  Void xWeightedAverage         ( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, Int iRefIdx0, Int iRefIdx1, UInt uiPartAddr, Int iWidth, Int iHeight, TComYuv* pcYuvDst, const BitDepths &clipBitDepths  
+#if VCEG_AZ05_BIO                  
+    , Bool bBIOapplied 
+#endif
+);
 
   Void xGetLLSPrediction ( const Pel* pSrc0, Int iSrcStride, Pel* pDst0, Int iDstStride, UInt uiWidth, UInt uiHeight, UInt uiExt0, const ChromaFormat chFmt  DEBUG_STRING_FN_DECLARE(sDebug) );
 

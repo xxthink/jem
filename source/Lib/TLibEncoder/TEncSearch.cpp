@@ -4678,6 +4678,9 @@ Distortion TEncSearch::xGetTemplateCost( TComDataCU* pcCU,
   else
   {
     xPredInterBlk( COMPONENT_Y, pcCU, pcPicYuvRef, uiPartAddr, &cMvCand, iSizeX, iSizeY, pcTemplateCand, false, pcCU->getSlice()->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA) 
+#if VCEG_AZ05_BIO
+      ,false
+#endif
 #if VCEG_AZ07_FRUC_MERGE
       , false
 #endif

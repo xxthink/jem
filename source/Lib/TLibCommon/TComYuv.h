@@ -138,7 +138,11 @@ public:
   UInt         sadLuma                    ( TComYuv* pcYuvSrc0 );
 #endif
   //  (pcYuvSrc0 + pcYuvSrc1)/2 for YUV partition
-  Void         addAvg                     ( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const UInt iPartUnitIdx, const UInt iWidth, const UInt iHeight, const BitDepths &clipBitDepths );
+  Void         addAvg                     ( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const UInt iPartUnitIdx, const UInt iWidth, const UInt iHeight, const BitDepths &clipBitDepths 
+#if VCEG_AZ05_BIO                  
+    , bool bBIOapplied
+#endif
+);
 
   Void         removeHighFreq             ( const TComYuv* pcYuvSrc, const UInt uiPartIdx, const UInt uiWidth, const UInt uiHeight
                                           , const Int bitDepths[MAX_NUM_CHANNEL_TYPE], const Bool bClipToBitDepths
