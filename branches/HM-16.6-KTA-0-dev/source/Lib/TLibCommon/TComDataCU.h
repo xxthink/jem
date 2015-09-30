@@ -104,6 +104,9 @@ private:
   // -------------------------------------------------------------------------------------------------------------------
 
   Bool*          m_skipFlag;           ///< array of skip flags
+#if VCEG_AZ05_INTRA_MPI
+  Char*          m_MPIIdx;             ///< array of MPIIdxs
+#endif
   Char*          m_pePartSize;         ///< array of partition sizes
   Char*          m_pePredMode;         ///< array of prediction modes
   Char*          m_crossComponentPredictionAlpha[MAX_NUM_COMPONENT]; ///< array of cross-component prediction alpha values
@@ -270,6 +273,13 @@ public:
   Bool          getSkipFlag            (UInt idx)                { return m_skipFlag[idx];     }
   Void          setSkipFlag           ( UInt idx, Bool skip)     { m_skipFlag[idx] = skip;   }
   Void          setSkipFlagSubParts   ( Bool skip, UInt absPartIdx, UInt depth );
+
+#if VCEG_AZ05_INTRA_MPI
+  Char*         getMPIIdx               ()                        { return m_MPIIdx;          }
+  Char          getMPIIdx               ( UInt idx)               { return m_MPIIdx[idx];     }
+  Void          setMPIIdx               ( UInt idx, Char MPIIdx)  { m_MPIIdx[idx] = MPIIdx;   }
+  Void          setMPIIdxSubParts       ( Char MPIIdx, UInt absPartIdx, UInt depth );
+#endif
 
   Char*         getPredictionMode     ()                        { return m_pePredMode;        }
   PredMode      getPredictionMode     ( UInt uiIdx )            { return static_cast<PredMode>( m_pePredMode[uiIdx] ); }

@@ -180,6 +180,9 @@ protected:
                               Double      &cost,
                               PartSize     ePartSize
                               DEBUG_STRING_FN_DECLARE(sDebug)
+#if VCEG_AZ05_INTRA_MPI
+                              , Int& bNonZeroCoeff
+#endif
                             );
 
   Void  xCheckDQP           ( TComDataCU*  pcCU );

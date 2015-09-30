@@ -96,6 +96,9 @@ public:
   Void  parseICFlag         ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
   Void parseCUTransquantBypassFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#if VCEG_AZ05_INTRA_MPI
+  Void parseMPIIdx          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
   Void parseMergeFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx );
   Void parseMergeIndex      ( TComDataCU* pcCU, UInt& ruiMergeIndex );
 #if VCEG_AZ07_FRUC_MERGE

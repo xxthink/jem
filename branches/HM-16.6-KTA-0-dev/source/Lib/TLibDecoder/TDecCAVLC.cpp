@@ -1875,6 +1875,12 @@ Void TDecCavlc::parseMergeFlag ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UI
 {
   assert(0);
 }
+#if VCEG_AZ05_INTRA_MPI
+Void TDecCavlc::parseMPIIdx ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/ )
+{
+  assert(0);
+}
+#endif
 
 Void TDecCavlc::parseMergeIndex ( TComDataCU* /*pcCU*/, UInt& /*ruiMergeIndex*/ )
 {
