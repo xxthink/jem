@@ -131,6 +131,9 @@ public:
 #endif
   Void parseCUTransquantBypassFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   Void parseSplitFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#if VCEG_AZ05_INTRA_MPI
+  Void parseMPIIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
   Void parseMergeFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx );
   Void parseMergeIndex    ( TComDataCU* pcCU, UInt& ruiMergeIndex );
 #if VCEG_AZ07_FRUC_MERGE
@@ -189,6 +192,9 @@ private:
   Int                  m_numContextModels;
   ContextModel3DBuffer m_cCUSplitFlagSCModel;
   ContextModel3DBuffer m_cCUSkipFlagSCModel;
+#if VCEG_AZ05_INTRA_MPI
+  ContextModel3DBuffer m_cMPIIdxSCModel;
+#endif
   ContextModel3DBuffer m_cCUMergeFlagExtSCModel;
   ContextModel3DBuffer m_cCUMergeIdxExtSCModel;
 #if VCEG_AZ07_FRUC_MERGE

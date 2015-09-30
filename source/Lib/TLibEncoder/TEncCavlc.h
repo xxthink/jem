@@ -103,6 +103,9 @@ public:
   Void codeSAOBlkParam(SAOBlkParam& /*saoBlkParam*/, const BitDepths& /*bitDepths*/, Bool* /*sliceEnabled*/, Bool /*leftMergeAvail*/, Bool /*aboveMergeAvail*/, Bool /*onlyEstMergeInfo*/ = false){printf("only supported in CABAC"); assert(0); exit(-1);}
   Void codeCUTransquantBypassFlag( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeSkipFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
+#if VCEG_AZ05_INTRA_MPI
+  Void codeMPIIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx );
+#endif
 #if VCEG_AZ07_IMV
   Void codeiMVFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx );
 #endif
@@ -147,7 +150,11 @@ public:
   Void codeDeltaQP       ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeChromaQpAdjustment( TComDataCU* pcCU, UInt uiAbsPartIdx );
 
-  Void codeCoeffNxN      ( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID );
+  Void codeCoeffNxN      ( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID 
+#if VCEG_AZ05_INTRA_MPI
+    , Int& bCbfCU
+#endif
+    );
   Void codeTransformSkipFlags ( TComTU &rTu, ComponentID component );
 
   Void estBit            ( estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, ChannelType chType );

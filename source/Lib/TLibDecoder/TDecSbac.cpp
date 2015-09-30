@@ -66,6 +66,9 @@ TDecSbac::TDecSbac()
 , m_numContextModels                         ( 0 )
 , m_cCUSplitFlagSCModel                      ( 1,             1,                      NUM_SPLIT_FLAG_CTX                   , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUSkipFlagSCModel                       ( 1,             1,                      NUM_SKIP_FLAG_CTX                    , m_contextModels + m_numContextModels, m_numContextModels)
+#if VCEG_AZ05_INTRA_MPI
+, m_cMPIIdxSCModel                           ( 1,             1,                      NUM_MPI_CTX                          , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 , m_cCUMergeFlagExtSCModel                   ( 1,             1,                      NUM_MERGE_FLAG_EXT_CTX               , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUMergeIdxExtSCModel                    ( 1,             1,                      NUM_MERGE_IDX_EXT_CTX                , m_contextModels + m_numContextModels, m_numContextModels)
 #if VCEG_AZ07_FRUC_MERGE
@@ -169,6 +172,9 @@ Void TDecSbac::resetEntropy(TComSlice* pSlice)
 
   m_cCUSplitFlagSCModel.initBuffer                ( sliceType, qp, (UChar*)INIT_SPLIT_FLAG );
   m_cCUSkipFlagSCModel.initBuffer                 ( sliceType, qp, (UChar*)INIT_SKIP_FLAG );
+#if VCEG_AZ05_INTRA_MPI
+  m_cMPIIdxSCModel.initBuffer                     ( sliceType, qp, (UChar*)INIT_MPIIdx_FLAG );
+#endif
   m_cCUMergeFlagExtSCModel.initBuffer             ( sliceType, qp, (UChar*)INIT_MERGE_FLAG_EXT );
   m_cCUMergeIdxExtSCModel.initBuffer              ( sliceType, qp, (UChar*)INIT_MERGE_IDX_EXT );
 #if VCEG_AZ07_FRUC_MERGE
@@ -614,6 +620,40 @@ Void TDecSbac::parseMergeFlag ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDept
   DTRACE_CABAC_V( uiAbsPartIdx );
   DTRACE_CABAC_T( "\n" );
 }
+#if VCEG_AZ05_INTRA_MPI
+Void TDecSbac::parseMPIIdx(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth)
+{
+  if (pcCU->getPredictionMode(uiAbsPartIdx) == MODE_INTER)
+  {
+    pcCU->setMPIIdxSubParts(0, uiAbsPartIdx, uiDepth);
+    return;
+  }
+  Int iNumberOfPassesMPI = 1;
+  if (pcCU->getSlice()->getSliceType() == I_SLICE) iNumberOfPassesMPI = 4;
+  else iNumberOfPassesMPI = 2;
+  if (iNumberOfPassesMPI>1) // for only 1 pass no signaling is needed 
+  {
+    if (iNumberOfPassesMPI>2)  // 3 or 4
+    {
+      UInt uiSymbol0 = 0;
+      UInt uiSymbol1 = 0;
+      m_pcTDecBinIf->decodeBin(uiSymbol0, m_cMPIIdxSCModel.get(0, 0, 0) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MPI_FLAG));
+      m_pcTDecBinIf->decodeBin(uiSymbol1, m_cMPIIdxSCModel.get(0, 0, 1) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MPI_FLAG));
+      pcCU->setMPIIdxSubParts((uiSymbol0 << 1) + uiSymbol1, uiAbsPartIdx, uiDepth);
+    }
+    else  //iNumberOfPassesMPI==2
+    {
+      UInt uiSymbol = 0;
+      m_pcTDecBinIf->decodeBin(uiSymbol, m_cMPIIdxSCModel.get(0, 0, 0) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MPI_FLAG));
+      pcCU->setMPIIdxSubParts(uiSymbol, uiAbsPartIdx, uiDepth);
+    }
+  }
+  else
+  {
+    pcCU->setMPIIdxSubParts(0, uiAbsPartIdx, uiDepth);
+  }
+}
+#endif
 
 Void TDecSbac::parseMergeIndex ( TComDataCU* pcCU, UInt& ruiMergeIndex )
 {

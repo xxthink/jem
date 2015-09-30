@@ -650,7 +650,10 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
   else
   {
     const Pel *ptrSrc = getPredictorPtr( compID, bUseFilteredPredSamples );
-
+#if VCEG_AZ05_INTRA_MPI
+    TComDataCU *const pcCU = rTu.getCU();
+    const UInt              uiAbsPartIdx = rTu.GetAbsPartIdxTU();
+#endif
     if ( uiDirMode == PLANAR_IDX )
     {
       xPredIntraPlanar( ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight );
@@ -658,8 +661,10 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
     else
     {
       // Create the prediction
-            TComDataCU *const pcCU              = rTu.getCU();
+#if !VCEG_AZ05_INTRA_MPI
+      TComDataCU *const pcCU = rTu.getCU();
       const UInt              uiAbsPartIdx      = rTu.GetAbsPartIdxTU();
+#endif
       const Bool              enableEdgeFilters = !(pcCU->isRDPCMEnabled(uiAbsPartIdx) && pcCU->getCUTransquantBypass(uiAbsPartIdx));
 #if O0043_BEST_EFFORT_DECODING
       const Int channelsBitDepthForPrediction = rTu.getCU()->getSlice()->getSPS()->getStreamBitDepth(channelType);
@@ -678,7 +683,11 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 #endif
         );
 
-      if( uiDirMode == DC_IDX )
+#if VCEG_AZ05_INTRA_MPI
+      if (!pcCU->getMPIIdx(uiAbsPartIdx) && (uiDirMode == DC_IDX))
+#else
+      if ((uiDirMode == DC_IDX))
+#endif
       {
         xDCPredFiltering( ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight, channelType );
       }
@@ -708,6 +717,19 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
       }
 #endif
     }
+#if VCEG_AZ05_INTRA_MPI
+    if (pcCU->getMPIIdx(uiAbsPartIdx) && pcCU->getCUPelX() && pcCU->getCUPelY())
+    {
+      Pel* pRec = pcCU->getPic()->getPicYuvRec()->getAddr(compID, pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu() + uiAbsPartIdx);   
+      Int iStrideRec = pcCU->getPic()->getPicYuvRec()->getStride(compID);
+      PartSize eSize = pcCU->getPartitionSize(uiAbsPartIdx);
+      Int idexMPI = pcCU->getMPIIdx(uiAbsPartIdx);
+      if (idexMPI>3) idexMPI = 0;
+      idexMPI += (eSize == SIZE_NxN ? 4 : 0);
+      xMPIredFiltering(pRec, iStrideRec, pDst, uiStride, iWidth, iHeight, idexMPI);
+    }
+#endif
+
   }
 
 }
@@ -3707,6 +3729,248 @@ UInt TComPrediction::xFrucGetMvCost( const TComMv & rMvStart , const TComMv & rM
   return( uiCost );
 }
 
+#endif
+
+#if VCEG_AZ05_INTRA_MPI
+Void TComPrediction::xMPIredFiltering( Pel* pSrc, Int iSrcStride, Pel*& rpDst, Int iDstStride, Int iWidth, Int iHeight , Int idxMPI)
+{
+  Pel* pDst = rpDst;
+  Int x, y;
+  switch(idxMPI)
+  {
+  case 7:
+     // 0* 0*
+     // 1* 1*
+    {
+      // boundary pixels processing
+      //            top                left           top-left        current                
+      pDst[0] = ((                    pSrc[-1] +                      3*pDst[0] + 2) >> 2);//left-top corner
+
+      for ( x = 1; x < iWidth; x++ )
+      {
+      //                 top                left           top-left          current  
+      pDst[x] = ((                     pDst[x-1] +                     3*pDst[x] + 2) >> 2); //upper-line
+      }
+      //left column
+      for ( y = 1; y < iHeight; y++ )
+      {
+      //                                   top                left                    top-left                   current  
+        pDst[iDstStride*y] = ((                         pSrc[iSrcStride*y-1]  +                               3*pDst[iDstStride*y]+2) >> 2);
+      }
+ 
+      //inner samples
+      pDst++; pDst+=iDstStride;
+      Pel* pDstLeft    = pDst-1;
+      for ( y = 0; y < iHeight-1; y++ )
+      {
+        for ( x = 0; x < iWidth-1; x++ )
+        {
+        pDst[x] = (Pel)((
+         pDstLeft[x]          // left neighbour
+        +3*pDst[x] + 2) >> 2); 
+        }
+        pDst+=iDstStride;
+        pDstLeft+=iDstStride;
+      }
+    }
+    break;
+  case 6:
+    // 0* 1*
+    // 0* 3*
+    {
+      // boundary pixels processing
+      //            top                left           top-left        current                
+      pDst[0] = ((pSrc[-iSrcStride] +                                    3*pDst[0]  +2) >> 2);//left-top corner
+
+      for ( x = 1; x < iWidth; x++ )
+      {
+      //                 top                left           top-left          current  
+      pDst[x] = ((pSrc[x - iSrcStride]  +                                  3*pDst[x]  +2) >> 2); //upper-line
+      }     
+      //left column
+      for ( y = 1; y < iHeight; y++ )
+      {
+      //                   top                left                top-left        current  
+        pDst[iDstStride*y] = 
+          ((pDst[iDstStride*(y-1)]   +                                     3*pDst[iDstStride*y]+2) >> 2);
+      }
+ 
+      //inner samples
+      pDst++; pDst+=iDstStride;
+      Pel* pDstTop     = pDst-iDstStride;
+      for ( y = 0; y < iHeight-1; y++ )
+      {
+        for ( x = 0; x < iWidth-1; x++ )
+        {
+        pDst[x] = (Pel)((
+        +pDstTop[x]          // top neighbour
+        +3*pDst[x] +2) >> 2); 
+        }
+        pDst+=iDstStride;
+        pDstTop+=iDstStride;
+      }
+    }
+    break;
+  case 5: 
+    // 0* 1*
+    // 1* 6*
+    {
+      // boundary pixels processing
+      //            top                left           top-left        current                
+      pDst[0] = ((pSrc[-iSrcStride] + pSrc[-1] +                      6*pDst[0] + 4) >> 3);//left-top corner
+
+      for ( x = 1; x < iWidth; x++ )
+      {
+      //                 top                left           top-left          current  
+      pDst[x] = ((pSrc[x - iSrcStride]  +pDst[x-1] +                         6*pDst[x] + 4) >> 3); //upper-line
+      }
+      //left column
+      for ( y = 1; y < iHeight; y++ )
+      {
+      //                                   top                left                    top-left                   current  
+        pDst[iDstStride*y] = ((pDst[iDstStride*(y-1)] +  pSrc[iSrcStride*y-1]  +                               6*pDst[iDstStride*y]+ 4) >> 3);
+      }
+ 
+      //inner samples
+      pDst++; pDst+=iDstStride;
+      Pel* pDstLeft    = pDst-1;
+      Pel* pDstTop     = pDst-iDstStride;
+      for ( y = 0; y < iHeight-1; y++ )
+      {
+        for ( x = 0; x < iWidth-1; x++ )
+        {
+        pDst[x] = (Pel)((
+         pDstLeft[x]          // left neighbour
+        +pDstTop[x]          // top neighbour
+        +6*pDst[x] + 4) >> 3); 
+        }
+        pDst+=iDstStride;
+        pDstLeft+=iDstStride;
+        pDstTop+=iDstStride;
+      }
+    }
+    break;
+  case 3:
+    // 0* 0*
+    // 1* 1*
+    {
+      // boundary pixels processing
+      //            top                left           top-left        current                
+      pDst[0] = ((                    pSrc[-1] +                      pDst[0] + 1) >> 1);//left-top corner
+
+      for ( x = 1; x < iWidth; x++ )
+      {
+      //                 top                left           top-left          current  
+      pDst[x] = ((                     pDst[x-1] +                     pDst[x] + 1) >> 1); //upper-line
+      }
+      //left column
+      for ( y = 1; y < iHeight; y++ )
+      {
+      //                                   top                left                    top-left                   current  
+        pDst[iDstStride*y] = ((                         pSrc[iSrcStride*y-1]  +                               pDst[iDstStride*y]+1) >> 1);
+      }
+ 
+      //inner samples
+      pDst++; pDst+=iDstStride;
+      Pel* pDstLeft    = pDst-1;
+      for ( y = 0; y < iHeight-1; y++ )
+      {
+        for ( x = 0; x < iWidth-1; x++ )
+        {
+        pDst[x] = (Pel)((
+         pDstLeft[x]          // left neighbour
+        +pDst[x] + 1) >> 1); 
+        }
+        pDst+=iDstStride;
+        pDstLeft+=iDstStride;
+      }
+    }
+    break;
+  case 2:
+    // 0* 1*
+    // 0* 1*
+    {
+      // boundary pixels processing
+      //            top                left           top-left        current                
+      pDst[0] = ((pSrc[-iSrcStride] +                                    pDst[0]  +1) >> 1);//left-top corner
+
+      for ( x = 1; x < iWidth; x++ )
+      {
+      //                 top                left           top-left          current  
+      pDst[x] = ((pSrc[x - iSrcStride]  +                                   pDst[x]  +1) >> 1); //upper-line
+      }     
+      //left column
+      for ( y = 1; y < iHeight; y++ )
+      {
+      //                   top                left                top-left        current  
+        pDst[iDstStride*y] = 
+          ((pDst[iDstStride*(y-1)]   +                                      pDst[iDstStride*y]+1) >> 1);
+      }
+ 
+      //inner samples
+      pDst++; pDst+=iDstStride;
+      Pel* pDstTop     = pDst-iDstStride;
+      for ( y = 0; y < iHeight-1; y++ )
+      {
+        for ( x = 0; x < iWidth-1; x++ )
+        {
+        pDst[x] = (Pel)((
+        +pDstTop[x]          // top neighbour
+        +pDst[x] +1) >> 1); 
+        }
+        pDst+=iDstStride;
+        pDstTop+=iDstStride;
+      }
+    }
+    break;
+  case 1: 
+    // 0* 1*
+    // 1* 2*
+    {
+      // boundary pixels processing
+      //            top                left           top-left        current                
+      pDst[0] = ((pSrc[-iSrcStride] + pSrc[-1] +                      2*pDst[0] + 2) >> 2);//left-top corner
+
+      for ( x = 1; x < iWidth; x++ )
+      {
+      //                 top                left           top-left          current  
+      pDst[x] = ((pSrc[x - iSrcStride]  +pDst[x-1] +                         2*pDst[x] + 2) >> 2); //upper-line
+      }
+      //left column
+      for ( y = 1; y < iHeight; y++ )
+      {
+      //                                   top                left                    top-left                   current  
+        pDst[iDstStride*y] = ((pDst[iDstStride*(y-1)] +  pSrc[iSrcStride*y-1]  +                               2*pDst[iDstStride*y]+ 2) >> 2);
+      }
+ 
+      //inner samples
+      pDst++; pDst+=iDstStride;
+      Pel* pDstLeft    = pDst-1;
+      Pel* pDstTop     = pDst-iDstStride;
+      for ( y = 0; y < iHeight-1; y++ )
+      {
+        for ( x = 0; x < iWidth-1; x++ )
+        {
+        pDst[x] = (Pel)((
+         pDstLeft[x]          // left neighbour
+        +pDstTop[x]          // top neighbour
+        +2*pDst[x] + 2) >> 2); 
+        }
+        pDst+=iDstStride;
+        pDstLeft+=iDstStride;
+        pDstTop+=iDstStride;
+      }
+    }
+    break;
+  case 0:
+  case 4:
+    {
+
+    }
+    break;
+  }
+  return;
+}
 #endif
 
 #if COM16_C806_LMCHROMA

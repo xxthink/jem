@@ -1273,6 +1273,13 @@ Void TEncCavlc::codeMergeIndex    ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/ 
   assert(0);
 }
 
+#if VCEG_AZ05_INTRA_MPI
+Void TEncCavlc::codeMPIIdx    ( TComDataCU* pcCU, UInt uiAbsPartIdx )
+{
+  assert(0);
+}
+#endif
+
 #if VCEG_AZ07_FRUC_MERGE
 Void TEncCavlc::codeFRUCMgrMode  ( TComDataCU* pcCU, UInt uiAbsPartIdx , UInt uiPUIdx )
 {
@@ -1411,7 +1418,11 @@ Void TEncCavlc::codeChromaQpAdjustment( TComDataCU* /*pcCU*/, UInt /*uiAbsPartId
   assert(0);
 }
 
-Void TEncCavlc::codeCoeffNxN    ( TComTU& /*rTu*/, TCoeff* /*pcCoef*/, const ComponentID /*compID*/ )
+Void TEncCavlc::codeCoeffNxN    ( TComTU& /*rTu*/, TCoeff* /*pcCoef*/, const ComponentID /*compID*/ 
+#if VCEG_AZ05_INTRA_MPI
+  , Int& bCbfCU
+#endif
+  )
 {
   assert(0);
 }

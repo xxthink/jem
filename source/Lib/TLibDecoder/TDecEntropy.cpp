@@ -94,6 +94,12 @@ Void TDecEntropy::decodeCUTransquantBypassFlag(TComDataCU* pcCU, UInt uiAbsPartI
   m_pcEntropyDecoderIf->parseCUTransquantBypassFlag( pcCU, uiAbsPartIdx, uiDepth );
 }
 
+#if VCEG_AZ05_INTRA_MPI
+Void TDecEntropy::decodeMPIIdx(TComDataCU* pcSubCU, UInt uiAbsPartIdx, UInt uiDepth)
+{
+  m_pcEntropyDecoderIf->parseMPIIdx(pcSubCU, uiAbsPartIdx, uiDepth);
+}
+#endif
 
 /** decode merge flag
  * \param pcSubCU

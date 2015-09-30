@@ -81,6 +81,9 @@ public:
 public:
   virtual Void codeCUTransquantBypassFlag( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
   virtual Void codeSkipFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
+#if VCEG_AZ05_INTRA_MPI
+  virtual Void codeMPIIdx        (TComDataCU* pcCU, UInt uiAbsPartIdx)   = 0;
+#endif
 #if VCEG_AZ07_IMV
   virtual Void codeiMVFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
 #endif
@@ -122,7 +125,11 @@ public:
 
   virtual Void codeDeltaQP       ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
   virtual Void codeChromaQpAdjustment( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
-  virtual Void codeCoeffNxN      ( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID ) = 0;
+  virtual Void codeCoeffNxN      ( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID 
+#if VCEG_AZ05_INTRA_MPI
+    , int& bCbfCU
+#endif
+    ) = 0;
   virtual Void codeTransformSkipFlags ( TComTU &rTu, ComponentID component ) = 0;
   virtual Void codeSAOBlkParam   (SAOBlkParam& saoBlkParam, const BitDepths &bitDepths, Bool* sliceEnabled, Bool leftMergeAvail, Bool aboveMergeAvail, Bool onlyEstMergeInfo = false)    =0;
   virtual Void estBit               (estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, ChannelType chType) = 0;
@@ -218,6 +225,9 @@ public:
   Void encodeMVPIdxPU     ( TComDataCU* pcSubCU, UInt uiAbsPartIdx, RefPicList eRefList );
   Void encodeMergeFlag    ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void encodeMergeIndex   ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
+#if VCEG_AZ05_INTRA_MPI
+  Void encodeMPIIdx       ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false);
+#endif
 #if VCEG_AZ07_FRUC_MERGE
   Void encodeFRUCMgrMode  ( TComDataCU* pcCU, UInt uiAbsPartIdx , UInt uiPUIdx );
 #endif
@@ -245,10 +255,18 @@ public:
   Void encodeCrossComponentPrediction( TComTU &rTu, ComponentID compID );
 
 private:
-  Void xEncodeTransform        ( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComTU &rTu );
+  Void xEncodeTransform        ( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComTU &rTu
+#if VCEG_AZ05_INTRA_MPI
+    , Int& bCbfCU
+#endif
+    );
 
 public:
-  Void encodeCoeff             ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool& bCodeDQP, Bool& codeChromaQpAdj );
+  Void encodeCoeff             ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool& bCodeDQP, Bool& codeChromaQpAdj
+#if VCEG_AZ05_INTRA_MPI
+    , Int& bNonZeroCoeff
+#endif
+    );
 
   Void encodeCoeffNxN         ( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID );
 

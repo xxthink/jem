@@ -64,6 +64,9 @@ TEncSbac::TEncSbac()
 , m_numContextModels                   ( 0 )
 , m_cCUSplitFlagSCModel                ( 1,             1,                      NUM_SPLIT_FLAG_CTX                   , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUSkipFlagSCModel                 ( 1,             1,                      NUM_SKIP_FLAG_CTX                    , m_contextModels + m_numContextModels, m_numContextModels)
+#if VCEG_AZ05_INTRA_MPI
+, m_cMPIIdxSCModel                     ( 1,             1,                      NUM_MPI_CTX                          , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 , m_cCUMergeFlagExtSCModel             ( 1,             1,                      NUM_MERGE_FLAG_EXT_CTX               , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUMergeIdxExtSCModel              ( 1,             1,                      NUM_MERGE_IDX_EXT_CTX                , m_contextModels + m_numContextModels, m_numContextModels)
 #if VCEG_AZ07_FRUC_MERGE
@@ -145,6 +148,9 @@ Void TEncSbac::resetEntropy           (const TComSlice *pSlice)
 
   m_cCUSplitFlagSCModel.initBuffer                ( eSliceType, iQp, (UChar*)INIT_SPLIT_FLAG );
   m_cCUSkipFlagSCModel.initBuffer                 ( eSliceType, iQp, (UChar*)INIT_SKIP_FLAG );
+#if VCEG_AZ05_INTRA_MPI
+  m_cMPIIdxSCModel.initBuffer                     ( eSliceType, iQp, (UChar*)INIT_MPIIdx_FLAG );
+#endif 
   m_cCUMergeFlagExtSCModel.initBuffer             ( eSliceType, iQp, (UChar*)INIT_MERGE_FLAG_EXT);
   m_cCUMergeIdxExtSCModel.initBuffer              ( eSliceType, iQp, (UChar*)INIT_MERGE_IDX_EXT);
 #if VCEG_AZ07_FRUC_MERGE
@@ -233,6 +239,9 @@ SliceType TEncSbac::determineCabacInitIdx(const TComSlice *pSlice)
 
       curCost  = m_cCUSplitFlagSCModel.calcCost                ( curSliceType, qp, (UChar*)INIT_SPLIT_FLAG );
       curCost += m_cCUSkipFlagSCModel.calcCost                 ( curSliceType, qp, (UChar*)INIT_SKIP_FLAG );
+#if VCEG_AZ05_INTRA_MPI
+      curCost += m_cMPIIdxSCModel.calcCost                     ( curSliceType, qp, (UChar*)INIT_MPIIdx_FLAG );
+#endif
       curCost += m_cCUMergeFlagExtSCModel.calcCost             ( curSliceType, qp, (UChar*)INIT_MERGE_FLAG_EXT);
       curCost += m_cCUMergeIdxExtSCModel.calcCost              ( curSliceType, qp, (UChar*)INIT_MERGE_IDX_EXT);
 #if VCEG_AZ07_FRUC_MERGE
@@ -696,6 +705,37 @@ Void TEncSbac::codeiMVFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
   DTRACE_CABAC_T( "\tuiSymbol: ");
   DTRACE_CABAC_V( uiSymbol );
   DTRACE_CABAC_T( "\n");
+}
+#endif
+
+
+#if VCEG_AZ05_INTRA_MPI
+Void TEncSbac::codeMPIIdx(TComDataCU* pcCU, UInt uiAbsPartIdx)
+{
+  if (pcCU->getPredictionMode(uiAbsPartIdx) == MODE_INTER)
+  {
+    return;
+  }
+  Int iNumberOfPassesMPI = 1;
+  if (pcCU->getSlice()->getSliceType() == I_SLICE) iNumberOfPassesMPI = 4;
+  else iNumberOfPassesMPI = 2;
+  if (iNumberOfPassesMPI>1) // for only 1 pass no signaling is needed 
+  {
+    if (iNumberOfPassesMPI>2)  // 3 or 4
+    {
+      Int idxMPI = pcCU->getMPIIdx(uiAbsPartIdx);
+      const UInt uiSymbol0 = (idxMPI >> 1);
+      const UInt uiSymbol1 = (idxMPI % 2);
+      m_pcBinIf->encodeBin(uiSymbol0, m_cMPIIdxSCModel.get(0, 0, 0));
+      m_pcBinIf->encodeBin(uiSymbol1, m_cMPIIdxSCModel.get(0, 0, 1));
+    }
+    else //iNumberOfPassesMPI==2
+    {
+      Int idxMPI = pcCU->getMPIIdx(uiAbsPartIdx);
+      const UInt uiSymbol = idxMPI;
+      m_pcBinIf->encodeBin(uiSymbol, m_cMPIIdxSCModel.get(0, 0, 0));
+    }
+  }
 }
 #endif
 
@@ -1512,8 +1552,11 @@ Void TEncSbac::codeLastSignificantXY( UInt uiPosX, UInt uiPosY, Int width, Int h
   }
 }
 
-
-Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID )
+Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID 
+#if VCEG_AZ05_INTRA_MPI
+  , Int& bCbfCU
+#endif
+  )
 {
   TComDataCU* pcCU=rTu.getCU();
   const UInt uiAbsPartIdx=rTu.GetAbsPartIdxTU(compID);
@@ -1745,6 +1788,9 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
 #endif
       coeffSigns    = ( pcCoef[ posLast ] < 0 );
       numNonZero    = 1;
+#if VCEG_AZ05_INTRA_MPI 
+      bCbfCU += abs(pcCoef[posLast]);
+#endif
       lastNZPosInCG  = iScanPosSig;
       firstNZPosInCG = iScanPosSig;
       iScanPosSig--;
@@ -1812,6 +1858,9 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
 #endif
           absCoeff[ numNonZero ] = Int(abs( pcCoef[ uiBlkPos ] ));
           coeffSigns = 2 * coeffSigns + ( pcCoef[ uiBlkPos ] < 0 );
+#if VCEG_AZ05_INTRA_MPI 
+          bCbfCU += absCoeff[numNonZero];
+#endif
           numNonZero++;
           if( lastNZPosInCG == -1 )
           {

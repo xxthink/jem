@@ -134,6 +134,9 @@ protected:
 public:
   Void codeCUTransquantBypassFlag( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeSkipFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
+#if VCEG_AZ05_INTRA_MPI
+  Void codeMPIIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx );
+#endif
 #if COM16_C806_OBMC
   Void codeOBMCFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
 #endif
@@ -176,7 +179,11 @@ public:
   Void codeChromaQpAdjustment  ( TComDataCU* cu, UInt absPartIdx );
 
   Void codeLastSignificantXY ( UInt uiPosX, UInt uiPosY, Int width, Int height, ComponentID component, UInt uiScanIdx );
-  Void codeCoeffNxN            ( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID );
+  Void codeCoeffNxN            ( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID
+#if VCEG_AZ05_INTRA_MPI 
+    , Int& bCbfCU
+#endif  
+    );
   Void codeTransformSkipFlags ( TComTU &rTu, ComponentID component );
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -219,6 +226,9 @@ private:
   Int                  m_numContextModels;
   ContextModel3DBuffer m_cCUSplitFlagSCModel;
   ContextModel3DBuffer m_cCUSkipFlagSCModel;
+#if VCEG_AZ05_INTRA_MPI
+  ContextModel3DBuffer m_cMPIIdxSCModel;
+#endif
   ContextModel3DBuffer m_cCUMergeFlagExtSCModel;
   ContextModel3DBuffer m_cCUMergeIdxExtSCModel;
 #if VCEG_AZ07_FRUC_MERGE

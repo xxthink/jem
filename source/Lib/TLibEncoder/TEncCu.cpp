@@ -1002,6 +1002,13 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
              ((rpcBestCU->getCbf( 0, COMPONENT_Cr ) != 0) && (numberValidComponents > COMPONENT_Cr))  // avoid very complex intra if it is unlikely
             )))
         {
+#if VCEG_AZ05_INTRA_MPI
+          Int bNonZeroCoeff = 0;
+          Char iMPIidx = 0;  Char iNumberOfPassesMPI = 4;
+          if (rpcTempCU->getSlice()->getSliceType() != I_SLICE)  iNumberOfPassesMPI = 2;
+          for (iMPIidx = 0; iMPIidx<iNumberOfPassesMPI; iMPIidx++)
+          {
+#endif
 #if COM16_C806_EMT
           UChar ucEmtUsage = ( ( rpcTempCU->getWidth(0) > EMT_INTRA_MAX_CU ) || ( rpcTempCU->getSlice()->getSPS()->getUseIntraEMT()==0 ) ) ? 1 : 2;
           for (UChar ucCuFlag = 0; ucCuFlag < ucEmtUsage; ucCuFlag++)
@@ -1011,7 +1018,14 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
               continue;
             }
             rpcTempCU->setEmtCuFlagSubParts(ucCuFlag, 0, uiDepth);
-            xCheckRDCostIntra( rpcBestCU, rpcTempCU, intraCost, SIZE_2Nx2N DEBUG_STRING_PASS_INTO(sDebug) );
+#if VCEG_AZ05_INTRA_MPI
+            rpcTempCU->setMPIIdxSubParts(iMPIidx, 0, uiDepth);
+#endif
+            xCheckRDCostIntra( rpcBestCU, rpcTempCU, intraCost, SIZE_2Nx2N DEBUG_STRING_PASS_INTO(sDebug)
+#if VCEG_AZ05_INTRA_MPI
+              , bNonZeroCoeff
+#endif
+              );
             if( !ucCuFlag && !rpcBestCU->isIntra(0) && m_pcEncCfg->getUseFastInterEMT() )
             {
               static const Double thEmtInterFastSkipIntra = 1.4; // Skip checking Intra if "2Nx2N using DCT2" is worse than best Inter mode
@@ -1027,8 +1041,19 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
             rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
           }
 #else
-          xCheckRDCostIntra( rpcBestCU, rpcTempCU, intraCost, SIZE_2Nx2N DEBUG_STRING_PASS_INTO(sDebug) );
+#if VCEG_AZ05_INTRA_MPI
+          rpcTempCU->setMPIIdxSubParts(iMPIidx, 0,  uiDepth ); 
+#endif
+          xCheckRDCostIntra( rpcBestCU, rpcTempCU, intraCost, SIZE_2Nx2N DEBUG_STRING_PASS_INTO(sDebug)
+#if VCEG_AZ05_INTRA_MPI
+            , bNonZeroCoeff
+#endif
+            );
           rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
+#endif
+#if VCEG_AZ05_INTRA_MPI
+          if (rpcBestCU->isIntra(0) && !bNonZeroCoeff) break;
+          }
 #endif
           if( uiDepth == sps.getLog2DiffMaxMinCodingBlockSize() 
 #if COM16_C806_EMT
@@ -1036,6 +1061,14 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #endif
             )
           {
+#if COM16_C806_EMT && VCEG_AZ05_INTRA_MPI
+            UChar ucEmtUsage = ((rpcTempCU->getWidth(0) > EMT_INTRA_MAX_CU) || (rpcTempCU->getSlice()->getSPS()->getUseIntraEMT() == 0)) ? 1 : 2;
+#endif
+
+#if VCEG_AZ05_INTRA_MPI
+            for (iMPIidx = 0; iMPIidx<iNumberOfPassesMPI; iMPIidx++)
+            {
+#endif 
             if( rpcTempCU->getWidth(0) > ( 1 << sps.getQuadtreeTULog2MinSize() ) )
             {
               Double tmpIntraCost;
@@ -1051,7 +1084,14 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
                   }
                 }
                 rpcTempCU->setEmtCuFlagSubParts(ucCuFlag, 0, uiDepth);
-                xCheckRDCostIntra( rpcBestCU, rpcTempCU, tmpIntraCost, SIZE_NxN DEBUG_STRING_PASS_INTO(sDebug) );
+#if VCEG_AZ05_INTRA_MPI
+                rpcTempCU->setMPIIdxSubParts(iMPIidx, 0, uiDepth);
+#endif
+                xCheckRDCostIntra( rpcBestCU, rpcTempCU, tmpIntraCost, SIZE_NxN DEBUG_STRING_PASS_INTO(sDebug)
+#if VCEG_AZ05_INTRA_MPI
+                  , bNonZeroCoeff
+#endif
+                  );
                 if( !ucCuFlag && m_pcEncCfg->getUseFastIntraEMT() )
                 {
                   dIntraNxNCost = (rpcBestCU->isIntra(0) && rpcBestCU->getPartitionSize(0)==SIZE_NxN) ? rpcBestCU->getTotalCost() : rpcTempCU->getTotalCost();
@@ -1060,11 +1100,22 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
                 rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
               }
 #else
-              xCheckRDCostIntra( rpcBestCU, rpcTempCU, tmpIntraCost, SIZE_NxN DEBUG_STRING_PASS_INTO(sDebug)   );
+#if VCEG_AZ05_INTRA_MPI
+              rpcTempCU->setMPIIdxSubParts(iMPIidx, 0,  uiDepth ); 
+#endif
+              xCheckRDCostIntra( rpcBestCU, rpcTempCU, tmpIntraCost, SIZE_NxN DEBUG_STRING_PASS_INTO(sDebug)
+#if VCEG_AZ05_INTRA_MPI
+                ,  bNonZeroCoeff 
+#endif
+                );
               intraCost = std::min(intraCost, tmpIntraCost);
               rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
 #endif
             }
+#if VCEG_AZ05_INTRA_MPI
+            if (rpcBestCU->isIntra(0) && !bNonZeroCoeff) break;
+            }
+#endif
           }
         }
 
@@ -1444,6 +1495,9 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
   }
 
   m_pcEntropyCoder->encodePredMode( pcCU, uiAbsPartIdx );
+#if VCEG_AZ05_INTRA_MPI
+  m_pcEntropyCoder->encodeMPIIdx(pcCU, uiAbsPartIdx);
+#endif   
   m_pcEntropyCoder->encodePartSize( pcCU, uiAbsPartIdx, uiDepth );
 
   if (pcCU->isIntra( uiAbsPartIdx ) && pcCU->getPartitionSize( uiAbsPartIdx ) == SIZE_2Nx2N )
@@ -1469,7 +1523,14 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
   // Encode Coefficients
   Bool bCodeDQP = getdQPFlag();
   Bool codeChromaQpAdj = getCodeChromaQpAdjFlag();
-  m_pcEntropyCoder->encodeCoeff( pcCU, uiAbsPartIdx, uiDepth, bCodeDQP, codeChromaQpAdj );
+#if VCEG_AZ05_INTRA_MPI
+  Int bNonZeroCoeff = false;
+#endif
+  m_pcEntropyCoder->encodeCoeff( pcCU, uiAbsPartIdx, uiDepth, bCodeDQP, codeChromaQpAdj
+#if VCEG_AZ05_INTRA_MPI
+    , bNonZeroCoeff
+#endif
+    );
   setCodeChromaQpAdjFlag( codeChromaQpAdj );
   setdQPFlag( bCodeDQP );
 
@@ -2054,7 +2115,11 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
                                 TComDataCU *&rpcTempCU,
                                 Double      &cost,
                                 PartSize     eSize
-                                DEBUG_STRING_FN_DECLARE(sDebug) )
+                                DEBUG_STRING_FN_DECLARE(sDebug)
+#if VCEG_AZ05_INTRA_MPI
+                                , Int& bNonZeroCoeff
+#endif
+                                )
 {
   DEBUG_STRING_NEW(sTest)
 
@@ -2126,14 +2191,25 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
 
   m_pcEntropyCoder->encodeSkipFlag ( rpcTempCU, 0,          true );
   m_pcEntropyCoder->encodePredMode( rpcTempCU, 0,          true );
+#if VCEG_AZ05_INTRA_MPI
+  m_pcEntropyCoder->encodeMPIIdx(rpcTempCU, 0, true);
+#endif 
   m_pcEntropyCoder->encodePartSize( rpcTempCU, 0, uiDepth, true );
   m_pcEntropyCoder->encodePredInfo( rpcTempCU, 0 );
   m_pcEntropyCoder->encodeIPCMInfo(rpcTempCU, 0, true );
 
   // Encode Coefficients
+#if VCEG_AZ05_INTRA_MPI
+  bNonZeroCoeff = false;
+#endif
+
   Bool bCodeDQP = getdQPFlag();
   Bool codeChromaQpAdjFlag = getCodeChromaQpAdjFlag();
-  m_pcEntropyCoder->encodeCoeff( rpcTempCU, 0, uiDepth, bCodeDQP, codeChromaQpAdjFlag );
+  m_pcEntropyCoder->encodeCoeff( rpcTempCU, 0, uiDepth, bCodeDQP, codeChromaQpAdjFlag
+#if VCEG_AZ05_INTRA_MPI
+    , bNonZeroCoeff
+#endif
+    );
   setCodeChromaQpAdjFlag( codeChromaQpAdjFlag );
   setdQPFlag( bCodeDQP );
 

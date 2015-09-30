@@ -58,6 +58,10 @@
 #endif
 #define NUM_SKIP_FLAG_CTX             3       ///< number of context models for skip flag
 
+#if VCEG_AZ05_INTRA_MPI
+#define NUM_MPI_CTX                   2       /// < number of context models for MPI Idx coding
+#endif
+
 #define NUM_MERGE_FLAG_EXT_CTX        1       ///< number of context models for merge flag of merge extended
 #if COM16_C806_GEN_MRG_IMPROVEMENT
 #define NUM_MERGE_IDX_EXT_CTX         5       ///< number of context models for merge index of merge extended
@@ -267,6 +271,16 @@ INIT_SKIP_FLAG[NUMBER_OF_SLICE_TYPES][NUM_SKIP_FLAG_CTX] =
   { 197,  185,  201, },
   { CNU,  CNU,  CNU, },
 };
+
+#if VCEG_AZ05_INTRA_MPI
+static const UChar
+INIT_MPIIdx_FLAG[NUMBER_OF_SLICE_TYPES][NUM_MPI_CTX] =
+{
+  { 107, 107 },
+  { 107, 107 },
+  { 139, 139 },
+};
+#endif
 
 static const UChar
 INIT_MERGE_FLAG_EXT[NUMBER_OF_SLICE_TYPES][NUM_MERGE_FLAG_EXT_CTX] =

@@ -171,6 +171,18 @@ Void TEncEntropy::encodeICFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
 }
 #endif
 
+#if VCEG_AZ05_INTRA_MPI
+Void TEncEntropy::encodeMPIIdx(TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD)
+{
+  if (bRD)
+  {
+    uiAbsPartIdx = 0;
+  }
+  // at least one merge candidate existsput return when not encoded
+  m_pcEntropyCoderIf->codeMPIIdx(pcCU, uiAbsPartIdx);
+}
+#endif
+
 //! encode merge flag
 Void TEncEntropy::encodeMergeFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
 {
@@ -265,7 +277,11 @@ Void TEncEntropy::encodeIPCMInfo( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD 
 
 }
 
-Void TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComTU &rTu )
+Void TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComTU &rTu
+#if VCEG_AZ05_INTRA_MPI
+  , Int& bCbfCU
+#endif
+  )
 {
 //pcCU, absPartIdxCU, uiAbsPartIdx, uiDepth+1, uiTrIdx+1, quadrant,
   TComDataCU *pcCU=rTu.getCU();
@@ -373,7 +389,11 @@ Void TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComT
 #endif
     do
     {
-      xEncodeTransform( bCodeDQP, codeChromaQpAdj, tuRecurseChild );
+      xEncodeTransform( bCodeDQP, codeChromaQpAdj, tuRecurseChild 
+#if VCEG_AZ05_INTRA_MPI
+        , bCbfCU
+#endif
+        );
     } while (tuRecurseChild.nextSection(rTu));
   }
   else
@@ -459,7 +479,11 @@ Void TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComT
                   printf("Call NxN for chan %d width=%d height=%d cbf=%d\n", compID, subTUIterator.getRect(compID).width, subTUIterator.getRect(compID).height, 1);
                 }
 #endif
-                m_pcEntropyCoderIf->codeCoeffNxN( subTUIterator, (pcCU->getCoeff(compID) + subTUIterator.getCoefficientOffset(compID)), compID );
+                m_pcEntropyCoderIf->codeCoeffNxN( subTUIterator, (pcCU->getCoeff(compID) + subTUIterator.getCoefficientOffset(compID)), compID 
+#if VCEG_AZ05_INTRA_MPI
+                  , bCbfCU
+#endif
+                  );
               }
 #if COM16_C806_EMT
               else if ( isLuma(compID) && cbf[COMPONENT_Y] != 0 )
@@ -479,7 +503,11 @@ Void TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComT
 
             if (cbf[compID] != 0)
             {
-              m_pcEntropyCoderIf->codeCoeffNxN( rTu, (pcCU->getCoeff(compID) + rTu.getCoefficientOffset(compID)), compID );
+              m_pcEntropyCoderIf->codeCoeffNxN( rTu, (pcCU->getCoeff(compID) + rTu.getCoefficientOffset(compID)), compID
+#if VCEG_AZ05_INTRA_MPI
+                , bCbfCU
+#endif
+                );
             }
 #if COM16_C806_EMT
             else if ( isLuma(compID) && cbf[COMPONENT_Y] != 0 )
@@ -738,7 +766,11 @@ Void TEncEntropy::encodeChromaQpAdjustment( TComDataCU* cu, UInt absPartIdx, Boo
 // texture
 
 //! encode coefficients
-Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool& bCodeDQP, Bool& codeChromaQpAdj )
+Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool& bCodeDQP, Bool& codeChromaQpAdj
+#if VCEG_AZ05_INTRA_MPI
+  , Int& bNonZeroCoeff 
+#endif
+  )
 {
 #if ENVIRONMENT_VARIABLE_DEBUG_AND_TEST
   const Bool bDebugRQT=pcCU->getSlice()->getFinalized() && DebugOptionList::DebugRQT.getInt()!=0;
@@ -774,12 +806,27 @@ Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
   }
 #endif
 
-  xEncodeTransform( bCodeDQP, codeChromaQpAdj, tuRecurse );
+
+#if VCEG_AZ05_INTRA_MPI 
+  Int  bCbfCU = false;
+#endif   
+  xEncodeTransform( bCodeDQP, codeChromaQpAdj, tuRecurse
+#if VCEG_AZ05_INTRA_MPI
+    , bCbfCU
+#endif
+    );
+#if VCEG_AZ05_INTRA_MPI
+  bNonZeroCoeff = bCbfCU;
+#endif
 }
 
 Void TEncEntropy::encodeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID)
 {
   TComDataCU *pcCU = rTu.getCU();
+
+#if VCEG_AZ05_INTRA_MPI 
+  Int  bCbfCU = false;
+#endif
 
   if (pcCU->getCbf(rTu.GetAbsPartIdxTU(), compID, rTu.GetTransformDepthRel()) != 0)
   {
@@ -796,14 +843,22 @@ Void TEncEntropy::encodeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID
 
         if (subTUCBF != 0)
         {
-          m_pcEntropyCoderIf->codeCoeffNxN( subTUIterator, (pcCoef + (subTUIterator.GetSectionNumber() * subTUSize)), compID);
+          m_pcEntropyCoderIf->codeCoeffNxN( subTUIterator, (pcCoef + (subTUIterator.GetSectionNumber() * subTUSize)), compID
+#if VCEG_AZ05_INTRA_MPI
+            , bCbfCU
+#endif
+            );
         }
       }
       while (subTUIterator.nextSection(rTu));
     }
     else
     {
-      m_pcEntropyCoderIf->codeCoeffNxN(rTu, pcCoef, compID);
+      m_pcEntropyCoderIf->codeCoeffNxN(rTu, pcCoef, compID
+#if VCEG_AZ05_INTRA_MPI
+        , bCbfCU
+#endif
+        );
     }
   }
 }

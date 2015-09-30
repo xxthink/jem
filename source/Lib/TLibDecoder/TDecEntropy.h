@@ -101,6 +101,9 @@ public:
   virtual Void parseCUTransquantBypassFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
   virtual Void parseSplitFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
   virtual Void parseMergeFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx ) = 0;
+#if VCEG_AZ05_INTRA_MPI
+  virtual Void parseMPIIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
+#endif
   virtual Void parseMergeIndex    ( TComDataCU* pcCU, UInt& ruiMergeIndex ) = 0;
 #if VCEG_AZ07_FRUC_MERGE
   virtual Void parseFRUCMgrMode   ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx ) = 0;
@@ -212,6 +215,9 @@ public:
 public:
   Void decodeSplitFlag         ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   Void decodeSkipFlag          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#if VCEG_AZ05_INTRA_MPI
+  Void decodeMPIIdx            ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
 #if COM16_C806_OBMC
   Void decodeOBMCFlag          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
