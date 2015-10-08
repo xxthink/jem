@@ -180,7 +180,7 @@ protected:
                               Double      &cost,
                               PartSize     ePartSize
                               DEBUG_STRING_FN_DECLARE(sDebug)
-#if VCEG_AZ05_INTRA_MPI
+#if VCEG_AZ05_ROT_TR   || VCEG_AZ05_INTRA_MPI
                               , Int& bNonZeroCoeff
 #endif
                             );

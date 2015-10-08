@@ -718,7 +718,7 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 #endif
     }
 #if VCEG_AZ05_INTRA_MPI
-    if (pcCU->getMPIIdx(uiAbsPartIdx) && pcCU->getCUPelX() && pcCU->getCUPelY())
+    if (pcCU->getMPIIdx(uiAbsPartIdx) && pcCU->getCUPelX() && pcCU->getCUPelY() && pcCU->getSlice()->getSPS()->getUseMPI())
     {
       Pel* pRec = pcCU->getPic()->getPicYuvRec()->getAddr(compID, pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu() + uiAbsPartIdx);   
       Int iStrideRec = pcCU->getPic()->getPicYuvRec()->getStride(compID);
@@ -1010,7 +1010,8 @@ Void TComPrediction::xPredInterBi ( TComDataCU* pcCU, UInt uiPartAddr, Int iWidt
   bool bBIOcheck0 = pcCU->getSlice()->getPPS()->getWPBiPred()    && pcCU->getSlice()->getSliceType() == B_SLICE; 
   bool bBIOcheck1 =  pcCU->getSlice()->getPPS()->getUseWP() && pcCU->getSlice()->getSliceType() == P_SLICE;
   bool bBIOapplied = false;
-
+if (pcCU->getSlice()->getSPS()->getUseBIO())
+{
   for ( Int iRefList = 0; iRefList < 2; iRefList++ )
   {
     RefPicList eRefPicList = (iRefList ? REF_PIC_LIST_1 : REF_PIC_LIST_0);
@@ -1031,6 +1032,7 @@ Void TComPrediction::xPredInterBi ( TComDataCU* pcCU, UInt uiPartAddr, Int iWidt
 #if VCEG_AZ07_FRUC_MERGE 
   if (pcCU->getFRUCMgrMode( uiPartAddr ) ) bBIOapplied = false;
 #endif
+}
 #endif
   for ( UInt refList = 0; refList < NUM_REF_PIC_LIST_01; refList++ )
   {

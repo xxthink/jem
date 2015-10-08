@@ -134,6 +134,9 @@ public:
 #if VCEG_AZ05_INTRA_MPI
   Void parseMPIIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
+#if VCEG_AZ05_ROT_TR
+  Void parseROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
   Void parseMergeFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx );
   Void parseMergeIndex    ( TComDataCU* pcCU, UInt& ruiMergeIndex );
 #if VCEG_AZ07_FRUC_MERGE
@@ -161,7 +164,11 @@ public:
   Void parseIPCMInfo      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth);
 
   Void parseLastSignificantXY( UInt& uiPosLastX, UInt& uiPosLastY, Int width, Int height, ComponentID component, UInt uiScanIdx );
-  Void parseCoeffNxN      ( class TComTU &rTu, ComponentID compID  );
+  Void parseCoeffNxN      ( class TComTU &rTu, ComponentID compID  
+#if VCEG_AZ05_ROT_TR
+    , Bool& bCbfCU
+#endif
+    );
   Void parseTransformSkipFlags ( class TComTU &rTu, ComponentID component );
 
   Void  parseScalingList ( TComScalingList* /*scalingList*/ ) {}
@@ -194,6 +201,9 @@ private:
   ContextModel3DBuffer m_cCUSkipFlagSCModel;
 #if VCEG_AZ05_INTRA_MPI
   ContextModel3DBuffer m_cMPIIdxSCModel;
+#endif
+#if VCEG_AZ05_ROT_TR
+  ContextModel3DBuffer m_cROTidxSCModel;
 #endif
   ContextModel3DBuffer m_cCUMergeFlagExtSCModel;
   ContextModel3DBuffer m_cCUMergeIdxExtSCModel;

@@ -114,7 +114,7 @@
 #define VCEG_AZ05_MULTI_PARAM_CABAC                       1  /// CABAC probability estimation with 2 windows 
 #define VCEG_AZ05_BIO                                     1  /// bi-directional optical flow
 #define VCEG_AZ05_INTRA_MPI                               1  /// Multi-parameter Intra prediction
-
+#define VCEG_AZ05_ROT_TR                                  1
 ///////////////////////////////////////////////////////////
 // KTA tools section end
 ///////////////////////////////////////////////////////////

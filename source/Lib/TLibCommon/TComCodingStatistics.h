@@ -121,7 +121,9 @@ enum TComCodingStatisticsType
 #if VCEG_AZ05_INTRA_MPI
   STATS__CABAC_BITS__MPI_FLAG,
 #endif
-
+#if VCEG_AZ05_ROT_TR
+  STATS__CABAC_BITS__ROT_FLAG,
+#endif
   STATS__NUM_STATS
 };
 

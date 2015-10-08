@@ -69,6 +69,9 @@ TDecSbac::TDecSbac()
 #if VCEG_AZ05_INTRA_MPI
 , m_cMPIIdxSCModel                           ( 1,             1,                      NUM_MPI_CTX                          , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
+#if VCEG_AZ05_ROT_TR
+, m_cROTidxSCModel                           ( 1,             1,                      NUM_ROT_TR_CTX               , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 , m_cCUMergeFlagExtSCModel                   ( 1,             1,                      NUM_MERGE_FLAG_EXT_CTX               , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUMergeIdxExtSCModel                    ( 1,             1,                      NUM_MERGE_IDX_EXT_CTX                , m_contextModels + m_numContextModels, m_numContextModels)
 #if VCEG_AZ07_FRUC_MERGE
@@ -174,6 +177,9 @@ Void TDecSbac::resetEntropy(TComSlice* pSlice)
   m_cCUSkipFlagSCModel.initBuffer                 ( sliceType, qp, (UChar*)INIT_SKIP_FLAG );
 #if VCEG_AZ05_INTRA_MPI
   m_cMPIIdxSCModel.initBuffer                     ( sliceType, qp, (UChar*)INIT_MPIIdx_FLAG );
+#endif
+#if VCEG_AZ05_ROT_TR
+  m_cROTidxSCModel.initBuffer        ( sliceType, qp, (UChar*)INIT_ROT_TR_IDX );
 #endif
   m_cCUMergeFlagExtSCModel.initBuffer             ( sliceType, qp, (UChar*)INIT_MERGE_FLAG_EXT );
   m_cCUMergeIdxExtSCModel.initBuffer              ( sliceType, qp, (UChar*)INIT_MERGE_IDX_EXT );
@@ -623,13 +629,18 @@ Void TDecSbac::parseMergeFlag ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDept
 #if VCEG_AZ05_INTRA_MPI
 Void TDecSbac::parseMPIIdx(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth)
 {
+  if (!pcCU->getSlice()->getSPS()->getUseMPI()) 
+  {
+    pcCU->setMPIIdxSubParts(0, uiAbsPartIdx, uiDepth);
+    return;
+  }
   if (pcCU->getPredictionMode(uiAbsPartIdx) == MODE_INTER)
   {
     pcCU->setMPIIdxSubParts(0, uiAbsPartIdx, uiDepth);
     return;
   }
   Int iNumberOfPassesMPI = 1;
-  if (pcCU->getSlice()->getSliceType() == I_SLICE) iNumberOfPassesMPI = 4;
+  if (pcCU->getSlice()->getSliceType() == I_SLICE) iNumberOfPassesMPI = 2;
   else iNumberOfPassesMPI = 2;
   if (iNumberOfPassesMPI>1) // for only 1 pass no signaling is needed 
   {
@@ -654,7 +665,35 @@ Void TDecSbac::parseMPIIdx(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth)
   }
 }
 #endif
-
+#if VCEG_AZ05_ROT_TR
+Void TDecSbac::parseROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
+{ 
+  if (!pcCU->getSlice()->getSPS()->getUseROT()) 
+  {
+    pcCU->setROTIdxSubParts(0, uiAbsPartIdx, uiDepth);
+    return;
+  }
+  Int iNumberOfPassesROT = 1;
+  if( pcCU->isIntra(uiAbsPartIdx)
+#if VCEG_AZ05_INTRA_MPI
+    && pcCU->getMPIIdx(uiAbsPartIdx) ==0
+#endif
+    && !pcCU->getCUTransquantBypass(uiAbsPartIdx)
+    )  iNumberOfPassesROT = 4;
+  if (iNumberOfPassesROT>1) // for only 1 pass no signaling is needed 
+  {
+      UInt uiSymbol0 = 0;
+      UInt uiSymbol1 = 0;
+      m_pcTDecBinIf->decodeBin( uiSymbol0, m_cROTidxSCModel.get(0,0, uiDepth ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG));
+      m_pcTDecBinIf->decodeBin( uiSymbol1, m_cROTidxSCModel.get(0,0, uiDepth ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG));
+      pcCU->setROTIdxSubParts( (uiSymbol0<<1) +uiSymbol1, uiAbsPartIdx,  uiDepth ); //printf ("%d ",(uiSymbol0<<1) +uiSymbol1);
+  }
+  else
+  {
+       pcCU->setROTIdxSubParts( 0, uiAbsPartIdx,  uiDepth ); 
+  }
+}
+#endif
 Void TDecSbac::parseMergeIndex ( TComDataCU* pcCU, UInt& ruiMergeIndex )
 {
   UInt uiUnaryIdx = 0;
@@ -1577,7 +1616,11 @@ Void TDecSbac::parseLastSignificantXY( UInt& uiPosLastX, UInt& uiPosLastY, Int w
   }
 }
 
-Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID )
+Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID 
+#if VCEG_AZ05_ROT_TR
+    , Bool& bCbfCU
+#endif
+    )
 {
   TComDataCU* pcCU=rTu.getCU();
   const UInt uiAbsPartIdx=rTu.GetAbsPartIdxTU(compID);
@@ -1861,7 +1904,10 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID )
 
     if( numNonZero > 0 )
     {
-      Bool signHidden = ( lastNZPosInCG - firstNZPosInCG >= SBH_THRESHOLD );
+#if VCEG_AZ05_ROT_TR 
+  bCbfCU = true;
+#endif
+     Bool signHidden = ( lastNZPosInCG - firstNZPosInCG >= SBH_THRESHOLD );
 
       absSum = 0;
 #if VCEG_AZ07_CTX_RESIDUALCODING

@@ -56,7 +56,9 @@
 // ====================================================================================================================
 // Type definition
 // ====================================================================================================================
-
+#if VCEG_AZ05_ROT_TR
+ __inline static Short  xMult ( Int i, UInt uiShift ) { return ((i)>>uiShift); }
+#endif
 #if COM16_C806_EMT
 void fastForwardDCT2_B4 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
 void fastInverseDCT2_B4 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
@@ -173,7 +175,10 @@ public:
   UChar getEmtTrIdx ( TComTU &rTu, const ComponentID compID );
   UChar getEmtMode  ( TComTU &rTu, const ComponentID compID );
 #endif
-
+#if VCEG_AZ05_ROT_TR
+Void InvRotTransform4I(  Int* matrix, UChar index );
+Void RotTransform4I( Int* matrix, UChar index );
+#endif 
   // transform & inverse transform functions
   Void transformNxN(       TComTU         & rTu,
                      const ComponentID      compID,

@@ -107,6 +107,9 @@ private:
 #if VCEG_AZ05_INTRA_MPI
   Char*          m_MPIIdx;             ///< array of MPIIdxs
 #endif
+#if VCEG_AZ05_ROT_TR
+  Char*          m_ROTIdx;          ///< array of ROTIdxs
+#endif
   Char*          m_pePartSize;         ///< array of partition sizes
   Char*          m_pePredMode;         ///< array of prediction modes
   Char*          m_crossComponentPredictionAlpha[MAX_NUM_COMPONENT]; ///< array of cross-component prediction alpha values
@@ -280,7 +283,12 @@ public:
   Void          setMPIIdx               ( UInt idx, Char MPIIdx)  { m_MPIIdx[idx] = MPIIdx;   }
   Void          setMPIIdxSubParts       ( Char MPIIdx, UInt absPartIdx, UInt depth );
 #endif
-
+#if VCEG_AZ05_ROT_TR
+  Char*         getROTIdx               ()                        { return m_ROTIdx;          }
+  Char          getROTIdx               ( UInt idx)               { return m_ROTIdx[idx];     }
+  Void          setROTIdx               ( UInt idx, Char ROTIdx)  { m_ROTIdx[idx] = ROTIdx;   }
+  Void          setROTIdxSubParts       ( Char ROTIdx, UInt absPartIdx, UInt depth );
+#endif
   Char*         getPredictionMode     ()                        { return m_pePredMode;        }
   PredMode      getPredictionMode     ( UInt uiIdx )            { return static_cast<PredMode>( m_pePredMode[uiIdx] ); }
   Void          setPredictionMode     ( UInt uiIdx, PredMode uh){ m_pePredMode[uiIdx] = uh;   }

@@ -155,6 +155,15 @@ Void TEncTop::create ()
 #if VCEG_AZ07_INTRA_BOUNDARY_FILTER
   m_cSPS.setUseIntraBoundaryFilter( m_useIntraBoundaryFilter );
 #endif
+#if VCEG_AZ05_BIO
+  m_cSPS.setUseBIO( m_useBIO );
+#endif
+#if VCEG_AZ05_INTRA_MPI
+  m_cSPS.setUseMPI( m_useMPI );
+#endif
+#if VCEG_AZ05_ROT_TR
+  m_cSPS.setUseROT( m_useROT );
+#endif
 }
 
 Void TEncTop::destroy ()
@@ -754,6 +763,15 @@ Void TEncTop::xInitSPS()
 #endif
 #if COM16_C806_LMCHROMA
   m_cSPS.setUseLMChroma   ( m_useLMChroma      );  
+#endif
+#if VCEG_AZ05_BIO
+  m_cSPS.setUseBIO  ( m_useBIO      );  
+#endif
+#if VCEG_AZ05_INTRA_MPI
+  m_cSPS.setUseMPI( m_useMPI );
+#endif
+#if VCEG_AZ05_ROT_TR
+  m_cSPS.setUseROT( m_useROT );
 #endif
 }
 
