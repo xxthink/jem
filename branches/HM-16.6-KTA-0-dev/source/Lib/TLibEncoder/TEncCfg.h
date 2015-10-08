@@ -423,8 +423,16 @@ protected:
 #if COM16_C806_LMCHROMA
   Bool      m_useLMChroma;
 #endif
-
-  std::string m_summaryOutFilename;                           ///< filename to use for producing summary output file.
+#if VCEG_AZ05_BIO
+  Bool      m_useBIO;
+#endif
+#if VCEG_AZ05_INTRA_MPI
+  Bool      m_useMPI;
+#endif
+#if VCEG_AZ05_ROT_TR
+  Bool      m_useROT;
+#endif
+ std::string m_summaryOutFilename;                           ///< filename to use for producing summary output file.
   std::string m_summaryPicFilenameBase;                       ///< Base filename to use for producing summary picture output files. The actual filenames used will have I.txt, P.txt and B.txt appended.
   UInt        m_summaryVerboseness;                           ///< Specifies the level of the verboseness of the text output.
 
@@ -1057,6 +1065,18 @@ public:
 #if COM16_C806_LMCHROMA
   Bool getUseLMChroma ()                                             { return m_useLMChroma;        }
   Void setUseLMChroma ( Bool b )                                     { m_useLMChroma  = b;       }
+#endif
+#if VCEG_AZ05_BIO
+  Bool getUseBIO ()                                             { return m_useBIO;        }
+  Void setUseBIO ( Bool b )                                     { m_useBIO  = b;       }
+#endif
+#if VCEG_AZ05_INTRA_MPI
+  Bool getUseMPI ()                                             { return m_useMPI;        }
+  Void setUseMPI ( Bool b )                                     { m_useMPI  = b;       }
+#endif
+#if VCEG_AZ05_ROT_TR
+  Bool getUseROT ()                                             { return m_useROT;        }
+  Void setUseROT ( Bool b )                                     { m_useROT  = b;       }
 #endif
 };
 

@@ -99,6 +99,9 @@ public:
 #if VCEG_AZ05_INTRA_MPI
   Void parseMPIIdx          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
+#if VCEG_AZ05_ROT_TR
+  Void parseROTIdx       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
   Void parseMergeFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx );
   Void parseMergeIndex      ( TComDataCU* pcCU, UInt& ruiMergeIndex );
 #if VCEG_AZ07_FRUC_MERGE
@@ -120,7 +123,11 @@ public:
   Void parseDeltaQP         ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   Void parseChromaQpAdjustment( TComDataCU* cu, UInt absPartIdx, UInt depth);
 
-  Void parseCoeffNxN        ( class TComTU &rTu, ComponentID compID );
+  Void parseCoeffNxN        ( class TComTU &rTu, ComponentID compID 
+#if VCEG_AZ05_ROT_TR
+    , Bool& bCbfCU
+#endif
+    );
 
   Void parseTransformSkipFlags ( class TComTU &rTu, ComponentID component );
 

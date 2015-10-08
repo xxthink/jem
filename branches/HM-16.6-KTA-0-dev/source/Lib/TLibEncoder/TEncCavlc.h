@@ -106,6 +106,9 @@ public:
 #if VCEG_AZ05_INTRA_MPI
   Void codeMPIIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx );
 #endif
+#if VCEG_AZ05_ROT_TR  
+  Void codeROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth );
+#endif
 #if VCEG_AZ07_IMV
   Void codeiMVFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx );
 #endif
@@ -151,7 +154,7 @@ public:
   Void codeChromaQpAdjustment( TComDataCU* pcCU, UInt uiAbsPartIdx );
 
   Void codeCoeffNxN      ( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID 
-#if VCEG_AZ05_INTRA_MPI
+#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI
     , Int& bCbfCU
 #endif
     );

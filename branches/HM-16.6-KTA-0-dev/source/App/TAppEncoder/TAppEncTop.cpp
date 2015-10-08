@@ -431,7 +431,15 @@ Void TAppEncTop::xInitLibCfg()
 #if COM16_C806_LMCHROMA
   m_cTEncTop.setUseLMChroma                                       ( m_useLMChroma );
 #endif
-
+#if VCEG_AZ05_BIO
+ m_cTEncTop.setUseBIO                            ( m_useBIO );
+#endif
+#if VCEG_AZ05_INTRA_MPI
+ m_cTEncTop.setUseMPI                            ( m_useMPI );
+#endif
+#if VCEG_AZ05_ROT_TR
+ m_cTEncTop.setUseROT                            ( m_useROT );
+#endif
   m_cTEncTop.setSummaryOutFilename                                ( m_summaryOutFilename );
   m_cTEncTop.setSummaryPicFilenameBase                            ( m_summaryPicFilenameBase );
   m_cTEncTop.setSummaryVerboseness                                ( m_summaryVerboseness );

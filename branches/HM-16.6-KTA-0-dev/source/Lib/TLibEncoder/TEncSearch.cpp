@@ -6633,11 +6633,11 @@ Void  TEncSearch::xAddSymbolBitsInter( TComDataCU* pcCU, UInt& ruiBits )
 #endif
     Bool codeDeltaQp = false;
     Bool codeChromaQpAdj = false;
-#if VCEG_AZ05_INTRA_MPI
+#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI
     Int bNonZeroCoeff = false;
 #endif
     m_pcEntropyCoder->encodeCoeff   ( pcCU, 0, pcCU->getDepth(0), codeDeltaQp, codeChromaQpAdj
-#if VCEG_AZ05_INTRA_MPI
+#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI
       , bNonZeroCoeff
 #endif
       );

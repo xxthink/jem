@@ -137,6 +137,9 @@ public:
 #if VCEG_AZ05_INTRA_MPI
   Void codeMPIIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx );
 #endif
+#if VCEG_AZ05_ROT_TR 
+  Void codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  );
+#endif
 #if COM16_C806_OBMC
   Void codeOBMCFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
 #endif
@@ -180,7 +183,7 @@ public:
 
   Void codeLastSignificantXY ( UInt uiPosX, UInt uiPosY, Int width, Int height, ComponentID component, UInt uiScanIdx );
   Void codeCoeffNxN            ( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID
-#if VCEG_AZ05_INTRA_MPI 
+#if VCEG_AZ05_ROT_TR   || VCEG_AZ05_INTRA_MPI 
     , Int& bCbfCU
 #endif  
     );
@@ -228,6 +231,9 @@ private:
   ContextModel3DBuffer m_cCUSkipFlagSCModel;
 #if VCEG_AZ05_INTRA_MPI
   ContextModel3DBuffer m_cMPIIdxSCModel;
+#endif
+#if VCEG_AZ05_ROT_TR
+  ContextModel3DBuffer m_cROTidxSCModel;
 #endif
   ContextModel3DBuffer m_cCUMergeFlagExtSCModel;
   ContextModel3DBuffer m_cCUMergeIdxExtSCModel;

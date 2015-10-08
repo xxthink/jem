@@ -1127,6 +1127,15 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 #if COM16_C806_LMCHROMA
   ("LMChroma",                                        m_useLMChroma,            true, "Cross component prediction: predict chroma from luma or Cr from Cb with linear model")
 #endif
+#if VCEG_AZ05_BIO
+  ("BIO",                                        m_useBIO,            true, "Enable bi-directional optical flow")
+#endif
+#if VCEG_AZ05_INTRA_MPI
+  ("MPI",                                        m_useMPI,            true, "Enable multi-parameter Intra prediction")
+#endif
+#if VCEG_AZ05_ROT_TR
+  ("ROT",                                        m_useROT,            true, "Enable adaptive secondary transform")
+#endif
   ;
 
   for(Int i=1; i<MAX_GOP+1; i++)
@@ -2614,7 +2623,16 @@ Void TAppEncCfg::xPrintParameter()
 #if COM16_C806_LMCHROMA
   printf("LMC:%d ", m_useLMChroma        );
 #endif
-  printf("\n\n");
+#if VCEG_AZ05_BIO
+  printf("BIO:%d ", m_useBIO        );
+#endif
+#if VCEG_AZ05_INTRA_MPI
+  printf("MPI:%d ", m_useMPI        );
+#endif
+#if VCEG_AZ05_ROT_TR
+  printf("ROT:%d ", m_useROT        );
+#endif
+    printf("\n\n");
 
   fflush(stdout);
 }

@@ -100,7 +100,12 @@ Void TDecEntropy::decodeMPIIdx(TComDataCU* pcSubCU, UInt uiAbsPartIdx, UInt uiDe
   m_pcEntropyDecoderIf->parseMPIIdx(pcSubCU, uiAbsPartIdx, uiDepth);
 }
 #endif
-
+#if VCEG_AZ05_ROT_TR 
+Void TDecEntropy::decodeROTIdx( TComDataCU* pcSubCU, UInt uiAbsPartIdx, UInt uiDepth )
+{ 
+  m_pcEntropyDecoderIf->parseROTIdx( pcSubCU, uiAbsPartIdx, uiDepth );
+}
+#endif
 /** decode merge flag
  * \param pcSubCU
  * \param uiAbsPartIdx
@@ -595,7 +600,11 @@ Void TDecEntropy::decodeMVPIdxPU( TComDataCU* pcSubCU, UInt uiPartAddr, UInt uiD
   pcSubCU->getCUMvField( eRefList )->setAllMv(cMv, ePartSize, uiPartAddr, 0, uiPartIdx);
 }
 
-Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjCoded, TComTU &rTu, const Int quadtreeTULog2MinSizeInCU )
+Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjCoded, TComTU &rTu, const Int quadtreeTULog2MinSizeInCU 
+#if VCEG_AZ05_ROT_TR
+    , Bool& bCbfCU
+#endif
+    )
 {
   TComDataCU *pcCU=rTu.getCU();
   const UInt uiAbsPartIdx=rTu.GetAbsPartIdxTU();
@@ -682,7 +691,11 @@ Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjC
 
     do
     {
-      xDecodeTransform( bCodeDQP, isChromaQpAdjCoded, tuRecurseChild, quadtreeTULog2MinSizeInCU );
+      xDecodeTransform( bCodeDQP, isChromaQpAdjCoded, tuRecurseChild, quadtreeTULog2MinSizeInCU 
+#if VCEG_AZ05_ROT_TR
+    ,  bCbfCU
+#endif
+    );
       UInt childTUAbsPartIdx=tuRecurseChild.GetAbsPartIdxTU();
       for(UInt ch=0; ch<numValidComponent; ch++)
       {
@@ -813,7 +826,11 @@ Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjC
                   printf("Call NxN for chan %d width=%d height=%d cbf=%d\n", compID, subTUIterator.getRect(compID).width, subTUIterator.getRect(compID).height, 1);
                 }
 #endif
-                m_pcEntropyDecoderIf->parseCoeffNxN( subTUIterator, compID );
+                m_pcEntropyDecoderIf->parseCoeffNxN( subTUIterator, compID 
+#if VCEG_AZ05_ROT_TR
+    ,  bCbfCU
+#endif
+    );
               }
             } while (subTUIterator.nextSection(rTu));
           }
@@ -826,7 +843,11 @@ Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjC
 
             if(cbf[compID] != 0)
             {
-              m_pcEntropyDecoderIf->parseCoeffNxN( rTu, compID );
+              m_pcEntropyDecoderIf->parseCoeffNxN( rTu, compID 
+#if VCEG_AZ05_ROT_TR
+    ,  bCbfCU
+#endif
+    );
             }
           }
         }
@@ -886,8 +907,18 @@ Void TDecEntropy::decodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
 #endif
 
   Int quadtreeTULog2MinSizeInCU = pcCU->getQuadtreeTULog2MinSizeInCU(uiAbsPartIdx);
-  
-  xDecodeTransform( bCodeDQP, isChromaQpAdjCoded, tuRecurse, quadtreeTULog2MinSizeInCU );
+#if VCEG_AZ05_ROT_TR 
+  Bool bCbfCU = 0;
+#endif  
+  xDecodeTransform( bCodeDQP, isChromaQpAdjCoded, tuRecurse, quadtreeTULog2MinSizeInCU 
+#if VCEG_AZ05_ROT_TR
+    ,  bCbfCU
+#endif
+    );
+#if VCEG_AZ05_ROT_TR
+  if (bCbfCU )
+    decodeROTIdx( pcCU, uiAbsPartIdx, uiDepth );
+#endif
 }
 
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP

@@ -850,7 +850,16 @@ private:
 #if COM16_C806_LMCHROMA
   Bool             m_useLMChroma;
 #endif
-  // Parameter
+#if VCEG_AZ05_BIO
+  Bool             m_useBIO;
+#endif
+#if VCEG_AZ05_INTRA_MPI
+  Bool             m_useMPI;
+#endif
+#if VCEG_AZ05_ROT_TR
+  Bool             m_useROT;
+#endif
+ // Parameter
   BitDepths        m_bitDepths;
   Int              m_qpBDOffset[MAX_NUM_CHANNEL_TYPE];
   Int              m_pcmBitDepths[MAX_NUM_CHANNEL_TYPE];
@@ -1074,6 +1083,18 @@ public:
 #if COM16_C806_LMCHROMA
   Bool                   getUseLMChroma ()  const                                                        { return m_useLMChroma;        }
   Void                   setUseLMChroma ( Bool b )                                                       { m_useLMChroma  = b;          }
+#endif
+#if VCEG_AZ05_BIO
+ Bool                   getUseBIO ()  const                                                        { return m_useBIO;        }
+ Void                   setUseBIO ( Bool b )                                                       { m_useBIO  = b;          }
+#endif
+#if VCEG_AZ05_INTRA_MPI
+ Bool                   getUseMPI ()  const                                                        { return m_useMPI;        }
+ Void                   setUseMPI ( Bool b )                                                       { m_useMPI  = b;          }
+#endif
+#if VCEG_AZ05_ROT_TR
+ Bool                   getUseROT ()  const                                                        { return m_useROT;        }
+ Void                   setUseROT ( Bool b )                                                       { m_useROT  = b;          }
 #endif
   // KTA tools
 

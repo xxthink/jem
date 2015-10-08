@@ -615,6 +615,15 @@ Void TEncCavlc::codeSPS( const TComSPS* pcSPS )
 #if COM16_C806_LMCHROMA
   WRITE_FLAG( pcSPS->getUseLMChroma () ? 1 : 0,                "cross_component_prediction_enabled_flag" );
 #endif
+#if VCEG_AZ05_BIO
+  WRITE_FLAG( pcSPS->getUseBIO () ? 1 : 0,                "bio_enabled_flag" ); 
+#endif
+#if VCEG_AZ05_INTRA_MPI
+  WRITE_FLAG( pcSPS->getUseMPI () ? 1 : 0,                "mpi_enabled_flag" ); 
+#endif
+#if VCEG_AZ05_ROT_TR
+ WRITE_FLAG( pcSPS->getUseROT () ? 1 : 0,                "rot_enabled_flag" ); 
+#endif
   // KTA tools
 
   Bool sps_extension_present_flag=false;
@@ -1279,7 +1288,12 @@ Void TEncCavlc::codeMPIIdx    ( TComDataCU* pcCU, UInt uiAbsPartIdx )
   assert(0);
 }
 #endif
-
+#if VCEG_AZ05_ROT_TR  
+Void TEncCavlc::codeROTIdx    ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth )
+{
+  assert(0);
+}
+#endif
 #if VCEG_AZ07_FRUC_MERGE
 Void TEncCavlc::codeFRUCMgrMode  ( TComDataCU* pcCU, UInt uiAbsPartIdx , UInt uiPUIdx )
 {
@@ -1419,7 +1433,7 @@ Void TEncCavlc::codeChromaQpAdjustment( TComDataCU* /*pcCU*/, UInt /*uiAbsPartId
 }
 
 Void TEncCavlc::codeCoeffNxN    ( TComTU& /*rTu*/, TCoeff* /*pcCoef*/, const ComponentID /*compID*/ 
-#if VCEG_AZ05_INTRA_MPI
+#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI
   , Int& bCbfCU
 #endif
   )

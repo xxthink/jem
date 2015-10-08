@@ -819,6 +819,15 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
 #if COM16_C806_LMCHROMA
   READ_FLAG( uiCode, "cross_component_prediction_enabled_flag" ); pcSPS->setUseLMChroma ( uiCode ? true : false );
 #endif
+#if VCEG_AZ05_BIO
+  READ_FLAG( uiCode, "bio_enabled_flag" );      pcSPS->setUseBIO( uiCode );
+#endif
+#if VCEG_AZ05_INTRA_MPI
+  READ_FLAG( uiCode, "mpi_enabled_flag" );      pcSPS->setUseMPI( uiCode );
+#endif
+#if VCEG_AZ05_ROT_TR
+  READ_FLAG( uiCode, "rot_enabled_flag" );      pcSPS->setUseROT( uiCode );
+#endif
   // KTA tools
 
   READ_FLAG( uiCode, "sps_extension_present_flag");
@@ -1846,7 +1855,11 @@ Void TDecCavlc::parseChromaQpAdjustment( TComDataCU* /*pcCU*/, UInt /*uiAbsPartI
   assert(0);
 }
 
-Void TDecCavlc::parseCoeffNxN( TComTU &/*rTu*/, ComponentID /*compID*/ )
+Void TDecCavlc::parseCoeffNxN( TComTU &/*rTu*/, ComponentID /*compID*/ 
+#if VCEG_AZ05_ROT_TR
+    , Bool& /*g_bCbfCU*/
+#endif
+    )
 {
   assert(0);
 }
@@ -1881,7 +1894,12 @@ Void TDecCavlc::parseMPIIdx ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt 
   assert(0);
 }
 #endif
-
+#if VCEG_AZ05_ROT_TR  
+Void TDecCavlc::parseROTIdx ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/ )
+{
+  assert(0);
+}
+#endif
 Void TDecCavlc::parseMergeIndex ( TComDataCU* /*pcCU*/, UInt& /*ruiMergeIndex*/ )
 {
   assert(0);
