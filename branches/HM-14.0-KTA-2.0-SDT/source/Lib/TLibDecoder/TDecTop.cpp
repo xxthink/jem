@@ -380,8 +380,17 @@ Bool TDecTop::xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisp
   
   m_apcSlicePilot->setReferenced(true); // Putting this as true ensures that picture is referenced the first time it is in an RPS
   m_apcSlicePilot->setTLayerInfo(nalu.m_temporalId);
-
+#if KLT_TRACE && ENC_DEC_TRACE
+  g_bEnabled = false;//true;
+  if (m_bFirstSliceInPicture == false)
+  {
+    g_bEnabled = false;
+  }
+#endif
   m_cEntropyDecoder.decodeSliceHeader (m_apcSlicePilot, &m_parameterSetManagerDecoder);
+#if KLT_TRACE && ENC_DEC_TRACE
+  g_bEnabled = false; // true;
+#endif
 
 #if QC_AC_ADAPT_WDOW
   m_cEntropyDecoder.decodeCtxUpdateInfo (m_apcSlicePilot, m_apcStats ) ;    

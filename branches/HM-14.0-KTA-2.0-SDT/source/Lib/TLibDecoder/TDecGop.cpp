@@ -299,6 +299,11 @@ Void TDecGop::filterPicture(TComPic*& rpcPic)
   rpcPic->setOutputMark(true);
 #endif
   rpcPic->setReconMark(true);
+
+#if INTER_KLT
+  m_pcSliceDecoder->InterpolatePic(rpcPic);
+#endif
+
 }
 
 /**
@@ -379,4 +384,5 @@ static void calcAndPrintHashStatus(TComPicYuv& pic, const SEIDecodedPictureHash*
     printf("[rx%s:%s] ", hashType, digestToString(pictureHashSEI->digest, numChar));
   }
 }
+
 //! \}

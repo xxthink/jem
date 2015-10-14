@@ -42,6 +42,77 @@
 //! \{
 
 ///////////////////////////////////////////////////////////
+// Contribution Microsoft defines section start
+///////////////////////////////////////////////////////////
+//Note: Please read Signal Dependent Transform in HEVC (Eigen library utilization).docx to include Eigen library.
+#define INTER_KLT                           1 ///< Enable inter SDT(KLT)
+#define INTRA_KLT                           1 ///< Enable intra SDT(KLT)
+#define KLT_COMMON                          (INTER_KLT || INTRA_KLT)
+
+//intra SDT
+#if INTRA_KLT
+#define GENPRED0GENPREDANDTRAINKLT1         1 ///<0: Template matching prediction; 1: TM prediction + KLT
+#define TMPRED_CANDI_NUM              8 ///< Candidate number for intra prediction; should <= 32
+#define SEARCHRANGEINTRA              64 ///< Intra search range (-SEARCHRANGE,+SEARCHRANGE)
+#endif
+
+//inter SDT
+#if INTER_KLT
+#define SEARCHRANGE                         32 ///< Search range for inter coding (-SEARCHRANGE,+SEARCHRANGE)
+#define SEARCH_SIZE                         ((SEARCHRANGE<<1) + 1)*((SEARCHRANGE<<1) + 1)
+#endif
+
+#if KLT_COMMON
+//Parameters
+#define USE_MORE_BLOCKSIZE_DEPTH_MIN        1 ///< (default 1) To indicate minimum block size for KLT. 1~4 means 4x4, 8x8, 16x16, 32x32 respectively.
+#define USE_MORE_BLOCKSIZE_DEPTH_MAX        4 ///< (default 4) To indicate maximum block size for KLT. 1~4 means 4x4, 8x8, 16x16, 32x32 respectively.
+
+#define MAX_CANDI_NUM                       100 ///< Max allowable candidate number. The candidate number for different size blocks can be set.
+
+//About basis
+#define FORCE_USE_GIVENNUM_BASIS            1 /// (default 1) If defined, force to use up to FORCE_BASIS_NUM basis to reduce complexity.
+#if FORCE_USE_GIVENNUM_BASIS
+#define FORCE_BASIS_NUM                     32 /// number of basis utilized (for speeding up).
+#endif
+#define FILL_MORE_BASIS                     0 /// (default 0) If defined, will fill other basis.
+
+//Fixed parameters
+#define MAX_NUM_REF_IDS                     ((MAX_NUM_REF_PICS)*16 + (MAX_CANDI_NUM)*15)
+#define KLTBASIS_SHIFTBIT                   10 ///< KLT scale factor is BLOCK_SIZE*(1<<KLTBASIS_SHIFTBIT); (log2(width)+KLTBASIS_SHIFTBIT <= 15); If 6, then the first base vector is {64,...,64}. We use 10.
+#define IGNORE_THRESHOULD_OF_LARGEST        1e-6
+#define USE_SSD_DISTANCE                    0 ///< (default 0) If defined, use SSD distance.
+#define USE_SAD_DISTANCE                    1 ///< (default 1) If defined, use SAD distance.
+#define INIT_THRESHOULD_SHIFTBITS           2 ///< (default 2) Early skip threshold for checking distance.
+
+//Speed up
+#define FAST_DERIVE_KLT                     1 ///< If defined, will use fast algorithm to calculate KLT basis
+#if FAST_DERIVE_KLT
+#define FAST_KLT_CANDINUM                   MAX_CANDI_NUM  //If MAX_CANDI_NUM > blkSize, fast algorithm will be performed.
+#endif
+#define USE_SSE_SPEEDUP                     0 ///< (default 1) If defined, will use sse for speeding up (Note: should use x64 compile mode)
+
+#if USE_SSE_SPEEDUP
+#define USE_SSE_SCLAE                       1 ///< (default 1) If defined, will use sse for calculating the scaling of float to get integer KLT basis
+#define USE_FLOATXSHORT_SSE                 1 ///< (default 1) If defined, will use float*short
+#define USE_SHORTXSHORT_SSE                 1 ///< (default 1) If defined, will use sse to calculate short x short multiplication
+#if USE_SHORTXSHORT_SSE
+#define USE_TRANSPOSE_CANDDIATEARRAY        1 ///< (default 1) If defined, will use transpose of candidate array to facilitate the vector multiplication
+#endif
+#if USE_SAD_DISTANCE
+#define USE_SSE_BLK_SAD                     1 //< If defined, will calculate the block difference use intel SSE 
+#define USE_SSE_TMP_SAD                     1 //< If defined, will calculate the template difference use intel SSE 
+#endif
+#endif
+
+//Separate KLT
+#define ENABLE_SEP_KLT                      0 ///< (default 0) If defined, separable KLT can be utilized 
+#if ENABLE_SEP_KLT
+#define SEP_KLT_MIN_BLK_SIZE                64 ///< For blocks with the size >= SEP_KLT_MIN_BLK_SIZE, seperable KLT will be performed. (If it is set as 64, it is not utilized)
+#endif
+
+#endif
+
+///////////////////////////////////////////////////////////
 // Contribution COM16–C806 (QUALCOMM) defines section start
 ///////////////////////////////////////////////////////////
 
@@ -134,7 +205,7 @@
 ///////////////////////////////////////////////////////////
 #define QC_ECABAC                           1  /// CABAC improvements
 #if QC_ECABAC
-#define DEBUG                               1  //for CABAC debug
+#define DEBUG                               0  //for CABAC debug 
 #define QC_CTX_RESIDUALCODING               1  //new ctx for residual coding
 
 #define QC_AC_ADAPT_WDOW                    1
@@ -161,7 +232,7 @@
 #define QC_MV_SIGNAL_PRECISION_BIT          2
 #endif
 
-#define QC_IMV                              1
+#define QC_IMV                              1     
 
 #define QC_SUB_PU_TMVP_V08                  QC_FRUC_MERGE
 #define MERGE_CAND_NUM_PATCH                1
@@ -178,7 +249,7 @@
 
 #define QC_USE_65ANG_MODES                  1 ///< Extended angular intra prediction, including 65 angular modes & 6 MPMs
 
-#define QC_IC                               1 ///< Illumination Compensation
+#define QC_IC                               1 ///1< Illumination Compensation
 #if QC_IC
 #define IC_REG_COST_SHIFT                   7
 #define IC_CONST_SHIFT                      5
@@ -376,7 +447,13 @@ typedef       int                 Int;
 typedef       unsigned int        UInt;
 typedef       double              Double;
 typedef       float               Float;
-
+#if USE_SSD_DISTANCE || USE_SAD_DISTANCE
+typedef       int                 DistType;
+#endif
+#if KLT_COMMON
+typedef       Float               covMatrixType;
+typedef       float               EigenType;
+#endif
 // ====================================================================================================================
 // 64-bit integer type
 // ====================================================================================================================

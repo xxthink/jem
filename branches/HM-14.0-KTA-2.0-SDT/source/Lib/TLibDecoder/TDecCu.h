@@ -100,6 +100,10 @@ public:
   /// reconstruct CU information
   Void  decompressCU            ( TComDataCU* pcCU );
   
+#if INTER_KLT
+  TComPrediction* getPointerPrediction() { return m_pcPrediction; }
+#endif
+
 protected:
   
   Void xDecodeCU                ( TComDataCU* pcCU,                       UInt uiAbsPartIdx, UInt uiDepth, UInt &ruiIsLast);
@@ -112,7 +116,9 @@ protected:
   Void  xReconIntraQT           ( TComDataCU* pcCU, UInt uiDepth );
   Void  xIntraRecLumaBlk        ( TComDataCU* pcCU, UInt uiTrDepth, UInt uiAbsPartIdx, TComYuv* pcRecoYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv );
   Void  xIntraRecChromaBlk      ( TComDataCU* pcCU, UInt uiTrDepth, UInt uiAbsPartIdx, TComYuv* pcRecoYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv, UInt uiChromaId );
-  
+#if INTRA_KLT
+  Void  xIntraRecLumaBlkTM      ( TComDataCU* pcCU, UInt uiTrDepth, UInt uiAbsPartIdx, TComYuv* pcRecoYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv, Int genPred0genPredAndtrainKLT1);
+#endif  
   Void  xReconPCM               ( TComDataCU* pcCU, UInt uiDepth );
 
   Void xDecodeInterTexture      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );

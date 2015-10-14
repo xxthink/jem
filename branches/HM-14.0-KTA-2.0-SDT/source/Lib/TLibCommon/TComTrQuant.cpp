@@ -41,6 +41,64 @@
 #include "TComTrQuant.h"
 #include "TComPic.h"
 #include "ContextTables.h"
+#if KLT_COMMON
+//#include "sse.h"
+#include <algorithm>
+#endif
+
+#if KLT_COMMON
+//Note: only designed for 4x4-32x32; for 64x64, not support now.
+UInt g_uiDepth2MaxCandiNum[5] = { MAX_CANDI_NUM, MAX_CANDI_NUM, MAX_CANDI_NUM, MAX_CANDI_NUM, MAX_CANDI_NUM };
+UInt g_uiDepth2MinCandiNum[5] = { 8, 8, 8, 8, 8 };
+Int g_maxValueThre = MAX_INT;
+
+UInt g_uiDepth2Width[5] = { 4, 8, 16, 32, 64 };
+//template size ===========
+#if INTER_KLT
+UInt g_uiDepth2TempSize[5] = { 3, 3, 3, 3, 3 }; 
+#endif
+#if INTRA_KLT
+UInt g_uiDepth2IntraTempSize[5] = { 3, 3, 3, 3, 3 };
+#endif
+
+#define USE_EIGLIBDOUBLE                    1 ///<(default 1) If defined, will use double type for deriving eigen vectors
+#define USE_FLOAT_COV                       1 ///<(default 1) If defined, will use the float rather than double for covariance
+#if ENABLE_SEP_KLT
+#define RTransId 0
+#define CTransId 1
+#endif
+
+
+#define KLT_MODE             65533 ///< Mark the mode as KLT mode
+
+#include <iostream>
+#include <Eigen/Dense>
+using namespace Eigen;
+using namespace Eigen::internal;
+using namespace Eigen::Architecture;
+
+#if USE_FLOAT_COV
+#if USE_EIGLIBDOUBLE
+typedef MatrixXd matrixTypeDefined; 
+typedef VectorXd vectorType; 
+#else
+typedef MatrixXf matrixTypeDefined; //MatrixXd using double will be a little better -4.6% vs. -4.3% (bitrate) for classD with time complexity increased 7% due to the derivation of eigenvectors
+typedef VectorXf vectorType; //VectorXd
+#endif
+#else
+typedef MatrixXd matrixTypeDefined; //MatrixXd
+typedef VectorXd vectorType; //VectorXd
+#endif
+
+#if ENABLE_SEP_KLT
+void x2DimKLTr(Int bitDepth, Pel *block, Short *coeff, UInt uiTrSize);
+void x2DimIKLTr(Short *coeff, Pel *block, UInt uiTrSize);
+#endif
+void xKLTr(Int bitDepth, Pel *block, Short *coeff, UInt uiTrSize);
+void xIKLTr(Short *coeff, Pel *block, UInt uiTrSize);
+#endif
+
+
 
 typedef struct
 {
@@ -108,6 +166,111 @@ TComTrQuant::TComTrQuant()
   // allocate bit estimation class  (for RDOQ)
   m_pcEstBitsSbac = new estBitsSbacStruct;
   initScalingList();
+
+#if KLT_COMMON
+  m_tempLibFast.init(MAX_CANDI_NUM);
+  for (UInt i = 0; i < MAX_CANDI_NUM; i++)
+  {
+    m_pData[i] = new TrainDataType[MAX_1DTRANS_LEN];
+  }
+#if USE_TRANSPOSE_CANDDIATEARRAY
+  for (UInt i = 0; i < MAX_1DTRANS_LEN; i++)
+  {
+    m_pDataT[i] = new TrainDataType[MAX_CANDI_NUM];
+  }
+#endif
+
+  m_pppTarPatch = new Pel**[USE_MORE_BLOCKSIZE_DEPTH_MAX];
+  for (UInt uiDepth = 0; uiDepth < USE_MORE_BLOCKSIZE_DEPTH_MAX; uiDepth++)
+  {
+    UInt blkSize = g_uiDepth2Width[uiDepth];
+#if INTRA_KLT && INTER_KLT
+    UInt tempSize = max(g_uiDepth2IntraTempSize[uiDepth], g_uiDepth2TempSize[uiDepth]);
+#endif
+#if INTRA_KLT && !INTER_KLT
+    UInt tempSize = g_uiDepth2IntraTempSize[uiDepth];
+#endif
+#if !INTRA_KLT && INTER_KLT
+    UInt tempSize = g_uiDepth2TempSize[uiDepth];
+#endif
+    UInt patchSize = blkSize + tempSize;
+    m_pppTarPatch[uiDepth] = new Pel *[patchSize];
+    for (UInt uiRow = 0; uiRow < patchSize; uiRow++)
+    {
+      m_pppTarPatch[uiDepth][uiRow] = new Pel[patchSize];
+    }
+  }
+
+  m_pCovMatrix = new covMatrixType*[USE_MORE_BLOCKSIZE_DEPTH_MAX];
+  for (UInt uiDepth = 0; uiDepth < USE_MORE_BLOCKSIZE_DEPTH_MAX; uiDepth++)
+  {
+    UInt blkSize = g_uiDepth2Width[uiDepth];
+    UInt uiDim = blkSize*blkSize;
+    UInt uiMatrixDim = uiDim*uiDim;
+    m_pCovMatrix[uiDepth] = new covMatrixType[uiMatrixDim];
+  }
+#if FAST_DERIVE_KLT
+  UInt blkSize = 32;
+  UInt uiDim = blkSize*blkSize;
+  m_pppdTmpEigenVector = new EigenType *[uiDim];
+  for (UInt k = 0; k < uiDim; k++)
+  {
+    m_pppdTmpEigenVector[k] = new EigenType[uiDim];
+  }
+#endif
+  m_pppdEigenVector = new EigenType**[USE_MORE_BLOCKSIZE_DEPTH_MAX];
+  for (UInt uiDepth = 0; uiDepth < USE_MORE_BLOCKSIZE_DEPTH_MAX; uiDepth++)
+  {
+    blkSize = g_uiDepth2Width[uiDepth];
+    uiDim = blkSize*blkSize;
+    m_pppdEigenVector[uiDepth] = new EigenType *[uiDim];
+    for (UInt k = 0; k < uiDim; k++)
+    {
+      m_pppdEigenVector[uiDepth][k] = new EigenType[uiDim];
+    }
+  }
+  m_pppsEigenVector = new Short**[USE_MORE_BLOCKSIZE_DEPTH_MAX];
+  for (UInt uiDepth = 0; uiDepth < USE_MORE_BLOCKSIZE_DEPTH_MAX; uiDepth++)
+  {
+    blkSize = g_uiDepth2Width[uiDepth];
+    uiDim = blkSize*blkSize;
+    m_pppsEigenVector[uiDepth] = new Short *[uiDim];
+    for (UInt k = 0; k < uiDim; k++)
+    {
+      m_pppsEigenVector[uiDepth][k] = new Short[uiDim];
+    }
+  }
+#if ENABLE_SEP_KLT
+  m_ppppd2DimEigenVector = new EigenType***[USE_MORE_BLOCKSIZE_DEPTH_MAX];
+  for (UInt uiDepth = 0; uiDepth < USE_MORE_BLOCKSIZE_DEPTH_MAX; uiDepth++)
+  {
+    blkSize = g_uiDepth2Width[uiDepth];
+    m_ppppd2DimEigenVector[uiDepth] = new EigenType **[2];
+    for (UInt uiRorC = 0; uiRorC < 2; uiRorC++)
+    {
+      m_ppppd2DimEigenVector[uiDepth][uiRorC] = new EigenType*[blkSize];
+      for (UInt k = 0; k < blkSize; k++)
+      {
+        m_ppppd2DimEigenVector[uiDepth][uiRorC][k] = new EigenType[blkSize];
+      }
+    }
+  }
+  m_pppps2DimEigenVector = new Short***[USE_MORE_BLOCKSIZE_DEPTH_MAX];
+  for (UInt uiDepth = 0; uiDepth < USE_MORE_BLOCKSIZE_DEPTH_MAX; uiDepth++)
+  {
+    UInt blkSize = g_uiDepth2Width[uiDepth];
+    m_pppps2DimEigenVector[uiDepth] = new Short **[2];
+    for (UInt uiRorC = 0; uiRorC < 2; uiRorC++)
+    {
+      m_pppps2DimEigenVector[uiDepth][uiRorC] = new Short*[blkSize];
+      for (UInt k = 0; k < blkSize; k++)
+      {
+        m_pppps2DimEigenVector[uiDepth][uiRorC][k] = new Short[blkSize];
+      }
+    }
+  }
+#endif
+#endif
 }
 
 TComTrQuant::~TComTrQuant()
@@ -124,6 +287,152 @@ TComTrQuant::~TComTrQuant()
     delete m_pcEstBitsSbac;
   }
   destroyScalingList();
+#if KLT_COMMON
+  for (UInt i = 0; i < MAX_CANDI_NUM; i++)
+  {
+    delete[]m_pData[i];
+    m_pData[i] = NULL;
+  }
+
+#if USE_TRANSPOSE_CANDDIATEARRAY
+  for (UInt i = 0; i < MAX_1DTRANS_LEN; i++)
+  {
+    delete[]m_pDataT[i];
+    m_pDataT[i] = NULL;
+  }
+#endif
+  if (m_pppTarPatch != NULL)
+  {
+    for (UInt uiDepth = 0; uiDepth < USE_MORE_BLOCKSIZE_DEPTH_MAX; uiDepth++)
+    {
+      UInt blkSize = g_uiDepth2Width[uiDepth];
+#if INTRA_KLT && INTER_KLT
+      UInt tempSize = max(g_uiDepth2IntraTempSize[uiDepth], g_uiDepth2TempSize[uiDepth]);
+#endif
+#if INTRA_KLT && !INTER_KLT
+      UInt tempSize = g_uiDepth2IntraTempSize[uiDepth];
+#endif
+#if !INTRA_KLT && INTER_KLT
+      UInt tempSize = g_uiDepth2TempSize[uiDepth];
+#endif
+      UInt patchSize = blkSize + tempSize; 
+      for (UInt uiRow = 0; uiRow < patchSize; uiRow++)
+      {
+        if (m_pppTarPatch[uiDepth][uiRow] != NULL)
+        {
+          delete[]m_pppTarPatch[uiDepth][uiRow]; m_pppTarPatch[uiDepth][uiRow] = NULL;
+        }
+      }
+      if (m_pppTarPatch[uiDepth] != NULL)
+      {
+        delete[]m_pppTarPatch[uiDepth]; m_pppTarPatch[uiDepth] = NULL;
+      }
+    }
+    m_pppTarPatch = NULL;
+  }
+
+  if (m_pCovMatrix != NULL)
+  {
+    for (UInt uiDepth = 0; uiDepth < USE_MORE_BLOCKSIZE_DEPTH_MAX; uiDepth++)
+    {
+      if (m_pCovMatrix[uiDepth] != NULL)
+      {
+        delete[]m_pCovMatrix[uiDepth]; m_pCovMatrix[uiDepth] = NULL;
+      }
+    }
+    delete[]m_pCovMatrix; m_pCovMatrix = NULL;
+  }
+#if FAST_DERIVE_KLT
+  if (m_pppdTmpEigenVector != NULL)
+  {
+    UInt blkSize = 32;
+    UInt uiDim = blkSize*blkSize;
+    for (UInt k = 0; k < uiDim; k++)
+    {
+      delete[]m_pppdTmpEigenVector[k];
+      m_pppdTmpEigenVector[k] = NULL;
+    }
+    delete[] m_pppdTmpEigenVector;
+    m_pppdTmpEigenVector = NULL;
+  }
+#endif
+  if (m_pppdEigenVector != NULL)
+  {
+    for (UInt uiDepth = 0; uiDepth < USE_MORE_BLOCKSIZE_DEPTH_MAX; uiDepth++)
+    {
+      UInt blkSize = g_uiDepth2Width[uiDepth];
+      UInt uiDim = blkSize*blkSize;
+      for (UInt k = 0; k < uiDim; k++)
+      {
+        if (m_pppdEigenVector[uiDepth][k] != NULL)
+        {
+          delete[]m_pppdEigenVector[uiDepth][k]; m_pppdEigenVector[uiDepth][k] = NULL;
+        }
+      }
+    }
+    delete[]m_pppdEigenVector; m_pppdEigenVector = NULL;
+  }
+  if (m_pppsEigenVector != NULL)
+  {
+    for (UInt uiDepth = 0; uiDepth < USE_MORE_BLOCKSIZE_DEPTH_MAX; uiDepth++)
+    {
+      UInt blkSize = g_uiDepth2Width[uiDepth];
+      UInt uiDim = blkSize*blkSize;
+      for (UInt k = 0; k < uiDim; k++)
+      {
+        if (m_pppsEigenVector[uiDepth][k] != NULL)
+        {
+          delete[]m_pppsEigenVector[uiDepth][k]; m_pppsEigenVector[uiDepth][k] = NULL;
+        }
+      }
+    }
+    delete[]m_pppsEigenVector; m_pppsEigenVector = NULL;
+  }
+#if ENABLE_SEP_KLT
+  if (m_ppppd2DimEigenVector != NULL)
+  {
+    for (UInt uiDepth = 0; uiDepth < USE_MORE_BLOCKSIZE_DEPTH_MAX; uiDepth++)
+    {
+      UInt blkSize = g_uiDepth2Width[uiDepth];
+      for (UInt uiRorC = 0; uiRorC < 2; uiRorC++)
+      {
+        for (UInt k = 0; k < blkSize; k++)
+        {
+          delete[]m_ppppd2DimEigenVector[uiDepth][uiRorC][k];
+          m_ppppd2DimEigenVector[uiDepth][uiRorC][k] = NULL;
+        }
+        delete[]m_ppppd2DimEigenVector[uiDepth][uiRorC];
+        m_ppppd2DimEigenVector[uiDepth][uiRorC] = NULL;
+      }
+      delete[]m_ppppd2DimEigenVector[uiDepth];
+      m_ppppd2DimEigenVector[uiDepth] = NULL;
+    }
+    delete[]m_ppppd2DimEigenVector;
+    m_ppppd2DimEigenVector = NULL;
+  }
+  if (m_pppps2DimEigenVector != NULL)
+  {
+    for (UInt uiDepth = 0; uiDepth < USE_MORE_BLOCKSIZE_DEPTH_MAX; uiDepth++)
+    {
+      UInt blkSize = g_uiDepth2Width[uiDepth];
+      for (UInt uiRorC = 0; uiRorC < 2; uiRorC++)
+      {
+        for (UInt k = 0; k < blkSize; k++)
+        {
+          delete[]m_pppps2DimEigenVector[uiDepth][uiRorC][k];
+          m_pppps2DimEigenVector[uiDepth][uiRorC][k] = NULL;
+        }
+        delete[]m_pppps2DimEigenVector[uiDepth][uiRorC];
+        m_pppps2DimEigenVector[uiDepth][uiRorC] = NULL;
+      }
+      delete[]m_pppps2DimEigenVector[uiDepth];
+      m_pppps2DimEigenVector[uiDepth] = NULL;
+    }
+    delete[]m_pppps2DimEigenVector;
+    m_pppps2DimEigenVector = NULL;
+  }
+#endif
+#endif
 }
 
 #if ADAPTIVE_QP_SELECTION
@@ -1857,6 +2166,25 @@ void xTrMxN_EMT(Int bitDepth, Short *block,Short *coeff, Int iWidth, Int iHeight
 
 void xTrMxN(Int bitDepth, Short *block,Short *coeff, Int iWidth, Int iHeight, UInt uiMode)
 {
+#if KLT_COMMON
+  if (uiMode == KLT_MODE)
+  {
+#if ENABLE_SEP_KLT
+    assert(iWidth == iHeight);
+    if (iWidth >= SEP_KLT_MIN_BLK_SIZE)
+    {
+      x2DimKLTr(bitDepth, block, coeff, iWidth);
+    }
+    else
+    {
+      xKLTr(bitDepth, block, coeff, iWidth);
+    }
+#else
+    xKLTr(bitDepth, block, coeff, iWidth);
+#endif
+    return;
+  }
+#endif
   Int shift_1st = g_aucConvertToBit[iWidth]  + 1 + bitDepth-8; // log2(iWidth) - 1 + g_bitDepth - 8
   Int shift_2nd = g_aucConvertToBit[iHeight]  + 8;                   // log2(iHeight) + 6
 
@@ -1974,6 +2302,26 @@ void xITrMxN_EMT(Int bitDepth, Short *coeff,Short *block, Int iWidth, Int iHeigh
 
 void xITrMxN(Int bitDepth, Short *coeff,Short *block, Int iWidth, Int iHeight, UInt uiMode)
 {
+#if KLT_COMMON
+  if (uiMode == KLT_MODE)
+  {
+    assert(iWidth == iHeight);
+#if ENABLE_SEP_KLT
+    if (iWidth >= SEP_KLT_MIN_BLK_SIZE)
+    {
+      x2DimIKLTr(coeff, block, iHeight);
+    }
+    else
+    {
+      xIKLTr(coeff, block, iHeight);
+    }
+#else
+    xIKLTr(coeff, block, iHeight);
+#endif
+    return;
+  }
+#endif
+
   Int shift_1st = SHIFT_INV_1ST;
   Int shift_2nd = SHIFT_INV_2ND - (bitDepth-8);
 
@@ -2520,6 +2868,9 @@ Void TComTrQuant::transformNxN( TComDataCU* pcCU,
 #if ROT_TR 
    , UChar ucROTIdx 
 #endif
+#if KLT_COMMON
+   , Bool useKLT
+#endif
                                )
 {
   if (pcCU->getCUTransquantBypass(uiAbsPartIdx))
@@ -2566,7 +2917,12 @@ Void TComTrQuant::transformNxN( TComDataCU* pcCU,
 #endif
   }
 #endif
-
+#if KLT_COMMON
+  if (eTType == TEXT_LUMA && useKLT)
+  {
+    uiMode = KLT_MODE;
+  }
+#endif
   uiAbsSum = 0;
   assert( (pcCU->getSlice()->getSPS()->getMaxTrSize() >= uiWidth) );
   Int bitDepth = eTType == TEXT_LUMA ? g_bitDepthY : g_bitDepthC;
@@ -2623,6 +2979,16 @@ Void TComTrQuant::transformNxN( TComDataCU* pcCU,
              }
   }
 #endif
+#if KLT_COMMON
+  if (uiMode == KLT_MODE)
+  {
+    const UInt   log2BlockSize = g_aucConvertToBit[uiWidth] + 2;
+    //const UInt *scan = g_auiSigLastScan[ SCAN_DIAG ][ log2BlockSize - 1 ];
+    UInt scanIdx = pcCU->getCoefScanIdx(uiAbsPartIdx, uiWidth, eTType == TEXT_LUMA, pcCU->isIntra(uiAbsPartIdx)); //change to this on 12.24
+    const UInt *scan = g_auiSigLastScan[scanIdx][log2BlockSize - 1];
+    reOrderCoeff(m_plTempCoeff, scan, uiWidth, uiHeight);
+  }
+#endif 
   xQuant( pcCU, m_plTempCoeff, rpcCoeff,
 #if ADAPTIVE_QP_SELECTION
        rpcArlCoeff,
@@ -2639,6 +3005,9 @@ Void TComTrQuant::invtransformNxN( Bool transQuantBypass, TextType eText, UInt u
 #endif
 #if QC_USE_65ANG_MODES
                                   , Bool bUseExtIntraAngModes 
+#endif
+#if KLT_COMMON
+                  , Bool useKLT
 #endif
                                   )
 {
@@ -2698,6 +3067,15 @@ Void TComTrQuant::invtransformNxN( Bool transQuantBypass, TextType eText, UInt u
   }
   else
   {
+#if KLT_COMMON
+  if (eText == TEXT_LUMA && useKLT)
+  {
+    uiMode = KLT_MODE;
+#if QC_EMT
+    ucTrIdx = DCT2_HEVC;
+#endif
+  }
+#endif
     xIT(bitDepth, uiMode, m_plTempCoeff, rpcResidual, uiStride, uiWidth, uiHeight 
 #if QC_EMT
       , ucTrIdx
@@ -2708,11 +3086,65 @@ Void TComTrQuant::invtransformNxN( Bool transQuantBypass, TextType eText, UInt u
       );
   }
 }
-
+#if INTER_KLT
+Void TComTrQuant::invRecurTransformNxN( TComDataCU* pcCU, UInt uiAbsPartIdx, TextType eTxt, Pel* rpcResidual, UInt uiAddr, UInt uiStride, UInt uiWidth, UInt uiHeight, UInt uiMaxTrMode, UInt uiTrMode, TCoeff* rpcCoeff, TComYuv* pcPred)
+#else
 Void TComTrQuant::invRecurTransformNxN( TComDataCU* pcCU, UInt uiAbsPartIdx, TextType eTxt, Pel* rpcResidual, UInt uiAddr, UInt uiStride, UInt uiWidth, UInt uiHeight, UInt uiMaxTrMode, UInt uiTrMode, TCoeff* rpcCoeff )
+#endif
 {
   if( !pcCU->getCbf(uiAbsPartIdx, eTxt, uiTrMode) )
   {
+#if INTER_KLT
+    UInt uiDepth = pcCU->getDepth(uiAbsPartIdx) + uiTrMode;
+    UInt uiLog2TrSize = g_aucConvertToBit[pcCU->getSlice()->getSPS()->getMaxCUWidth() >> uiDepth] + 2;
+    if (eTxt != TEXT_LUMA && uiLog2TrSize == 2)
+    {
+      UInt uiQPDiv = pcCU->getPic()->getNumPartInCU() >> ((uiDepth - 1) << 1);
+      if ((uiAbsPartIdx % uiQPDiv) != 0)
+      {
+        return;
+      }
+      uiWidth <<= 1;
+      uiHeight <<= 1;
+    }
+    //===== reconstruction =====
+    UInt    uiZOrder = pcCU->getZorderIdxInCU() + uiAbsPartIdx;
+    TComPicYuv *picRec = pcCU->getPic()->getPicYuvRec();
+    Pel* piReco;
+    UInt uiRecStride;
+    Pel* piPred;
+    UInt uiPredStride;
+    if (eTxt == TEXT_LUMA)
+    {
+      piReco = picRec->getLumaAddr(pcCU->getAddr(), uiZOrder);
+      uiRecStride = picRec->getStride();
+      piPred = pcPred->getLumaAddr(uiAbsPartIdx);
+      uiPredStride = pcPred->getStride();
+    }
+    else if (eTxt == TEXT_CHROMA_U)
+    {
+      piReco = picRec->getCbAddr(pcCU->getAddr(), uiZOrder);
+      uiRecStride = picRec->getCStride();
+      piPred = pcPred->getCbAddr(uiAbsPartIdx);
+      uiPredStride = pcPred->getCStride();
+    }
+    else
+    {
+      piReco = picRec->getCrAddr(pcCU->getAddr(), uiZOrder);
+      uiRecStride = picRec->getCStride();
+      piPred = pcPred->getCrAddr(uiAbsPartIdx);
+      uiPredStride = pcPred->getCStride();
+    }
+    for (UInt uiY = 0; uiY < uiHeight; uiY++)
+    {
+      for (UInt uiX = 0; uiX < uiWidth; uiX++)
+      {
+        piReco[uiX] = piPred[uiX];
+      }
+      piPred += uiPredStride;
+      piReco += uiRecStride;
+    }
+#endif
     return;
   }  
   const UInt stopTrMode = pcCU->getTransformIdx( uiAbsPartIdx );
@@ -2734,6 +3166,54 @@ Void TComTrQuant::invRecurTransformNxN( TComDataCU* pcCU, UInt uiAbsPartIdx, Tex
     Pel* pResi = rpcResidual + uiAddr;
     Int scalingListType = (pcCU->isIntra(uiAbsPartIdx) ? 0 : 3) + g_eTTable[(Int)eTxt];
     assert(scalingListType < SCALING_LIST_NUM);
+#if INTER_KLT
+  UInt uiMaxTrWidth = g_uiDepth2Width[USE_MORE_BLOCKSIZE_DEPTH_MAX -1];
+  UInt uiMinTrWidth = g_uiDepth2Width[USE_MORE_BLOCKSIZE_DEPTH_MIN -1];
+  Bool checkKLTY = ((uiWidth == uiHeight) && (uiWidth <= uiMaxTrWidth)  && (uiWidth >= uiMinTrWidth) && (eTxt == TEXT_LUMA));
+  if(pcCU->getSlice()->getPPS()->getUseTransformSkip() )
+  {
+    checkKLTY &= (0 == pcCU->getTransformSkip(uiAbsPartIdx, eTxt));
+  }
+  Bool useKLT = checkKLTY;
+  useKLT &= (Bool)pcCU->getKLTFlag(uiAbsPartIdx, eTxt);
+
+  if(useKLT)
+  {
+    UInt uiTarDepth = g_aucConvertToBit[uiWidth];
+    UInt uiTempSize = g_uiDepth2TempSize[uiTarDepth];
+    getTargetPatch(pcCU, uiAbsPartIdx, uiAbsPartIdx, pcPred, uiWidth, uiTempSize);
+    candidateSearch(pcCU, uiAbsPartIdx, uiWidth, uiTempSize);
+    Bool bKLTAvailable = candidateTrain(pcCU, uiAbsPartIdx, uiWidth, uiTempSize);
+    useKLT &= bKLTAvailable;
+    assert(useKLT == bKLTAvailable);
+    if (useKLT)
+    {
+      const UInt  uiLog2BlockSize = g_aucConvertToBit[uiWidth] + 2;
+      UInt scanIdx = pcCU->getCoefScanIdx(uiAbsPartIdx, uiWidth, eTxt == TEXT_LUMA, pcCU->isIntra(uiAbsPartIdx)); //change to this on 12.24
+      const UInt *scan = g_auiSigLastScan[scanIdx][uiLog2BlockSize - 1];
+      assert(uiWidth == uiHeight);
+      recoverOrderCoeff(rpcCoeff, scan, uiWidth, uiHeight);
+    }
+  }
+  invtransformNxN(pcCU->getCUTransquantBypass(uiAbsPartIdx), eTxt
+#if QC_EMT_INTER
+    , pcCU->getSlice()->getSPS()->getUseInterEMT() ? (eTxt == TEXT_LUMA ? INTER_MODE : REG_DCT) : REG_DCT
+#else
+    , REG_DCT
+#endif
+    , pResi, uiStride, rpcCoeff, uiWidth, uiHeight, scalingListType, pcCU->getTransformSkip(uiAbsPartIdx, eTxt)
+#if QC_EMT_INTER
+    , pcCU->getSlice()->getSPS()->getUseInterEMT() ? (eTxt == TEXT_LUMA ? pcCU->getEmtTuIdx(uiAbsPartIdx) : DCT2_EMT) : DCT2_HEVC
+#endif
+#if ROT_TR 
+    , 0
+#endif
+#if QC_USE_65ANG_MODES
+    , false
+#endif
+    , useKLT
+    );
+#else
     invtransformNxN( pcCU->getCUTransquantBypass(uiAbsPartIdx), eTxt
 #if QC_EMT_INTER
       , pcCU->getSlice()->getSPS()->getUseInterEMT() ? ( eTxt==TEXT_LUMA ? INTER_MODE : REG_DCT ) : REG_DCT
@@ -2748,6 +3228,49 @@ Void TComTrQuant::invRecurTransformNxN( TComDataCU* pcCU, UInt uiAbsPartIdx, Tex
    ,  0
 #endif
       );
+#endif
+
+#if INTER_KLT
+  //===== reconstruction =====
+  UInt    uiZOrder = pcCU->getZorderIdxInCU() + uiAbsPartIdx;
+  TComPicYuv *picRec = pcCU->getPic()->getPicYuvRec();
+  Pel* piResi = pResi;
+  Pel* piReco;
+  UInt uiRecStride;
+  Pel* piPred;
+  UInt uiPredStride;
+  if (eTxt == TEXT_LUMA)
+  {
+    piReco = picRec->getLumaAddr(pcCU->getAddr(), uiZOrder);
+    uiRecStride = picRec->getStride();
+    piPred = pcPred->getLumaAddr(uiAbsPartIdx);
+    uiPredStride = pcPred->getStride();
+  }
+  else if (eTxt == TEXT_CHROMA_U)
+  {
+    piReco = picRec->getCbAddr(pcCU->getAddr(), uiZOrder);
+    uiRecStride = picRec->getCStride();
+    piPred = pcPred->getCbAddr(uiAbsPartIdx);
+    uiPredStride = pcPred->getCStride();
+  }
+  else
+  {
+    piReco = picRec->getCrAddr(pcCU->getAddr(), uiZOrder);
+    uiRecStride = picRec->getCStride();
+    piPred = pcPred->getCrAddr(uiAbsPartIdx);
+    uiPredStride = pcPred->getCStride();
+  }
+  for (UInt uiY = 0; uiY < uiHeight; uiY++)
+  {
+    for (UInt uiX = 0; uiX < uiWidth; uiX++)
+    {
+      piReco[uiX] = ClipY(piPred[uiX] + piResi[uiX]);
+    }
+    piPred += uiPredStride;
+    piResi += uiStride;
+    piReco += uiRecStride;
+  }
+#endif
   }
   else
   {
@@ -2759,11 +3282,18 @@ Void TComTrQuant::invRecurTransformNxN( TComDataCU* pcCU, UInt uiAbsPartIdx, Tex
     UInt uiCoefOffset = trWidth * trHeight;
     UInt uiPartOffset = pcCU->getTotalNumPart() >> ( uiTrMode << 1 );
     {
+#if INTER_KLT
+    invRecurTransformNxN(pcCU, uiAbsPartIdx, eTxt, rpcResidual, uiAddr, uiStride, uiWidth, uiHeight, uiMaxTrMode, uiTrMode, rpcCoeff, pcPred); rpcCoeff += uiCoefOffset; uiAbsPartIdx += uiPartOffset;
+    invRecurTransformNxN(pcCU, uiAbsPartIdx, eTxt, rpcResidual, uiAddr + trWidth, uiStride, uiWidth, uiHeight, uiMaxTrMode, uiTrMode, rpcCoeff, pcPred); rpcCoeff += uiCoefOffset; uiAbsPartIdx += uiPartOffset;
+    invRecurTransformNxN(pcCU, uiAbsPartIdx, eTxt, rpcResidual, uiAddr + uiAddrOffset, uiStride, uiWidth, uiHeight, uiMaxTrMode, uiTrMode, rpcCoeff, pcPred); rpcCoeff += uiCoefOffset; uiAbsPartIdx += uiPartOffset;
+    invRecurTransformNxN(pcCU, uiAbsPartIdx, eTxt, rpcResidual, uiAddr + uiAddrOffset + trWidth, uiStride, uiWidth, uiHeight, uiMaxTrMode, uiTrMode, rpcCoeff, pcPred);
+#else
       invRecurTransformNxN( pcCU, uiAbsPartIdx, eTxt, rpcResidual, uiAddr                         , uiStride, uiWidth, uiHeight, uiMaxTrMode, uiTrMode, rpcCoeff ); rpcCoeff += uiCoefOffset; uiAbsPartIdx += uiPartOffset;
       invRecurTransformNxN( pcCU, uiAbsPartIdx, eTxt, rpcResidual, uiAddr + trWidth               , uiStride, uiWidth, uiHeight, uiMaxTrMode, uiTrMode, rpcCoeff ); rpcCoeff += uiCoefOffset; uiAbsPartIdx += uiPartOffset;
       invRecurTransformNxN( pcCU, uiAbsPartIdx, eTxt, rpcResidual, uiAddr + uiAddrOffset          , uiStride, uiWidth, uiHeight, uiMaxTrMode, uiTrMode, rpcCoeff ); rpcCoeff += uiCoefOffset; uiAbsPartIdx += uiPartOffset;
       invRecurTransformNxN( pcCU, uiAbsPartIdx, eTxt, rpcResidual, uiAddr + uiAddrOffset + trWidth, uiStride, uiWidth, uiHeight, uiMaxTrMode, uiTrMode, rpcCoeff );
-    }
+#endif
+  }
   }
 }
 
@@ -5197,5 +5727,2220 @@ Void TComTrQuant::destroyScalingList()
     }
   }
 }
+
+#if KLT_COMMON
+inline int MY_INT(double x)
+{
+  return x < 0 ? (int)(x - 0.5) : (int)(x + 0.5);
+}
+
+TempLibFast::TempLibFast()
+{
+  m_pX = NULL;
+  m_pY = NULL;
+  m_pDiff = NULL;
+  m_pId = NULL;
+}
+
+TempLibFast::~TempLibFast()
+{
+  if (m_pX != NULL)
+  {
+    delete[]m_pX;
+    m_pX = NULL;
+  }
+
+  if (m_pY != NULL)
+  {
+    delete[]m_pY;
+    m_pY = NULL;
+  }
+
+
+  if (m_pXInteger != NULL)
+  {
+    delete[]m_pXInteger;
+    m_pXInteger = NULL;
+  }
+  if (m_pYInteger != NULL)
+  {
+    delete[]m_pYInteger;
+    m_pYInteger = NULL;
+  }
+  if (m_pDiffInteger != NULL)
+  {
+    delete[]m_pDiffInteger;
+    m_pDiffInteger = NULL;
+  }
+  if (m_pIdInteger != NULL)
+  {
+    delete[]m_pIdInteger;
+    m_pIdInteger = NULL;
+  }
+
+  if (m_pDiff != NULL)
+  {
+    delete[]m_pDiff;
+    m_pDiff = NULL;
+  }
+
+  if (m_pId != NULL)
+  {
+    delete[]m_pId;
+    m_pId = NULL;
+  }
+}
+
+Void TempLibFast::init(UInt iSize)
+{
+  m_iSize = iSize;
+  m_pX = new Int[iSize];
+  m_pY = new Int[iSize];
+  m_pDiff = new DistType[iSize];
+  m_pId = new Short[iSize];
+
+  m_pXInteger = new Int[iSize];
+  m_pYInteger = new Int[iSize];
+  m_pDiffInteger = new DistType[iSize];
+  m_pIdInteger = new Short[iSize];
+}
+
+Void TempLibFast::initDiff(UInt uiPatchSize, Int bitDepth, Int iCandiNumber)
+{
+#if USE_SAD_DISTANCE
+  DistType maxValue = ((1 << bitDepth) >> (INIT_THRESHOULD_SHIFTBITS))*(uiPatchSize*uiPatchSize);
+#endif
+#if USE_SSD_DISTANCE
+  DistType maxValue = ((1 << bitDepth) >> (INIT_THRESHOULD_SHIFTBITS))*((1 << bitDepth) >> (INIT_THRESHOULD_SHIFTBITS))*uiPatchSize*uiPatchSize; 
+#endif
+  g_maxValueThre = maxValue;
+  m_diffMax = maxValue;
+  for (Int i = 0; i < iCandiNumber; i++)
+  {
+    m_pDiff[i] = maxValue;
+  }
+}
+
+#if USE_SSE_TMP_SAD
+DistType TComTrQuant::calcTemplateDiff(Pel *ref, UInt uiStride, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, DistType iMax)
+{
+  Int iY, iX;
+  Int iDiffSum = 0;
+  Pel *refPatchRow = ref - uiTempSize*uiStride - uiTempSize;
+  Pel *tarPatchRow;
+  static int id = 0;
+  id++;
+  for (iY = 0; iY < uiTempSize; iY++)
+  {
+    tarPatchRow = tarPatch[iY];
+#if USE_SSE_TMP_SAD
+    iDiffSum += AbsSumOfVector(refPatchRow, tarPatchRow, uiPatchSize);
+#else
+    for (iX = 0; iX < uiPatchSize; iX++)
+    {
+      iDiffSum += abs(refPatchRow[iX] - tarPatchRow[iX]);
+    }
+    iDiffSum += tmpDiff2;
+#endif
+    if (iDiffSum > iMax) //for speeding up
+    {
+      return iDiffSum;
+    }
+    refPatchRow += uiStride;
+  }
+
+  if (uiTempSize > 2 && uiTempSize <= 8)
+  {
+    for (iY = uiTempSize; iY < uiPatchSize; iY++)
+    {
+      tarPatchRow = tarPatch[iY];
+#if USE_SSE_TMP_SAD
+      iDiffSum += AbsSumOfVectorLesseqthan8(refPatchRow, tarPatchRow, uiTempSize);
+#else
+      for (iX = 0; iX < uiTempSize; iX++)
+      {
+        iDiffSum += abs(refPatchRow[iX] - tarPatchRow[iX]);
+      }
+#endif
+      if (iDiffSum > iMax)
+      {
+        return iDiffSum;
+      }
+      refPatchRow += uiStride;
+    }
+  }
+  else
+  {
+    for (iY = uiTempSize; iY < uiPatchSize; iY++)
+    {
+      tarPatchRow = tarPatch[iY];
+      for (iX = 0; iX < uiTempSize; iX++)
+      {
+        iDiffSum += abs(refPatchRow[iX] - tarPatchRow[iX]);
+      }
+      if (iDiffSum > iMax)
+      {
+        return iDiffSum;
+      }
+      refPatchRow += uiStride;
+    }
+  }
+  return iDiffSum;
+}
+#else
+DistType TComTrQuant::calcTemplateDiff(Pel *ref, UInt uiStride, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, DistType iMax)
+{
+  Int iY, iX;
+#if USE_SSD_DISTANCE
+  Int iDiff;
+#endif
+  DistType iDiffSum = 0;
+  Pel *refPatchRow = ref - uiTempSize*uiStride - uiTempSize;
+  Pel *tarPatchRow;
+  for (iY = 0; iY < uiTempSize; iY++)
+  {
+    tarPatchRow = tarPatch[iY];
+    for (iX = 0; iX < uiPatchSize; iX++)
+    {
+#if USE_SAD_DISTANCE
+      iDiffSum += abs(refPatchRow[iX] - tarPatchRow[iX]);
+#endif
+#if USE_SSD_DISTANCE
+      iDiff = refPatchRow[iX] - tarPatchRow[iX];
+      iDiffSum += iDiff * iDiff;
+#endif
+    }
+    if (iDiffSum > iMax) //for speeding up
+    {
+      return iDiffSum;
+    }
+    refPatchRow += uiStride;
+  }
+  for (iY = uiTempSize; iY < uiPatchSize; iY++)
+  {
+    tarPatchRow = tarPatch[iY];
+    for (iX = 0; iX < uiTempSize; iX++)
+    {
+#if USE_SAD_DISTANCE
+      iDiffSum += abs(refPatchRow[iX] - tarPatchRow[iX]);
+#endif
+#if USE_SSD_DISTANCE
+      iDiff = refPatchRow[iX] - tarPatchRow[iX];
+      iDiffSum += iDiff * iDiff;
+#endif
+    }
+    if (iDiffSum > iMax) //for speeding up
+    {
+      return iDiffSum;
+    }
+    refPatchRow += uiStride;
+  }
+  return iDiffSum;
+}
+#endif
+
+
+Void insertNode(DistType diff, Int iXOffset, Int iYOffset, DistType *pDiff, Int *pX, Int *pY, Short *pId, UInt uiLibSizeMinusOne, Int setId)
+{
+  Int j; //should be Int rather than UInt
+  //bin-search insert
+  Int iStart = 0, iEnd = uiLibSizeMinusOne, iMiddle = (iStart + iEnd) >> 1;
+  while (iStart < iEnd - 1)
+  {
+    if (pDiff[iMiddle] > diff)
+    {
+      iEnd = iMiddle;
+    }
+    else if (pDiff[iMiddle] < diff)
+    {
+      iStart = iMiddle;
+    }
+    else
+    {
+      iStart = iMiddle;
+      iEnd = iMiddle;
+      break;
+    }
+    iMiddle = (iStart + iEnd) >> 1;
+  }
+  if (pDiff[iStart] <= diff)
+  {
+    j = iStart;
+  }
+  else
+  {
+    j = iStart - 1;
+  }
+
+  if (!(j >= 0 && diff == pDiff[j]))
+  {
+    Int iPlacedPos = j + 1;
+    //Insert the new node: memory copy and assign values to that node
+    if (iPlacedPos < uiLibSizeMinusOne)
+    {
+      Int copyNum = (uiLibSizeMinusOne - iPlacedPos);
+      Int iPlacePosAddOne = iPlacedPos + 1;
+      memmove(&pDiff[iPlacePosAddOne], &pDiff[iPlacedPos], copyNum*sizeof(DistType));
+      memmove(&pX[iPlacePosAddOne], &pX[iPlacedPos], copyNum*sizeof(Int));
+      memmove(&pY[iPlacePosAddOne], &pY[iPlacedPos], copyNum*sizeof(Int));
+      memmove(&pId[iPlacePosAddOne], &pId[iPlacedPos], copyNum*sizeof(Short));
+    }
+    pDiff[iPlacedPos] = diff;
+    pX[iPlacedPos] = iXOffset;
+    pY[iPlacedPos] = iYOffset;
+    pId[iPlacedPos] = setId;
+  }
+}
+
+/** NxN forward KL-transform (1D) using brute force matrix multiplication
+*  \param block pointer to input data (residual)
+*  \param coeff pointer to output data (transform coefficients)
+*  \param uiTrSize transform size (uiTrSize x uiTrSize)
+*/
+void xKLTr(Int bitDepth, Pel *block, Short *coeff, UInt uiTrSize)
+{
+  Int i, k, iSum;
+  Int uiDim = uiTrSize*uiTrSize;
+  UInt uiLog2TrSize = g_aucConvertToBit[uiTrSize] + 2;
+  Int shift = bitDepth + 2 * uiLog2TrSize + KLTBASIS_SHIFTBIT - 15;
+  Int add = 1 << (shift - 1);
+  UInt uiTarDepth = g_aucConvertToBit[uiTrSize];
+  Short **pTMat = g_ppsEigenVector[uiTarDepth];
+  for (i = 0; i< uiDim; i++)
+  {
+    iSum = 0;
+    Short *pT = pTMat[i]; //g_psEigenVectorDim16[i];
+    for (k = 0; k<uiDim; k++)
+    {
+      iSum += pT[k] * block[k];
+    }
+    coeff[i] = (iSum + add) >> shift;
+  }
+}
+
+/** NxN inverse KL-transform (1D) using brute force matrix multiplication
+*  \param coeff pointer to input data (transform coefficients)
+*  \param block pointer to output data (residual)
+*  \param uiTrSize transform size (uiTrSize x uiTrSize)
+*/
+void xIKLTr(Short *coeff, Pel *block, UInt uiTrSize)
+{
+  Int i, k, iSum;
+  UInt uiDim = uiTrSize*uiTrSize;
+  Int shift = 7 + KLTBASIS_SHIFTBIT - (g_bitDepthY - 8);
+  Int add = 1 << (shift - 1);
+  UInt uiTarDepth = g_aucConvertToBit[uiTrSize];
+  Short **pTMat = g_ppsEigenVector[uiTarDepth];
+  for (i = 0; i < uiDim; i++)
+  {
+    iSum = 0;
+    for (k = 0; k < uiDim; k++)
+    {
+      iSum += pTMat[k][i] * coeff[k];
+    }
+    block[i] = (iSum + add) >> shift;
+  }
+}
+
+#if ENABLE_SEP_KLT
+
+/** NxN inverse KLT transform (2D) using brute force matrix multiplication (3 nested loops)
+*  \param coeff pointer to input data (transform coefficients)
+*  \param block pointer to output data (residual)
+*  \param uiTrSize transform size (uiTrSize x uiTrSize)
+*/
+void x2DimIKLTr(Short *coeff, Pel *block, UInt uiTrSize)
+{
+  Int i, j, k, iSum;
+  Int tmp[32 * 32];
+  UInt uiTarDepth = g_aucConvertToBit[uiTrSize];
+  Int increasedAccBits = KLTBASIS_SHIFTBIT - 6;
+  Int shift_1st = SHIFT_INV_1ST + increasedAccBits;
+  Int add_1st = 1 << (shift_1st - 1);
+  Int shift_2nd = SHIFT_INV_2ND - (g_bitDepthY - 8) + increasedAccBits;
+  Int add_2nd = 1 << (shift_2nd - 1);
+
+  /* Horizontal transform */
+  Short **pTC = g_pps2DimEigenVector[uiTarDepth][CTransId];
+  for (i = 0; i < uiTrSize; i++)
+  {
+    for (j = 0; j < uiTrSize; j++)
+    {
+      iSum = 0;
+      for (k = 0; k < uiTrSize; k++)
+      {
+        iSum += pTC[k][i] * coeff[k*uiTrSize + j];
+      }
+      tmp[i*uiTrSize + j] = Clip3(-32768, 32767, (iSum + add_1st) >> shift_1st); // Clipping is normative
+    }
+  }
+
+  /* Vertical transform */
+  Short **pTR = g_pps2DimEigenVector[uiTarDepth][RTransId];
+  for (i = 0; i < uiTrSize; i++)
+  {
+    for (j = 0; j < uiTrSize; j++)
+    {
+      iSum = 0;
+      for (k = 0; k < uiTrSize; k++)
+      {
+        iSum += pTR[k][j] * tmp[i*uiTrSize + k];
+      }
+      block[i*uiTrSize + j] = Clip3(-32768, 32767, (iSum + add_2nd) >> shift_2nd); // Clipping is non-normative
+    }
+  }
+}
+
+
+/** NxN forward KLT transform (2D) using brute force matrix multiplication (3 nested loops)
+*  \param block pointer to input data (residual)
+*  \param coeff pointer to output data (transform coefficients)
+*  \param uiTrSize transform size (uiTrSize x uiTrSize)
+*/
+void x2DimKLTr(Int bitDepth, Pel *block, Short *coeff, UInt uiTrSize)
+{
+  Int i, j, k, iSum;
+  Int tmp[32 * 32];
+  UInt uiLog2TrSize = g_aucConvertToBit[uiTrSize] + 2;
+  UInt uiTarDepth = g_aucConvertToBit[uiTrSize];
+  Short **pTR = g_pps2DimEigenVector[uiTarDepth][RTransId];
+  Int increasedAccBits = KLTBASIS_SHIFTBIT - 6;
+  Int shift_1st = uiLog2TrSize - 1 + bitDepth - 8 + increasedAccBits;
+  Int add_1st = 1 << (shift_1st - 1);
+  Int shift_2nd = uiLog2TrSize + 6 + increasedAccBits;
+  Int add_2nd = 1 << (shift_2nd - 1);
+
+  /* Horizontal transform */
+  for (i = 0; i<uiTrSize; i++)
+  {
+    for (j = 0; j<uiTrSize; j++)
+    {
+      iSum = 0;
+      for (k = 0; k<uiTrSize; k++)
+      {
+        iSum += pTR[i][k] * block[j*uiTrSize + k];
+      }
+      tmp[i*uiTrSize + j] = (iSum + add_1st) >> shift_1st;
+    }
+  }
+
+  /* Vertical transform */
+  Short **pTC = g_pps2DimEigenVector[uiTarDepth][CTransId];
+  for (i = 0; i<uiTrSize; i++)
+  {
+    for (j = 0; j<uiTrSize; j++)
+    {
+      iSum = 0;
+      for (k = 0; k<uiTrSize; k++)
+      {
+        iSum += pTC[i][k] * tmp[j*uiTrSize + k];
+      }
+      coeff[i*uiTrSize + j] = (iSum + add_2nd) >> shift_2nd;
+    }
+  }
+}
+
+#endif
+
+Bool TComTrQuant::deriveKLT(UInt uiBlkSize, UInt uiUseCandiNumber)
+{
+  Bool bSucceedFlag = true;
+  DistType *pDiff = m_tempLibFast.getDiff();
+#if ENABLE_SEP_KLT
+  if (uiBlkSize >= SEP_KLT_MIN_BLK_SIZE)
+  {
+    bSucceedFlag = derive2DimKLT(uiBlkSize, pDiff);
+  }
+  else
+  {
+#endif
+#if FAST_DERIVE_KLT
+    Int fast_klt_blksize = 8;
+    if (FAST_KLT_CANDINUM > 64)
+    {
+      fast_klt_blksize = 16;
+    }
+    else if (FAST_KLT_CANDINUM > 256)
+    {
+      fast_klt_blksize = 32;
+    }
+    else if (FAST_KLT_CANDINUM > 1024)
+    {
+      fast_klt_blksize = 64;
+    }
+
+    if (uiBlkSize >= fast_klt_blksize) 
+    {
+      bSucceedFlag = derive1DimKLT_Fast(uiBlkSize, pDiff, uiUseCandiNumber);
+    }
+    else
+    {
+      bSucceedFlag = derive1DimKLT(uiBlkSize, pDiff, uiUseCandiNumber);
+    }
+#else
+    bSucceedFlag = derive1DimKLT(uiBlkSize, pDiff, iUseCandiNumber);
+#endif
+#if ENABLE_SEP_KLT
+  }
+#endif
+  return bSucceedFlag;
+}
+
+
+typedef Double _Ty;
+void OrderData(int *IdRecord, _Ty *pData, UInt uiSize)
+{
+  int k;
+  int i, j;
+  _Ty temp;
+  int tempId;
+  assert(pData);
+  for (k = 0; k < uiSize; k++)
+  {
+    IdRecord[k] = k;
+    if (pData[k] < 0)
+    {
+      pData[k] = -pData[k]; // original values changed here
+    }
+  }
+  for (i = 1; i < uiSize; i++)
+  {
+    for (j = uiSize - 1; j >= i; j--)
+    {
+      if (pData[j] > pData[j - 1])
+      {
+        temp = pData[j];
+        pData[j] = pData[j - 1];
+        pData[j - 1] = temp;
+
+        tempId = IdRecord[j];
+        IdRecord[j] = IdRecord[j - 1];
+        IdRecord[j - 1] = tempId;
+      }
+    }
+  }
+}
+
+#if ENABLE_SEP_KLT
+Bool TComTrQuant::derive2DimKLT(UInt uiBlkSize, DistType *pDiff)
+{
+  //calculate covariance matrix
+  Bool bSucceed = true;
+  UInt uiTarDepth = g_aucConvertToBit[uiBlkSize];
+  const UInt uiDim = uiBlkSize*uiBlkSize;
+  covMatrixType *covMatrix = m_pCovMatrix[uiTarDepth];
+  UInt RorCTable[2] = { RTransId, CTransId };
+  for (UInt uiRorCId = 0; uiRorCId < 2; uiRorCId++)
+  {
+    UInt uiRorC = RorCTable[uiRorCId];
+    Bool bCorrAmongColums = (uiRorC == RTransId); //true;
+    calcMatrixCovMatrix(m_pData, m_uiVaildCandiNum, covMatrix, uiBlkSize, uiBlkSize, bCorrAmongColums);
+    EigenType **pdEigenVector = m_ppppd2DimEigenVector[uiTarDepth][uiRorC];
+    Short **psEigenVector = m_pppps2DimEigenVector[uiTarDepth][uiRorC];
+    g_pps2DimEigenVector[uiTarDepth][uiRorC] = psEigenVector;
+
+    matrixTypeDefined Cov(uiBlkSize, uiBlkSize);
+    UInt i = 0;
+    for (UInt uiRow = 0; uiRow < uiBlkSize; uiRow++)
+    {
+      for (UInt uiCol = 0; uiCol < uiBlkSize; uiCol++)
+      {
+        Cov(uiRow, uiCol) = covMatrix[i++];
+      }
+    }
+    //EigenSolver<MatrixXd> es(A);
+    SelfAdjointEigenSolver<matrixTypeDefined> es(Cov);
+    for (UInt uiRow = 0; uiRow < uiBlkSize; uiRow++)
+    {
+      m_pEigenValues[uiRow] = es.eigenvalues()[uiRow];
+    }
+    OrderData(m_pIDTmp, m_pEigenValues, uiBlkSize);
+    for (UInt uiRow = 0; uiRow < uiBlkSize; uiRow++)
+    {
+      UInt uiMapedCol = m_pIDTmp[uiRow];
+      vectorType v = es.eigenvectors().col(uiMapedCol);
+      for (UInt uiCol = 0; uiCol < uiBlkSize; uiCol++)
+      {
+        pdEigenVector[uiRow][uiCol] = (EigenType)(v(uiCol));
+      }
+    }
+
+    Double dScale = sqrt((double)uiBlkSize)*(1 << KLTBASIS_SHIFTBIT);
+    for (UInt uiRow = 0; uiRow < uiBlkSize; uiRow++)
+    {
+      for (UInt uiCol = 0; uiCol < uiBlkSize; uiCol++)
+      {
+        psEigenVector[uiRow][uiCol] = MY_INT(pdEigenVector[uiRow][uiCol] * dScale);
+      }
+    }
+  }
+  return bSucceed;
+}
+
+Void TComTrQuant::calcMatrixCovMatrix(TrainDataType **pData, UInt uiSampleNum, covMatrixType *pCovMatrix, UInt uiRows, UInt uiCols, Bool bCorrAmongColums)
+{
+  //nxn
+  UInt uiRowsCov = uiCols; //n
+  UInt uiColsCov = uiRows; //m
+  if (bCorrAmongColums == false)
+  {
+    //mxm
+    uiRowsCov = uiRows; //m
+    uiColsCov = uiCols; //n
+  }
+  //to get the covariance matrix
+  covMatrixType dCovValue, dCovValueThisSample;
+  TrainDataType *pDataSample;
+  for (UInt i = 0; i < uiRowsCov; i++)
+  {
+    for (UInt j = 0; j <= i; j++)
+    {
+      dCovValue = 0;
+      for (UInt k = 0; k < uiSampleNum; k++)
+      {
+        pDataSample = pData[k];
+        dCovValueThisSample = 0;
+        if (bCorrAmongColums)
+        {
+          //go through all the rows in the matrix
+          for (UInt uiKRow = 0; uiKRow < uiColsCov; uiKRow++)
+          {
+            //i-th colum and j-th colum
+            dCovValueThisSample += pDataSample[uiKRow*uiRowsCov + i] * pDataSample[uiKRow*uiRowsCov + j];
+          }
+        }
+        else
+        {
+          //go through all the cols in the matrix
+          for (UInt uiKCol = 0; uiKCol < uiColsCov; uiKCol++)
+          {
+            //i-th colum and j-th colum
+            dCovValueThisSample += pDataSample[i*uiColsCov + uiKCol] * pDataSample[j*uiColsCov + uiKCol];
+          }
+        }
+        dCovValue += dCovValueThisSample; //(pData[k][uiRow]*pData[k][uiCol]);
+      }
+      dCovValue /= uiSampleNum; //added 10.21
+      pCovMatrix[i*uiRowsCov + j] = dCovValue;
+    }
+  }
+  for (UInt i = 0; i < uiRowsCov; i++)
+  {
+    for (UInt j = i + 1; j < uiRowsCov; j++)
+    {
+      pCovMatrix[i*uiRowsCov + j] = pCovMatrix[j*uiRowsCov + i];
+    }
+  }
+}
+#endif
+
+Bool TComTrQuant::derive1DimKLT(UInt uiBlkSize, DistType *pDiff, UInt uiUseCandiNumber)
+{
+  Bool bSucceed = true;
+  UInt uiTarDepth = g_aucConvertToBit[uiBlkSize];
+  //calculate covariance matrix
+  const UInt uiDim = uiBlkSize*uiBlkSize;
+  covMatrixType *covMatrix = m_pCovMatrix[uiTarDepth];
+  calcCovMatrix(m_pData, uiUseCandiNumber, covMatrix, uiDim);
+  EigenType **pdEigenVector = m_pppdEigenVector[uiTarDepth];
+  Short **psEigenVector = m_pppsEigenVector[uiTarDepth];
+  g_ppsEigenVector[uiTarDepth] = psEigenVector;
+
+  matrixTypeDefined Cov(uiDim, uiDim);
+  UInt i = 0;
+  for (UInt uiRow = 0; uiRow < uiDim; uiRow++)
+  {
+    for (UInt uiCol = 0; uiCol < uiDim; uiCol++)
+    {
+      Cov(uiRow, uiCol) = covMatrix[i++];
+    }
+  }
+  SelfAdjointEigenSolver<matrixTypeDefined> es(Cov);
+  for (UInt uiRow = 0; uiRow < uiDim; uiRow++)
+  {
+    m_pEigenValues[uiRow] = es.eigenvalues()[uiRow];
+  }
+  OrderData(m_pIDTmp, m_pEigenValues, uiDim);
+  for (UInt uiRow = 0; uiRow < uiDim; uiRow++)
+  {
+    UInt uiMapedCol = m_pIDTmp[uiRow];
+    vectorType v = es.eigenvectors().col(uiMapedCol);
+    for (UInt uiCol = 0; uiCol < uiDim; uiCol++)
+    {
+      pdEigenVector[uiRow][uiCol] = (EigenType)v(uiCol);
+    }
+  }
+  Int scale = uiBlkSize*(1 << KLTBASIS_SHIFTBIT); 
+#if USE_SSE_SCLAE
+  scaleMatrix(pdEigenVector, psEigenVector, scale, uiDim, uiDim);
+#else
+  for (UInt uiRow = 0; uiRow < uiDim; uiRow++)
+  {
+    for (UInt uiCol = 0; uiCol < uiDim; uiCol++)
+    {
+      psEigenVector[uiRow][uiCol] = MY_INT(pdEigenVector[uiRow][uiCol] * scale);
+    }
+  }
+#endif
+  return bSucceed;
+}
+
+Bool TComTrQuant::derive1DimKLT_Fast(UInt uiBlkSize, DistType *pDiff, UInt uiUseCandiNumber)
+{
+  Bool bSucceed = true;
+  UInt uiTarDepth = g_aucConvertToBit[uiBlkSize];
+  const UInt uiDim = uiBlkSize*uiBlkSize;
+  covMatrixType *covMatrix = m_pCovMatrix[uiTarDepth];
+  UInt uiTargetCandiNum = g_uiDepth2MaxCandiNum[uiTarDepth];
+  UInt uiSampleNum = min(uiUseCandiNumber, uiTargetCandiNum);
+  //calculate covariance matrix
+  calcCovMatrixXXt(m_pData, uiSampleNum, covMatrix, uiDim);
+  EigenType **pdEigenVector = m_pppdTmpEigenVector;
+  EigenType **pdEigenVectorTarget = m_pppdEigenVector[uiTarDepth];
+  Short **psEigenVector = m_pppsEigenVector[uiTarDepth];
+  g_ppsEigenVector[uiTarDepth] = psEigenVector;
+
+  //depend on eigen libarary 
+  matrixTypeDefined Cov(uiSampleNum, uiSampleNum);
+  UInt i = 0;
+  for (UInt uiRow = 0; uiRow < uiSampleNum; uiRow++)
+  {
+    for (UInt uiCol = 0; uiCol < uiSampleNum; uiCol++)
+    {
+      Cov(uiRow, uiCol) = covMatrix[i++];
+    }
+  }
+  SelfAdjointEigenSolver<matrixTypeDefined> es(Cov);
+  for (UInt uiRow = 0; uiRow < uiSampleNum; uiRow++)
+  {
+    m_pEigenValues[uiRow] = es.eigenvalues()[uiRow];
+  }
+  OrderData(m_pIDTmp, m_pEigenValues, uiSampleNum);
+  EigenType *pEigenVectorRow;
+  for (UInt uiRow = 0; uiRow < uiSampleNum; uiRow++)
+  {
+    UInt uiMapedCol = m_pIDTmp[uiRow];
+    vectorType v = es.eigenvectors().col(uiMapedCol);
+    pEigenVectorRow = pdEigenVector[uiRow];
+    for (UInt uiCol = 0; uiCol < uiSampleNum; uiCol++)
+    {
+      pEigenVectorRow[uiCol] = (EigenType)v(uiCol);
+    }
+  }
+
+  UInt uiCalcEigNum = uiSampleNum;
+#if FORCE_USE_GIVENNUM_BASIS && !FILL_MORE_BASIS
+  uiCalcEigNum = min(uiSampleNum, (UInt)FORCE_BASIS_NUM);
+#endif
+
+  UInt uiFilledDim = uiCalcEigNum;
+  Double dValue;
+
+  assert(uiSampleNum <= uiDim);
+  double dIgnoreThreshouldFinal = IGNORE_THRESHOULD_OF_LARGEST;
+
+  for (UInt uiRow = 0; uiRow < uiCalcEigNum; uiRow++)
+  {
+    if (m_pEigenValues[uiRow] < dIgnoreThreshouldFinal)
+    {
+      uiFilledDim = uiRow;
+      break;
+    }
+    EigenType *pdEigenVectorRow = pdEigenVector[uiRow];
+    EigenType *pThisBasisRow = pdEigenVectorTarget[uiRow];
+    Double dValueNorm = sqrt(m_pEigenValues[uiRow]);
+    for (UInt uiCol = 0; uiCol < uiDim; uiCol++)
+    {
+#if USE_FLOATXSHORT_SSE
+      dValue = InnerProduct_SSE_FLOATXSHORT(pdEigenVectorRow, m_pDataT[uiCol], uiSampleNum);
+#else
+      dValue = 0;
+      for (UInt k = 0; k < uiSampleNum; k++)
+      {
+        dValue += pdEigenVectorRow[k] * m_pData[k][uiCol]; 
+      }
+#endif
+      pThisBasisRow[uiCol] = (EigenType)(dValue / dValueNorm);
+    }
+  }
+
+#if FILL_MORE_BASIS
+  UInt uiFillMax = uiSampleNum;
+#if FORCE_USE_GIVENNUM_BASIS
+  uiFillMax = min((UInt)FORCE_BASIS_NUM, uiSampleNum);
+#endif
+  UInt uiBasisNum = max(uiFilledDim, uiFillMax);
+  for (int i = uiFilledDim; i < uiBasisNum; i++)
+  {
+    for (UInt uiCol = 0; uiCol < uiDim; uiCol++)
+    {
+      pdEigenVectorTarget[i][uiCol] = m_pData[i - uiFilledDim][uiCol];
+    }
+  }
+  GramSchmidtOrthogonalization(pdEigenVectorTarget, uiDim, uiFilledDim, uiBasisNum);
+#else
+  UInt uiBasisNum = uiFilledDim;
+#endif
+
+  Int iScale = uiBlkSize*(1 << KLTBASIS_SHIFTBIT); 
+#if USE_SSE_SCLAE
+  scaleMatrix(pdEigenVectorTarget, psEigenVector, iScale, uiBasisNum, uiDim);
+#else
+  for (UInt uiRow = 0; uiRow < uiBasisNum; uiRow++)
+  {
+    for (UInt uiCol = 0; uiCol < uiDim; uiCol++)
+    {
+      psEigenVector[uiRow][uiCol] = MY_INT(pdEigenVectorTarget[uiRow][uiCol] * iScale); 
+    }
+  }
+#endif
+
+  for (int row = uiBasisNum; row < uiDim; row++)
+  {
+    memset(psEigenVector[row], 0, sizeof(Short)*uiDim);
+  }
+  return bSucceed;
+}
+
+
+#if FAST_DERIVE_KLT
+//calculate XX' ranther than X'X  X:N * Dim
+Void TComTrQuant::calcCovMatrixXXt(TrainDataType **pData, UInt uiSampleNum, covMatrixType *pCovMatrix, UInt uiDim)
+{
+  //Get the covariance matrix
+  Int covValue; //should be int; if float, the accuracy will be low.
+  TrainDataType *pDataCol;
+  for (UInt uiRow = 0; uiRow < uiSampleNum; uiRow++)
+  {
+    TrainDataType *pDataRow = pData[uiRow];
+    Int offset = uiRow*uiSampleNum;
+    for (UInt uiCol = 0; uiCol <= uiRow; uiCol++)
+    {
+      pDataRow = pData[uiRow];
+      pDataCol = pData[uiCol];
+#if USE_SHORTXSHORT_SSE
+      covValue = InnerProduct_SSE_SHORT(pDataRow, pDataCol, uiDim);
+#else
+      covValue = 0;
+      for (Int i = 0; i < uiDim; i++)
+      {
+        //covValue += pDataRow[i] * pData[uiCol][i];
+        covValue += (*(pDataRow++)) * (*(pDataCol++));
+      }
+#endif
+      pCovMatrix[offset + uiCol] = (covMatrixType)covValue;
+    }
+  }
+
+  for (UInt uiRow = 0; uiRow < uiSampleNum; uiRow++)
+  {
+    for (UInt uiCol = uiRow + 1; uiCol < uiSampleNum; uiCol++)
+    {
+      //pCovMatrix[uiRow*   +uiCol] = pCovMatrix[uiCol*uiSampleNum + uiRow];
+      pCovMatrix[uiRow*uiSampleNum + uiCol] = pCovMatrix[uiCol*uiSampleNum + uiRow];
+    }
+  }
+}
+#endif
+
+Void TComTrQuant::calcCovMatrix(TrainDataType **pData, UInt uiSampleNum, covMatrixType *pCovMatrix, UInt uiDim)
+{
+  //Get the covariance matrix
+  covMatrixType dCovValue;
+  Int covValue;
+#if !(USE_TRANSPOSE_CANDDIATEARRAY && USE_SHORTXSHORT_SSE)
+  UInt i;
+  TrainDataType *pSample;
+#endif
+  for (UInt uiRow = 0; uiRow < uiDim; uiRow++)
+  {
+    for (UInt uiCol = 0; uiCol <= uiRow; uiCol++)
+    {
+#if USE_SHORTXSHORT_SSE
+      covValue = InnerProduct_SSE_SHORT(m_pDataT[uiRow], m_pDataT[uiCol], uiSampleNum);
+#else
+      covValue = 0;
+      for (i = 0; i < uiSampleNum; i++)
+      {
+        pSample = pData[i];
+        covValue += pSample[uiRow] * pSample[uiCol];
+      }
+#endif
+      dCovValue = (covMatrixType)covValue / (covMatrixType)(uiSampleNum); 
+      pCovMatrix[uiRow*uiDim + uiCol] = dCovValue;
+    }
+  }
+
+  for (UInt uiRow = 0; uiRow < uiDim; uiRow++)
+  {
+    for (UInt uiCol = uiRow + 1; uiCol < uiDim; uiCol++)
+    {
+      pCovMatrix[uiRow*uiDim + uiCol] = pCovMatrix[uiCol*uiDim + uiRow];
+    }
+  }
+}
+
+
+
+#if FILL_MORE_BASIS
+#define MAX_DIM 1024
+// dim: dimension of the matrix (dim*dim); 
+// startdim: the start dim to be orthogonalized.
+// enddim: the end dim to be orthogonalized.
+void GramSchmidtOrthogonalization(EigenType **pMatrix, int dim, int startdim, int enddim)
+{
+  const int dimconst = dim;
+  EigenType w[MAX_DIM];
+  if (startdim == 0)
+  {
+    int row = 0;
+    for (int k = 0; k < dim; k++)
+    {
+      w[k] = pMatrix[row][k];
+    }
+    EigenType norm2 = 0;
+    for (int k = 0; k < dim; k++)
+    {
+      norm2 += w[k] * w[k];
+    }
+    norm2 = sqrtf((float)(norm2));
+    for (int k = 0; k < dim; k++)
+    {
+      pMatrix[row][k] = w[k] / norm2;
+    }
+    startdim = 1;
+  }
+  for (int row = startdim; row < enddim; row++)
+  {
+    for (int k = 0; k < dim; k++)
+    {
+      w[k] = pMatrix[row][k];
+    }
+    for (int j = 0; j < row; j++)
+    {
+      EigenType rj = 0;
+      for (int k = 0; k < dim; k++)
+      {
+        rj += (w[k] * pMatrix[j][k]);
+      }
+
+      for (int k = 0; k < dim; k++)
+      {
+        w[k] -= rj*pMatrix[j][k];
+      }
+    }
+    EigenType norm2 = 0;
+    for (int k = 0; k < dim; k++)
+    {
+      norm2 += w[k] * w[k];
+    }
+    norm2 = sqrtf((float)(norm2));
+    if (norm2 > 1e-5)
+    {
+      for (int k = 0; k < dim; k++)
+      {
+        pMatrix[row][k] = w[k] / norm2;
+      }
+    }
+    else
+    {
+      for (int k = 0; k < dim; k++)
+      {
+        pMatrix[row][k] = 0;
+      }
+    }
+  }
+}
+#endif
+
+#endif
+
+#if INTER_KLT
+Void TComTrQuant::getTargetPatch(TComDataCU *pcCU, UInt uiAbsPartIdx, UInt absTUPartIdx, TComYuv* pcPred, UInt uiBlkSize, UInt uiTempSize)
+{
+  UInt uiPatchSize = uiBlkSize + uiTempSize;
+  UInt uiTarDepth = g_aucConvertToBit[uiBlkSize];
+  Pel **tarPatch = m_pppTarPatch[uiTarDepth];
+  UInt  uiZOrder = pcCU->getZorderIdxInCU() + uiAbsPartIdx;
+  Pel   *pCurrStart = pcCU->getPic()->getPicYuvRec()->getLumaAddr(pcCU->getAddr(), uiZOrder);
+  UInt  uiPicStride = pcCU->getPic()->getStride();
+
+  Pel   *pPred = pcPred->getLumaAddr(absTUPartIdx);
+  UInt  uiPredStride = pcPred->getStride();
+
+  //fill the target block
+  UInt uiY, uiX;
+  for (uiY = uiTempSize; uiY < uiPatchSize; uiY++)
+  {
+    for (uiX = uiTempSize; uiX < uiPatchSize; uiX++)
+    {
+      tarPatch[uiY][uiX] = pPred[uiX - uiTempSize];
+    }
+    pPred += uiPredStride;
+  }
+
+  //fill template
+  //up-left & up 
+  Pel  *tarTemp;
+  Pel  *pCurrTemp = pCurrStart - uiTempSize*uiPicStride - uiTempSize;
+  for (uiY = 0; uiY < uiTempSize; uiY++)
+  {
+    tarTemp = tarPatch[uiY];
+    for (uiX = 0; uiX < uiPatchSize; uiX++)
+    {
+      tarTemp[uiX] = pCurrTemp[uiX];
+    }
+    pCurrTemp += uiPicStride;
+  }
+  //left
+  for (uiY = uiTempSize; uiY < uiPatchSize; uiY++)
+  {
+    tarTemp = tarPatch[uiY];
+    for (uiX = 0; uiX < uiTempSize; uiX++)
+    {
+      tarTemp[uiX] = pCurrTemp[uiX];
+    }
+    pCurrTemp += uiPicStride;
+  }
+}
+
+
+Void TComTrQuant::candidateSearch(TComDataCU *pcCU, UInt uiPartAddr, UInt uiBlkSize, UInt uiTempSize)
+{
+  UInt uiPatchSize = uiBlkSize + uiTempSize;
+  UInt uiTarDepth = g_aucConvertToBit[uiBlkSize];
+  Pel **tarPatch = m_pppTarPatch[uiTarDepth];
+  Int      iRefIdx[2] = { -1, -1 };
+  TComMv      cMvs[2];
+  // UInt     uiCandiNum = 0;
+  UInt uiTargetCandiNum = g_uiDepth2MaxCandiNum[uiTarDepth];
+  // UInt uiLibSizeMinusOne = uiTargetCandiNum - 1;
+
+  //Initialize the library for saving the best candidates
+  m_tempLibFast.initDiff(uiPatchSize, g_bitDepthY, uiTargetCandiNum);
+  Short setId = -1; //to record the reference picture.
+
+  Int iCurrPOC = pcCU->getPic()->getPOC();
+  Int iRefPOC = 0;
+  TComMv cMvRef;
+
+  Int iRefPOCs[2] = { 0, 0 };
+  TComMv      cMvRefs[2];
+  cMvRefs[0].setZero();
+  cMvRefs[1].setZero();
+  Int filledNum = 0;
+  for (Int iRefList = 0; iRefList < 2; iRefList++)
+  {
+    RefPicList eRefPicList = (iRefList ? REF_PIC_LIST_1 : REF_PIC_LIST_0);
+    iRefIdx[eRefPicList] = pcCU->getCUMvField(eRefPicList)->getRefIdx(uiPartAddr);
+    if (iRefIdx[eRefPicList] >= 0)
+    {
+      cMvRefs[filledNum] = cMvs[eRefPicList];
+      iRefPOCs[filledNum] = pcCU->getSlice()->getRefPic(eRefPicList, iRefIdx[eRefPicList])->getPOC();
+      filledNum++;
+    }
+  }
+
+  //for other reference frames not related with prediction
+  for (Int iRefList = 0; iRefList < 2; iRefList++)
+  {
+    RefPicList eRefPicList = (iRefList ? REF_PIC_LIST_1 : REF_PIC_LIST_0);
+    for (Int iRefIdxTemp = 0; iRefIdxTemp < pcCU->getSlice()->getNumRefIdx(eRefPicList); iRefIdxTemp++)
+    {
+      TComMv   cMv;
+      Int iTargetPOC = pcCU->getSlice()->getRefPic(eRefPicList, iRefIdxTemp)->getPOC();
+      Int minDistancePOC = MAX_INT;
+      Int distance;
+      //use the reference frame (having mvs) with nearest distacne from the current iTargetPOC 
+      for (Int filledId = 0; filledId < filledNum; filledId++)
+      {
+        distance = abs(iRefPOCs[filledId] - iTargetPOC);
+        if (distance < minDistancePOC)
+        {
+          minDistancePOC = distance;
+          iRefPOC = iRefPOCs[filledId];
+          cMvRef = cMvRefs[filledId];
+        }
+      }
+
+      Double dScale = ((Double)(iCurrPOC - iTargetPOC) / (Double)(iCurrPOC - iRefPOC)); 
+      cMv.set((Short)(cMvRef.getHor()*dScale + 0.5), (Short)(cMvRef.getVer()*dScale + 0.5));
+
+      if (eRefPicList == REF_PIC_LIST_1)
+      {
+        //check whether the reference frames in list1 had appeared in list0, if so, will not use it to find candidates.
+        bool bSimilarSearchRegion = false;
+        for (Int iRefIdxList0 = 0; iRefIdxList0 < pcCU->getSlice()->getNumRefIdx(REF_PIC_LIST_0); iRefIdxList0++)
+        {
+          UInt prevPicPOCList0 = pcCU->getSlice()->getRefPic(eRefPicList, iRefIdxList0)->getPOC();
+          if (prevPicPOCList0 == iTargetPOC)
+          {
+            bSimilarSearchRegion = true;
+            break; //had appeared in list0 for this reference in list1
+          }
+        }
+        if (bSimilarSearchRegion)
+        {
+          continue;
+        }
+      }
+
+      TComPic* refPic = pcCU->getSlice()->getRefPic(eRefPicList, iRefIdxTemp);
+      UInt uiRow = 0;
+      UInt uiCol = 0;
+      TComPicYuv *refPicRec = refPic->getPicQuaYuvRec(uiRow, uiCol);
+      Pel *ref = refPicRec->getLumaAddr(pcCU->getAddr(), pcCU->getZorderIdxInCU() + uiPartAddr);
+      setId++;
+      setRefPicUsed(setId, ref); //to facilitate the access of each candidate point 
+      setRefPicBuf(setId, refPic);
+      setStride(refPicRec->getStride());
+      Bool bInteger = true;
+      searchCandidateFromOnePicInteger(pcCU, uiPartAddr, refPic, refPicRec, cMv, tarPatch, uiPatchSize, uiTempSize, setId, bInteger);
+    }
+  }
+
+  Short setIdFraStart = setId + 1;
+  RecordPosition(uiTargetCandiNum);
+  searchCandidateFraBasedOnInteger(pcCU, tarPatch, uiPatchSize, uiTempSize, uiPartAddr, setIdFraStart);
+}
+
+Void TComTrQuant::searchCandidateFromOnePicInteger(TComDataCU *pcCU, UInt uiPartAddr, TComPic* refPicSrc, TComPicYuv *refPic, TComMv  cMv, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, UInt setId, Bool bInteger)
+{
+  UInt uiBlkSize = uiPatchSize - uiTempSize;
+  UInt uiTarDepth = g_aucConvertToBit[uiBlkSize];
+  UInt uiTargetCandiNum = g_uiDepth2MaxCandiNum[uiTarDepth];
+  UInt  uiLibSizeMinusOne = uiTargetCandiNum - 1;
+  m_uiPartLibSize = uiTargetCandiNum;
+
+  Int *pX = m_tempLibFast.getX();
+  Int *pY = m_tempLibFast.getY();
+  DistType *pDiff = m_tempLibFast.getDiff();
+  Short *pId = m_tempLibFast.getId();
+
+  Int  refStride = refPic->getStride();
+  Pel  *ref = refPic->getLumaAddr(pcCU->getAddr(), pcCU->getZorderIdxInCU() + uiPartAddr);
+
+  Int      iSrchRng = SEARCHRANGE;
+  TComMv  cMvSrchRngLT;
+  TComMv  cMvSrchRngRB;
+  xSetSearchRange(pcCU, cMv, iSrchRng, cMvSrchRngLT, cMvSrchRngRB);
+
+  Int mvYMin = cMvSrchRngLT.getVer();
+  Int mvYMax = cMvSrchRngRB.getVer();
+
+  Int mvXMin = cMvSrchRngLT.getHor();
+  Int mvXMax = cMvSrchRngRB.getHor();
+
+  //search
+  Pel *refMove = ref + mvYMin*refStride + mvXMin;
+  DistType *pDiffEnd = &pDiff[uiLibSizeMinusOne];
+
+  DistType diff;
+  for (Int iYOffset = mvYMin; iYOffset <= mvYMax; iYOffset++)
+  {
+    Pel *refCurr = refMove;
+    for (Int iXOffset = mvXMin; iXOffset <= mvXMax; iXOffset++)
+    {
+      //The position of the leftup pixel within this block: refCurr = ref + iYOffset*refStride + iXOffset;
+      diff = calcPatchDiff(refCurr, refStride, tarPatch, uiPatchSize, uiTempSize, *pDiffEnd);
+      refCurr++;
+      if (diff > 0 && diff < (*pDiffEnd))//when residual is zero, may not contribute to the distribution.
+      {
+        insertNode(diff, iXOffset, iYOffset, pDiff, pX, pY, pId, uiLibSizeMinusOne, setId);
+      }
+    }
+    refMove += refStride;
+  }
+}
+
+
+Void TComTrQuant::searchCandidateFraBasedOnInteger(TComDataCU *pcCU, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, UInt uiPartAddr, Short setIdFraStart)
+{
+  UInt uiBlkSize = uiPatchSize - uiTempSize;
+  UInt uiTarDepth = g_aucConvertToBit[uiBlkSize];
+  UInt uiTargetCandiNum = g_uiDepth2MaxCandiNum[uiTarDepth];
+  UInt  uiLibSizeMinusOne = uiTargetCandiNum - 1;
+  Int  refStride = getStride();
+  Pel *ref;
+  UInt setId;
+  Int iCandiPosNum = m_uiPartLibSize;
+
+  Int k;
+  Int *pXInteger = m_tempLibFast.getXInteger();
+  Int *pYInteger = m_tempLibFast.getYInteger();
+  Short *pIdInteger = m_tempLibFast.getIdInteger();
+
+  Int *pX = m_tempLibFast.getX();
+  Int *pY = m_tempLibFast.getY();
+  DistType *pDiff = m_tempLibFast.getDiff();
+  Short *pId = m_tempLibFast.getId();
+
+  DistType diff;
+  Pel *refCurr, *refCenter;
+  DistType *pDiffEnd = &pDiff[uiLibSizeMinusOne];
+  Int iOffsetY, iOffsetX;
+  TComPic* refPic;
+  UInt uiIdxAddr = pcCU->getZorderIdxInCU() + uiPartAddr;
+  Short setIdFra = setIdFraStart - 1;
+  for (k = 0; k < iCandiPosNum; k++)
+  {
+    setId = pIdInteger[k];
+    refPic = getRefPicBuf(setId);
+
+    iOffsetY = pYInteger[k];
+    iOffsetX = pXInteger[k];
+
+    for (UInt uiRow = 0; uiRow < 4; uiRow++)
+    {
+      for (UInt uiCol = 0; uiCol < 4; uiCol++)
+      {
+        if (uiRow != 0 || uiCol != 0)
+        {
+          TComPicYuv *refPicRec = refPic->getPicQuaYuvRec(uiRow, uiCol);
+          ref = refPicRec->getLumaAddr(pcCU->getAddr(), uiIdxAddr);
+
+          setIdFra++;
+          setRefPicUsed(setIdFra, ref);
+          refCenter = ref + iOffsetY*refStride + iOffsetX;
+          //center
+          refCurr = refCenter;
+          diff = calcPatchDiff(refCurr, refStride, tarPatch, uiPatchSize, uiTempSize, *pDiffEnd);
+          if (diff > 0 && diff < (*pDiffEnd))
+          {
+            insertNode(diff, iOffsetX, iOffsetY, pDiff, pX, pY, pId, uiLibSizeMinusOne, setIdFra);
+          }
+          //left
+          refCurr = refCenter - 1;
+          diff = calcPatchDiff(refCurr, refStride, tarPatch, uiPatchSize, uiTempSize, *pDiffEnd);
+          if (diff > 0 && diff < (*pDiffEnd))
+          {
+            insertNode(diff, iOffsetX - 1, iOffsetY, pDiff, pX, pY, pId, uiLibSizeMinusOne, setIdFra);
+          }
+          //up
+          refCurr = refCenter - refStride;
+          diff = calcPatchDiff(refCurr, refStride, tarPatch, uiPatchSize, uiTempSize, *pDiffEnd);
+          if (diff > 0 && diff < (*pDiffEnd))
+          {
+            insertNode(diff, iOffsetX, iOffsetY - 1, pDiff, pX, pY, pId, uiLibSizeMinusOne, setIdFra);
+          }
+          //left-up
+          refCurr = refCenter - refStride - 1;
+          diff = calcPatchDiff(refCurr, refStride, tarPatch, uiPatchSize, uiTempSize, *pDiffEnd);
+          if (diff > 0 && diff < (*pDiffEnd))
+          {
+            insertNode(diff, iOffsetX - 1, iOffsetY - 1, pDiff, pX, pY, pId, uiLibSizeMinusOne, setIdFra);
+          }
+        }
+      }
+    }
+  }
+}
+
+Void TComTrQuant::xSetSearchRange(TComDataCU* pcCU, TComMv& cMvPred, Int iSrchRng, TComMv& rcMvSrchRngLT, TComMv& rcMvSrchRngRB)
+{
+  Int  iMvShift = 2;
+  TComMv cTmpMvPred = cMvPred;
+  pcCU->clipMv(cTmpMvPred);
+
+  rcMvSrchRngLT.setHor(cTmpMvPred.getHor() - (iSrchRng << iMvShift));
+  rcMvSrchRngLT.setVer(cTmpMvPred.getVer() - (iSrchRng << iMvShift));
+
+  rcMvSrchRngRB.setHor(cTmpMvPred.getHor() + (iSrchRng << iMvShift));
+  rcMvSrchRngRB.setVer(cTmpMvPred.getVer() + (iSrchRng << iMvShift));
+  pcCU->clipMv(rcMvSrchRngLT);
+  pcCU->clipMv(rcMvSrchRngRB);
+
+  rcMvSrchRngLT >>= iMvShift;
+  rcMvSrchRngRB >>= iMvShift;
+}
+
+Void TComTrQuant::RecordPosition(UInt uiTargetCandiNum)
+{
+  Int *pX = m_tempLibFast.getX();
+  Int *pY = m_tempLibFast.getY();
+  DistType *pDiff = m_tempLibFast.getDiff();
+  Short *pId = m_tempLibFast.getId();
+  Short *pIdInteger = m_tempLibFast.getIdInteger();
+  Int *pXInteger = m_tempLibFast.getXInteger();
+  Int *pYInteger = m_tempLibFast.getYInteger();
+
+  Int maxDiff = m_tempLibFast.getDiffMax();
+  UInt uiInvalidCount = 0;
+  Int k;
+  for (k = uiTargetCandiNum - 1; k >= 0; k--)
+  {
+    if (pDiff[k] >= maxDiff)
+    {
+      uiInvalidCount++;
+    }
+    else
+    {
+      break;
+    }
+  }
+  Int uiVaildCandiNum = uiTargetCandiNum - uiInvalidCount;
+  memcpy(pXInteger, pX, sizeof(Int)*uiVaildCandiNum);
+  memcpy(pYInteger, pY, sizeof(Int)*uiVaildCandiNum);
+  memcpy(pIdInteger, pId, sizeof(Short)*uiVaildCandiNum);
+  m_uiPartLibSize = uiVaildCandiNum;
+}
+
+
+Bool TComTrQuant::candidateTrain(TComDataCU *pcCU, UInt uiAbsPartIdx, UInt uiBlkSize, UInt uiTempSize)
+{
+  Bool bSucceedFlag = true;
+  bSucceedFlag = prepareKLTSamplesInter(pcCU, uiAbsPartIdx, uiBlkSize, uiTempSize);
+  if (bSucceedFlag)
+  {
+    bSucceedFlag = deriveKLT(uiBlkSize, m_uiVaildCandiNum);
+  }
+  return bSucceedFlag;
+}
+
+Bool TComTrQuant::prepareKLTSamplesInter(TComDataCU *pcCU, UInt uiAbsPartIdx, UInt uiBlkSize, UInt uiTempSize)
+{
+  // Bool bSucceedFlag = true;
+  UInt uiTarDepth = g_aucConvertToBit[uiBlkSize];
+  UInt uiHeight = uiBlkSize;
+  UInt uiWidth = uiHeight;
+  UInt uiPatchSize = uiBlkSize + uiTempSize;
+  Pel **tarPatch = m_pppTarPatch[uiTarDepth];
+  UInt uiTargetCandiNum = g_uiDepth2MaxCandiNum[uiTarDepth];
+  UInt uiAllowMinCandiNum = g_uiDepth2MinCandiNum[uiTarDepth];
+  //count collected candidate number
+  Int k;
+  Int maxDiff = m_tempLibFast.getDiffMax();
+  DistType *pDiff = m_tempLibFast.getDiff();
+  UInt uiInvalidCount = 0;
+  for (k = uiTargetCandiNum - 1; k >= 0; k--)
+  {
+    if (pDiff[k] >= maxDiff)
+    {
+      uiInvalidCount++;
+    }
+    else
+    {
+      break;
+    }
+  }
+  m_uiVaildCandiNum = uiTargetCandiNum - uiInvalidCount;
+  if (m_uiVaildCandiNum < uiAllowMinCandiNum)
+  {
+    return false;
+  }
+  Int picStride = getStride();
+  Pel predBlk[MAX_1DTRANS_LEN];
+  Int i = 0;
+
+  Pel *tarPatchRow;
+  for (UInt uiY = uiTempSize; uiY < uiPatchSize; uiY++)
+  {
+    tarPatchRow = tarPatch[uiY];
+    for (UInt uiX = uiTempSize; uiX < uiPatchSize; uiX++)
+    {
+      predBlk[i++] = tarPatchRow[uiX];
+    }
+  }
+
+  Int *pX = m_tempLibFast.getX();
+  Int *pY = m_tempLibFast.getY();
+  Short *pId = m_tempLibFast.getId();
+  Short setId;
+  Pel *ref;
+  Int iOffsetY, iOffsetX;
+  Pel *refTarget;
+
+  TrainDataType *pData;
+  Int iCandiNum = m_uiVaildCandiNum;
+  for (k = 0; k < iCandiNum; k++)
+  {
+    setId = pId[k];
+    pData = m_pData[k];
+    iOffsetY = pY[k];
+    iOffsetX = pX[k];
+    ref = getRefPicUsed(setId);
+    refTarget = ref + iOffsetY*picStride + iOffsetX;
+    i = 0;
+    for (UInt uiY = 0; uiY < uiHeight; uiY++)
+    {
+      for (UInt uiX = 0; uiX < uiWidth; uiX++)
+      {
+        *pData++ = refTarget[uiX] - predBlk[i++];
+      }
+      refTarget += picStride;
+    }
+  }
+
+#if USE_TRANSPOSE_CANDDIATEARRAY
+  Int dim = uiWidth * uiHeight;
+  Int d;
+  for (k = 0; k < iCandiNum; k++)
+  {
+    for (d = 0; d < dim; d++)
+    {
+      m_pDataT[d][k] = m_pData[k][d];
+    }
+  }
+#endif
+  return true;
+}
+
+#endif
+
+
+
+#if INTRA_KLT
+Void TempLibFast::initTemplateDiff(UInt uiPatchSize, UInt uiBlkSize, Int bitDepth, Int iCandiNumber)
+{
+#if USE_SAD_DISTANCE
+  DistType maxValue = ((1 << bitDepth) >> (INIT_THRESHOULD_SHIFTBITS))*(uiPatchSize*uiPatchSize - uiBlkSize*uiBlkSize);
+#endif
+#if USE_SSD_DISTANCE
+  DistType maxValue = ((1 << bitDepth) >> (INIT_THRESHOULD_SHIFTBITS))*((1 << bitDepth) >> (INIT_THRESHOULD_SHIFTBITS))*(uiPatchSize*uiPatchSize - uiBlkSize*uiBlkSize);
+#endif
+  m_diffMax = maxValue;
+  for (Int i = 0; i < iCandiNumber; i++)
+  {
+    m_pDiff[i] = maxValue;
+  }
+}
+
+Void TComTrQuant::getTargetTemplate(TComDataCU *pcCU, UInt uiAbsPartIdx, UInt absTUPartIdx, TComYuv* pcPred, UInt uiBlkSize, UInt uiTempSize)
+{
+  UInt uiPatchSize = uiBlkSize + uiTempSize;
+  UInt uiTarDepth = g_aucConvertToBit[uiBlkSize];
+  Pel **tarPatch = m_pppTarPatch[uiTarDepth];
+  UInt  uiZOrder = pcCU->getZorderIdxInCU() + uiAbsPartIdx;
+  Pel   *pCurrStart = pcCU->getPic()->getPicYuvRec()->getLumaAddr(pcCU->getAddr(), uiZOrder);
+  UInt  uiPicStride = pcCU->getPic()->getStride();
+  UInt uiY, uiX;
+
+  //fill template
+  //up-left & up 
+  Pel  *tarTemp;
+  Pel  *pCurrTemp = pCurrStart - uiTempSize*uiPicStride - uiTempSize;
+  for (uiY = 0; uiY < uiTempSize; uiY++)
+  {
+    tarTemp = tarPatch[uiY];
+    for (uiX = 0; uiX < uiPatchSize; uiX++)
+    {
+      tarTemp[uiX] = pCurrTemp[uiX];
+    }
+    pCurrTemp += uiPicStride;
+  }
+  //left
+  for (uiY = uiTempSize; uiY < uiPatchSize; uiY++)
+  {
+    tarTemp = tarPatch[uiY];
+    for (uiX = 0; uiX < uiTempSize; uiX++)
+    {
+      tarTemp[uiX] = pCurrTemp[uiX];
+    }
+    pCurrTemp += uiPicStride;
+  }
+}
+
+Void TComTrQuant::candidateSearchIntra(TComDataCU *pcCU, UInt uiPartAddr, UInt uiBlkSize, UInt uiTempSize)
+{
+  UInt uiPatchSize = uiBlkSize + uiTempSize;
+  UInt uiTarDepth = g_aucConvertToBit[uiBlkSize];
+  Pel **tarPatch = getTargetPatch(uiTarDepth); 
+  // UInt uiCandiNum = 0;
+  UInt uiTargetCandiNum = g_uiDepth2MaxCandiNum[uiTarDepth];
+  TComPic *pPic = pcCU->getPic();
+  TComPicYuv *pPicYuv = pPic->getPicYuvRec();
+  //Initialize the library for saving the best candidates
+  m_tempLibFast.initTemplateDiff(uiPatchSize, uiBlkSize, g_bitDepthY, uiTargetCandiNum);
+  Short setId = 0; //record the reference picture.
+  TComMv cMv;
+  cMv.setZero();
+  searchCandidateFromOnePicIntra(pcCU, uiPartAddr, pPic, pPicYuv, cMv, tarPatch, uiPatchSize, uiTempSize, setId);
+}
+
+Void  TComTrQuant::searchCandidateFromOnePicIntra(TComDataCU *pcCU, UInt uiPartAddr, TComPic* refPicSrc, TComPicYuv *refPic, TComMv  cMv, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, UInt setId)
+{
+  UInt uiBlkSize = uiPatchSize - uiTempSize;
+  UInt uiTarDepth = g_aucConvertToBit[uiBlkSize];
+  UInt uiTargetCandiNum = g_uiDepth2MaxCandiNum[uiTarDepth];
+  if (GENPRED0GENPREDANDTRAINKLT1 == 0)
+  {
+    uiTargetCandiNum = min((UInt)TMPRED_CANDI_NUM, uiTargetCandiNum);
+  }
+  UInt  uiLibSizeMinusOne = uiTargetCandiNum - 1;
+
+  Int *pX = m_tempLibFast.getX();
+  Int *pY = m_tempLibFast.getY();
+  DistType *pDiff = m_tempLibFast.getDiff();
+  Short *pId = m_tempLibFast.getId();
+  Int     refStride = refPic->getStride();
+  Int zOrder = pcCU->getZorderIdxInCU() + uiPartAddr;
+  Pel *ref = refPic->getLumaAddr(pcCU->getAddr(), zOrder);
+  setRefPicUsed(setId, ref); //facilitate the access of each candidate point 
+  setStride(refPic->getStride());
+
+  Int     iSrchRng = SEARCHRANGEINTRA;
+  TComMv  cMvSrchRngLT;
+  TComMv  cMvSrchRngRB;
+
+  Int  iMvShift = 0;
+  TComMv cTmpMvPred;
+  cTmpMvPred.setZero();
+
+  UInt uiCUPelY = pcCU->getCUPelY();
+  UInt uiCUPelX = pcCU->getCUPelX();
+  Int blkX = g_auiRasterToPelX[g_auiZscanToRaster[uiPartAddr]];
+  Int blkY = g_auiRasterToPelY[g_auiZscanToRaster[uiPartAddr]];
+  Int iCurrY = uiCUPelY + blkY;
+  Int iCurrX = uiCUPelX + blkX;
+  Int offsetLCUY = g_auiRasterToPelY[g_auiZscanToRaster[zOrder]]; //offset in this LCU
+  Int offsetLCUX = g_auiRasterToPelX[g_auiZscanToRaster[zOrder]];
+
+  Int iYOffset, iXOffset;
+  DistType diff;
+  DistType *pDiffEnd = &pDiff[uiLibSizeMinusOne];
+  Pel *refCurr;
+
+#define REGION_NUM 3
+  Int mvYMins[REGION_NUM];
+  Int mvYMaxs[REGION_NUM];
+  Int mvXMins[REGION_NUM];
+  Int mvXMaxs[REGION_NUM];
+  Int regionNum = REGION_NUM;
+  Int regionId = 0;
+
+  //1. check the near pixels within LCU
+  //above pixels in LCU
+  Int iTemplateSize = uiTempSize;
+  Int iBlkSize = uiBlkSize;
+  regionId = 0;
+  Int iVerMin = max(((iTemplateSize) << iMvShift), (iCurrY - offsetLCUY - iBlkSize + 1) << iMvShift);
+  Int iVerMax = (iCurrY - iBlkSize) << iMvShift;
+  Int iHorMin = max((iTemplateSize) << iMvShift, (iCurrX - offsetLCUX - iBlkSize + 1) << iMvShift);
+  Int iHorMax = min((iCurrX - offsetLCUX + g_uiMaxCUWidth - iBlkSize) << iMvShift, refPicSrc->getSlice(0)->getSPS()->getPicWidthInLumaSamples() - iBlkSize); 
+
+  mvXMins[regionId] = iHorMin - iCurrX;
+  mvXMaxs[regionId] = iHorMax - iCurrX;
+  mvYMins[regionId] = iVerMin - iCurrY;
+  mvYMaxs[regionId] = iVerMax - iCurrY;
+  //left pixels in LCU
+  regionId = 1;
+  iVerMin = max(((iTemplateSize) << iMvShift), (iCurrY - iBlkSize + 1) << iMvShift);
+  iVerMax = min((iCurrY - offsetLCUY + g_uiMaxCUHeight - iBlkSize) << iMvShift, refPicSrc->getSlice(0)->getSPS()->getPicHeightInLumaSamples() - iBlkSize);
+
+  iHorMin = max((iTemplateSize) << iMvShift, (iCurrX - offsetLCUX - iBlkSize + 1) << iMvShift); 
+  iHorMax = (iCurrX - iBlkSize) << iMvShift;
+  mvXMins[regionId] = iHorMin - iCurrX;
+  mvXMaxs[regionId] = iHorMax - iCurrX;
+  mvYMins[regionId] = iVerMin - iCurrY;
+  mvYMaxs[regionId] = iVerMax - iCurrY;
+  Int combinedX = offsetLCUX + iBlkSize - 1;
+  Int combinedY = offsetLCUY + iBlkSize - 1;
+  //check within LCU pixels
+  for (regionId = 0; regionId < 2; regionId++)
+  {
+    Int mvYMin = mvYMins[regionId];
+    Int mvYMax = mvYMaxs[regionId];
+    Int mvXMin = mvXMins[regionId];
+    Int mvXMax = mvXMaxs[regionId];
+    if (mvYMax < mvYMin || mvXMax < mvXMin)
+    {
+      continue;
+    }
+    // Pel *refMove = ref + mvYMin*refStride + mvXMin;
+
+    for (iYOffset = mvYMax; iYOffset >= mvYMin; iYOffset--)
+    {
+      for (iXOffset = mvXMax; iXOffset >= mvXMin; iXOffset--)
+      {
+        refCurr = ref + iYOffset*refStride + iXOffset;
+        Int iLCUX = iXOffset + combinedX; 
+        Int iLCUY = iYOffset + combinedY;  
+        Int ZorderTmp = getZorder(iLCUX, iLCUY);
+        if (ZorderTmp >= zOrder)
+        {
+          //Ignore the blocks that have not been coded.
+          continue;
+        }
+        diff = calcTemplateDiff(refCurr, refStride, tarPatch, uiPatchSize, uiTempSize, *pDiffEnd);
+        if (diff < (*pDiffEnd))
+        {
+          insertNode(diff, iXOffset, iYOffset, pDiff, pX, pY, pId, uiLibSizeMinusOne, setId);
+        }
+      }
+    }
+  }
+
+  //2. check the pixels outside LCU
+  for (regionId = 0; regionId < regionNum; regionId++)
+  {
+    pcCU->clipMvIntraConstraint(regionId, mvXMins[regionId], mvXMaxs[regionId], mvYMins[regionId], mvYMaxs[regionId], iSrchRng, uiTempSize, uiBlkSize, iCurrY, iCurrX, offsetLCUY, offsetLCUX);
+  }
+  for (regionId = 0; regionId < regionNum; regionId++)
+  {
+    Int mvYMin = mvYMins[regionId];
+    Int mvYMax = mvYMaxs[regionId];
+    Int mvXMin = mvXMins[regionId];
+    Int mvXMax = mvXMaxs[regionId];
+    // Pel *refMove = ref + mvYMin*refStride + mvXMin;
+    if (mvXMax < mvXMin)
+    {
+      continue;
+    }
+    for (iYOffset = mvYMax; iYOffset >= mvYMin; iYOffset--)
+    {
+      for (iXOffset = mvXMax; iXOffset >= mvXMin; iXOffset--)
+      {
+        refCurr = ref + iYOffset*refStride + iXOffset;
+        diff = calcTemplateDiff(refCurr, refStride, tarPatch, uiPatchSize, uiTempSize, *pDiffEnd);
+        if (diff < (*pDiffEnd))
+        {
+          insertNode(diff, iXOffset, iYOffset, pDiff, pX, pY, pId, uiLibSizeMinusOne, setId);
+        }
+      }
+    }
+  }
+}
+
+Bool TComTrQuant::generateTMPrediction(Pel *piPred, UInt uiStride, UInt uiBlkSize, UInt uiTempSize, Int genPred0genPredAndtrainKLT1, Int &foundCandiNum)
+{
+  Bool bSucceedFlag = true;
+  UInt uiPatchSize = uiBlkSize + uiTempSize;
+  UInt uiTarDepth = g_aucConvertToBit[uiBlkSize];
+  // Pel **tarPatch = m_pppTarPatch[uiTarDepth];
+  //count collected candidate number
+  DistType *pDiff = m_tempLibFast.getDiff();
+  DistType maxDiff = m_tempLibFast.getDiffMax();
+  Int k;
+  UInt uiInvalidCount = 0;
+  UInt uiTargetCandiNum = g_uiDepth2MaxCandiNum[uiTarDepth];
+  // UInt uiAllowMinCandiNum = g_uiDepth2MinCandiNum[uiTarDepth];
+
+  for (k = uiTargetCandiNum - 1; k >= 0; k--)
+  {
+    if (pDiff[k] >= maxDiff)
+    {
+      uiInvalidCount++;
+    }
+    else
+    {
+      break;
+    }
+  }
+  m_uiVaildCandiNum = uiTargetCandiNum - uiInvalidCount;
+  foundCandiNum = m_uiVaildCandiNum;
+  Int iCandiNum;
+  iCandiNum = min((UInt)TMPRED_CANDI_NUM, m_uiVaildCandiNum);
+  if (iCandiNum < 1)
+  {
+    return false;
+  }
+
+  Int *pX = m_tempLibFast.getX();
+  Int *pY = m_tempLibFast.getY();
+  // Short *pId = m_tempLibFast.getId();
+  Short setId;
+  Pel *ref;
+  Int picStride = getStride();
+  Int iOffsetY, iOffsetX;
+  Pel *refTarget;
+  UInt uiHeight = uiPatchSize - uiTempSize;
+  UInt uiWidth = uiHeight;
+  TrainDataType *pData;
+
+  //the data center: we use the prediction block as the center now.
+  Pel predBlk[MAX_1DTRANS_LEN] = { 0 };
+  UInt i = 0;
+  //collect the candidates
+  setId = 0;
+  ref = getRefPicUsed(setId);
+
+  for (k = 0; k < iCandiNum; k++)
+  {
+    pData = m_pData[k];
+    iOffsetY = pY[k];
+    iOffsetX = pX[k];
+    refTarget = ref + iOffsetY*picStride + iOffsetX;
+    for (UInt uiY = 0; uiY < uiHeight; uiY++)
+    {
+      for (UInt uiX = 0; uiX < uiWidth; uiX++)
+      {
+        *pData++ = refTarget[uiX];
+      }
+      refTarget += picStride;
+    }
+  }
+  //average of the first several candidates as prediction
+  Int iSize = uiWidth*uiHeight;
+  for (k = 0; k < iCandiNum; k++)
+  {
+    pData = m_pData[k];
+    for (i = 0; i < iSize; i++)
+    {
+      predBlk[i] += pData[i];
+    }
+  }
+  Int iShift = iCandiNum >> 1;
+  for (i = 0; i < iSize; i++)
+  {
+    predBlk[i] = (predBlk[i] + iShift) / iCandiNum;
+  }
+
+  Pel*  pPred = piPred;
+  i = 0;
+  for (UInt uiY = 0; uiY < uiHeight; uiY++)
+  {
+    for (UInt uiX = 0; uiX < uiWidth; uiX++)
+    {
+      pPred[uiX] = predBlk[i++];
+    }
+    pPred += uiStride;
+  }
+  return bSucceedFlag;
+}
+
+
+Bool TComTrQuant::calcKLTIntra(Pel *piPred, UInt uiStride, UInt uiBlkSize, UInt uiTempSize)
+{
+  Bool bSucceedFlag = prepareKLTSamplesIntra(piPred, uiStride, uiBlkSize, uiTempSize);
+  if (bSucceedFlag == false)
+  {
+    return bSucceedFlag;
+  }
+  bSucceedFlag = deriveKLT(uiBlkSize, m_uiVaildCandiNum);
+  return bSucceedFlag;
+}
+
+
+Bool TComTrQuant::prepareKLTSamplesIntra(Pel *piPred, UInt uiStride, UInt uiBlkSize, UInt uiTempSize)
+{
+  UInt uiTarDepth = g_aucConvertToBit[uiBlkSize];
+  UInt uiAllowMinCandiNum = g_uiDepth2MinCandiNum[uiTarDepth];
+  if (m_uiVaildCandiNum < uiAllowMinCandiNum)
+  {
+    return false;
+  }
+  UInt uiHeight = uiBlkSize; 
+  UInt uiWidth = uiHeight;
+  // Bool bSucceedFlag = true;
+  // UInt uiPatchSize = uiBlkSize + uiTempSize;
+  // Pel **tarPatch = m_pppTarPatch[uiTarDepth];
+
+  Int k;
+  // UInt uiInvalidCount = 0;
+  // UInt uiTargetCandiNum = g_uiDepth2MaxCandiNum[uiTarDepth];
+
+  Pel*  pPred = piPred;
+  Int i = 0;
+  Pel predBlk[MAX_1DTRANS_LEN] = { 0 };
+  for (UInt uiY = 0; uiY < uiHeight; uiY++)
+  {
+    for (UInt uiX = 0; uiX < uiWidth; uiX++)
+    {
+      predBlk[i++] = pPred[uiX];
+    }
+    pPred += uiStride;
+  }
+  Int *pX = m_tempLibFast.getX();
+  Int *pY = m_tempLibFast.getY();
+  // Short *pId = m_tempLibFast.getId();
+  Short setId;
+  Pel *ref;
+  Int picStride = getStride();
+  Int iOffsetY, iOffsetX;
+  Pel *refTarget;
+
+  TrainDataType *pData;
+  Int iCandiNum = m_uiVaildCandiNum;
+  setId = 0;
+  ref = getRefPicUsed(setId);
+  for (k = 0; k < iCandiNum; k++)
+  {
+    pData = m_pData[k];
+    iOffsetY = pY[k];
+    iOffsetX = pX[k];
+    refTarget = ref + iOffsetY*picStride + iOffsetX;
+    i = 0;
+    for (UInt uiY = 0; uiY < uiHeight; uiY++)
+    {
+      for (UInt uiX = 0; uiX < uiWidth; uiX++)
+      {
+        *pData++ = refTarget[uiX] - predBlk[i++];
+
+      }
+      refTarget += picStride;
+    }
+  }
+
+#if USE_TRANSPOSE_CANDDIATEARRAY
+  Int dim = uiWidth * uiHeight;
+  Int d;
+  for (k = 0; k < m_uiVaildCandiNum; k++)
+  {
+    for (d = 0; d < dim; d++)
+    {
+      m_pDataT[d][k] = m_pData[k][d];
+    }
+  }
+#endif
+  return true;
+}
+
+#endif
+
+#if INTER_KLT
+DistType TComTrQuant::calcPatchDiff(Pel *ref, UInt uiStride, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, DistType iMax)
+{
+#if USE_SSE_BLK_SAD
+  UInt uiBlkSize = uiPatchSize - uiTempSize;
+  UInt blkDiffSum = 0;
+  switch (uiBlkSize)
+  {
+    case 4:
+    {
+      blkDiffSum = GetSAD4x4_SSE_U16(tarPatch, ref, uiStride, uiTempSize, uiTempSize, iMax);
+      break;
+    }
+    case 8:
+    {
+      blkDiffSum = GetSAD8x8_SSE_U16(tarPatch, ref, uiStride, uiTempSize, uiTempSize, iMax);
+      break;
+    }
+    case 16:
+    {
+      blkDiffSum = GetSAD16x16_SSE_U16(tarPatch, ref, uiStride, uiTempSize, uiTempSize, iMax);
+      break;
+    }
+    case 32:
+    {
+      blkDiffSum = GetSAD32x32_SSE_U16(tarPatch, ref, uiStride, uiTempSize, uiTempSize, iMax);
+      break;
+    }
+    default:
+    {   
+        //common calculation rather than using SSE for other cases.
+      Int iY, iX;
+      DistType iDiffSum = 0;
+      Pel *refPatchRow = ref - uiTempSize*uiStride - uiTempSize;
+      Pel *tarPatchRow;
+      for (iY = 0; iY < uiPatchSize; iY++)
+      {
+        tarPatchRow = tarPatch[iY];
+        for (iX = 0; iX < uiPatchSize; iX++)
+        {
+          iDiffSum += abs(refPatchRow[iX] - tarPatchRow[iX]);
+        }
+        if (iDiffSum > iMax) //for speeding up
+        {
+          break;
+        }
+        refPatchRow += uiStride;
+      }
+    }
+  }
+
+  if (uiTempSize >0 && blkDiffSum < iMax)
+  {
+    Int remainMax = iMax - blkDiffSum;
+    UInt tempDiffSum = calcTemplateDiff(ref, uiStride, tarPatch, uiPatchSize, uiTempSize, remainMax);
+    blkDiffSum += tempDiffSum;
+  }
+  return blkDiffSum;
+#else
+  Int iY, iX;
+#if USE_SSD_DISTANCE
+  Int iDiff;
+#endif
+  DistType iDiffSum = 0;
+  Pel *refPatchRow = ref - uiTempSize*uiStride - uiTempSize;
+  Pel *tarPatchRow;
+  for (iY = 0; iY < uiPatchSize; iY++)
+  {
+    tarPatchRow = tarPatch[iY];
+    for (iX = 0; iX < uiPatchSize; iX++)
+    {
+#if USE_SAD_DISTANCE
+      iDiffSum += abs(refPatchRow[iX] - tarPatchRow[iX]);
+#endif
+#if USE_SSD_DISTANCE
+      iDiff = refPatchRow[iX] - tarPatchRow[iX];
+      iDiffSum += iDiff * iDiff; 
+#endif
+    }
+    if (iDiffSum > iMax) //for speeding up
+    {
+      break;
+    }
+    refPatchRow += uiStride;
+  }
+  return iDiffSum;
+#endif
+}
+#endif
+
+
+
+
+
+//For SSE speed up
+#if USE_SSE_SPEEDUP
+#include <intrin.h>
+#include <emmintrin.h>
+#include <xmmintrin.h>
+#include <smmintrin.h>
+
+#define USE_SUM 1 //If defined, faster
+#if USE_SUM
+inline Int GetSum(__m128i x)
+{
+  __m128i hi = _mm_srli_si128(x, 8);
+  __m128i low64_16bit = _mm_add_epi16(hi, x); //0+4; 1+5; 2+6; 3+7
+  __m128i low64_32bit = _mm_cvtepi16_epi32(low64_16bit); //16 bytes
+
+  __m128i hi2 = _mm_srli_si128(low64_32bit, 8);
+  low64_32bit = _mm_add_epi32(hi2, low64_32bit); //0+4 + 2+6;  1+5 + 3+7;
+
+  return low64_32bit.m128i_i32[0] + low64_32bit.m128i_i32[1];
+}
+#endif
+
+float InnerProduct_SSE_FLOATXSHORT(float *pa, short *pb, int m)
+{
+  const int mask = 0xf1; //11110001
+  int m_int = (m >> 2) << 2;
+  int m_remain = m % 4;
+  int i;
+  __m128 Xf, Yf, innerprod;
+  __m128i Ys, Y32;
+  float sumfinal = 0;
+  for (i = 0; i < m_int; i += 4)
+  {
+    Xf = _mm_castsi128_ps(_mm_loadu_si128((__m128i*) (pa + i))); //4 
+    Ys = _mm_loadu_si128((__m128i*) (pb + i));
+    Y32 = _mm_cvtepi16_epi32(Ys);
+    Yf = _mm_cvtepi32_ps(Y32); //Converts the four signed 32-bit integer values of a to single-precision, floating-point values.
+    innerprod = _mm_dp_ps(Xf, Yf, mask);
+    sumfinal += innerprod.m128_f32[0];
+  }
+  if (m_remain > 0)
+  {
+    for (i = m_int; i < m; i++)
+    {
+      sumfinal += pa[i] * pb[i];
+    }
+  }
+  return sumfinal;
+}
+
+int InnerProduct_SSE_SHORT(short *pa, short *pb, int m)
+{
+  int m_int = (m >> 3) << 3;
+  int m_remain = m % 8;
+  int i;
+  __m128i X, Y, X32, Y32, prod;
+  int sumfinal = 0;
+  for (i = 0; i < m_int; i += 8)
+  {
+    X = _mm_loadu_si128((__m128i*) (pa + i));
+    Y = _mm_loadu_si128((__m128i*) (pb + i));
+    prod = _mm_madd_epi16(X, Y);
+    sumfinal += prod.m128i_i32[0] + prod.m128i_i32[1] + prod.m128i_i32[2] + prod.m128i_i32[3];
+  }
+  if (m_remain > 0)
+  {
+    int m_remain_remain = m_remain % 4;
+    int m_int_int = (m_remain >> 2) << 2;
+    if (m_int_int > 0)
+    {
+      i = m_int;
+      X = _mm_loadl_epi64(reinterpret_cast<const __m128i*> (pa + i)); //Load the lower 64 bits of the value pointed to by p into the lower 64 bits of the result, zeroing the upper 64 bits of the result.
+      Y = _mm_loadl_epi64(reinterpret_cast<const __m128i*> (pb + i));
+      X32 = _mm_cvtepi16_epi32(X); //performs a conversion of signed integers from 16-bit to 32-bit.
+      Y32 = _mm_cvtepi16_epi32(Y);
+      prod = _mm_mullo_epi32(X32, Y32); //multiplies two sets of 32-bit signed integers
+      sumfinal += prod.m128i_i32[0] + prod.m128i_i32[1] + prod.m128i_i32[2] + prod.m128i_i32[3];
+    }
+    if (m_remain_remain > 0)
+    {
+      for (i = m_int + m_int_int; i < m; i++)
+      {
+        sumfinal += pa[i] * pb[i];
+      }
+    }
+  }
+  return sumfinal;
+}
+
+inline int MY_INT(float x)
+{
+  return x < 0 ? (int)(x - 0.5) : (int)(x + 0.5);
+}
+
+void scaleVector(float *px, __m128 scale, short *pout, int m)
+{
+  int m_int = (m >> 2) << 2;
+  int m_remain = m % 4;
+  int i;
+  __m128 Xf, Xscaled;
+  float scalevalue = scale.m128_f32[0];
+  for (i = 0; i < m_int; i += 4)
+  {
+    Xf = _mm_castsi128_ps(_mm_loadu_si128((__m128i*) (px + i))); //4 
+    Xscaled = _mm_mul_ps(Xf, scale);
+    pout[i] = MY_INT(Xscaled.m128_f32[0]);
+    pout[i + 1] = MY_INT(Xscaled.m128_f32[1]);
+    pout[i + 2] = MY_INT(Xscaled.m128_f32[2]);
+    pout[i + 3] = MY_INT(Xscaled.m128_f32[3]);
+  }
+  if (m_remain > 0)
+  {
+    for (i = m_int; i < m; i++)
+    {
+      pout[i] = MY_INT(px[i] * scalevalue);
+    }
+  }
+}
+
+void scaleMatrix(float **ppx, short **ppout, float scale, int rows, int cols)
+{
+  __m128 scaleArray;
+  scaleArray.m128_f32[0] = scale;
+  scaleArray.m128_f32[1] = scale;
+  scaleArray.m128_f32[2] = scale;
+  scaleArray.m128_f32[3] = scale;
+
+  for (int iRow = 0; iRow < rows; iRow++)
+  {
+    scaleVector(ppx[iRow], scaleArray, ppout[iRow], cols);
+  }
+}
+
+UInt GetSAD4x4_SSE_U16(I16 **pSrc, I16 *pRef, Int iRefStride, Int iYOffset, Int iXOffset, UInt uiBestSAD)
+{
+  int blkSize = 4;
+  __m128i s0, s1, s2, s3;
+  __m128i r0, r1, r2, r3;
+
+  r0 = _mm_cvtsi64_si128(*(__int64*)(pRef)); //first line
+  r1 = _mm_cvtsi64_si128(*(__int64*)(pRef + iRefStride)); //second line
+  r2 = _mm_or_si128(_mm_slli_si128(r1, 8), r0); //first & second line
+
+  s0 = _mm_cvtsi64_si128(*(__int64*)(pSrc[iYOffset] + iXOffset)); //first line
+  s1 = _mm_cvtsi64_si128(*(__int64*)(pSrc[iYOffset + 1] + iXOffset)); //second line
+  s2 = _mm_or_si128(_mm_slli_si128(s1, 8), s0); //first & second line
+  r2 = _mm_subs_epi16(r2, s2);
+  r2 = _mm_abs_epi16(r2);
+#if USE_SUM
+  UInt sum1 = GetSum(r2); 
+#else
+  UInt sum1 = r2.m128i_i16[0] + r2.m128i_i16[1] + r2.m128i_i16[2] + r2.m128i_i16[3] + r2.m128i_i16[4] + r2.m128i_i16[5] + r2.m128i_i16[6] + r2.m128i_i16[7];
+#endif
+  if (sum1 > uiBestSAD)
+  {
+    return sum1;
+  }
+
+  r0 = _mm_cvtsi64_si128(*(__int64*)(pRef + 2 * iRefStride)); //3 line
+  r1 = _mm_cvtsi64_si128(*(__int64*)(pRef + 3 * iRefStride)); //4 line
+  r3 = _mm_or_si128(_mm_slli_si128(r1, 8), r0); //3 & 4 line
+
+  s0 = _mm_cvtsi64_si128(*(__int64*)(pSrc[iYOffset + 2] + iXOffset)); //3 line
+  s1 = _mm_cvtsi64_si128(*(__int64*)(pSrc[iYOffset + 3] + iXOffset)); //4 line
+  s3 = _mm_or_si128(_mm_slli_si128(s1, 8), s0); //3 & 4 line
+
+  r3 = _mm_subs_epi16(r3, s3);
+  r3 = _mm_abs_epi16(r3);
+#if USE_SUM
+  UInt sum2 = GetSum(r3); 
+#else
+  UInt sum2 = r3.m128i_i16[0] + r3.m128i_i16[1] + r3.m128i_i16[2] + r3.m128i_i16[3] + r3.m128i_i16[4] + r3.m128i_i16[5] + r3.m128i_i16[6] + r3.m128i_i16[7];
+#endif
+  return sum1 + sum2;
+}
+
+
+
+UInt GetSAD8x8_SSE_U16(I16 **pSrc, I16 *pRef, Int iRefStride, Int iYOffset, Int iXOffset, UInt uiBestSAD)
+{
+  int blkSize = 8;
+  __m128i s0, s1;
+  __m128i r0, r1;
+  __m128i diff, diff0, diff1;
+  UInt sumOfRow;
+  UInt sum = 0;
+  for (int row = 0; row < 8; row += 2)
+  {
+    r0 = _mm_loadu_si128((__m128i*) (pRef + iRefStride*row));
+    s0 = _mm_loadu_si128((__m128i*) (pSrc[iYOffset + row] + iXOffset));
+    diff0 = _mm_subs_epi16(r0, s0);
+    diff0 = _mm_abs_epi16(diff0);
+
+    r1 = _mm_loadu_si128((__m128i*) (pRef + iRefStride*(1 + row)));
+    s1 = _mm_loadu_si128((__m128i*) (pSrc[iYOffset + row + 1] + iXOffset));
+    diff1 = _mm_subs_epi16(r1, s1);
+    diff1 = _mm_abs_epi16(diff1);
+
+    diff = _mm_adds_epi16(diff0, diff1);
+#if USE_SUM
+    sumOfRow = GetSum(diff);
+#else
+    sumOfRow = diff.m128i_i16[0] + diff.m128i_i16[1] + diff.m128i_i16[2] + diff.m128i_i16[3] + diff.m128i_i16[4] + diff.m128i_i16[5] + diff.m128i_i16[6] + diff.m128i_i16[7];
+#endif
+    sum += sumOfRow;
+    if (sum > uiBestSAD)
+    {
+      return sum;
+    }
+  }
+  return sum;
+}
+
+UInt GetSAD16x16_SSE_U16(I16 **pSrc, I16 *pRef, Int iRefStride, Int iYOffset, Int iXOffset, UInt uiBestSAD)
+{
+  int blkSize = 16;
+  __m128i s0, s1;
+  __m128i r0, r1;
+  __m128i diff, diff0, diff1;
+  UInt sumOfRow;
+  UInt sum = 0;
+  for (int blkRow = 0; blkRow < 2; blkRow++)
+  {
+    for (int blkCol = 0; blkCol < 2; blkCol++)
+    {
+      Int iRelativeOffset = ((blkRow *iRefStride + blkCol) << 3);
+      I16 *pRefCurr = pRef + iRelativeOffset;
+      Int iYOffsetCurr = iYOffset + (blkRow << 3);
+      Int iXOffsetCurr = iXOffset + (blkCol << 3);
+
+      for (int row = 0; row < 8; row += 2)
+      {
+        r0 = _mm_loadu_si128((__m128i*) (pRefCurr + iRefStride*row));
+        s0 = _mm_loadu_si128((__m128i*) (pSrc[iYOffsetCurr + row] + iXOffsetCurr));
+        diff0 = _mm_subs_epi16(r0, s0);
+        diff0 = _mm_abs_epi16(diff0);
+
+        r1 = _mm_loadu_si128((__m128i*) (pRefCurr + iRefStride*(1 + row)));
+        s1 = _mm_loadu_si128((__m128i*) (pSrc[iYOffsetCurr + row + 1] + iXOffsetCurr));
+        diff1 = _mm_subs_epi16(r1, s1);
+        diff1 = _mm_abs_epi16(diff1);
+
+        diff = _mm_adds_epi16(diff0, diff1);
+#if USE_SUM
+        sumOfRow = GetSum(diff);
+#else
+        sumOfRow = diff.m128i_i16[0] + diff.m128i_i16[1] + diff.m128i_i16[2] + diff.m128i_i16[3] + diff.m128i_i16[4] + diff.m128i_i16[5] + diff.m128i_i16[6] + diff.m128i_i16[7];
+#endif
+        sum += sumOfRow;
+        if (sum > uiBestSAD)
+        {
+          return sum;
+        }
+      }
+    }
+  }
+  return sum;
+}
+
+UInt GetSAD32x32_SSE_U16(I16 **pSrc, I16 *pRef, Int iRefStride, Int iYOffset, Int iXOffset, UInt uiBestSAD)
+{
+  int blkSize = 32;
+  __m128i s0, s1;
+  __m128i r0, r1;
+  __m128i diff, diff0, diff1;
+  UInt sumOfRow;
+  UInt sum = 0;
+  for (int blkRow = 0; blkRow < 4; blkRow++)
+  {
+    for (int blkCol = 0; blkCol < 4; blkCol++)
+    {
+      Int iRelativeOffset = ((blkRow *iRefStride + blkCol) << 3);
+      I16 *pRefCurr = pRef + iRelativeOffset;
+      Int iYOffsetCurr = iYOffset + (blkRow << 3);
+      Int iXOffsetCurr = iXOffset + (blkCol << 3);
+      for (int row = 0; row < 8; row += 2)
+      {
+        r0 = _mm_loadu_si128((__m128i*) (pRefCurr + iRefStride*row));
+        s0 = _mm_loadu_si128((__m128i*) (pSrc[iYOffsetCurr + row] + iXOffsetCurr));
+        diff0 = _mm_subs_epi16(r0, s0);
+        diff0 = _mm_abs_epi16(diff0);
+
+        r1 = _mm_loadu_si128((__m128i*) (pRefCurr + iRefStride*(1 + row)));
+        s1 = _mm_loadu_si128((__m128i*) (pSrc[iYOffsetCurr + row + 1] + iXOffsetCurr));
+        diff1 = _mm_subs_epi16(r1, s1);
+        diff1 = _mm_abs_epi16(diff1);
+
+        diff = _mm_adds_epi16(diff0, diff1);
+#if USE_SUM
+        sumOfRow = GetSum(diff);
+#else
+        sumOfRow = diff.m128i_i16[0] + diff.m128i_i16[1] + diff.m128i_i16[2] + diff.m128i_i16[3] + diff.m128i_i16[4] + diff.m128i_i16[5] + diff.m128i_i16[6] + diff.m128i_i16[7];
+#endif
+        sum += sumOfRow;
+        if (sum > uiBestSAD)
+        {
+          return sum;
+        }
+      }
+    }
+  }
+  return sum;
+}
+
+// sum of abs for two vectors of m length
+int AbsSumOfVector(short *pa, short *pb, int m)
+{
+  int sum = 0;
+  int m_int = (m >> 3) << 3;
+  int m_remain = m % 8;
+  int i;
+  __m128i a, b, diff;
+  for (i = 0; i < m_int; i += 8)
+  {
+    a = _mm_loadu_si128((__m128i*) (pa + i));
+    b = _mm_loadu_si128((__m128i*) (pb + i));
+    diff = _mm_subs_epi16(a, b);
+    diff = _mm_abs_epi16(diff);
+    sum += GetSum(diff);
+  }
+  if (m_remain > 0)
+  {
+    i = m_int;
+    a = _mm_loadu_si128((__m128i*) (pa + i));
+    b = _mm_loadu_si128((__m128i*) (pb + i));
+    diff = _mm_subs_epi16(a, b);
+    diff = _mm_abs_epi16(diff);
+    if (m_remain == 3)
+    {
+      sum += (diff.m128i_i16[0] + diff.m128i_i16[1] + diff.m128i_i16[2]);
+    }
+    else
+    {
+      for (i = 0; i < m_remain; i++)
+      {
+        sum += diff.m128i_i16[i];
+      }
+    }
+  }
+  return sum;
+}
+
+// sum of abs for two vectors of m length (m<=8)
+int AbsSumOfVectorLesseqthan8(short *pa, short *pb, int m)
+{
+  //assert(m <= 8);
+  int sum = 0;
+  int i;
+  __m128i a, b, diff;
+
+  a = _mm_loadu_si128((__m128i*) (pa));
+  b = _mm_loadu_si128((__m128i*) (pb));
+  diff = _mm_subs_epi16(a, b);
+  diff = _mm_abs_epi16(diff);
+  for (i = 0; i < m; i++)
+  {
+    sum += diff.m128i_i16[i];
+  }
+  return sum;
+}
+#endif
 
 //! \}

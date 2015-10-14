@@ -108,6 +108,9 @@
 #define MAX_GOP                     64          ///< max. value of hierarchical GOP size
 
 #define MAX_NUM_REF_PICS            16          ///< max. number of pictures used for reference
+#if INTER_KLT
+#define MAX_NUM_REF_IDS             ((MAX_NUM_REF_PICS)*16 + (MAX_CANDI_NUM)*15) 
+#endif
 #define MAX_NUM_REF                 16          ///< max. number of entries in picture reference list
 
 #define MAX_UINT                    0xFFFFFFFFU ///< max. value of unsigned 32-bit integer

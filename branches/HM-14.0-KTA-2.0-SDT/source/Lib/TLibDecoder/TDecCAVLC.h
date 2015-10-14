@@ -143,6 +143,10 @@ public:
     );
   Void parseTransformSkipFlags ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt width, UInt height, UInt uiDepth, TextType eTType);
 
+#if KLT_COMMON
+  Void parseKLTFlags        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt width, UInt height, UInt uiDepth, TextType eTType );
+#endif
+
   Void parseIPCMInfo        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth);
 
   Void updateContextTables  ( SliceType /*eSliceType*/, Int /*iQp*/ ) { return; }

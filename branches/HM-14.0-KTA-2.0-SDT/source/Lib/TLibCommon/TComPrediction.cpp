@@ -4401,4 +4401,125 @@ Void TComPrediction::xMPIredFiltering( Pel* pSrc, Int iSrcStride, Pel*& rpDst, I
   return;
 }
 #endif
+
+#if INTER_KLT
+Void TComPrediction::interpolatePic(TComPic* pcPic)
+{
+  Bool bdoneForChroma = false; //only perform over luma
+  TComPicYuv *refPic = pcPic->getPicYuvRec();
+  UInt uiRefStride = pcPic->getStride();
+  // Pel *ref = refPic->getLumaAddr();
+  UInt uiWidth = refPic->getWidth();
+  UInt uiHeight = refPic->getHeight();
+  Int filterSize = NTAPS_LUMA;
+  Int halfFilterSize = (filterSize >> 1);
+  Pel *srcPtr;
+  Pel *dstPtr;
+
+  TComPicYuv *refPicArray[4][4];
+  pcPic->m_apcQuaPicYuv[0][0] = pcPic->getPicYuvRec();
+  for (UInt uiRow = 0; uiRow < 4; uiRow++)
+  {
+    for (UInt uiCol = 0; uiCol < 4; uiCol++)
+    {
+      refPicArray[uiRow][uiCol] = pcPic->m_apcQuaPicYuv[uiRow][uiCol];
+      refPicArray[uiRow][uiCol]->setBorderExtension(false);
+    }
+  }
+  UInt uiDstStride = refPicArray[0][0]->getStride();
+  refPic->setBorderExtension(false);
+  refPic->extendPicBorder();
+
+  //--------------
+  //Interpolation over luma
+  //yFrac = 0 : (0,1)(0,2)(0,3)
+  srcPtr = refPic->getLumaAddr() - (halfFilterSize - 1)*uiRefStride;
+  for (Int xFrac = 1; xFrac <= 3; xFrac++)
+  {
+    dstPtr = refPicArray[0][xFrac]->getLumaAddr() - (halfFilterSize - 1)*uiRefStride;
+    m_if.filterHorLuma(srcPtr, uiRefStride, dstPtr, uiDstStride, uiWidth, uiHeight + filterSize - 1, xFrac, true);
+  }
+
+  //xFrac = 0: (1,0)(2,0)(3,0)
+  srcPtr = refPic->getLumaAddr();
+  for (Int yFrac = 1; yFrac <= 3; yFrac++)
+  {
+    dstPtr = refPicArray[yFrac][0]->getLumaAddr();
+    m_if.filterVerLuma(srcPtr, uiRefStride, dstPtr, uiDstStride, uiWidth, uiHeight, yFrac, true, true);
+  }
+
+  //other positions
+  //(1,1)(2,1)(3,1)
+  //(2,1)(2,2)(2,3)
+  //(3,1)(3,2)(3,3)
+  for (Int xFrac = 1; xFrac <= 3; xFrac++)
+  {
+    srcPtr = refPicArray[0][xFrac]->getLumaAddr();
+    for (Int yFrac = 1; yFrac <= 3; yFrac++)
+    {
+      dstPtr = refPicArray[yFrac][xFrac]->getLumaAddr();
+      m_if.filterVerLuma(srcPtr, uiRefStride, dstPtr, uiDstStride, uiWidth, uiHeight, yFrac, true, true);
+    }
+  }
+
+  if (bdoneForChroma)
+  {
+    //--------------
+    //Interpolation over chroma
+    //(0,0)
+    filterSize = NTAPS_CHROMA;
+    halfFilterSize = (filterSize >> 1);
+    uiDstStride = uiRefStride = refPic->getCStride();
+    uiWidth >>= 1;
+    uiHeight >>= 1;
+    //yFrac = 0 : (0,1)(0,2)(0,3)
+    Pel *srcCbPtr = refPic->getCbAddr() - (halfFilterSize - 1)*uiRefStride;
+    Pel *srcCrPtr = refPic->getCrAddr() - (halfFilterSize - 1)*uiRefStride;
+    Pel *dstCbPtr, *dstCrPtr;
+    for (Int xFrac = 1; xFrac <= 3; xFrac++)
+    {
+      dstCbPtr = refPicArray[0][xFrac]->getCbAddr() - (halfFilterSize - 1)*uiRefStride;
+      dstCrPtr = refPicArray[0][xFrac]->getCrAddr() - (halfFilterSize - 1)*uiRefStride;
+      m_if.filterHorChroma(srcCbPtr, uiRefStride, dstCbPtr, uiDstStride, uiWidth, uiHeight + filterSize - 1, xFrac, true);
+      m_if.filterHorChroma(srcCrPtr, uiRefStride, dstCrPtr, uiDstStride, uiWidth, uiHeight + filterSize - 1, xFrac, true);
+    }
+
+    //xFrac = 0: (1,0)(2,0)(3,0)
+    srcCbPtr = refPic->getCbAddr();
+    srcCrPtr = refPic->getCrAddr();
+    for (Int yFrac = 1; yFrac <= 3; yFrac++)
+    {
+      dstCbPtr = refPicArray[yFrac][0]->getCbAddr();
+      dstCrPtr = refPicArray[yFrac][0]->getCrAddr();
+      m_if.filterVerChroma(srcCbPtr, uiRefStride, dstCbPtr, uiDstStride, uiWidth, uiHeight, yFrac, true, true);
+      m_if.filterVerChroma(srcCrPtr, uiRefStride, dstCrPtr, uiDstStride, uiWidth, uiHeight, yFrac, true, true);
+    }
+
+    //other positions
+    //(1,1)(2,1)(3,1)
+    //(2,1)(2,2)(2,3)
+    //(3,1)(3,2)(3,3)
+    for (Int xFrac = 1; xFrac <= 3; xFrac++)
+    {
+      srcCbPtr = refPicArray[0][xFrac]->getCbAddr();
+      srcCrPtr = refPicArray[0][xFrac]->getCrAddr();
+      for (Int yFrac = 1; yFrac <= 3; yFrac++)
+      {
+        dstCbPtr = refPicArray[yFrac][xFrac]->getCbAddr();
+        dstCrPtr = refPicArray[yFrac][xFrac]->getCrAddr();
+        m_if.filterVerChroma(srcCbPtr, uiRefStride, dstCbPtr, uiDstStride, uiWidth, uiHeight, yFrac, true, true);
+        m_if.filterVerChroma(srcCrPtr, uiRefStride, dstCrPtr, uiDstStride, uiWidth, uiHeight, yFrac, true, true);
+      }
+    }
+  }
+
+  for (Int yFrac = 0; yFrac <= 3; yFrac++)
+  {
+    for (Int xFrac = 0; xFrac <= 3; xFrac++)
+    {
+      refPicArray[yFrac][xFrac]->extendPicBorder();
+    }
+  }
+}
+#endif
 //! \}

@@ -332,7 +332,7 @@ Void TEncBinCABAC::encodeBin( UInt binValue, ContextModel &rcCtxModel )
  */
 Void TEncBinCABAC::encodeBinEP( UInt binValue )
 {
-#if !DEBUG 
+#if DEBUG  // #if !DEBUG 
   {
     DTRACE_CABAC_VL( g_nSymbolCounter++ )
     DTRACE_CABAC_T( "\tEPsymbol=" )
@@ -360,7 +360,7 @@ Void TEncBinCABAC::encodeBinEP( UInt binValue )
 Void TEncBinCABAC::encodeBinsEP( UInt binValues, Int numBins )
 {
   m_uiBinsCoded += numBins & -m_binCountIncrement;
- #if !DEBUG  
+ #if DEBUG  // #if !DEBUG 
   for ( Int i = 0; i < numBins; i++ )
   {
     DTRACE_CABAC_VL( g_nSymbolCounter++ )

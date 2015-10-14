@@ -6,6 +6,7 @@ SRC_DIR			= ../../../../source/Lib/TLibCommon
 INC_DIR			= ../../../../source/Lib
 LIB_DIR			= ../../../../lib
 BIN_DIR			= ../../../../bin
+EXTLIB_DIR		= ../../../../extlib
 
 SRC_DIR1		= ../../../../source/Lib/libmd5
 SRC_DIR2		=

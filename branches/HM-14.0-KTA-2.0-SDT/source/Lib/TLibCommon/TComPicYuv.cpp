@@ -440,4 +440,48 @@ Void TComPicYuv::getCUAddrAndPartIdx( Int iX, Int iY, Int& riCuAddr, Int& riAbsZ
 }
 #endif
 
+#if KLT_COMMON
+Void TComPicYuv::fillPicRecBoundary()
+{
+  Pel* piTxt = getLumaAddr();
+  Int iStride = getStride();
+  Int iWidth = getWidth();
+  Int iHeight = getHeight();
+  Int iMarginX = m_iLumaMarginX;
+  Int iMarginY = m_iLumaMarginY;
+  Int   x, y;
+  Pel*  pi;
+  Pel fillValue = 1 << (g_bitDepthY - 1);
+  pi = piTxt;
+  for (y = 0; y < iHeight; y++)
+  {
+    for (x = 0; x < iMarginX; x++)
+    {
+      pi[-iMarginX + x] = fillValue;
+      pi[iWidth + x] = fillValue;
+    }
+    pi += iStride;
+  }
+
+  pi -= iMarginX;
+  for (y = 0; y < iMarginY; y++)
+  {
+    for (x = 0; x < iStride; x++)
+    {
+      pi[x] = fillValue;
+    }
+    pi += iStride;
+  }
+
+  pi = piTxt - (iMarginY*iStride + iMarginX);
+  for (y = 0; y < iMarginY; y++)
+  {
+    for (x = 0; x < iStride; x++)
+    {
+      pi[x] = fillValue;
+    }
+    pi += iStride;
+  }
+}
+#endif
 //! \}

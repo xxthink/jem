@@ -167,6 +167,10 @@ public:
     );
   Void parseTransformSkipFlags ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt width, UInt height, UInt uiDepth, TextType eTType);
 
+#if KLT_COMMON
+  Void parseKLTFlags      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt width, UInt height, UInt uiDepth, TextType eTType );
+#endif
+
   Void updateContextTables( SliceType eSliceType, Int iQp );
 
   Void  parseScalingList ( TComScalingList* /*scalingList*/ ) {}
@@ -246,6 +250,9 @@ private:
   ContextModel3DBuffer m_cSaoMergeSCModel;
   ContextModel3DBuffer m_cSaoTypeIdxSCModel;
   ContextModel3DBuffer m_cTransformSkipSCModel;
+#if KLT_COMMON
+  ContextModel3DBuffer m_cKLTFlagSCModel;
+#endif
   ContextModel3DBuffer m_CUTransquantBypassFlagSCModel;
 
 #if ALF_HM3_QC_REFACTOR

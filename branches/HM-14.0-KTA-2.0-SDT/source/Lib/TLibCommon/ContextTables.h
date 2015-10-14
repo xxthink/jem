@@ -159,6 +159,9 @@
 #define NUM_SAO_TYPE_IDX_CTX          1       ///< number of context models for SAO type index
 
 #define NUM_TRANSFORMSKIP_FLAG_CTX    1       ///< number of context models for transform skipping 
+#if KLT_COMMON
+#define NUM_KLT_FLAG_CTX              1       ///< number of context models for KLT 
+#endif
 #define NUM_CU_TRANSQUANT_BYPASS_FLAG_CTX  1 
 
 #if ALF_HM3_QC_REFACTOR
@@ -234,6 +237,17 @@ INIT_ROT_TR_IDX[3][NUM_ROT_TR_CTX] =
   { 139,139,139,139,139,139,139 }, 
 };
 #endif
+
+#if KLT_COMMON
+static const UChar
+INIT_KLT_FLAG[3][2 * NUM_KLT_FLAG_CTX] =
+{
+  { 139, 139 },
+  { 139, 139 },
+  { 139, 139 },
+};
+#endif
+
 #if QC_IMV
 static const UChar 
   INIT_IMV_FLAG[3][NUM_IMV_FLAG_CTX] =

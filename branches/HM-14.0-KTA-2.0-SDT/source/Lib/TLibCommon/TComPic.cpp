@@ -59,6 +59,12 @@ TComPic::TComPic()
 {
   m_apcPicYuv[0]      = NULL;
   m_apcPicYuv[1]      = NULL;
+#if INTER_KLT
+  m_apcQuaPicYuv[0][0] = NULL; m_apcQuaPicYuv[0][1] = NULL; m_apcQuaPicYuv[0][2] = NULL; m_apcQuaPicYuv[0][3] = NULL;
+  m_apcQuaPicYuv[1][0] = NULL; m_apcQuaPicYuv[1][1] = NULL; m_apcQuaPicYuv[1][2] = NULL; m_apcQuaPicYuv[1][3] = NULL;
+  m_apcQuaPicYuv[2][0] = NULL; m_apcQuaPicYuv[2][1] = NULL; m_apcQuaPicYuv[2][2] = NULL; m_apcQuaPicYuv[2][3] = NULL;
+  m_apcQuaPicYuv[3][0] = NULL; m_apcQuaPicYuv[3][1] = NULL; m_apcQuaPicYuv[3][2] = NULL; m_apcQuaPicYuv[3][3] = NULL;
+#endif
 }
 
 TComPic::~TComPic()
@@ -75,7 +81,23 @@ Void TComPic::create( Int iWidth, Int iHeight, UInt uiMaxWidth, UInt uiMaxHeight
     m_apcPicYuv[0]  = new TComPicYuv;  m_apcPicYuv[0]->create( iWidth, iHeight, uiMaxWidth, uiMaxHeight, uiMaxDepth );
   }
   m_apcPicYuv[1]  = new TComPicYuv;  m_apcPicYuv[1]->create( iWidth, iHeight, uiMaxWidth, uiMaxHeight, uiMaxDepth );
-  
+#if INTER_KLT
+  for (UInt uiRow = 0; uiRow < 4; uiRow++)
+  {
+    for (UInt uiCol = 0; uiCol < 4; uiCol++)
+    {
+      if (uiRow == 0 && uiCol == 0)
+      {
+        m_apcQuaPicYuv[uiRow][uiCol] = m_apcPicYuv[1];
+      }
+      else
+      {
+        m_apcQuaPicYuv[uiRow][uiCol] = new TComPicYuv;
+        m_apcQuaPicYuv[uiRow][uiCol]->create(iWidth, iHeight, uiMaxWidth, uiMaxHeight, uiMaxDepth);
+      }
+    }
+  }
+#endif 
   // there are no SEI messages associated with this picture initially
   if (m_SEIs.size() > 0)
   {
@@ -117,7 +139,24 @@ Void TComPic::destroy()
     delete m_apcPicYuv[1];
     m_apcPicYuv[1]  = NULL;
   }
-  
+#if INTER_KLT
+  for (UInt uiRow = 0; uiRow < 4; uiRow++)
+  {
+    for (UInt uiCol = 0; uiCol < 4; uiCol++)
+    {
+      if (uiRow == 0 && uiCol == 0)
+      {
+        continue;
+      }
+      if (m_apcQuaPicYuv[uiRow][uiCol])
+      {
+        m_apcQuaPicYuv[uiRow][uiCol]->destroy();
+        delete m_apcQuaPicYuv[uiRow][uiCol]; 
+        m_apcQuaPicYuv[uiRow][uiCol] = NULL;
+      }
+    }
+  }
+#endif
   deleteSEIs(m_SEIs);
 }
 

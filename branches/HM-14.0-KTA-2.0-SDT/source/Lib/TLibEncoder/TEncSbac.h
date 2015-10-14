@@ -203,6 +203,10 @@ public:
     );
   void codeTransformSkipFlags ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt width, UInt height, TextType eTType );
 
+#if KLT_COMMON
+  Void codeKLTFlags           ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt width, UInt height, TextType eTType );
+#endif
+
   // -------------------------------------------------------------------------------------------------------------------
   // for RD-optimizatioon
   // -------------------------------------------------------------------------------------------------------------------
@@ -289,6 +293,9 @@ private:
   ContextModel3DBuffer m_cSaoMergeSCModel;
   ContextModel3DBuffer m_cSaoTypeIdxSCModel;
   ContextModel3DBuffer m_cTransformSkipSCModel;
+#if KLT_COMMON
+  ContextModel3DBuffer m_cKLTFlagSCModel;
+#endif
   ContextModel3DBuffer m_CUTransquantBypassFlagSCModel;
 
 #if ALF_HM3_QC_REFACTOR

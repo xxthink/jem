@@ -132,6 +132,9 @@ public:
 #endif
     ) = 0;
   virtual Void parseTransformSkipFlags ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt width, UInt height, UInt uiDepth, TextType eTType) = 0;
+#if KLT_COMMON
+  virtual Void parseKLTFlags      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt width, UInt height, UInt uiDepth, TextType eTType) = 0;
+#endif
   virtual Void updateContextTables( SliceType eSliceType, Int iQp ) = 0;
   
   virtual ~TDecEntropyIf() {}

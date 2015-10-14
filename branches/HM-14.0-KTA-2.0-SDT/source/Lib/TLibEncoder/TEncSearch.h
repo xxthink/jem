@@ -80,6 +80,9 @@ private:
   UChar*          m_puhQTTempCbf[3];
   
   TComYuv*        m_pcQTTempTComYuv;
+#if INTER_KLT
+  TComYuv*        m_pcQTTempTComYuvRec;
+#endif
   TComYuv         m_tmpYuvPred; // To be used in xGetInterPredictionError() to avoid constant memory allocation/deallocation
 
 #if QC_LMCHROMA
@@ -91,6 +94,9 @@ private:
   TCoeff*         m_pcQTTempTUCoeffCb;
   TCoeff*         m_pcQTTempTUCoeffCr;
   UChar*          m_puhQTTempTransformSkipFlag[3];
+#if KLT_COMMON
+  UChar*          m_puhQTTempKLTFlag[3];
+#endif
   TComYuv         m_pcQTTempTransformSkipTComYuv;
 #if ADAPTIVE_QP_SELECTION
   Int*            m_ppcQTTempTUArlCoeffY;
@@ -290,6 +296,16 @@ protected:
                                     UInt&        uiSigNum,
 #endif
                                     Int         default0Save1Load2 = 0);
+#if INTRA_KLT
+  Bool  xIntraCodingLumaBlkTM     ( TComDataCU* pcCU,
+                  UInt        uiTrDepth,
+                  UInt        uiAbsPartIdx,
+                  TComYuv*    pcOrgYuv,
+                  TComYuv*    pcPredYuv,
+                  TComYuv*    pcResiYuv,
+                  UInt&       ruiDist,
+                  Int        genPred0genPredAndtrainKLT1);
+#endif
   Void  xIntraCodingChromaBlk     ( TComDataCU*  pcCU,
                                     UInt         uiTrDepth,
                                     UInt         uiAbsPartIdx,
@@ -504,7 +520,11 @@ protected:
   // -------------------------------------------------------------------------------------------------------------------
   
   Void xEncodeResidualQT( TComDataCU* pcCU, UInt uiAbsPartIdx, const UInt uiDepth, Bool bSubdivAndCbf, TextType eType );
+#if INTER_KLT
+  Void xEstimateResidualQT(TComDataCU* pcCU, UInt uiQuadrant, UInt uiAbsPartIdx, UInt absTUPartIdx, TComYuv* pcResi, TComYuv* pcPred, const UInt uiDepth, Double &rdCost, UInt &ruiBits, UInt &ruiDist, UInt *puiZeroDist);
+#else
   Void xEstimateResidualQT( TComDataCU* pcCU, UInt uiQuadrant, UInt uiAbsPartIdx, UInt absTUPartIdx,TComYuv* pcResi, const UInt uiDepth, Double &rdCost, UInt &ruiBits, UInt &ruiDist, UInt *puiZeroDist );
+#endif
   Void xSetResidualQTData( TComDataCU* pcCU, UInt uiQuadrant, UInt uiAbsPartIdx,UInt absTUPartIdx, TComYuv* pcResi, UInt uiDepth, Bool bSpatial );
   
   UInt  xModeBitsIntra ( TComDataCU* pcCU, UInt uiMode, UInt uiPU, UInt uiPartOffset, UInt uiDepth, UInt uiInitTrDepth 

@@ -874,6 +874,12 @@ Void TDecEntropy::decodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
 #if HM14_CLEAN_UP
     pcCU->resetCoeff( uiAbsPartIdx );
 #endif
+#if !DEBUG //new added on 9.17.2015
+  DTRACE_CABAC_VL(g_nSymbolCounter++)
+  DTRACE_CABAC_T("\tdecodeTransformIdx()\tCUDepth=")
+  DTRACE_CABAC_V(uiDepth)
+  DTRACE_CABAC_T("\n")
+#endif
   }
   else
   {
