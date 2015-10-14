@@ -282,6 +282,9 @@ public:
   Void xGetLMParameters  ( TComPattern* pcPattern, UInt uiWidth, UInt uiHeight, Int iPredType, UInt uiChromaId, Int &a, Int &b, Int &iShift );
   Void xCalcLMParameters ( Int x, Int y, Int xx, Int xy, Int iCountShift, Int iPredType, Int &a, Int &b, Int &iShift );
 #endif
+#if INTER_KLT
+  Void interpolatePic ( TComPic* pcPic );
+#endif
 };
 
 //! \}

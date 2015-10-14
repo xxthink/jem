@@ -144,6 +144,9 @@ public:
   Void xGenUpdateMapAlF(UInt uiSliceType, Int iQP,  TComStats* apcStats);   
 #endif
 #endif
+#if INTER_KLT
+  Void   InterpolatePic(TComPic* pcPic);
+#endif
 private:
   Double  xGetQPValueAccordingToLambda ( Double lambda );
 };

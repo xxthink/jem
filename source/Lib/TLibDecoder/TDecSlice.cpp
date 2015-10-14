@@ -127,7 +127,9 @@ Void TDecSlice::decompressSlice(TComInputBitstream** ppcSubstreams, TComPic*& rp
 #if ENC_DEC_TRACE
   g_bJustDoIt = g_bEncDecTraceDisable;
 #endif
-
+#if KLT_COMMON
+  rpcPic->getPicYuvRec()->fillPicRecBoundary();
+#endif
   UInt uiTilesAcross   = rpcPic->getPicSym()->getNumColumnsMinus1()+1;
   TComSlice*  pcSlice = rpcPic->getSlice(rpcPic->getCurrSliceIdx());
   Int  iNumSubstreams = pcSlice->getPPS()->getNumSubstreams();
@@ -399,6 +401,13 @@ Void TDecSlice::decompressSlice(TComInputBitstream** ppcSubstreams, TComPic*& rp
 #endif
   }
 }
+
+#if INTER_KLT
+Void TDecSlice::InterpolatePic(TComPic* pcPic)
+{
+  m_pcCuDecoder->getPointerPrediction()->interpolatePic(pcPic);
+}
+#endif
 
 ParameterSetManagerDecoder::ParameterSetManagerDecoder()
 : m_vpsBuffer(MAX_NUM_VPS)

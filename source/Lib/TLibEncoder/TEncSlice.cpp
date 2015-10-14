@@ -751,7 +751,9 @@ Void TEncSlice::compressSlice( TComPic*& rpcPic )
   TEncBinCABAC* pppcRDSbacCoder = NULL;
   TComSlice* pcSlice            = rpcPic->getSlice(getSliceIdx());
   xDetermineStartAndBoundingCUAddr ( uiStartCUAddr, uiBoundingCUAddr, rpcPic, false );
-  
+#if KLT_COMMON
+  rpcPic->getPicYuvRec()->fillPicRecBoundary();
+#endif
   // initialize cost values
   m_uiPicTotalBits  = 0;
   m_dPicRdCost      = 0;
@@ -1904,5 +1906,13 @@ Void TEncSlice::xGenUpdateMap (UInt uiSliceType, Int iQP,  TComStats* apcStats)
   if(pBitIf)              {delete pBitIf;                   pBitIf              = NULL;      }
 
 }
+
+#if INTER_KLT
+Void TEncSlice::InterpolatePic(TComPic* pcPic)
+{
+  m_pcPredSearch->interpolatePic(pcPic);
+}
+#endif
+
 #endif
 //! \}

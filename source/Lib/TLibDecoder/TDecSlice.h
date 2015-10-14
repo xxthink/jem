@@ -87,6 +87,9 @@ public:
   Void      initCtxMem(  UInt i );
   Void      setCtxMem( TDecSbac* sb, Int b )   { CTXMem[b] = sb; }
   Int       getCtxMemSize( )                   { return (Int)CTXMem.size(); }
+#if INTER_KLT
+  Void InterpolatePic ( TComPic* pcPic );
+#endif
 };
 
 

@@ -185,6 +185,9 @@ public:
   Int   m_iBaseUnitHeight;      ///< Height of Base Unit (with maximum depth or minimum size, m_iCuHeight >> Max. Depth)
   Int   m_iNumCuInWidth;
 #endif
+#if KLT_COMMON
+  Void fillPicRecBoundary();
+#endif
 };// END CLASS DEFINITION TComPicYuv
 
 void calcChecksum(TComPicYuv& pic, UChar digest[3][16]);

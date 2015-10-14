@@ -52,6 +52,18 @@
 
 #define QP_BITS                 15
 
+#if KLT_COMMON
+#define MAX_1DTRANS_LEN              (1 << (((USE_MORE_BLOCKSIZE_DEPTH_MAX) + 1) << 1)) ///< 4x4 = 16, 8x8 = 64, 16x16=256, 32x32 = 1024
+extern UInt g_uiDepth2Width[5];
+#if INTER_KLT
+extern UInt g_uiDepth2TempSize[5];
+#endif
+#if INTRA_KLT
+extern UInt g_uiDepth2IntraTempSize[5];
+#endif
+extern UInt g_uiDepth2MaxCandiNum[5];
+extern UInt g_uiDepth2MinCandiNum[5];
+#endif
 // ====================================================================================================================
 // Type definition
 // ====================================================================================================================
@@ -165,6 +177,44 @@ public:
   Int qp() {return m_iQP;}
 }; // END CLASS DEFINITION QpParam
 
+#if KLT_COMMON
+class TempLibFast
+{
+public:
+  Int *m_pX;    //offset X
+  Int *m_pY;    //offset Y
+  Int *m_pXInteger;    //offset X for integer pixel search
+  Int *m_pYInteger;    //offset Y for integer pixel search
+  DistType *m_pDiffInteger;
+  Int* getXInteger() { return m_pXInteger; }
+  Int* getYInteger() { return m_pYInteger; }
+  DistType* getDiffInteger() { return m_pDiffInteger; }
+  Short *m_pIdInteger; //frame id
+  Short* getIdInteger() { return m_pIdInteger; }
+  DistType *m_pDiff; //mse
+  Short *m_pId; //frame id
+  Int m_iSize;
+
+  TempLibFast();
+  ~TempLibFast();
+  Void init(UInt iSize);
+  Int* getX() { return m_pX; }
+  Int* getY() { return m_pY; }
+  DistType* getDiff() { return m_pDiff; }
+  Short* getId() { return m_pId; }
+  Void initDiff(UInt uiPatchSize, Int bitDepth);
+  Void initDiff(UInt uiPatchSize, Int bitDepth, Int iCandiNumber);
+#if INTRA_KLT
+  Void initTemplateDiff(UInt uiPatchSize, UInt uiBlkSize, Int bitDepth, Int iCandiNumber);
+#endif
+  Int m_diffMax;
+  Int getDiffMax() { return m_diffMax; }
+};
+
+typedef Short TrainDataType; //typedef Int TrainDataType; can reduce from 18.46second to 17.4second if use short 1.22.2014
+typedef Double TrainDataTypeD;
+#endif
+
 /// transform and quantization class
 class TComTrQuant
 {
@@ -204,6 +254,9 @@ Void RotTransform4I( Int* matrix, UChar index );
 #if ROT_TR 
    , UChar ucROTIdx = 0
 #endif
+#if KLT_COMMON
+   , Bool useKLT = false
+#endif
                      );
 
   Void invtransformNxN( Bool transQuantBypass, TextType eText, UInt uiMode,Pel* rpcResidual, UInt uiStride, TCoeff*   pcCoeff, UInt uiWidth, UInt uiHeight,  Int scalingListType, Bool useTransformSkip = false 
@@ -216,9 +269,18 @@ Void RotTransform4I( Int* matrix, UChar index );
 #if QC_USE_65ANG_MODES
     , Bool bUseExtIntraAngModes = false
 #endif
+#if KLT_COMMON
+  , Bool useKLT = false
+#endif
     );
+
+#if INTER_KLT
+  Void invRecurTransformNxN( TComDataCU* pcCU, UInt uiAbsPartIdx, TextType eTxt, Pel* rpcResidual, UInt uiAddr, UInt uiStride, UInt uiWidth, UInt uiHeight,
+    UInt uiMaxTrMode, UInt uiTrMode, TCoeff* rpcCoeff, TComYuv *pcPred);
+#else
   Void invRecurTransformNxN ( TComDataCU* pcCU, UInt uiAbsPartIdx, TextType eTxt, Pel* rpcResidual, UInt uiAddr,   UInt uiStride, UInt uiWidth, UInt uiHeight,
                              UInt uiMaxTrMode,  UInt uiTrMode, TCoeff* rpcCoeff );
+#endif
   
   // Misc functions
   Void setQPforQuant( Int qpy, TextType eTxtType, Int qpBdOffset, Int chromaQPOffset);
@@ -323,6 +385,48 @@ Void RotTransform4I( Int* matrix, UChar index );
   Int*    getSliceNSamples(){ return m_sliceNsamples ;} 
   Double* getSliceSumC()    { return m_sliceSumC; }
 #endif
+
+#if KLT_COMMON
+  Void calcCovMatrix(TrainDataType **pData, UInt uiSampleNum, covMatrixType *pCovMatrix, UInt uiDim, DistType *pDiff);
+  Void calcCovMatrixXXt(TrainDataType **pData, UInt uiSampleNum, covMatrixType *pCovMatrix, UInt uiDim);
+  DistType calcTemplateDiff(Pel *ref, UInt uiStride, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, DistType iMax);
+#if ENABLE_SEP_KLT
+  Void calcMatrixCovMatrix(TrainDataType **pData, UInt uiSampleNum, covMatrixType *pCovMatrix, UInt uiRows, UInt uiCols, Bool bCorrAmongColums);
+#endif
+  Void calcCovMatrix(TrainDataType **pData, UInt uiSampleNum, covMatrixType *pCovMatrix, UInt uiDim);
+  Bool deriveKLT(UInt uiBlkSize, UInt uiUseCandiNumber);
+  Bool derive1DimKLT_Fast(UInt uiBlkSize, DistType *pDiff, UInt uiUseCandiNumber);
+  Bool derive1DimKLT(UInt uiBlkSize, DistType *pDiff, UInt uiUseCandiNumber);
+  Bool derive2DimKLT(UInt uiBlkSize, DistType *pDiff);
+  Pel  **getTargetPatch(UInt uiDepth) { return m_pppTarPatch[uiDepth]; }
+  Pel* getRefPicUsed(UInt uiId) { return m_refPicUsed[uiId]; }
+  Void setRefPicUsed(UInt uiId, Pel *ref) { m_refPicUsed[uiId] = ref; }
+  UInt getStride() { return m_uiPicStride; }
+  Void setStride(UInt uiPicStride) { m_uiPicStride = uiPicStride; }
+
+#endif
+#if INTRA_KLT
+  Void searchCandidateFromOnePicIntra(TComDataCU *pcCU, UInt uiPartAddr, TComPic* refPicSrc, TComPicYuv *refPic, TComMv  cMv, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, UInt setId);
+  Void candidateSearchIntra(TComDataCU *pcCU, UInt uiPartAddr, UInt uiBlkSize, UInt uiTempSize);
+  Bool generateTMPrediction(Pel *piPred, UInt uiStride, UInt uiBlkSize, UInt uiTempSize, Int genPred0genPredAndtrainKLT1, Int &foundCandiNum);
+  Void getTargetTemplate(TComDataCU *pcCU, UInt uiAbsPartIdx, UInt absTUPartIdx, TComYuv* pcPred, UInt uiBlkSize, UInt uiTempSize);
+  Bool calcKLTIntra(Pel *piPred, UInt uiStride, UInt uiBlkSize, UInt uiTempSize);
+  Bool prepareKLTSamplesIntra(Pel *piPred, UInt uiStride, UInt uiBlkSize, UInt uiTempSize);
+#endif
+#if INTER_KLT
+  Void getTargetPatch(TComDataCU *pcCU, UInt uiAbsPartIdx, UInt absTUPartIdx, TComYuv* pcPred, UInt uiBlkSize, UInt uiTempSize);
+  Void candidateSearch(TComDataCU *pcCU, UInt uiPartAddr, UInt uiBlkSize, UInt uiTempSize);
+  Void searchCandidateFromOnePicInteger(TComDataCU *pcCU, UInt uiPartAddr, TComPic* refPicSrc, TComPicYuv *refPic, TComMv  cMv, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, UInt setId, Bool bInteger);
+  Void searchCandidateFraBasedOnInteger(TComDataCU *pcCU, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, UInt uiPartAddr, Short setIdFraStart);
+  Void RecordPosition(UInt uiTargetCandiNum);
+  Bool candidateTrain(TComDataCU *pcCU, UInt uiAbsPartIdx, UInt uiBlkSize, UInt uiTempSize);
+  Bool prepareKLTSamplesInter(TComDataCU *pcCU, UInt uiAbsPartIdx, UInt uiBlkSize, UInt uiTempSize);
+  Void setRefPicBuf(UInt uiId, TComPic *refPic) { m_refPicBuf[uiId] = refPic; }
+  TComPic* getRefPicBuf(UInt uiId) { return m_refPicBuf[uiId]; }
+  DistType calcPatchDiff(Pel *ref, UInt uiStride, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, DistType iMax);
+  Void xSetSearchRange(TComDataCU* pcCU, TComMv& cMvPred, Int iSrchRng, TComMv& rcMvSrchRngLT, TComMv& rcMvSrchRngRB);
+#endif
+
 protected:
 #if ADAPTIVE_QP_SELECTION
   Int     m_qpDelta[MAX_QP+1]; 
@@ -351,6 +455,33 @@ protected:
   Int      *m_quantCoef      [SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM][SCALING_LIST_REM_NUM]; ///< array of quantization matrix coefficient 4x4
   Int      *m_dequantCoef    [SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM][SCALING_LIST_REM_NUM]; ///< array of dequantization matrix coefficient 4x4
   Double   *m_errScale       [SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM][SCALING_LIST_REM_NUM]; ///< array of quantization matrix coefficient 4x4
+#if KLT_COMMON
+  Int m_uiPartLibSize;
+  TempLibFast m_tempLibFast;
+  Pel *m_refPicUsed[MAX_NUM_REF_IDS];
+  TComPic *m_refPicBuf[MAX_NUM_REF_IDS];
+  UInt m_uiPicStride;
+  TrainDataType *m_pData[MAX_CANDI_NUM];
+#if USE_TRANSPOSE_CANDDIATEARRAY
+  TrainDataType *m_pDataT[MAX_1DTRANS_LEN];
+#endif
+  UInt m_uiVaildCandiNum;
+  Double m_pEigenValues[MAX_1DTRANS_LEN];
+  Int m_pIDTmp[MAX_1DTRANS_LEN];
+  EigenType ***m_pppdEigenVector;
+  Short ***m_pppsEigenVector;
+  covMatrixType **m_pCovMatrix;
+  Pel ***m_pppTarPatch;
+#if FAST_DERIVE_KLT
+  EigenType **m_pppdTmpEigenVector;
+#endif
+
+#if ENABLE_SEP_KLT
+  EigenType ****m_ppppd2DimEigenVector; //[depth][R or C][row][col]
+  Short ****m_pppps2DimEigenVector;
+#endif
+#endif
+
 private:
   // forward Transform
   Void xT   (Int bitDepth, UInt uiMode,Pel* pResidual, UInt uiStride, Int* plCoeff, Int iWidth, Int iHeight 
@@ -444,3 +575,26 @@ __inline Int xGetICRate  ( UInt                            uiAbsLevel,
 //! \}
 
 #endif // __TCOMTRQUANT__
+
+
+#ifndef __SSE_H__
+#define __SSE_H__
+
+typedef unsigned short U16;
+typedef unsigned int UInt;
+typedef short I16;
+typedef int   Int;
+
+float InnerProduct_SSE_FLOATXSHORT(float *pa, short *pb, int m);
+int InnerProduct_SSE_SHORT(short *pa, short *pb, int m);
+void scaleMatrix(float **ppx, short **ppout, float scale, int rows, int cols);
+void scaleMatrix(float **ppx, short **ppout, float scale, int rows, int cols);
+int AbsSumOfVector(short *pa, short *pb, int m);
+int AbsSumOfVectorLesseqthan8(short *pa, short *pb, int m);
+
+UInt GetSAD4x4_SSE_U16(I16 **pSrc, I16 *pRef, Int iRefStride, Int iYOffset, Int iXOffset, UInt uiBestSAD);
+UInt GetSAD8x8_SSE_U16(I16 **pSrc, I16 *pRef, Int iRefStride, Int iYOffset, Int iXOffset, UInt uiBestSAD);
+UInt GetSAD16x16_SSE_U16(I16 **pSrc, I16 *pRef, Int iRefStride, Int iYOffset, Int iXOffset, UInt uiBestSAD);
+UInt GetSAD32x32_SSE_U16(I16 **pSrc, I16 *pRef, Int iRefStride, Int iYOffset, Int iXOffset, UInt uiBestSAD);
+
+#endif

@@ -1322,6 +1322,13 @@ Void TEncCavlc::codeTransformSkipFlags (TComDataCU* pcCU, UInt uiAbsPartIdx, UIn
   assert(0);
 }
 
+#if KLT_COMMON
+Void TEncCavlc::codeKLTFlags( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt width, UInt height, TextType eTType )
+{
+  assert(0);
+}
+#endif
+
 /** Code I_PCM information.
  * \param pcCU pointer to CU
  * \param uiAbsPartIdx CU index

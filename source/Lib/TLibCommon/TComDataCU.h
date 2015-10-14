@@ -121,6 +121,9 @@ private:
 #endif
   UChar*        m_puhTrIdx;           ///< array of transform indices
   UChar*        m_puhTransformSkip[3];///< array of transform skipping flags
+#if KLT_COMMON
+  UChar*        m_puhKLTFlag[3];      ///< array of KLT flags
+#endif
   UChar*        m_puhCbf[3];          ///< array of coded block flags (CBF)
   TComCUMvField m_acCUMvField[2];     ///< array of motion vectors
 #if QC_FRUC_MERGE
@@ -248,7 +251,9 @@ public:
   Void          copySubCU             ( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth );
   Void          copyInterPredInfoFrom ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefPicList );
   Void          copyPartFrom          ( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth );
-  
+#if INTER_KLT 
+  Void          copySameSizeCUFrom    ( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth );
+#endif
   Void          copyToPic             ( UChar uiDepth );
   Void          copyToPic             ( UChar uiDepth, UInt uiPartIdx, UInt uiPartDepth );
   
@@ -371,6 +376,13 @@ public:
   UChar         getTransformSkip      ( UInt uiIdx,TextType eType)    { return m_puhTransformSkip[g_aucConvertTxtTypeToIdx[eType]][uiIdx];}
   Void          setTransformSkipSubParts  ( UInt useTransformSkip, TextType eType, UInt uiAbsPartIdx, UInt uiDepth); 
   Void          setTransformSkipSubParts  ( UInt useTransformSkipY, UInt useTransformSkipU, UInt useTransformSkipV, UInt uiAbsPartIdx, UInt uiDepth );
+
+#if KLT_COMMON
+  UChar*        getKLTFlag(TextType eType)    { return m_puhKLTFlag[g_aucConvertTxtTypeToIdx[eType]]; }
+  UChar         getKLTFlag(UInt uiIdx, TextType eType)    { return m_puhKLTFlag[g_aucConvertTxtTypeToIdx[eType]][uiIdx]; }
+  Void          setKLTFlagSubParts(UInt useKLT, TextType eType, UInt uiAbsPartIdx, UInt uiDepth);
+  Void          setKLTFlagSubParts(UInt useKLTY, UInt useKLTU, UInt useKLTV, UInt uiAbsPartIdx, UInt uiDepth);
+#endif
 
   UInt          getQuadtreeTULog2MinSizeInCU( UInt absPartIdx );
   
@@ -503,6 +515,9 @@ public:
   Void          setMVPNumSubParts     ( Int iMVPNum, RefPicList eRefPicList, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth );
   
   Void          clipMv                ( TComMv&     rcMv     );
+#if INTRA_KLT
+  Void      clipMvIntraConstraint ( Int regionId, Int &iHorMin, Int &iHorMax, Int &iVerMin, Int &iVerMax, Int iRange, UInt uiTemplateSize, UInt uiBlkSize, Int iY, Int iCurrX, Int offsetLCUY, Int offsetLCUX);
+#endif
   Void          getMvPredLeft         ( TComMv&     rcMvPred )   { rcMvPred = m_cMvFieldA.getMv(); }
   Void          getMvPredAbove        ( TComMv&     rcMvPred )   { rcMvPred = m_cMvFieldB.getMv(); }
   Void          getMvPredAboveRight   ( TComMv&     rcMvPred )   { rcMvPred = m_cMvFieldC.getMv(); }
@@ -730,6 +745,9 @@ public:
 #endif
 #if QC_OBMC
   Bool          getNeigMotion( UInt uiAbsPartIdx, TComMvField cNeigMvField[2], Int &irNeigPredDir, Int iDir, TComMvField cCurMvField[2], Int &iCurrDir, UInt uiZeroIdx, Bool &bTobeStored);
+#endif
+#if INTER_KLT
+  Void          interpolatePic(TComPic* pcPic);
 #endif
 };
 

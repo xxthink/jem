@@ -1734,6 +1734,14 @@ Void TDecCavlc::parseTransformSkipFlags (TComDataCU* /*pcCU*/, UInt /*uiAbsPartI
 {
   assert(0);
 }
+
+#if KLT_COMMON
+Void TDecCavlc::parseKLTFlags(TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*width*/, UInt /*height*/, UInt /*uiDepth*/, TextType /*eTType*/)
+{
+  assert(0);
+}
+#endif
+
 #if ROT_TR  
 Void TDecCavlc::parseROTIdx ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/ )
 {

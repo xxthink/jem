@@ -42,7 +42,9 @@
 
 #include<stdio.h>
 #include<iostream>
-
+#if KLT_COMMON
+extern short **g_ppsEigenVector[USE_MORE_BLOCKSIZE_DEPTH_MAX]; //define here for debugging
+#endif
 //! \ingroup TLibCommon
 //! \{
 
@@ -73,6 +75,18 @@ Void         initSigLastScan(UInt* pBuffD, UInt* pBuffH, UInt* pBuffV, Int iWidt
 extern       UInt   g_auiZscanToRaster[ MAX_NUM_SPU_W*MAX_NUM_SPU_W ];
 extern       UInt   g_auiRasterToZscan[ MAX_NUM_SPU_W*MAX_NUM_SPU_W ];
 
+#if KLT_COMMON
+#if INTER_KLT
+extern Bool g_bEnableCheck;
+#endif
+Void reOrderCoeff( TCoeff *pcCoef, const UInt *scan, UInt uiWidth, UInt uiHeight );
+Void recoverOrderCoeff( TCoeff *pcCoef, const UInt *scan, UInt uiWidth, UInt uiHeight );
+#endif
+
+#if INTRA_KLT
+Int getZorder(Int iLCUX, Int iLCUY);
+#endif
+
 Void         initZscanToRaster ( Int iMaxDepth, Int iDepth, UInt uiStartVal, UInt*& rpuiCurrIdx );
 Void         initRasterToZscan ( UInt uiMaxCUWidth, UInt uiMaxCUHeight, UInt uiMaxDepth         );
 
@@ -87,6 +101,13 @@ extern       UInt g_uiMaxCUWidth;
 extern       UInt g_uiMaxCUHeight;
 extern       UInt g_uiMaxCUDepth;
 extern       UInt g_uiAddCUDepth;
+
+#if KLT_COMMON
+extern short **g_ppsEigenVector[USE_MORE_BLOCKSIZE_DEPTH_MAX];
+#if ENABLE_SEP_KLT
+extern short **g_pps2DimEigenVector[USE_MORE_BLOCKSIZE_DEPTH_MAX][2];
+#endif
+#endif
 
 #if QC_T64
 #define MAX_TS_WIDTH  64
@@ -208,6 +229,9 @@ extern       Char   g_aucConvertToBit  [ MAX_CU_SIZE+1 ];   // from width to log
 
 #ifndef ENC_DEC_TRACE
 # define ENC_DEC_TRACE 0
+#if ENC_DEC_TRACE
+#define KLT_TRACE  1 
+#endif
 #endif
 
 #if ENC_DEC_TRACE
@@ -228,7 +252,9 @@ extern UInt64 g_nSymbolCounter;
 #define DTRACE_CABAC_X(x)     if ( ( g_nSymbolCounter >= COUNTER_START && g_nSymbolCounter <= COUNTER_END )|| g_bJustDoIt ) fprintf( g_hTrace, "%x", x );
 #define DTRACE_CABAC_R( x,y ) if ( ( g_nSymbolCounter >= COUNTER_START && g_nSymbolCounter <= COUNTER_END )|| g_bJustDoIt ) fprintf( g_hTrace, x,    y );
 #define DTRACE_CABAC_N        if ( ( g_nSymbolCounter >= COUNTER_START && g_nSymbolCounter <= COUNTER_END )|| g_bJustDoIt ) fprintf( g_hTrace, "\n"    );
-
+#if KLT_TRACE
+extern Bool g_bEnabled; //decoder
+#endif
 #else
 
 #define DTRACE_CABAC_F(x)

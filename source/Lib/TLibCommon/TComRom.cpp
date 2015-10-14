@@ -45,7 +45,9 @@
 // ====================================================================================================================
 // Initialize / destroy functions
 // ====================================================================================================================
-
+#if KLT_TRACE
+Bool g_bEnabled = false; // true;
+#endif
 //! \ingroup TLibCommon
 //! \{
 
@@ -162,6 +164,50 @@ UInt g_auiRasterToPelX  [ MAX_NUM_SPU_W*MAX_NUM_SPU_W ] = { 0, };
 UInt g_auiRasterToPelY  [ MAX_NUM_SPU_W*MAX_NUM_SPU_W ] = { 0, };
 
 UInt g_auiPUOffset[8] = { 0, 8, 4, 4, 2, 10, 1, 5};
+
+#if KLT_COMMON
+short **g_ppsEigenVector[USE_MORE_BLOCKSIZE_DEPTH_MAX];
+#if ENABLE_SEP_KLT
+short **g_pps2DimEigenVector[USE_MORE_BLOCKSIZE_DEPTH_MAX][2];
+#endif
+#if INTER_KLT
+Bool g_bEnableCheck = true;
+#endif
+Void reOrderCoeff(TCoeff *pcCoef, const UInt *scan, UInt uiWidth, UInt uiHeight)
+{
+  TCoeff coeff[1024];
+  UInt uiMaxNumCoeff = uiWidth * uiHeight;
+  memcpy(coeff, pcCoef, uiMaxNumCoeff*sizeof(TCoeff));
+
+  for (UInt i = 0; i < uiMaxNumCoeff; i++)
+  {
+    pcCoef[scan[i]] = coeff[i];
+  }
+}
+Void recoverOrderCoeff(TCoeff *pcCoef, const UInt *scan, UInt uiWidth, UInt uiHeight)
+{
+  TCoeff coeff[1024];
+  UInt uiMaxNumCoeff = uiWidth * uiHeight;
+  memcpy(coeff, pcCoef, uiMaxNumCoeff*sizeof(TCoeff));
+  for (UInt i = 0; i < uiMaxNumCoeff; i++)
+  {
+    pcCoef[i] = coeff[scan[i]];
+  }
+}
+#endif
+
+
+
+#if INTRA_KLT
+Int getZorder(Int iLCUX, Int iLCUY)
+{
+  //get raster id
+  Int NumInRow = g_uiMaxCUWidth >> 2;
+  Int rasterId = (iLCUY >> 2)*NumInRow + (iLCUX >> 2);
+  Int zOrder = g_auiRasterToZscan[rasterId];
+  return zOrder;
+}
+#endif
 
 Void initZscanToRaster ( Int iMaxDepth, Int iDepth, UInt uiStartVal, UInt*& rpuiCurrIdx )
 {
@@ -468,7 +514,7 @@ Char  g_aucConvertToBit  [ MAX_CU_SIZE+1 ];
 FILE*  g_hTrace = NULL;
 const Bool g_bEncDecTraceEnable  = true;
 const Bool g_bEncDecTraceDisable = false;
-Bool   g_HLSTraceEnable = true;
+Bool   g_HLSTraceEnable = false; //true
 Bool   g_bJustDoIt = false;
 UInt64 g_nSymbolCounter = 0;
 #endif

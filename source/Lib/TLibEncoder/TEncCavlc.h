@@ -166,6 +166,10 @@ public:
     );
   Void codeTransformSkipFlags ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt width, UInt height, TextType eTType );
 
+#if KLT_COMMON
+  Void codeKLTFlags      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt width, UInt height, TextType eTType );
+#endif
+
   Void estBit               (estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, TextType eTType);
   
   Void xCodePredWeightTable          ( TComSlice* pcSlice );

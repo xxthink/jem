@@ -81,6 +81,7 @@ private:
 
   SEIMessages  m_SEIs; ///< Any SEI messages that have been received.  If !NULL we own the object.
 
+
 public:
   TComPic();
   virtual ~TComPic();
@@ -110,6 +111,7 @@ public:
   
   TComPicYuv*   getPicYuvOrg()        { return  m_apcPicYuv[0]; }
   TComPicYuv*   getPicYuvRec()        { return  m_apcPicYuv[1]; }
+
 #if HM14_CLEAN_UP || ALF_HM3_QC_REFACTOR
   TComPicYuv*   replacePicYuvRecPointer( TComPicYuv * pNewPicYuvRec )
   {
@@ -179,6 +181,10 @@ public:
    * Pointer is valid until this->destroy() is called */
   const SEIMessages& getSEIs() const { return m_SEIs; }
 
+#if INTER_KLT
+  TComPicYuv*   m_apcQuaPicYuv[4][4];     //   quarter pixel reconstructed pictures (fractional pixels); 
+  TComPicYuv*   getPicQuaYuvRec(UInt uiRow, UInt uiCol)     { return  m_apcQuaPicYuv[uiRow][uiCol]; }
+#endif
 };// END CLASS DEFINITION TComPic
 
 //! \}
