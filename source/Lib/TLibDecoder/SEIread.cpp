@@ -122,7 +122,12 @@ void SEIReader::parseSEImessage(TComInputBitstream* bs, SEIMessages& seis, const
   } while (m_pcBitstream->getNumBitsLeft() > 8);
 
   UInt rbspTrailingBits;
+#if ENC_DEC_TRACE && FIX_TRACE
+  // omit trace text to match encoder side
+  xReadCode(8, rbspTrailingBits);
+#else
   READ_CODE(8, rbspTrailingBits, "rbsp_trailing_bits");
+#endif
   assert(rbspTrailingBits == 0x80);
 }
 
