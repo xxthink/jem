@@ -572,7 +572,13 @@ inline Void simd8x8Transpose32b( __m128i * pBuffer )
   }
 }
 
-inline Void simd8x8HAD1D32b( __m128i * pInput , __m128i * pOutput )
+#ifdef __GNUC__
+#define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
+#if GCC_VERSION > 40600 && GCC_VERSION < 40700
+__attribute__((optimize("no-tree-vrp")))
+#endif
+#endif
+Void simd8x8HAD1D32b( __m128i * pInput , __m128i * pOutput )
 {
   __m128i m1[8][2] , m2[8][2];
 
