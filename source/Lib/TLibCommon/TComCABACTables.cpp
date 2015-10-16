@@ -1,9 +1,9 @@
 /* The copyright in this software is being made available under the BSD
  * License, included below. This software may be subject to other third party
  * and contributor rights, including patent rights, and no such rights are
- * granted under this license.  
+ * granted under this license.
  *
- * Copyright (c) 2010-2014, ITU/ISO/IEC
+ * Copyright (c) 2010-2015, ITU/ISO/IEC
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -39,7 +39,7 @@
 
 //! \ingroup TLibCommon
 //! \{
-#if QC_AC_ADAPT_WDOW || MULTI_PARAM_CABAC
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ05_MULTI_PARAM_CABAC 
  const  UShort TComCABACTables::sm_aucLPSTable[512][64]=
  {
    {  253,  257,  261,  265,  269,  273,  277,  281,  285,  289,  293,  297,  301,  305,  309,  313,  317,  321,  325,  329,  333,  337,  341,  345,  349,  353,  357,  361,  365,  369,  373,  377,  381,  385,  389,  393,  397,  401,  405,  409,  413,  417,  421,  425,  429,  433,  437,  441,  445,  449,  453,  457,  461,  465,  469,  473,  477,  481,  485,  489,  493,  497,  501,  505,},
@@ -591,7 +591,7 @@ const UChar TComCABACTables::sm_aucRenormTable[128] =
   0,  0,  0,  0,
 };
 #else
-const UChar TComCABACTables::sm_aucLPSTable[64][4] =
+const UChar TComCABACTables::sm_aucLPSTable[1 << CONTEXT_STATE_BITS][4] =
 {
   { 128, 176, 208, 240},
   { 128, 167, 197, 227},
@@ -670,6 +670,6 @@ const UChar TComCABACTables::sm_aucRenormTable[32] =
   1,  1,  1,  1,
   1,  1,  1,  1
 };
-#endif
 
+#endif
 //! \}

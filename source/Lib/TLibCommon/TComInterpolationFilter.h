@@ -1,9 +1,9 @@
 /* The copyright in this software is being made available under the BSD
  * License, included below. This software may be subject to other third party
  * and contributor rights, including patent rights, and no such rights are
- * granted under this license.  
+ * granted under this license.
  *
- * Copyright (c) 2010-2014, ITU/ISO/IEC
+ * Copyright (c) 2010-2015, ITU/ISO/IEC
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -36,17 +36,17 @@
  * \brief Declaration of TComInterpolationFilter class
  */
 
-#ifndef __HM_TCOMINTERPOLATIONFILTER_H__
-#define __HM_TCOMINTERPOLATIONFILTER_H__
+#ifndef __TCOMINTERPOLATIONFILTER__
+#define __TCOMINTERPOLATIONFILTER__
 
-#include "TypeDef.h"
+#include "CommonDef.h"
 
 //! \ingroup TLibCommon
 //! \{
 
 #define NTAPS_LUMA        8 ///< Number of taps for luma
 #define NTAPS_CHROMA      4 ///< Number of taps for chroma
-#if QC_FRUC_MERGE
+#if VCEG_AZ07_FRUC_MERGE
 #define NTAPS_LUMA_FRUC   2
 #endif
 #define IF_INTERNAL_PREC 14 ///< Number of bits for internal precision
@@ -58,47 +58,45 @@
  */
 class TComInterpolationFilter
 {
-#if QC_MV_STORE_PRECISION_BIT == 3
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE == 1
   static const Short m_lumaFilter[8][NTAPS_LUMA];     ///< Luma filter taps
   static const Short m_chromaFilter[16][NTAPS_CHROMA]; ///< Chroma filter taps
 #else
-  static const Short m_lumaFilter[4][NTAPS_LUMA];     ///< Luma filter taps
-  static const Short m_chromaFilter[8][NTAPS_CHROMA]; ///< Chroma filter taps
+  static const TFilterCoeff m_lumaFilter[LUMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS][NTAPS_LUMA];     ///< Luma filter taps
+  static const TFilterCoeff m_chromaFilter[CHROMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS][NTAPS_CHROMA]; ///< Chroma filter taps
 #endif
-#if QC_FRUC_MERGE
-#if QC_MV_STORE_PRECISION_BIT == 3
+#if VCEG_AZ07_FRUC_MERGE
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE == 1
   static const Short m_lumaFilterBilinear[8][NTAPS_LUMA_FRUC];     ///< Luma filter taps
 #else
   static const Short m_lumaFilterBilinear[4][NTAPS_LUMA_FRUC];     ///< Luma filter taps
 #endif
 #endif
-  
-  static Void filterCopy(Int bitDepth, const Pel *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height, Bool isFirst, Bool isLast);
-  
+
+  static Void filterCopy(Int bitDepth, const Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Bool isFirst, Bool isLast);
+
   template<Int N, Bool isVertical, Bool isFirst, Bool isLast>
-  static Void filter(Int bitDepth, Pel const *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height, Short const *coeff);
+  static Void filter(Int bitDepth, Pel const *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, TFilterCoeff const *coeff);
 
   template<Int N>
-  static Void filterHor(Int bitDepth, Pel *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height,               Bool isLast, Short const *coeff);
+  static Void filterHor(Int bitDepth, Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height,               Bool isLast, TFilterCoeff const *coeff);
   template<Int N>
-  static Void filterVer(Int bitDepth, Pel *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height, Bool isFirst, Bool isLast, Short const *coeff);
+  static Void filterVer(Int bitDepth, Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Bool isFirst, Bool isLast, TFilterCoeff const *coeff);
 
 public:
   TComInterpolationFilter() {}
   ~TComInterpolationFilter() {}
 
-  Void filterHorLuma  (Pel *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height, Int frac,               Bool isLast 
-#if QC_FRUC_MERGE
+  Void filterHor(const ComponentID compID, Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Int frac,               Bool isLast, const ChromaFormat fmt, const Int bitDepth 
+#if VCEG_AZ07_FRUC_MERGE
     , Int nFilterIdx = 0
 #endif
     );
-  Void filterVerLuma  (Pel *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height, Int frac, Bool isFirst, Bool isLast 
-#if QC_FRUC_MERGE
+  Void filterVer(const ComponentID compID, Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Int frac, Bool isFirst, Bool isLast, const ChromaFormat fmt, const Int bitDepth 
+#if VCEG_AZ07_FRUC_MERGE
     , Int nFilterIdx = 0
 #endif
     );
-  Void filterHorChroma(Pel *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height, Int frac,               Bool isLast );
-  Void filterVerChroma(Pel *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height, Int frac, Bool isFirst, Bool isLast );
 };
 
 //! \}

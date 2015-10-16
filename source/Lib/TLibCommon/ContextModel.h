@@ -1,9 +1,9 @@
 /* The copyright in this software is being made available under the BSD
  * License, included below. This software may be subject to other third party
  * and contributor rights, including patent rights, and no such rights are
- * granted under this license.  
+ * granted under this license.
  *
- * Copyright (c) 2010-2014, ITU/ISO/IEC
+ * Copyright (c) 2010-2015, ITU/ISO/IEC
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -36,14 +36,15 @@
     \brief    context model class (header)
 */
 
-#ifndef __CONTEXT_MODEL__
-#define __CONTEXT_MODEL__
+#ifndef __CONTEXTMODEL__
+#define __CONTEXTMODEL__
 
 #if _MSC_VER > 1000
 #pragma once
 #endif // _MSC_VER > 1000
 
 #include "CommonDef.h"
+#include "TComRom.h"
 
 //! \ingroup TLibCommon
 //! \{
@@ -51,7 +52,7 @@
 // ====================================================================================================================
 // Class definition
 // ====================================================================================================================
-#if QC_AC_ADAPT_WDOW || MULTI_PARAM_CABAC
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ05_MULTI_PARAM_CABAC 
 const Int m_entropyBits[2][512] =
 {
   {
@@ -68,12 +69,12 @@ const Int m_entropyBits[2][512] =
   }
 };
 #endif
+
 /// context model class
 class ContextModel
 {
 public:
-
-#if QC_AC_ADAPT_WDOW || MULTI_PARAM_CABAC
+#if VCEG_AZ07_BAC_ADAPT_WDOW  || VCEG_AZ05_MULTI_PARAM_CABAC 
   ContextModel  ()                        
   {
     m_iCtxIdx              = 0;
@@ -84,7 +85,7 @@ public:
   Void updateLPS () //code "0"
   {
     iP1-= (iP1 >> m_ucWdow);
-#if MULTI_PARAM_CABAC
+#if VCEG_AZ05_MULTI_PARAM_CABAC
     iP0-= (iP0 >> 8);
 #endif
   }
@@ -92,14 +93,14 @@ public:
   Void updateMPS () //code "1"
   {
     iP1 +=  ((32768-iP1) >> m_ucWdow);
-#if MULTI_PARAM_CABAC
+#if VCEG_AZ05_MULTI_PARAM_CABAC
     iP0 +=  ((32768-iP0) >> 8);
 #endif
   }
 
   UShort getState( )
   {
-#if MULTI_PARAM_CABAC
+#if VCEG_AZ05_MULTI_PARAM_CABAC
     return  (iP0+iP1)>>1;
 #else
     return  iP1;
@@ -108,8 +109,8 @@ public:
 
   Int getEntropyBits(Short val) 
   {
-    Int tmpIdx =
-#if MULTI_PARAM_CABAC
+    Int tmpIdx = 
+#if VCEG_AZ05_MULTI_PARAM_CABAC
     (iP0+iP1) >> 8;
 #else
     iP1 >> 7;
@@ -118,38 +119,44 @@ public:
   }
 
   static Int getEntropyBitsTrm( Int val ) { return m_entropyBits[val][0]; }
-  Void   init ( Int qp, Int initValue     );
-#if INIT_PREVFRAME
-  Void   setState(UShort uiState )        {iP1 = uiState; 
-#if MULTI_PARAM_CABAC
-iP0 = uiState;
+  Void  init         ( Int qp, Int initValue     );
+#if VCEG_AZ07_INIT_PREVFRAME
+  Void  setState     ( UShort uiState )  { iP1 = uiState;
+#if VCEG_AZ05_MULTI_PARAM_CABAC
+    iP0 = uiState;
 #endif
   }
 #endif
-
+  Void  setIdx       ( UInt i )          { m_iCtxIdx = i;        }
+  Void  setWindowSize( UChar ucWdow )    { m_ucWdow   =  ucWdow ;} 
+  UInt  getIdx       ()                  { return m_iCtxIdx;     }
+  UChar getWdowSize  ()                  { return m_ucWdow;      }   
 #else
-  ContextModel  ()                        { m_ucState = 0;     m_binsCoded = 0;  }
-
+  ContextModel  ()                        { m_ucState = 0; m_binsCoded = 0; }
   ~ContextModel ()                        {}
-  
+
   UChar getState  ()                { return ( m_ucState >> 1 ); }                    ///< get current state
+#if VCEG_AZ07_INIT_PREVFRAME
+  UChar getOrigState ()             { return m_ucState;          } 
+  Void  setState  ( UChar uiState ) { m_ucState = uiState;       }
+#endif
   UChar getMps    ()                { return ( m_ucState  & 1 ); }                    ///< get curret MPS
   Void  setStateAndMps( UChar ucState, UChar ucMPS) { m_ucState = (ucState << 1) + ucMPS; } ///< set state and MPS
-  
+
   Void init ( Int qp, Int initValue );   ///< initialize state with initial probability
-  
+
   Void updateLPS ()
   {
     m_ucState = m_aucNextStateLPS[ m_ucState ];
   }
-  
+
   Void updateMPS ()
   {
     m_ucState = m_aucNextStateMPS[ m_ucState ];
   }
-  
+
   Int getEntropyBits(Short val) { return m_entropyBits[m_ucState ^ val]; }
-    
+
 #if FAST_BIT_EST
   Void update( Int binVal )
   {
@@ -159,34 +166,27 @@ iP0 = uiState;
   static Int getEntropyBitsTrm( Int val ) { return m_entropyBits[126 ^ val]; }
 #endif
 #endif
-
-
-#if QC_AC_ADAPT_WDOW
-  Void  setIdx       (UInt i)          { m_iCtxIdx = i;        }
-  Void  setWindowSize(UChar ucWdow)    { m_ucWdow   = ucWdow  ;} 
-  UInt  getIdx       ()                {return m_iCtxIdx;      }
-  UChar getWdowSize  ()                { return m_ucWdow;      }    
-#endif
-
   Void setBinsCoded(UInt val)   { m_binsCoded = val;  }
   UInt getBinsCoded()           { return m_binsCoded;   }
 
 private:
 
-#if  QC_AC_ADAPT_WDOW || MULTI_PARAM_CABAC
+#if  VCEG_AZ07_BAC_ADAPT_WDOW  || VCEG_AZ05_MULTI_PARAM_CABAC 
   UShort iP1;
   UChar         m_ucWdow;
   UInt          m_iCtxIdx;
-#if MULTI_PARAM_CABAC
+#if VCEG_AZ05_MULTI_PARAM_CABAC
   UShort iP0;
 #endif
 #else
   UChar         m_ucState;                                                                  ///< internal state variable
-  static const  UChar m_aucNextStateMPS[ 128 ];
-  static const  UChar m_aucNextStateLPS[ 128 ];
-  static const Int m_entropyBits[ 128 ];
+
+  static const  UInt  m_totalStates = (1 << CONTEXT_STATE_BITS) * 2; //*2 for MPS = [0|1]
+  static const  UChar m_aucNextStateMPS[m_totalStates];
+  static const  UChar m_aucNextStateLPS[m_totalStates];
+  static const  Int   m_entropyBits    [m_totalStates];
 #if FAST_BIT_EST
-  static UChar m_nextState[128][2];
+  static UChar m_nextState[m_totalStates][2 /*MPS = [0|1]*/];
 #endif
 #endif
   UInt          m_binsCoded;

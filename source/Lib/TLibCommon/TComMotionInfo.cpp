@@ -1,9 +1,9 @@
 /* The copyright in this software is being made available under the BSD
  * License, included below. This software may be subject to other third party
  * and contributor rights, including patent rights, and no such rights are
- * granted under this license.  
+ * granted under this license.
  *
- * Copyright (c) 2010-2014, ITU/ISO/IEC
+ * Copyright (c) 2010-2015, ITU/ISO/IEC
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -39,12 +39,10 @@
 #include "TComMotionInfo.h"
 #include "assert.h"
 #include <stdlib.h>
-
-#if QC_SUB_PU_TMVP || QC_FRUC_MERGE
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP || VCEG_AZ07_FRUC_MERGE
 #include "TComDataCU.h"
 #include "TComPic.h"
 #endif
-
 //! \ingroup TLibCommon
 //! \{
 
@@ -61,11 +59,11 @@ Void TComCUMvField::create( UInt uiNumPartition )
   assert(m_pcMv     == NULL);
   assert(m_pcMvd    == NULL);
   assert(m_piRefIdx == NULL);
-  
+
   m_pcMv     = new TComMv[ uiNumPartition ];
   m_pcMvd    = new TComMv[ uiNumPartition ];
   m_piRefIdx = new Char  [ uiNumPartition ];
-  
+
   m_uiNumPartition = uiNumPartition;
 }
 
@@ -74,15 +72,15 @@ Void TComCUMvField::destroy()
   assert(m_pcMv     != NULL);
   assert(m_pcMvd    != NULL);
   assert(m_piRefIdx != NULL);
-  
+
   delete[] m_pcMv;
   delete[] m_pcMvd;
   delete[] m_piRefIdx;
-  
+
   m_pcMv     = NULL;
   m_pcMvd    = NULL;
   m_piRefIdx = NULL;
-  
+
   m_uiNumPartition = 0;
 }
 
@@ -92,13 +90,11 @@ Void TComCUMvField::destroy()
 
 Void TComCUMvField::clearMvField()
 {
-#if !HM14_CLEAN_UP
   for ( Int i = 0; i < m_uiNumPartition; i++ )
   {
     m_pcMv [ i ].setZero();
-    m_pcMvd[ i ].setZero();      
+    m_pcMvd[ i ].setZero();
   }
-#endif
   assert( sizeof( *m_piRefIdx ) == 1 );
   memset( m_piRefIdx, NOT_VALID, m_uiNumPartition * sizeof( *m_piRefIdx ) );
 }
@@ -106,7 +102,7 @@ Void TComCUMvField::clearMvField()
 Void TComCUMvField::copyFrom( TComCUMvField const * pcCUMvFieldSrc, Int iNumPartSrc, Int iPartAddrDst )
 {
   Int iSizeInTComMv = sizeof( TComMv ) * iNumPartSrc;
-  
+
   memcpy( m_pcMv     + iPartAddrDst, pcCUMvFieldSrc->m_pcMv,     iSizeInTComMv );
   memcpy( m_pcMvd    + iPartAddrDst, pcCUMvFieldSrc->m_pcMvd,    iSizeInTComMv );
   memcpy( m_piRefIdx + iPartAddrDst, pcCUMvFieldSrc->m_piRefIdx, sizeof( *m_piRefIdx ) * iNumPartSrc );
@@ -121,7 +117,7 @@ Void TComCUMvField::copyTo( TComCUMvField* pcCUMvFieldDst, Int iPartAddrDst, UIn
 {
   Int iSizeInTComMv = sizeof( TComMv ) * uiNumPart;
   Int iOffset = uiOffset + iPartAddrDst;
-  
+
   memcpy( pcCUMvFieldDst->m_pcMv     + iOffset, m_pcMv     + uiOffset, iSizeInTComMv );
   memcpy( pcCUMvFieldDst->m_pcMvd    + iOffset, m_pcMvd    + uiOffset, iSizeInTComMv );
   memcpy( pcCUMvFieldDst->m_piRefIdx + iOffset, m_piRefIdx + uiOffset, sizeof( *m_piRefIdx ) * uiNumPart );
@@ -137,7 +133,7 @@ Void TComCUMvField::setAll( T *p, T const & val, PartSize eCUMode, Int iPartAddr
   Int i;
   p += iPartAddr;
   Int numElements = m_uiNumPartition >> ( 2 * uiDepth );
-  
+
   switch( eCUMode )
   {
     case SIZE_2Nx2N:
@@ -146,7 +142,7 @@ Void TComCUMvField::setAll( T *p, T const & val, PartSize eCUMode, Int iPartAddr
         p[ i ] = val;
       }
       break;
-      
+
     case SIZE_2NxN:
       numElements >>= 1;
       for ( i = 0; i < numElements; i++ )
@@ -154,7 +150,7 @@ Void TComCUMvField::setAll( T *p, T const & val, PartSize eCUMode, Int iPartAddr
         p[ i ] = val;
       }
       break;
-      
+
     case SIZE_Nx2N:
       numElements >>= 2;
       for ( i = 0; i < numElements; i++ )
@@ -163,7 +159,7 @@ Void TComCUMvField::setAll( T *p, T const & val, PartSize eCUMode, Int iPartAddr
         p[ i + 2 * numElements ] = val;
       }
       break;
-      
+
     case SIZE_NxN:
       numElements >>= 2;
       for ( i = 0; i < numElements; i++)
@@ -330,35 +326,6 @@ Void TComCUMvField::setAllMvField( TComMvField const & mvField, PartSize eCUMode
   setAllRefIdx( mvField.getRefIdx(), eCUMode, iPartAddr, uiDepth, iPartIdx );
 }
 
-#if QC_SUB_PU_TMVP || QC_FRUC_MERGE
-Void TComCUMvField::setMvFieldSP( TComDataCU* pcCU, UInt uiAbsPartIdx, TComMvField cMvField, Int iWidth, Int iHeight  )
-{
-  uiAbsPartIdx += pcCU->getZorderIdxInCU();
-
-  Int iMinCUW  = pcCU->getPic()->getMinCUHeight();
-  Int iStartPelX = g_auiRasterToPelX[g_auiZscanToRaster[uiAbsPartIdx]]/iMinCUW;
-  Int iStartPelY = g_auiRasterToPelY[g_auiZscanToRaster[uiAbsPartIdx]]/iMinCUW;
-  Int iEndPelX = iStartPelX + iWidth/iMinCUW;
-  Int iEndPelY = iStartPelY + iHeight/iMinCUW;
-
-  Int iNumPart = pcCU->getPic()->getNumPartInWidth();
-  Int iCurrRaster, uiPartAddr;
-
-  for (Int i=iStartPelY; i < iEndPelY; i ++)
-  {
-    for (Int j=iStartPelX; j < iEndPelX; j ++)
-    {
-      iCurrRaster = i * iNumPart + j;
-      uiPartAddr  = g_auiRasterToZscan[iCurrRaster];
-      uiPartAddr -= pcCU->getZorderIdxInCU();  
-
-      m_pcMv[uiPartAddr]     = cMvField.getMv();
-      m_piRefIdx[uiPartAddr] = cMvField.getRefIdx();
-    }
-  }
-}
-#endif
-
 /**Subsampling of the stored prediction mode, reference index and motion vector
  * \param pePredMode Pointer to prediction modes
  * \param scale      Factor by which to subsample motion information
@@ -367,15 +334,14 @@ Void TComCUMvField::compress(Char* pePredMode, Int scale)
 {
   Int N = scale * scale;
   assert( N > 0 && N <= m_uiNumPartition);
-  
+
   for ( Int uiPartIdx = 0; uiPartIdx < m_uiNumPartition; uiPartIdx += N )
   {
-    TComMv cMv(0,0); 
-    PredMode predMode = MODE_INTRA;
+    TComMv cMv(0,0);
     Int iRefIdx = 0;
-    
+
     cMv = m_pcMv[ uiPartIdx ];
-    predMode = static_cast<PredMode>( pePredMode[ uiPartIdx ] );
+    PredMode predMode = static_cast<PredMode>( pePredMode[ uiPartIdx ] );
     iRefIdx = m_piRefIdx[ uiPartIdx ];
     for ( Int i = 0; i < N; i++ )
     {
@@ -384,5 +350,35 @@ Void TComCUMvField::compress(Char* pePredMode, Int scale)
       m_piRefIdx[ uiPartIdx + i ] = iRefIdx;
     }
   }
-} 
+}
+
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP || VCEG_AZ07_FRUC_MERGE
+Void TComCUMvField::setMvFieldSP( TComDataCU* pcCU, UInt uiAbsPartIdx, TComMvField cMvField, Int iWidth, Int iHeight  )
+{
+  uiAbsPartIdx += pcCU->getZorderIdxInCtu();
+
+  Int iMinCUW  = pcCU->getPic()->getMinCUHeight();
+  Int iStartPelX = g_auiRasterToPelX[g_auiZscanToRaster[uiAbsPartIdx]]/iMinCUW;
+  Int iStartPelY = g_auiRasterToPelY[g_auiZscanToRaster[uiAbsPartIdx]]/iMinCUW;
+  Int iEndPelX = iStartPelX + iWidth/iMinCUW;
+  Int iEndPelY = iStartPelY + iHeight/iMinCUW;
+
+  Int iNumPart = pcCU->getPic()->getNumPartInCtuWidth();
+  Int iCurrRaster, uiPartAddr;
+
+  for (Int i=iStartPelY; i < iEndPelY; i ++)
+  {
+    for (Int j=iStartPelX; j < iEndPelX; j ++)
+    {
+      iCurrRaster = i * iNumPart + j;
+      uiPartAddr  = g_auiRasterToZscan[iCurrRaster];
+      uiPartAddr -= pcCU->getZorderIdxInCtu();  
+
+      m_pcMv[uiPartAddr]     = cMvField.getMv();
+      m_piRefIdx[uiPartAddr] = cMvField.getRefIdx();
+    }
+  }
+}
+#endif
+
 //! \}

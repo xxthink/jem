@@ -1,9 +1,9 @@
 /* The copyright in this software is being made available under the BSD
  * License, included below. This software may be subject to other third party
  * and contributor rights, including patent rights, and no such rights are
- * granted under this license.  
+ * granted under this license.
  *
- * Copyright (c) 2010-2014, ITU/ISO/IEC
+ * Copyright (c) 2010-2015, ITU/ISO/IEC
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -43,7 +43,7 @@
 #include "CommonDef.h"
 #include "TComMv.h"
 
-#if QC_SUB_PU_TMVP || QC_FRUC_MERGE
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP || VCEG_AZ07_FRUC_MERGE
 class TComDataCU;
 class TComPic;
 #endif
@@ -71,25 +71,25 @@ class TComMvField
 private:
   TComMv    m_acMv;
   Int       m_iRefIdx;
-  
+
 public:
   TComMvField() : m_iRefIdx( NOT_VALID ) {}
-  
+
   Void setMvField( TComMv const & cMv, Int iRefIdx )
   {
     m_acMv    = cMv;
     m_iRefIdx = iRefIdx;
   }
-  
+
   Void setRefIdx( Int refIdx ) { m_iRefIdx = refIdx; }
-  
+
   TComMv const & getMv() const { return  m_acMv; }
   TComMv       & getMv()       { return  m_acMv; }
-  
+
   Int getRefIdx() const { return  m_iRefIdx;       }
   Int getHor   () const { return  m_acMv.getHor(); }
   Int getVer   () const { return  m_acMv.getVer(); }
-#if GEN_MRG_IMPROVEMENT || QC_OBMC || QC_FRUC_MERGE
+#if COM16_C806_GEN_MRG_IMPROVEMENT || COM16_C806_OBMC || VCEG_AZ07_FRUC_MERGE
   Bool operator== (const TComMvField& rcMv) const
   {
     return (m_acMv.getHor()== rcMv.getHor() && m_acMv.getVer()== rcMv.getVer() && m_iRefIdx == rcMv.getRefIdx());
@@ -106,7 +106,7 @@ private:
   Char*     m_piRefIdx;
   UInt      m_uiNumPartition;
   AMVPInfo  m_cAMVPInfo;
-    
+
   template <typename T>
   Void setAll( T *p, T const & val, PartSize eCUMode, Int iPartAddr, UInt uiDepth, Int iPartIdx );
 
@@ -117,48 +117,43 @@ public:
   // ------------------------------------------------------------------------------------------------------------------
   // create / destroy
   // ------------------------------------------------------------------------------------------------------------------
-  
+
   Void    create( UInt uiNumPartition );
   Void    destroy();
-  
+
   // ------------------------------------------------------------------------------------------------------------------
   // clear / copy
   // ------------------------------------------------------------------------------------------------------------------
 
   Void    clearMvField();
-  
+
   Void    copyFrom( TComCUMvField const * pcCUMvFieldSrc, Int iNumPartSrc, Int iPartAddrDst );
   Void    copyTo  ( TComCUMvField* pcCUMvFieldDst, Int iPartAddrDst ) const;
   Void    copyTo  ( TComCUMvField* pcCUMvFieldDst, Int iPartAddrDst, UInt uiOffset, UInt uiNumPart ) const;
-  
+
   // ------------------------------------------------------------------------------------------------------------------
   // get
   // ------------------------------------------------------------------------------------------------------------------
-  
+
   TComMv const & getMv    ( Int iIdx ) const { return  m_pcMv    [iIdx]; }
   TComMv const & getMvd   ( Int iIdx ) const { return  m_pcMvd   [iIdx]; }
   Int            getRefIdx( Int iIdx ) const { return  m_piRefIdx[iIdx]; }
-#if QC_FRUC_MERGE
-  Void    setMv             ( TComMv  cMv,     Int iIdx ) { m_pcMv    [iIdx] = cMv;     }
-  Void    setRefIdx         ( Int     iRefIdx, Int iIdx ) { m_piRefIdx[iIdx] = iRefIdx; }
+#if VCEG_AZ07_FRUC_MERGE
+  Void           setMv    ( TComMv  cMv,     Int iIdx ) { m_pcMv    [iIdx] = cMv;     }
+  Void           setRefIdx( Int     iRefIdx, Int iIdx ) { m_piRefIdx[iIdx] = iRefIdx; }
 #endif
-#if QC_SUB_PU_TMVP_EXT 
-  Void    setMvField         ( TComMvField cMvField, Int iIdx   ) { m_pcMv    [iIdx] = cMvField.getMv();  m_piRefIdx[iIdx] = cMvField.getRefIdx();   };
-  Void    setMvd             ( TComMv  cMv,     Int iIdx ) { m_pcMvd    [iIdx] = cMv;     }
-#endif
+
   AMVPInfo* getAMVPInfo () { return &m_cAMVPInfo; }
-  
+
   // ------------------------------------------------------------------------------------------------------------------
   // set
   // ------------------------------------------------------------------------------------------------------------------
-  
+
   Void    setAllMv     ( TComMv const & rcMv,         PartSize eCUMode, Int iPartAddr, UInt uiDepth, Int iPartIdx=0 );
   Void    setAllMvd    ( TComMv const & rcMvd,        PartSize eCUMode, Int iPartAddr, UInt uiDepth, Int iPartIdx=0 );
   Void    setAllRefIdx ( Int iRefIdx,                 PartSize eMbMode, Int iPartAddr, UInt uiDepth, Int iPartIdx=0 );
   Void    setAllMvField( TComMvField const & mvField, PartSize eMbMode, Int iPartAddr, UInt uiDepth, Int iPartIdx=0 );
-
-  
-#if QC_SUB_PU_TMVP || QC_FRUC_MERGE
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP || VCEG_AZ07_FRUC_MERGE
   Void    setMvFieldSP ( TComDataCU* pcCU, UInt uiAbsPartIdx, TComMvField cMvField, Int iWidth, Int iHeight  );
 #endif
 
@@ -166,15 +161,15 @@ public:
   {
     m_uiNumPartition = iNumPart;
   }
-  
+
   Void linkToWithOffset( TComCUMvField const * src, Int offset )
   {
     m_pcMv     = src->m_pcMv     + offset;
     m_pcMvd    = src->m_pcMvd    + offset;
     m_piRefIdx = src->m_piRefIdx + offset;
   }
-  
-  Void compress(Char* pePredMode, Int scale); 
+
+  Void compress(Char* pePredMode, Int scale);
 };
 
 //! \}
