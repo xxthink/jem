@@ -625,6 +625,12 @@ void fastInverseDCT2_B32(Short *src, Short *dst, Int shift, Int line, Int zo, In
   }
 }
 
+#ifdef __GNUC__
+#define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
+#if GCC_VERSION > 40600 && GCC_VERSION < 40700
+__attribute__((optimize("no-tree-vrp")))
+#endif
+#endif
 void fastForwardDCT2_B64(Short *block,Short *coeff,Int shift, Int line, Int zo, Int use)
 {
   Int rnd_factor = 1<<(shift-1);
@@ -728,6 +734,12 @@ void fastForwardDCT2_B64(Short *block,Short *coeff,Int shift, Int line, Int zo, 
 }
 
 
+#ifdef __GNUC__
+#define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
+#if GCC_VERSION > 40600 && GCC_VERSION < 40700
+__attribute__((optimize("no-tree-vrp")))
+#endif
+#endif
 void fastInverseDCT2_B64(Short *coeff,Short *block,Int shift, Int line, Int zo, Int use)
 {
   Int rnd_factor = 1<<(shift-1);
@@ -907,6 +919,12 @@ void fastForwardDST7_B8(Short *block,Short *coeff,Int shift, Int line, Int zo, I
   }
 }
 
+#ifdef __GNUC__
+#define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
+#if GCC_VERSION > 40600 && GCC_VERSION < 40700
+__attribute__((optimize("no-tree-vrp")))
+#endif
+#endif
 void fastInverseDST7_B8(Short *coeff,Short *block,Int shift, Int line, Int zo, Int use)  // input block, output coeff
 {
   Int i, j, k, iSum;
@@ -959,6 +977,12 @@ void fastForwardDST7_B16(Short *block,Short *coeff,Int shift, Int line, Int zo, 
   }
 }
 
+#ifdef __GNUC__
+#define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
+#if GCC_VERSION > 40600 && GCC_VERSION < 40700
+__attribute__((optimize("no-tree-vrp")))
+#endif
+#endif
 void fastInverseDST7_B16(Short *coeff,Short *block,Int shift, Int line, Int zo, Int use)  // input block, output coeff
 {
   Int i, j, k, iSum;
@@ -1047,6 +1071,12 @@ void fastForwardDST7_B32(Short *block,Short *coeff,Int shift, Int line, Int zo, 
   }
 }
 
+#ifdef __GNUC__
+#define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
+#if GCC_VERSION > 40600 && GCC_VERSION < 40700
+__attribute__((optimize("no-tree-vrp")))
+#endif
+#endif
 void fastInverseDST7_B32(Short *coeff,Short *block,Int shift, Int line, Int zo, Int use)  // input block, output coeff
 {
   Int i, j, k, iSum;
@@ -1182,6 +1212,12 @@ void fastForwardDCT8_B8(Short *block,Short *coeff,Int shift, Int line, Int zo, I
   }
 }
 
+#ifdef __GNUC__
+#define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
+#if GCC_VERSION > 40600 && GCC_VERSION < 40700
+__attribute__((optimize("no-tree-vrp")))
+#endif
+#endif
 void fastInverseDCT8_B8(Short *coeff,Short *block,Int shift, Int line, Int zo, Int use)  // input block, output coeff
 {
   Int i, j, k, iSum;
@@ -1234,6 +1270,12 @@ void fastForwardDCT8_B16(Short *block,Short *coeff,Int shift, Int line, Int zo, 
   }
 }
 
+#ifdef __GNUC__
+#define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
+#if GCC_VERSION > 40600 && GCC_VERSION < 40700
+__attribute__((optimize("no-tree-vrp")))
+#endif
+#endif
 void fastInverseDCT8_B16(Short *coeff,Short *block,Int shift, Int line, Int zo, Int use)  // input block, output coeff
 {
   Int i, j, k, iSum;
@@ -1322,6 +1364,12 @@ void fastForwardDCT8_B32(Short *block,Short *coeff,Int shift, Int line, Int zo, 
   }
 }
 
+#ifdef __GNUC__
+#define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
+#if GCC_VERSION > 40600 && GCC_VERSION < 40700
+__attribute__((optimize("no-tree-vrp")))
+#endif
+#endif
 void fastInverseDCT8_B32(Short *coeff,Short *block,Int shift, Int line, Int zo, Int use)  // input block, output coeff
 {
   Int i, j, k, iSum;
@@ -1404,6 +1452,12 @@ void fastForwardDCT5_B4(Short *block,Short *coeff,Int shift, Int line, Int zo, I
 }
 
 
+#ifdef __GNUC__
+#define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
+#if GCC_VERSION > 40600 && GCC_VERSION < 40700
+__attribute__((optimize("no-tree-vrp")))
+#endif
+#endif
 void fastInverseDCT5_B4(Short *coeff, Short *block, Int shift, Int line, Int zo, Int use)  // input tmp, output block
 {
   Int i, j, k, iSum;
@@ -1456,6 +1510,12 @@ void fastForwardDCT5_B8(Short *block,Short *coeff,Int shift, Int line, Int zo, I
   }
 }
 
+#ifdef __GNUC__
+#define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
+#if GCC_VERSION > 40600 && GCC_VERSION < 40700
+__attribute__((optimize("no-tree-vrp")))
+#endif
+#endif
 void fastInverseDCT5_B8(Short *coeff,Short *block,Int shift, Int line, Int zo, Int use)  // input block, output coeff
 {
   Int i, j, k, iSum;
@@ -1508,6 +1568,12 @@ void fastForwardDCT5_B16(Short *block,Short *coeff,Int shift, Int line, Int zo, 
   }
 }
 
+#ifdef __GNUC__
+#define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
+#if GCC_VERSION > 40600 && GCC_VERSION < 40700
+__attribute__((optimize("no-tree-vrp")))
+#endif
+#endif
 void fastInverseDCT5_B16(Short *coeff,Short *block,Int shift, Int line, Int zo, Int use)  // input block, output coeff
 {
   Int i, j, k, iSum;
@@ -1667,6 +1733,12 @@ void fastForwardDST1_B8(Short *block,Short *coeff,Int shift, Int line, Int zo, I
   }
 }
 
+#ifdef __GNUC__
+#define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
+#if GCC_VERSION > 40600 && GCC_VERSION < 40700
+__attribute__((optimize("no-tree-vrp")))
+#endif
+#endif
 void fastInverseDST1_B8(Short *coeff,Short *block,Int shift, Int line, Int zo, Int use)  // input block, output coeff
 {
   Int i, j, k, iSum;
@@ -1717,6 +1789,12 @@ void fastForwardDST1_B16(Short *block,Short *coeff,Int shift, Int line, Int zo, 
   }
 }
 
+#ifdef __GNUC__
+#define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
+#if GCC_VERSION > 40600 && GCC_VERSION < 40700
+__attribute__((optimize("no-tree-vrp")))
+#endif
+#endif
 void fastInverseDST1_B16(Short *coeff,Short *block,Int shift, Int line, Int zo, Int use)  // input block, output coeff
 {
   Int i, j, k, iSum;
