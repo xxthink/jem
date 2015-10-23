@@ -69,11 +69,6 @@ public:
   virtual Void  parsePPS                  ( TComPPS* pcPPS )                                      = 0;
 
   virtual Void parseSliceHeader          ( TComSlice*& rpcSlice, ParameterSetManagerDecoder *parameterSetManager)       = 0;
-#if QC_AC_ADAPT_WDOW
-  virtual TComStats* getStatesHandle      () = 0;
-  virtual Void setStatesHandle            ( TComStats* pcStats) = 0;
-  virtual Void parseCtxUpdateInfo         ( TComSlice*& rpcSlice, TComStats* apcStats )   = 0;
-#endif
 
   virtual Void  parseTerminatingBit       ( UInt& ruilsLast )                                     = 0;
   
@@ -81,32 +76,10 @@ public:
   
 public:
   virtual Void parseSkipFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
-#if QC_IMV
-  virtual Void parseiMVFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
-#endif
-#if QC_OBMC
-  virtual Void parseOBMCFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
-#endif
-#if QC_IC
-  virtual Void parseICFlag        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
-#endif
   virtual Void parseCUTransquantBypassFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
   virtual Void parseSplitFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
   virtual Void parseMergeFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx ) = 0;
   virtual Void parseMergeIndex    ( TComDataCU* pcCU, UInt& ruiMergeIndex ) = 0;
-#if ROT_TR  
-  virtual Void parseROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
-#endif
-#if CU_LEVEL_MPI
-  virtual Void parseMPIIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
-#endif
-#if QC_FRUC_MERGE
-  virtual Void parseFRUCMgrMode  ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx ) = 0;
-#endif
-#if QC_EMT
-  virtual Void parseEmtTuIdx      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
-  virtual Void parseEmtCuFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bRootCbf ) = 0;
-#endif
   virtual Void parsePartSize      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
   virtual Void parsePredMode      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
   
@@ -126,27 +99,11 @@ public:
   
   virtual Void parseIPCMInfo     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth) = 0;
 
-  virtual Void parseCoeffNxN( TComDataCU* pcCU, TCoeff* pcCoef, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight, UInt uiDepth, TextType eTType 
-#if ROT_TR
-    , Bool& bCbfCU
-#endif
-    ) = 0;
+  virtual Void parseCoeffNxN( TComDataCU* pcCU, TCoeff* pcCoef, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight, UInt uiDepth, TextType eTType ) = 0;
   virtual Void parseTransformSkipFlags ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt width, UInt height, UInt uiDepth, TextType eTType) = 0;
   virtual Void updateContextTables( SliceType eSliceType, Int iQp ) = 0;
   
   virtual ~TDecEntropyIf() {}
-
-#if ALF_HM3_QC_REFACTOR
-  virtual Void setAlfCtrl(Bool bAlfCtrl)  = 0;
-  virtual Void setMaxAlfCtrlDepth(UInt uiMaxAlfCtrlDepth)  = 0;
-  virtual Void parseAlfFlag       ( UInt& ruiVal           ) = 0;
-  virtual Void parseAlfUvlc       ( UInt& ruiVal           ) = 0;
-  virtual Void parseAlfSvlc       ( Int&  riVal            ) = 0;
-  virtual Void parseAlfCtrlDepth  ( UInt& ruiAlfCtrlDepth  ) = 0;
-  virtual Void parseAlfCtrlFlag   ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
-  virtual Void parseAlfFlagNum    ( UInt& ruiVal, UInt minValue, UInt depth ) = 0;
-  virtual Void parseAlfCtrlFlag   ( UInt &ruiAlfCtrlFlag ) = 0;
-#endif
 };
 
 /// entropy decoder class
@@ -158,28 +115,8 @@ private:
   UInt    m_uiBakAbsPartIdx;
   UInt    m_uiBakChromaOffset;
   UInt    m_bakAbsPartIdxCU;
-#if QC_SUB_PU_TMVP
-#if QC_SUB_PU_TMVP_EXT
-  TComMvField*        m_pMvFieldSP[2];
-  UChar*              m_phInterDirSP[2];
-#else
-  TComMvField  * m_pMvFieldSP;
-  UChar        * m_phInterDirSP;
-#endif
-#endif
   
 public:
-#if QC_SUB_PU_TMVP
-  TDecEntropy();
-  ~TDecEntropy();
-#endif
-#if QC_AC_ADAPT_WDOW
-  TComStats*                      m_pcStats;
-  Void       updateStates   ( SliceType uiSliceType, UInt uiSliceQP, TComStats*  apcStats);
-  Void       setStatsHandle ( TComStats*  pcStats)  {m_pcStats = pcStats;}
-  TComStats* getStatsHandle ()  {return m_pcStats;}
-#endif 
-
   Void init (TComPrediction* p) {m_pcPrediction = p;}
   Void decodePUWise       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, TComDataCU* pcSubCU );
   Void decodeInterDirPU   ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPartIdx );
@@ -189,16 +126,7 @@ public:
   
   Void    setEntropyDecoder           ( TDecEntropyIf* p );
   Void    setBitstream                ( TComInputBitstream* p ) { m_pcEntropyDecoderIf->setBitstream(p);                    }
-#if QC_AC_ADAPT_WDOW
-  Void    resetEntropy      ( TComSlice* p)       
-  {
-    m_pcEntropyDecoderIf->setStatesHandle (m_pcStats);
-    m_pcEntropyDecoderIf->resetEntropy(p);  
-  }
-  Void    decodeCtxUpdateInfo         (TComSlice*& rpcSlice, TComStats* apcStats )  { m_pcEntropyDecoderIf->parseCtxUpdateInfo( rpcSlice, apcStats); }
-#else
   Void    resetEntropy                ( TComSlice* p)           { m_pcEntropyDecoderIf->resetEntropy(p);                    }
-#endif
   Void    decodeVPS                   ( TComVPS* pcVPS ) { m_pcEntropyDecoderIf->parseVPS(pcVPS); }
   Void    decodeSPS                   ( TComSPS* pcSPS     )    { m_pcEntropyDecoderIf->parseSPS(pcSPS);                    }
   Void    decodePPS                   ( TComPPS* pcPPS )    { m_pcEntropyDecoderIf->parsePPS(pcPPS);                    }
@@ -211,27 +139,9 @@ public:
 public:
   Void decodeSplitFlag         ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   Void decodeSkipFlag          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
-#if ROT_TR  
-  Void decodeROTIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
-#endif
-#if CU_LEVEL_MPI
-  Void decodeMPIIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
-#endif
-#if QC_IMV
-  Void decodeiMVFlag          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
-#endif
-#if QC_OBMC
-  Void decodeOBMCFlag          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
-#endif
-#if QC_IC
-  Void decodeICFlag            ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
-#endif
   Void decodeCUTransquantBypassFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   Void decodeMergeFlag         ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx );
   Void decodeMergeIndex        ( TComDataCU* pcSubCU, UInt uiPartIdx, UInt uiPartAddr, UInt uiDepth );
-#if QC_FRUC_MERGE
-  Void decodeFRUCMgrMode      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx );
-#endif
   Void decodePredMode          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   Void decodePartSize          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   
@@ -248,28 +158,11 @@ public:
   
   
 private:
-  Void xDecodeTransform        ( TComDataCU* pcCU, UInt offsetLuma, UInt offsetChroma, UInt uiAbsPartIdx, UInt uiDepth, UInt width, UInt height, UInt uiTrIdx, Bool& bCodeDQP, Int getQuadtreeTULog2MinSizeInCU 
-#if ROT_TR
-    , Bool& bCbfCU
-#endif
-    );
+  Void xDecodeTransform        ( TComDataCU* pcCU, UInt offsetLuma, UInt offsetChroma, UInt uiAbsPartIdx, UInt uiDepth, UInt width, UInt height, UInt uiTrIdx, Bool& bCodeDQP, Int getQuadtreeTULog2MinSizeInCU );
 
 public:
   Void decodeCoeff             ( TComDataCU* pcCU                 , UInt uiAbsPartIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight, Bool& bCodeDQP );
   
-#if ALF_HM3_QC_REFACTOR
-  // Adaptive Loop filter
-  Void decodeAlfParam(ALFParam* pAlfParam);
-  Void decodeAlfCtrlFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
-  Void decodeAux(ALFParam* pAlfParam);
-  Void decodeFilt(ALFParam* pAlfParam);
-  Void readFilterCodingParams(ALFParam* pAlfParam);
-  Void readFilterCoeffs(ALFParam* pAlfParam);
-  Void decodeFilterCoeff (ALFParam* pAlfParam);
-  Int golombDecode(Int k);
-  Void decodeAlfCtrlParam      ( ALFParam *pAlfParam );
-#endif
-
 };// END CLASS DEFINITION TDecEntropy
 
 //! \}

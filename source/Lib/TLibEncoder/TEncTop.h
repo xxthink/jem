@@ -121,10 +121,6 @@ private:
   TComScalingList         m_scalingList;                 ///< quantization matrix information
   TEncRateCtrl            m_cRateCtrl;                    ///< Rate control class
   
-#if ALF_HM3_QC_REFACTOR
-  TEncAdaptiveLoopFilter  m_cAdaptiveLoopFilter;          ///< adaptive loop filter class
-#endif
-
 protected:
   Void  xGetNewPicBuffer  ( TComPic*& rpcPic );           ///< get picture buffer which will be processed
   Void  xInitSPS          ();                             ///< initialize SPS from encoder options
@@ -183,26 +179,15 @@ public:
   // -------------------------------------------------------------------------------------------------------------------
 
   /// encode several number of pictures until end-of-sequence
-#if QC_AC_ADAPT_WDOW
-  Void encode( Bool bEos, TComPicYuv* pcPicYuvOrg, TComList<TComPicYuv*>& rcListPicYuvRecOut,
-              std::list<AccessUnit>& accessUnitsOut, Int& iNumEncoded, TComStats* m_apcStats );  
-
-  Void encode( bool bEos, TComPicYuv* pcPicYuvOrg, TComList<TComPicYuv*>& rcListPicYuvRecOut,
-              std::list<AccessUnit>& accessUnitsOut, Int& iNumEncoded, bool isTff, TComStats* m_apcStats );
-#else
   Void encode( Bool bEos, TComPicYuv* pcPicYuvOrg, TComList<TComPicYuv*>& rcListPicYuvRecOut,
               std::list<AccessUnit>& accessUnitsOut, Int& iNumEncoded );  
 
   /// encode several number of pictures until end-of-sequence
   Void encode( bool bEos, TComPicYuv* pcPicYuvOrg, TComList<TComPicYuv*>& rcListPicYuvRecOut,
               std::list<AccessUnit>& accessUnitsOut, Int& iNumEncoded, bool isTff);
-#endif
-
+  
   Void printSummary(bool isField) { m_cGOPEncoder.printOutSummary (m_uiNumAllPicCoded, isField); }
   
-#if ALF_HM3_QC_REFACTOR
-  TEncAdaptiveLoopFilter* getAdaptiveLoopFilter () { return  &m_cAdaptiveLoopFilter;  }
-#endif
 };
 
 //! \}

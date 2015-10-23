@@ -96,7 +96,6 @@ protected:
   Int       m_maxDecPicBuffering[MAX_TLAYER];                 ///< total number of pictures in the decoded picture buffer
   Bool      m_useTransformSkip;                               ///< flag for enabling intra transform skipping
   Bool      m_useTransformSkipFast;                           ///< flag for enabling fast intra transform skipping
-
   Bool      m_enableAMP;
   // coding quality
   Double    m_fQP;                                            ///< QP value of key-picture (floating point)
@@ -153,10 +152,6 @@ protected:
   Int       m_loopFilterTcOffsetDiv2;                       ///< tc offset for deblocking filter
   Bool      m_DeblockingFilterControlPresent;                 ///< deblocking filter control present flag in PPS
   Bool      m_DeblockingFilterMetric;                         ///< blockiness metric in encoder
-
-#if QC_LMCHROMA
-  Bool      m_bUseLMChroma;                                  ///< JL: Cross component prediction, chroma from luma or Cr from Cb with linear model
-#endif
 
   // coding tools (PCM)
   Bool      m_usePCM;                                         ///< flag for using IPCM
@@ -217,8 +212,6 @@ protected:
   Int       m_numPivots;
   Int       m_cameraIsoSpeedIdc;
   Int       m_cameraIsoSpeedValue;
-  Int       m_exposureIndexIdc;
-  Int       m_exposureIndexValue;
   Int       m_exposureCompensationValueSignFlag;
   Int       m_exposureCompensationValueNumerator;
   Int       m_exposureCompensationValueDenomIdc;
@@ -249,10 +242,6 @@ protected:
   UInt      m_maxNumMergeCand;                                ///< Max number of merge candidates
 
   Int       m_TMVPModeId;
-#if QC_SUB_PU_TMVP
-  UInt      m_uiSubPUTLog2Size;
-  Bool      m_bAtmvpEnableFlag;
-#endif
   Int       m_signHideFlag;
   Bool      m_RCEnableRateControl;                ///< enable rate control or not
   Int       m_RCTargetBitrate;                    ///< target bitrate when rate control is enabled
@@ -306,42 +295,6 @@ protected:
   Int       m_log2MaxMvLengthHorizontal;                      ///< Indicate the maximum absolute value of a decoded horizontal MV component in quarter-pel luma units
   Int       m_log2MaxMvLengthVertical;                        ///< Indicate the maximum absolute value of a decoded vertical MV component in quarter-pel luma units
 
-#if ALF_HM3_QC_REFACTOR
-  Bool      m_bUseALF;                                        ///< flag for using adaptive loop filter
-#endif
-#if QC_OBMC
-  Bool     m_bOBMC;
-  Int      m_nOBMCBlkSize;
-#endif
-#if QC_EMT
-  Int       m_iUseEMT;                                        ///< XZ: Enhanced Multiple Transform
-  Int       m_iUseFastEMT;                                    ///< XZ: Fast Methods of Enhanced Multiple Transform
-#endif
-#if QC_INTRA_4TAP_FILTER
-  Bool      m_bUse4TapIntraFilter;
-#endif
-#if INTRA_BOUNDARY_FILTER
-  Bool      m_bUseBoundaryFilter;
-#endif
-#if QC_USE_65ANG_MODES
-  Bool      m_bUseExtIntraAngMode;
-#endif
-#if QC_LARGE_CTU_FAST
-  Int       m_nLCTUFast;
-#endif
-#if QC_FRUC_MERGE
-  Int       m_nFRUCMgrMode;
-  Int       m_nFRUCRefineFilter;
-  Int       m_nFURCRefineRange;
-  Int       m_nFRUCSmallBlkRefineDepth;
-#endif
-#if QC_IMV
-  Bool      m_nIMV;
-  Int       m_nIMVMaxCand;
-#endif
-#if QC_IC
-  Bool      m_abUseIC;
-#endif
   // internal member functions
   Void  xSetGlobal      ();                                   ///< set global variables
   Void  xCheckParameter ();                                   ///< check validity of configuration values

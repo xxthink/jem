@@ -64,10 +64,6 @@ public:
   Void        write                 ( UInt /*uiBits*/, UInt uiNumberOfBits )  { m_uiBitCounter += uiNumberOfBits; }
   Void        resetBits             ()                                    { m_uiBitCounter = 0;               }
   UInt getNumberOfWrittenBits() const { return m_uiBitCounter; }
-#if QC_AC_ADAPT_WDOW
-  TComStats* getStatsHandle ()  {return NULL;}
-#endif 
-
 };
 
 //! \}

@@ -46,31 +46,13 @@
 // Tables
 // ====================================================================================================================
 
-#if QC_LARGE_CTU
-const UChar TComPattern::m_aucIntraFilter[MAX_CU_DEPTH] =
-#else
 const UChar TComPattern::m_aucIntraFilter[5] =
-#endif
 {
-#if QC_USE_65ANG_MODES
-  20, //4x4
-  14, //8x8
-  2, //16x16
-  0, //32x32
-  20, //64x64
-#else
   10, //4x4
   7, //8x8
   1, //16x16
   0, //32x32
   10, //64x64
-#endif
-#if QC_LARGE_CTU
-  0, //128x128
-  0, //256x256
-  0, 
-  0,
-#endif
 };
 
 // ====================================================================================================================
@@ -216,29 +198,15 @@ Void TComPattern::initAdiPattern( TComDataCU* pcCU, UInt uiZorderIdxInPart, UInt
   
   iUnitSize      = g_uiMaxCUWidth >> g_uiMaxCUDepth;
   iNumUnitsInCu  = uiCuWidth / iUnitSize;
-#if QC_LMCHROMA
-  if(bLMmode)
-  {
-    iTotalUnits    = (iNumUnitsInCu << 1) + 1; //only consider left and above row, no aboveright and belowleft
-    bNeighborFlags[iNumUnitsInCu] = isAboveLeftAvailable( pcCU, uiPartIdxLT );
-    iNumIntraNeighbor  += (Int)(bNeighborFlags[iNumUnitsInCu]);
-    iNumIntraNeighbor  += isAboveAvailable     ( pcCU, uiPartIdxLT, uiPartIdxRT, bNeighborFlags+iNumUnitsInCu+1);  
-    iNumIntraNeighbor  += isLeftAvailable      ( pcCU, uiPartIdxLT, uiPartIdxLB, bNeighborFlags+iNumUnitsInCu-1);
-  }
-  else
-  {
-#endif
   iTotalUnits    = (iNumUnitsInCu << 2) + 1;
+
   bNeighborFlags[iNumUnitsInCu*2] = isAboveLeftAvailable( pcCU, uiPartIdxLT );
   iNumIntraNeighbor  += (Int)(bNeighborFlags[iNumUnitsInCu*2]);
   iNumIntraNeighbor  += isAboveAvailable     ( pcCU, uiPartIdxLT, uiPartIdxRT, bNeighborFlags+(iNumUnitsInCu*2)+1 );
   iNumIntraNeighbor  += isAboveRightAvailable( pcCU, uiPartIdxLT, uiPartIdxRT, bNeighborFlags+(iNumUnitsInCu*3)+1 );
   iNumIntraNeighbor  += isLeftAvailable      ( pcCU, uiPartIdxLT, uiPartIdxLB, bNeighborFlags+(iNumUnitsInCu*2)-1 );
   iNumIntraNeighbor  += isBelowLeftAvailable ( pcCU, uiPartIdxLT, uiPartIdxLB, bNeighborFlags+ iNumUnitsInCu   -1 );
-#if QC_LMCHROMA
- }
-#endif
-
+  
   bAbove = true;
   bLeft  = true;
 
@@ -253,20 +221,8 @@ Void TComPattern::initAdiPattern( TComDataCU* pcCU, UInt uiZorderIdxInPart, UInt
   piRoiOrigin = pcCU->getPic()->getPicYuvRec()->getLumaAddr(pcCU->getAddr(), pcCU->getZorderIdxInCU()+uiZorderIdxInPart);
   piAdiTemp   = piAdiBuf;
 
-#if QC_LMCHROMA
-  if(bLMmode)
-  {
-    uiWidth  += (LM_DOWNSAMPLE_NUM_COLUMNS - 1); //two more columns 
-    uiHeight += (LM_DOWNSAMPLE_NUM_ROWS    - 1); //one more row 
-  }
-#endif
-
   fillReferenceSamples (g_bitDepthY, piRoiOrigin, piAdiTemp, bNeighborFlags, iNumIntraNeighbor, iUnitSize, iNumUnitsInCu, iTotalUnits, uiCuWidth, uiCuHeight, uiWidth, uiHeight, iPicStride, bLMmode);
-
-#if QC_LMCHROMA
-  if(!bLMmode) 
-  {
-#endif
+  
   Int   i;
   // generate filtered intra prediction samples
   Int iBufSize = uiCuHeight2 + uiCuWidth2 + 1;  // left and left above border + above and above right border + top left corner = length of 3. filter buffer
@@ -351,9 +307,6 @@ Void TComPattern::initAdiPattern( TComDataCU* pcCU, UInt uiZorderIdxInPart, UInt
   {
     piFilteredBuf1[1 + i] = piFilterBufN[l++];
   }
-#if QC_LMCHROMA
- }
-#endif
 }
 
 Void TComPattern::initAdiPatternChroma( TComDataCU* pcCU, UInt uiZorderIdxInPart, UInt uiPartDepth, Int* piAdiBuf, Int iOrgBufStride, Int iOrgBufHeight, Bool& bAbove, Bool& bLeft )
@@ -424,30 +377,6 @@ Void TComPattern::fillReferenceSamples(Int bitDepth, Pel* piRoiOrigin, Int* piAd
   if (iNumIntraNeighbor == 0)
   {
     // Fill border with DC value
-#if QC_LMCHROMA
-    if(bLMmode)
-    {
-      Int iHorNum = uiCuWidth + LM_DOWNSAMPLE_NUM_COLUMNS;
-      for(j=0; j< LM_DOWNSAMPLE_NUM_ROWS; j++)
-      {
-        for (i=0; i<iHorNum; i++)
-        {
-          piAdiTemp[i] = iDCValue;
-        }
-        piAdiTemp += uiWidth;
-      }
-      for (i=0; i<uiCuHeight; i++)
-      {
-        for(j=0; j< LM_DOWNSAMPLE_NUM_COLUMNS; j++)
-        {
-          piAdiTemp[j] = iDCValue;
-        }
-        piAdiTemp += uiWidth;
-      }
-    }
-    else
-    {
-#endif
     for (i=0; i<uiWidth; i++)
     {
       piAdiTemp[i] = iDCValue;
@@ -456,38 +385,9 @@ Void TComPattern::fillReferenceSamples(Int bitDepth, Pel* piRoiOrigin, Int* piAd
     {
       piAdiTemp[i*uiWidth] = iDCValue;
     }
-#if QC_LMCHROMA
-    }
-#endif
   }
   else if (iNumIntraNeighbor == iTotalUnits)
   {
-#if QC_LMCHROMA
-    if(bLMmode)
-    {
-      for(j=LM_DOWNSAMPLE_NUM_ROWS; j>0; j--)
-      {
-        piRoiTemp = piRoiOrigin - j*iPicStride - LM_DOWNSAMPLE_NUM_COLUMNS;
-        for (i=0; i<(uiCuWidth+LM_DOWNSAMPLE_NUM_COLUMNS); i++)
-        {
-          piAdiTemp[i] = piRoiTemp[i];
-        }
-        piAdiTemp += uiWidth;
-      }
-
-      piRoiTemp = piRoiOrigin - LM_DOWNSAMPLE_NUM_COLUMNS;
-      for (i=0; i<uiCuHeight; i++)
-      {
-        for(j=0; j<LM_DOWNSAMPLE_NUM_COLUMNS; j++)
-        {
-          piAdiTemp[i*uiWidth+j] = piRoiTemp[j];
-        }
-        piRoiTemp += iPicStride;
-      }
-    }
-    else
-    {
-#endif
     // Fill top-left border with rec. samples
     piRoiTemp = piRoiOrigin - iPicStride - 1;
     piAdiTemp[0] = piRoiTemp[0];
@@ -495,12 +395,10 @@ Void TComPattern::fillReferenceSamples(Int bitDepth, Pel* piRoiOrigin, Int* piAd
     // Fill left border with rec. samples
     piRoiTemp = piRoiOrigin - 1;
 
-#if !QC_LMCHROMA
     if (bLMmode)
     {
       piRoiTemp --; // move to the second left column
     }
-#endif
 
     for (i=0; i<uiCuHeight; i++)
     {
@@ -528,208 +426,9 @@ Void TComPattern::fillReferenceSamples(Int bitDepth, Pel* piRoiOrigin, Int* piAd
     {
       piAdiTemp[1+uiCuWidth+i] = piRoiTemp[i];
     }
-#if QC_LMCHROMA
-    }
-#endif
   }
   else // reference samples are partially available
   {
-#if QC_LMCHROMA
-    if(bLMmode)
-    {
-      Int* piAdiTempFill = piAdiTemp; 
-      Bool *pbNeighborFlags;
-      iUnitSize      = g_uiMaxCUWidth >> g_uiMaxCUDepth;
-
-      Int iLines = max(LM_DOWNSAMPLE_NUM_ROWS, LM_DOWNSAMPLE_NUM_COLUMNS);
-      for(j= iLines; j>0; j--)
-      {
-        piRoiTemp = piRoiOrigin - j*iPicStride - iLines;
-        pbNeighborFlags = bNeighborFlags + iNumUnitsInCu;
-        for (i=0; i<(iNumUnitsInCu + 1); i++)
-        {
-          Int iPixNum = (i? iUnitSize:iLines);
-          if(*pbNeighborFlags)
-          {
-            for(Int k=0; k < iPixNum; k++)
-            {
-              piAdiTemp[k] = piRoiTemp[k];
-            }
-          }
-          pbNeighborFlags++;
-          piRoiTemp += iPixNum;
-          piAdiTemp += iPixNum;
-        }
-        piAdiTemp += uiCuWidth;
-      }
-
-      piRoiTemp = piRoiOrigin - LM_DOWNSAMPLE_NUM_COLUMNS;
-      pbNeighborFlags = bNeighborFlags + iNumUnitsInCu - 1;
-      for (Int k=0; k<iNumUnitsInCu; k++)
-      {
-        for (i=0; i<iUnitSize; i++)
-        {
-          if (*pbNeighborFlags)
-          {
-            for(j=0; j<iLines; j++)
-            {
-              piAdiTemp[i*uiWidth+j] = piRoiTemp[j];
-            }              
-          }
-          piRoiTemp += iPicStride;          
-        }
-        piAdiTemp += iUnitSize*uiWidth;
-        pbNeighborFlags--;
-      }
-      // Pad reference samples when necessary
-      piAdiTemp =  piAdiTempFill;
-      Int  iNext, iCurr;
-      iCurr = 0;
-      iNext = 1;
-      while (iCurr < iTotalUnits)
-      {
-        if (!bNeighborFlags[iCurr])
-        {
-          if(iCurr == 0)
-          {
-            while (iNext < iTotalUnits && !bNeighborFlags[iNext])
-            {
-              iNext++;
-            }
-            if(iNext < iNumUnitsInCu)
-            {
-              Int iVerOffset = iLines*uiWidth+((iNumUnitsInCu-iNext)*iUnitSize-1)*uiWidth;
-              Int* piAdiTempAvail = (piAdiTemp + (iLines+iNumUnitsInCu*iUnitSize-1)*uiWidth );
-              // Pad unavailable samples with new value
-              while (iCurr < iNext)
-              {
-                for (i=0; i<iUnitSize; i++)
-                {
-                  for(j=0; j< LM_DOWNSAMPLE_NUM_COLUMNS; j++)
-                  {
-                    piAdiTempAvail[j] = piAdiTemp[iVerOffset+j];
-                  }
-                  piAdiTempAvail -= uiWidth;
-                }
-                iCurr++;
-              }
-            }
-            else if(iNext == iNumUnitsInCu)
-            {
-              Int* piAdiTempAvail = (piAdiTemp + (iLines+iNumUnitsInCu*iUnitSize-1)*uiWidth );
-              while (iCurr < iNext)
-              {
-                for (i=0; i<iUnitSize; i++)
-                {
-                  for(j=0; j< LM_DOWNSAMPLE_NUM_COLUMNS; j++)
-                  {
-                    piAdiTempAvail[j] = piAdiTemp[j +(iLines-1)*uiWidth];
-                  }
-                  piAdiTempAvail -= uiWidth;
-                }
-                iCurr++;
-              }              
-            }
-            else
-            {
-              Int* piAdiTempAvail = (piAdiTemp + (iLines+iNumUnitsInCu*iUnitSize-1)*uiWidth );
-              Int  iHorOffset     = (iNext - iNumUnitsInCu - 1)*iUnitSize + iLines;
-              //fill left
-              while (iCurr < iNumUnitsInCu)
-              {
-                for (i=0; i<iUnitSize; i++)
-                {
-                  for(j=0; j< LM_DOWNSAMPLE_NUM_COLUMNS; j++)
-                  {
-                    piAdiTempAvail[j] = piAdiTemp[j*uiWidth+iHorOffset];
-                  }
-                  piAdiTempAvail -= uiWidth;
-                }
-                iCurr++;
-              }
-
-              //fill horizontal pixels
-              while(iCurr < iNext)
-              {
-                Int iOffset = (iCurr==iNumUnitsInCu)?0: ((iCurr-iNumUnitsInCu-1)*iUnitSize+iLines);
-                piAdiTempAvail = piAdiTemp;
-                for(j=0; j< iLines; j++)
-                {
-                  Int iVerOffset = j*uiWidth;
-                  for (i=0; i<(iCurr==iNumUnitsInCu ? iLines: iUnitSize); i++)
-                  {
-                    piAdiTempAvail[i + iOffset] = piAdiTemp[iVerOffset + iHorOffset];
-                  }
-                  piAdiTempAvail += uiWidth;
-                }
-                iCurr++;
-              }
-            }
-          }
-          else
-          {
-            if(iCurr < iNumUnitsInCu)
-            {
-              Int iVerOffset      = iLines*uiWidth+(iNumUnitsInCu-iNext)*iUnitSize*uiWidth;
-              Int* piAdiTempAvail = piAdiTemp + iVerOffset - uiWidth;
-              for (i=0; i<iUnitSize; i++)
-              {
-                for(j=0; j< LM_DOWNSAMPLE_NUM_COLUMNS; j++)
-                {
-                  piAdiTempAvail[j] = piAdiTemp[iVerOffset+j];
-                }
-                piAdiTempAvail -= uiWidth;
-              }
-            }
-            else if(iCurr == iNumUnitsInCu)
-            {
-              Int* piAdiTempAvail = (piAdiTemp + (iLines - 1)*uiWidth );
-              for (i=0; i< iLines; i++)
-              {
-                for(j=0; j< LM_DOWNSAMPLE_NUM_COLUMNS; j++)
-                {
-                  piAdiTempAvail[j] = piAdiTemp[j + iLines*uiWidth];
-                }
-                piAdiTempAvail -= uiWidth;
-              }
-            }
-            else
-            {
-              Int* piAdiTempAvail = piAdiTempFill ;
-              //fill horizontal pixels
-              Int iOffsetCurr   = (iCurr-iNumUnitsInCu-1)*iUnitSize + iLines;
-              Int iHorOffsetTar = iOffsetCurr - 1;
-              for(j=0; j< iLines; j++)
-              {
-                Int iVerOffset = j*uiWidth;
-                for (i=0; i<iUnitSize; i++)
-                {
-                  piAdiTempAvail[i + iOffsetCurr] = piAdiTemp[iVerOffset + iHorOffsetTar];
-                }
-                piAdiTempAvail += uiWidth;
-              }
-            }
-            iCurr++;          
-          }
-        }
-        else
-        {
-          iCurr++;
-        }
-      }
-      // Copy processed samples
-      piAdiTemp = piAdiTempFill;
-      for(i=0; i< (uiCuHeight + LM_DOWNSAMPLE_NUM_ROWS); i++)
-      {
-        for(j=0; j< (uiCuWidth + LM_DOWNSAMPLE_NUM_COLUMNS); j++)
-        {
-          piAdiTemp[i*uiWidth + j] = piAdiTemp[(i+1)*uiWidth + j];
-        }
-      }
-    }
-    else
-    {
-#endif
     Int  iNumUnits2 = iNumUnitsInCu<<1;
     Int  iTotalSamples = iTotalUnits*iUnitSize;
     Pel  piAdiLine[5 * MAX_CU_SIZE];
@@ -852,9 +551,6 @@ Void TComPattern::fillReferenceSamples(Int bitDepth, Pel* piRoiOrigin, Int* piAd
     {
       piAdiTemp[i*uiWidth] = piAdiLineTemp[-i];
     }
-#if QC_LMCHROMA
-   }
-#endif
   }
 }
 
@@ -881,26 +577,13 @@ Int* TComPattern::getAdiCrBuf(Int iCuWidth,Int iCuHeight, Int* piAdiBuf)
  *
  * The prediction mode index is used to determine whether a smoothed reference sample buffer is returned.
  */
-Int* TComPattern::getPredictorPtr( UInt uiDirMode, UInt log2BlkSize, Int* piAdiBuf 
-#if QC_USE_65ANG_MODES
-                                  , Bool bUseExtIntraAngModes
-#endif
-                                  )
+Int* TComPattern::getPredictorPtr( UInt uiDirMode, UInt log2BlkSize, Int* piAdiBuf )
 {
   Int* piSrc;
-#if QC_LARGE_CTU
-  assert(log2BlkSize >= 2 );
-#else
   assert(log2BlkSize >= 2 && log2BlkSize < 7);
-#endif
   Int diff = min<Int>(abs((Int) uiDirMode - HOR_IDX), abs((Int)uiDirMode - VER_IDX));
   UChar ucFiltIdx = diff > m_aucIntraFilter[log2BlkSize - 2] ? 1 : 0;
-
-#if QC_LMCHROMA
-  if (uiDirMode == DC_IDX || uiDirMode == LM_CHROMA_IDX)
-#else
   if (uiDirMode == DC_IDX)
-#endif
   {
     ucFiltIdx = 0; //no smoothing for DC or LM chroma
   }

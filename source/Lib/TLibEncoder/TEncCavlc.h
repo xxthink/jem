@@ -67,10 +67,6 @@ public:
 protected:
   TComSlice*    m_pcSlice;
   UInt          m_uiCoeffCost;
-#if ALF_HM3_QC_REFACTOR
-  Bool          m_bAlfCtrl;
-  UInt          m_uiMaxAlfCtrlDepth;
-#endif
 
   Void codeShortTermRefPicSet              ( TComSPS* pcSPS, TComReferencePictureSet* pcRPS, Bool calledFromSliceHeader, Int idx );
   Bool findMatchingLTRP ( TComSlice* pcSlice, UInt *ltrpsIndex, Int ltrpPOC, Bool usedFlag );
@@ -97,46 +93,17 @@ public:
   Void  codeTilesWPPEntryPoint( TComSlice* pSlice );
   Void  codeTerminatingBit      ( UInt uilsLast );
   Void  codeSliceFinish         ();
-
-#if QC_AC_ADAPT_WDOW
-  Void codeCtxUpdateInfo     (TComSlice* pcSlice,  TComStats* apcStats);
-  Void xRunCoding            (Bool * uiCtxMAP, UInt uiNumCtx);
-  Void xCtxCodewordCoding    (Bool * uiCtxMAP, UChar * uiCtxCodeIdx, UInt uiNumCtx);
-#endif
-
+  
   Void codeMVPIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList );
   Void codeSAOBlkParam(SAOBlkParam& saoBlkParam, Bool* sliceEnabled, Bool leftMergeAvail, Bool aboveMergeAvail, Bool onlyEstMergeInfo = false){printf("only supported in CABAC"); assert(0); exit(-1);}
   Void codeCUTransquantBypassFlag( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeSkipFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
-#if ROT_TR  
-     Void codeROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth );
-#endif
-#if CU_LEVEL_MPI
-     Void codeMPIIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx );
-#endif
-#if QC_IMV
-  Void codeiMVFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
-#endif
-#if QC_OBMC
-  Void codeOBMCFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
-#endif
-#if QC_IC
-  Void codeICFlag        ( TComDataCU* pcCU, UInt uiAbsPartIdx );
-#endif
   Void codeMergeFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeMergeIndex    ( TComDataCU* pcCU, UInt uiAbsPartIdx );
-#if QC_FRUC_MERGE
-  Void codeFRUCMgrMode  ( TComDataCU* pcCU, UInt uiAbsPartIdx , UInt uiPUIdx );
-#endif
  
   Void codeInterModeFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiEncMode );
   Void codeSplitFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   
-#if QC_EMT
-  Void codeEmtTuIdx      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth);
-  Void codeEmtCuFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bRootCbf );
-#endif
-
   Void codePartSize      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   Void codePredMode      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   
@@ -147,11 +114,7 @@ public:
   Void codeQtRootCbf     ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeQtCbfZero     ( TComDataCU* pcCU, TextType eType, UInt uiTrDepth );
   Void codeQtRootCbfZero ( TComDataCU* pcCU );
-  Void codeIntraDirLumaAng( TComDataCU* pcCU, UInt absPartIdx, Bool isMultiple
-#if QC_USE_65ANG_MODES
-    , Int* piModes = NULL, Int  iAboveLeftCase = -1
-#endif
-    );
+  Void codeIntraDirLumaAng( TComDataCU* pcCU, UInt absPartIdx, Bool isMultiple);
   Void codeIntraDirChroma( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeInterDir      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeRefFrmIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList );
@@ -159,11 +122,7 @@ public:
   
   Void codeDeltaQP       ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   
-  Void codeCoeffNxN      ( TComDataCU* pcCU, TCoeff* pcCoef, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight, UInt uiDepth, TextType eTType 
-#if ROT_TR    || CU_LEVEL_MPI
-    , Int& bCbfCU
-#endif
-    );
+  Void codeCoeffNxN      ( TComDataCU* pcCU, TCoeff* pcCoef, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight, UInt uiDepth, TextType eTType );
   Void codeTransformSkipFlags ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt width, UInt height, TextType eTType );
 
   Void estBit               (estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, TextType eTType);
@@ -177,25 +136,6 @@ public:
   Void codeDFFlag       ( UInt uiCode, const Char *pSymbolName );
   Void codeDFSvlc       ( Int   iCode, const Char *pSymbolName );
 
-#if ALF_HM3_QC_REFACTOR
-  Void xWriteUnaryMaxSymbol( UInt uiSymbol, UInt uiMaxSymbol );
-  Bool getAlfCtrl() {return m_bAlfCtrl;}
-  UInt getMaxAlfCtrlDepth() {return m_uiMaxAlfCtrlDepth;}
-  Void setAlfCtrl(Bool bAlfCtrl) {m_bAlfCtrl = bAlfCtrl;}
-  Void setMaxAlfCtrlDepth(UInt uiMaxAlfCtrlDepth) {m_uiMaxAlfCtrlDepth = uiMaxAlfCtrlDepth;}
-  Void codeAlfFlag       ( UInt uiCode );
-  Void codeAlfUvlc       ( UInt uiCode );
-  Void codeAlfSvlc       ( Int   iCode );
-  Void codeAlfCtrlDepth();
-  Void codeAlfCtrlFlag   ( TComDataCU* pcCU, UInt uiAbsPartIdx );
-  Void codeAlfFlagNum    ( UInt uiCode, UInt minValue );
-  Void codeAlfCtrlFlag   ( UInt uiSymbol );
-#endif
-#if QC_AC_ADAPT_WDOW
-  TComStats* m_pcStats;
-  TComStats* getStatesHandle () {return m_pcStats;}
-  Void setStatesHandle ( TComStats* pcStats) {m_pcStats = pcStats ;}
-#endif
 };
 
 //! \}

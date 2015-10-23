@@ -42,6 +42,7 @@
 #include <assert.h>
 #include "CommonDef.h"
 #include "TComPicYuv.h"
+
 //! \ingroup TLibCommon
 //! \{
 
@@ -128,8 +129,9 @@ public:
   Void    copyPartToPartYuv     ( TComYuv*    pcYuvDst, UInt uiPartIdx, UInt uiWidth, UInt uiHeight );
   Void    copyPartToPartLuma    ( TComYuv*    pcYuvDst, UInt uiPartIdx, UInt uiWidth, UInt uiHeight );
   Void    copyPartToPartChroma  ( TComYuv*    pcYuvDst, UInt uiPartIdx, UInt uiWidth, UInt uiHeight );
-  Void    copyPartToPartChroma  ( TComYuv*    pcYuvDst, UInt uiPartIdx, UInt iWidth, UInt iHeight, UInt chromaId);
   
+  Void    copyPartToPartChroma  ( TComYuv*    pcYuvDst, UInt uiPartIdx, UInt iWidth, UInt iHeight, UInt chromaId);
+
   // ------------------------------------------------------------------------------------------------------------------
   //  Algebraic operation for YUV buffer
   // ------------------------------------------------------------------------------------------------------------------
@@ -143,16 +145,9 @@ public:
   Void    subtract          ( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt uiTrUnitIdx, UInt uiPartSize );
   Void    subtractLuma      ( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt uiTrUnitIdx, UInt uiPartSize );
   Void    subtractChroma    ( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt uiTrUnitIdx, UInt uiPartSize );
-
-#if QC_OBMC
-  UInt    sadLuma           ( TComYuv* pcYuvSrc0 );
-#endif 
+  
   //  (pcYuvSrc0 + pcYuvSrc1)/2 for YUV partition
-  Void    addAvg            ( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt iPartUnitIdx, UInt iWidth, UInt iHeight 
-#if BIO                  
-  ,bool bBIOapplied
-#endif 
-);
+  Void    addAvg            ( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt iPartUnitIdx, UInt iWidth, UInt iHeight );
 
   //   Remove High frequency
   Void    removeHighFreq    ( TComYuv* pcYuvSrc, UInt uiPartIdx, UInt uiWidht, UInt uiHeight );

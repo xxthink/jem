@@ -49,9 +49,6 @@
 #include "TLibCommon/TComPic.h"
 #include "TLibCommon/TComLoopFilter.h"
 #include "TLibCommon/TComSampleAdaptiveOffset.h"
-#if ALF_HM3_QC_REFACTOR
-#include "TLibCommon/TComAdaptiveLoopFilter.h"
-#endif
 
 #include "TDecEntropy.h"
 #include "TDecSlice.h"
@@ -85,14 +82,6 @@ private:
   Double                m_dDecTime;
   Int                   m_decodedPictureHashSEIEnabled;  ///< Checksum(3)/CRC(2)/MD5(1)/disable(0) acting on decoded picture hash SEI message
 
-#if ALF_HM3_QC_REFACTOR
-  TComAdaptiveLoopFilter*       m_pcAdaptiveLoopFilter;
-  ALFParam              m_cAlfParam;
-#endif
-#if QC_ALF_TMEPORAL_NUM
-  static Int           m_iStoredAlfParaNum;
-  ALFParam             m_acStoredAlfPara[QC_ALF_TMEPORAL_NUM];
-#endif
 public:
   TDecGop();
   virtual ~TDecGop();
@@ -103,18 +92,11 @@ public:
                  TDecCavlc*              pcCavlcDecoder, 
                  TDecSlice*              pcSliceDecoder, 
                  TComLoopFilter*         pcLoopFilter,
-#if ALF_HM3_QC_REFACTOR
-                 TComAdaptiveLoopFilter* pcAdaptiveLoopFilter,
-#endif
                  TComSampleAdaptiveOffset* pcSAO
                  );
   Void  create  ();
   Void  destroy ();
-#if QC_AC_ADAPT_WDOW
-  Void  decompressSlice(TComInputBitstream* pcBitstream, TComPic*& rpcPic, TComStats*  m_apcStats = NULL);
-#else
   Void  decompressSlice(TComInputBitstream* pcBitstream, TComPic*& rpcPic );
-#endif
   Void  filterPicture  (TComPic*& rpcPic );
 
   void setDecodedPictureHashSEIEnabled(Int enabled) { m_decodedPictureHashSEIEnabled = enabled; }

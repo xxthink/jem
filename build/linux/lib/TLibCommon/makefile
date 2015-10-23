@@ -56,7 +56,6 @@ OBJS          	= \
 			$(OBJ_DIR)/libmd5.o \
 			$(OBJ_DIR)/TComWeightPrediction.o \
 			$(OBJ_DIR)/TComRdCostWeightPrediction.o \
-			$(OBJ_DIR)/TComAdaptiveLoopFilter.o \
 
 LIBS				= -lpthread
 

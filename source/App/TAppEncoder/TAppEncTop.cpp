@@ -91,7 +91,6 @@ Void TAppEncTop::xInitLibCfg()
   
   m_cTEncTop.setFrameRate                    ( m_iFrameRate );
   m_cTEncTop.setFrameSkip                    ( m_FrameSkip );
-
   m_cTEncTop.setSourceWidth                  ( m_iSourceWidth );
   m_cTEncTop.setSourceHeight                 ( m_iSourceHeight );
   m_cTEncTop.setConformanceWindow            ( m_confLeft, m_confRight, m_confTop, m_confBottom );
@@ -166,9 +165,6 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setUseCbfFastMode            ( m_bUseCbfFastMode  );
   m_cTEncTop.setUseEarlySkipDetection            ( m_useEarlySkipDetection );
 
-#if QC_LMCHROMA
-  m_cTEncTop.setUseLMChroma                  ( m_bUseLMChroma );
-#endif
   m_cTEncTop.setUseTransformSkip             ( m_useTransformSkip      );
   m_cTEncTop.setUseTransformSkipFast         ( m_useTransformSkipFast  );
   m_cTEncTop.setUseConstrainedIntraPred      ( m_bUseConstrainedIntraPred );
@@ -238,8 +234,6 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setTMISEITargetPivotValue                    ( m_targetPivotValue );
   m_cTEncTop.setTMISEICameraIsoSpeedIdc                   ( m_cameraIsoSpeedIdc );
   m_cTEncTop.setTMISEICameraIsoSpeedValue                 ( m_cameraIsoSpeedValue );
-  m_cTEncTop.setTMISEIExposureIndexIdc                    ( m_exposureIndexIdc );
-  m_cTEncTop.setTMISEIExposureIndexValue                  ( m_exposureIndexValue );
   m_cTEncTop.setTMISEIExposureCompensationValueSignFlag   ( m_exposureCompensationValueSignFlag );
   m_cTEncTop.setTMISEIExposureCompensationValueNumerator  ( m_exposureCompensationValueNumerator );
   m_cTEncTop.setTMISEIExposureCompensationValueDenomIdc   ( m_exposureCompensationValueDenomIdc );
@@ -321,61 +315,6 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setMaxBitsPerMinCuDenom( m_maxBitsPerMinCuDenom );
   m_cTEncTop.setLog2MaxMvLengthHorizontal( m_log2MaxMvLengthHorizontal );
   m_cTEncTop.setLog2MaxMvLengthVertical( m_log2MaxMvLengthVertical );
-#if QC_SUB_PU_TMVP
-  m_cTEncTop.setSubPUTLog2Size ( m_uiSubPUTLog2Size);
-  m_cTEncTop.setAtmvp( m_bAtmvpEnableFlag);
-#endif
-#if ALF_HM3_QC_REFACTOR
-  m_cTEncTop.setUseALF                       ( m_bUseALF      );
-#endif
-
-#if QC_EMT_INTRA
-  m_cTEncTop.setUseIntraEMT( m_iUseEMT&1 );
-#if QC_EMT_INTRA_FAST
-  m_cTEncTop.setUseFastIntraEMT( m_iUseFastEMT&1 );
-#endif
-#endif
-#if QC_EMT_INTER
-  m_cTEncTop.setUseInterEMT( (m_iUseEMT>>1)&1 );
-#if QC_EMT_INTER_FAST
-  m_cTEncTop.setUseFastInterEMT( (m_iUseFastEMT>>1)&1 );
-#endif
-#endif
-
-#if QC_INTRA_4TAP_FILTER
-  m_cTEncTop.setUse4TapIntraFilter ( m_bUse4TapIntraFilter );
-#endif
-#if INTRA_BOUNDARY_FILTER
-  m_cTEncTop.setUseBoundaryFilter ( m_bUseBoundaryFilter );
-#endif
-
-#if QC_USE_65ANG_MODES
-  m_cTEncTop.setUseExtIntraAngModes ( m_bUseExtIntraAngMode );
-#endif
-
-#if QC_LARGE_CTU_FAST
-  m_cTEncTop.setLCTUFast( m_nLCTUFast );
-#endif
-#if QC_OBMC
-  m_cTEncTop.setOBMC( m_bOBMC );
-  m_cTEncTop.setOBMCBlkSize( m_nOBMCBlkSize );
-#endif
-
-#if QC_FRUC_MERGE
-  m_cTEncTop.setFRUCMgrMode( m_nFRUCMgrMode );
-  m_cTEncTop.setFRUCRefineFilter( m_nFRUCRefineFilter );
-  m_cTEncTop.setFRUCRefineRange( m_nFURCRefineRange << QC_MV_STORE_PRECISION_BIT );
-  m_cTEncTop.setFRUCSmallBlkRefineDepth( m_nFRUCSmallBlkRefineDepth );
-#endif
-
-#if QC_IMV
-  m_cTEncTop.setIMV( m_nIMV );
-  m_cTEncTop.setIMVMaxCand( m_nIMVMaxCand );
-#endif
-
-#if QC_IC
-  m_cTEncTop.setUseIC( m_abUseIC );
-#endif
 }
 
 Void TAppEncTop::xCreateLib()
@@ -389,13 +328,6 @@ Void TAppEncTop::xCreateLib()
   
   // Neo Decoder
   m_cTEncTop.create();
-#if QC_AC_ADAPT_WDOW
-#if INIT_PREVFRAME
-  m_apcStats=new TComStats (1, NUM_CTX_PBSLICE);   
-#else
-  m_apcStats=new TComStats ();  
-#endif
-#endif 
 }
 
 Void TAppEncTop::xDestroyLib()
@@ -403,15 +335,7 @@ Void TAppEncTop::xDestroyLib()
   // Video I/O
   m_cTVideoIOYuvInputFile.close();
   m_cTVideoIOYuvReconFile.close();
-
-#if QC_AC_ADAPT_WDOW
-  if (m_apcStats)
-  {
-    delete m_apcStats;   
-    m_apcStats =NULL;
-  }              
-#endif  
-
+  
   // Neo Decoder
   m_cTEncTop.destroy();
 }
@@ -491,19 +415,11 @@ Void TAppEncTop::encode()
     // call encoding function for one frame
     if ( m_isField )
     {
-#if QC_AC_ADAPT_WDOW
-      m_cTEncTop.encode( bEos, flush ? 0 : pcPicYuvOrg, m_cListPicYuvRec, outputAccessUnits, iNumEncoded, m_isTopFieldFirst, m_apcStats);
-#else
       m_cTEncTop.encode( bEos, flush ? 0 : pcPicYuvOrg, m_cListPicYuvRec, outputAccessUnits, iNumEncoded, m_isTopFieldFirst);
-#endif
     }
     else
     {
-#if QC_AC_ADAPT_WDOW
-      m_cTEncTop.encode( bEos, flush ? 0 : pcPicYuvOrg, m_cListPicYuvRec, outputAccessUnits, iNumEncoded, m_apcStats);
-#else
       m_cTEncTop.encode( bEos, flush ? 0 : pcPicYuvOrg, m_cListPicYuvRec, outputAccessUnits, iNumEncoded );
-#endif
     }
     
     // write bistream to file if necessary

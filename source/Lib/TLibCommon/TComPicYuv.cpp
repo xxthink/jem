@@ -75,13 +75,7 @@ Void TComPicYuv::create( Int iPicWidth, Int iPicHeight, UInt uiMaxCUWidth, UInt 
   // --> After config finished!
   m_iCuWidth        = uiMaxCUWidth;
   m_iCuHeight       = uiMaxCUHeight;
-#if QC_SUB_PU_TMVP
-  m_iNumCuInWidth   = m_iPicWidth / m_iCuWidth;
-  m_iNumCuInWidth  += ( m_iPicWidth % m_iCuWidth ) ? 1 : 0;
 
-  m_iBaseUnitWidth  = uiMaxCUWidth  >> uiMaxCUDepth;
-  m_iBaseUnitHeight = uiMaxCUHeight >> uiMaxCUDepth;
-#endif
   Int numCuInWidth  = m_iPicWidth  / m_iCuWidth  + (m_iPicWidth  % m_iCuWidth  != 0);
   Int numCuInHeight = m_iPicHeight / m_iCuHeight + (m_iPicHeight % m_iCuHeight != 0);
   
@@ -191,132 +185,48 @@ Void TComPicYuv::destroyLuma()
   delete[] m_buOffsetY;
 }
 
-Void  TComPicYuv::copyToPic (TComPicYuv*  pcPicYuvDst
-#if HM14_CLEAN_UP || ALF_HM3_QC_REFACTOR
-  , Bool bMarginIncluded 
-#endif
-  )
+Void  TComPicYuv::copyToPic (TComPicYuv*  pcPicYuvDst)
 {
   assert( m_iPicWidth  == pcPicYuvDst->getWidth()  );
   assert( m_iPicHeight == pcPicYuvDst->getHeight() );
   
-#if HM14_CLEAN_UP || ALF_HM3_QC_REFACTOR
-  if( !bMarginIncluded )
-  {
-    copyToPicLuma( pcPicYuvDst , bMarginIncluded );
-    copyToPicCb( pcPicYuvDst , bMarginIncluded );
-    copyToPicCr( pcPicYuvDst , bMarginIncluded );
-    return;
-  }
-#endif
   ::memcpy ( pcPicYuvDst->getBufY(), m_apiPicBufY, sizeof (Pel) * ( m_iPicWidth       + (m_iLumaMarginX   << 1)) * ( m_iPicHeight       + (m_iLumaMarginY   << 1)) );
   ::memcpy ( pcPicYuvDst->getBufU(), m_apiPicBufU, sizeof (Pel) * ((m_iPicWidth >> 1) + (m_iChromaMarginX << 1)) * ((m_iPicHeight >> 1) + (m_iChromaMarginY << 1)) );
   ::memcpy ( pcPicYuvDst->getBufV(), m_apiPicBufV, sizeof (Pel) * ((m_iPicWidth >> 1) + (m_iChromaMarginX << 1)) * ((m_iPicHeight >> 1) + (m_iChromaMarginY << 1)) );
   return;
 }
 
-Void  TComPicYuv::copyToPicLuma (TComPicYuv*  pcPicYuvDst
-#if HM14_CLEAN_UP || ALF_HM3_QC_REFACTOR
-  , Bool bMarginIncluded 
-#endif
-  )
+Void  TComPicYuv::copyToPicLuma (TComPicYuv*  pcPicYuvDst)
 {
   assert( m_iPicWidth  == pcPicYuvDst->getWidth()  );
   assert( m_iPicHeight == pcPicYuvDst->getHeight() );
   
-#if HM14_CLEAN_UP || ALF_HM3_QC_REFACTOR
-  if( !bMarginIncluded )
-  {
-    Pel * pSrc = getLumaAddr();
-    Int nSrcStride = getStride();
-    Pel * pDst = pcPicYuvDst->getLumaAddr();
-    Int nDstStride = pcPicYuvDst->getStride();
-    Int nSize = m_iPicWidth * sizeof( Pel );
-    for( Int n = 0 ; n < m_iPicHeight ; n++ , pSrc += nSrcStride , pDst += nDstStride )
-    {
-      memcpy( pDst , pSrc , nSize );
-    }
-    return;
-  }
-#endif
   ::memcpy ( pcPicYuvDst->getBufY(), m_apiPicBufY, sizeof (Pel) * ( m_iPicWidth       + (m_iLumaMarginX   << 1)) * ( m_iPicHeight       + (m_iLumaMarginY   << 1)) );
   return;
 }
 
-Void  TComPicYuv::copyToPicCb (TComPicYuv*  pcPicYuvDst
-#if HM14_CLEAN_UP || ALF_HM3_QC_REFACTOR
-  , Bool bMarginIncluded 
-#endif
-  )
+Void  TComPicYuv::copyToPicCb (TComPicYuv*  pcPicYuvDst)
 {
   assert( m_iPicWidth  == pcPicYuvDst->getWidth()  );
   assert( m_iPicHeight == pcPicYuvDst->getHeight() );
   
-#if HM14_CLEAN_UP || ALF_HM3_QC_REFACTOR
-  if( !bMarginIncluded )
-  {
-    Pel * pSrc = getCbAddr();
-    Int nSrcStride = getCStride();
-    Pel * pDst = pcPicYuvDst->getCbAddr();
-    Int nDstStride = pcPicYuvDst->getCStride();
-    Int nSize = ( m_iPicWidth >> 1 ) * sizeof( Pel );
-    for( Int n = m_iPicHeight >> 1 ; n > 0 ; n-- , pSrc += nSrcStride , pDst += nDstStride )
-    {
-      memcpy( pDst , pSrc , nSize );
-    }
-    return;
-  }
-#endif
   ::memcpy ( pcPicYuvDst->getBufU(), m_apiPicBufU, sizeof (Pel) * ((m_iPicWidth >> 1) + (m_iChromaMarginX << 1)) * ((m_iPicHeight >> 1) + (m_iChromaMarginY << 1)) );
   return;
 }
 
-Void  TComPicYuv::copyToPicCr (TComPicYuv*  pcPicYuvDst
-#if HM14_CLEAN_UP || ALF_HM3_QC_REFACTOR
-  , Bool bMarginIncluded 
-#endif
-  )
+Void  TComPicYuv::copyToPicCr (TComPicYuv*  pcPicYuvDst)
 {
   assert( m_iPicWidth  == pcPicYuvDst->getWidth()  );
   assert( m_iPicHeight == pcPicYuvDst->getHeight() );
   
-#if HM14_CLEAN_UP || ALF_HM3_QC_REFACTOR
-  if( !bMarginIncluded )
-  {
-    Pel * pSrc = getCrAddr();
-    Int nSrcStride = getCStride();
-    Pel * pDst = pcPicYuvDst->getCrAddr();
-    Int nDstStride = pcPicYuvDst->getCStride();
-    Int nSize = ( m_iPicWidth >> 1 ) * sizeof( Pel );
-    for( Int n = m_iPicHeight >> 1 ; n > 0 ; n-- , pSrc += nSrcStride , pDst += nDstStride )
-    {
-      memcpy( pDst , pSrc , nSize );
-    }
-    return;
-  }
-#endif
   ::memcpy ( pcPicYuvDst->getBufV(), m_apiPicBufV, sizeof (Pel) * ((m_iPicWidth >> 1) + (m_iChromaMarginX << 1)) * ((m_iPicHeight >> 1) + (m_iChromaMarginY << 1)) );
   return;
 }
 
-Void TComPicYuv::extendPicBorder (
-#if HM14_CLEAN_UP || ALF_HM3_QC_REFACTOR
-  Int nMargin 
-#endif
-  )
+Void TComPicYuv::extendPicBorder ()
 {
   if ( m_bIsBorderExtended ) return;
   
-#if HM14_CLEAN_UP || ALF_HM3_QC_REFACTOR
-  if( nMargin > 0 )
-  {
-    xExtendPicCompBorder( getLumaAddr(), getStride(),  getWidth(),      getHeight(),      nMargin,   nMargin   );
-    xExtendPicCompBorder( getCbAddr()  , getCStride(), getWidth() >> 1, getHeight() >> 1, nMargin, nMargin );
-    xExtendPicCompBorder( getCrAddr()  , getCStride(), getWidth() >> 1, getHeight() >> 1, nMargin, nMargin );
-    m_bIsBorderExtended = true;
-    return;
-  }
-#endif
   xExtendPicCompBorder( getLumaAddr(), getStride(),  getWidth(),      getHeight(),      m_iLumaMarginX,   m_iLumaMarginY   );
   xExtendPicCompBorder( getCbAddr()  , getCStride(), getWidth() >> 1, getHeight() >> 1, m_iChromaMarginX, m_iChromaMarginY );
   xExtendPicCompBorder( getCrAddr()  , getCStride(), getWidth() >> 1, getHeight() >> 1, m_iChromaMarginX, m_iChromaMarginY );
@@ -413,31 +323,5 @@ Void TComPicYuv::dump (Char* pFileName, Bool bAdd)
   fclose(pFile);
 }
 
-
-#if QC_SUB_PU_TMVP
-Void TComPicYuv::getTopLeftSamplePos( Int iCuAddr, Int iAbsZorderIdx, Int& riX, Int& riY )
-{
-  Int iRastPartIdx    = g_auiZscanToRaster[iAbsZorderIdx];
-  Int iCuSizeInBases  = m_iCuWidth   / m_iBaseUnitWidth;
-  Int iCuX            = iCuAddr      % m_iNumCuInWidth;
-  Int iCuY            = iCuAddr      / m_iNumCuInWidth;
-  Int iBaseX          = iRastPartIdx % iCuSizeInBases;
-  Int iBaseY          = iRastPartIdx / iCuSizeInBases;
-  riX                 = iCuX * m_iCuWidth  + iBaseX * m_iBaseUnitWidth;
-  riY                 = iCuY * m_iCuHeight + iBaseY * m_iBaseUnitHeight; 
-}
-
-Void TComPicYuv::getCUAddrAndPartIdx( Int iX, Int iY, Int& riCuAddr, Int& riAbsZorderIdx )
-{
-  Int iCuX            = iX / m_iCuWidth;
-  Int iCuY            = iY / m_iCuHeight;
-  Int iBaseX          = ( iX - iCuX * m_iCuWidth  ) / m_iBaseUnitWidth;
-  Int iBaseY          = ( iY - iCuY * m_iCuHeight ) / m_iBaseUnitHeight;
-  Int iCuSizeInBases  = m_iCuWidth                  / m_iBaseUnitWidth;
-  riCuAddr            = iCuY   * m_iNumCuInWidth + iCuX;
-  Int iRastPartIdx    = iBaseY * iCuSizeInBases  + iBaseX;
-  riAbsZorderIdx      = g_auiRasterToZscan[ iRastPartIdx ];
-}
-#endif
 
 //! \}

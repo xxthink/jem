@@ -310,14 +310,10 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   
   ("QuadtreeTUMaxDepthIntra", m_uiQuadtreeTUMaxDepthIntra, 1u, "Depth of TU tree for intra CUs")
   ("QuadtreeTUMaxDepthInter", m_uiQuadtreeTUMaxDepthInter, 2u, "Depth of TU tree for inter CUs")
-   
+  
   // Coding structure paramters
   ("IntraPeriod,-ip",         m_iIntraPeriod,              -1, "Intra period in frames, (-1: only first frame)")
-#if ALLOW_RECOVERY_POINT_AS_RAP
-  ("DecodingRefreshType,-dr", m_iDecodingRefreshType,       0, "Intra refresh type (0:none 1:CRA 2:IDR 3:RecPointSEI)")
-#else
   ("DecodingRefreshType,-dr", m_iDecodingRefreshType,       0, "Intra refresh type (0:none 1:CRA 2:IDR)")
-#endif
   ("GOPSize,g",               m_iGOPSize,                   1, "GOP size of temporal structure")
   // motion options
   ("FastSearch",              m_iFastSearch,                1, "0:Full search  1:Diamond  2:PMVFAST")
@@ -334,6 +330,7 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   ("LambdaModifier4,-LM4", m_adLambdaModifier[ 4 ], ( Double )1.0, "Lambda modifier for temporal layer 4")
   ("LambdaModifier5,-LM5", m_adLambdaModifier[ 5 ], ( Double )1.0, "Lambda modifier for temporal layer 5")
   ("LambdaModifier6,-LM6", m_adLambdaModifier[ 6 ], ( Double )1.0, "Lambda modifier for temporal layer 6")
+  ("LambdaModifier7,-LM7", m_adLambdaModifier[ 7 ], ( Double )1.0, "Lambda modifier for temporal layer 7")
 
   /* Quantization parameters */
   ("QP,q",          m_fQP,             30.0, "Qp value, if value is float, QP is switched once during encoding")
@@ -368,9 +365,6 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   ("TransformSkip",            m_useTransformSkip,          false, "Intra transform skipping")
   ("TransformSkipFast",        m_useTransformSkipFast,      false, "Fast intra transform skipping")
   ("SAO",                      m_bUseSAO,                   true,  "Enable Sample Adaptive Offset")
-#if QC_LMCHROMA
-  ("LMChroma",                 m_bUseLMChroma,            true, "Cross component prediction: predict chroma from luma or Cr from Cb with linear model")
-#endif
   ("MaxNumOffsetsPerPic",      m_maxNumOffsetsPerPic,       2048,  "Max number of SAO offset per picture (Default: 2048)")   
   ("SAOLcuBoundary",           m_saoLcuBoundary,            false, "0: right/bottom LCU boundary areas skipped from SAO parameter estimation, 1: non-deblocked pixels are used for those areas")
   ("SliceMode",                m_sliceMode,                0,     "0: Disable all Recon slice limits, 1: Enforce max # of LCUs, 2: Enforce max # of bytes, 3:specify tiles per dependent slice")
@@ -406,15 +400,7 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   ("ScalingList",                 m_useScalingListId,              0,          "0: no scaling list, 1: default scaling lists, 2: scaling lists specified in ScalingListFile")
   ("ScalingListFile",             cfg_ScalingListFile,             string(""), "Scaling list file name")
   ("SignHideFlag,-SBH",                m_signHideFlag, 1)
-#if MERGE_CAND_NUM_PATCH
-  ("MaxNumMergeCand",             m_maxNumMergeCand,             (UInt)MRG_MAX_NUM_CANDS,         "Maximum number of merge candidates")
-#else
   ("MaxNumMergeCand",             m_maxNumMergeCand,             5u,         "Maximum number of merge candidates")
-#endif
-#if QC_SUB_PU_TMVP
-  ("ATMVP",                       m_bAtmvpEnableFlag,           true,         "Advanced TMVP")       
-  ("SubPUTempLog2Size",           m_uiSubPUTLog2Size,             (UInt)2,     "Sub-PU TMVP size index: 2^n")
-#endif
 
   /* Misc. */
   ("SEIDecodedPictureHash",       m_decodedPictureHashSEIEnabled, 0, "Control generation of decode picture hash SEI messages\n"
@@ -500,8 +486,6 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   ("SEIToneMapTargetPivotValue",                      cfg_targetPivotValue,              string(""), "Array of pivot point")
   ("SEIToneMapCameraIsoSpeedIdc",                     m_cameraIsoSpeedIdc,                        0, "Indicates the camera ISO speed for daylight illumination")
   ("SEIToneMapCameraIsoSpeedValue",                   m_cameraIsoSpeedValue,                    400, "Specifies the camera ISO speed for daylight illumination of Extended_ISO")
-  ("SEIToneMapExposureIndexIdc",                      m_exposureIndexIdc,                         0, "Indicates the exposure index setting of the camera")
-  ("SEIToneMapExposureIndexValue",                    m_exposureIndexValue,                     400, "Specifies the exposure index setting of the cameran of Extended_ISO")
   ("SEIToneMapExposureCompensationValueSignFlag",     m_exposureCompensationValueSignFlag,        0, "Specifies the sign of ExposureCompensationValue")
   ("SEIToneMapExposureCompensationValueNumerator",    m_exposureCompensationValueNumerator,       0, "Specifies the numerator of ExposureCompensationValue")
   ("SEIToneMapExposureCompensationValueDenomIdc",     m_exposureCompensationValueDenomIdc,        2, "Specifies the denominator of ExposureCompensationValue")
@@ -532,58 +516,6 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   ("SEIDecodingUnitInfo",             m_decodingUnitInfoSEIEnabled,                       0, "Control generation of decoding unit information SEI message.")
   ("SEISOPDescription",              m_SOPDescriptionSEIEnabled,              0, "Control generation of SOP description SEI messages")
   ("SEIScalableNesting",             m_scalableNestingSEIEnabled,              0, "Control generation of scalable nesting SEI messages")
-
-#if ALF_HM3_QC_REFACTOR
-  ("ALF", m_bUseALF, true, "Adaptive Loop Filter")
-#endif
-
-#if QC_EMT
-  ("EMT,-emt",       m_iUseEMT,       3,  "Enhanced Multiple Transform (EMT)\n"
-                                          "\t0:  Disable EMT\n"
-                                          "\t1:  Enable only Intra EMT\n"
-                                          "\t2:  Enable only Inter EMT\n"
-                                          "\t3:  Enable both Intra & Inter EMT\n")
-#if QC_EMT_INTRA_FAST || QC_EMT_INTER_FAST
-  ("EMTFAST,-femt",  m_iUseFastEMT,   3,  "Fast methods for Enhanced Multiple Transform (EMT)\n"
-                                          "\t0:  Disable fast methods for EMT\n"
-                                          "\t1:  Enable fast methods only for Intra EMT\n"
-                                          "\t2:  Enable fast methods only for Inter EMT\n"
-                                          "\t3:  Enable fast methods for both Intra & Inter EMT\n")
-#endif
-#endif
-
-#if QC_INTRA_4TAP_FILTER
-  ("FourTapIntraFilter", m_bUse4TapIntraFilter, true, "Enable 4-tap Intra predicton filter")
-#endif
-#if INTRA_BOUNDARY_FILTER
-  ("BoundaryFilter", m_bUseBoundaryFilter, true, "Enable Boundary filter")
-#endif
-
-#if QC_USE_65ANG_MODES
-  ("ExtIntraAngularMode", m_bUseExtIntraAngMode, true, "Enable extended Intra angular modes")
-#endif
-
-#if QC_LARGE_CTU_FAST
-  ("LCTUFast" , m_nLCTUFast , 1 , "Fast methods for large CTU" )
-#endif
-#if QC_OBMC
-  ("OBMC", m_bOBMC , true , "overlapped block motion compensation" )
-  ("OBMCBLK", m_nOBMCBlkSize , 4 , "block size in overlapped block motion compensation" )
-#endif
-
-#if QC_FRUC_MERGE
-  ("FRUC" , m_nFRUCMgrMode , 1 , "frame rate up-conversion based merge mode" )
-  ("FRUCF" , m_nFRUCRefineFilter , 1 , "whether bilinear filter is used in FRUC" )
-  ("FRUCR" , m_nFURCRefineRange , 8 , "search range (in pixel) of FRUC refinement" )
-  ("FRUCRDepth" , m_nFRUCSmallBlkRefineDepth , 3 , "depth of FRUC refinement" )
-#endif
-#if QC_IMV
-  ("IMV", m_nIMV , true , "adaptive MV precision" )
-  ("IMVMaxCand", m_nIMVMaxCand , 4 , "max IMV cand ")
-#endif
-#if QC_IC
-  ("IlluCompEnable", m_abUseIC, true, "Enable illumination compensation")
-#endif
   ;
   
   for(Int i=1; i<MAX_GOP+1; i++) {
@@ -902,15 +834,7 @@ Void TAppEncCfg::xCheckParameter()
   xConfirmPara( m_iGOPSize < 1 ,                                                            "GOP Size must be greater or equal to 1" );
   xConfirmPara( m_iGOPSize > 1 &&  m_iGOPSize % 2,                                          "GOP Size must be a multiple of 2, if GOP Size is greater than 1" );
   xConfirmPara( (m_iIntraPeriod > 0 && m_iIntraPeriod < m_iGOPSize) || m_iIntraPeriod == 0, "Intra period must be more than GOP size, or -1 , not 0" );
-#if ALLOW_RECOVERY_POINT_AS_RAP
-  xConfirmPara( m_iDecodingRefreshType < 0 || m_iDecodingRefreshType > 3,                   "Decoding Refresh Type must be comprised between 0 and 3 included" );
-  if(m_iDecodingRefreshType == 3)
-  {
-    xConfirmPara( !m_recoveryPointSEIEnabled,                                               "When using RecoveryPointSEI messages as RA points, recoveryPointSEI must be enabled" );
-  }
-#else
   xConfirmPara( m_iDecodingRefreshType < 0 || m_iDecodingRefreshType > 2,                   "Decoding Refresh Type must be equal to 0, 1 or 2" );
-#endif
   xConfirmPara( m_iQP <  -6 * (m_internalBitDepthY - 8) || m_iQP > 51,                    "QP exceeds supported range (-QpBDOffsety to 51)" );
   xConfirmPara( m_loopFilterBetaOffsetDiv2 < -6 || m_loopFilterBetaOffsetDiv2 > 6,          "Loop Filter Beta Offset div. 2 exceeds supported range (-6 to 6)");
   xConfirmPara( m_loopFilterTcOffsetDiv2 < -6 || m_loopFilterTcOffsetDiv2 > 6,              "Loop Filter Tc Offset div. 2 exceeds supported range (-6 to 6)");
@@ -930,21 +854,6 @@ Void TAppEncCfg::xCheckParameter()
   {
     xConfirmPara( m_iIntraPeriod > 0 && m_iIntraPeriod <= m_iGOPSize ,                      "Intra period must be larger than GOP size for periodic IDR pictures");
   }
-#if QC_LARGE_CTU
-  if( m_uiMaxCUWidth * 2 > m_iSourceWidth && m_uiMaxCUHeight * 2 > m_iSourceHeight )
-  {
-    while( m_uiMaxCUWidth * 2 > m_iSourceWidth && m_uiMaxCUHeight * 2 > m_iSourceHeight )
-    {
-      m_uiMaxCUWidth >>= 1;
-      m_uiMaxCUHeight >>= 1;
-      m_uiMaxCUDepth--;
-    }
-    printf( "\nWarning: CTU size is reduced to (%dx%d) to better fit picture size (%dx%d)\n" , m_uiMaxCUWidth , m_uiMaxCUHeight , m_iSourceWidth , m_iSourceHeight );
-  }
-#endif
-#if HM14_CLEAN_UP
-  xConfirmPara( m_uiMaxCUWidth > MAX_CU_SIZE || m_uiMaxCUHeight > MAX_CU_SIZE,            "CTU size is too large");
-#endif
   xConfirmPara( (m_uiMaxCUWidth  >> m_uiMaxCUDepth) < 4,                                    "Minimum partition width size should be larger than or equal to 8");
   xConfirmPara( (m_uiMaxCUHeight >> m_uiMaxCUDepth) < 4,                                    "Minimum partition height size should be larger than or equal to 8");
   xConfirmPara( m_uiMaxCUWidth < 16,                                                        "Maximum partition width size should be larger than or equal to 16");
@@ -953,11 +862,7 @@ Void TAppEncCfg::xCheckParameter()
   xConfirmPara( (m_iSourceHeight % (m_uiMaxCUHeight >> (m_uiMaxCUDepth-1)))!=0,             "Resulting coded frame height must be a multiple of the minimum CU size");
   
   xConfirmPara( m_uiQuadtreeTULog2MinSize < 2,                                        "QuadtreeTULog2MinSize must be 2 or greater.");
-#if QC_T64
-  xConfirmPara( m_uiQuadtreeTULog2MaxSize > 6,                                        "QuadtreeTULog2MaxSize must be 6 or smaller.");
-#else
   xConfirmPara( m_uiQuadtreeTULog2MaxSize > 5,                                        "QuadtreeTULog2MaxSize must be 5 or smaller.");
-#endif
   xConfirmPara( (1<<m_uiQuadtreeTULog2MaxSize) > m_uiMaxCUWidth,                                        "QuadtreeTULog2MaxSize must be log2(maxCUSize) or smaller.");
   
   xConfirmPara( m_uiQuadtreeTULog2MaxSize < m_uiQuadtreeTULog2MinSize,                "QuadtreeTULog2MaxSize must be greater than or equal to m_uiQuadtreeTULog2MinSize.");
@@ -971,29 +876,11 @@ Void TAppEncCfg::xCheckParameter()
   xConfirmPara( m_uiMaxCUWidth < ( 1 << (m_uiQuadtreeTULog2MinSize + m_uiQuadtreeTUMaxDepthIntra - 1) ), "QuadtreeTUMaxDepthInter must be less than or equal to the difference between log2(maxCUSize) and QuadtreeTULog2MinSize plus 1" );
   
   xConfirmPara(  m_maxNumMergeCand < 1,  "MaxNumMergeCand must be 1 or greater.");
-#if MERGE_CAND_NUM_PATCH
-  xConfirmPara(  m_maxNumMergeCand > MRG_MAX_NUM_CANDS,  "MaxNumMergeCand must be MRG_MAX_NUM_CANDS or smaller.");
-#else
   xConfirmPara(  m_maxNumMergeCand > 5,  "MaxNumMergeCand must be 5 or smaller.");
-#endif
+
 #if ADAPTIVE_QP_SELECTION
   xConfirmPara( m_bUseAdaptQpSelect == true && m_iQP < 0,                                              "AdaptiveQpSelection must be disabled when QP < 0.");
   xConfirmPara( m_bUseAdaptQpSelect == true && (m_cbQpOffset !=0 || m_crQpOffset != 0 ),               "AdaptiveQpSelection must be disabled when ChromaQpOffset is not equal to 0.");
-#endif
-
-#if QC_SUB_PU_TMVP
-  xConfirmPara( m_uiSubPUTLog2Size < 2,                                        "SubPULog2Size must be 2 or greater.");
-  xConfirmPara( m_uiSubPUTLog2Size > 6,                                        "SubPULog2Size must be 6 or smaller.");
-  xConfirmPara( (1<<m_uiSubPUTLog2Size) > m_uiMaxCUWidth,                      "SubPULog2Size must be log2(maxCUSize) or smaller.");
-#endif 
-
-#if QC_EMT
-  xConfirmPara(     m_iUseEMT<0 ||     m_iUseEMT >3, "EMT must be 0, 1, 2 or 3"  );
-  xConfirmPara( m_iUseFastEMT<0 || m_iUseFastEMT >3, "FEMT must be 0, 1, 2 or 3" );
-#endif
-
-#if QC_T64
-  xConfirmPara( m_useScalingListId != 0,                                        "Quantization Matrix not avaialble for large transforms (>64x64).");
 #endif
 
   if( m_usePCM)
@@ -1439,7 +1326,6 @@ Void TAppEncCfg::xCheckParameter()
     xConfirmPara( m_toneMapTargetBitDepth < 1 || (m_toneMapTargetBitDepth > 16 && m_toneMapTargetBitDepth < 255) , "SEIToneMapTargetBitDepth must be in rage 1 to 16 or equal to 255");
     xConfirmPara( m_toneMapModelId < 0 || m_toneMapModelId > 4 , "SEIToneMapModelId must be in rage 0 to 4");
     xConfirmPara( m_cameraIsoSpeedValue == 0, "SEIToneMapCameraIsoSpeedValue shall not be equal to 0");
-    xConfirmPara( m_exposureIndexValue  == 0, "SEIToneMapExposureIndexValue shall not be equal to 0");
     xConfirmPara( m_extendedRangeWhiteLevel < 100, "SEIToneMapExtendedRangeWhiteLevel should be greater than or equal to 100");
     xConfirmPara( m_nominalBlackLevelLumaCodeValue >= m_nominalWhiteLevelLumaCodeValue, "SEIToneMapNominalWhiteLevelLumaCodeValue shall be greater than SEIToneMapNominalBlackLevelLumaCodeValue");
     xConfirmPara( m_extendedWhiteLevelLumaCodeValue < m_nominalWhiteLevelLumaCodeValue, "SEIToneMapExtendedWhiteLevelLumaCodeValue shall be greater than or equal to SEIToneMapNominalWhiteLevelLumaCodeValue");
@@ -1465,6 +1351,7 @@ Void TAppEncCfg::xCheckParameter()
   {
     xConfirmPara(m_framePackingSEIType < 3 || m_framePackingSEIType > 5 , "SEIFramePackingType must be in rage 3 to 5");
   }
+
 #undef xConfirmPara
   if (check_failed)
   {
@@ -1550,15 +1437,7 @@ Void TAppEncCfg::xPrintParameter()
     printf("InitialQP                    : %d\n", m_RCInitialQP );
     printf("ForceIntraQP                 : %d\n", m_RCForceIntraQP );
   }
-#if QC_SUB_PU_TMVP
-#if MERGE_CAND_NUM_PATCH
   printf("Max Num Merge Candidates     : %d\n", m_maxNumMergeCand);
-#else
-  printf("Max Num Merge Candidates     : %d\n", m_maxNumMergeCand+(m_bAtmvpEnableFlag? 1:0 ));
-#endif
-#else
-  printf("Max Num Merge Candidates     : %d\n", m_maxNumMergeCand);
-#endif
   printf("\n");
   
   printf("TOOL CFG: ");
@@ -1589,9 +1468,6 @@ Void TAppEncCfg::xPrintParameter()
   }
   printf("CIP:%d ", m_bUseConstrainedIntraPred);
   printf("SAO:%d ", (m_bUseSAO)?(1):(0));
-#if QC_LMCHROMA
-  printf("LMC:%d ", m_bUseLMChroma        );
-#endif
   printf("PCM:%d ", (m_usePCM && (1<<m_uiPCMLog2MinSize) <= m_uiMaxCUWidth)? 1 : 0);
   if (m_TransquantBypassEnableFlag && m_CUTransquantBypassFlagForce)
   {
@@ -1614,67 +1490,6 @@ Void TAppEncCfg::xPrintParameter()
 
   printf(" SignBitHidingFlag:%d ", m_signHideFlag);
   printf("RecalQP:%d", m_recalculateQPAccordingToLambda ? 1 : 0 );
-
-#if QC_SUB_PU_TMVP
-  printf(" ATMVP:%d, ", m_bAtmvpEnableFlag );
-  printf(" SubPUTLog2Size:%d  " , m_uiSubPUTLog2Size  );
-#endif
-#if ALF_HM3_QC_REFACTOR
-  printf(" ALF:%d ", m_bUseALF             );
-#endif
-
-#if QC_EMT_INTRA || QC_EMT_INTER
-  printf( " EMT:" );
-#if QC_EMT_INTRA
-  printf( "%1d(intra) ", m_iUseEMT&1 );
-#endif
-#if QC_EMT_INTER
-  printf( "%1d(inter) ", (m_iUseEMT>>1)&1 );
-#endif
-  if( m_iUseEMT )
-  {
-    printf( "FEMT:");
-#if QC_EMT_INTRA_FAST
-    if( m_iUseEMT&1 )
-    {
-      printf( "%1d(intra) ", m_iUseFastEMT&1 );
-    }
-#endif
-#if QC_EMT_INTER_FAST
-    if( (m_iUseEMT>>1)&1 )
-    {
-      printf( "%1d(inter) ", (m_iUseFastEMT>>1)&1 );
-    }
-#endif
-  }
-#endif
-#if QC_INTRA_4TAP_FILTER
-  printf( "4TapIntraFilter:%d " , m_bUse4TapIntraFilter );
-#endif
-#if INTRA_BOUNDARY_FILTER
-  printf( "BoundaryFilter:%d " , m_bUseBoundaryFilter );
-#endif
-#if QC_USE_65ANG_MODES
-  printf( "ExtIntraAngularMode:%d " , m_bUseExtIntraAngMode );
-#endif
-#if QC_LARGE_CTU_FAST
-  printf( "LCTUFast:%d " , m_nLCTUFast );
-#endif
-#if QC_OBMC
-  assert( m_nOBMCBlkSize == 4 || m_nOBMCBlkSize == 8 );
-  printf( " OBMC: %d  OBMCBLK: %d ", m_bOBMC, m_nOBMCBlkSize );
-#endif
-
-#if QC_FRUC_MERGE
-  printf( "FRUC:%d FRUCF:%d FRUCR:%d FRUCRDepth:%d " , m_nFRUCMgrMode ,m_nFRUCRefineFilter , m_nFURCRefineRange , m_nFRUCSmallBlkRefineDepth );
-#endif
-#if QC_IMV
-  printf( " IMV:%d ", m_nIMV );
-  printf( " IMVMaxCand:%d ", m_nIMVMaxCand );
-#endif
-#if QC_IC
-  printf( "IlluCompEnable:%d ", m_abUseIC);
-#endif
   printf("\n\n");
   
   fflush(stdout);

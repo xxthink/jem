@@ -41,9 +41,6 @@
 // Include files
 #include <stdio.h>
 #include "CommonDef.h"
-#if QC_LARGE_CTU
-#include "TComRom.h"
-#endif
 
 //! \ingroup TLibCommon
 //! \{
@@ -101,17 +98,9 @@ private:
   TComPatternParam  m_cPatternY;
   TComPatternParam  m_cPatternCb;
   TComPatternParam  m_cPatternCr;
-#if QC_IC
-  Bool              m_bMRFlag;
-#endif
-#if QC_LARGE_CTU
-  static const UChar m_aucIntraFilter[MAX_CU_DEPTH];
-#else
+  
   static const UChar m_aucIntraFilter[5];
-#endif
-#if QC_IMV
-  Int m_iImvFlag;
-#endif
+  
 public:
   
   // ROI & pattern information, (ROI = &pattern[AboveOffset][LeftOffset])
@@ -119,24 +108,13 @@ public:
   Int   getROIYWidth()            { return m_cPatternY.m_iROIWidth;       }
   Int   getROIYHeight()           { return m_cPatternY.m_iROIHeight;      }
   Int   getPatternLStride()       { return m_cPatternY.m_iPatternStride;  }
-#if QC_IMV
-  Void  setImvFlag( Int iMvFlag ) { m_iImvFlag = iMvFlag;                 }
-  Int   getImvFlag(             ) { return m_iImvFlag;                    }
-#endif
-#if QC_IC
-  Bool  getMRFlag()               { return m_bMRFlag; }
-  Void  setMRFlag( Bool bMRFlag ) { m_bMRFlag = bMRFlag; }
-#endif
+
   // access functions of ADI buffers
   Int*  getAdiOrgBuf              ( Int iCuWidth, Int iCuHeight, Int* piAdiBuf );
   Int*  getAdiCbBuf               ( Int iCuWidth, Int iCuHeight, Int* piAdiBuf );
   Int*  getAdiCrBuf               ( Int iCuWidth, Int iCuHeight, Int* piAdiBuf );
   
-  Int*  getPredictorPtr           ( UInt uiDirMode, UInt uiWidthBits, Int* piAdiBuf 
-#if QC_USE_65ANG_MODES
-    , Bool bUseExtIntraAngModes
-#endif
-    );
+  Int*  getPredictorPtr           ( UInt uiDirMode, UInt uiWidthBits, Int* piAdiBuf );
   // -------------------------------------------------------------------------------------------------------------------
   // initialization functions
   // -------------------------------------------------------------------------------------------------------------------

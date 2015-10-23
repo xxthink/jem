@@ -105,10 +105,7 @@ private:
 public:
   TEncSlice();
   virtual ~TEncSlice();
-
-#if QC_AC_ADAPT_WDOW
- TComStats*                m_apcStats; 
-#endif
+  
   Void    create              ( Int iWidth, Int iHeight, UInt iMaxCUWidth, UInt iMaxCUHeight, UChar uhTotalDepth );
   Void    destroy             ();
   Void    init                ( TEncTop* pcEncTop );
@@ -131,19 +128,9 @@ public:
   Void    xDetermineStartAndBoundingCUAddr  ( UInt& uiStartCUAddr, UInt& uiBoundingCUAddr, TComPic*& rpcPic, Bool bEncodeSlice );
   UInt    getSliceIdx()         { return m_uiSliceIdx;                    }
   Void    setSliceIdx(UInt i)   { m_uiSliceIdx = i;                       }
-  Void    initCtxMem( UInt i );
-  Void    setCtxMem( TEncSbac* sb, Int b )   { CTXMem[b] = sb; }
-#if QC_AC_ADAPT_WDOW && ENABLE_ADAPTIVE_W
-  Void xGenUpdateMap   (UInt uiSliceType, Int iQP,  TComStats* apcStats);
-#if INIT_PREVFRAME
-  Void xContextWdowSizeUpdateDecision (TEncSbac* pTestEncSbac, UInt &uiCtxStartPos, ContextModel* pSliceCtx, Bool *uiCtxMap, UChar *uiCtxCodeIdx, Bool** pCodedBinStr, Int* pCounter, UShort* uiCTX = NULL);
-#else
-  Void xContextWdowSizeUpdateDecision (TEncSbac* pTestEncSbac, UInt &uiCtxStartPos, ContextModel* pSliceCtx, Bool *uiCtxMap, UChar *uiCtxCodeIdx, Bool** pCodedBinStr, Int* pCounter);
-#endif    
-#if ALF_HM3_QC_REFACTOR 
-  Void xGenUpdateMapAlF(UInt uiSliceType, Int iQP,  TComStats* apcStats);   
-#endif
-#endif
+  Void      initCtxMem( UInt i );
+  Void      setCtxMem( TEncSbac* sb, Int b )   { CTXMem[b] = sb; }
+
 private:
   Double  xGetQPValueAccordingToLambda ( Double lambda );
 };

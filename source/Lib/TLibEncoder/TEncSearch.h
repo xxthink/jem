@@ -81,11 +81,6 @@ private:
   
   TComYuv*        m_pcQTTempTComYuv;
   TComYuv         m_tmpYuvPred; // To be used in xGetInterPredictionError() to avoid constant memory allocation/deallocation
-
-#if QC_LMCHROMA
-  TComYuv         m_pcQTTempResiTComYuv;
-#endif
-
   Pel*            m_pSharedPredTransformSkip[3];
   TCoeff*         m_pcQTTempTUCoeffY;
   TCoeff*         m_pcQTTempTUCoeffCb;
@@ -96,25 +91,6 @@ private:
   Int*            m_ppcQTTempTUArlCoeffY;
   Int*            m_ppcQTTempTUArlCoeffCb;
   Int*            m_ppcQTTempTUArlCoeffCr;
-#endif
-#if QC_EMT
-  UChar*          m_puhQTTempEmtTuIdx;
-  UChar*          m_puhQTTempEmtCuFlag;
-#endif
-#if QC_SUB_PU_TMVP
-#if QC_SUB_PU_TMVP_EXT
-  TComMvField   * m_pMvFieldSP[2];
-  UChar         * m_phInterDirSP[2];
-#else
-  TComMvField  * m_pMvFieldSP;
-  UChar        * m_phInterDirSP;
-#endif
-#endif
-#if QC_FRUC_MERGE
-  TComMvField  * m_pMvFieldFRUC;
-  UChar        * m_phInterDirFRUC;
-  UChar        * m_phFRUCRefineDist[2];
-  UChar        * m_phFRUCSBlkRefineDist[2];
 #endif
 protected:
   // interface to option
@@ -168,8 +144,7 @@ protected:
   /// sub-function for motion vector refinement used in fractional-pel accuracy
   UInt  xPatternRefinement( TComPattern* pcPatternKey,
                            TComMv baseRefMv,
-                           Int iFrac, TComMv& rcMvFrac 
-                           );
+                           Int iFrac, TComMv& rcMvFrac );
   
   typedef struct
   {
@@ -216,11 +191,6 @@ public:
                                   TComYuv*&   rpcPredYuv,
                                   TComYuv*&   rpcResiYuv,
                                   TComYuv*&   rpcRecoYuv,
-#if QC_OBMC
-                                  TComYuv*    pcPredYuvWoOBMC, 
-                                  TComYuv*    pcTmpYuv1,
-                                  TComYuv*    pcTmpYuv2,
-#endif
                                   Bool        bUseRes = false
 #if AMP_MRG
                                  ,Bool        bUseMRG = false
@@ -234,11 +204,7 @@ public:
                                   TComYuv*&   rpcYuvResi,
                                   TComYuv*&   rpcYuvResiBest,
                                   TComYuv*&   rpcYuvRec,
-                                  Bool        bSkipRes 
-#if QC_EMT_INTER_FAST
-                                  , Double dBestCost
-#endif
-                                  );
+                                  Bool        bSkipRes );
   
   /// set ME search range
   Void setAdaptiveSearchRange   ( Int iDir, Int iRefIdx, Int iSearchRange) { m_aaiAdaptSR[iDir][iRefIdx] = iSearchRange; }
@@ -286,9 +252,6 @@ protected:
                                     TComYuv*     pcPredYuv, 
                                     TComYuv*     pcResiYuv, 
                                     UInt&        ruiDist,
-#if QC_EMT_INTRA
-                                    UInt&        uiSigNum,
-#endif
                                     Int         default0Save1Load2 = 0);
   Void  xIntraCodingChromaBlk     ( TComDataCU*  pcCU,
                                     UInt         uiTrDepth,
@@ -341,16 +304,10 @@ protected:
                                     UInt         uiAbsPartIdx,
                                     Bool         bLumaOnly );
   Void xStoreIntraResultChromaQT  ( TComDataCU*  pcCU,
-#if QC_LMCHROMA
-                                    TComYuv*     pcResiYuv,
-#endif
                                     UInt         uiTrDepth,
                                     UInt         uiAbsPartIdx,
                                     UInt         stateU0V1Both2 );
   Void xLoadIntraResultChromaQT   ( TComDataCU*  pcCU,
-#if QC_LMCHROMA
-                                    TComYuv*     pcResiYuv,
-#endif
                                     UInt         uiTrDepth,
                                     UInt         uiAbsPartIdx,
                                     UInt         stateU0V1Both2 );
@@ -378,11 +335,7 @@ protected:
                                     TComMv&     rcMvPred,
                                     Int&        riMVPIdx,
                                     UInt&       ruiBits,
-                                    UInt&       ruiCost
-#if QC_IMV
-                                    , UInt uiPartAddr
-#endif
-                                    );
+                                    UInt&       ruiCost );
   
   UInt xGetTemplateCost           ( TComDataCU* pcCU,
                                     UInt        uiPartIdx,
@@ -416,22 +369,8 @@ protected:
                                   , TComMvField* cMvFieldNeighbours,  
                                     UChar* uhInterDirNeighbours,
                                     Int& numValidMergeCand
-#if QC_SUB_PU_TMVP
-                                  , UChar*      pMergeTypeNeighbor 
-#if QC_SUB_PU_TMVP_EXT
-                                  , TComMvField*    pcMvFieldSP[2]
-                                  , UChar*          puhInterDirSP[2]
-#else
-                                  , TComMvField*    pcMvFieldSP
-                                  , UChar*          puhInterDirSP
-#endif
-#endif
                                    );
-#if QC_FRUC_MERGE
-  Void xFRUCMgrEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPUIdx, TComMvField* pacMvField, 
-    UChar * phInterDir , UChar ** phFRUCRefineDist , UChar ** phFRUCSBlkRefineDist ,
-    UInt& ruiMinCost , UChar & ruhFRUCMode );
-#endif
+
   Void xRestrictBipredMergeCand   ( TComDataCU*     pcCU,
                                     UInt            puIdx,
                                     TComMvField*    mvFieldNeighbours, 
@@ -507,12 +446,7 @@ protected:
   Void xEstimateResidualQT( TComDataCU* pcCU, UInt uiQuadrant, UInt uiAbsPartIdx, UInt absTUPartIdx,TComYuv* pcResi, const UInt uiDepth, Double &rdCost, UInt &ruiBits, UInt &ruiDist, UInt *puiZeroDist );
   Void xSetResidualQTData( TComDataCU* pcCU, UInt uiQuadrant, UInt uiAbsPartIdx,UInt absTUPartIdx, TComYuv* pcResi, UInt uiDepth, Bool bSpatial );
   
-  UInt  xModeBitsIntra ( TComDataCU* pcCU, UInt uiMode, UInt uiPU, UInt uiPartOffset, UInt uiDepth, UInt uiInitTrDepth 
-#if QC_USE_65ANG_MODES
-    , Int* piModes = NULL
-    , Int  iAboveLeftCase = -1
-#endif
-    );
+  UInt  xModeBitsIntra ( TComDataCU* pcCU, UInt uiMode, UInt uiPU, UInt uiPartOffset, UInt uiDepth, UInt uiInitTrDepth );
   UInt  xUpdateCandList( UInt uiMode, Double uiCost, UInt uiFastCandNum, UInt * CandModeList, Double * CandCostList );
   
   // -------------------------------------------------------------------------------------------------------------------

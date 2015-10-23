@@ -40,11 +40,6 @@
 #include "TComRom.h"
 #include "TComRdCost.h"
 
-#if QC_SIMD_OPT
-#include <emmintrin.h>  
-#include <xmmintrin.h>
-#endif
-
 //! \ingroup TLibCommon
 //! \{
 
@@ -272,22 +267,8 @@ Void TComRdCost::xUninit()
 }
 #endif
 
-#if QC_IMV
-UInt TComRdCost::xGetComponentBits( Int iVal, Int iMvFlag )
-#else
 UInt TComRdCost::xGetComponentBits( Int iVal )
-#endif
 {
-#if QC_IMV
-  if( iMvFlag )
-  {
-#if QC_MV_STORE_PRECISION_BIT
-    iVal >>= QC_MV_SIGNAL_PRECISION_BIT;
-#else
-    iVal >>= 2;
-#endif
-  }
-#endif
   UInt uiLength = 1;
   UInt uiTemp   = ( iVal <= 0) ? (-iVal<<1)+1: (iVal<<1);
   
@@ -307,11 +288,6 @@ Void TComRdCost::setDistParam( UInt uiBlkWidth, UInt uiBlkHeight, DFunc eDFunc, 
   // set Block Width / Height
   rcDistParam.iCols    = uiBlkWidth;
   rcDistParam.iRows    = uiBlkHeight;
-#if QC_LARGE_CTU
-  if( rcDistParam.iCols > 64 )
-    rcDistParam.DistFunc = m_afpDistortFunc[eDFunc];
-  else
-#endif
   rcDistParam.DistFunc = m_afpDistortFunc[eDFunc + g_aucConvertToBit[ rcDistParam.iCols ] + 1 ];
   
   // initialize
@@ -331,11 +307,6 @@ Void TComRdCost::setDistParam( TComPattern* pcPatternKey, Pel* piRefY, Int iRefS
   // set Block Width / Height
   rcDistParam.iCols    = pcPatternKey->getROIYWidth();
   rcDistParam.iRows    = pcPatternKey->getROIYHeight();
-#if QC_LARGE_CTU
-  if( rcDistParam.iCols > 64 )
-    rcDistParam.DistFunc = m_afpDistortFunc[DF_SAD];
-  else
-#endif
   rcDistParam.DistFunc = m_afpDistortFunc[DF_SAD + g_aucConvertToBit[ rcDistParam.iCols ] + 1 ];
   
 #if AMP_SAD
@@ -377,11 +348,6 @@ Void TComRdCost::setDistParam( TComPattern* pcPatternKey, Pel* piRefY, Int iRefS
   // set distortion function
   if ( !bHADME )
   {
-#if QC_LARGE_CTU
-    if( rcDistParam.iCols > 64 )
-      rcDistParam.DistFunc =  m_afpDistortFunc[DF_SADS];
-    else
-#endif
     rcDistParam.DistFunc = m_afpDistortFunc[DF_SADS + g_aucConvertToBit[ rcDistParam.iCols ] + 1 ];
 #if AMP_SAD
     if (rcDistParam.iCols == 12)
@@ -400,11 +366,6 @@ Void TComRdCost::setDistParam( TComPattern* pcPatternKey, Pel* piRefY, Int iRefS
   }
   else
   {
-#if QC_LARGE_CTU
-    if( rcDistParam.iCols > 64 )
-      rcDistParam.DistFunc =  m_afpDistortFunc[DF_HADS];
-    else
-#endif
     rcDistParam.DistFunc = m_afpDistortFunc[DF_HADS + g_aucConvertToBit[ rcDistParam.iCols ] + 1 ];
   }
   
@@ -424,11 +385,6 @@ TComRdCost::setDistParam( DistParam& rcDP, Int bitDepth, Pel* p1, Int iStride1, 
   rcDP.iStep      = 1;
   rcDP.iSubShift  = 0;
   rcDP.bitDepth   = bitDepth;
-#if QC_LARGE_CTU
-  if( rcDP.iCols > 64 )
-    rcDP.DistFunc   = m_afpDistortFunc[ ( bHadamard ? DF_HADS : DF_SADS ) ];
-  else
-#endif
   rcDP.DistFunc   = m_afpDistortFunc[ ( bHadamard ? DF_HADS : DF_SADS ) + g_aucConvertToBit[ iWidth ] + 1 ];
 }
 
@@ -468,11 +424,7 @@ UInt TComRdCost::calcHAD(Int bitDepth, Pel* pi0, Int iStride0, Pel* pi1, Int iSt
 
 }
 
-UInt TComRdCost::getDistPart(Int bitDepth, Pel* piCur, Int iCurStride,  Pel* piOrg, Int iOrgStride, UInt uiBlkWidth, UInt uiBlkHeight, TextType eText, DFunc eDFunc
-#if QC_IC
-  , Bool bMRFlag
-#endif
-  )
+UInt TComRdCost::getDistPart(Int bitDepth, Pel* piCur, Int iCurStride,  Pel* piOrg, Int iOrgStride, UInt uiBlkWidth, UInt uiBlkHeight, TextType eText, DFunc eDFunc)
 {
   DistParam cDtParam;
   setDistParam( uiBlkWidth, uiBlkHeight, eDFunc, cDtParam );
@@ -485,9 +437,7 @@ UInt TComRdCost::getDistPart(Int bitDepth, Pel* piCur, Int iCurStride,  Pel* piO
   cDtParam.bApplyWeight = false;
   cDtParam.uiComp       = 255;    // just for assert: to be sure it was set before use, since only values 0,1 or 2 are allowed.
   cDtParam.bitDepth = bitDepth;
-#if QC_IC
-  cDtParam.bMRFlag      = bMRFlag;
-#endif
+
   if (eText == TEXT_CHROMA_U)
   {
    return ((Int) (m_cbDistortionWeight * cDtParam.DistFunc( &cDtParam )));
@@ -510,162 +460,12 @@ UInt TComRdCost::getDistPart(Int bitDepth, Pel* piCur, Int iCurStride,  Pel* piO
 // SAD
 // --------------------------------------------------------------------------------------------------------------------
 
-#if QC_SIMD_OPT
-inline Int simdSADLine4n16b( const Pel * piOrg , const Pel * piCur , Int nWidth )
-{
-  // internal bit-depth must be 12-bit or lower
-  assert( !( nWidth & 0x03 ) );
-  __m128i org , cur , abs , sum;
-  sum = _mm_setzero_si128();
-  for( Int n = 0 ; n < nWidth ; n += 4 )
-  {
-    org = _mm_loadl_epi64( ( __m128i* )( piOrg + n ) );
-    cur = _mm_loadl_epi64( ( __m128i* )( piCur + n ) );
-    abs = _mm_subs_epi16( _mm_max_epi16( org , cur )  , _mm_min_epi16( org , cur ) );
-    sum = _mm_adds_epu16( abs , sum );
-  }
-  __m128i zero =  _mm_setzero_si128();
-  sum = _mm_unpacklo_epi16( sum , zero );
-  sum = _mm_add_epi32( sum , _mm_shuffle_epi32( sum , _MM_SHUFFLE( 2 , 3 , 0 , 1 ) ) );
-  sum = _mm_add_epi32( sum , _mm_shuffle_epi32( sum , _MM_SHUFFLE( 1 , 0 , 3 , 2 ) ) );
-  return( _mm_cvtsi128_si32( sum ) );
-}
-
-inline Int simdSADLine8n16b( const Pel * piOrg , const Pel * piCur , Int nWidth )
-{
-  // internal bit-depth must be 12-bit or lower
-  assert( !( nWidth & 0x07 ) );
-  __m128i org , cur , abs , sum;
-  sum = _mm_setzero_si128();
-  for( Int n = 0 ; n < nWidth ; n += 8 )
-  {
-    org = _mm_loadu_si128( ( __m128i* )( piOrg + n ) );
-    cur = _mm_loadu_si128( ( __m128i* )( piCur + n ) );
-    abs = _mm_subs_epi16( _mm_max_epi16( org , cur )  , _mm_min_epi16( org , cur ) );
-    sum = _mm_adds_epu16( abs , sum );
-  }
-  __m128i zero =  _mm_setzero_si128();
-  __m128i hi = _mm_unpackhi_epi16( sum , zero );
-  __m128i lo = _mm_unpacklo_epi16( sum , zero );
-  sum = _mm_add_epi32( lo , hi );
-  sum = _mm_add_epi32( sum , _mm_shuffle_epi32( sum , _MM_SHUFFLE( 2 , 3 , 0 , 1 ) ) );
-  sum = _mm_add_epi32( sum , _mm_shuffle_epi32( sum , _MM_SHUFFLE( 1 , 0 , 3 , 2 ) ) );
-  return( _mm_cvtsi128_si32( sum ) );
-}
-
-inline Void simd8x8Transpose32b( __m128i * pBuffer )
-{
-  __m128 tmp[16];
-  for( Int n = 0 ; n < 16 ; n++ )
-  {
-    tmp[n] = _mm_castsi128_ps( pBuffer[n] );
-  }
-  _MM_TRANSPOSE4_PS( tmp[0] , tmp[2] , tmp[4] , tmp[6] );
-  _MM_TRANSPOSE4_PS( tmp[1] , tmp[3] , tmp[5] , tmp[7] );
-  _MM_TRANSPOSE4_PS( tmp[8] , tmp[10] , tmp[12] , tmp[14] );
-  _MM_TRANSPOSE4_PS( tmp[9] , tmp[11] , tmp[13] , tmp[15] );
-  for( Int n = 0 ; n < 8 ; n += 2 )
-  {
-    pBuffer[n] = _mm_castps_si128( tmp[n] );
-    pBuffer[n+1]  = _mm_castps_si128( tmp[n+8] );
-    pBuffer[n+8] = _mm_castps_si128( tmp[n+1] );
-    pBuffer[n+9]  = _mm_castps_si128( tmp[n+9] );
-  }
-}
-
-inline Void simd8x8HAD1D32b( __m128i * pInput , __m128i * pOutput )
-{
-  __m128i m1[8][2] , m2[8][2];
-
-  m2[0][0] = _mm_add_epi32( pInput[0] ,pInput[8 ] );  m2[0][1] = _mm_add_epi32( pInput[1] ,pInput[9 ] );
-  m2[1][0] = _mm_add_epi32( pInput[2] ,pInput[10] );  m2[1][1] = _mm_add_epi32( pInput[3] ,pInput[11] );
-  m2[2][0] = _mm_add_epi32( pInput[4] ,pInput[12] );  m2[2][1] = _mm_add_epi32( pInput[5] ,pInput[13] );
-  m2[3][0] = _mm_add_epi32( pInput[6] ,pInput[14] );  m2[3][1] = _mm_add_epi32( pInput[7] ,pInput[15] );
-  m2[4][0] = _mm_sub_epi32( pInput[0] ,pInput[8 ] );  m2[4][1] = _mm_sub_epi32( pInput[1] ,pInput[9 ] );
-  m2[5][0] = _mm_sub_epi32( pInput[2] ,pInput[10] );  m2[5][1] = _mm_sub_epi32( pInput[3] ,pInput[11] );
-  m2[6][0] = _mm_sub_epi32( pInput[4] ,pInput[12] );  m2[6][1] = _mm_sub_epi32( pInput[5] ,pInput[13] );
-  m2[7][0] = _mm_sub_epi32( pInput[6] ,pInput[14] );  m2[7][1] = _mm_sub_epi32( pInput[7] ,pInput[15] );
-
-  m1[0][0] = _mm_add_epi32( m2[0][0] , m2[2][0] );  m1[0][1] = _mm_add_epi32( m2[0][1] , m2[2][1] );
-  m1[1][0] = _mm_add_epi32( m2[1][0] , m2[3][0] );  m1[1][1] = _mm_add_epi32( m2[1][1] , m2[3][1] );
-  m1[2][0] = _mm_sub_epi32( m2[0][0] , m2[2][0] );  m1[2][1] = _mm_sub_epi32( m2[0][1] , m2[2][1] );
-  m1[3][0] = _mm_sub_epi32( m2[1][0] , m2[3][0] );  m1[3][1] = _mm_sub_epi32( m2[1][1] , m2[3][1] );
-  m1[4][0] = _mm_add_epi32( m2[4][0] , m2[6][0] );  m1[4][1] = _mm_add_epi32( m2[4][1] , m2[6][1] );
-  m1[5][0] = _mm_add_epi32( m2[5][0] , m2[7][0] );  m1[5][1] = _mm_add_epi32( m2[5][1] , m2[7][1] );
-  m1[6][0] = _mm_sub_epi32( m2[4][0] , m2[6][0] );  m1[6][1] = _mm_sub_epi32( m2[4][1] , m2[6][1] );
-  m1[7][0] = _mm_sub_epi32( m2[5][0] , m2[7][0] );  m1[7][1] = _mm_sub_epi32( m2[5][1] , m2[7][1] );
-
-  pInput[0 ] = _mm_add_epi32( m1[0][0] , m1[1][0] );  pInput[1 ] = _mm_add_epi32( m1[0][1] , m1[1][1] );
-  pInput[2 ] = _mm_sub_epi32( m1[0][0] , m1[1][0] );  pInput[3 ] = _mm_sub_epi32( m1[0][1] , m1[1][1] );
-  pInput[4 ] = _mm_add_epi32( m1[2][0] , m1[3][0] );  pInput[5 ] = _mm_add_epi32( m1[2][1] , m1[3][1] );
-  pInput[6 ] = _mm_sub_epi32( m1[2][0] , m1[3][0] );  pInput[7 ] = _mm_sub_epi32( m1[2][1] , m1[3][1] );
-  pInput[8 ] = _mm_add_epi32( m1[4][0] , m1[5][0] );  pInput[9 ] = _mm_add_epi32( m1[4][1] , m1[5][1] );
-  pInput[10] = _mm_sub_epi32( m1[4][0] , m1[5][0] );  pInput[11] = _mm_sub_epi32( m1[4][1] , m1[5][1] );
-  pInput[12] = _mm_add_epi32( m1[6][0] , m1[7][0] );  pInput[13] = _mm_add_epi32( m1[6][1] , m1[7][1] );
-  pInput[14] = _mm_sub_epi32( m1[6][0] , m1[7][0] );  pInput[15] = _mm_sub_epi32( m1[6][1] , m1[7][1] );
-}
-
-inline __m128i simdAbs32b( __m128i m )
-{
-  const __m128i zero = _mm_setzero_si128();
-  __m128i tmp = _mm_sub_epi32( zero , m );
-  __m128i mask = _mm_cmpgt_epi32( m , tmp );
-  return( _mm_or_si128( _mm_and_si128( mask , m ) , _mm_andnot_si128( mask , tmp ) ) );
-}
-
-UInt simdHADs8x8( Pel * piOrg, Pel * piCur, Int iStrideOrg, Int iStrideCur )
-{
-  __m128i mmDiff[8][2];
-  __m128i mmZero = _mm_setzero_si128();
-  for( Int n = 0 ; n < 8 ; n++ , piOrg += iStrideOrg , piCur += iStrideCur )
-  {
-    __m128i diff = _mm_sub_epi16( _mm_loadu_si128( ( __m128i* )piOrg ) , _mm_loadu_si128( ( __m128i* )piCur ) );
-    // sign extension
-    __m128i mask = _mm_cmplt_epi16( diff , mmZero );
-    mmDiff[n][0] = _mm_unpacklo_epi16( diff , mask );
-    mmDiff[n][1] = _mm_unpackhi_epi16( diff , mask );
-  }
-
-  // transpose
-  simd8x8Transpose32b( &mmDiff[0][0] );
-
-  // horizontal
-  simd8x8HAD1D32b( &mmDiff[0][0] , &mmDiff[0][0] );
-
-  // transpose
-  simd8x8Transpose32b( &mmDiff[0][0] );
-
-  // vertical
-  simd8x8HAD1D32b( &mmDiff[0][0] , &mmDiff[0][0] );
-
-  __m128i mmSum = _mm_setzero_si128();
-  for( Int n = 0 ; n < 8 ; n++ )
-  {
-    mmSum = _mm_add_epi32( mmSum , simdAbs32b( mmDiff[n][0] ) );
-    mmSum = _mm_add_epi32( mmSum , simdAbs32b( mmDiff[n][1] ) );
-  }
-  mmSum = _mm_add_epi32( mmSum , _mm_shuffle_epi32( mmSum , _MM_SHUFFLE( 2 , 3 , 0 , 1 ) ) );
-  mmSum = _mm_add_epi32( mmSum , _mm_shuffle_epi32( mmSum , _MM_SHUFFLE( 1 , 0 , 3 , 2 ) ) );
-
-  UInt sad = _mm_cvtsi128_si32( mmSum );
-  sad = ( sad + 2 ) >> 2;
-
-  return( sad );
-}
-#endif
-
 UInt TComRdCost::xGetSAD( DistParam* pcDtParam )
 {
   if ( pcDtParam->bApplyWeight )
   {
     return xGetSADw( pcDtParam );
   }
-#if QC_IC
-  if( pcDtParam->bMRFlag )
-  {
-    return xGetMRSAD( pcDtParam );
-  }
-#endif
   Pel* piOrg   = pcDtParam->pOrg;
   Pel* piCur   = pcDtParam->pCur;
   Int  iRows   = pcDtParam->iRows;
@@ -675,26 +475,6 @@ UInt TComRdCost::xGetSAD( DistParam* pcDtParam )
   
   UInt uiSum = 0;
   
-#if QC_SIMD_OPT
-  if( ( iCols & 0x07 ) == 0 )
-  {
-    for( ; iRows != 0; iRows-- )
-    {
-      uiSum += simdSADLine8n16b( piOrg , piCur , iCols );
-      piOrg += iStrideOrg;
-      piCur += iStrideCur;
-    }
-  }
-  else
-  {
-    for( ; iRows != 0; iRows-- )
-    {
-      uiSum += simdSADLine4n16b( piOrg , piCur , iCols );
-      piOrg += iStrideOrg;
-      piCur += iStrideCur;
-    }
-  }
-#else
   for( ; iRows != 0; iRows-- )
   {
     for (Int n = 0; n < iCols; n++ )
@@ -704,7 +484,6 @@ UInt TComRdCost::xGetSAD( DistParam* pcDtParam )
     piOrg += iStrideOrg;
     piCur += iStrideCur;
   }
-#endif
   
   return uiSum >> DISTORTION_PRECISION_ADJUSTMENT(pcDtParam->bitDepth-8);
 }
@@ -715,12 +494,6 @@ UInt TComRdCost::xGetSAD4( DistParam* pcDtParam )
   {
     return xGetSADw( pcDtParam );
   }
-#if QC_IC
-  if( pcDtParam->bMRFlag )
-  {
-    return xGetMRSAD4( pcDtParam );
-  }
-#endif
   Pel* piOrg   = pcDtParam->pOrg;
   Pel* piCur   = pcDtParam->pCur;
   Int  iRows   = pcDtParam->iRows;
@@ -733,14 +506,11 @@ UInt TComRdCost::xGetSAD4( DistParam* pcDtParam )
   
   for( ; iRows != 0; iRows-=iSubStep )
   {
-#if QC_SIMD_OPT
-    uiSum += simdSADLine4n16b( piOrg , piCur , 4 );
-#else
     uiSum += abs( piOrg[0] - piCur[0] );
     uiSum += abs( piOrg[1] - piCur[1] );
     uiSum += abs( piOrg[2] - piCur[2] );
     uiSum += abs( piOrg[3] - piCur[3] );
-#endif
+    
     piOrg += iStrideOrg;
     piCur += iStrideCur;
   }
@@ -755,12 +525,6 @@ UInt TComRdCost::xGetSAD8( DistParam* pcDtParam )
   {
     return xGetSADw( pcDtParam );
   }
-#if QC_IC
-  if( pcDtParam->bMRFlag )
-  {
-    return xGetMRSAD8( pcDtParam );
-  }
-#endif
   Pel* piOrg      = pcDtParam->pOrg;
   Pel* piCur      = pcDtParam->pCur;
   Int  iRows      = pcDtParam->iRows;
@@ -773,9 +537,6 @@ UInt TComRdCost::xGetSAD8( DistParam* pcDtParam )
   
   for( ; iRows != 0; iRows-=iSubStep )
   {
-#if QC_SIMD_OPT
-    uiSum += simdSADLine8n16b( piOrg , piCur , 8 );
-#else
     uiSum += abs( piOrg[0] - piCur[0] );
     uiSum += abs( piOrg[1] - piCur[1] );
     uiSum += abs( piOrg[2] - piCur[2] );
@@ -784,7 +545,7 @@ UInt TComRdCost::xGetSAD8( DistParam* pcDtParam )
     uiSum += abs( piOrg[5] - piCur[5] );
     uiSum += abs( piOrg[6] - piCur[6] );
     uiSum += abs( piOrg[7] - piCur[7] );
-#endif
+    
     piOrg += iStrideOrg;
     piCur += iStrideCur;
   }
@@ -799,12 +560,6 @@ UInt TComRdCost::xGetSAD16( DistParam* pcDtParam )
   {
     return xGetSADw( pcDtParam );
   }
-#if QC_IC
-  if( pcDtParam->bMRFlag )
-  {
-    return xGetMRSAD16( pcDtParam );
-  }
-#endif
   Pel* piOrg   = pcDtParam->pOrg;
   Pel* piCur   = pcDtParam->pCur;
   Int  iRows   = pcDtParam->iRows;
@@ -817,9 +572,6 @@ UInt TComRdCost::xGetSAD16( DistParam* pcDtParam )
   
   for( ; iRows != 0; iRows-=iSubStep )
   {
-#if QC_SIMD_OPT
-    uiSum += simdSADLine8n16b( piOrg , piCur , 16 );
-#else
     uiSum += abs( piOrg[0] - piCur[0] );
     uiSum += abs( piOrg[1] - piCur[1] );
     uiSum += abs( piOrg[2] - piCur[2] );
@@ -836,7 +588,7 @@ UInt TComRdCost::xGetSAD16( DistParam* pcDtParam )
     uiSum += abs( piOrg[13] - piCur[13] );
     uiSum += abs( piOrg[14] - piCur[14] );
     uiSum += abs( piOrg[15] - piCur[15] );
-#endif
+    
     piOrg += iStrideOrg;
     piCur += iStrideCur;
   }
@@ -852,12 +604,6 @@ UInt TComRdCost::xGetSAD12( DistParam* pcDtParam )
   {
     return xGetSADw( pcDtParam );
   }
-#if QC_IC
-  if( pcDtParam->bMRFlag )
-  {
-    return xGetMRSAD12( pcDtParam );
-  }
-#endif
   Pel* piOrg   = pcDtParam->pOrg;
   Pel* piCur   = pcDtParam->pCur;
   Int  iRows   = pcDtParam->iRows;
@@ -894,12 +640,6 @@ UInt TComRdCost::xGetSAD12( DistParam* pcDtParam )
 
 UInt TComRdCost::xGetSAD16N( DistParam* pcDtParam )
 {
-#if QC_IC
-  if( pcDtParam->bMRFlag )
-  {
-    return xGetMRSAD16N( pcDtParam );
-  }
-#endif
   Pel* piOrg   = pcDtParam->pOrg;
   Pel* piCur   = pcDtParam->pCur;
   Int  iRows   = pcDtParam->iRows;
@@ -913,9 +653,6 @@ UInt TComRdCost::xGetSAD16N( DistParam* pcDtParam )
   
   for( ; iRows != 0; iRows-=iSubStep )
   {
-#if QC_SIMD_OPT
-    uiSum += simdSADLine8n16b( piOrg , piCur , iCols );
-#else
     for (Int n = 0; n < iCols; n+=16 )
     {
       uiSum += abs( piOrg[n+ 0] - piCur[n+ 0] );
@@ -935,7 +672,6 @@ UInt TComRdCost::xGetSAD16N( DistParam* pcDtParam )
       uiSum += abs( piOrg[n+14] - piCur[n+14] );
       uiSum += abs( piOrg[n+15] - piCur[n+15] );
     }
-#endif
     piOrg += iStrideOrg;
     piCur += iStrideCur;
   }
@@ -950,12 +686,6 @@ UInt TComRdCost::xGetSAD32( DistParam* pcDtParam )
   {
     return xGetSADw( pcDtParam );
   }
-#if QC_IC
-  if( pcDtParam->bMRFlag )
-  {
-    return xGetMRSAD32( pcDtParam );
-  }
-#endif
   Pel* piOrg   = pcDtParam->pOrg;
   Pel* piCur   = pcDtParam->pCur;
   Int  iRows   = pcDtParam->iRows;
@@ -968,9 +698,6 @@ UInt TComRdCost::xGetSAD32( DistParam* pcDtParam )
   
   for( ; iRows != 0; iRows-=iSubStep )
   {
-#if QC_SIMD_OPT
-    uiSum += simdSADLine8n16b( piOrg , piCur , 32 );
-#else
     uiSum += abs( piOrg[0] - piCur[0] );
     uiSum += abs( piOrg[1] - piCur[1] );
     uiSum += abs( piOrg[2] - piCur[2] );
@@ -1003,7 +730,7 @@ UInt TComRdCost::xGetSAD32( DistParam* pcDtParam )
     uiSum += abs( piOrg[29] - piCur[29] );
     uiSum += abs( piOrg[30] - piCur[30] );
     uiSum += abs( piOrg[31] - piCur[31] );
-#endif
+    
     piOrg += iStrideOrg;
     piCur += iStrideCur;
   }
@@ -1019,12 +746,6 @@ UInt TComRdCost::xGetSAD24( DistParam* pcDtParam )
   {
     return xGetSADw( pcDtParam );
   }
-#if QC_IC
-  if( pcDtParam->bMRFlag )
-  {
-    return xGetMRSAD24( pcDtParam );
-  }
-#endif
   Pel* piOrg   = pcDtParam->pOrg;
   Pel* piCur   = pcDtParam->pCur;
   Int  iRows   = pcDtParam->iRows;
@@ -1037,9 +758,6 @@ UInt TComRdCost::xGetSAD24( DistParam* pcDtParam )
   
   for( ; iRows != 0; iRows-=iSubStep )
   {
-#if QC_SIMD_OPT
-    uiSum += simdSADLine8n16b( piOrg , piCur , 24 );
-#else
     uiSum += abs( piOrg[0] - piCur[0] );
     uiSum += abs( piOrg[1] - piCur[1] );
     uiSum += abs( piOrg[2] - piCur[2] );
@@ -1064,7 +782,7 @@ UInt TComRdCost::xGetSAD24( DistParam* pcDtParam )
     uiSum += abs( piOrg[21] - piCur[21] );
     uiSum += abs( piOrg[22] - piCur[22] );
     uiSum += abs( piOrg[23] - piCur[23] );
-#endif
+    
     piOrg += iStrideOrg;
     piCur += iStrideCur;
   }
@@ -1081,12 +799,6 @@ UInt TComRdCost::xGetSAD64( DistParam* pcDtParam )
   {
     return xGetSADw( pcDtParam );
   }
-#if QC_IC
-  if( pcDtParam->bMRFlag )
-  {
-    return xGetMRSAD64( pcDtParam );
-  }
-#endif
   Pel* piOrg   = pcDtParam->pOrg;
   Pel* piCur   = pcDtParam->pCur;
   Int  iRows   = pcDtParam->iRows;
@@ -1099,9 +811,6 @@ UInt TComRdCost::xGetSAD64( DistParam* pcDtParam )
   
   for( ; iRows != 0; iRows-=iSubStep )
   {
-#if QC_SIMD_OPT
-    uiSum += simdSADLine8n16b( piOrg , piCur , 64 );
-#else
     uiSum += abs( piOrg[0] - piCur[0] );
     uiSum += abs( piOrg[1] - piCur[1] );
     uiSum += abs( piOrg[2] - piCur[2] );
@@ -1166,8 +875,7 @@ UInt TComRdCost::xGetSAD64( DistParam* pcDtParam )
     uiSum += abs( piOrg[61] - piCur[61] );
     uiSum += abs( piOrg[62] - piCur[62] );
     uiSum += abs( piOrg[63] - piCur[63] );
-#endif
-
+    
     piOrg += iStrideOrg;
     piCur += iStrideCur;
   }
@@ -1183,12 +891,6 @@ UInt TComRdCost::xGetSAD48( DistParam* pcDtParam )
   {
     return xGetSADw( pcDtParam );
   }
-#if QC_IC
-  if( pcDtParam->bMRFlag )
-  {
-    return xGetMRSAD48( pcDtParam );
-  }
-#endif
   Pel* piOrg   = pcDtParam->pOrg;
   Pel* piCur   = pcDtParam->pCur;
   Int  iRows   = pcDtParam->iRows;
@@ -1201,9 +903,6 @@ UInt TComRdCost::xGetSAD48( DistParam* pcDtParam )
   
   for( ; iRows != 0; iRows-=iSubStep )
   {
-#if QC_SIMD_OPT
-    uiSum += simdSADLine8n16b( piOrg , piCur , 48 );
-#else
     uiSum += abs( piOrg[0] - piCur[0] );
     uiSum += abs( piOrg[1] - piCur[1] );
     uiSum += abs( piOrg[2] - piCur[2] );
@@ -1252,7 +951,7 @@ UInt TComRdCost::xGetSAD48( DistParam* pcDtParam )
     uiSum += abs( piOrg[45] - piCur[45] );
     uiSum += abs( piOrg[46] - piCur[46] );
     uiSum += abs( piOrg[47] - piCur[47] );
-#endif
+    
     piOrg += iStrideOrg;
     piCur += iStrideCur;
   }
@@ -1260,1130 +959,6 @@ UInt TComRdCost::xGetSAD48( DistParam* pcDtParam )
   uiSum <<= iSubShift;
   return uiSum >> DISTORTION_PRECISION_ADJUSTMENT(pcDtParam->bitDepth-8);
 }
-#endif
-
-#if QC_IC
-UInt TComRdCost::xGetMRSAD( DistParam* pcDtParam )
-{
-  if ( pcDtParam->bApplyWeight )
-  {
-    return xGetSADw( pcDtParam );
-  }
-  Pel* piOrg   = pcDtParam->pOrg;
-  Pel* piCur   = pcDtParam->pCur;
-  Int  iRows   = pcDtParam->iRows;
-  Int  iCols   = pcDtParam->iCols;
-  Int  iStrideCur = pcDtParam->iStrideCur;
-  Int  iStrideOrg = pcDtParam->iStrideOrg;
-
-  UInt uiSum = 0;
-  Int  iOrigAvg = 0, iCurAvg = 0;
-  Int  iDeltaC;
-
-  for( ; iRows != 0; iRows-- )
-  {
-    for (Int n = 0; n < iCols; n++ )
-    {
-      iOrigAvg += piOrg[n];
-      iCurAvg  += piCur[n];
-    }
-    piOrg += iStrideOrg;
-    piCur += iStrideCur;
-  }
-
-  piOrg   = pcDtParam->pOrg;
-  piCur   = pcDtParam->pCur;
-  iRows   = pcDtParam->iRows;
-
-  iDeltaC = (iOrigAvg - iCurAvg)/iCols/iRows;
-
-  for( ; iRows != 0; iRows-- )
-  {
-    for (Int n = 0; n < iCols; n++ )
-    {
-      uiSum += abs( piOrg[n] - piCur[n] - iDeltaC );
-    }
-    piOrg += iStrideOrg;
-    piCur += iStrideCur;
-  }
-
-  return ( uiSum >> DISTORTION_PRECISION_ADJUSTMENT( pcDtParam->bitDepth - 8 ) );
-}
-
-UInt TComRdCost::xGetMRSAD4( DistParam* pcDtParam )
-{
-  if ( pcDtParam->bApplyWeight ) 
-  {
-    return xGetSADw( pcDtParam );
-  }
-  Pel* piOrg   = pcDtParam->pOrg;
-  Pel* piCur   = pcDtParam->pCur;
-  Int  iRows   = pcDtParam->iRows;
-  Int  iSubShift  = pcDtParam->iSubShift;
-  Int  iSubStep   = ( 1 << iSubShift );
-  Int  iStrideCur = pcDtParam->iStrideCur*iSubStep;
-  Int  iStrideOrg = pcDtParam->iStrideOrg*iSubStep;
-
-  UInt uiSum = 0;
-  Int  iOrigAvg = 0, iCurAvg = 0, uiRowCnt = 0;
-  Int  iDeltaC;
-
-  for( ; iRows != 0; iRows-=iSubStep )
-  {
-    iOrigAvg += piOrg[0];
-    iOrigAvg += piOrg[1];
-    iOrigAvg += piOrg[2];
-    iOrigAvg += piOrg[3];
-
-    iCurAvg  += piCur[0];
-    iCurAvg  += piCur[1];
-    iCurAvg  += piCur[2];
-    iCurAvg  += piCur[3];
-
-    piOrg += iStrideOrg;
-    piCur += iStrideCur;
-    uiRowCnt++;
-  }
-
-  piOrg   = pcDtParam->pOrg;
-  piCur   = pcDtParam->pCur;
-  iRows   = pcDtParam->iRows;
-
-  iDeltaC = uiRowCnt ? ((iOrigAvg - iCurAvg)/uiRowCnt/4) : 0;
-
-  for( ; iRows != 0; iRows-=iSubStep )
-  {
-    uiSum += abs( piOrg[0] - piCur[0] - iDeltaC );
-    uiSum += abs( piOrg[1] - piCur[1] - iDeltaC );
-    uiSum += abs( piOrg[2] - piCur[2] - iDeltaC );
-    uiSum += abs( piOrg[3] - piCur[3] - iDeltaC );
-
-    piOrg += iStrideOrg;
-    piCur += iStrideCur;
-  }
-
-  uiSum <<= iSubShift;
-  return ( uiSum >> DISTORTION_PRECISION_ADJUSTMENT( pcDtParam->bitDepth - 8 ) );
-}
-
-UInt TComRdCost::xGetMRSAD8( DistParam* pcDtParam )
-{
-  if ( pcDtParam->bApplyWeight )
-  {
-    return xGetSADw( pcDtParam );
-  }
-  Pel* piOrg      = pcDtParam->pOrg;
-  Pel* piCur      = pcDtParam->pCur;
-  Int  iRows      = pcDtParam->iRows;
-  Int  iSubShift  = pcDtParam->iSubShift;
-  Int  iSubStep   = ( 1 << iSubShift );
-  Int  iStrideCur = pcDtParam->iStrideCur*iSubStep;
-  Int  iStrideOrg = pcDtParam->iStrideOrg*iSubStep;
-
-  UInt uiSum = 0;
-  Int  iOrigAvg = 0, iCurAvg = 0, uiRowCnt = 0;
-  Int  iDeltaC;
-
-  for( ; iRows != 0; iRows-=iSubStep )
-  {
-    iOrigAvg += piOrg[0];
-    iOrigAvg += piOrg[1];
-    iOrigAvg += piOrg[2];
-    iOrigAvg += piOrg[3];
-    iOrigAvg += piOrg[4];
-    iOrigAvg += piOrg[5];
-    iOrigAvg += piOrg[6];
-    iOrigAvg += piOrg[7];
-
-    iCurAvg  += piCur[0];
-    iCurAvg  += piCur[1];
-    iCurAvg  += piCur[2];
-    iCurAvg  += piCur[3];
-    iCurAvg  += piCur[4];
-    iCurAvg  += piCur[5];
-    iCurAvg  += piCur[6];
-    iCurAvg  += piCur[7];
-
-    piOrg += iStrideOrg;
-    piCur += iStrideCur;
-    uiRowCnt++;
-  }
-
-  piOrg   = pcDtParam->pOrg;
-  piCur   = pcDtParam->pCur;
-  iRows   = pcDtParam->iRows;
-
-  iDeltaC = uiRowCnt ? ((iOrigAvg - iCurAvg)/uiRowCnt/8) : 0;
-
-  for( ; iRows != 0; iRows-=iSubStep )
-  {
-    uiSum += abs( piOrg[0] - piCur[0] - iDeltaC );
-    uiSum += abs( piOrg[1] - piCur[1] - iDeltaC );
-    uiSum += abs( piOrg[2] - piCur[2] - iDeltaC );
-    uiSum += abs( piOrg[3] - piCur[3] - iDeltaC );
-    uiSum += abs( piOrg[4] - piCur[4] - iDeltaC );
-    uiSum += abs( piOrg[5] - piCur[5] - iDeltaC );
-    uiSum += abs( piOrg[6] - piCur[6] - iDeltaC );
-    uiSum += abs( piOrg[7] - piCur[7] - iDeltaC );
-
-    piOrg += iStrideOrg;
-    piCur += iStrideCur;
-  }
-
-  uiSum <<= iSubShift;
-  return ( uiSum >> DISTORTION_PRECISION_ADJUSTMENT( pcDtParam->bitDepth - 8 ) );
-}
-
-UInt TComRdCost::xGetMRSAD16( DistParam* pcDtParam )
-{
-  if ( pcDtParam->bApplyWeight )
-  {
-    return xGetSADw( pcDtParam );
-  }
-  Pel* piOrg   = pcDtParam->pOrg;
-  Pel* piCur   = pcDtParam->pCur;
-  Int  iRows   = pcDtParam->iRows;
-  Int  iSubShift  = pcDtParam->iSubShift;
-  Int  iSubStep   = ( 1 << iSubShift );
-  Int  iStrideCur = pcDtParam->iStrideCur*iSubStep;
-  Int  iStrideOrg = pcDtParam->iStrideOrg*iSubStep;
-
-  UInt uiSum = 0;
-  Int iOrigAvg = 0, iCurAvg = 0, uiRowCnt = 0;
-  Int iDeltaC;
-
-  for( ; iRows != 0; iRows-=iSubStep )
-  {
-    iOrigAvg += piOrg[0];
-    iOrigAvg += piOrg[1];
-    iOrigAvg += piOrg[2];
-    iOrigAvg += piOrg[3];
-    iOrigAvg += piOrg[4];
-    iOrigAvg += piOrg[5];
-    iOrigAvg += piOrg[6];
-    iOrigAvg += piOrg[7];
-    iOrigAvg += piOrg[8];
-    iOrigAvg += piOrg[9];
-    iOrigAvg += piOrg[10];
-    iOrigAvg += piOrg[11];
-    iOrigAvg += piOrg[12];
-    iOrigAvg += piOrg[13];
-    iOrigAvg += piOrg[14];
-    iOrigAvg += piOrg[15];
-
-    iCurAvg  += piCur[0];
-    iCurAvg  += piCur[1];
-    iCurAvg  += piCur[2];
-    iCurAvg  += piCur[3];
-    iCurAvg  += piCur[4];
-    iCurAvg  += piCur[5];
-    iCurAvg  += piCur[6];
-    iCurAvg  += piCur[7];
-    iCurAvg  += piCur[8];
-    iCurAvg  += piCur[9];
-    iCurAvg  += piCur[10];
-    iCurAvg  += piCur[11];
-    iCurAvg  += piCur[12];
-    iCurAvg  += piCur[13];
-    iCurAvg  += piCur[14];
-    iCurAvg  += piCur[15];
-
-    piOrg += iStrideOrg;
-    piCur += iStrideCur;
-    uiRowCnt++;
-  }
-
-  piOrg   = pcDtParam->pOrg;
-  piCur   = pcDtParam->pCur;
-  iRows   = pcDtParam->iRows;
-
-  iDeltaC = uiRowCnt ? ((iOrigAvg - iCurAvg)/uiRowCnt/16) : 0;
-
-  for( ; iRows != 0; iRows-=iSubStep )
-  {
-    uiSum += abs( piOrg[0] - piCur[0] - iDeltaC );
-    uiSum += abs( piOrg[1] - piCur[1] - iDeltaC );
-    uiSum += abs( piOrg[2] - piCur[2] - iDeltaC );
-    uiSum += abs( piOrg[3] - piCur[3] - iDeltaC );
-    uiSum += abs( piOrg[4] - piCur[4] - iDeltaC );
-    uiSum += abs( piOrg[5] - piCur[5] - iDeltaC );
-    uiSum += abs( piOrg[6] - piCur[6] - iDeltaC );
-    uiSum += abs( piOrg[7] - piCur[7] - iDeltaC );
-    uiSum += abs( piOrg[8] - piCur[8] - iDeltaC );
-    uiSum += abs( piOrg[9] - piCur[9] - iDeltaC );
-    uiSum += abs( piOrg[10] - piCur[10] - iDeltaC );
-    uiSum += abs( piOrg[11] - piCur[11] - iDeltaC );
-    uiSum += abs( piOrg[12] - piCur[12] - iDeltaC );
-    uiSum += abs( piOrg[13] - piCur[13] - iDeltaC );
-    uiSum += abs( piOrg[14] - piCur[14] - iDeltaC );
-    uiSum += abs( piOrg[15] - piCur[15] - iDeltaC );
-
-    piOrg += iStrideOrg;
-    piCur += iStrideCur;
-  }
-
-  uiSum <<= iSubShift;
-  return ( uiSum >> DISTORTION_PRECISION_ADJUSTMENT( pcDtParam->bitDepth - 8 ) );
-}
-
-#if AMP_SAD
-UInt TComRdCost::xGetMRSAD12( DistParam* pcDtParam )
-{
-  if ( pcDtParam->bApplyWeight )
-  {
-    return xGetSADw( pcDtParam );
-  }
-  Pel* piOrg   = pcDtParam->pOrg;
-  Pel* piCur   = pcDtParam->pCur;
-  Int  iRows   = pcDtParam->iRows;
-  Int  iSubShift  = pcDtParam->iSubShift;
-  Int  iSubStep   = ( 1 << iSubShift );
-  Int  iStrideCur = pcDtParam->iStrideCur*iSubStep;
-  Int  iStrideOrg = pcDtParam->iStrideOrg*iSubStep;
-
-  UInt uiSum = 0;
-  Int  iOrigAvg = 0, iCurAvg = 0, uiRowCnt = 0;
-  Int  iDeltaC;
-
-  for( ; iRows != 0; iRows-=iSubStep )
-  {
-    iOrigAvg += piOrg[0];
-    iOrigAvg += piOrg[1];
-    iOrigAvg += piOrg[2];
-    iOrigAvg += piOrg[3];
-    iOrigAvg += piOrg[4];
-    iOrigAvg += piOrg[5];
-    iOrigAvg += piOrg[6];
-    iOrigAvg += piOrg[7];
-    iOrigAvg += piOrg[8];
-    iOrigAvg += piOrg[9];
-    iOrigAvg += piOrg[10];
-    iOrigAvg += piOrg[11];
-
-    iCurAvg  += piCur[0];
-    iCurAvg  += piCur[1];
-    iCurAvg  += piCur[2];
-    iCurAvg  += piCur[3];
-    iCurAvg  += piCur[4];
-    iCurAvg  += piCur[5];
-    iCurAvg  += piCur[6];
-    iCurAvg  += piCur[7];
-    iCurAvg  += piCur[8];
-    iCurAvg  += piCur[9];
-    iCurAvg  += piCur[10];
-    iCurAvg  += piCur[11];
-
-    piOrg += iStrideOrg;
-    piCur += iStrideCur;
-    uiRowCnt++;
-  }
-
-  piOrg   = pcDtParam->pOrg;
-  piCur   = pcDtParam->pCur;
-  iRows   = pcDtParam->iRows;
-
-  iDeltaC = uiRowCnt ? ((iOrigAvg - iCurAvg)/uiRowCnt/12) : 0;
-
-  for( ; iRows != 0; iRows-=iSubStep )
-  {
-    uiSum += abs( piOrg[0] - piCur[0] - iDeltaC );
-    uiSum += abs( piOrg[1] - piCur[1] - iDeltaC );
-    uiSum += abs( piOrg[2] - piCur[2] - iDeltaC );
-    uiSum += abs( piOrg[3] - piCur[3] - iDeltaC );
-    uiSum += abs( piOrg[4] - piCur[4] - iDeltaC );
-    uiSum += abs( piOrg[5] - piCur[5] - iDeltaC );
-    uiSum += abs( piOrg[6] - piCur[6] - iDeltaC );
-    uiSum += abs( piOrg[7] - piCur[7] - iDeltaC );
-    uiSum += abs( piOrg[8] - piCur[8] - iDeltaC );
-    uiSum += abs( piOrg[9] - piCur[9] - iDeltaC );
-    uiSum += abs( piOrg[10] - piCur[10] - iDeltaC );
-    uiSum += abs( piOrg[11] - piCur[11] - iDeltaC );
-
-    piOrg += iStrideOrg;
-    piCur += iStrideCur;
-  }
-
-  uiSum <<= iSubShift;
-  return ( uiSum >> DISTORTION_PRECISION_ADJUSTMENT( pcDtParam->bitDepth - 8 ) );
-}
-#endif
-
-UInt TComRdCost::xGetMRSAD16N( DistParam* pcDtParam )
-{
-  Pel* piOrg   = pcDtParam->pOrg;
-  Pel* piCur   = pcDtParam->pCur;
-  Int  iRows   = pcDtParam->iRows;
-  Int  iCols   = pcDtParam->iCols;
-  Int  iSubShift  = pcDtParam->iSubShift;
-  Int  iSubStep   = ( 1 << iSubShift );
-  Int  iStrideCur = pcDtParam->iStrideCur*iSubStep;
-  Int  iStrideOrg = pcDtParam->iStrideOrg*iSubStep;
-
-  UInt uiSum = 0;
-  Int iOrigAvg = 0, iCurAvg = 0, uiRowCnt = 0, uiColCnt = (iCols-1)/16 + 1;
-  Int  iDeltaC;
-
-  for( ; iRows != 0; iRows-=iSubStep )
-  {
-    for (Int n = 0; n < iCols; n+=16 )
-    {
-      iOrigAvg += piOrg[n + 0];
-      iOrigAvg += piOrg[n + 1];
-      iOrigAvg += piOrg[n + 2];
-      iOrigAvg += piOrg[n + 3];
-      iOrigAvg += piOrg[n + 4];
-      iOrigAvg += piOrg[n + 5];
-      iOrigAvg += piOrg[n + 6];
-      iOrigAvg += piOrg[n + 7];
-      iOrigAvg += piOrg[n + 8];
-      iOrigAvg += piOrg[n + 9];
-      iOrigAvg += piOrg[n + 10];
-      iOrigAvg += piOrg[n + 11];
-      iOrigAvg += piOrg[n + 12];
-      iOrigAvg += piOrg[n + 13];
-      iOrigAvg += piOrg[n + 14];
-      iOrigAvg += piOrg[n + 15];
-
-      iCurAvg  += piCur[n + 0];
-      iCurAvg  += piCur[n + 1];
-      iCurAvg  += piCur[n + 2];
-      iCurAvg  += piCur[n + 3];
-      iCurAvg  += piCur[n + 4];
-      iCurAvg  += piCur[n + 5];
-      iCurAvg  += piCur[n + 6];
-      iCurAvg  += piCur[n + 7];
-      iCurAvg  += piCur[n + 8];
-      iCurAvg  += piCur[n + 9];
-      iCurAvg  += piCur[n + 10];
-      iCurAvg  += piCur[n + 11];
-      iCurAvg  += piCur[n + 12];
-      iCurAvg  += piCur[n + 13];
-      iCurAvg  += piCur[n + 14];
-      iCurAvg  += piCur[n + 15];
-    }
-    piOrg += iStrideOrg;
-    piCur += iStrideCur;
-    uiRowCnt++;
-  }
-  piOrg   = pcDtParam->pOrg;
-  piCur   = pcDtParam->pCur;
-  iRows   = pcDtParam->iRows;
-
-  iDeltaC = (uiRowCnt && uiColCnt) ? ((iOrigAvg - iCurAvg)/uiRowCnt/uiColCnt/16) : 0;
-
-  for( ; iRows != 0; iRows-=iSubStep )
-  {
-    for (Int n = 0; n < iCols; n+=16 )
-    {
-      uiSum += abs( piOrg[n+ 0] - piCur[n+ 0] - iDeltaC );
-      uiSum += abs( piOrg[n+ 1] - piCur[n+ 1] - iDeltaC );
-      uiSum += abs( piOrg[n+ 2] - piCur[n+ 2] - iDeltaC );
-      uiSum += abs( piOrg[n+ 3] - piCur[n+ 3] - iDeltaC );
-      uiSum += abs( piOrg[n+ 4] - piCur[n+ 4] - iDeltaC );
-      uiSum += abs( piOrg[n+ 5] - piCur[n+ 5] - iDeltaC );
-      uiSum += abs( piOrg[n+ 6] - piCur[n+ 6] - iDeltaC );
-      uiSum += abs( piOrg[n+ 7] - piCur[n+ 7] - iDeltaC );
-      uiSum += abs( piOrg[n+ 8] - piCur[n+ 8] - iDeltaC );
-      uiSum += abs( piOrg[n+ 9] - piCur[n+ 9] - iDeltaC );
-      uiSum += abs( piOrg[n+10] - piCur[n+10] - iDeltaC );
-      uiSum += abs( piOrg[n+11] - piCur[n+11] - iDeltaC );
-      uiSum += abs( piOrg[n+12] - piCur[n+12] - iDeltaC );
-      uiSum += abs( piOrg[n+13] - piCur[n+13] - iDeltaC );
-      uiSum += abs( piOrg[n+14] - piCur[n+14] - iDeltaC );
-      uiSum += abs( piOrg[n+15] - piCur[n+15] - iDeltaC );
-    }
-    piOrg += iStrideOrg;
-    piCur += iStrideCur;
-  }
-
-  uiSum <<= iSubShift;
-  return ( uiSum >> DISTORTION_PRECISION_ADJUSTMENT( pcDtParam->bitDepth - 8 ) );
-}
-
-UInt TComRdCost::xGetMRSAD32( DistParam* pcDtParam )
-{
-  if ( pcDtParam->bApplyWeight )
-  {
-    return xGetSADw( pcDtParam );
-  }
-  Pel* piOrg   = pcDtParam->pOrg;
-  Pel* piCur   = pcDtParam->pCur;
-  Int  iRows   = pcDtParam->iRows;
-  Int  iSubShift  = pcDtParam->iSubShift;
-  Int  iSubStep   = ( 1 << iSubShift );
-  Int  iStrideCur = pcDtParam->iStrideCur*iSubStep;
-  Int  iStrideOrg = pcDtParam->iStrideOrg*iSubStep;
-
-  UInt uiSum = 0;
-  Int  iOrigAvg = 0, iCurAvg = 0, uiRowCnt = 0;
-  Int  iDeltaC;
-
-  for( ; iRows != 0; iRows-=iSubStep )
-  {
-    iOrigAvg += piOrg[0];
-    iOrigAvg += piOrg[1];
-    iOrigAvg += piOrg[2];
-    iOrigAvg += piOrg[3];
-    iOrigAvg += piOrg[4];
-    iOrigAvg += piOrg[5];
-    iOrigAvg += piOrg[6];
-    iOrigAvg += piOrg[7];
-    iOrigAvg += piOrg[8];
-    iOrigAvg += piOrg[9];
-    iOrigAvg += piOrg[10];
-    iOrigAvg += piOrg[11];
-    iOrigAvg += piOrg[12];
-    iOrigAvg += piOrg[13];
-    iOrigAvg += piOrg[14];
-    iOrigAvg += piOrg[15];
-    iOrigAvg += piOrg[16];
-    iOrigAvg += piOrg[17];
-    iOrigAvg += piOrg[18];
-    iOrigAvg += piOrg[19];
-    iOrigAvg += piOrg[20];
-    iOrigAvg += piOrg[21];
-    iOrigAvg += piOrg[22];
-    iOrigAvg += piOrg[23];
-    iOrigAvg += piOrg[24];
-    iOrigAvg += piOrg[25];
-    iOrigAvg += piOrg[26];
-    iOrigAvg += piOrg[27];
-    iOrigAvg += piOrg[28];
-    iOrigAvg += piOrg[29];
-    iOrigAvg += piOrg[30];
-    iOrigAvg += piOrg[31];
-
-    iCurAvg  += piCur[0];
-    iCurAvg  += piCur[1];
-    iCurAvg  += piCur[2];
-    iCurAvg  += piCur[3];
-    iCurAvg  += piCur[4];
-    iCurAvg  += piCur[5];
-    iCurAvg  += piCur[6];
-    iCurAvg  += piCur[7];
-    iCurAvg  += piCur[8];
-    iCurAvg  += piCur[9];
-    iCurAvg  += piCur[10];
-    iCurAvg  += piCur[11];
-    iCurAvg  += piCur[12];
-    iCurAvg  += piCur[13];
-    iCurAvg  += piCur[14];
-    iCurAvg  += piCur[15];
-    iCurAvg  += piCur[16];
-    iCurAvg  += piCur[17];
-    iCurAvg  += piCur[18];
-    iCurAvg  += piCur[19];
-    iCurAvg  += piCur[20];
-    iCurAvg  += piCur[21];
-    iCurAvg  += piCur[22];
-    iCurAvg  += piCur[23];
-    iCurAvg  += piCur[24];
-    iCurAvg  += piCur[25];
-    iCurAvg  += piCur[26];
-    iCurAvg  += piCur[27];
-    iCurAvg  += piCur[28];
-    iCurAvg  += piCur[29];
-    iCurAvg  += piCur[30];
-    iCurAvg  += piCur[31];
-
-    piOrg += iStrideOrg;
-    piCur += iStrideCur;
-    uiRowCnt++;
-  }
-
-  piOrg   = pcDtParam->pOrg;
-  piCur   = pcDtParam->pCur;
-  iRows   = pcDtParam->iRows;
-
-  iDeltaC = uiRowCnt ? ((iOrigAvg - iCurAvg)/uiRowCnt/32) : 0;
-
-  for( ; iRows != 0; iRows-=iSubStep )
-  {
-    uiSum += abs( piOrg[0] - piCur[0] - iDeltaC );
-    uiSum += abs( piOrg[1] - piCur[1] - iDeltaC );
-    uiSum += abs( piOrg[2] - piCur[2] - iDeltaC );
-    uiSum += abs( piOrg[3] - piCur[3] - iDeltaC );
-    uiSum += abs( piOrg[4] - piCur[4] - iDeltaC );
-    uiSum += abs( piOrg[5] - piCur[5] - iDeltaC );
-    uiSum += abs( piOrg[6] - piCur[6] - iDeltaC );
-    uiSum += abs( piOrg[7] - piCur[7] - iDeltaC );
-    uiSum += abs( piOrg[8] - piCur[8] - iDeltaC );
-    uiSum += abs( piOrg[9] - piCur[9] - iDeltaC );
-    uiSum += abs( piOrg[10] - piCur[10] - iDeltaC );
-    uiSum += abs( piOrg[11] - piCur[11] - iDeltaC );
-    uiSum += abs( piOrg[12] - piCur[12] - iDeltaC );
-    uiSum += abs( piOrg[13] - piCur[13] - iDeltaC );
-    uiSum += abs( piOrg[14] - piCur[14] - iDeltaC );
-    uiSum += abs( piOrg[15] - piCur[15] - iDeltaC );
-    uiSum += abs( piOrg[16] - piCur[16] - iDeltaC );
-    uiSum += abs( piOrg[17] - piCur[17] - iDeltaC );
-    uiSum += abs( piOrg[18] - piCur[18] - iDeltaC );
-    uiSum += abs( piOrg[19] - piCur[19] - iDeltaC );
-    uiSum += abs( piOrg[20] - piCur[20] - iDeltaC );
-    uiSum += abs( piOrg[21] - piCur[21] - iDeltaC );
-    uiSum += abs( piOrg[22] - piCur[22] - iDeltaC );
-    uiSum += abs( piOrg[23] - piCur[23] - iDeltaC );
-    uiSum += abs( piOrg[24] - piCur[24] - iDeltaC );
-    uiSum += abs( piOrg[25] - piCur[25] - iDeltaC );
-    uiSum += abs( piOrg[26] - piCur[26] - iDeltaC );
-    uiSum += abs( piOrg[27] - piCur[27] - iDeltaC );
-    uiSum += abs( piOrg[28] - piCur[28] - iDeltaC );
-    uiSum += abs( piOrg[29] - piCur[29] - iDeltaC );
-    uiSum += abs( piOrg[30] - piCur[30] - iDeltaC );
-    uiSum += abs( piOrg[31] - piCur[31] - iDeltaC );
-
-    piOrg += iStrideOrg;
-    piCur += iStrideCur;
-  }
-
-  uiSum <<= iSubShift;
-  return ( uiSum >> DISTORTION_PRECISION_ADJUSTMENT( pcDtParam->bitDepth - 8 ) );
-}
-
-#if AMP_SAD
-UInt TComRdCost::xGetMRSAD24( DistParam* pcDtParam )
-{
-  if ( pcDtParam->bApplyWeight )
-  {
-    return xGetSADw( pcDtParam );
-  }
-  Pel* piOrg   = pcDtParam->pOrg;
-  Pel* piCur   = pcDtParam->pCur;
-  Int  iRows   = pcDtParam->iRows;
-  Int  iSubShift  = pcDtParam->iSubShift;
-  Int  iSubStep   = ( 1 << iSubShift );
-  Int  iStrideCur = pcDtParam->iStrideCur*iSubStep;
-  Int  iStrideOrg = pcDtParam->iStrideOrg*iSubStep;
-
-  UInt uiSum = 0;
-  Int  iOrigAvg = 0, iCurAvg = 0, uiRowCnt = 0;
-  Int  iDeltaC;
-
-  for( ; iRows != 0; iRows-=iSubStep )
-  {
-    iOrigAvg += piOrg[0];
-    iOrigAvg += piOrg[1];
-    iOrigAvg += piOrg[2];
-    iOrigAvg += piOrg[3];
-    iOrigAvg += piOrg[4];
-    iOrigAvg += piOrg[5];
-    iOrigAvg += piOrg[6];
-    iOrigAvg += piOrg[7];
-    iOrigAvg += piOrg[8];
-    iOrigAvg += piOrg[9];
-    iOrigAvg += piOrg[10];
-    iOrigAvg += piOrg[11];
-    iOrigAvg += piOrg[12];
-    iOrigAvg += piOrg[13];
-    iOrigAvg += piOrg[14];
-    iOrigAvg += piOrg[15];
-    iOrigAvg += piOrg[16];
-    iOrigAvg += piOrg[17];
-    iOrigAvg += piOrg[18];
-    iOrigAvg += piOrg[19];
-    iOrigAvg += piOrg[20];
-    iOrigAvg += piOrg[21];
-    iOrigAvg += piOrg[22];
-    iOrigAvg += piOrg[23];
-
-    iCurAvg  += piCur[0];
-    iCurAvg  += piCur[1];
-    iCurAvg  += piCur[2];
-    iCurAvg  += piCur[3];
-    iCurAvg  += piCur[4];
-    iCurAvg  += piCur[5];
-    iCurAvg  += piCur[6];
-    iCurAvg  += piCur[7];
-    iCurAvg  += piCur[8];
-    iCurAvg  += piCur[9];
-    iCurAvg  += piCur[10];
-    iCurAvg  += piCur[11];
-    iCurAvg  += piCur[12];
-    iCurAvg  += piCur[13];
-    iCurAvg  += piCur[14];
-    iCurAvg  += piCur[15];
-    iCurAvg  += piCur[16];
-    iCurAvg  += piCur[17];
-    iCurAvg  += piCur[18];
-    iCurAvg  += piCur[19];
-    iCurAvg  += piCur[20];
-    iCurAvg  += piCur[21];
-    iCurAvg  += piCur[22];
-    iCurAvg  += piCur[23];
-
-    piOrg += iStrideOrg;
-    piCur += iStrideCur;
-    uiRowCnt++;
-  }
-
-  piOrg   = pcDtParam->pOrg;
-  piCur   = pcDtParam->pCur;
-  iRows   = pcDtParam->iRows;
-
-  iDeltaC = uiRowCnt ? ((iOrigAvg - iCurAvg)/uiRowCnt/24) : 0;
-
-  for( ; iRows != 0; iRows-=iSubStep )
-  {
-    uiSum += abs( piOrg[0] - piCur[0] - iDeltaC );
-    uiSum += abs( piOrg[1] - piCur[1] - iDeltaC );
-    uiSum += abs( piOrg[2] - piCur[2] - iDeltaC );
-    uiSum += abs( piOrg[3] - piCur[3] - iDeltaC );
-    uiSum += abs( piOrg[4] - piCur[4] - iDeltaC );
-    uiSum += abs( piOrg[5] - piCur[5] - iDeltaC );
-    uiSum += abs( piOrg[6] - piCur[6] - iDeltaC );
-    uiSum += abs( piOrg[7] - piCur[7] - iDeltaC );
-    uiSum += abs( piOrg[8] - piCur[8] - iDeltaC );
-    uiSum += abs( piOrg[9] - piCur[9] - iDeltaC );
-    uiSum += abs( piOrg[10] - piCur[10] - iDeltaC );
-    uiSum += abs( piOrg[11] - piCur[11] - iDeltaC );
-    uiSum += abs( piOrg[12] - piCur[12] - iDeltaC );
-    uiSum += abs( piOrg[13] - piCur[13] - iDeltaC );
-    uiSum += abs( piOrg[14] - piCur[14] - iDeltaC );
-    uiSum += abs( piOrg[15] - piCur[15] - iDeltaC );
-    uiSum += abs( piOrg[16] - piCur[16] - iDeltaC );
-    uiSum += abs( piOrg[17] - piCur[17] - iDeltaC );
-    uiSum += abs( piOrg[18] - piCur[18] - iDeltaC );
-    uiSum += abs( piOrg[19] - piCur[19] - iDeltaC );
-    uiSum += abs( piOrg[20] - piCur[20] - iDeltaC );
-    uiSum += abs( piOrg[21] - piCur[21] - iDeltaC );
-    uiSum += abs( piOrg[22] - piCur[22] - iDeltaC );
-    uiSum += abs( piOrg[23] - piCur[23] - iDeltaC );
-
-    piOrg += iStrideOrg;
-    piCur += iStrideCur;
-  }
-
-  uiSum <<= iSubShift;
-  return ( uiSum >> DISTORTION_PRECISION_ADJUSTMENT( pcDtParam->bitDepth - 8 ) );
-}
-#endif
-
-UInt TComRdCost::xGetMRSAD64( DistParam* pcDtParam )
-{
-  if ( pcDtParam->bApplyWeight )
-  {
-    return xGetSADw( pcDtParam );
-  }
-  Pel* piOrg   = pcDtParam->pOrg;
-  Pel* piCur   = pcDtParam->pCur;
-  Int  iRows   = pcDtParam->iRows;
-  Int  iSubShift  = pcDtParam->iSubShift;
-  Int  iSubStep   = ( 1 << iSubShift );
-  Int  iStrideCur = pcDtParam->iStrideCur*iSubStep;
-  Int  iStrideOrg = pcDtParam->iStrideOrg*iSubStep;
-
-  UInt uiSum = 0;
-  Int  iOrigAvg = 0, iCurAvg = 0, uiRowCnt = 0;
-  Int  iDeltaC;
-
-  for( ; iRows != 0; iRows-=iSubStep )
-  {
-    iOrigAvg += piOrg[0] ;
-    iOrigAvg += piOrg[1] ;
-    iOrigAvg += piOrg[2] ;
-    iOrigAvg += piOrg[3] ;
-    iOrigAvg += piOrg[4] ;
-    iOrigAvg += piOrg[5] ;
-    iOrigAvg += piOrg[6] ;
-    iOrigAvg += piOrg[7] ;
-    iOrigAvg += piOrg[8] ;
-    iOrigAvg += piOrg[9] ;
-    iOrigAvg += piOrg[10] ;
-    iOrigAvg += piOrg[11] ;
-    iOrigAvg += piOrg[12] ;
-    iOrigAvg += piOrg[13] ;
-    iOrigAvg += piOrg[14] ;
-    iOrigAvg += piOrg[15] ;
-    iOrigAvg += piOrg[16] ;
-    iOrigAvg += piOrg[17] ;
-    iOrigAvg += piOrg[18] ;
-    iOrigAvg += piOrg[19] ;
-    iOrigAvg += piOrg[20] ;
-    iOrigAvg += piOrg[21] ;
-    iOrigAvg += piOrg[22] ;
-    iOrigAvg += piOrg[23] ;
-    iOrigAvg += piOrg[24] ;
-    iOrigAvg += piOrg[25] ;
-    iOrigAvg += piOrg[26] ;
-    iOrigAvg += piOrg[27] ;
-    iOrigAvg += piOrg[28] ;
-    iOrigAvg += piOrg[29] ;
-    iOrigAvg += piOrg[30] ;
-    iOrigAvg += piOrg[31] ;
-    iOrigAvg += piOrg[32] ;
-    iOrigAvg += piOrg[33] ;
-    iOrigAvg += piOrg[34] ;
-    iOrigAvg += piOrg[35] ;
-    iOrigAvg += piOrg[36] ;
-    iOrigAvg += piOrg[37] ;
-    iOrigAvg += piOrg[38] ;
-    iOrigAvg += piOrg[39] ;
-    iOrigAvg += piOrg[40] ;
-    iOrigAvg += piOrg[41] ;
-    iOrigAvg += piOrg[42] ;
-    iOrigAvg += piOrg[43] ;
-    iOrigAvg += piOrg[44] ;
-    iOrigAvg += piOrg[45] ;
-    iOrigAvg += piOrg[46] ;
-    iOrigAvg += piOrg[47] ;
-    iOrigAvg += piOrg[48] ;
-    iOrigAvg += piOrg[49] ;
-    iOrigAvg += piOrg[50] ;
-    iOrigAvg += piOrg[51] ;
-    iOrigAvg += piOrg[52] ;
-    iOrigAvg += piOrg[53] ;
-    iOrigAvg += piOrg[54] ;
-    iOrigAvg += piOrg[55] ;
-    iOrigAvg += piOrg[56] ;
-    iOrigAvg += piOrg[57] ;
-    iOrigAvg += piOrg[58] ;
-    iOrigAvg += piOrg[59] ;
-    iOrigAvg += piOrg[60] ;
-    iOrigAvg += piOrg[61] ;
-    iOrigAvg += piOrg[62] ;
-    iOrigAvg += piOrg[63] ;
-
-    iCurAvg += piCur[0] ;
-    iCurAvg += piCur[1] ;
-    iCurAvg += piCur[2] ;
-    iCurAvg += piCur[3] ;
-    iCurAvg += piCur[4] ;
-    iCurAvg += piCur[5] ;
-    iCurAvg += piCur[6] ;
-    iCurAvg += piCur[7] ;
-    iCurAvg += piCur[8] ;
-    iCurAvg += piCur[9] ;
-    iCurAvg += piCur[10] ;
-    iCurAvg += piCur[11] ;
-    iCurAvg += piCur[12] ;
-    iCurAvg += piCur[13] ;
-    iCurAvg += piCur[14] ;
-    iCurAvg += piCur[15] ;
-    iCurAvg += piCur[16] ;
-    iCurAvg += piCur[17] ;
-    iCurAvg += piCur[18] ;
-    iCurAvg += piCur[19] ;
-    iCurAvg += piCur[20] ;
-    iCurAvg += piCur[21] ;
-    iCurAvg += piCur[22] ;
-    iCurAvg += piCur[23] ;
-    iCurAvg += piCur[24] ;
-    iCurAvg += piCur[25] ;
-    iCurAvg += piCur[26] ;
-    iCurAvg += piCur[27] ;
-    iCurAvg += piCur[28] ;
-    iCurAvg += piCur[29] ;
-    iCurAvg += piCur[30] ;
-    iCurAvg += piCur[31] ;
-    iCurAvg += piCur[32] ;
-    iCurAvg += piCur[33] ;
-    iCurAvg += piCur[34] ;
-    iCurAvg += piCur[35] ;
-    iCurAvg += piCur[36] ;
-    iCurAvg += piCur[37] ;
-    iCurAvg += piCur[38] ;
-    iCurAvg += piCur[39] ;
-    iCurAvg += piCur[40] ;
-    iCurAvg += piCur[41] ;
-    iCurAvg += piCur[42] ;
-    iCurAvg += piCur[43] ;
-    iCurAvg += piCur[44] ;
-    iCurAvg += piCur[45] ;
-    iCurAvg += piCur[46] ;
-    iCurAvg += piCur[47] ;
-    iCurAvg += piCur[48] ;
-    iCurAvg += piCur[49] ;
-    iCurAvg += piCur[50] ;
-    iCurAvg += piCur[51] ;
-    iCurAvg += piCur[52] ;
-    iCurAvg += piCur[53] ;
-    iCurAvg += piCur[54] ;
-    iCurAvg += piCur[55] ;
-    iCurAvg += piCur[56] ;
-    iCurAvg += piCur[57] ;
-    iCurAvg += piCur[58] ;
-    iCurAvg += piCur[59] ;
-    iCurAvg += piCur[60] ;
-    iCurAvg += piCur[61] ;
-    iCurAvg += piCur[62] ;
-    iCurAvg += piCur[63] ;
-
-    piOrg += iStrideOrg;
-    piCur += iStrideCur;
-    uiRowCnt++;
-  }
-
-  piOrg   = pcDtParam->pOrg;
-  piCur   = pcDtParam->pCur;
-  iRows   = pcDtParam->iRows;
-
-  iDeltaC = uiRowCnt ? ((iOrigAvg - iCurAvg)/uiRowCnt/64) : 0;
-
-  for( ; iRows != 0; iRows-=iSubStep )
-  {
-    uiSum += abs( piOrg[0] - piCur[0] - iDeltaC );
-    uiSum += abs( piOrg[1] - piCur[1] - iDeltaC );
-    uiSum += abs( piOrg[2] - piCur[2] - iDeltaC );
-    uiSum += abs( piOrg[3] - piCur[3] - iDeltaC );
-    uiSum += abs( piOrg[4] - piCur[4] - iDeltaC );
-    uiSum += abs( piOrg[5] - piCur[5] - iDeltaC );
-    uiSum += abs( piOrg[6] - piCur[6] - iDeltaC );
-    uiSum += abs( piOrg[7] - piCur[7] - iDeltaC );
-    uiSum += abs( piOrg[8] - piCur[8] - iDeltaC );
-    uiSum += abs( piOrg[9] - piCur[9] - iDeltaC );
-    uiSum += abs( piOrg[10] - piCur[10] - iDeltaC );
-    uiSum += abs( piOrg[11] - piCur[11] - iDeltaC );
-    uiSum += abs( piOrg[12] - piCur[12] - iDeltaC );
-    uiSum += abs( piOrg[13] - piCur[13] - iDeltaC );
-    uiSum += abs( piOrg[14] - piCur[14] - iDeltaC );
-    uiSum += abs( piOrg[15] - piCur[15] - iDeltaC );
-    uiSum += abs( piOrg[16] - piCur[16] - iDeltaC );
-    uiSum += abs( piOrg[17] - piCur[17] - iDeltaC );
-    uiSum += abs( piOrg[18] - piCur[18] - iDeltaC );
-    uiSum += abs( piOrg[19] - piCur[19] - iDeltaC );
-    uiSum += abs( piOrg[20] - piCur[20] - iDeltaC );
-    uiSum += abs( piOrg[21] - piCur[21] - iDeltaC );
-    uiSum += abs( piOrg[22] - piCur[22] - iDeltaC );
-    uiSum += abs( piOrg[23] - piCur[23] - iDeltaC );
-    uiSum += abs( piOrg[24] - piCur[24] - iDeltaC );
-    uiSum += abs( piOrg[25] - piCur[25] - iDeltaC );
-    uiSum += abs( piOrg[26] - piCur[26] - iDeltaC );
-    uiSum += abs( piOrg[27] - piCur[27] - iDeltaC );
-    uiSum += abs( piOrg[28] - piCur[28] - iDeltaC );
-    uiSum += abs( piOrg[29] - piCur[29] - iDeltaC );
-    uiSum += abs( piOrg[30] - piCur[30] - iDeltaC );
-    uiSum += abs( piOrg[31] - piCur[31] - iDeltaC );
-    uiSum += abs( piOrg[32] - piCur[32] - iDeltaC );
-    uiSum += abs( piOrg[33] - piCur[33] - iDeltaC );
-    uiSum += abs( piOrg[34] - piCur[34] - iDeltaC );
-    uiSum += abs( piOrg[35] - piCur[35] - iDeltaC );
-    uiSum += abs( piOrg[36] - piCur[36] - iDeltaC );
-    uiSum += abs( piOrg[37] - piCur[37] - iDeltaC );
-    uiSum += abs( piOrg[38] - piCur[38] - iDeltaC );
-    uiSum += abs( piOrg[39] - piCur[39] - iDeltaC );
-    uiSum += abs( piOrg[40] - piCur[40] - iDeltaC );
-    uiSum += abs( piOrg[41] - piCur[41] - iDeltaC );
-    uiSum += abs( piOrg[42] - piCur[42] - iDeltaC );
-    uiSum += abs( piOrg[43] - piCur[43] - iDeltaC );
-    uiSum += abs( piOrg[44] - piCur[44] - iDeltaC );
-    uiSum += abs( piOrg[45] - piCur[45] - iDeltaC );
-    uiSum += abs( piOrg[46] - piCur[46] - iDeltaC );
-    uiSum += abs( piOrg[47] - piCur[47] - iDeltaC );
-    uiSum += abs( piOrg[48] - piCur[48] - iDeltaC );
-    uiSum += abs( piOrg[49] - piCur[49] - iDeltaC );
-    uiSum += abs( piOrg[50] - piCur[50] - iDeltaC );
-    uiSum += abs( piOrg[51] - piCur[51] - iDeltaC );
-    uiSum += abs( piOrg[52] - piCur[52] - iDeltaC );
-    uiSum += abs( piOrg[53] - piCur[53] - iDeltaC );
-    uiSum += abs( piOrg[54] - piCur[54] - iDeltaC );
-    uiSum += abs( piOrg[55] - piCur[55] - iDeltaC );
-    uiSum += abs( piOrg[56] - piCur[56] - iDeltaC );
-    uiSum += abs( piOrg[57] - piCur[57] - iDeltaC );
-    uiSum += abs( piOrg[58] - piCur[58] - iDeltaC );
-    uiSum += abs( piOrg[59] - piCur[59] - iDeltaC );
-    uiSum += abs( piOrg[60] - piCur[60] - iDeltaC );
-    uiSum += abs( piOrg[61] - piCur[61] - iDeltaC );
-    uiSum += abs( piOrg[62] - piCur[62] - iDeltaC );
-    uiSum += abs( piOrg[63] - piCur[63] - iDeltaC );
-
-    piOrg += iStrideOrg;
-    piCur += iStrideCur;
-  }
-
-  uiSum <<= iSubShift;
-  return ( uiSum >> DISTORTION_PRECISION_ADJUSTMENT( pcDtParam->bitDepth - 8 ) );
-}
-
-#if AMP_SAD
-UInt TComRdCost::xGetMRSAD48( DistParam* pcDtParam )
-{
-  if ( pcDtParam->bApplyWeight )
-  {
-    return xGetSADw( pcDtParam );
-  }
-
-  Pel* piOrg   = pcDtParam->pOrg;
-  Pel* piCur   = pcDtParam->pCur;
-  Int  iRows   = pcDtParam->iRows;
-  Int  iSubShift  = pcDtParam->iSubShift;
-  Int  iSubStep   = ( 1 << iSubShift );
-  Int  iStrideCur = pcDtParam->iStrideCur*iSubStep;
-  Int  iStrideOrg = pcDtParam->iStrideOrg*iSubStep;
-
-  UInt uiSum = 0;
-  Int  iOrigAvg = 0, iCurAvg = 0, uiRowCnt = 0;
-  Int  iDeltaC;
-
-  for( ; iRows != 0; iRows-=iSubStep )
-  {
-    iOrigAvg += piOrg[0] ;
-    iOrigAvg += piOrg[1] ;
-    iOrigAvg += piOrg[2] ;
-    iOrigAvg += piOrg[3] ;
-    iOrigAvg += piOrg[4] ;
-    iOrigAvg += piOrg[5] ;
-    iOrigAvg += piOrg[6] ;
-    iOrigAvg += piOrg[7] ;
-    iOrigAvg += piOrg[8] ;
-    iOrigAvg += piOrg[9] ;
-    iOrigAvg += piOrg[10] ;
-    iOrigAvg += piOrg[11] ;
-    iOrigAvg += piOrg[12] ;
-    iOrigAvg += piOrg[13] ;
-    iOrigAvg += piOrg[14] ;
-    iOrigAvg += piOrg[15] ;
-    iOrigAvg += piOrg[16] ;
-    iOrigAvg += piOrg[17] ;
-    iOrigAvg += piOrg[18] ;
-    iOrigAvg += piOrg[19] ;
-    iOrigAvg += piOrg[20] ;
-    iOrigAvg += piOrg[21] ;
-    iOrigAvg += piOrg[22] ;
-    iOrigAvg += piOrg[23] ;
-    iOrigAvg += piOrg[24] ;
-    iOrigAvg += piOrg[25] ;
-    iOrigAvg += piOrg[26] ;
-    iOrigAvg += piOrg[27] ;
-    iOrigAvg += piOrg[28] ;
-    iOrigAvg += piOrg[29] ;
-    iOrigAvg += piOrg[30] ;
-    iOrigAvg += piOrg[31] ;
-    iOrigAvg += piOrg[32] ;
-    iOrigAvg += piOrg[33] ;
-    iOrigAvg += piOrg[34] ;
-    iOrigAvg += piOrg[35] ;
-    iOrigAvg += piOrg[36] ;
-    iOrigAvg += piOrg[37] ;
-    iOrigAvg += piOrg[38] ;
-    iOrigAvg += piOrg[39] ;
-    iOrigAvg += piOrg[40] ;
-    iOrigAvg += piOrg[41] ;
-    iOrigAvg += piOrg[42] ;
-    iOrigAvg += piOrg[43] ;
-    iOrigAvg += piOrg[44] ;
-    iOrigAvg += piOrg[45] ;
-    iOrigAvg += piOrg[46] ;
-    iOrigAvg += piOrg[47] ;
-
-    iCurAvg += piCur[0] ;
-    iCurAvg += piCur[1] ;
-    iCurAvg += piCur[2] ;
-    iCurAvg += piCur[3] ;
-    iCurAvg += piCur[4] ;
-    iCurAvg += piCur[5] ;
-    iCurAvg += piCur[6] ;
-    iCurAvg += piCur[7] ;
-    iCurAvg += piCur[8] ;
-    iCurAvg += piCur[9] ;
-    iCurAvg += piCur[10] ;
-    iCurAvg += piCur[11] ;
-    iCurAvg += piCur[12] ;
-    iCurAvg += piCur[13] ;
-    iCurAvg += piCur[14] ;
-    iCurAvg += piCur[15] ;
-    iCurAvg += piCur[16] ;
-    iCurAvg += piCur[17] ;
-    iCurAvg += piCur[18] ;
-    iCurAvg += piCur[19] ;
-    iCurAvg += piCur[20] ;
-    iCurAvg += piCur[21] ;
-    iCurAvg += piCur[22] ;
-    iCurAvg += piCur[23] ;
-    iCurAvg += piCur[24] ;
-    iCurAvg += piCur[25] ;
-    iCurAvg += piCur[26] ;
-    iCurAvg += piCur[27] ;
-    iCurAvg += piCur[28] ;
-    iCurAvg += piCur[29] ;
-    iCurAvg += piCur[30] ;
-    iCurAvg += piCur[31] ;
-    iCurAvg += piCur[32] ;
-    iCurAvg += piCur[33] ;
-    iCurAvg += piCur[34] ;
-    iCurAvg += piCur[35] ;
-    iCurAvg += piCur[36] ;
-    iCurAvg += piCur[37] ;
-    iCurAvg += piCur[38] ;
-    iCurAvg += piCur[39] ;
-    iCurAvg += piCur[40] ;
-    iCurAvg += piCur[41] ;
-    iCurAvg += piCur[42] ;
-    iCurAvg += piCur[43] ;
-    iCurAvg += piCur[44] ;
-    iCurAvg += piCur[45] ;
-    iCurAvg += piCur[46] ;
-    iCurAvg += piCur[47] ;
-
-    piOrg += iStrideOrg;
-    piCur += iStrideCur;
-    uiRowCnt++;
-  }
-
-  piOrg   = pcDtParam->pOrg;
-  piCur   = pcDtParam->pCur;
-  iRows   = pcDtParam->iRows;
-
-  iDeltaC = uiRowCnt ? ((iOrigAvg - iCurAvg)/uiRowCnt/48) : 0;
-
-  for( ; iRows != 0; iRows-=iSubStep )
-  {
-    uiSum += abs( piOrg[0] - piCur[0] - iDeltaC );
-    uiSum += abs( piOrg[1] - piCur[1] - iDeltaC );
-    uiSum += abs( piOrg[2] - piCur[2] - iDeltaC );
-    uiSum += abs( piOrg[3] - piCur[3] - iDeltaC );
-    uiSum += abs( piOrg[4] - piCur[4] - iDeltaC );
-    uiSum += abs( piOrg[5] - piCur[5] - iDeltaC );
-    uiSum += abs( piOrg[6] - piCur[6] - iDeltaC );
-    uiSum += abs( piOrg[7] - piCur[7] - iDeltaC );
-    uiSum += abs( piOrg[8] - piCur[8] - iDeltaC );
-    uiSum += abs( piOrg[9] - piCur[9] - iDeltaC );
-    uiSum += abs( piOrg[10] - piCur[10] - iDeltaC );
-    uiSum += abs( piOrg[11] - piCur[11] - iDeltaC );
-    uiSum += abs( piOrg[12] - piCur[12] - iDeltaC );
-    uiSum += abs( piOrg[13] - piCur[13] - iDeltaC );
-    uiSum += abs( piOrg[14] - piCur[14] - iDeltaC );
-    uiSum += abs( piOrg[15] - piCur[15] - iDeltaC );
-    uiSum += abs( piOrg[16] - piCur[16] - iDeltaC );
-    uiSum += abs( piOrg[17] - piCur[17] - iDeltaC );
-    uiSum += abs( piOrg[18] - piCur[18] - iDeltaC );
-    uiSum += abs( piOrg[19] - piCur[19] - iDeltaC );
-    uiSum += abs( piOrg[20] - piCur[20] - iDeltaC );
-    uiSum += abs( piOrg[21] - piCur[21] - iDeltaC );
-    uiSum += abs( piOrg[22] - piCur[22] - iDeltaC );
-    uiSum += abs( piOrg[23] - piCur[23] - iDeltaC );
-    uiSum += abs( piOrg[24] - piCur[24] - iDeltaC );
-    uiSum += abs( piOrg[25] - piCur[25] - iDeltaC );
-    uiSum += abs( piOrg[26] - piCur[26] - iDeltaC );
-    uiSum += abs( piOrg[27] - piCur[27] - iDeltaC );
-    uiSum += abs( piOrg[28] - piCur[28] - iDeltaC );
-    uiSum += abs( piOrg[29] - piCur[29] - iDeltaC );
-    uiSum += abs( piOrg[30] - piCur[30] - iDeltaC );
-    uiSum += abs( piOrg[31] - piCur[31] - iDeltaC );
-    uiSum += abs( piOrg[32] - piCur[32] - iDeltaC );
-    uiSum += abs( piOrg[33] - piCur[33] - iDeltaC );
-    uiSum += abs( piOrg[34] - piCur[34] - iDeltaC );
-    uiSum += abs( piOrg[35] - piCur[35] - iDeltaC );
-    uiSum += abs( piOrg[36] - piCur[36] - iDeltaC );
-    uiSum += abs( piOrg[37] - piCur[37] - iDeltaC );
-    uiSum += abs( piOrg[38] - piCur[38] - iDeltaC );
-    uiSum += abs( piOrg[39] - piCur[39] - iDeltaC );
-    uiSum += abs( piOrg[40] - piCur[40] - iDeltaC );
-    uiSum += abs( piOrg[41] - piCur[41] - iDeltaC );
-    uiSum += abs( piOrg[42] - piCur[42] - iDeltaC );
-    uiSum += abs( piOrg[43] - piCur[43] - iDeltaC );
-    uiSum += abs( piOrg[44] - piCur[44] - iDeltaC );
-    uiSum += abs( piOrg[45] - piCur[45] - iDeltaC );
-    uiSum += abs( piOrg[46] - piCur[46] - iDeltaC );
-    uiSum += abs( piOrg[47] - piCur[47] - iDeltaC );
-
-    piOrg += iStrideOrg;
-    piCur += iStrideCur;
-  }
-
-  uiSum <<= iSubShift;
-  return ( uiSum >> DISTORTION_PRECISION_ADJUSTMENT( pcDtParam->bitDepth - 8 ) );
-}
-#endif
 #endif
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -2855,9 +1430,6 @@ UInt TComRdCost::xCalcHADs4x4( Pel *piOrg, Pel *piCur, Int iStrideOrg, Int iStri
 
 UInt TComRdCost::xCalcHADs8x8( Pel *piOrg, Pel *piCur, Int iStrideOrg, Int iStrideCur, Int iStep )
 {
-#if QC_SIMD_OPT
-  return( simdHADs8x8( piOrg , piCur , iStrideOrg , iStrideCur ) );
-#endif
   Int k, i, j, jj, sad=0;
   Int diff[64], m1[8][8], m2[8][8], m3[8][8];
   assert( iStep == 1 );
@@ -3022,12 +1594,6 @@ UInt TComRdCost::xGetHADs( DistParam* pcDtParam )
   {
     return xGetHADsw( pcDtParam );
   }
-#if QC_IC
-  if( pcDtParam->bMRFlag )
-  {
-    return xGetMRHADs( pcDtParam );
-  }
-#endif
   Pel* piOrg   = pcDtParam->pOrg;
   Pel* piCur   = pcDtParam->pCur;
   Int  iRows   = pcDtParam->iRows;
@@ -3090,116 +1656,5 @@ UInt TComRdCost::xGetHADs( DistParam* pcDtParam )
   
   return uiSum >> DISTORTION_PRECISION_ADJUSTMENT(pcDtParam->bitDepth-8);
 }
-
-#if QC_IC
-UInt TComRdCost::xGetMRHADs( DistParam* pcDtParam )
-{
-  if ( pcDtParam->bApplyWeight )
-  {
-    return xGetHADsw( pcDtParam );
-  }
-  Pel* piOrg   = pcDtParam->pOrg;
-  Pel* piCur   = pcDtParam->pCur;
-  Int  iRows   = pcDtParam->iRows;
-  Int  iCols   = pcDtParam->iCols;
-  Int  iStrideCur = pcDtParam->iStrideCur;
-  Int  iStrideOrg = pcDtParam->iStrideOrg;
-  Int  iStep  = pcDtParam->iStep;
-
-  Int  x, y;
-
-  UInt uiSum = 0;
-  Int  iOrigAvg = 0, iCurAvg = 0;
-  Int  iDeltaC;
-
-  for ( y=0; y<iRows; y++ )
-  {
-    for ( x=0; x<iCols; x++ )
-    {        
-      iOrigAvg += piOrg[x];
-      iCurAvg  += piCur[x];
-    }
-    piOrg += iStrideOrg;
-    piCur += iStrideCur;
-  }
-
-  piOrg   = pcDtParam->pOrg;
-  piCur   = pcDtParam->pCur;
-
-  iDeltaC = (iOrigAvg - iCurAvg)/iRows/iCols;
-
-  for ( y=0; y<iRows; y++ )
-  {
-    for ( x=0; x<iCols; x++ )
-    {        
-      piOrg[x] -= iDeltaC;
-    }
-    piOrg += iStrideOrg;
-  }
-
-  piOrg   = pcDtParam->pOrg;
-
-  if( ( iRows % 8 == 0) && (iCols % 8 == 0) )
-  {
-    Int  iOffsetOrg = iStrideOrg<<3;
-    Int  iOffsetCur = iStrideCur<<3;
-    for ( y=0; y<iRows; y+= 8 )
-    {
-      for ( x=0; x<iCols; x+= 8 )
-      {
-        uiSum += xCalcHADs8x8( &piOrg[x], &piCur[x*iStep], iStrideOrg, iStrideCur, iStep );
-      }
-      piOrg += iOffsetOrg;
-      piCur += iOffsetCur;
-    }
-  }
-  else if( ( iRows % 4 == 0) && (iCols % 4 == 0) )
-  {
-    Int  iOffsetOrg = iStrideOrg<<2;
-    Int  iOffsetCur = iStrideCur<<2;
-
-    for ( y=0; y<iRows; y+= 4 )
-    {
-      for ( x=0; x<iCols; x+= 4 )
-      {
-        uiSum += xCalcHADs4x4( &piOrg[x], &piCur[x*iStep], iStrideOrg, iStrideCur, iStep );
-      }
-      piOrg += iOffsetOrg;
-      piCur += iOffsetCur;
-    }
-  }
-  else if( ( iRows % 2 == 0) && (iCols % 2 == 0) )
-  {
-    Int  iOffsetOrg = iStrideOrg<<1;
-    Int  iOffsetCur = iStrideCur<<1;
-    for ( y=0; y<iRows; y+=2 )
-    {
-      for ( x=0; x<iCols; x+=2 )
-      {
-        uiSum += xCalcHADs2x2( &piOrg[x], &piCur[x*iStep], iStrideOrg, iStrideCur, iStep );
-      }
-      piOrg += iOffsetOrg;
-      piCur += iOffsetCur;
-    }
-  }
-  else
-  {
-    assert(false);
-  }
-
-  piOrg   = pcDtParam->pOrg;
-
-  for ( y=0; y<iRows; y++ )
-  {
-    for ( x=0; x<iCols; x++ )
-    {        
-      piOrg[x] += iDeltaC;
-    }
-    piOrg += iStrideOrg;
-  }
-
-  return ( uiSum >> DISTORTION_PRECISION_ADJUSTMENT( pcDtParam->bitDepth - 8 ) );
-}
-#endif
 
 //! \}

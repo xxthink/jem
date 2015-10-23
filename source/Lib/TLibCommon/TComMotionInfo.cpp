@@ -40,11 +40,6 @@
 #include "assert.h"
 #include <stdlib.h>
 
-#if QC_SUB_PU_TMVP || QC_FRUC_MERGE
-#include "TComDataCU.h"
-#include "TComPic.h"
-#endif
-
 //! \ingroup TLibCommon
 //! \{
 
@@ -92,13 +87,11 @@ Void TComCUMvField::destroy()
 
 Void TComCUMvField::clearMvField()
 {
-#if !HM14_CLEAN_UP
   for ( Int i = 0; i < m_uiNumPartition; i++ )
   {
     m_pcMv [ i ].setZero();
     m_pcMvd[ i ].setZero();      
   }
-#endif
   assert( sizeof( *m_piRefIdx ) == 1 );
   memset( m_piRefIdx, NOT_VALID, m_uiNumPartition * sizeof( *m_piRefIdx ) );
 }
@@ -329,35 +322,6 @@ Void TComCUMvField::setAllMvField( TComMvField const & mvField, PartSize eCUMode
   setAllMv    ( mvField.getMv(),     eCUMode, iPartAddr, uiDepth, iPartIdx );
   setAllRefIdx( mvField.getRefIdx(), eCUMode, iPartAddr, uiDepth, iPartIdx );
 }
-
-#if QC_SUB_PU_TMVP || QC_FRUC_MERGE
-Void TComCUMvField::setMvFieldSP( TComDataCU* pcCU, UInt uiAbsPartIdx, TComMvField cMvField, Int iWidth, Int iHeight  )
-{
-  uiAbsPartIdx += pcCU->getZorderIdxInCU();
-
-  Int iMinCUW  = pcCU->getPic()->getMinCUHeight();
-  Int iStartPelX = g_auiRasterToPelX[g_auiZscanToRaster[uiAbsPartIdx]]/iMinCUW;
-  Int iStartPelY = g_auiRasterToPelY[g_auiZscanToRaster[uiAbsPartIdx]]/iMinCUW;
-  Int iEndPelX = iStartPelX + iWidth/iMinCUW;
-  Int iEndPelY = iStartPelY + iHeight/iMinCUW;
-
-  Int iNumPart = pcCU->getPic()->getNumPartInWidth();
-  Int iCurrRaster, uiPartAddr;
-
-  for (Int i=iStartPelY; i < iEndPelY; i ++)
-  {
-    for (Int j=iStartPelX; j < iEndPelX; j ++)
-    {
-      iCurrRaster = i * iNumPart + j;
-      uiPartAddr  = g_auiRasterToZscan[iCurrRaster];
-      uiPartAddr -= pcCU->getZorderIdxInCU();  
-
-      m_pcMv[uiPartAddr]     = cMvField.getMv();
-      m_piRefIdx[uiPartAddr] = cMvField.getRefIdx();
-    }
-  }
-}
-#endif
 
 /**Subsampling of the stored prediction mode, reference index and motion vector
  * \param pePredMode Pointer to prediction modes

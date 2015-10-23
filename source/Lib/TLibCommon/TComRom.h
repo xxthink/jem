@@ -49,11 +49,8 @@
 // ====================================================================================================================
 // Macros
 // ====================================================================================================================
-#if QC_LARGE_CTU
-#define     MAX_CU_DEPTH            9                          // log2(LCUSize)
-#else
+
 #define     MAX_CU_DEPTH            6                           // log2(LCUSize)
-#endif
 #define     MAX_CU_SIZE             (1<<(MAX_CU_DEPTH))         // maximum allowable size of CU
 #define     MIN_PU_SIZE             4
 #define     MAX_NUM_SPU_W           (MAX_CU_SIZE/MIN_PU_SIZE)   // maximum number of SPU in horizontal line
@@ -88,16 +85,8 @@ extern       UInt g_uiMaxCUHeight;
 extern       UInt g_uiMaxCUDepth;
 extern       UInt g_uiAddCUDepth;
 
-#if QC_T64
-#define MAX_TS_WIDTH  64
-#define MAX_TS_HEIGHT 64
-#elif QC_EMT   // Need the store and load functions used in Transform skip mode to speedup encoder
-#define MAX_TS_WIDTH  32
-#define MAX_TS_HEIGHT 32
-#else
 #define MAX_TS_WIDTH  4
 #define MAX_TS_HEIGHT 4
-#endif
 
 extern       UInt g_auiPUOffset[8];
 
@@ -128,24 +117,9 @@ extern const UChar  g_aucChromaScale      [58];
 
 extern       UInt*  g_auiSigLastScan[ 3 ][ MAX_CU_DEPTH ];  // raster index from scanning index (diag, hor, ver)
 
-#if QC_T64
-extern const UInt   g_uiGroupIdx  [ 64 ];
-extern const UInt   g_uiMinInGroup[ 12 ];
-extern       UInt   g_sigLastScanCG64x64[ 256 ];
-#else
-extern const UInt   g_uiGroupIdx  [ 32 ];
+extern const UInt   g_uiGroupIdx[ 32 ];
 extern const UInt   g_uiMinInGroup[ 10 ];
-#endif
-
-#if QC_CTX_RESIDUALCODING
-#if !QC_T64
-extern const UInt   g_uiLastCtx[ 28 ];
-#endif
-extern const UInt   g_auiGoRiceRange[5];                  //!< maximum value coded with Rice codes
-extern const UInt   g_auiGoRicePrefixLen[5];              //!< prefix length for each maximum value
-extern const UInt   g_auiGoRiceTable[64];
-#endif
-
+  
 extern const UInt   g_sigLastScan8x8[ 3 ][ 4 ];           //!< coefficient group scan order for 8x8 TUs
 extern       UInt   g_sigLastScanCG32x32[ 64 ];
 
@@ -154,11 +128,6 @@ extern       UInt   g_sigLastScanCG32x32[ 64 ];
 // ====================================================================================================================
 
 extern const UChar  g_aucIntraModeNumFast[ MAX_CU_DEPTH ];
-
-#if QC_INTRA_4TAP_FILTER
-extern Int g_aiIntraCubicFilter[32][4];
-extern Int g_aiIntraGaussFilter[32][4];
-#endif
 
 // ====================================================================================================================
 // Bit-depth
@@ -178,32 +147,14 @@ extern const UChar g_aucConvertTxtTypeToIdx[4];
 // ==========================================
 // Mode-Dependent DST Matrices
 extern const Short g_as_DST_MAT_4 [4][4];
-
-#if QC_EMT
-extern Int g_aiTrSubsetIntra[3][2];
-extern Int g_aiTrSubsetInter[4];
-#if QC_USE_65ANG_MODES
-extern const UChar g_aucTrSetVertExt[NUM_INTRA_MODE-1];
-extern const UChar g_aucTrSetHorzExt[NUM_INTRA_MODE-1];
-#endif
-extern const UChar g_aucTrSetVert[35];
-extern const UChar g_aucTrSetHorz[35];
-extern const UInt g_iEmtSigNumThr;
-#endif
-
-#if QC_EMT || QC_T64
-extern short g_aiTr4 [NUM_TRANS_TYPE][ 4][ 4];
-extern short g_aiTr8 [NUM_TRANS_TYPE][ 8][ 8];
-extern short g_aiTr16[NUM_TRANS_TYPE][16][16];
-extern short g_aiTr32[NUM_TRANS_TYPE][32][32];
-extern short g_aiTr64[NUM_TRANS_TYPE][64][64];
-#endif
-
+extern const UChar g_aucDCTDSTMode_Vert[NUM_INTRA_MODE];
+extern const UChar g_aucDCTDSTMode_Hor[NUM_INTRA_MODE];
 // ==========================================
 
 // ====================================================================================================================
 // Misc.
 // ====================================================================================================================
+
 extern       Char   g_aucConvertToBit  [ MAX_CU_SIZE+1 ];   // from width to log2(width)-2
 
 #ifndef ENC_DEC_TRACE
@@ -255,9 +206,6 @@ enum ScalingListSize
   SCALING_LIST_8x8,
   SCALING_LIST_16x16,
   SCALING_LIST_32x32,
-#if QC_T64
-  SCALING_LIST_64x64,
-#endif
   SCALING_LIST_SIZE_NUM
 };
 static const Char MatrixType[4][6][20] =
