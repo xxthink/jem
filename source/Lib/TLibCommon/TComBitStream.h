@@ -1,9 +1,9 @@
 /* The copyright in this software is being made available under the BSD
  * License, included below. This software may be subject to other third party
  * and contributor rights, including patent rights, and no such rights are
- * granted under this license.  
+ * granted under this license.
  *
- * Copyright (c) 2010-2014, ITU/ISO/IEC
+ * Copyright (c) 2010-2015, ITU/ISO/IEC
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -35,8 +35,8 @@
     \brief    class for handling bitstream (header)
 */
 
-#ifndef __COMBITSTREAM__
-#define __COMBITSTREAM__
+#ifndef __TCOMBITSTREAM__
+#define __TCOMBITSTREAM__
 
 #if _MSC_VER > 1000
 #pragma once
@@ -45,27 +45,25 @@
 #include <stdint.h>
 #include <vector>
 #include <stdio.h>
-#include <assert.h>
 #include "CommonDef.h"
 
-#if QC_AC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
 #include <fstream>
 #include <iostream>
 using namespace std;
 #include "ContextTables.h"
 #endif
-
 //! \ingroup TLibCommon
 //! \{
 
 // ====================================================================================================================
 // Class definition
 // ====================================================================================================================
-#if QC_AC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
 class TComStats
 {
 public:
-#if INIT_PREVFRAME
+#if VCEG_AZ07_INIT_PREVFRAME
   TComStats(UInt uiNLCUW, UInt uiNLCUH);
 #else
   TComStats();
@@ -76,13 +74,13 @@ public:
   UInt   m_uiNumCtx[3][NUM_QP_PROB];
   UChar  m_uiCtxCodeIdx[3][NUM_QP_PROB][MAX_NUM_CTX_MOD];
   QPFlag aaQPUsed[3][NUM_QP_PROB];
-#if INIT_PREVFRAME
+
+#if VCEG_AZ07_INIT_PREVFRAME
   UShort** m_uiCtxProbIdx[2][NUM_QP_PROB]; //[B/PSlice][QPindex][NUM_LCU][MAX_NUM_CTX_MOD]
   UInt     m_uiLastIPOC;
 #endif
 };
 #endif
-
 /// pure virtual class for basic bit handling
 class TComBitIf
 {
@@ -91,9 +89,10 @@ public:
   virtual Void        writeAlignZero        () {};
   virtual Void        write                 ( UInt uiBits, UInt uiNumberOfBits )  = 0;
   virtual Void        resetBits             ()                                    = 0;
-  virtual UInt getNumberOfWrittenBits() const = 0;
-#if QC_AC_ADAPT_WDOW
-  virtual TComStats* getStatsHandle         ()                                    = 0;
+  virtual UInt        getNumberOfWrittenBits() const = 0;
+  virtual Int         getNumBitsUntilByteAligned() const = 0;
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
+  virtual TComStats*  getStatsHandle            () = 0;
 #endif 
   virtual ~TComBitIf() {}
 };
@@ -111,13 +110,13 @@ class TComOutputBitstream : public TComBitIf
    *  - &fifo.front() to get a pointer to the data array.
    *    NB, this pointer is only valid until the next push_back()/clear()
    */
-  std::vector<uint8_t> *m_fifo;
+  std::vector<uint8_t> m_fifo;
 
   UInt m_num_held_bits; /// number of bits not flushed to bytestream.
   UChar m_held_bits; /// the bits held and not flushed to bytestream.
                              /// this value is always msb-aligned, bigendian.
-#if QC_AC_ADAPT_WDOW
-  TComStats*                      m_pcStats;                     ///< class
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
+  TComStats*  m_pcStats;     ///< class
 #endif 
 
 public:
@@ -139,7 +138,7 @@ public:
   Void        writeAlignZero  ();
 
   /** this function should never be called */
-  void resetBits() { assert(0); }
+  Void resetBits() { assert(0); }
 
   // utility functions
 
@@ -165,34 +164,35 @@ public:
    * returns the number of bits that need to be written to
    * achieve byte alignment.
    */
-  Int getNumBitsUntilByteAligned() { return (8 - m_num_held_bits) & 0x7; }
+  Int getNumBitsUntilByteAligned() const { return (8 - m_num_held_bits) & 0x7; }
 
   /**
    * Return the number of bits that have been written since the last clear()
    */
-  UInt getNumberOfWrittenBits() const { return UInt(m_fifo->size()) * 8 + m_num_held_bits; }
+  UInt getNumberOfWrittenBits() const { return UInt(m_fifo.size()) * 8 + m_num_held_bits; }
 
-  void insertAt(const TComOutputBitstream& src, UInt pos);
+  Void insertAt(const TComOutputBitstream& src, UInt pos);
 
   /**
    * Return a reference to the internal fifo
    */
-  std::vector<uint8_t>& getFIFO() { return *m_fifo; }
+  std::vector<uint8_t>& getFIFO() { return m_fifo; }
 
   UChar getHeldBits  ()          { return m_held_bits;          }
 
-  TComOutputBitstream& operator= (const TComOutputBitstream& src);
+  //TComOutputBitstream& operator= (const TComOutputBitstream& src);
   /** Return a reference to the internal fifo */
-  std::vector<uint8_t>& getFIFO() const { return *m_fifo; }
+  const std::vector<uint8_t>& getFIFO() const { return m_fifo; }
 
   Void          addSubstream    ( TComOutputBitstream* pcSubstream );
   Void writeByteAlignment();
 
   //! returns the number of start code emulations contained in the current buffer
   Int countStartCodeEmulations();
-#if QC_AC_ADAPT_WDOW
-  Void setStatsHandle ( TComStats*  pcStats)  {m_pcStats=pcStats;}
-  TComStats* getStatsHandle ()  {return m_pcStats;}
+
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
+  Void setStatsHandle ( TComStats*  pcStats)  { m_pcStats = pcStats; }
+  TComStats* getStatsHandle ()                { return    m_pcStats; }
 #endif 
 };
 
@@ -202,10 +202,10 @@ public:
  */
 class TComInputBitstream
 {
-  std::vector<uint8_t> *m_fifo; /// FIFO for storage of complete bytes
-  std::vector<UInt> m_emulationPreventionByteLocation;
-
 protected:
+  std::vector<uint8_t> m_fifo; /// FIFO for storage of complete bytes
+  std::vector<UInt>    m_emulationPreventionByteLocation;
+
   UInt m_fifo_idx; /// Read index into m_fifo
 
   UInt m_num_held_bits;
@@ -214,29 +214,30 @@ protected:
 
 public:
   /**
-   * Create a new bitstream reader object that reads from #buf#.  Ownership
-   * of #buf# remains with the callee, although the constructed object
-   * will hold a reference to #buf#
+   * Create a new bitstream reader object that reads from buf.
    */
-  TComInputBitstream(std::vector<uint8_t>* buf);
-  ~TComInputBitstream();
+  TComInputBitstream();
+  virtual ~TComInputBitstream() { }
+  TComInputBitstream(const TComInputBitstream &src);
+
+  Void resetToStart();
 
   // interface for decoding
   Void        pseudoRead      ( UInt uiNumberOfBits, UInt& ruiBits );
   Void        read            ( UInt uiNumberOfBits, UInt& ruiBits );
   Void        readByte        ( UInt &ruiBits )
   {
-    assert(m_fifo_idx < m_fifo->size());
-    ruiBits = (*m_fifo)[m_fifo_idx++];
+    assert(m_fifo_idx < m_fifo.size());
+    ruiBits = m_fifo[m_fifo_idx++];
   }
-  
+
   Void        peekPreviousByte( UInt &byte )
   {
     assert(m_fifo_idx > 0);
-    byte = (*m_fifo)[m_fifo_idx - 1];
+    byte = m_fifo[m_fifo_idx - 1];
   }
-  
-  Void        readOutTrailingBits ();
+
+  UInt        readOutTrailingBits ();
   UChar getHeldBits  ()          { return m_held_bits;          }
   TComOutputBitstream& operator= (const TComOutputBitstream& src);
   UInt  getByteLocation              ( )                     { return m_fifo_idx                    ; }
@@ -248,18 +249,20 @@ public:
   UInt read(UInt numberOfBits) { UInt tmp; read(numberOfBits, tmp); return tmp; }
   UInt     readByte() { UInt tmp; readByte( tmp ); return tmp; }
   UInt getNumBitsUntilByteAligned() { return m_num_held_bits & (0x7); }
-  UInt getNumBitsLeft() { return 8*((UInt)m_fifo->size() - m_fifo_idx) + m_num_held_bits; }
+  UInt getNumBitsLeft() { return 8*((UInt)m_fifo.size() - m_fifo_idx) + m_num_held_bits; }
   TComInputBitstream *extractSubstream( UInt uiNumBits ); // Read the nominated number of bits, and return as a bitstream.
-  Void                deleteFifo(); // Delete internal fifo of bitstream.
   UInt  getNumBitsRead() { return m_numBitsRead; }
-  Void readByteAlignment();
+  UInt readByteAlignment();
 
-  Void      pushEmulationPreventionByteLocation ( UInt pos )                  { m_emulationPreventionByteLocation.push_back( pos ); }
-  UInt      numEmulationPreventionBytesRead     ()                            { return (UInt) m_emulationPreventionByteLocation.size();    }
-  std::vector<UInt>  getEmulationPreventionByteLocation  ()                   { return m_emulationPreventionByteLocation;           }
-  UInt      getEmulationPreventionByteLocation  ( UInt idx )                  { return m_emulationPreventionByteLocation[ idx ];    }
-  Void      clearEmulationPreventionByteLocation()                            { m_emulationPreventionByteLocation.clear();          }
-  Void      setEmulationPreventionByteLocation  ( std::vector<UInt> vec )     { m_emulationPreventionByteLocation = vec;            }
+  Void      pushEmulationPreventionByteLocation ( UInt pos )                         { m_emulationPreventionByteLocation.push_back( pos ); }
+  UInt      numEmulationPreventionBytesRead     ()                                   { return (UInt) m_emulationPreventionByteLocation.size();    }
+  const std::vector<UInt> &getEmulationPreventionByteLocation  () const              { return m_emulationPreventionByteLocation;           }
+  UInt      getEmulationPreventionByteLocation  ( UInt idx )                         { return m_emulationPreventionByteLocation[ idx ];    }
+  Void      clearEmulationPreventionByteLocation()                                   { m_emulationPreventionByteLocation.clear();          }
+  Void      setEmulationPreventionByteLocation  ( const std::vector<UInt> &vec )     { m_emulationPreventionByteLocation = vec;            }
+
+  const std::vector<uint8_t> &getFifo() const { return m_fifo; }
+        std::vector<uint8_t> &getFifo()       { return m_fifo; }
 };
 
 //! \}

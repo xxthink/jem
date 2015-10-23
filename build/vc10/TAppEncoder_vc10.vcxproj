@@ -170,10 +170,12 @@
     <ClCompile Include="..\..\source\App\TAppEncoder\encmain.cpp" />
     <ClCompile Include="..\..\source\App\TAppEncoder\TAppEncCfg.cpp" />
     <ClCompile Include="..\..\source\App\TAppEncoder\TAppEncTop.cpp" />
+    <ClCompile Include="..\..\source\Lib\TLibEncoder\TEncAdaptiveLoopFilter.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\App\TAppEncoder\TAppEncCfg.h" />
     <ClInclude Include="..\..\source\App\TAppEncoder\TAppEncTop.h" />
+    <ClInclude Include="..\..\source\Lib\TLibEncoder\TEncAdaptiveLoopFilter.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="TAppCommon_vc10.vcxproj">

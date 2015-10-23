@@ -1,9 +1,9 @@
 /* The copyright in this software is being made available under the BSD
  * License, included below. This software may be subject to other third party
  * and contributor rights, including patent rights, and no such rights are
- * granted under this license.  
+ * granted under this license.
  *
- * Copyright (c) 2010-2014, ITU/ISO/IEC
+ * Copyright (c) 2010-2015, ITU/ISO/IEC
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -46,14 +46,7 @@ using namespace std;
 // ====================================================================================================================
 // Public member functions
 // ====================================================================================================================
-
-/**
- - initialize context model with respect to QP and initialization value
- .
- \param  qp         input QP value
- \param  initValue  8 bit initialization value
- */
-#if QC_AC_ADAPT_WDOW || MULTI_PARAM_CABAC
+#if VCEG_AZ07_BAC_ADAPT_WDOW  || VCEG_AZ05_MULTI_PARAM_CABAC 
 const UShort m_MappedProb[128] =
 { 
    614,    647,    681,    718,    756,    797,    839,    884,    932,    982,   1034,   1089,   1148,   1209,   1274,   1342,
@@ -66,7 +59,12 @@ const UShort m_MappedProb[128] =
  31425,  31493,  31558,  31619,  31678,  31733,  31785,  31835,  31883,  31928,  31970,  32011,  32049,  32086,  32120,  32153,
 };
 #endif
-
+/**
+ - initialize context model with respect to QP and initialization value
+ .
+ \param  qp         input QP value
+ \param  initValue  8 bit initialization value
+ */
 Void ContextModel::init( Int qp, Int initValue )
 {
   qp = Clip3(0, 51, qp);
@@ -74,10 +72,10 @@ Void ContextModel::init( Int qp, Int initValue )
   Int  slope      = (initValue>>4)*5 - 45;
   Int  offset     = ((initValue&15)<<3)-16;
   Int  initState  =  min( max( 1, ( ( ( slope * qp ) >> 4 ) + offset ) ), 126 );
-#if QC_AC_ADAPT_WDOW || MULTI_PARAM_CABAC
-  iP1 = m_MappedProb[initState];
-  m_ucWdow = ALPHA0;
-#if MULTI_PARAM_CABAC
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ05_MULTI_PARAM_CABAC
+  iP1             = m_MappedProb[initState];
+  m_ucWdow        = ALPHA0;
+#if VCEG_AZ05_MULTI_PARAM_CABAC
   iP0 = m_MappedProb[initState];
 #endif
 #else
@@ -86,8 +84,8 @@ Void ContextModel::init( Int qp, Int initValue )
 #endif
 }
 
-#if !QC_AC_ADAPT_WDOW && !MULTI_PARAM_CABAC
-const UChar ContextModel::m_aucNextStateMPS[ 128 ] =
+#if !VCEG_AZ07_BAC_ADAPT_WDOW && !VCEG_AZ05_MULTI_PARAM_CABAC
+const UChar ContextModel::m_aucNextStateMPS[ ContextModel::m_totalStates ] =
 {
   2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
   18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33,
@@ -99,7 +97,7 @@ const UChar ContextModel::m_aucNextStateMPS[ 128 ] =
   114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 124, 125, 126, 127
 };
 
-const UChar ContextModel::m_aucNextStateLPS[ 128 ] =
+const UChar ContextModel::m_aucNextStateLPS[ ContextModel::m_totalStates ] =
 {
   1, 0, 0, 1, 2, 3, 4, 5, 4, 5, 8, 9, 8, 9, 10, 11,
   12, 13, 14, 15, 16, 17, 18, 19, 18, 19, 22, 23, 22, 23, 24, 25,
@@ -112,11 +110,11 @@ const UChar ContextModel::m_aucNextStateLPS[ 128 ] =
 };
 
 #if FAST_BIT_EST
-UChar ContextModel::m_nextState[128][2];
+UChar ContextModel::m_nextState[ ContextModel::m_totalStates ][2 /*MPS = [0|1]*/];
 
 Void ContextModel::buildNextStateTable()
 {
-  for (Int i = 0; i < 128; i++)
+  for (Int i = 0; i < ContextModel::m_totalStates; i++)
   {
     for (Int j = 0; j < 2; j++)
     {
@@ -126,7 +124,7 @@ Void ContextModel::buildNextStateTable()
 }
 #endif
 
-const Int ContextModel::m_entropyBits[128] =
+const Int ContextModel::m_entropyBits[ ContextModel::m_totalStates ] =
 {
 #if FAST_BIT_EST
   // Corrected table, most notably for last state

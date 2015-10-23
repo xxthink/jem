@@ -1,9 +1,9 @@
 /* The copyright in this software is being made available under the BSD
  * License, included below. This software may be subject to other third party
  * and contributor rights, including patent rights, and no such rights are
- * granted under this license.  
+ * granted under this license.
  *
- * Copyright (c) 2010-2014, ITU/ISO/IEC
+ * Copyright (c) 2010-2015, ITU/ISO/IEC
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -37,8 +37,11 @@
 
 #include "TEncBinCoderCABAC.h"
 #include "TLibCommon/TComRom.h"
-#include <cstring>
+#include "TLibCommon/Debug.h"
 
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+#include <string.h>
+#endif
 //! \ingroup TLibEncoder
 //! \{
 
@@ -49,8 +52,8 @@ TEncBinCABAC::TEncBinCABAC()
 #if FAST_BIT_EST
 , m_fracBits( 0 )
 #endif
-#if QC_AC_ADAPT_WDOW && ENABLE_ADAPTIVE_W
-, m_bUpdateStr(false)
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+, m_bUpdateStr( false )
 #endif
 {
 }
@@ -58,47 +61,7 @@ TEncBinCABAC::TEncBinCABAC()
 TEncBinCABAC::~TEncBinCABAC()
 {
 }
-#if QC_AC_ADAPT_WDOW && ENABLE_ADAPTIVE_W
-Void TEncBinCABAC::freeMemoryforBinStrings ()
-{
-  if(m_iCounter)     
-  {
-    free(m_iCounter);
-    m_iCounter = NULL;
-  }
-  if (m_pbCodedString)
-  {
-    if (m_pbCodedString[0])
-      free (m_pbCodedString[0]); 
-    free (m_pbCodedString);
-    m_pbCodedString = NULL;
-  }
-}
-Void TEncBinCABAC::allocateMemoryforBinStrings()
-{
-  setUpdateStr(true);
-  if((m_iCounter = (Int*)calloc(NUM_CTX_PBSLICE, sizeof(Int))) == NULL)
-  {
-    printf("get_mem2Dpel: array2D");
-    exit(-1);
-  }
-  memset(m_iCounter, 0, NUM_CTX_PBSLICE*sizeof(Int));
 
-  if((m_pbCodedString = (Bool**) calloc(NUM_CTX_PBSLICE, sizeof(Bool*))) == NULL)
-  {
-    printf("get_mem2Dpel: array2D");
-    exit(-1);
-  }
-  if((m_pbCodedString[0] = (Bool* )calloc(NUM_CTX_PBSLICE*CABAC_NUM_BINS,sizeof(Bool ))) == NULL)
-  {
-    printf("get_mem2Dpel: array2D");
-    exit(-1);
-  }
-
-  for(Int k=1 ; k<NUM_CTX_PBSLICE ; k++)
-    m_pbCodedString[k] =  m_pbCodedString[k-1] + CABAC_NUM_BINS  ;
-}
-#endif
 Void TEncBinCABAC::init( TComBitIf* pcTComBitIf )
 {
   m_pcTComBitIf = pcTComBitIf;
@@ -116,6 +79,9 @@ Void TEncBinCABAC::start()
   m_bitsLeft         = 23;
   m_numBufferedBytes = 0;
   m_bufferedByte     = 0xff;
+#if FAST_BIT_EST
+  m_fracBits         = 0;
+#endif
 }
 
 Void TEncBinCABAC::finish()
@@ -142,7 +108,7 @@ Void TEncBinCABAC::finish()
     {
       m_pcTComBitIf->write( 0xff, 8 );
       m_numBufferedBytes--;
-    }    
+    }
   }
   m_pcTComBitIf->write( m_uiLow >> 8, 24 - m_bitsLeft );
 }
@@ -185,9 +151,9 @@ Void TEncBinCABAC::xWritePCMCode(UInt uiCode, UInt uiLength)
   m_pcTComBitIf->write(uiCode, uiLength);
 }
 
-Void TEncBinCABAC::copyState( TEncBinIf* pcTEncBinIf )
+Void TEncBinCABAC::copyState( const TEncBinIf* pcTEncBinIf )
 {
-  TEncBinCABAC* pcTEncBinCABAC = pcTEncBinIf->getTEncBinCABAC();
+  const TEncBinCABAC* pcTEncBinCABAC = pcTEncBinIf->getTEncBinCABAC();
   m_uiLow           = pcTEncBinCABAC->m_uiLow;
   m_uiRange         = pcTEncBinCABAC->m_uiRange;
   m_bitsLeft        = pcTEncBinCABAC->m_bitsLeft;
@@ -224,12 +190,12 @@ UInt TEncBinCABAC::getNumWrittenBits()
  * \param binValue   bin value
  * \param rcCtxModel context model
  */
-#if QC_AC_ADAPT_WDOW || MULTI_PARAM_CABAC  
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ05_MULTI_PARAM_CABAC 
 Void TEncBinCABAC::encodeBin( UInt binValue, ContextModel &rcCtxModel )
 {
+#if !VCEG_AZ05_MULTI_PARAM_CABAC
   m_uiBinsCoded += m_binCountIncrement;
   rcCtxModel.setBinsCoded( 1 );
-#if QC_AC_ADAPT_WDOW && ENABLE_ADAPTIVE_W
   UInt uiCtxIdx = rcCtxModel.getIdx();
   if(m_bUpdateStr && m_iCounter[uiCtxIdx] < CABAC_NUM_BINS)
   {
@@ -238,18 +204,6 @@ Void TEncBinCABAC::encodeBin( UInt binValue, ContextModel &rcCtxModel )
   }
 #endif
   UShort uiLPS = TComCABACTables::sm_aucLPSTable[rcCtxModel.getState()>>6][(m_uiRange>>2)-64];
-#if DEBUG
-  {
-    DTRACE_CABAC_VL( g_nSymbolCounter++ )
-    DTRACE_CABAC_T( "\tstate=" )
-    DTRACE_CABAC_V( rcCtxModel.getState() )
-    DTRACE_CABAC_T( "\tLPS=" )
-    DTRACE_CABAC_V( uiLPS )
-    DTRACE_CABAC_T( "\tRange=" )
-    DTRACE_CABAC_V( m_uiRange )
-    DTRACE_CABAC_T( "\n" )
-  }
-#endif
   m_uiRange    -= uiLPS;
 
   if( binValue == 0 )
@@ -285,43 +239,56 @@ Void TEncBinCABAC::encodeBin( UInt binValue, ContextModel &rcCtxModel )
 #else
 Void TEncBinCABAC::encodeBin( UInt binValue, ContextModel &rcCtxModel )
 {
-  {
-    DTRACE_CABAC_VL( g_nSymbolCounter++ )
-    DTRACE_CABAC_T( "\tstate=" )
-    DTRACE_CABAC_V( ( rcCtxModel.getState() << 1 ) + rcCtxModel.getMps() )
-    DTRACE_CABAC_T( "\tsymbol=" )
-    DTRACE_CABAC_V( binValue )
-    DTRACE_CABAC_T( "\n" )
-  }
+#if DEBUG_CABAC_BINS
+  const UInt startingRange = m_uiRange;
+#endif
+
   m_uiBinsCoded += m_binCountIncrement;
   rcCtxModel.setBinsCoded( 1 );
-  
+
   UInt  uiLPS   = TComCABACTables::sm_aucLPSTable[ rcCtxModel.getState() ][ ( m_uiRange >> 6 ) & 3 ];
   m_uiRange    -= uiLPS;
-  
+
   if( binValue != rcCtxModel.getMps() )
   {
     Int numBits = TComCABACTables::sm_aucRenormTable[ uiLPS >> 3 ];
     m_uiLow     = ( m_uiLow + m_uiRange ) << numBits;
     m_uiRange   = uiLPS << numBits;
     rcCtxModel.updateLPS();
-    
     m_bitsLeft -= numBits;
+    testAndWriteOut();
   }
   else
   {
     rcCtxModel.updateMPS();
-    if ( m_uiRange >= 256 )
+
+    if ( m_uiRange < 256 )
     {
-      return;
+      m_uiLow <<= 1;
+      m_uiRange <<= 1;
+      m_bitsLeft--;
+      testAndWriteOut();
     }
-    
-    m_uiLow <<= 1;
-    m_uiRange <<= 1;
-    m_bitsLeft--;
   }
-  
-  testAndWriteOut();
+
+#if DEBUG_CABAC_BINS
+  if ((g_debugCounter + debugCabacBinWindow) >= debugCabacBinTargetLine)
+  {
+    std::cout << g_debugCounter << ": coding bin value " << binValue << ", range = [" << startingRange << "->" << m_uiRange << "]\n";
+  }
+
+  if (g_debugCounter >= debugCabacBinTargetLine)
+  {
+    Char breakPointThis;
+    breakPointThis = 7;
+  }
+  if (g_debugCounter >= (debugCabacBinTargetLine + debugCabacBinWindow))
+  {
+    exit(0);
+  }
+
+  g_debugCounter++;
+#endif
 }
 #endif
 
@@ -332,22 +299,21 @@ Void TEncBinCABAC::encodeBin( UInt binValue, ContextModel &rcCtxModel )
  */
 Void TEncBinCABAC::encodeBinEP( UInt binValue )
 {
-#if !DEBUG 
-  {
-    DTRACE_CABAC_VL( g_nSymbolCounter++ )
-    DTRACE_CABAC_T( "\tEPsymbol=" )
-    DTRACE_CABAC_V( binValue )
-    DTRACE_CABAC_T( "\n" )
-  }
-#endif
   m_uiBinsCoded += m_binCountIncrement;
+
+  if (m_uiRange == 256)
+  {
+    encodeAlignedBinsEP(binValue, 1);
+    return;
+  }
+
   m_uiLow <<= 1;
   if( binValue )
   {
     m_uiLow += m_uiRange;
   }
   m_bitsLeft--;
-  
+
   testAndWriteOut();
 }
 
@@ -360,32 +326,72 @@ Void TEncBinCABAC::encodeBinEP( UInt binValue )
 Void TEncBinCABAC::encodeBinsEP( UInt binValues, Int numBins )
 {
   m_uiBinsCoded += numBins & -m_binCountIncrement;
- #if !DEBUG  
-  for ( Int i = 0; i < numBins; i++ )
+
+  if (m_uiRange == 256)
   {
-    DTRACE_CABAC_VL( g_nSymbolCounter++ )
-    DTRACE_CABAC_T( "\tEPsymbol=" )
-    DTRACE_CABAC_V( ( binValues >> ( numBins - 1 - i ) ) & 1 )
-    DTRACE_CABAC_T( "\n" )
+    encodeAlignedBinsEP(binValues, numBins);
+    return;
   }
-#endif
+
   while ( numBins > 8 )
   {
     numBins -= 8;
-    UInt pattern = binValues >> numBins; 
+    UInt pattern = binValues >> numBins;
     m_uiLow <<= 8;
     m_uiLow += m_uiRange * pattern;
     binValues -= pattern << numBins;
     m_bitsLeft -= 8;
-    
+
     testAndWriteOut();
   }
-  
+
   m_uiLow <<= numBins;
   m_uiLow += m_uiRange * binValues;
   m_bitsLeft -= numBins;
-  
+
   testAndWriteOut();
+}
+
+Void TEncBinCABAC::align()
+{
+  m_uiRange = 256;
+}
+
+Void TEncBinCABAC::encodeAlignedBinsEP( UInt binValues, Int numBins )
+{
+  Int binsRemaining = numBins;
+
+  assert(m_uiRange == 256); //aligned encode only works when range = 256
+
+  while (binsRemaining > 0)
+  {
+    const UInt binsToCode = std::min<UInt>(binsRemaining, 8); //code bytes if able to take advantage of the system's byte-write function
+    const UInt binMask    = (1 << binsToCode) - 1;
+
+    const UInt newBins = (binValues >> (binsRemaining - binsToCode)) & binMask;
+
+    //The process of encoding an EP bin is the same as that of coding a normal
+    //bin where the symbol ranges for 1 and 0 are both half the range:
+    //
+    //  low = (low + range/2) << 1       (to encode a 1)
+    //  low =  low            << 1       (to encode a 0)
+    //
+    //  i.e.
+    //  low = (low + (bin * range/2)) << 1
+    //
+    //  which is equivalent to:
+    //
+    //  low = (low << 1) + (bin * range)
+    //
+    //  this can be generalised for multiple bins, producing the following expression:
+    //
+    m_uiLow = (m_uiLow << binsToCode) + (newBins << 8); //range is known to be 256
+
+    binsRemaining -= binsToCode;
+    m_bitsLeft    -= binsToCode;
+
+    testAndWriteOut();
+  }
 }
 
 /**
@@ -412,9 +418,9 @@ Void TEncBinCABAC::encodeBinTrm( UInt binValue )
   {
     m_uiLow   <<= 1;
     m_uiRange <<= 1;
-    m_bitsLeft--;    
+    m_bitsLeft--;
   }
-  
+
   testAndWriteOut();
 }
 
@@ -434,7 +440,7 @@ Void TEncBinCABAC::writeOut()
   UInt leadByte = m_uiLow >> (24 - m_bitsLeft);
   m_bitsLeft += 8;
   m_uiLow &= 0xffffffffu >> m_bitsLeft;
-  
+
   if ( leadByte == 0xff )
   {
     m_numBufferedBytes++;
@@ -447,7 +453,7 @@ Void TEncBinCABAC::writeOut()
       UInt byte = m_bufferedByte + carry;
       m_bufferedByte = leadByte & 0xff;
       m_pcTComBitIf->write( byte, 8 );
-      
+
       byte = ( 0xff + carry ) & 0xff;
       while ( m_numBufferedBytes > 1 )
       {
@@ -459,8 +465,52 @@ Void TEncBinCABAC::writeOut()
     {
       m_numBufferedBytes = 1;
       m_bufferedByte = leadByte;
-    }      
-  }    
+    }
+  }
 }
+
+#if VCEG_AZ07_BAC_ADAPT_WDOW
+Void TEncBinCABAC::freeMemoryforBinStrings ()
+{
+  if(m_iCounter)     
+  {
+    free(m_iCounter);
+    m_iCounter = NULL;
+  }
+  if (m_pbCodedString)
+  {
+    if (m_pbCodedString[0])
+    {
+      free (m_pbCodedString[0]); 
+    }
+    free (m_pbCodedString);
+    m_pbCodedString = NULL;
+  }
+}
+Void TEncBinCABAC::allocateMemoryforBinStrings()
+{
+  setUpdateStr(true);
+  if((m_iCounter = (Int*)calloc(NUM_CTX_PBSLICE, sizeof(Int))) == NULL)
+  {
+    printf("get_mem2Dpel: array2D");
+    exit(-1);
+  }
+  memset(m_iCounter, 0, NUM_CTX_PBSLICE*sizeof(Int));
+
+  if((m_pbCodedString = (Bool**) calloc(NUM_CTX_PBSLICE, sizeof(Bool*))) == NULL)
+  {
+    printf("get_mem2Dpel: array2D");
+    exit(-1);
+  }
+  if((m_pbCodedString[0] = (Bool* )calloc(NUM_CTX_PBSLICE*CABAC_NUM_BINS,sizeof(Bool ))) == NULL)
+  {
+    printf("get_mem2Dpel: array2D");
+    exit(-1);
+  }
+
+  for(Int k=1 ; k<NUM_CTX_PBSLICE ; k++)
+    m_pbCodedString[k] =  m_pbCodedString[k-1] + CABAC_NUM_BINS  ;
+}
+#endif
 
 //! \}

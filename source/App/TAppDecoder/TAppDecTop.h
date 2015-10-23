@@ -1,9 +1,9 @@
 /* The copyright in this software is being made available under the BSD
  * License, included below. This software may be subject to other third party
  * and contributor rights, including patent rights, and no such rights are
- * granted under this license.  
+ * granted under this license.
  *
- * Copyright (c) 2010-2014, ITU/ISO/IEC
+ * Copyright (c) 2010-2015, ITU/ISO/IEC
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -62,32 +62,33 @@ private:
   // class interface
   TDecTop                         m_cTDecTop;                     ///< decoder class
   TVideoIOYuv                     m_cTVideoIOYuvReconFile;        ///< reconstruction YUV class
-  
-  // for output control
-  Int                             m_iPOCLastDisplay;              ///< last POC in display order
-  
-public:
-#if QC_AC_ADAPT_WDOW
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
   TComStats*                      m_apcStats;                     
 #endif
+  // for output control
+  Int                             m_iPOCLastDisplay;              ///< last POC in display order
+  std::ofstream                   m_seiMessageFileStream;         ///< Used for outputing SEI messages.
 
+public:
   TAppDecTop();
   virtual ~TAppDecTop() {}
-  
+
   Void  create            (); ///< create internal members
   Void  destroy           (); ///< destroy internal members
   Void  decode            (); ///< main decoding function
-  
+  UInt  getNumberOfChecksumErrorsDetected() const { return m_cTDecTop.getNumberOfChecksumErrorsDetected(); }
+
 protected:
   Void  xCreateDecLib     (); ///< create internal classes
   Void  xDestroyDecLib    (); ///< destroy internal classes
   Void  xInitDecLib       (); ///< initialize decoder class
-  
+
   Void  xWriteOutput      ( TComList<TComPic*>* pcListPic , UInt tId); ///< write YUV to file
   Void  xFlushOutput      ( TComList<TComPic*>* pcListPic ); ///< flush all remaining decoded pictures to file
   Bool  isNaluWithinTargetDecLayerIdSet ( InputNALUnit* nalu ); ///< check whether given Nalu is within targetDecLayerIdSet
 };
 
 //! \}
+
 #endif
 

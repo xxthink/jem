@@ -1,9 +1,9 @@
 /* The copyright in this software is being made available under the BSD
  * License, included below. This software may be subject to other third party
  * and contributor rights, including patent rights, and no such rights are
- * granted under this license.  
+ * granted under this license.
  *
- * Copyright (c) 2010-2014, ITU/ISO/IEC
+ * Copyright (c) 2010-2015, ITU/ISO/IEC
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -45,138 +45,198 @@
 // ====================================================================================================================
 // Constants
 // ====================================================================================================================
-#if QC_AC_ADAPT_WDOW
-#define MAX_NUM_CTX_MOD             384   ///< number of context models for last coefficient position
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
+#define MAX_NUM_CTX_MOD             384       ///< number of context models for last coefficient position
 #else
 #define MAX_NUM_CTX_MOD             512       ///< maximum number of supported contexts
 #endif
 
-#if QC_LARGE_CTU
+#if COM16_C806_LARGE_CTU
 #define NUM_SPLIT_FLAG_CTX            5       ///< number of context models for split flag
 #else
 #define NUM_SPLIT_FLAG_CTX            3       ///< number of context models for split flag
 #endif
 #define NUM_SKIP_FLAG_CTX             3       ///< number of context models for skip flag
-#if CU_LEVEL_MPI
- #define NUM_MPI_CTX                  2       /// < number of context models for MPI Idx coding
+
+#if VCEG_AZ05_INTRA_MPI
+#define NUM_MPI_CTX                   2       /// < number of context models for MPI Idx coding
 #endif
-#if ROT_TR
+#if VCEG_AZ05_ROT_TR
  #define NUM_ROT_TR_CTX               7       /// < number of context models for ROT Idx coding
 #endif
-#if QC_IMV
-#define NUM_IMV_FLAG_CTX              3       ///< number of context models for iMV flag
-#endif
-#if QC_OBMC
-#define NUM_OBMC_FLAG_CTX             1       ///< number of context models for OBMC flag
-#endif
 #define NUM_MERGE_FLAG_EXT_CTX        1       ///< number of context models for merge flag of merge extended
-#if GEN_MRG_IMPROVEMENT
-#if QC_SUB_PU_TMVP_EXT
+#if COM16_C806_GEN_MRG_IMPROVEMENT
 #define NUM_MERGE_IDX_EXT_CTX         5       ///< number of context models for merge index of merge extended
-#else
-#define NUM_MERGE_IDX_EXT_CTX         4       ///< number of context models for merge index of merge extended
-#endif
 #else
 #define NUM_MERGE_IDX_EXT_CTX         1       ///< number of context models for merge index of merge extended
 #endif
+#if COM16_C806_OBMC
+#define NUM_OBMC_FLAG_CTX             1       ///< number of context models for OBMC flag
+#endif
 
-#if QC_FRUC_MERGE
+#if VCEG_AZ07_IMV
+#define NUM_IMV_FLAG_CTX              3       ///< number of context models for iMV flag
+#endif
+#if VCEG_AZ07_FRUC_MERGE
 #define NUM_FRUCMGRMODE_CTX           3
 #define NUM_FRUCME_CTX                3
 #endif
-
-#if QC_EMT
-#define NUM_EMT_TU_IDX_CTX            4
-#if QC_LARGE_CTU
-#define NUM_EMT_CU_FLAG_CTX           6
-#else
-#define NUM_EMT_CU_FLAG_CTX           4
-#endif
-#endif
-#if QC_IC
+#if VCEG_AZ06_IC
 #define NUM_IC_FLAG_CTX               1       ///< number of context models for illumination compensation flag
 #endif
 
 #define NUM_PART_SIZE_CTX             4       ///< number of context models for partition size
 #define NUM_PRED_MODE_CTX             1       ///< number of context models for prediction mode
 
-#if QC_USE_65ANG_MODES
-#define NUM_ADI_CTX                   9       ///< number of context models for intra prediction
+#if VCEG_AZ07_INTRA_65ANG_MODES
+#define NUM_INTRA_PREDICT_CTX         9       ///< number of context models for intra prediction
 #else
-#define NUM_ADI_CTX                   1       ///< number of context models for intra prediction
+#define NUM_INTRA_PREDICT_CTX         1       ///< number of context models for intra prediction
 #endif
 
 #define NUM_CHROMA_PRED_CTX           2       ///< number of context models for intra prediction (chroma)
 #define NUM_INTER_DIR_CTX             5       ///< number of context models for inter prediction direction
 #define NUM_MV_RES_CTX                2       ///< number of context models for motion vector difference
+#define NUM_CHROMA_QP_ADJ_FLAG_CTX    1       ///< number of context models for chroma_qp_adjustment_flag
+#define NUM_CHROMA_QP_ADJ_IDC_CTX     1       ///< number of context models for chroma_qp_adjustment_idc
 
 #define NUM_REF_NO_CTX                2       ///< number of context models for reference index
-#if QC_T64
+#if COM16_C806_T64
 #define NUM_TRANS_SUBDIV_FLAG_CTX     4       ///< number of context models for transform subdivision flags
 #else
 #define NUM_TRANS_SUBDIV_FLAG_CTX     3       ///< number of context models for transform subdivision flags
 #endif
-#define NUM_QT_CBF_CTX                4       ///< number of context models for QT CBF
 #define NUM_QT_ROOT_CBF_CTX           1       ///< number of context models for QT ROOT CBF
 #define NUM_DELTA_QP_CTX              3       ///< number of context models for dQP
 
 #define NUM_SIG_CG_FLAG_CTX           2       ///< number of context models for MULTI_LEVEL_SIGNIFICANCE
+#define NUM_EXPLICIT_RDPCM_FLAG_CTX   1       ///< number of context models for the flag which specifies whether to use RDPCM on inter coded residues
+#define NUM_EXPLICIT_RDPCM_DIR_CTX    1       ///< number of context models for the flag which specifies which RDPCM direction is used on inter coded residues
 
-#if QC_CTX_RESIDUALCODING
-#define NUM_SIG_FLAG_CTX              66      ///< number of context models for sig flag
+//--------------------------------------------------------------------------------------------------
+
+// context size definitions for significance map
+#if VCEG_AZ07_CTX_RESIDUALCODING
 #define NUM_SIG_FLAG_CTX_LUMA         54      ///< number of context models for luma sig flag
 #define NUM_SIG_FLAG_CTX_CHROMA       12      ///< number of context models for chroma sig flag
 #define NUM_SIG_FLAG_CTX_LUMA_TU      18      ///< number of context models for luma sig flag per TU
 #else
-#define NUM_SIG_FLAG_CTX              42      ///< number of context models for sig flag
-#define NUM_SIG_FLAG_CTX_LUMA         27      ///< number of context models for luma sig flag
-#define NUM_SIG_FLAG_CTX_CHROMA       15      ///< number of context models for chroma sig flag
-#endif
+#define NUM_SIG_FLAG_CTX_LUMA        28       ///< number of context models for luma sig flag
+#define NUM_SIG_FLAG_CTX_CHROMA      16       ///< number of context models for chroma sig flag
 
-#if QC_T64
+//                                                                                                           |----Luma-----|  |---Chroma----|
+static const UInt significanceMapContextSetStart         [MAX_NUM_CHANNEL_TYPE][CONTEXT_NUMBER_OF_TYPES] = { {0,  9, 21, 27}, {0,  9, 12, 15} }; 
+static const UInt significanceMapContextSetSize          [MAX_NUM_CHANNEL_TYPE][CONTEXT_NUMBER_OF_TYPES] = { {9, 12,  6,  1}, {9,  3,  3,  1} };
+static const UInt nonDiagonalScan8x8ContextOffset        [MAX_NUM_CHANNEL_TYPE]                          = {  6,               0              };
+static const UInt notFirstGroupNeighbourhoodContextOffset[MAX_NUM_CHANNEL_TYPE]                          = {  3,               0              };
+
+//------------------
+
+#define NEIGHBOURHOOD_00_CONTEXT_1_THRESHOLD_4x4  3
+#define NEIGHBOURHOOD_00_CONTEXT_2_THRESHOLD_4x4  1
+
+//------------------
+
+#define FIRST_SIG_FLAG_CTX_LUMA                   0
+#define FIRST_SIG_FLAG_CTX_CHROMA     (FIRST_SIG_FLAG_CTX_LUMA + NUM_SIG_FLAG_CTX_LUMA)
+#endif
+#define NUM_SIG_FLAG_CTX              (NUM_SIG_FLAG_CTX_LUMA + NUM_SIG_FLAG_CTX_CHROMA)       ///< number of context models for sig flag
+
+//--------------------------------------------------------------------------------------------------
+
+// context size definitions for last significant coefficient position
+
+#define NUM_CTX_LAST_FLAG_SETS         2
+
+#if COM16_C806_T64
 #define NUM_CTX_LAST_FLAG_XY          19      ///< number of context models for last coefficient position
 #else
 #define NUM_CTX_LAST_FLAG_XY          15      ///< number of context models for last coefficient position
 #endif
 
-#if QC_CTX_RESIDUALCODING
-#define NUM_ONE_FLAG_CTX              22      ///< number of context models for greater than one
-#define NUM_ONE_FLAG_CTX_LUMA         16      ///< number of context models for greater than one of luma
-#define NUM_ONE_FLAG_CTX_CHROMA        6      ///< number of context models for greater than one of chroma
-#else
-#define NUM_ONE_FLAG_CTX              24      ///< number of context models for greater than 1 flag
-#define NUM_ONE_FLAG_CTX_LUMA         16      ///< number of context models for greater than 1 flag of luma
-#define NUM_ONE_FLAG_CTX_CHROMA        8      ///< number of context models for greater than 1 flag of chroma
+//--------------------------------------------------------------------------------------------------
 
-#define NUM_ABS_FLAG_CTX               6      ///< number of context models for greater than 2 flag
-#define NUM_ABS_FLAG_CTX_LUMA          4      ///< number of context models for greater than 2 flag of luma
-#define NUM_ABS_FLAG_CTX_CHROMA        2      ///< number of context models for greater than 2 flag of chroma
+// context size definitions for greater-than-one and greater-than-two maps
+#if !VCEG_AZ07_CTX_RESIDUALCODING
+#define NUM_ONE_FLAG_CTX_PER_SET       4      ///< number of context models for greater than 1 flag in a set
+#define NUM_ABS_FLAG_CTX_PER_SET       1      ///< number of context models for greater than 2 flag in a set
+
+//------------------
+
+#define NUM_CTX_SETS_LUMA              4      ///< number of context model sets for luminance
+#define NUM_CTX_SETS_CHROMA            2      ///< number of context model sets for combined chrominance
+
+#define FIRST_CTX_SET_LUMA             0      ///< index of first luminance context set
 #endif
+//------------------
+
+#if VCEG_AZ07_CTX_RESIDUALCODING
+#define NUM_ONE_FLAG_CTX_LUMA          16
+#define NUM_ONE_FLAG_CTX_CHROMA        6                                                       ///< number of context models for greater than 1 flag of chroma
+#else
+#define NUM_ONE_FLAG_CTX_LUMA         (NUM_ONE_FLAG_CTX_PER_SET * NUM_CTX_SETS_LUMA)           ///< number of context models for greater than 1 flag of luma
+#define NUM_ONE_FLAG_CTX_CHROMA       (NUM_ONE_FLAG_CTX_PER_SET * NUM_CTX_SETS_CHROMA)         ///< number of context models for greater than 1 flag of chroma
+
+#define NUM_ABS_FLAG_CTX_LUMA         (NUM_ABS_FLAG_CTX_PER_SET * NUM_CTX_SETS_LUMA)           ///< number of context models for greater than 2 flag of luma
+#define NUM_ABS_FLAG_CTX_CHROMA       (NUM_ABS_FLAG_CTX_PER_SET * NUM_CTX_SETS_CHROMA)         ///< number of context models for greater than 2 flag of chroma
+#endif
+
+#define NUM_ONE_FLAG_CTX              (NUM_ONE_FLAG_CTX_LUMA + NUM_ONE_FLAG_CTX_CHROMA)        ///< number of context models for greater than 1 flag
+#if !VCEG_AZ07_CTX_RESIDUALCODING
+#define NUM_ABS_FLAG_CTX              (NUM_ABS_FLAG_CTX_LUMA + NUM_ABS_FLAG_CTX_CHROMA)        ///< number of context models for greater than 2 flag
+
+
+#define FIRST_CTX_SET_CHROMA          (FIRST_CTX_SET_LUMA + NUM_CTX_SETS_LUMA)                 ///< index of first chrominance context set
+#endif
+//--------------------------------------------------------------------------------------------------
+
+// context size definitions for CBF
+
+#define NUM_QT_CBF_CTX_SETS           2
+
+#define NUM_QT_CBF_CTX_PER_SET        5       ///< number of context models for QT CBF
+
+#define FIRST_CBF_CTX_LUMA            0       ///< index of first luminance CBF context
+
+#define FIRST_CBF_CTX_CHROMA          (FIRST_CBF_CTX_LUMA + NUM_QT_CBF_CTX_PER_SET)  ///< index of first chrominance CBF context
+
+
+//--------------------------------------------------------------------------------------------------
 
 #define NUM_MVP_IDX_CTX               1       ///< number of context models for MVP index
 
 #define NUM_SAO_MERGE_FLAG_CTX        1       ///< number of context models for SAO merge flags
 #define NUM_SAO_TYPE_IDX_CTX          1       ///< number of context models for SAO type index
 
-#define NUM_TRANSFORMSKIP_FLAG_CTX    1       ///< number of context models for transform skipping 
-#define NUM_CU_TRANSQUANT_BYPASS_FLAG_CTX  1 
+#define NUM_TRANSFORMSKIP_FLAG_CTX    1       ///< number of context models for transform skipping
 
-#if ALF_HM3_QC_REFACTOR
+#define NUM_CU_TRANSQUANT_BYPASS_FLAG_CTX  1
+
+#define NUM_CROSS_COMPONENT_PREDICTION_CTX 10
+
+#if ALF_HM3_REFACTOR
 #define NUM_ALF_CTRL_FLAG_CTX         3       ///< number of context models for ALF control flag
 #define NUM_ALF_FLAG_CTX              1       ///< number of context models for ALF flag
 #define NUM_ALF_UVLC_CTX              2       ///< number of context models for ALF UVLC (filter length)
 #define NUM_ALF_SVLC_CTX              3       ///< number of context models for ALF SVLC (filter coeff.)
 #endif
-#if QC_AC_ADAPT_WDOW
-#define NUM_QP_PROB                  5
-#if !ALF_HM3_QC_REFACTOR
-#define NUM_ALF_CTX                  0
+
+#if COM16_C806_EMT
+#define NUM_EMT_TU_IDX_CTX            4       ///< number of context models for EMT TU-level transform index
+#if COM16_C806_LARGE_CTU
+#define NUM_EMT_CU_FLAG_CTX           6       ///< number of context models for EMT CU-level flag
 #else
-#define NUM_ALF_CTX                   (NUM_ALF_CTRL_FLAG_CTX+NUM_ALF_FLAG_CTX+NUM_ALF_UVLC_CTX+NUM_ALF_SVLC_CTX)
+#define NUM_EMT_CU_FLAG_CTX           4       ///< number of context models for EMT CU-level flag
 #endif
+#endif
+
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
+#define NUM_QP_PROB                  5                //could be set to N (N>5, depending on the allowed QPs in a coded sequence)
 #define NUM_CTX_PBSLICE              MAX_NUM_CTX_MOD //could be set to the exact number of used contexts later
 #endif
+
 #define CNU                          154      ///< dummy initialization value for unused context models 'Context model Not Used'
+
 
 // ====================================================================================================================
 // Tables
@@ -184,48 +244,46 @@
 
 // initial probability for cu_transquant_bypass flag
 static const UChar
-INIT_CU_TRANSQUANT_BYPASS_FLAG[3][NUM_CU_TRANSQUANT_BYPASS_FLAG_CTX] =
+INIT_CU_TRANSQUANT_BYPASS_FLAG[NUMBER_OF_SLICE_TYPES][NUM_CU_TRANSQUANT_BYPASS_FLAG_CTX] =
 {
-  { 154 }, 
-  { 154 }, 
-  { 154 }, 
+  { 154 },
+  { 154 },
+  { 154 },
 };
 
 // initial probability for split flag
-static const UChar 
-#if QC_LARGE_CTU
-  INIT_SPLIT_FLAG[3][NUM_SPLIT_FLAG_CTX] =  
+static const UChar
+INIT_SPLIT_FLAG[NUMBER_OF_SLICE_TYPES][NUM_SPLIT_FLAG_CTX] =  
 {
+#if COM16_C806_LARGE_CTU
   { 107,  139,  126, 255, 0, },
   { 107,  139,  126, 255, 0, }, 
   { 139,  141,  157, 255, 0, }, 
-};
 #else
-INIT_SPLIT_FLAG[3][NUM_SPLIT_FLAG_CTX] =  
-{
   { 107,  139,  126, },
   { 107,  139,  126, }, 
   { 139,  141,  157, }, 
-};
 #endif
+};
 
-static const UChar 
-INIT_SKIP_FLAG[3][NUM_SKIP_FLAG_CTX] =  
+static const UChar
+INIT_SKIP_FLAG[NUMBER_OF_SLICE_TYPES][NUM_SKIP_FLAG_CTX] =
 {
-  { 197,  185,  201, }, 
-  { 197,  185,  201, }, 
-  { CNU,  CNU,  CNU, }, 
+  { 197,  185,  201, },
+  { 197,  185,  201, },
+  { CNU,  CNU,  CNU, },
 };
-#if CU_LEVEL_MPI
-static const UChar 
-INIT_MPIIdx_FLAG[3][NUM_MPI_CTX] =  
+
+#if VCEG_AZ05_INTRA_MPI
+static const UChar
+INIT_MPIIdx_FLAG[NUMBER_OF_SLICE_TYPES][NUM_MPI_CTX] =
 {
-  { 107,107 }, 
-  { 107,107 }, 
-  { 139,139 }, 
+  { 107, 107 },
+  { 107, 107 },
+  { 139, 139 },
 };
 #endif
-#if ROT_TR
+#if VCEG_AZ05_ROT_TR
 static const UChar 
 INIT_ROT_TR_IDX[3][NUM_ROT_TR_CTX] =  
 {
@@ -234,9 +292,49 @@ INIT_ROT_TR_IDX[3][NUM_ROT_TR_CTX] =
   { 139,139,139,139,139,139,139 }, 
 };
 #endif
-#if QC_IMV
+static const UChar
+INIT_MERGE_FLAG_EXT[NUMBER_OF_SLICE_TYPES][NUM_MERGE_FLAG_EXT_CTX] =
+{
+  { 154, },
+  { 110, },
+  { CNU, },
+};
+
+static const UChar
+INIT_MERGE_IDX_EXT[NUMBER_OF_SLICE_TYPES][NUM_MERGE_IDX_EXT_CTX] =
+{
+#if COM16_C806_GEN_MRG_IMPROVEMENT
+  { 137, CNU, CNU, CNU, CNU}, 
+  { 122, CNU, CNU, CNU, CNU}, 
+  { CNU, CNU, CNU, CNU, CNU}, 
+#else
+  { 137, },
+  { 122, },
+  { CNU, },
+#endif
+};
+
+#if VCEG_AZ07_FRUC_MERGE
+static const UChar
+  INIT_FRUCMGRMODEBIN1[NUMBER_OF_SLICE_TYPES][NUM_FRUCMGRMODE_CTX] = 
+{
+  { 197,  185,  201 }, 
+  { 197,  185,  201 }, 
+  { CNU,  CNU,  CNU }, 
+};
+
+static const UChar
+  INIT_FRUCMGRMODEBIN2[NUMBER_OF_SLICE_TYPES][NUM_FRUCME_CTX] = 
+{
+  { 197,  185,  201 }, 
+  { 197,  185,  201 }, 
+  { CNU,  CNU,  CNU }, 
+};
+#endif
+
+#if VCEG_AZ07_IMV
 static const UChar 
-  INIT_IMV_FLAG[3][NUM_IMV_FLAG_CTX] =
+  INIT_IMV_FLAG[NUMBER_OF_SLICE_TYPES][NUM_IMV_FLAG_CTX] =
 {
   { 197,  185,  201, }, 
   { 197,  185,  201, }, 
@@ -244,9 +342,9 @@ static const UChar
 };
 #endif
 
-#if QC_OBMC
+#if COM16_C806_OBMC
 static const UChar 
-INIT_OBMC_FLAG[3][NUM_OBMC_FLAG_CTX] =  
+INIT_OBMC_FLAG[NUMBER_OF_SLICE_TYPES][NUM_OBMC_FLAG_CTX] =  
 {
   { 201, }, 
   { 201, }, 
@@ -254,9 +352,9 @@ INIT_OBMC_FLAG[3][NUM_OBMC_FLAG_CTX] =
 };
 #endif
 
-#if QC_IC
+#if VCEG_AZ06_IC
 static const UChar 
-INIT_IC_FLAG[3][NUM_IC_FLAG_CTX] =  
+INIT_IC_FLAG[NUMBER_OF_SLICE_TYPES][NUM_IC_FLAG_CTX] =  
 {
   { 154 },
   { 154 },
@@ -265,317 +363,309 @@ INIT_IC_FLAG[3][NUM_IC_FLAG_CTX] =
 #endif
 
 static const UChar
-INIT_MERGE_FLAG_EXT[3][NUM_MERGE_FLAG_EXT_CTX] = 
+INIT_PART_SIZE[NUMBER_OF_SLICE_TYPES][NUM_PART_SIZE_CTX] =
 {
-  { 154, }, 
-  { 110, }, 
-  { CNU, }, 
-};
-
-static const UChar 
-INIT_MERGE_IDX_EXT[3][NUM_MERGE_IDX_EXT_CTX] =  
-{
-#if GEN_MRG_IMPROVEMENT
-#if QC_SUB_PU_TMVP_EXT
-  { 137, CNU, CNU, CNU, CNU}, 
-  { 122, CNU, CNU, CNU, CNU}, 
-  { CNU, CNU, CNU, CNU, CNU}, 
-#else
-  { 137, CNU, CNU, CNU}, 
-  { 122, CNU, CNU, CNU}, 
-  { CNU, CNU, CNU, CNU}, 
-#endif 
-#else
-  { 137, }, 
-  { 122, }, 
-  { CNU, }, 
-#endif
-};
-
-#if QC_FRUC_MERGE
-static const UChar
-  INIT_FRUCMGRMODEBIN1[3][NUM_FRUCMGRMODE_CTX] = 
-{
-  { 197,  185,  201 }, 
-  { 197,  185,  201 }, 
-  { CNU,  CNU,  CNU }, 
+  { 154,  139,  154, 154 },
+  { 154,  139,  154, 154 },
+  { 184,  CNU,  CNU, CNU },
 };
 
 static const UChar
-  INIT_FRUCMGRMODEBIN2[3][NUM_FRUCME_CTX] = 
+INIT_PRED_MODE[NUMBER_OF_SLICE_TYPES][NUM_PRED_MODE_CTX] =
 {
-  { 197,  185,  201 }, 
-  { 197,  185,  201 }, 
-  { CNU,  CNU,  CNU }, 
-};
-#endif
-
-#if QC_EMT
-static const UChar 
-INIT_EMT_TU_IDX[3][NUM_EMT_TU_IDX_CTX] =  
-{
-  { CNU,  CNU, CNU,  CNU },
-  { CNU,  CNU, CNU,  CNU },
-  { CNU,  CNU, CNU,  CNU }, 
-};
-
-static const UChar 
-INIT_EMT_CU_FLAG[3][NUM_EMT_CU_FLAG_CTX] = 
-{
-#if QC_LARGE_CTU
-  { CNU,  CNU, CNU,  CNU,  CNU,  CNU },
-  { CNU,  CNU, CNU,  CNU,  CNU,  CNU },
-  { CNU,  CNU, CNU,  CNU,  CNU,  CNU }, 
-#else
-  { CNU,  CNU, CNU,  CNU },
-  { CNU,  CNU, CNU,  CNU },
-  { CNU,  CNU, CNU,  CNU }, 
-#endif
-};
-#endif
-
-static const UChar 
-INIT_PART_SIZE[3][NUM_PART_SIZE_CTX] =  
-{
-  { 154,  139,  154,  154 },
-  { 154,  139,  154,  154 },
-  { 184,  CNU,  CNU,  CNU },
+  { 134, },
+  { 149, },
+  { CNU, },
 };
 
 static const UChar
-INIT_PRED_MODE[3][NUM_PRED_MODE_CTX] = 
+INIT_INTRA_PRED_MODE[NUMBER_OF_SLICE_TYPES][NUM_INTRA_PREDICT_CTX] =
 {
-  { 134, }, 
-  { 149, }, 
-  { CNU, }, 
-};
-
-static const UChar 
-INIT_INTRA_PRED_MODE[3][NUM_ADI_CTX] = 
-{
-#if QC_USE_65ANG_MODES
+#if VCEG_AZ07_INTRA_65ANG_MODES
   { 183, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU }, 
   { 154, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU }, 
   { 184, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU },
 #else
-  { 183, }, 
-  { 154, }, 
+  { 183, },
+  { 154, },
   { 184, },
 #endif
 };
 
-static const UChar 
-INIT_CHROMA_PRED_MODE[3][NUM_CHROMA_PRED_CTX] = 
+static const UChar
+INIT_CHROMA_PRED_MODE[NUMBER_OF_SLICE_TYPES][NUM_CHROMA_PRED_CTX] =
 {
-  { 152,  139, }, 
-  { 152,  139, }, 
-  {  63,  139, }, 
+  { 152,  139, },
+  { 152,  139, },
+  {  63,  139, },
 };
 
-static const UChar 
-INIT_INTER_DIR[3][NUM_INTER_DIR_CTX] = 
+static const UChar
+INIT_INTER_DIR[NUMBER_OF_SLICE_TYPES][NUM_INTER_DIR_CTX] =
 {
-  {  95,   79,   63,   31,  31, }, 
-  {  95,   79,   63,   31,  31, }, 
-  { CNU,  CNU,  CNU,  CNU, CNU, }, 
+  {  95,   79,   63,   31,  31, },
+  {  95,   79,   63,   31,  31, },
+  { CNU,  CNU,  CNU,  CNU, CNU, },
 };
 
-static const UChar 
-INIT_MVD[3][NUM_MV_RES_CTX] =  
+static const UChar
+INIT_MVD[NUMBER_OF_SLICE_TYPES][NUM_MV_RES_CTX] =
 {
-  { 169,  198, }, 
-  { 140,  198, }, 
-  { CNU,  CNU, }, 
+  { 169,  198, },
+  { 140,  198, },
+  { CNU,  CNU, },
 };
 
-static const UChar 
-INIT_REF_PIC[3][NUM_REF_NO_CTX] =  
+static const UChar
+INIT_REF_PIC[NUMBER_OF_SLICE_TYPES][NUM_REF_NO_CTX] =
 {
-  { 153,  153 }, 
-  { 153,  153 }, 
-  { CNU,  CNU }, 
+  { 153,  153 },
+  { 153,  153 },
+  { CNU,  CNU },
 };
 
-static const UChar 
-INIT_DQP[3][NUM_DELTA_QP_CTX] = 
+static const UChar
+INIT_DQP[NUMBER_OF_SLICE_TYPES][NUM_DELTA_QP_CTX] =
 {
-  { 154,  154,  154, }, 
-  { 154,  154,  154, }, 
-  { 154,  154,  154, }, 
+  { 154,  154,  154, },
+  { 154,  154,  154, },
+  { 154,  154,  154, },
 };
 
-static const UChar 
-INIT_QT_CBF[3][2*NUM_QT_CBF_CTX] =  
+static const UChar
+INIT_CHROMA_QP_ADJ_FLAG[NUMBER_OF_SLICE_TYPES][NUM_CHROMA_QP_ADJ_FLAG_CTX] =
 {
-  { 153,  111,  CNU,  CNU,   149,   92,  167,  154 },
-  { 153,  111,  CNU,  CNU,   149,  107,  167,  154 },
-  { 111,  141,  CNU,  CNU,    94,  138,  182,  154 },
+  { 154, },
+  { 154, },
+  { 154, },
 };
 
-static const UChar 
-INIT_QT_ROOT_CBF[3][NUM_QT_ROOT_CBF_CTX] = 
+static const UChar
+INIT_CHROMA_QP_ADJ_IDC[NUMBER_OF_SLICE_TYPES][NUM_CHROMA_QP_ADJ_IDC_CTX] =
 {
-  {  79, }, 
-  {  79, }, 
-  { CNU, }, 
+  { 154, },
+  { 154, },
+  { 154, },
 };
 
-#if QC_T64
-static const UChar 
-INIT_LAST[3][2*NUM_CTX_LAST_FLAG_XY] =  
+//--------------------------------------------------------------------------------------------------
+
+//Initialisation for CBF
+
+//                                 |---------Luminance---------|
+#define BSLICE_LUMA_CBF_CONTEXT     153,  111,  CNU,  CNU,  CNU
+#define PSLICE_LUMA_CBF_CONTEXT     153,  111,  CNU,  CNU,  CNU
+#define ISLICE_LUMA_CBF_CONTEXT     111,  141,  CNU,  CNU,  CNU
+//                                 |--------Chrominance--------|
+#define BSLICE_CHROMA_CBF_CONTEXT   149,   92,  167,  154,  154
+#define PSLICE_CHROMA_CBF_CONTEXT   149,  107,  167,  154,  154
+#define ISLICE_CHROMA_CBF_CONTEXT    94,  138,  182,  154,  154
+
+
+static const UChar
+INIT_QT_CBF[NUMBER_OF_SLICE_TYPES][NUM_QT_CBF_CTX_SETS * NUM_QT_CBF_CTX_PER_SET] =
 {
-  { 125,  110,  124,  110,   95,   94,  125,  111,  111,   79,  125,  126,  111,  111,   79,  126,  111,  111,   79,
-    108,  123,   93,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,
+  { BSLICE_LUMA_CBF_CONTEXT, BSLICE_CHROMA_CBF_CONTEXT },
+  { PSLICE_LUMA_CBF_CONTEXT, PSLICE_CHROMA_CBF_CONTEXT },
+  { ISLICE_LUMA_CBF_CONTEXT, ISLICE_CHROMA_CBF_CONTEXT },
+};
+
+
+//--------------------------------------------------------------------------------------------------
+
+static const UChar
+INIT_QT_ROOT_CBF[NUMBER_OF_SLICE_TYPES][NUM_QT_ROOT_CBF_CTX] =
+{
+  {  79, },
+  {  79, },
+  { CNU, },
+};
+
+
+//--------------------------------------------------------------------------------------------------
+
+//Initialisation for last-significant-position
+#if VCEG_AZ07_CTX_RESIDUALCODING && !COM16_C806_T64
+//                                           |------------------------------Luminance----------------------------------|
+#define BSLICE_LUMA_LAST_POSITION_CONTEXT     110, 110,  94, 110, 140, 140, 111, 126, 126, 125, 126, 127, 143, 126, 125
+#define PSLICE_LUMA_LAST_POSITION_CONTEXT     111, 125, 124, 111, 111, 111, 111, 126, 126, 110, 111, 141, 127, 111, 125
+#define ISLICE_LUMA_LAST_POSITION_CONTEXT     125,  95, 109, 110, 125, 110, 125, 125, 110, 110, 154, 140, 140, 111, 111
+//                                           |------------------------------Chrominance--------------------------------|
+#define BSLICE_CHROMA_LAST_POSITION_CONTEXT   108, 108,  62, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU
+#define PSLICE_CHROMA_LAST_POSITION_CONTEXT   109,  94,  63, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU
+#define ISLICE_CHROMA_LAST_POSITION_CONTEXT   123,  93,  77, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU
+#else
+//                                           |------------------------------Luminance----------------------------------|
+#define BSLICE_LUMA_LAST_POSITION_CONTEXT     125, 110, 124, 110,  95,  94, 125, 111, 111,  79, 125, 126, 111, 111,  79
+#define PSLICE_LUMA_LAST_POSITION_CONTEXT     125, 110,  94, 110,  95,  79, 125, 111, 110,  78, 110, 111, 111,  95,  94
+#define ISLICE_LUMA_LAST_POSITION_CONTEXT     110, 110, 124, 125, 140, 153, 125, 127, 140, 109, 111, 143, 127, 111,  79
+//                                           |------------------------------Chrominance--------------------------------|
+#define BSLICE_CHROMA_LAST_POSITION_CONTEXT   108, 123,  93, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU
+#define PSLICE_CHROMA_LAST_POSITION_CONTEXT   108, 123, 108, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU
+#define ISLICE_CHROMA_LAST_POSITION_CONTEXT   108, 123,  63, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU
+#endif
+
+#if COM16_C806_T64 
+static const UChar 
+INIT_LAST[NUMBER_OF_SLICE_TYPES][NUM_CTX_LAST_FLAG_SETS * NUM_CTX_LAST_FLAG_XY] =  
+{
+  { BSLICE_LUMA_LAST_POSITION_CONTEXT,    126,  111,  111,   79,
+    BSLICE_CHROMA_LAST_POSITION_CONTEXT,  CNU,  CNU,  CNU,  CNU,
   }, 
-  { 125,  110,   94,  110,   95,   79,  125,  111,  110,   78,  110,  111,  111,   95,   94,  111,  111,   95,   94,
-    108,  123,  108,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,
+  { PSLICE_LUMA_LAST_POSITION_CONTEXT,    111,  111,   95,   94,
+    PSLICE_CHROMA_LAST_POSITION_CONTEXT,  CNU,  CNU,  CNU,  CNU,
   }, 
-  { 110,  110,  124,  125,  140,  153,  125,  127,  140,  109,  111,  143,  127,  111,   79,  143,  127,  111,   79, 
-    108,  123,   63,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,
+  { ISLICE_LUMA_LAST_POSITION_CONTEXT,    143,  127,  111,   79, 
+    ISLICE_CHROMA_LAST_POSITION_CONTEXT,  CNU,  CNU,  CNU,  CNU,
   }, 
 };
 #else
-static const UChar 
-INIT_LAST[3][2*NUM_CTX_LAST_FLAG_XY] =  
+static const UChar
+INIT_LAST[NUMBER_OF_SLICE_TYPES][NUM_CTX_LAST_FLAG_SETS * NUM_CTX_LAST_FLAG_XY] =
 {
-#if QC_CTX_RESIDUALCODING
-  {
-    110, 110,  94, 110, 140, 140, 111, 126, 126, 125, 126, 127, 143, 126, 125,
-    108, 108,  62, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU,    
-  },
-  {
-    111, 125, 124, 111, 111, 111, 111, 126, 126, 110, 111, 141, 127, 111, 125,
-    109,  94,  63, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU,
-    
-  },
-  {
-    125,  95, 109, 110, 125, 110, 125, 125, 110, 110, 154, 140, 140, 111, 111,
-    123,  93,  77, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU,    
-  },
-#else
-  { 125,  110,  124,  110,   95,   94,  125,  111,  111,   79,  125,  126,  111,  111,   79,
-    108,  123,   93,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU, 
-  }, 
-  { 125,  110,   94,  110,   95,   79,  125,  111,  110,   78,  110,  111,  111,   95,   94,
-    108,  123,  108,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,
-  }, 
-  { 110,  110,  124,  125,  140,  153,  125,  127,  140,  109,  111,  143,  127,  111,   79, 
-    108,  123,   63,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU,  CNU, 
-  }, 
-#endif
+  { BSLICE_LUMA_LAST_POSITION_CONTEXT, BSLICE_CHROMA_LAST_POSITION_CONTEXT },
+  { PSLICE_LUMA_LAST_POSITION_CONTEXT, PSLICE_CHROMA_LAST_POSITION_CONTEXT },
+  { ISLICE_LUMA_LAST_POSITION_CONTEXT, ISLICE_CHROMA_LAST_POSITION_CONTEXT },
 };
 #endif
 
-static const UChar 
-INIT_SIG_CG_FLAG[3][2 * NUM_SIG_CG_FLAG_CTX] =  
+//--------------------------------------------------------------------------------------------------
+
+static const UChar
+INIT_SIG_CG_FLAG[NUMBER_OF_SLICE_TYPES][2 * NUM_SIG_CG_FLAG_CTX] =
 {
-#if QC_CTX_RESIDUALCODING
-  {
-    122, 143,
+#if VCEG_AZ07_CTX_RESIDUALCODING
+  { 122, 143,
     91, 141,
   },
-  {
-    78, 111,
+  { 78, 111,
     60, 140,
   },
-  {
-    135, 155,
+  { 135, 155,
     104, 139,
   },
 #else
-  { 121,  140,  
-    61,  154, 
-  }, 
-  { 121,  140, 
-    61,  154, 
-  }, 
-  {  91,  171,  
-    134,  141, 
-  }, 
+  { 121,  140,
+    61,  154,
+  },
+  { 121,  140,
+    61,  154,
+  },
+  {  91,  171,
+    134,  141,
+  },
 #endif
 };
 
-#if QC_CTX_RESIDUALCODING
-static const UChar 
-INIT_SIG_FLAG[3][NUM_SIG_FLAG_CTX] = 
-{
-  {
-    107, 139, 154, 140, 140, 141, 108, 154, 125, 155, 126, 127, 139, 155, 155, 141, 156, 143, //4x4
-    107, 139, 154, 140, 140, 141, 108, 154, 125, 155, 126, 127, 139, 155, 155, 141, 156, 143, //8x8 
-    107, 139, 154, 140, 140, 141, 108, 154, 125, 155, 126, 127, 139, 155, 155, 141, 156, 143, //16x16
-    137, 154, 154, 155, 155, 156, 124, 185, 156, 171, 142, 158,
-  },
-  {
-    121, 167, 153, 139, 154, 140, 137, 168, 139, 154, 169, 155, 167, 169, 169, 184, 199, 156, 
-    121, 167, 153, 139, 154, 140, 137, 168, 139, 154, 169, 155, 167, 169, 169, 184, 199, 156,
-    121, 167, 153, 139, 154, 140, 137, 168, 139, 154, 169, 155, 167, 169, 169, 184, 199, 156,
 
-    136, 153, 139, 154, 125, 140, 122, 154, 184, 185, 171, 157,
-  },
-  {
-    152, 139, 154, 154, 169, 155, 182, 154, 169, 184, 155, 141, 168, 214, 199, 170, 170, 171, 
-    152, 139, 154, 154, 169, 155, 182, 154, 169, 184, 155, 141, 168, 214, 199, 170, 170, 171, 
-    152, 139, 154, 154, 169, 155, 182, 154, 169, 184, 155, 141, 168, 214, 199, 170, 170, 171, 
+//--------------------------------------------------------------------------------------------------
 
-    167, 154, 169, 140, 155, 141, 153, 171, 185, 156, 171, 172,
-  },
-};
-static const UChar 
-INIT_ONE_FLAG[3][NUM_ONE_FLAG_CTX] = 
-{
-  {
-    121, 135, 123, 124, 139, 125,  92, 124, 154, 125, 155, 138, 169, 155, 170, 156, 166, 152, 140, 170, 171, 157,
-  },
-  {
-    165,  75, 152, 153, 139, 154, 121, 138, 139, 154, 140, 167, 183, 169, 170, 156, 193, 181, 169, 170, 171, 172,
-  },
-  {
-    196, 105, 152, 153, 139, 154, 136, 138, 139, 169, 140, 196, 183, 169, 170, 171, 195, 181, 169, 170, 156, 157,
-  },
-};
+//Initialisation for significance map
+#if VCEG_AZ07_CTX_RESIDUALCODING 
+//                                          |-------------------------------------------- 4x4 ---------------------------------------|-------------------------------------------- 8x8 ---------------------------------------|-------------------------------------------- 16x16&above---------------------------------|
+#define BSLICE_LUMA_SIGNIFICANCE_CONTEXT     107, 139, 154, 140, 140, 141, 108, 154, 125, 155, 126, 127, 139, 155, 155, 141, 156, 143, 107, 139, 154, 140, 140, 141, 108, 154, 125, 155, 126, 127, 139, 155, 155, 141, 156, 143, 107, 139, 154, 140, 140, 141, 108, 154, 125, 155, 126, 127, 139, 155, 155, 141, 156, 143
+#define PSLICE_LUMA_SIGNIFICANCE_CONTEXT     121, 167, 153, 139, 154, 140, 137, 168, 139, 154, 169, 155, 167, 169, 169, 184, 199, 156, 121, 167, 153, 139, 154, 140, 137, 168, 139, 154, 169, 155, 167, 169, 169, 184, 199, 156, 121, 167, 153, 139, 154, 140, 137, 168, 139, 154, 169, 155, 167, 169, 169, 184, 199, 156
+#define ISLICE_LUMA_SIGNIFICANCE_CONTEXT     152, 139, 154, 154, 169, 155, 182, 154, 169, 184, 155, 141, 168, 214, 199, 170, 170, 171, 152, 139, 154, 154, 169, 155, 182, 154, 169, 184, 155, 141, 168, 214, 199, 170, 170, 171, 152, 139, 154, 154, 169, 155, 182, 154, 169, 184, 155, 141, 168, 214, 199, 170, 170, 171
+
+#define BSLICE_CHROMA_SIGNIFICANCE_CONTEXT   137, 154, 154, 155, 155, 156, 124, 185, 156, 171, 142, 158
+#define PSLICE_CHROMA_SIGNIFICANCE_CONTEXT   136, 153, 139, 154, 125, 140, 122, 154, 184, 185, 171, 157
+#define ISLICE_CHROMA_SIGNIFICANCE_CONTEXT   167, 154, 169, 140, 155, 141, 153, 171, 185, 156, 171, 172
+
 #else
-static const UChar 
-INIT_SIG_FLAG[3][NUM_SIG_FLAG_CTX] = 
+//                                          |-DC-|  |-----------------4x4------------------|  |------8x8 Diagonal Scan------|  |----8x8 Non-Diagonal Scan----|  |-NxN First group-|  |-NxN Other group-| |-Single context-|
+//                                          |    |  |                                      |  |-First Group-| |-Other Group-|  |-First Group-| |-Other Group-|  |                 |  |                 | |                |
+#define BSLICE_LUMA_SIGNIFICANCE_CONTEXT     170,    154, 139, 153, 139, 123, 123,  63, 124,   166, 183, 140,  136, 153, 154,   166, 183, 140,  136, 153, 154,   166,   183,   140,   136,   153,   154,        140
+#define PSLICE_LUMA_SIGNIFICANCE_CONTEXT     155,    154, 139, 153, 139, 123, 123,  63, 153,   166, 183, 140,  136, 153, 154,   166, 183, 140,  136, 153, 154,   166,   183,   140,   136,   153,   154,        140
+#define ISLICE_LUMA_SIGNIFICANCE_CONTEXT     111,    111, 125, 110, 110,  94, 124, 108, 124,   107, 125, 141,  179, 153, 125,   107, 125, 141,  179, 153, 125,   107,   125,   141,   179,   153,   125,        141
+
+//                                          |-DC-|  |-----------------4x4------------------|  |-8x8 Any group-|  |-NxN Any group-| |-Single context-|
+#define BSLICE_CHROMA_SIGNIFICANCE_CONTEXT   170,    153, 138, 138, 122, 121, 122, 121, 167,   151,  183,  140,   151,  183,  140,        140
+#define PSLICE_CHROMA_SIGNIFICANCE_CONTEXT   170,    153, 123, 123, 107, 121, 107, 121, 167,   151,  183,  140,   151,  183,  140,        140
+#define ISLICE_CHROMA_SIGNIFICANCE_CONTEXT   140,    139, 182, 182, 152, 136, 152, 136, 153,   136,  139,  111,   136,  139,  111,        111
+#endif
+//------------------------------------------------
+
+static const UChar
+INIT_SIG_FLAG[NUMBER_OF_SLICE_TYPES][NUM_SIG_FLAG_CTX] =
 {
-  { 170,  154,  139,  153,  139,  123,  123,   63,  124,  166,  183,  140,  136,  153,  154,  166,  183,  140,  136,  153,  154,  166,  183,  140,  136,  153,  154,  170,  153,  138,  138,  122,  121,  122,  121,  167,  151,  183,  140,  151,  183,  140,  }, 
-  { 155,  154,  139,  153,  139,  123,  123,   63,  153,  166,  183,  140,  136,  153,  154,  166,  183,  140,  136,  153,  154,  166,  183,  140,  136,  153,  154,  170,  153,  123,  123,  107,  121,  107,  121,  167,  151,  183,  140,  151,  183,  140,  }, 
-  { 111,  111,  125,  110,  110,   94,  124,  108,  124,  107,  125,  141,  179,  153,  125,  107,  125,  141,  179,  153,  125,  107,  125,  141,  179,  153,  125,  140,  139,  182,  182,  152,  136,  152,  136,  153,  136,  139,  111,  136,  139,  111,  }, 
+  { BSLICE_LUMA_SIGNIFICANCE_CONTEXT, BSLICE_CHROMA_SIGNIFICANCE_CONTEXT },
+  { PSLICE_LUMA_SIGNIFICANCE_CONTEXT, PSLICE_CHROMA_SIGNIFICANCE_CONTEXT },
+  { ISLICE_LUMA_SIGNIFICANCE_CONTEXT, ISLICE_CHROMA_SIGNIFICANCE_CONTEXT },
 };
 
-static const UChar 
-INIT_ONE_FLAG[3][NUM_ONE_FLAG_CTX] = 
+
+//--------------------------------------------------------------------------------------------------
+
+//Initialisation for greater-than-one flags and greater-than-two flags
+#if VCEG_AZ07_CTX_RESIDUALCODING          
+#define BSLICE_LUMA_ONE_CONTEXT    121, 135, 123, 124, 139, 125,  92, 124, 154, 125, 155, 138, 169, 155, 170, 156
+#define PSLICE_LUMA_ONE_CONTEXT    165,  75, 152, 153, 139, 154, 121, 138, 139, 154, 140, 167, 183, 169, 170, 156
+#define ISLICE_LUMA_ONE_CONTEXT    196, 105, 152, 153, 139, 154, 136, 138, 139, 169, 140, 196, 183, 169, 170, 171
+
+#define BSLICE_CHROMA_ONE_CONTEXT  166, 152, 140, 170, 171, 157
+#define PSLICE_CHROMA_ONE_CONTEXT  193, 181, 169, 170, 171, 172
+#define ISLICE_CHROMA_ONE_CONTEXT  195, 181, 169, 170, 156, 157
+#else
+//                                 |------Set 0-------| |------Set 1-------| |------Set 2-------| |------Set 3-------|
+#define BSLICE_LUMA_ONE_CONTEXT     154, 196, 167, 167,  154, 152, 167, 182,  182, 134, 149, 136,  153, 121, 136, 122
+#define PSLICE_LUMA_ONE_CONTEXT     154, 196, 196, 167,  154, 152, 167, 182,  182, 134, 149, 136,  153, 121, 136, 137
+#define ISLICE_LUMA_ONE_CONTEXT     140,  92, 137, 138,  140, 152, 138, 139,  153,  74, 149,  92,  139, 107, 122, 152
+
+
+#define BSLICE_LUMA_ABS_CONTEXT     107,                 167,                  91,                 107
+#define PSLICE_LUMA_ABS_CONTEXT     107,                 167,                  91,                 122
+#define ISLICE_LUMA_ABS_CONTEXT     138,                 153,                 136,                 167
+
+//                                 |------Set 4-------| |------Set 5-------|
+#define BSLICE_CHROMA_ONE_CONTEXT   169, 208, 166, 167,  154, 152, 167, 182
+#define PSLICE_CHROMA_ONE_CONTEXT   169, 194, 166, 167,  154, 167, 137, 182
+#define ISLICE_CHROMA_ONE_CONTEXT   140, 179, 166, 182,  140, 227, 122, 197
+
+#define BSLICE_CHROMA_ABS_CONTEXT   107,                 167
+#define PSLICE_CHROMA_ABS_CONTEXT   107,                 167
+#define ISLICE_CHROMA_ABS_CONTEXT   152,                 152
+#endif
+
+//------------------------------------------------
+
+static const UChar
+INIT_ONE_FLAG[NUMBER_OF_SLICE_TYPES][NUM_ONE_FLAG_CTX] =
 {
-  { 154,  196,  167,  167,  154,  152,  167,  182,  182,  134,  149,  136,  153,  121,  136,  122,  169,  208,  166,  167,  154,  152,  167,  182, }, 
-  { 154,  196,  196,  167,  154,  152,  167,  182,  182,  134,  149,  136,  153,  121,  136,  137,  169,  194,  166,  167,  154,  167,  137,  182, }, 
-  { 140,   92,  137,  138,  140,  152,  138,  139,  153,   74,  149,   92,  139,  107,  122,  152,  140,  179,  166,  182,  140,  227,  122,  197, }, 
+  { BSLICE_LUMA_ONE_CONTEXT, BSLICE_CHROMA_ONE_CONTEXT },
+  { PSLICE_LUMA_ONE_CONTEXT, PSLICE_CHROMA_ONE_CONTEXT },
+  { ISLICE_LUMA_ONE_CONTEXT, ISLICE_CHROMA_ONE_CONTEXT },
 };
 
-static const UChar 
-INIT_ABS_FLAG[3][NUM_ABS_FLAG_CTX] =  
+#if !VCEG_AZ07_CTX_RESIDUALCODING 
+static const UChar
+INIT_ABS_FLAG[NUMBER_OF_SLICE_TYPES][NUM_ABS_FLAG_CTX] =
 {
-  { 107,  167,   91,  107,  107,  167, }, 
-  { 107,  167,   91,  122,  107,  167, }, 
-  { 138,  153,  136,  167,  152,  152, }, 
+  { BSLICE_LUMA_ABS_CONTEXT, BSLICE_CHROMA_ABS_CONTEXT },
+  { PSLICE_LUMA_ABS_CONTEXT, PSLICE_CHROMA_ABS_CONTEXT },
+  { ISLICE_LUMA_ABS_CONTEXT, ISLICE_CHROMA_ABS_CONTEXT },
 };
 #endif
-static const UChar 
-INIT_MVP_IDX[3][NUM_MVP_IDX_CTX] =  
+
+//--------------------------------------------------------------------------------------------------
+
+static const UChar
+INIT_MVP_IDX[NUMBER_OF_SLICE_TYPES][NUM_MVP_IDX_CTX] =
 {
-  { 168 },
-  { 168 },
-  { CNU }, 
+  { 168, },
+  { 168, },
+  { CNU, },
 };
 
-static const UChar 
-INIT_SAO_MERGE_FLAG[3][NUM_SAO_MERGE_FLAG_CTX] = 
+static const UChar
+INIT_SAO_MERGE_FLAG[NUMBER_OF_SLICE_TYPES][NUM_SAO_MERGE_FLAG_CTX] =
 {
-  { 153,  }, 
-  { 153,  }, 
-  { 153,  }, 
+  { 153,  },
+  { 153,  },
+  { 153,  },
 };
 
-static const UChar 
-INIT_SAO_TYPE_IDX[3][NUM_SAO_TYPE_IDX_CTX] = 
+static const UChar
+INIT_SAO_TYPE_IDX[NUMBER_OF_SLICE_TYPES][NUM_SAO_TYPE_IDX_CTX] =
 {
   { 160, },
   { 185, },
@@ -583,30 +673,60 @@ INIT_SAO_TYPE_IDX[3][NUM_SAO_TYPE_IDX_CTX] =
 };
 
 static const UChar
-INIT_TRANS_SUBDIV_FLAG[3][NUM_TRANS_SUBDIV_FLAG_CTX] =
+INIT_TRANS_SUBDIV_FLAG[NUMBER_OF_SLICE_TYPES][NUM_TRANS_SUBDIV_FLAG_CTX] =
 {
-#if QC_T64
-  { 224,  167,  122, 122 },
-  { 124,  138,   94,  94 },
-  { 153,  138,  138, 138 },
-#else
-  { 224,  167,  122, },
-  { 124,  138,   94, },
-  { 153,  138,  138, },
+  { 224,  167,  122,
+#if COM16_C806_T64
+  122
 #endif
+  },
+  { 124,  138,   94,
+#if COM16_C806_T64
+  94
+#endif
+   },
+  { 153,  138,  138,
+#if COM16_C806_T64
+  138
+#endif
+   },
 };
 
 static const UChar
-INIT_TRANSFORMSKIP_FLAG[3][2*NUM_TRANSFORMSKIP_FLAG_CTX] = 
+INIT_TRANSFORMSKIP_FLAG[NUMBER_OF_SLICE_TYPES][2*NUM_TRANSFORMSKIP_FLAG_CTX] =
 {
-  { 139,  139}, 
-  { 139,  139}, 
-  { 139,  139}, 
+  { 139,  139},
+  { 139,  139},
+  { 139,  139},
 };
 
-#if ALF_HM3_QC_REFACTOR
 static const UChar
-INIT_ALF_CTRL_FLAG[3][NUM_ALF_CTRL_FLAG_CTX] =
+INIT_EXPLICIT_RDPCM_FLAG[NUMBER_OF_SLICE_TYPES][2*NUM_EXPLICIT_RDPCM_FLAG_CTX] =
+{
+  {139, 139},
+  {139, 139},
+  {CNU, CNU}
+};
+
+static const UChar
+INIT_EXPLICIT_RDPCM_DIR[NUMBER_OF_SLICE_TYPES][2*NUM_EXPLICIT_RDPCM_DIR_CTX] =
+{
+  {139, 139},
+  {139, 139},
+  {CNU, CNU}
+};
+
+static const UChar
+INIT_CROSS_COMPONENT_PREDICTION[NUMBER_OF_SLICE_TYPES][NUM_CROSS_COMPONENT_PREDICTION_CTX] =
+{
+  { 154, 154, 154, 154, 154, 154, 154, 154, 154, 154 },
+  { 154, 154, 154, 154, 154, 154, 154, 154, 154, 154 },
+  { 154, 154, 154, 154, 154, 154, 154, 154, 154, 154 },
+};
+
+#if ALF_HM3_REFACTOR
+static const UChar
+  INIT_ALF_CTRL_FLAG[NUMBER_OF_SLICE_TYPES][NUM_ALF_CTRL_FLAG_CTX] =
 {
   { CNU, CNU, CNU },
   { CNU, CNU, CNU },
@@ -615,7 +735,7 @@ INIT_ALF_CTRL_FLAG[3][NUM_ALF_CTRL_FLAG_CTX] =
 
 // initial probability for ALF flag
 static const UChar
-INIT_ALF_FLAG[3][NUM_ALF_FLAG_CTX] =
+  INIT_ALF_FLAG[NUMBER_OF_SLICE_TYPES][NUM_ALF_FLAG_CTX] =
 {
   {240},
   {224},
@@ -624,7 +744,7 @@ INIT_ALF_FLAG[3][NUM_ALF_FLAG_CTX] =
 
 // initial probability for ALF side information (unsigned)
 static const UChar
-INIT_ALF_UVLC[3][NUM_ALF_UVLC_CTX] =
+  INIT_ALF_UVLC[NUMBER_OF_SLICE_TYPES][NUM_ALF_UVLC_CTX] =
 {
   {154, 140},
   {140, 110},
@@ -633,14 +753,38 @@ INIT_ALF_UVLC[3][NUM_ALF_UVLC_CTX] =
 
 // initial probability for ALF side information (signed)
 static const UChar
-INIT_ALF_SVLC[3][NUM_ALF_SVLC_CTX] =
+  INIT_ALF_SVLC[NUMBER_OF_SLICE_TYPES][NUM_ALF_SVLC_CTX] =
 {
   { 185, 185, CNU },
   { CNU, CNU, CNU },
   { CNU, CNU, CNU },
 };
 #endif
-//! \}
 
+#if COM16_C806_EMT
+static const UChar 
+INIT_EMT_TU_IDX[NUMBER_OF_SLICE_TYPES][NUM_EMT_TU_IDX_CTX] =  
+{
+  { CNU,  CNU, CNU,  CNU }, 
+  { CNU,  CNU, CNU,  CNU }, 
+  { CNU,  CNU, CNU,  CNU }, 
+};
+
+static const UChar 
+INIT_EMT_CU_FLAG[NUMBER_OF_SLICE_TYPES][NUM_EMT_CU_FLAG_CTX] = 
+{
+#if COM16_C806_LARGE_CTU
+  { CNU,  CNU, CNU,  CNU, CNU,  CNU },
+  { CNU,  CNU, CNU,  CNU, CNU,  CNU },
+  { CNU,  CNU, CNU,  CNU, CNU,  CNU }, 
+#else
+  { CNU,  CNU, CNU,  CNU },
+  { CNU,  CNU, CNU,  CNU },
+  { CNU,  CNU, CNU,  CNU }, 
+#endif
+};
+#endif
+
+//! \}
 
 #endif

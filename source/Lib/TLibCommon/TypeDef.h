@@ -1,9 +1,9 @@
 /* The copyright in this software is being made available under the BSD
  * License, included below. This software may be subject to other third party
  * and contributor rights, including patent rights, and no such rights are
- * granted under this license.  
+ * granted under this license.
  *
- * Copyright (c) 2010-2014, ITU/ISO/IEC
+ * Copyright (c) 2010-2015, ITU/ISO/IEC
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,330 +32,208 @@
  */
 
 /** \file     TypeDef.h
-    \brief    Define basic types, new types and enumerations
+    \brief    Define macros, basic types, new types and enumerations
 */
 
-#ifndef _TYPEDEF__
-#define _TYPEDEF__
+#ifndef __TYPEDEF__
+#define __TYPEDEF__
+
+#ifndef __COMMONDEF__
+#error Include CommonDef.h not TypeDef.h
+#endif
+
+#include <vector>
 
 //! \ingroup TLibCommon
 //! \{
 
 ///////////////////////////////////////////////////////////
-// Contribution COM16–C806 (QUALCOMM) defines section start
+// KTA tools section start
+///////////////////////////////////////////////////////////
+#define ALF_HM3_REFACTOR                                  1  ///< Adaptive loop filter with 4x4 block activity adaptation 
+#if ALF_HM3_REFACTOR
+#define COM16_C806_ALF_TEMPPRED_NUM                       6  ///< 0: no temporal prediction
+#endif
+
+#define COM16_C806_VCEG_AZ10_SUB_PU_TMVP                  1  ///< CY: sub-block level temporal motion prediction (a.k.a. ATMVP) 
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP                     
+#define COM16_C806_HEVC_MOTION_CONSTRAINT_REMOVAL         1
+#define COM16_C806_DISABLE_4X4_PU                         1
+#define COM16_C806_GEN_MRG_IMPROVEMENT                    1
+#endif
+
+#define COM16_C806_OBMC                                   1  ///< Overlapped Block Motion Compensation (OBMC)
+#if COM16_C806_OBMC
+#define COM16_C806_AOBMC_MAXCUSIZE                        16 //   Maximum CU size which can apply OBMC adaptively, larger CUs always apply OBMC
+#endif
+
+#define COM16_C806_EMT                                    1  ///< Enhanced Multiple Transform (EMT)
+
+#define COM16_C806_T64                                    1  ///< Enable 64x64 Transform
+
+#if COM16_C806_EMT || COM16_C806_T64
+#define COM16_C806_TRANS_PREC                             2  ///< Integer transform matrix precision
+#endif
+
+#define COM16_C806_LARGE_CTU                              1  ///< CTU size larger than 64x64, supporting up to 256x256 CTU size in the software,
+
+#define COM16_C806_LMCHROMA                               1  ///< Cross component prediction: predict chroma from luma or Cr from Cb with linear model
+#if COM16_C806_LMCHROMA
+#define COM16_C806_CR_FROM_CB_LAMBDA_ADJUSTMENT           1
+#endif
+
+#define COM16_C806_SIMD_OPT                               1  ///< SIMD optimization, no impact on RD performance
+
+#define VCEG_AZ07_IMV                                     1  ///< Adaptive MV resolution
+
+#define VCEG_AZ07_FRUC_MERGE                              1  ///< Merge mode based on frame rate up-conversion (FRUC)
+#if VCEG_AZ07_FRUC_MERGE
+#define VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE          1  ///< additional precision bit for MV storage
+#endif
+
+#define VCEG_AZ06_IC                                      1  ///< Illumination Compensation
+#if VCEG_AZ06_IC
+#define VCEG_AZ06_IC_SPEEDUP                              1  //speedup of IC
+#endif
+
+#define VCEG_AZ07_INTRA_4TAP_FILTER                       1 ///< Intra 4-tap interpolation filters
+#define VCEG_AZ07_INTRA_BOUNDARY_FILTER                   1 ///< Intra boundary filtering
+#if VCEG_AZ07_INTRA_BOUNDARY_FILTER
+#define VCEG_AZ07_INTRA_BOUNDARY_FILTER_MULTI_LINE        1 /// 0: Filter one boundary line, 1: Filter 4 boundary lines
+#endif
+
+#define VCEG_AZ07_INTRA_65ANG_MODES                       1 ///< Extended angular intra prediction, including 65 angular modes & 6 MPMs
+
+#define VCEG_AZ07_ECABAC                                  1  /// CABAC improvements
+#if VCEG_AZ07_ECABAC
+#define VCEG_AZ07_CTX_RESIDUALCODING                      1  /// new ctx for residual coding
+#define VCEG_AZ07_BAC_ADAPT_WDOW                          1  /// binary arithmetic code with adaptive window sizes
+#define VCEG_AZ07_INIT_PREVFRAME                          1  /// context states initialized from previously coded frames
+#endif
+
+#define VCEG_AZ05_MULTI_PARAM_CABAC                       1  /// CABAC probability estimation with 2 windows 
+#define VCEG_AZ05_BIO                                     1  /// bi-directional optical flow
+#define VCEG_AZ05_INTRA_MPI                               1  /// Multi-parameter Intra prediction
+#define VCEG_AZ05_ROT_TR                                  1
+///////////////////////////////////////////////////////////
+// KTA tools section end
 ///////////////////////////////////////////////////////////
 
-#define QC_LARGE_CTU                        1  ///< CTU size larger than 64x64, supporting up to 512x512 CTU size in the software,
-#if QC_LARGE_CTU
-#define QC_LARGE_CTU_FAST                   1
+// ====================================================================================================================
+// Debugging
+// ====================================================================================================================
+
+#define DEBUG_STRING                                      0 ///< When enabled, prints out final decision debug info at encoder and decoder
+#define DEBUG_ENCODER_SEARCH_BINS                         0 ///< When enabled, prints out each bin as it is coded during encoder search
+#define DEBUG_CABAC_BINS                                  0 ///< When enabled, prints out each bin as it is coded during final encode and decode
+#define DEBUG_INTRA_SEARCH_COSTS                          0 ///< When enabled, prints out the cost for each mode during encoder search
+#define DEBUG_TRANSFORM_AND_QUANTISE                      0 ///< When enabled, prints out each TU as it passes through the transform-quantise-dequantise-inverseTransform process
+
+#define ENVIRONMENT_VARIABLE_DEBUG_AND_TEST               0 ///< When enabled, allows control of debug modifications via environment variables
+#define PRINT_MACRO_VALUES                                1 ///< When enabled, the encoder prints out a list of the non-environment-variable controlled macros and their values on startup
+
+// TODO: rename this macro to DECODER_DEBUG_BIT_STATISTICS (may currently cause merge issues with other branches)
+// This can be enabled by the makefile
+#ifndef RExt__DECODER_DEBUG_BIT_STATISTICS
+#define RExt__DECODER_DEBUG_BIT_STATISTICS                0 ///< 0 (default) = decoder reports as normal, 1 = decoder produces bit usage statistics (will impact decoder run time by up to ~10%)
 #endif
 
-#define QC_T64                              1  ///< Enable 64x64 Transform
+// This can be enabled by the makefile
+#ifndef ENC_DEC_TRACE
+#define ENC_DEC_TRACE                                     0
+#endif
+#define DEC_NUH_TRACE                                     0 ///< When trace enabled, enable tracing of NAL unit headers at the decoder (currently not possible at the encoder)
 
-#define QC_EMT                              1  ///< Enhanced Multiple Transform (EMT)
-#if QC_EMT
-#define QC_EMT_INTRA                        1  ///< EMT for Intra prediction residual
-#define QC_EMT_INTER                        1  ///< EMT for Inter prediction residual
-#if QC_EMT_INTRA 
-#define QC_EMT_INTRA_MAX_CU                 32 ///< Max Intra CU size applying EMT, supported values: 8, 16, 32
-#define QC_EMT_INTRA_FAST                   1  //   Fast encoder methods of Intra EMT
-#endif
-#if QC_EMT_INTER 
-#define QC_EMT_INTER_MAX_CU                 32 ///< Max Inter CU size applying EMT, supported values: 8, 16, 32
-#define QC_EMT_INTER_FAST                   1  //   Fast encoder methods of Inter EMT
-#endif
-#endif
+#define PRINT_RPS_INFO                                    0 ///< Enable/disable the printing of bits used to send the RPS.
 
-#if QC_EMT || QC_T64
-#define QC_TRANS_PREC                       2  //   Integer transform matrix precision
-#endif
+// ====================================================================================================================
+// Tool Switches - transitory (these macros are likely to be removed in future revisions)
+// ====================================================================================================================
 
-#define QC_SUB_PU_TMVP                      1  ///< CY: sub-block level temporal motion prediction (a.k.a. ATMVP)
-#if QC_SUB_PU_TMVP                     
-#define QC_HEVC_MOTION_CONSTRAINT_REMOVAL   1
-#define QC_DISABLE_4X4_PU                   1
-#define GEN_MRG_IMPROVEMENT                 1
-#endif
+#define DECODER_CHECK_SUBSTREAM_AND_SLICE_TRAILING_BYTES  1 ///< TODO: integrate this macro into a broader conformance checking system.
+#define T0196_SELECTIVE_RDOQ                              1 ///< selective RDOQ
 
-#define QC_OBMC                             1  ///< Overlapped Block Motion Compensation (OBMC)
-#if QC_OBMC
-#define QC_AOBMC_MAXCUSIZE                  16 //   Maximum CU size which can apply OBMC adaptively, larger CUs always apply OBMC
+// ====================================================================================================================
+// Tool Switches
+// ====================================================================================================================
+
+#define ADAPTIVE_QP_SELECTION                             1 ///< G382: Adaptive reconstruction levels, non-normative part for adaptive QP selection
+
+#define AMP_ENC_SPEEDUP                                   1 ///< encoder only speed-up by AMP mode skipping
+#if AMP_ENC_SPEEDUP
+#define AMP_MRG                                           1 ///< encoder only force merge for AMP partition (no motion search for AMP)
 #endif
 
-#define QC_LMCHROMA                         1  ///< Cross component prediction: predict chroma from luma or Cr from Cb with linear model
-#if QC_LMCHROMA
-#define CR_FROM_CB_REG_COST_SHIFT           9     
-#define CR_FROM_CB_LAMBDA_ADJUSTMENT        1
-#define LM_DOWNSAMPLE_NUM_ROWS              2  //  [1, 2, 1; 1, 2, 1]/8 filter is used for downsampling luma signal
-#define LM_DOWNSAMPLE_NUM_COLUMNS           3  
-#endif
+#define FAST_BIT_EST                                      1 ///< G763: Table-based bit estimation for CABAC
 
-#define ALF_HM3_QC_REFACTOR                 1  ///< Adaptive loop filter with 4x4 block activity adaptation 
-#if ALF_HM3_QC_REFACTOR
-#define ALF_HM3_VAR_SIZE_H                  4
-#define ALF_HM3_VAR_SIZE_W                  4
-#define ALF_HM3_NO_VAR_BIN                  16
-#define ALF_WIN_VERSIZE                     32
-#define ALF_WIN_HORSIZE                     32
-#define QC_ALF_TMEPORAL_NUM                 6  //   0: no temporal prediction
-#endif
-
-// code cleaning and optimization
-#define QC_SIMD_OPT                         1
-#define HM14_CLEAN_UP                       1
-#if HM14_CLEAN_UP
-#define MLS_CG_BITS                         2
-#endif
-///////////////////////////////////////////////////////////
-// Contribution COM16–C806 (QUALCOMM) defines section end
-///////////////////////////////////////////////////////////
-
-
-///////////////////////////////////////////////////////////
-// Contribution VCEG-AZ05 (SAMSUNG) defines section starts
-///////////////////////////////////////////////////////////
-#define MULTI_PARAM_CABAC                   1
-#if MULTI_PARAM_CABAC
-#define ALPHA0                              4       // 2^ALPHA0 is 1st "window size" for probability up-date (4,5,6,7; could be adaptive if ENABLE_ADAPTIVE_W==1)
-#endif
-#define BIO                                 1  // bi-directional optical flow
-#define ROT_TR                              1  // rotational transform for 4x4 coefficients sub-blocks
-#define CU_LEVEL_MPI                        1 // multi-parameter Intra prediction
-#if CU_LEVEL_MPI
-  #define MPI_DICT_SIZE_INTRA         4
-  #define MPI_DICT_SIZE_INTER         2
-#endif
-///////////////////////////////////////////////////////////
-// Contribution VCEG-AZ05 (SAMSUNG) defines section ends
-///////////////////////////////////////////////////////////
-
-///////////////////////////////////////////////////////////
-// Contribution VCEG-AZ07 (QUALCOMM) defines section starts
-///////////////////////////////////////////////////////////
-#define QC_ECABAC                           1  /// CABAC improvements
-#if QC_ECABAC
-#define DEBUG                               1  //for CABAC debug
-#define QC_CTX_RESIDUALCODING               1  //new ctx for residual coding
-
-#define QC_AC_ADAPT_WDOW                    1
-#if QC_AC_ADAPT_WDOW
-#if !MULTI_PARAM_CABAC
-#define ALPHA0                              6       // 2^ALPHA0 is "window size" for probability up-date
-#endif
-#define CABAC_NUM_BINS                      100000
-#define NUM_WDOW                            4       //could be 16, 32, 64, 128
-#define ENABLE_ADAPTIVE_W                   1       //0: always use ALPHA0
-#define INIT_PREVFRAME                      1       //initilized probabilities are from previously coded frames
-#endif
-#endif
-
-#define QC_FRUC_MERGE                       1
-#if QC_FRUC_MERGE
-#define QC_FRUC_MERGE_OFF                   0x0
-#define QC_FRUC_MERGE_BILATERALMV           0x01
-#define QC_FRUC_MERGE_TEMPLATE              0x02
-#define QC_FRUC_MERGE_TEMPLATE_SIZE         4
-#define QC_FRUC_MERGE_REFINE_MVWEIGHT       4
-#define QC_FRUC_MERGE_REFINE_MINBLKSIZE     4
-#define QC_MV_STORE_PRECISION_BIT           3
-#define QC_MV_SIGNAL_PRECISION_BIT          2
-#endif
-
-#define QC_IMV                              1
-
-#define QC_SUB_PU_TMVP_V08                  QC_FRUC_MERGE
-#define MERGE_CAND_NUM_PATCH                1
-
-#if QC_SUB_PU_TMVP
-#define QC_SUB_PU_TMVP_EXT                  1
-#endif
-
-#define QC_INTRA_4TAP_FILTER                1 ///< Intra 4-tap interpolation filters
-#define INTRA_BOUNDARY_FILTER               1 ///< Intra Boundary Filtering
-#if INTRA_BOUNDARY_FILTER
-#define INTRA_BOUNDARY_FILTER_MULTI_LINE    1 /// 0: Filter one boundary line, 1: Filter 4 boundary lines
-#endif
-
-#define QC_USE_65ANG_MODES                  1 ///< Extended angular intra prediction, including 65 angular modes & 6 MPMs
-
-#define QC_IC                               1 ///< Illumination Compensation
-#if QC_IC
-#define IC_REG_COST_SHIFT                   7
-#define IC_CONST_SHIFT                      5
-#define IC_SHIFT_DIFF                       12
-#define QC_IC_SPDUP                         1 //speedup of IC
-#endif
-///////////////////////////////////////////////////////////
-// Contribution VCEG-AZ07 (QUALCOMM) defines section ends
-///////////////////////////////////////////////////////////
-
-#define HARMONIZE_GOP_FIRST_FIELD_COUPLE  1
-#define FIX_FIELD_DEPTH                 1
-#define EFFICIENT_FIELD_IRAP            1
-#define ALLOW_RECOVERY_POINT_AS_RAP     1
-#define BUGFIX_INTRAPERIOD 1
-#define SAO_ENCODE_ALLOW_USE_PREDEBLOCK 1
-
-#define SAO_SGN_FUNC 1
-
-#define FIX1172 1 ///< fix ticket #1172
-
-#define SETTING_PIC_OUTPUT_MARK     1
-#define SETTING_NO_OUT_PIC_PRIOR    1
-#define FIX_EMPTY_PAYLOAD_NAL       1
-#define FIX_WRITING_OUTPUT          1
-#define FIX_OUTPUT_EOS              1
-
-#define FIX_POC_CRA_NORASL_OUTPUT   1
-
-#define MAX_NUM_PICS_IN_SOP           1024
-
-#define MAX_NESTING_NUM_OPS         1024
-#define MAX_NESTING_NUM_LAYER       64
-
-#define MAX_VPS_NUM_HRD_PARAMETERS                1
-#define MAX_VPS_OP_SETS_PLUS1                     1024
-#define MAX_VPS_NUH_RESERVED_ZERO_LAYER_ID_PLUS1  1
-
-#define MAX_CPB_CNT                     32  ///< Upper bound of (cpb_cnt_minus1 + 1)
-#define MAX_NUM_LAYER_IDS                64
-
-#if !QC_CTX_RESIDUALCODING
-#define COEF_REMAIN_BIN_REDUCTION        3 ///< indicates the level at which the VLC 
-#endif                                     ///< transitions from Golomb-Rice to TU+EG(k)
-
-#define CU_DQP_TU_CMAX 5                   ///< max number bins for truncated unary
-#define CU_DQP_EG_k 0                      ///< expgolomb order
-
-#define SBH_THRESHOLD                    4  ///< I0156: value of the fixed SBH controlling threshold
-  
-#define SEQUENCE_LEVEL_LOSSLESS           0  ///< H0530: used only for sequence or frame-level lossless coding
-
-#define DISABLING_CLIP_FOR_BIPREDME         1  ///< Ticket #175
-  
-#define C1FLAG_NUMBER               8 // maximum number of largerThan1 flag coded in one chunk :  16 in HM5
-#define C2FLAG_NUMBER               1 // maximum number of largerThan2 flag coded in one chunk:  16 in HM5 
-#define SAO_ENCODING_CHOICE              1  ///< I0184: picture early termination
-#if SAO_ENCODING_CHOICE
-#define SAO_ENCODING_RATE                0.75
-#define SAO_ENCODING_CHOICE_CHROMA       1 ///< J0044: picture early termination Luma and Chroma are handled separately
-#if SAO_ENCODING_CHOICE_CHROMA
-#define SAO_ENCODING_RATE_CHROMA         0.5
-#endif
-#endif
-
-#define MAX_NUM_VPS                16
-#define MAX_NUM_SPS                16
-#define MAX_NUM_PPS                64
-
-#define RDOQ_CHROMA_LAMBDA          1   ///< F386: weighting of chroma for RDOQ
-
-#define MIN_SCAN_POS_CROSS          4
-
-#define FAST_BIT_EST                1   ///< G763: Table-based bit estimation for CABAC
-
-#if QC_T64
-#define MLS_GRP_NUM                         256    ///< Max number of coefficient groups, max(16, 256)
-#else
-#define MLS_GRP_NUM                         64     ///< G644 : Max number of coefficient groups, max(16, 64)
-#endif
-#define MLS_CG_SIZE                         4      ///< G644 : Coefficient group size of 4x4
-
-#define ADAPTIVE_QP_SELECTION               1      ///< G382: Adaptive reconstruction levels, non-normative part for adaptive QP selection
-#if ADAPTIVE_QP_SELECTION
-#define ARL_C_PRECISION                     7      ///< G382: 7-bit arithmetic precision
-#define LEVEL_RANGE                         30     ///< G382: max coefficient level in statistics collection
-#endif
-
-#define HHI_RQT_INTRA_SPEEDUP             1           ///< tests one best mode with full rqt
-#define HHI_RQT_INTRA_SPEEDUP_MOD         0           ///< tests two best modes with full rqt
+#define HHI_RQT_INTRA_SPEEDUP                             1 ///< tests one best mode with full rqt
+#define HHI_RQT_INTRA_SPEEDUP_MOD                         0 ///< tests two best modes with full rqt
 
 #if HHI_RQT_INTRA_SPEEDUP_MOD && !HHI_RQT_INTRA_SPEEDUP
 #error
 #endif
 
-#define VERBOSE_RATE 0 ///< Print additional rate information in encoder
+#define MATRIX_MULT                                       0 ///< Brute force matrix multiplication instead of partial butterfly
 
-#define AMVP_DECIMATION_FACTOR            4
+#define O0043_BEST_EFFORT_DECODING                        0 ///< 0 (default) = disable code related to best effort decoding, 1 = enable code relating to best effort decoding [ decode-side only ].
 
-#define SCAN_SET_SIZE                     16
-#define LOG2_SCAN_SET_SIZE                4
+#define RDOQ_CHROMA_LAMBDA                                1 ///< F386: weighting of chroma for RDOQ
 
-#define FAST_UDI_MAX_RDMODE_NUM               35          ///< maximum number of RD comparison in fast-UDI estimation loop 
-
-#define ZERO_MVD_EST                          0           ///< Zero Mvd Estimation in normal mode
-
-#if QC_USE_65ANG_MODES
-#define NUM_INTRA_MODE 68
-#else
-#define NUM_INTRA_MODE 36
+// This can be enabled by the makefile
+#ifndef RExt__HIGH_BIT_DEPTH_SUPPORT
+#define RExt__HIGH_BIT_DEPTH_SUPPORT                      0 ///< 0 (default) use data type definitions for 8-10 bit video, 1 = use larger data types to allow for up to 16-bit video (originally developed as part of N0188)
 #endif
 
-#define WRITE_BACK                      1           ///< Enable/disable the encoder to replace the deltaPOC and Used by current from the config file with the values derived by the refIdc parameter.
-#define AUTO_INTER_RPS                  1           ///< Enable/disable the automatic generation of refIdc from the deltaPOC and Used by current from the config file.
-#define PRINT_RPS_INFO                  0           ///< Enable/disable the printing of bits used to send the RPS.
-                                                    // using one nearest frame as reference frame, and the other frames are high quality (POC%4==0) frames (1+X)
-                                                    // this should be done with encoder only decision
-                                                    // but because of the absence of reference frame management, the related code was hard coded currently
 
-#define RVM_VCEGAM10_M 4
+// ====================================================================================================================
+// Derived macros
+// ====================================================================================================================
 
-#define PLANAR_IDX             0
-#if QC_USE_65ANG_MODES
-#define NUM_DIR                (((NUM_INTRA_MODE-4)>>2)+1)
-#define HOR_IDX                (1*(NUM_DIR-1)+2)       // index for intra HORIZONTAL mode
-#define DIA_IDX                (2*(NUM_DIR-1)+2)       // index for intra DIAGONAL   mode
-#define VER_IDX                (3*(NUM_DIR-1)+2)       // index for intra VERTICAL   mode
-#define VDIA_IDX               (4*(NUM_DIR-1)+2)       // index for intra VERTICAL DIAGONAL   mode
+#if RExt__HIGH_BIT_DEPTH_SUPPORT
+#define FULL_NBIT                                         1 ///< When enabled, use distortion measure derived from all bits of source data, otherwise discard (bitDepth - 8) least-significant bits of distortion
+#define RExt__HIGH_PRECISION_FORWARD_TRANSFORM            1 ///< 0 use original 6-bit transform matrices for both forward and inverse transform, 1 (default) = use original matrices for inverse transform and high precision matrices for forward transform
 #else
-#define VER_IDX                26                    // index for intra VERTICAL   mode
-#define HOR_IDX                10                    // index for intra HORIZONTAL mode
-#endif
-#define DC_IDX                 1                     // index for intra DC mode
-#if QC_LMCHROMA
-#define NUM_CHROMA_MODE        6                     // total number of chroma modes
-#if QC_USE_65ANG_MODES
-#define LM_CHROMA_IDX          (NUM_INTRA_MODE-1)
-#else
-#define LM_CHROMA_IDX          35
-#endif
-#else
-#define NUM_CHROMA_MODE        5                     // total number of chroma modes
-#endif
-#if QC_USE_65ANG_MODES
-#define DM_CHROMA_IDX          NUM_INTRA_MODE        // chroma mode index for derived from luma intra mode
-#else
-#define DM_CHROMA_IDX          36                    // chroma mode index for derived from luma intra mode
+#define FULL_NBIT                                         0 ///< When enabled, use distortion measure derived from all bits of source data, otherwise discard (bitDepth - 8) least-significant bits of distortion
+#define RExt__HIGH_PRECISION_FORWARD_TRANSFORM            0 ///< 0 (default) use original 6-bit transform matrices for both forward and inverse transform, 1 = use original matrices for inverse transform and high precision matrices for forward transform
 #endif
 
-#define FAST_UDI_USE_MPM 1
-
-#define RDO_WITHOUT_DQP_BITS              0           ///< Disable counting dQP bits in RDO-based mode decision
-
-#define FULL_NBIT 0 ///< When enabled, compute costs using full sample bitdepth.  When disabled, compute costs as if it is 8-bit source video.
 #if FULL_NBIT
-# define DISTORTION_PRECISION_ADJUSTMENT(x) 0
+# define DISTORTION_PRECISION_ADJUSTMENT(x)  0
 #else
 # define DISTORTION_PRECISION_ADJUSTMENT(x) (x)
 #endif
 
-#define LOG2_MAX_NUM_COLUMNS_MINUS1        7
-#define LOG2_MAX_NUM_ROWS_MINUS1           7
-#define LOG2_MAX_COLUMN_WIDTH              13
-#define LOG2_MAX_ROW_HEIGHT                13
-
-#define REG_DCT                           65535
-#if QC_EMT
-#define INTER_MODE                        65534
+#if DEBUG_STRING
+  #define DEBUG_STRING_PASS_INTO(name) , name
+  #define DEBUG_STRING_PASS_INTO_OPTIONAL(name, exp) , (exp==0)?0:name
+  #define DEBUG_STRING_FN_DECLARE(name) , std::string &name
+  #define DEBUG_STRING_FN_DECLAREP(name) , std::string *name
+  #define DEBUG_STRING_NEW(name) std::string name;
+  #define DEBUG_STRING_OUTPUT(os, name) os << name;
+  #define DEBUG_STRING_APPEND(str1, str2) str1+=str2;
+  #define DEBUG_STRING_SWAP(str1, str2) str1.swap(str2);
+  #define DEBUG_STRING_CHANNEL_CONDITION(compID) (true)
+  #include <sstream>
+  #include <iomanip>
+#else
+  #define DEBUG_STRING_PASS_INTO(name)
+  #define DEBUG_STRING_PASS_INTO_OPTIONAL(name, exp)
+  #define DEBUG_STRING_FN_DECLARE(name)
+  #define DEBUG_STRING_FN_DECLAREP(name)
+  #define DEBUG_STRING_NEW(name)
+  #define DEBUG_STRING_OUTPUT(os, name)
+  #define DEBUG_STRING_APPEND(str1, str2)
+  #define DEBUG_STRING_SWAP(srt1, str2)
+  #define DEBUG_STRING_CHANNEL_CONDITION(compID)
 #endif
 
-#define AMP_SAD                               1           ///< dedicated SAD functions for AMP
-#define AMP_ENC_SPEEDUP                       1           ///< encoder only speed-up by AMP mode skipping
-#if AMP_ENC_SPEEDUP
-#define AMP_MRG                               1           ///< encoder only force merge for AMP partition (no motion search for AMP)
-#endif
+// ====================================================================================================================
+// Error checks
+// ====================================================================================================================
 
-#define CABAC_INIT_PRESENT_FLAG     1
+#if ((RExt__HIGH_PRECISION_FORWARD_TRANSFORM != 0) && (RExt__HIGH_BIT_DEPTH_SUPPORT == 0))
+#error ERROR: cannot enable RExt__HIGH_PRECISION_FORWARD_TRANSFORM without RExt__HIGH_BIT_DEPTH_SUPPORT
+#endif
 
 // ====================================================================================================================
 // Basic type redefinition
@@ -376,6 +254,7 @@ typedef       int                 Int;
 typedef       unsigned int        UInt;
 typedef       double              Double;
 typedef       float               Float;
+
 
 // ====================================================================================================================
 // 64-bit integer type
@@ -398,237 +277,186 @@ typedef       unsigned long long  UInt64;
 #endif
 
 // ====================================================================================================================
-// Type definition
+// Named numerical types
 // ====================================================================================================================
 
-typedef       UChar           Pxl;        ///< 8-bit pixel type
-typedef       Short           Pel;        ///< 16-bit pixel type
-typedef       Int             TCoeff;     ///< transform coefficient
+#if RExt__HIGH_BIT_DEPTH_SUPPORT
+typedef       Int             Pel;               ///< pixel type
+typedef       Int64           TCoeff;            ///< transform coefficient
+typedef       Int             TMatrixCoeff;      ///< transform matrix coefficient
+typedef       Short           TFilterCoeff;      ///< filter coefficient
+typedef       Int64           Intermediate_Int;  ///< used as intermediate value in calculations
+typedef       UInt64          Intermediate_UInt; ///< used as intermediate value in calculations
+#else
+typedef       Short           Pel;               ///< pixel type
+typedef       Int             TCoeff;            ///< transform coefficient
+typedef       Short           TMatrixCoeff;      ///< transform matrix coefficient
+typedef       Short           TFilterCoeff;      ///< filter coefficient
+typedef       Int             Intermediate_Int;  ///< used as intermediate value in calculations
+typedef       UInt            Intermediate_UInt; ///< used as intermediate value in calculations
+#endif
 
-/// parameters for adaptive loop filter
-class TComPicSym;
-
-// Slice / Slice segment encoding modes
-enum SliceConstraint
-{
-  NO_SLICES              = 0,          ///< don't use slices / slice segments
-  FIXED_NUMBER_OF_LCU    = 1,          ///< Limit maximum number of largest coding tree blocks in a slice / slice segments
-  FIXED_NUMBER_OF_BYTES  = 2,          ///< Limit maximum number of bytes in a slice / slice segment
-  FIXED_NUMBER_OF_TILES  = 3,          ///< slices / slice segments span an integer number of tiles
-};
-
-enum SAOComponentIdx
-{
-  SAO_Y =0,
-  SAO_Cb,
-  SAO_Cr,
-  NUM_SAO_COMPONENTS
-};
-
-enum SAOMode //mode
-{
-  SAO_MODE_OFF = 0,
-  SAO_MODE_NEW,
-  SAO_MODE_MERGE,
-  NUM_SAO_MODES
-};
-
-enum SAOModeMergeTypes 
-{
-  SAO_MERGE_LEFT =0,
-  SAO_MERGE_ABOVE,
-  NUM_SAO_MERGE_TYPES
-};
-
-
-enum SAOModeNewTypes 
-{
-  SAO_TYPE_START_EO =0,
-  SAO_TYPE_EO_0 = SAO_TYPE_START_EO,
-  SAO_TYPE_EO_90,
-  SAO_TYPE_EO_135,
-  SAO_TYPE_EO_45,
-  
-  SAO_TYPE_START_BO,
-  SAO_TYPE_BO = SAO_TYPE_START_BO,
-
-  NUM_SAO_NEW_TYPES
-};
-#define NUM_SAO_EO_TYPES_LOG2 2
-
-enum SAOEOClasses 
-{
-  SAO_CLASS_EO_FULL_VALLEY = 0,
-  SAO_CLASS_EO_HALF_VALLEY = 1,
-  SAO_CLASS_EO_PLAIN       = 2,
-  SAO_CLASS_EO_HALF_PEAK   = 3,
-  SAO_CLASS_EO_FULL_PEAK   = 4,
-  NUM_SAO_EO_CLASSES,
-};
-
-
-#define NUM_SAO_BO_CLASSES_LOG2  5
-enum SAOBOClasses
-{
-  //SAO_CLASS_BO_BAND0 = 0,
-  //SAO_CLASS_BO_BAND1,
-  //SAO_CLASS_BO_BAND2,
-  //...
-  //SAO_CLASS_BO_BAND31,
-
-  NUM_SAO_BO_CLASSES = (1<<NUM_SAO_BO_CLASSES_LOG2),
-};
-#define MAX_NUM_SAO_CLASSES  32  //(NUM_SAO_EO_GROUPS > NUM_SAO_BO_GROUPS)?NUM_SAO_EO_GROUPS:NUM_SAO_BO_GROUPS
-
-struct SAOOffset
-{
-  Int modeIdc; //NEW, MERGE, OFF
-  Int typeIdc; //NEW: EO_0, EO_90, EO_135, EO_45, BO. MERGE: left, above
-  Int typeAuxInfo; //BO: starting band index
-  Int offset[MAX_NUM_SAO_CLASSES];
-
-  SAOOffset();
-  ~SAOOffset();
-  Void reset();
-
-  const SAOOffset& operator= (const SAOOffset& src);
-};
-
-struct SAOBlkParam
-{
-
-  SAOBlkParam();
-  ~SAOBlkParam();
-  Void reset();
-  const SAOBlkParam& operator= (const SAOBlkParam& src);
-  SAOOffset& operator[](Int compIdx){ return offsetParam[compIdx];}
-private:
-  SAOOffset offsetParam[NUM_SAO_COMPONENTS];
-
-};
-
-/// parameters for deblocking filter
-typedef struct _LFCUParam
-{
-  Bool bInternalEdge;                     ///< indicates internal edge
-  Bool bLeftEdge;                         ///< indicates left edge
-  Bool bTopEdge;                          ///< indicates top edge
-} LFCUParam;
+#if FULL_NBIT
+typedef       UInt64          Distortion;        ///< distortion measurement
+#else
+typedef       UInt            Distortion;        ///< distortion measurement
+#endif
 
 // ====================================================================================================================
 // Enumeration
 // ====================================================================================================================
 
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+enum MergeType
+{
+  MGR_TYPE_DEFAULT_N  = 0, // 0
+  MGR_TYPE_SUBPU_TMVP = 1, // 1
+  MGR_TYPE_SUBPU_TMVP_EXT =2, // 2
+};
+#endif
+
+enum RDPCMMode
+{
+  RDPCM_OFF             = 0,
+  RDPCM_HOR             = 1,
+  RDPCM_VER             = 2,
+  NUMBER_OF_RDPCM_MODES = 3
+};
+
+enum RDPCMSignallingMode
+{
+  RDPCM_SIGNAL_IMPLICIT            = 0,
+  RDPCM_SIGNAL_EXPLICIT            = 1,
+  NUMBER_OF_RDPCM_SIGNALLING_MODES = 2
+};
+
 /// supported slice type
 enum SliceType
 {
-  B_SLICE,
-  P_SLICE,
-  I_SLICE
+  B_SLICE               = 0,
+  P_SLICE               = 1,
+  I_SLICE               = 2,
+  NUMBER_OF_SLICE_TYPES = 3
 };
 
 /// chroma formats (according to semantics of chroma_format_idc)
 enum ChromaFormat
 {
-  CHROMA_400  = 0,
-  CHROMA_420  = 1,
-  CHROMA_422  = 2,
-  CHROMA_444  = 3
+  CHROMA_400        = 0,
+  CHROMA_420        = 1,
+  CHROMA_422        = 2,
+  CHROMA_444        = 3,
+  NUM_CHROMA_FORMAT = 4
+};
+
+enum ChannelType
+{
+  CHANNEL_TYPE_LUMA    = 0,
+  CHANNEL_TYPE_CHROMA  = 1,
+  MAX_NUM_CHANNEL_TYPE = 2
+};
+
+enum ComponentID
+{
+  COMPONENT_Y       = 0,
+  COMPONENT_Cb      = 1,
+  COMPONENT_Cr      = 2,
+  MAX_NUM_COMPONENT = 3
+};
+
+enum InputColourSpaceConversion // defined in terms of conversion prior to input of encoder.
+{
+  IPCOLOURSPACE_UNCHANGED               = 0,
+  IPCOLOURSPACE_YCbCrtoYCrCb            = 1, // Mainly used for debug!
+  IPCOLOURSPACE_YCbCrtoYYY              = 2, // Mainly used for debug!
+  IPCOLOURSPACE_RGBtoGBR                = 3,
+  NUMBER_INPUT_COLOUR_SPACE_CONVERSIONS = 4
+};
+
+enum DeblockEdgeDir
+{
+  EDGE_VER     = 0,
+  EDGE_HOR     = 1,
+  NUM_EDGE_DIR = 2
 };
 
 /// supported partition shape
 enum PartSize
 {
-  SIZE_2Nx2N,           ///< symmetric motion partition,  2Nx2N
-  SIZE_2NxN,            ///< symmetric motion partition,  2Nx N
-  SIZE_Nx2N,            ///< symmetric motion partition,   Nx2N
-  SIZE_NxN,             ///< symmetric motion partition,   Nx N
-  SIZE_2NxnU,           ///< asymmetric motion partition, 2Nx( N/2) + 2Nx(3N/2)
-  SIZE_2NxnD,           ///< asymmetric motion partition, 2Nx(3N/2) + 2Nx( N/2)
-  SIZE_nLx2N,           ///< asymmetric motion partition, ( N/2)x2N + (3N/2)x2N
-  SIZE_nRx2N,           ///< asymmetric motion partition, (3N/2)x2N + ( N/2)x2N
-#if QC_IMV
-  NUMBER_OF_PART_SIZES = 8,
-#endif
-  SIZE_NONE = 15
+  SIZE_2Nx2N           = 0,           ///< symmetric motion partition,  2Nx2N
+  SIZE_2NxN            = 1,           ///< symmetric motion partition,  2Nx N
+  SIZE_Nx2N            = 2,           ///< symmetric motion partition,   Nx2N
+  SIZE_NxN             = 3,           ///< symmetric motion partition,   Nx N
+  SIZE_2NxnU           = 4,           ///< asymmetric motion partition, 2Nx( N/2) + 2Nx(3N/2)
+  SIZE_2NxnD           = 5,           ///< asymmetric motion partition, 2Nx(3N/2) + 2Nx( N/2)
+  SIZE_nLx2N           = 6,           ///< asymmetric motion partition, ( N/2)x2N + (3N/2)x2N
+  SIZE_nRx2N           = 7,           ///< asymmetric motion partition, (3N/2)x2N + ( N/2)x2N
+  NUMBER_OF_PART_SIZES = 8
 };
 
 /// supported prediction type
 enum PredMode
 {
-  MODE_INTER,           ///< inter-prediction mode
-  MODE_INTRA,           ///< intra-prediction mode
-  MODE_NONE = 15
-};
-
-/// texture component type
-enum TextType
-{
-  TEXT_LUMA,            ///< luma
-  TEXT_CHROMA,          ///< chroma (U+V)
-  TEXT_CHROMA_U,        ///< chroma U
-  TEXT_CHROMA_V,        ///< chroma V
-  TEXT_ALL,             ///< Y+U+V
-  TEXT_NONE = 15
+  MODE_INTER                 = 0,     ///< inter-prediction mode
+  MODE_INTRA                 = 1,     ///< intra-prediction mode
+  NUMBER_OF_PREDICTION_MODES = 2,
 };
 
 /// reference list index
 enum RefPicList
 {
-  REF_PIC_LIST_0 = 0,   ///< reference list 0
-  REF_PIC_LIST_1 = 1,   ///< reference list 1
-  REF_PIC_LIST_X = 100  ///< special mark
+  REF_PIC_LIST_0               = 0,   ///< reference list 0
+  REF_PIC_LIST_1               = 1,   ///< reference list 1
+  NUM_REF_PIC_LIST_01          = 2,
+  REF_PIC_LIST_X               = 100  ///< special mark
 };
 
 /// distortion function index
 enum DFunc
 {
-  DF_DEFAULT  = 0,
-  DF_SSE      = 1,      ///< general size SSE
-  DF_SSE4     = 2,      ///<   4xM SSE
-  DF_SSE8     = 3,      ///<   8xM SSE
-  DF_SSE16    = 4,      ///<  16xM SSE
-  DF_SSE32    = 5,      ///<  32xM SSE
-  DF_SSE64    = 6,      ///<  64xM SSE
-  DF_SSE16N   = 7,      ///< 16NxM SSE
-  
-  DF_SAD      = 8,      ///< general size SAD
-  DF_SAD4     = 9,      ///<   4xM SAD
-  DF_SAD8     = 10,     ///<   8xM SAD
-  DF_SAD16    = 11,     ///<  16xM SAD
-  DF_SAD32    = 12,     ///<  32xM SAD
-  DF_SAD64    = 13,     ///<  64xM SAD
-  DF_SAD16N   = 14,     ///< 16NxM SAD
-  
-  DF_SADS     = 15,     ///< general size SAD with step
-  DF_SADS4    = 16,     ///<   4xM SAD with step
-  DF_SADS8    = 17,     ///<   8xM SAD with step
-  DF_SADS16   = 18,     ///<  16xM SAD with step
-  DF_SADS32   = 19,     ///<  32xM SAD with step
-  DF_SADS64   = 20,     ///<  64xM SAD with step
-  DF_SADS16N  = 21,     ///< 16NxM SAD with step
-  
-  DF_HADS     = 22,     ///< general size Hadamard with step
-  DF_HADS4    = 23,     ///<   4xM HAD with step
-  DF_HADS8    = 24,     ///<   8xM HAD with step
-  DF_HADS16   = 25,     ///<  16xM HAD with step
-  DF_HADS32   = 26,     ///<  32xM HAD with step
-  DF_HADS64   = 27,     ///<  64xM HAD with step
-  DF_HADS16N  = 28,     ///< 16NxM HAD with step
-  
-#if AMP_SAD
-  DF_SAD12    = 43,
-  DF_SAD24    = 44,
-  DF_SAD48    = 45,
+  DF_DEFAULT         = 0,
+  DF_SSE             = 1,      ///< general size SSE
+  DF_SSE4            = 2,      ///<   4xM SSE
+  DF_SSE8            = 3,      ///<   8xM SSE
+  DF_SSE16           = 4,      ///<  16xM SSE
+  DF_SSE32           = 5,      ///<  32xM SSE
+  DF_SSE64           = 6,      ///<  64xM SSE
+  DF_SSE16N          = 7,      ///< 16NxM SSE
 
-  DF_SADS12   = 46,
-  DF_SADS24   = 47,
-  DF_SADS48   = 48,
+  DF_SAD             = 8,      ///< general size SAD
+  DF_SAD4            = 9,      ///<   4xM SAD
+  DF_SAD8            = 10,     ///<   8xM SAD
+  DF_SAD16           = 11,     ///<  16xM SAD
+  DF_SAD32           = 12,     ///<  32xM SAD
+  DF_SAD64           = 13,     ///<  64xM SAD
+  DF_SAD16N          = 14,     ///< 16NxM SAD
 
-  DF_SSE_FRAME = 50     ///< Frame-based SSE
-#else
-  DF_SSE_FRAME = 33     ///< Frame-based SSE
-#endif
+  DF_SADS            = 15,     ///< general size SAD with step
+  DF_SADS4           = 16,     ///<   4xM SAD with step
+  DF_SADS8           = 17,     ///<   8xM SAD with step
+  DF_SADS16          = 18,     ///<  16xM SAD with step
+  DF_SADS32          = 19,     ///<  32xM SAD with step
+  DF_SADS64          = 20,     ///<  64xM SAD with step
+  DF_SADS16N         = 21,     ///< 16NxM SAD with step
+
+  DF_HADS            = 22,     ///< general size Hadamard with step
+  DF_HADS4           = 23,     ///<   4xM HAD with step
+  DF_HADS8           = 24,     ///<   8xM HAD with step
+  DF_HADS16          = 25,     ///<  16xM HAD with step
+  DF_HADS32          = 26,     ///<  32xM HAD with step
+  DF_HADS64          = 27,     ///<  64xM HAD with step
+  DF_HADS16N         = 28,     ///< 16NxM HAD with step
+
+  DF_SAD12           = 43,
+  DF_SAD24           = 44,
+  DF_SAD48           = 45,
+
+  DF_SADS12          = 46,
+  DF_SADS24          = 47,
+  DF_SADS48          = 48,
+
+  DF_SSE_FRAME       = 50,     ///< Frame-based SSE
+  DF_TOTAL_FUNCTIONS = 64
 };
 
 /// index for SBAC based RD optimization
@@ -653,21 +481,134 @@ enum MVP_DIR
   MD_ABOVE_LEFT         ///< MVP of above left block
 };
 
+enum StoredResidualType
+{
+  RESIDUAL_RECONSTRUCTED          = 0,
+  RESIDUAL_ENCODER_SIDE           = 1,
+  NUMBER_OF_STORED_RESIDUAL_TYPES = 2
+};
+
+enum TransformDirection
+{
+  TRANSFORM_FORWARD              = 0,
+  TRANSFORM_INVERSE              = 1,
+  TRANSFORM_NUMBER_OF_DIRECTIONS = 2
+};
+
+/// supported ME search methods
+enum MESearchMethod
+{
+  FULL_SEARCH                = 0,     ///< Full search
+  DIAMOND                    = 1,     ///< Fast search
+  SELECTIVE                  = 2      ///< Selective search
+};
+
 /// coefficient scanning type used in ACS
 enum COEFF_SCAN_TYPE
 {
-  SCAN_DIAG = 0,         ///< up-right diagonal scan
-  SCAN_HOR,              ///< horizontal first scan
-  SCAN_VER               ///< vertical first scan
+  SCAN_DIAG = 0,        ///< up-right diagonal scan
+  SCAN_HOR  = 1,        ///< horizontal first scan
+  SCAN_VER  = 2,        ///< vertical first scan
+  SCAN_NUMBER_OF_TYPES = 3
 };
 
-#if QC_EMT || QC_T64
+#if COM16_C806_EMT || COM16_C806_T64
 enum TRANS_TYPE
 {
   DCT2, DCT5, DCT8, DST1, DST7, NUM_TRANS_TYPE,
   DCT2_HEVC, DCT2_EMT
 };
 #endif
+
+enum COEFF_SCAN_GROUP_TYPE
+{
+  SCAN_UNGROUPED   = 0,
+  SCAN_GROUPED_4x4 = 1,
+  SCAN_NUMBER_OF_GROUP_TYPES = 2
+};
+
+#if !VCEG_AZ07_CTX_RESIDUALCODING
+enum SignificanceMapContextType
+{
+  CONTEXT_TYPE_4x4    = 0,
+  CONTEXT_TYPE_8x8    = 1,
+  CONTEXT_TYPE_NxN    = 2,
+  CONTEXT_TYPE_SINGLE = 3,
+  CONTEXT_NUMBER_OF_TYPES = 4
+};
+#endif
+
+enum ScalingListMode
+{
+  SCALING_LIST_OFF,
+  SCALING_LIST_DEFAULT,
+  SCALING_LIST_FILE_READ
+};
+
+enum ScalingListSize
+{
+  SCALING_LIST_4x4 = 0,
+  SCALING_LIST_8x8,
+  SCALING_LIST_16x16,
+  SCALING_LIST_32x32,
+#if COM16_C806_T64
+  SCALING_LIST_64x64,
+#endif
+  SCALING_LIST_SIZE_NUM
+};
+
+// Slice / Slice segment encoding modes
+enum SliceConstraint
+{
+  NO_SLICES              = 0,          ///< don't use slices / slice segments
+  FIXED_NUMBER_OF_CTU    = 1,          ///< Limit maximum number of largest coding tree units in a slice / slice segments
+  FIXED_NUMBER_OF_BYTES  = 2,          ///< Limit maximum number of bytes in a slice / slice segment
+  FIXED_NUMBER_OF_TILES  = 3,          ///< slices / slice segments span an integer number of tiles
+};
+
+enum SAOMode //mode
+{
+  SAO_MODE_OFF = 0,
+  SAO_MODE_NEW,
+  SAO_MODE_MERGE,
+  NUM_SAO_MODES
+};
+
+enum SAOModeMergeTypes
+{
+  SAO_MERGE_LEFT =0,
+  SAO_MERGE_ABOVE,
+  NUM_SAO_MERGE_TYPES
+};
+
+
+enum SAOModeNewTypes
+{
+  SAO_TYPE_START_EO =0,
+  SAO_TYPE_EO_0 = SAO_TYPE_START_EO,
+  SAO_TYPE_EO_90,
+  SAO_TYPE_EO_135,
+  SAO_TYPE_EO_45,
+
+  SAO_TYPE_START_BO,
+  SAO_TYPE_BO = SAO_TYPE_START_BO,
+
+  NUM_SAO_NEW_TYPES
+};
+#define NUM_SAO_EO_TYPES_LOG2 2
+
+enum SAOEOClasses
+{
+  SAO_CLASS_EO_FULL_VALLEY = 0,
+  SAO_CLASS_EO_HALF_VALLEY = 1,
+  SAO_CLASS_EO_PLAIN       = 2,
+  SAO_CLASS_EO_HALF_PEAK   = 3,
+  SAO_CLASS_EO_FULL_PEAK   = 4,
+  NUM_SAO_EO_CLASSES,
+};
+
+#define NUM_SAO_BO_CLASSES_LOG2  5
+#define NUM_SAO_BO_CLASSES       (1<<NUM_SAO_BO_CLASSES_LOG2)
 
 namespace Profile
 {
@@ -677,6 +618,8 @@ namespace Profile
     MAIN = 1,
     MAIN10 = 2,
     MAINSTILLPICTURE = 3,
+    MAINREXT = 4,
+    HIGHTHROUGHPUTREXT = 5
   };
 }
 
@@ -690,6 +633,7 @@ namespace Level
 
   enum Name
   {
+    // code = (level * 30)
     NONE     = 0,
     LEVEL1   = 30,
     LEVEL2   = 60,
@@ -704,71 +648,267 @@ namespace Level
     LEVEL6   = 180,
     LEVEL6_1 = 183,
     LEVEL6_2 = 186,
+    LEVEL8_5 = 255,
   };
 }
 
-#if ALF_HM3_QC_REFACTOR
-struct _AlfParam
+enum CostMode
 {
-  Int alf_flag;                           ///< indicates use of ALF
-  Int cu_control_flag;                    ///< coding unit based control flag
-  Int chroma_idc;                         ///< indicates use of ALF for chroma
-  Int tap;                                ///< number of filter taps - horizontal
-  Int tapV;                               ///< number of filter taps - vertical
-  Int num_coeff;                          ///< number of filter coefficients
-  Int *coeff;                             ///< filter coefficient array
-  Int tap_chroma;                         ///< number of filter taps (chroma)
-  Int num_coeff_chroma;                   ///< number of filter coefficients (chroma)
-  Int *coeff_chroma;                      ///< filter coefficient array (chroma)
-  //CodeAux related
-  Int realfiltNo;
-  Int filtNo;
-  Int filterPattern[ALF_HM3_NO_VAR_BIN];
-  Int startSecondFilter;
-  Int noFilters;
-  Int varIndTab[ALF_HM3_NO_VAR_BIN];
-#if QC_ALF_TMEPORAL_NUM
-  Bool temproalPredFlag; //indicate whether reuse previous ALF coefficients
-  Int  prevIdx;          //index of the reused ALF coefficients
-  Int  **alfCoeffLuma;    
-  Int  *alfCoeffChroma;
-#endif
-  //Coeff send related
-  Int filters_per_group_diff; //this can be updated using codedVarBins
-  Int filters_per_group;
-  Int codedVarBins[ALF_HM3_NO_VAR_BIN]; 
-  Int forceCoeff0;
-  Int predMethod;
-  Int **coeffmulti;
-  Int minKStart;
-  Int maxScanVal;
-  Int kMinTab[42];
-  UInt num_alf_cu_flag;
-  UInt num_cus_in_frame;
-  UInt alf_max_depth;
-  UInt *alf_cu_flag;
+  COST_STANDARD_LOSSY              = 0,
+  COST_SEQUENCE_LEVEL_LOSSLESS     = 1,
+  COST_LOSSLESS_CODING             = 2,
+  COST_MIXED_LOSSLESS_LOSSY_CODING = 3
+};
+
+enum SPSExtensionFlagIndex
+{
+  SPS_EXT__REXT           = 0,
+//SPS_EXT__MVHEVC         = 1, //for use in future versions
+//SPS_EXT__SHVC           = 2, //for use in future versions
+  NUM_SPS_EXTENSION_FLAGS = 8
+};
+
+enum PPSExtensionFlagIndex
+{
+  PPS_EXT__REXT           = 0,
+//PPS_EXT__MVHEVC         = 1, //for use in future versions
+//PPS_EXT__SHVC           = 2, //for use in future versions
+  NUM_PPS_EXTENSION_FLAGS = 8
+};
+
+// TODO: Existing names used for the different NAL unit types can be altered to better reflect the names in the spec.
+//       However, the names in the spec are not yet stable at this point. Once the names are stable, a cleanup
+//       effort can be done without use of macros to alter the names used to indicate the different NAL unit types.
+enum NalUnitType
+{
+  NAL_UNIT_CODED_SLICE_TRAIL_N = 0, // 0
+  NAL_UNIT_CODED_SLICE_TRAIL_R,     // 1
+
+  NAL_UNIT_CODED_SLICE_TSA_N,       // 2
+  NAL_UNIT_CODED_SLICE_TSA_R,       // 3
+
+  NAL_UNIT_CODED_SLICE_STSA_N,      // 4
+  NAL_UNIT_CODED_SLICE_STSA_R,      // 5
+
+  NAL_UNIT_CODED_SLICE_RADL_N,      // 6
+  NAL_UNIT_CODED_SLICE_RADL_R,      // 7
+
+  NAL_UNIT_CODED_SLICE_RASL_N,      // 8
+  NAL_UNIT_CODED_SLICE_RASL_R,      // 9
+
+  NAL_UNIT_RESERVED_VCL_N10,
+  NAL_UNIT_RESERVED_VCL_R11,
+  NAL_UNIT_RESERVED_VCL_N12,
+  NAL_UNIT_RESERVED_VCL_R13,
+  NAL_UNIT_RESERVED_VCL_N14,
+  NAL_UNIT_RESERVED_VCL_R15,
+
+  NAL_UNIT_CODED_SLICE_BLA_W_LP,    // 16
+  NAL_UNIT_CODED_SLICE_BLA_W_RADL,  // 17
+  NAL_UNIT_CODED_SLICE_BLA_N_LP,    // 18
+  NAL_UNIT_CODED_SLICE_IDR_W_RADL,  // 19
+  NAL_UNIT_CODED_SLICE_IDR_N_LP,    // 20
+  NAL_UNIT_CODED_SLICE_CRA,         // 21
+  NAL_UNIT_RESERVED_IRAP_VCL22,
+  NAL_UNIT_RESERVED_IRAP_VCL23,
+
+  NAL_UNIT_RESERVED_VCL24,
+  NAL_UNIT_RESERVED_VCL25,
+  NAL_UNIT_RESERVED_VCL26,
+  NAL_UNIT_RESERVED_VCL27,
+  NAL_UNIT_RESERVED_VCL28,
+  NAL_UNIT_RESERVED_VCL29,
+  NAL_UNIT_RESERVED_VCL30,
+  NAL_UNIT_RESERVED_VCL31,
+
+  NAL_UNIT_VPS,                     // 32
+  NAL_UNIT_SPS,                     // 33
+  NAL_UNIT_PPS,                     // 34
+  NAL_UNIT_ACCESS_UNIT_DELIMITER,   // 35
+  NAL_UNIT_EOS,                     // 36
+  NAL_UNIT_EOB,                     // 37
+  NAL_UNIT_FILLER_DATA,             // 38
+  NAL_UNIT_PREFIX_SEI,              // 39
+  NAL_UNIT_SUFFIX_SEI,              // 40
+
+  NAL_UNIT_RESERVED_NVCL41,
+  NAL_UNIT_RESERVED_NVCL42,
+  NAL_UNIT_RESERVED_NVCL43,
+  NAL_UNIT_RESERVED_NVCL44,
+  NAL_UNIT_RESERVED_NVCL45,
+  NAL_UNIT_RESERVED_NVCL46,
+  NAL_UNIT_RESERVED_NVCL47,
+  NAL_UNIT_UNSPECIFIED_48,
+  NAL_UNIT_UNSPECIFIED_49,
+  NAL_UNIT_UNSPECIFIED_50,
+  NAL_UNIT_UNSPECIFIED_51,
+  NAL_UNIT_UNSPECIFIED_52,
+  NAL_UNIT_UNSPECIFIED_53,
+  NAL_UNIT_UNSPECIFIED_54,
+  NAL_UNIT_UNSPECIFIED_55,
+  NAL_UNIT_UNSPECIFIED_56,
+  NAL_UNIT_UNSPECIFIED_57,
+  NAL_UNIT_UNSPECIFIED_58,
+  NAL_UNIT_UNSPECIFIED_59,
+  NAL_UNIT_UNSPECIFIED_60,
+  NAL_UNIT_UNSPECIFIED_61,
+  NAL_UNIT_UNSPECIFIED_62,
+  NAL_UNIT_UNSPECIFIED_63,
+  NAL_UNIT_INVALID,
+};
+
+// ====================================================================================================================
+// Type definition
+// ====================================================================================================================
+
+/// parameters for adaptive loop filter
+class TComPicSym;
+
+#define MAX_NUM_SAO_CLASSES  32  //(NUM_SAO_EO_GROUPS > NUM_SAO_BO_GROUPS)?NUM_SAO_EO_GROUPS:NUM_SAO_BO_GROUPS
+
+struct SAOOffset
+{
+  SAOMode modeIdc; // NEW, MERGE, OFF
+  Int typeIdc;     // union of SAOModeMergeTypes and SAOModeNewTypes, depending on modeIdc.
+  Int typeAuxInfo; // BO: starting band index
+  Int offset[MAX_NUM_SAO_CLASSES];
+
+  SAOOffset();
+  ~SAOOffset();
+  Void reset();
+
+  const SAOOffset& operator= (const SAOOffset& src);
+};
+
+struct SAOBlkParam
+{
+
+  SAOBlkParam();
+  ~SAOBlkParam();
+  Void reset();
+  const SAOBlkParam& operator= (const SAOBlkParam& src);
+  SAOOffset& operator[](Int compIdx){ return offsetParam[compIdx];}
+private:
+  SAOOffset offsetParam[MAX_NUM_COMPONENT];
 
 };
-#endif
 
-#if QC_AC_ADAPT_WDOW
-typedef struct _CABACState
+
+struct BitDepths
 {
-  Bool bActived;
-  UChar uiWdow; 
-  UInt uiQP;
-} CABACState;
+#if O0043_BEST_EFFORT_DECODING
+  Int recon[MAX_NUM_CHANNEL_TYPE]; ///< the bit depth used for reconstructing the video
+  Int stream[MAX_NUM_CHANNEL_TYPE];///< the bit depth used indicated in the SPS
+#else
+  Int recon[MAX_NUM_CHANNEL_TYPE]; ///< the bit depth as indicated in the SPS
+#endif
+};
 
+/// parameters for deblocking filter
+typedef struct _LFCUParam
+{
+  Bool bInternalEdge;                     ///< indicates internal edge
+  Bool bLeftEdge;                         ///< indicates left edge
+  Bool bTopEdge;                          ///< indicates top edge
+} LFCUParam;
+
+
+
+//TU settings for entropy encoding
+struct TUEntropyCodingParameters
+{
+  const UInt            *scan;
+  const UInt            *scanCG;
+        COEFF_SCAN_TYPE  scanType;
+        UInt             widthInGroups;
+        UInt             heightInGroups;
+        UInt             firstSignificanceMapContext;
+};
+
+
+struct TComPictureHash
+{
+  std::vector<UChar> hash;
+
+  Bool operator==(const TComPictureHash &other) const
+  {
+    if (other.hash.size() != hash.size())
+    {
+      return false;
+    }
+    for(UInt i=0; i<UInt(hash.size()); i++)
+    {
+      if (other.hash[i] != hash[i])
+      {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  Bool operator!=(const TComPictureHash &other) const
+  {
+    return !(*this == other);
+  }
+};
+
+struct TComSEITimeSet
+{
+  TComSEITimeSet() : clockTimeStampFlag(false),
+                     numUnitFieldBasedFlag(false),
+                     countingType(0),
+                     fullTimeStampFlag(false),
+                     discontinuityFlag(false),
+                     cntDroppedFlag(false),
+                     numberOfFrames(0),
+                     secondsValue(0),
+                     minutesValue(0),
+                     hoursValue(0),
+                     secondsFlag(false),
+                     minutesFlag(false),
+                     hoursFlag(false),
+                     timeOffsetLength(0),
+                     timeOffsetValue(0)
+  { }
+  Bool clockTimeStampFlag;
+  Bool numUnitFieldBasedFlag;
+  Int  countingType;
+  Bool fullTimeStampFlag;
+  Bool discontinuityFlag;
+  Bool cntDroppedFlag;
+  Int  numberOfFrames;
+  Int  secondsValue;
+  Int  minutesValue;
+  Int  hoursValue;
+  Bool secondsFlag;
+  Bool minutesFlag;
+  Bool hoursFlag;
+  Int  timeOffsetLength;
+  Int  timeOffsetValue;
+};
+
+struct TComSEIMasteringDisplay
+{
+  Bool      colourVolumeSEIEnabled;
+  UInt      maxLuminance;
+  UInt      minLuminance;
+  UShort    primaries[3][2];
+  UShort    whitePoint[2];
+};
+
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
 typedef struct _QPFLAG
 {
-  UInt uiQP;       
-  Bool bUsed;      //same QP, same type has appearaed
-  Bool bFirstUsed; //same QP, same type was firstly signaled
-#if INIT_PREVFRAME
-  UInt uiResetInit; //for the first B/P frame after intra slice, no init update
+  UInt      QP;       
+  Bool      used;      //same QP, same type has appearaed
+  Bool      firstUsed; //same QP, same type was firstly signaled
+#if VCEG_AZ07_INIT_PREVFRAME
+  UInt      resetInit; //for the first B/P frame after intra slice, no init update
 #endif
 } QPFlag;
 #endif
 //! \}
 
 #endif
+
+
