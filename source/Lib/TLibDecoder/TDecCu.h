@@ -61,25 +61,13 @@ private:
   TComYuv**           m_ppcYuvResi;       ///< array of residual buffer
   TComYuv**           m_ppcYuvReco;       ///< array of prediction & reconstruction buffer
   TComDataCU**        m_ppcCU;            ///< CU data array
-#if QC_OBMC
-  TComYuv**           m_ppcTmpYuv1;       ///< array of OBMC prediction buffer
-  TComYuv**           m_ppcTmpYuv2;
-#endif
+  
   // access channel
   TComTrQuant*        m_pcTrQuant;
   TComPrediction*     m_pcPrediction;
   TDecEntropy*        m_pcEntropyDecoder;
 
   Bool                m_bDecodeDQP;
-#if QC_SUB_PU_TMVP
-#if QC_SUB_PU_TMVP_EXT
-  TComMvField*        m_pMvFieldSP[2];
-  UChar*              m_phInterDirSP[2];
-#else
-  TComMvField*        m_pMvFieldSP;
-  UChar*              m_phInterDirSP;
-#endif
-#endif
   
 public:
   TDecCu();
@@ -126,12 +114,9 @@ protected:
   Bool getdQPFlag               ()                        { return m_bDecodeDQP;        }
   Void setdQPFlag               ( Bool b )                { m_bDecodeDQP = b;           }
   Void xFillPCMBuffer           (TComDataCU* pCU, UInt depth);
-
-#if QC_FRUC_MERGE
-  Void xDeriveCUMV( TComDataCU * pcCU , UInt uiAbsPartIdx , UInt uiDepth );
-#endif
 };
 
 //! \}
+
 #endif
 

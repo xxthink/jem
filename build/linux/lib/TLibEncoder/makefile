@@ -51,7 +51,6 @@ OBJS          	= \
 			$(OBJ_DIR)/TEncPreanalyzer.o \
 			$(OBJ_DIR)/WeightPredAnalysis.o \
 			$(OBJ_DIR)/TEncRateCtrl.o \
-			$(OBJ_DIR)/TEncAdaptiveLoopFilter.o \
 
 LIBS				= -lpthread
 

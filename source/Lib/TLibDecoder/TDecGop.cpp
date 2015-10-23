@@ -74,17 +74,7 @@ Void TDecGop::create()
 
 Void TDecGop::destroy()
 {
-#if QC_ALF_TMEPORAL_NUM
-  for( Int i = 0; i < QC_ALF_TMEPORAL_NUM; i++ )
-  {
-    m_pcAdaptiveLoopFilter->freeALFParam( &m_acStoredAlfPara[i] );
-  }
-#endif
 }
-
-#if QC_ALF_TMEPORAL_NUM
-Int TDecGop::m_iStoredAlfParaNum = 0;
-#endif
 
 Void TDecGop::init( TDecEntropy*            pcEntropyDecoder, 
                    TDecSbac*               pcSbacDecoder, 
@@ -92,9 +82,6 @@ Void TDecGop::init( TDecEntropy*            pcEntropyDecoder,
                    TDecCavlc*              pcCavlcDecoder, 
                    TDecSlice*              pcSliceDecoder, 
                    TComLoopFilter*         pcLoopFilter,
-#if ALF_HM3_QC_REFACTOR
-                   TComAdaptiveLoopFilter* pcAdaptiveLoopFilter, 
-#endif
                    TComSampleAdaptiveOffset* pcSAO
                    )
 {
@@ -105,9 +92,6 @@ Void TDecGop::init( TDecEntropy*            pcEntropyDecoder,
   m_pcSliceDecoder        = pcSliceDecoder;
   m_pcLoopFilter          = pcLoopFilter;
   m_pcSAO  = pcSAO;
-#if ALF_HM3_QC_REFACTOR
-  m_pcAdaptiveLoopFilter  = pcAdaptiveLoopFilter;
-#endif
 }
 
 
@@ -117,11 +101,8 @@ Void TDecGop::init( TDecEntropy*            pcEntropyDecoder,
 // ====================================================================================================================
 // Public member functions
 // ====================================================================================================================
-#if QC_AC_ADAPT_WDOW
-Void TDecGop::decompressSlice(TComInputBitstream* pcBitstream, TComPic*& rpcPic, TComStats*  m_apcStats)
-#else
+
 Void TDecGop::decompressSlice(TComInputBitstream* pcBitstream, TComPic*& rpcPic)
-#endif
 {
   TComSlice*  pcSlice = rpcPic->getSlice(rpcPic->getCurrSliceIdx());
   // Table of extracted substreams.
@@ -132,9 +113,6 @@ Void TDecGop::decompressSlice(TComInputBitstream* pcBitstream, TComPic*& rpcPic)
   long iBeforeTime = clock();
   m_pcSbacDecoder->init( (TDecBinIf*)m_pcBinCABAC );
   m_pcEntropyDecoder->setEntropyDecoder (m_pcSbacDecoder);
-#if QC_AC_ADAPT_WDOW
-  m_pcEntropyDecoder->setStatsHandle ( m_apcStats);
-#endif
 
   UInt uiNumSubstreams = pcSlice->getPPS()->getEntropyCodingSyncEnabledFlag() ? pcSlice->getNumEntryPointOffsets()+1 : pcSlice->getPPS()->getNumSubstreams();
 
@@ -160,46 +138,7 @@ Void TDecGop::decompressSlice(TComInputBitstream* pcBitstream, TComPic*& rpcPic)
   m_pcEntropyDecoder->setBitstream      ( ppcSubstreams[0] );
   m_pcEntropyDecoder->resetEntropy      (pcSlice);
   m_pcSbacDecoders[0].load(m_pcSbacDecoder);
-#if ALF_HM3_QC_REFACTOR
-  if ( rpcPic->getSlice(0)->getSPS()->getUseALF() )
-  {
-    m_pcAdaptiveLoopFilter->setNumCUsInFrame(rpcPic);
-    m_pcAdaptiveLoopFilter->allocALFParam(&m_cAlfParam);
-    m_pcAdaptiveLoopFilter->resetALFParam(&m_cAlfParam);
-    m_pcEntropyDecoder->decodeAlfParam( &m_cAlfParam );
-#if QC_ALF_TMEPORAL_NUM
-    static int iFirstLoop = 0;
-    for( Int i = 0; i < QC_ALF_TMEPORAL_NUM && !iFirstLoop; i++ )
-    {
-      m_pcAdaptiveLoopFilter->allocALFParam( &m_acStoredAlfPara[i] );
-    }
-    iFirstLoop++;
-#endif
-  }
-#endif
-#if QC_ALF_TMEPORAL_NUM
-  else
-  {
-    for( Int i = 0; i < QC_ALF_TMEPORAL_NUM; i++ )
-    {
-      m_acStoredAlfPara[i].coeff        = NULL;
-      m_acStoredAlfPara[i].coeff_chroma = NULL;
-      m_acStoredAlfPara[i].coeffmulti = NULL;
-      m_acStoredAlfPara[i].alf_cu_flag = NULL;
-      m_acStoredAlfPara[i].alfCoeffLuma   = NULL;
-      m_acStoredAlfPara[i].alfCoeffChroma = NULL;
-    }
-  }
-#endif
-#if INIT_PREVFRAME
-  pcSlice->setStatsHandle(m_apcStats);
-  pcSlice->initStatsGlobal();
-#endif
-
   m_pcSliceDecoder->decompressSlice( ppcSubstreams, rpcPic, m_pcSbacDecoder, m_pcSbacDecoders);
-#if QC_AC_ADAPT_WDOW
-  m_pcEntropyDecoder->updateStates (pcSlice->getSliceType(), pcSlice->getSliceQp(), m_apcStats);
-#endif
   m_pcEntropyDecoder->setBitstream(  ppcSubstreams[uiNumSubstreams-1] );
   // deallocate all created substreams, including internal buffers.
   for (UInt ui = 0; ui < uiNumSubstreams; ui++)
@@ -231,35 +170,7 @@ Void TDecGop::filterPicture(TComPic*& rpcPic)
     m_pcSAO->SAOProcess(rpcPic);
     m_pcSAO->PCMLFDisableProcess(rpcPic);
   }
-#if ALF_HM3_QC_REFACTOR
-  // adaptive loop filter
-  if( pcSlice->getSPS()->getUseALF() )
-  {
-#if QC_ALF_TMEPORAL_NUM
-    if( m_cAlfParam.temproalPredFlag )
-    {
-      m_pcAdaptiveLoopFilter->copyALFParam( &m_cAlfParam, &m_acStoredAlfPara[m_cAlfParam.prevIdx] );
-    }
-#endif
-    m_pcAdaptiveLoopFilter->ALFProcess(rpcPic, &m_cAlfParam);
-#if QC_ALF_TMEPORAL_NUM
-    if( m_cAlfParam.alf_flag && !m_cAlfParam.temproalPredFlag && m_cAlfParam.filtNo >= 0 )
-    {
-      Int iIdx = m_iStoredAlfParaNum % QC_ALF_TMEPORAL_NUM;
-      m_iStoredAlfParaNum++;
-      m_acStoredAlfPara[iIdx].temproalPredFlag = false;
-      m_pcAdaptiveLoopFilter->copyALFParam( &m_acStoredAlfPara[iIdx], &m_cAlfParam );
-    }
-#endif
-    m_pcAdaptiveLoopFilter->freeALFParam(&m_cAlfParam);
-  }
-#endif
-#if ! QC_HEVC_MOTION_CONSTRAINT_REMOVAL
-    rpcPic->compressMotion();
-#else
-  if (!pcSlice->getSPS()->getAtmvpEnableFlag())
-    rpcPic->compressMotion();
-#endif  
+  rpcPic->compressMotion();
   Char c = (pcSlice->isIntra() ? 'I' : pcSlice->isInterP() ? 'P' : 'B');
   if (!pcSlice->isReferenced()) c += 32;
 
@@ -293,11 +204,7 @@ Void TDecGop::filterPicture(TComPic*& rpcPic)
     calcAndPrintHashStatus(*rpcPic->getPicYuvRec(), hash);
   }
 
-#if SETTING_PIC_OUTPUT_MARK
-  rpcPic->setOutputMark(rpcPic->getSlice(0)->getPicOutputFlag() ? true : false);
-#else
   rpcPic->setOutputMark(true);
-#endif
   rpcPic->setReconMark(true);
 }
 

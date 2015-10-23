@@ -38,7 +38,6 @@
 #include "../TLibCommon/CommonDef.h"
 #include "TEncCavlc.h"
 #include "SEIwrite.h"
-#include <cmath>
 
 //! \ingroup TLibEncoder
 //! \{
@@ -72,10 +71,6 @@ TEncCavlc::TEncCavlc()
 {
   m_pcBitIf           = NULL;
   m_uiCoeffCost       = 0;
-#if ALF_HM3_QC_REFACTOR
-  m_bAlfCtrl = false;
-  m_uiMaxAlfCtrlDepth = 0;
-#endif
 }
 
 TEncCavlc::~TEncCavlc()
@@ -459,49 +454,7 @@ Void TEncCavlc::codeSPS( TComSPS* pcSPS )
       codeScalingList( m_pcSlice->getScalingList() );
     }
   }
-#if QC_IC
-  WRITE_FLAG( pcSPS->getICFlag()? 1: 0, "illumination_comp_flag");
-#endif
-#if QC_SUB_PU_TMVP
-  WRITE_FLAG( pcSPS->getAtmvpEnableFlag() ? 1: 0, "atmvp_flag");
-  WRITE_CODE( pcSPS->getSubPUTLog2Size(), 3, "log2_sub_pu_tmvp_size" );
-#endif
-#if ALF_HM3_QC_REFACTOR
-  WRITE_FLAG( pcSPS->getUseALF () ? 1 : 0, "use_alf_flag" );
-#endif
   WRITE_FLAG( pcSPS->getUseAMP() ? 1 : 0,                                            "amp_enabled_flag" );
-#if QC_FRUC_MERGE
-  WRITE_FLAG( pcSPS->getUseFRUCMgrMode() , "fruc_merge_mode" );
-  if( pcSPS->getUseFRUCMgrMode() )
-  {
-    WRITE_UVLC( pcSPS->getFRUCRefineFilter() , "fruc_refine_filter" );
-    WRITE_UVLC( pcSPS->getFRUCRefineRange() >> QC_MV_STORE_PRECISION_BIT , "fruc_refine_range_in_pixel" );
-    WRITE_UVLC( pcSPS->getFRUCSmallBlkRefineDepth() , "fruc_small_blk_refine_depth" );
-  }
-#endif
-#if QC_EMT_INTRA
-  WRITE_UVLC( pcSPS->getUseIntraEMT() , "use_intra_emt" );
-#endif
-#if QC_EMT_INTER
-  WRITE_UVLC( pcSPS->getUseInterEMT() , "use_inter_emt" );
-#endif
-#if QC_INTRA_4TAP_FILTER
-  WRITE_FLAG( pcSPS->getUse4TapIntraFilter() ? 1 : 0, "intra_4tap_filter_enabled_flag" );
-#endif
-#if INTRA_BOUNDARY_FILTER
-  WRITE_FLAG( pcSPS->getUseBoundaryFilter() ? 1 : 0, "boundary_filter_enabled_flag" );
-#endif
-#if QC_USE_65ANG_MODES
-  WRITE_FLAG( pcSPS->getUseExtIntraAngModes() ? 1 : 0, "ext_intra_angular_modes_enabled_flag" );
-#endif
-#if QC_OBMC
-  WRITE_FLAG( pcSPS->getOBMC(), "obmc_flag" );
-  if( pcSPS->getOBMC() )
-  {
-    assert( pcSPS->getOBMCBlkSize() == 4 || pcSPS->getOBMCBlkSize() == 8 );
-    WRITE_UVLC( pcSPS->getOBMCBlkSize() , "obmc_blk_size" );
-  }
-#endif
   WRITE_FLAG( pcSPS->getUseSAO() ? 1 : 0,                                            "sample_adaptive_offset_enabled_flag");
 
   WRITE_FLAG( pcSPS->getUsePCM() ? 1 : 0,                                            "pcm_enabled_flag");
@@ -538,14 +491,6 @@ Void TEncCavlc::codeSPS( TComSPS* pcSPS )
   WRITE_FLAG( pcSPS->getTMVPFlagsPresent()  ? 1 : 0,           "sps_temporal_mvp_enable_flag" );
 
   WRITE_FLAG( pcSPS->getUseStrongIntraSmoothing(),             "sps_strong_intra_smoothing_enable_flag" );
-
-#if QC_IMV
-  WRITE_FLAG( pcSPS->getIMV() ? 1 : 0 , "QC_IMV" ); 
-#endif
-
-#if QC_LMCHROMA
-  WRITE_FLAG( pcSPS->getUseLMChroma () ? 1 : 0,                "cross_component_prediction_enabled_flag" );
-#endif
 
   WRITE_FLAG( pcSPS->getVuiParametersPresentFlag(),             "vui_parameters_present_flag" );
   if (pcSPS->getVuiParametersPresentFlag())
@@ -631,73 +576,6 @@ Void TEncCavlc::codeVPS( TComVPS* pcVPS )
   return;
 }
 
-#if QC_AC_ADAPT_WDOW
-Void TEncCavlc::xRunCoding(Bool * uiCtxMAP, UInt uiNumCtx)
-{
-  UInt uiRun = 0,   uiTotal = uiNumCtx, uiRunMode=1;
-  Int iIndex =  0;
-
-  while (iIndex < uiTotal)
-  {
-    while (uiRunMode)
-    {
-      if (uiCtxMAP[iIndex] == false)
-        uiRun++;
-      else if (uiCtxMAP[iIndex] == true)
-      {
-        uiRunMode = 0;
-        iIndex++;
-        break;
-      }
-      if (iIndex == uiTotal-1)
-        uiRunMode = 0;
-
-      iIndex++;
-    }
-    WRITE_UVLC(uiRun, "CtxUpdateMap");
-    uiRun = 0;
-    uiRunMode = 1;
-  }
-}
-Void TEncCavlc::xCtxCodewordCoding(Bool * uiCtxMAP, UChar * uiCtxCodeIdx, UInt uiNumCtx)
-{
-   Int i;
-
-   for (i = 0; i <uiNumCtx; i++ )
-   {
-     if (uiCtxMAP[i])
-     {
-#if (ALPHA0!=6)
-UInt uiSymbol = (UInt) (uiCtxCodeIdx[i]>ALPHA0?(uiCtxCodeIdx[i]-5):(uiCtxCodeIdx[i]-4));//uiCtxCodeIdx[i] = ALPHA0 --> not coded
-       WRITE_UVLC ( uiSymbol, "wind diff");
-#else
-       WRITE_UVLC ( (UInt) ((uiCtxCodeIdx[i]-4)>2?2:(uiCtxCodeIdx[i]-4)), "wind diff");
-#endif
-     }
-   }
-}
-Void TEncCavlc:: codeCtxUpdateInfo           (TComSlice* pcSlice,  TComStats* apcStats)
- {
-   Int  iQP = pcSlice->getCtxMapQPIdx();
-   Int uiSliceType = pcSlice->getSliceType();
-   if (iQP == -1 || apcStats->m_uiNumCtx[uiSliceType][iQP] == 0 )
-   {
-     WRITE_FLAG( 0, "cabac_newWindow_flag" );
-     return;
-   }
-
-   WRITE_FLAG( 1, "cabac_newWindow_flag" ); 
-   UInt bReuse = (apcStats-> aaQPUsed[uiSliceType][iQP].bFirstUsed==false)?1:0;
-   WRITE_FLAG( bReuse, "cabac_reusePrevFrame_flag" );
-
-   if(!bReuse)
-   {
-     xRunCoding( apcStats->m_uiCtxMAP[uiSliceType][iQP], NUM_CTX_PBSLICE);
-     xCtxCodewordCoding(apcStats->m_uiCtxMAP[uiSliceType][iQP], apcStats->m_uiCtxCodeIdx[uiSliceType][iQP],NUM_CTX_PBSLICE);
-   }
-}
-#endif
-
 Void TEncCavlc::codeSliceHeader         ( TComSlice* pcSlice )
 {
 #if ENC_DEC_TRACE  
@@ -728,11 +606,7 @@ Void TEncCavlc::codeSliceHeader         ( TComSlice* pcSlice )
   WRITE_FLAG( sliceSegmentAddress==0, "first_slice_segment_in_pic_flag" );
   if ( pcSlice->getRapPicFlag() )
   {
-#if SETTING_NO_OUT_PIC_PRIOR
-    WRITE_FLAG( pcSlice->getNoOutputPriorPicsFlag() ? 1 : 0, "no_output_of_prior_pics_flag" );
-#else
-   WRITE_FLAG( 0, "no_output_of_prior_pics_flag" );
-#endif
+    WRITE_FLAG( 0, "no_output_of_prior_pics_flag" );
   }
   WRITE_UVLC( pcSlice->getPPS()->getPPSId(), "slice_pic_parameter_set_id" );
   pcSlice->setDependentSliceSegmentFlag(!pcSlice->isNextSlice());
@@ -995,25 +869,9 @@ Void TEncCavlc::codeSliceHeader         ( TComSlice* pcSlice )
       xCodePredWeightTable( pcSlice );
     }
     assert(pcSlice->getMaxNumMergeCand()<=MRG_MAX_NUM_CANDS);
-#if QC_IC
-    if ( pcSlice->getSPS()->getICFlag() && pcSlice->getSliceType() != I_SLICE)
-    {
-      WRITE_FLAG( pcSlice->getApplyIC() ? 1 : 0, "slice_ic_enable_flag" );
-    }
-#endif
     if (!pcSlice->isIntra())
     {
-#if MERGE_CAND_NUM_PATCH
-      WRITE_UVLC(MRG_MAX_NUM_CANDS - pcSlice->getMaxNumMergeCand(), "MAX_minus_slice_max_num_merge_cand");
-#else
-#if QC_SUB_PU_TMVP
-      UInt uiValTemp = MRG_MAX_NUM_CANDS - pcSlice->getMaxNumMergeCand();
-      if (!pcSlice->getSPS()->getAtmvpEnableFlag()) uiValTemp--;
-      WRITE_UVLC( uiValTemp ,  pcSlice->getSPS()->getAtmvpEnableFlag() ? "six_minus_max_num_merge_cand": "five_minus_max_num_merge_cand");
-#else
       WRITE_UVLC(MRG_MAX_NUM_CANDS - pcSlice->getMaxNumMergeCand(), "five_minus_max_num_merge_cand");
-#endif
-#endif
     }
     Int iCode = pcSlice->getSliceQp() - ( pcSlice->getPPS()->getPicInitQPMinus26() + 26 );
     WRITE_SVLC( iCode, "slice_qp_delta" ); 
@@ -1201,18 +1059,6 @@ Void TEncCavlc::codeMVPIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRe
   assert(0);
 }
 
-#if QC_EMT
-Void TEncCavlc::codeEmtTuIdx( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
-{
-  assert(0);
-}
-
-Void TEncCavlc::codeEmtCuFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bRootCbf )
-{
-  assert(0);
-}
-#endif
-
 Void TEncCavlc::codePartSize( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 {
   assert(0);
@@ -1233,25 +1079,6 @@ Void TEncCavlc::codeMergeIndex    ( TComDataCU* pcCU, UInt uiAbsPartIdx )
   assert(0);
 }
 
-#if ROT_TR  
-Void TEncCavlc::codeROTIdx    ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth )
-{
-  assert(0);
-}
-#endif
-#if CU_LEVEL_MPI
-Void TEncCavlc::codeMPIIdx    ( TComDataCU* pcCU, UInt uiAbsPartIdx )
-{
-  assert(0);
-}
-#endif
-#if QC_FRUC_MERGE
-Void TEncCavlc::codeFRUCMgrMode  ( TComDataCU* pcCU, UInt uiAbsPartIdx , UInt uiPUIdx )
-{
-  assert(0);
-}
-#endif
-
 Void TEncCavlc::codeInterModeFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiEncMode )
 {
   assert(0);
@@ -1266,27 +1093,6 @@ Void TEncCavlc::codeSkipFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
 {
   assert(0);
 }
-
-#if QC_IMV
-Void TEncCavlc::codeiMVFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx )
-{
-  assert(0);
-}
-#endif
-
-#if QC_OBMC
-Void TEncCavlc::codeOBMCFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
-{
-  assert(0);
-}
-#endif
-
-#if QC_IC
-Void TEncCavlc::codeICFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
-{
-  assert(0);
-}
-#endif
 
 Void TEncCavlc::codeSplitFlag   ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 {
@@ -1332,11 +1138,7 @@ Void TEncCavlc::codeIPCMInfo( TComDataCU* pcCU, UInt uiAbsPartIdx )
   assert(0);
 }
 
-Void TEncCavlc::codeIntraDirLumaAng( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool isMultiple
-#if QC_USE_65ANG_MODES
-                                    , Int* piModes, Int iCase
-#endif
-                                    )
+Void TEncCavlc::codeIntraDirLumaAng( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool isMultiple)
 {
   assert(0);
 }
@@ -1373,11 +1175,7 @@ Void TEncCavlc::codeDeltaQP( TComDataCU* pcCU, UInt uiAbsPartIdx )
   return;
 }
 
-Void TEncCavlc::codeCoeffNxN    ( TComDataCU* pcCU, TCoeff* pcCoef, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight, UInt uiDepth, TextType eTType 
-#if ROT_TR    || CU_LEVEL_MPI
-    , Int& bCbfCU
-#endif
-    )
+Void TEncCavlc::codeCoeffNxN    ( TComDataCU* pcCU, TCoeff* pcCoef, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight, UInt uiDepth, TextType eTType )
 {
   assert(0);
 }
@@ -1562,106 +1360,4 @@ Bool TComScalingList::checkPredMode(UInt sizeId, UInt listId)
   }
   return true;
 }
-
-#if ALF_HM3_QC_REFACTOR
-Void TEncCavlc::codeAlfFlag( UInt uiCode )
-{
-  //xWriteFlag( uiCode );
-  WRITE_FLAG( uiCode , "alf_flag" );
-}
-
-Void TEncCavlc::codeAlfFlagNum( UInt uiCode, UInt minValue )
-{
-  UInt uiLength = 0;
-  UInt maxValue = (minValue << (this->getMaxAlfCtrlDepth()*2));
-  assert((uiCode>=minValue)&&(uiCode<=maxValue));
-  UInt temp = maxValue - minValue;
-  for(UInt i=0; i<32; i++)
-  {
-    if(temp&0x1)
-    {
-      uiLength = i+1;
-    }
-    temp = (temp >> 1);
-  }
-  if(uiLength)
-  {
-    WRITE_CODE( uiCode - minValue, uiLength , "alf_flag_num" );
-    //xWriteCode( uiCode - minValue, uiLength );
-  }
-}
-
-Void TEncCavlc::codeAlfCtrlFlag( UInt uiSymbol )
-{
-  //xWriteFlag( uiSymbol );
-  WRITE_FLAG( uiSymbol , "alf_ctrl_flag" );
-}
-
-Void TEncCavlc::codeAlfUvlc( UInt uiCode )
-{
-  //xWriteUvlc( uiCode );
-  WRITE_UVLC( uiCode , "alf_uvlc" );
-}
-
-Void TEncCavlc::codeAlfSvlc( Int iCode )
-{
-  //xWriteSvlc( iCode );
-  WRITE_SVLC( iCode , "alf_svlc" );
-}
-
-Void TEncCavlc::codeAlfCtrlFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
-{  
-  if (!m_bAlfCtrl)
-    return;
-
-  if( pcCU->getDepth(uiAbsPartIdx) > m_uiMaxAlfCtrlDepth && !pcCU->isFirstAbsZorderIdxInDepth(uiAbsPartIdx, m_uiMaxAlfCtrlDepth))
-  {
-    return;
-  }
-
-  // get context function is here
-  UInt uiSymbol = pcCU->getAlfCtrlFlag( uiAbsPartIdx ) ? 1 : 0;
-
-  //xWriteFlag( uiSymbol );
-  WRITE_FLAG( uiSymbol , "alf_ctrl_flag" );
-}
-
-Void TEncCavlc::codeAlfCtrlDepth()
-{  
-  if (!m_bAlfCtrl)
-    return;
-
-  UInt uiDepth = m_uiMaxAlfCtrlDepth;
-
-  xWriteUnaryMaxSymbol(uiDepth, g_uiMaxCUDepth-1);
-}
-
-Void TEncCavlc::xWriteUnaryMaxSymbol( UInt uiSymbol, UInt uiMaxSymbol )
-{
-  if (uiMaxSymbol == 0)
-  {
-    return;
-  }
-  //xWriteFlag( uiSymbol ? 1 : 0 );
-  WRITE_FLAG( uiSymbol ? 1 : 0 , "alf_ctrl_depth_flag_1st" );
-  if ( uiSymbol == 0 )
-  {
-    return;
-  }
-
-  Bool bCodeLast = ( uiMaxSymbol > uiSymbol );
-
-  while( --uiSymbol )
-  {
-    xWriteFlag( 1 );
-  }
-  if( bCodeLast )
-  {
-    xWriteFlag( 0 );
-  }
-  return;
-}
-
-#endif
-
 //! \}

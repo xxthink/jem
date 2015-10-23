@@ -113,9 +113,6 @@ public:
                 , Bool isPreDBFSamplesUsed
 #endif
                 ); 
-#if QC_AC_ADAPT_WDOW
-  Void setEntropyCoder (TEncEntropy* pcEntropyCoder)  {m_pcEntropyCoder = pcEntropyCoder;}
-#endif
 public: //methods
 #if SAO_ENCODE_ALLOW_USE_PREDEBLOCK
   Void getPreDBFStatistics(TComPic* pPic); 
@@ -159,9 +156,6 @@ private: //members
 #endif
   Int                    m_skipLinesR[NUM_SAO_COMPONENTS][NUM_SAO_NEW_TYPES];
   Int                    m_skipLinesB[NUM_SAO_COMPONENTS][NUM_SAO_NEW_TYPES];
-#if QC_AC_ADAPT_WDOW
-  TEncEntropy*      m_pcEntropyCoder;
-#endif
 };
 //! \}
 

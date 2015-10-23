@@ -100,9 +100,6 @@ public:
   Void          setCheckLTMSBPresent     (Bool b ) {m_bCheckLTMSB=b;}
   Bool          getCheckLTMSBPresent     () { return m_bCheckLTMSB;}
 
-#if QC_FRUC_MERGE
-  Void          initFRUCMVP()         { return m_apcPicSym->initFRUCMVP();  }
-#endif
   TComPicSym*   getPicSym()           { return  m_apcPicSym;    }
   TComSlice*    getSlice(Int i)       { return  m_apcPicSym->getSlice(i);  }
   Int           getPOC()              { return  m_apcPicSym->getSlice(m_uiCurrSliceIdx)->getPOC();  }
@@ -110,14 +107,6 @@ public:
   
   TComPicYuv*   getPicYuvOrg()        { return  m_apcPicYuv[0]; }
   TComPicYuv*   getPicYuvRec()        { return  m_apcPicYuv[1]; }
-#if HM14_CLEAN_UP || ALF_HM3_QC_REFACTOR
-  TComPicYuv*   replacePicYuvRecPointer( TComPicYuv * pNewPicYuvRec )
-  {
-    TComPicYuv * pOldPicYuvRec = m_apcPicYuv[1];
-    m_apcPicYuv[1] = pNewPicYuvRec;
-    return ( pOldPicYuvRec );
-  }
-#endif
   
   TComPicYuv*   getPicYuvPred()       { return  m_pcPicYuvPred; }
   TComPicYuv*   getPicYuvResi()       { return  m_pcPicYuvResi; }

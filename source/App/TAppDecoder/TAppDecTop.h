@@ -67,10 +67,6 @@ private:
   Int                             m_iPOCLastDisplay;              ///< last POC in display order
   
 public:
-#if QC_AC_ADAPT_WDOW
-  TComStats*                      m_apcStats;                     
-#endif
-
   TAppDecTop();
   virtual ~TAppDecTop() {}
   
@@ -89,5 +85,6 @@ protected:
 };
 
 //! \}
+
 #endif
 

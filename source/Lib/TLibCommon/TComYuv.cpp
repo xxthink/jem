@@ -516,35 +516,8 @@ Void TComYuv::subtractChroma( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt uiTrU
     pDstV  += iDstStride;
   }
 }
-#if QC_OBMC
-UInt TComYuv::sadLuma( TComYuv* pcYuvSrc0 )
-{
-  assert( pcYuvSrc0->getWidth() == this->getWidth() );
-  Pel* pSrc0 = pcYuvSrc0->getLumaAddr();
-  Pel* pSrc1 = this->getLumaAddr();
 
-  Int  iSrc0Stride = pcYuvSrc0->getStride();
-  Int  iSrc1Stride = this->getStride();
-  UInt uiSAD = 0;
-  for ( Int y = pcYuvSrc0->getHeight() - 1 ; y >= 0; y-- )
-  {
-    for ( Int x = pcYuvSrc0->getWidth() - 1 ; x >= 0; x-- )
-    {
-      uiSAD += abs( pSrc0[x] - pSrc1[x] );
-    }
-    pSrc0 += iSrc0Stride;
-    pSrc1 += iSrc1Stride;
-  }
-
-  return( uiSAD );
-}
-#endif
-
-Void TComYuv::addAvg( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt iPartUnitIdx, UInt iWidth, UInt iHeight 
-#if BIO                  
-,bool bBIOapplied
-#endif
-)
+Void TComYuv::addAvg( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt iPartUnitIdx, UInt iWidth, UInt iHeight )
 {
   Int x, y;
   
@@ -565,23 +538,9 @@ Void TComYuv::addAvg( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt iPartUnitIdx,
   UInt  iDstStride  = getStride();
   Int shiftNum = IF_INTERNAL_PREC + 1 - g_bitDepthY;
   Int offset = ( 1 << ( shiftNum - 1 ) ) + 2 * IF_INTERNAL_OFFS;
-#if HM14_CLEAN_UP
-  static const Pel nMaxY = ( 1 << g_bitDepthY ) -1;
-  static const Pel nMaxC = ( 1 << g_bitDepthC ) -1;
-#endif
-#if BIO
-  if(!bBIOapplied)
-  {
-#endif   
+  
   for ( y = 0; y < iHeight; y++ )
   {
-#if HM14_CLEAN_UP
-    for ( x = 0; x < iWidth; x++ )
-    {
-      Short tmp = ( pSrcY0[ x ] + pSrcY1[ x ] + offset ) >> shiftNum;
-      pDstY[x] = tmp < 0 ? 0 : tmp > nMaxY ? nMaxY : tmp;
-    }
-#else
     for ( x = 0; x < iWidth; x += 4 )
     {
       pDstY[ x + 0 ] = ClipY( ( pSrcY0[ x + 0 ] + pSrcY1[ x + 0 ] + offset ) >> shiftNum );
@@ -589,14 +548,11 @@ Void TComYuv::addAvg( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt iPartUnitIdx,
       pDstY[ x + 2 ] = ClipY( ( pSrcY0[ x + 2 ] + pSrcY1[ x + 2 ] + offset ) >> shiftNum );
       pDstY[ x + 3 ] = ClipY( ( pSrcY0[ x + 3 ] + pSrcY1[ x + 3 ] + offset ) >> shiftNum );
     }
-#endif
     pSrcY0 += iSrc0Stride;
     pSrcY1 += iSrc1Stride;
     pDstY  += iDstStride;
   }
-#if BIO
-  }
-#endif  
+  
   shiftNum = IF_INTERNAL_PREC + 1 - g_bitDepthC;
   offset = ( 1 << ( shiftNum - 1 ) ) + 2 * IF_INTERNAL_OFFS;
 
@@ -609,15 +565,6 @@ Void TComYuv::addAvg( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt iPartUnitIdx,
   
   for ( y = iHeight-1; y >= 0; y-- )
   {
-#if HM14_CLEAN_UP
-    for ( x = 0 ; x < iWidth ; x++ )
-    {
-      Short tmpU = (pSrcU0[x] + pSrcU1[x] + offset) >> shiftNum;
-      Short tmpV = (pSrcV0[x] + pSrcV1[x] + offset) >> shiftNum;
-      pDstU[x] = tmpU < 0 ? 0 : tmpU > nMaxC ? nMaxC : tmpU;
-      pDstV[x] = tmpV < 0 ? 0 : tmpV > nMaxC ? nMaxC : tmpV;
-    }
-#else
     for ( x = iWidth-1; x >= 0; )
     {
       // note: chroma min width is 2
@@ -626,7 +573,6 @@ Void TComYuv::addAvg( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt iPartUnitIdx,
       pDstU[x] = ClipC((pSrcU0[x] + pSrcU1[x] + offset) >> shiftNum);
       pDstV[x] = ClipC((pSrcV0[x] + pSrcV1[x] + offset) >> shiftNum); x--;
     }
-#endif
     
     pSrcU0 += iSrc0Stride;
     pSrcU1 += iSrc1Stride;
@@ -690,5 +636,4 @@ Void TComYuv::removeHighFreq( TComYuv* pcYuvSrc, UInt uiPartIdx, UInt uiWidht, U
     pDstV += iDstStride;
   }
 }
-
 //! \}

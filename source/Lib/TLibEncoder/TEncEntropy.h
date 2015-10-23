@@ -81,64 +81,28 @@ public:
 public:
   virtual Void codeCUTransquantBypassFlag( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
   virtual Void codeSkipFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
-#if ROT_TR
-   virtual Void codeROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth ) = 0;
-#endif
-#if CU_LEVEL_MPI
-   virtual Void codeMPIIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
-#endif
-#if QC_IMV
-  virtual Void codeiMVFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
-#endif
-#if QC_OBMC
-  virtual Void codeOBMCFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
-#endif
-#if QC_IC
-  virtual Void codeICFlag        ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
-#endif
   virtual Void codeMergeFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
   virtual Void codeMergeIndex    ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
-#if QC_FRUC_MERGE
-  virtual Void codeFRUCMgrMode  ( TComDataCU* pcCU, UInt uiAbsPartIdx , UInt uiPUIdx ) = 0;
-#endif
   virtual Void codeSplitFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
   
-#if QC_EMT
-  virtual Void codeEmtTuIdx      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
-  virtual Void codeEmtCuFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bRootCbf ) = 0;
-#endif
-
   virtual Void codePartSize      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
   virtual Void codePredMode      ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
   
   virtual Void codeIPCMInfo      ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
-#if QC_AC_ADAPT_WDOW
-  virtual TComStats* getStatesHandle () = 0;
-  virtual Void setStatesHandle ( TComStats* pcStats) = 0;
-  virtual Void codeCtxUpdateInfo(TComSlice* pcSlice,  TComStats* apcStats) = 0;
-#endif
 
   virtual Void codeTransformSubdivFlag( UInt uiSymbol, UInt uiCtx ) = 0;
   virtual Void codeQtCbf         ( TComDataCU* pcCU, UInt uiAbsPartIdx, TextType eType, UInt uiTrDepth ) = 0;
   virtual Void codeQtRootCbf     ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
   virtual Void codeQtCbfZero     ( TComDataCU* pcCU, TextType eType, UInt uiTrDepth ) = 0;
   virtual Void codeQtRootCbfZero ( TComDataCU* pcCU ) = 0;
-  virtual Void codeIntraDirLumaAng( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool isMultiplePU
-#if QC_USE_65ANG_MODES
-    , Int* piModes = NULL, Int iAboveLeftCase = -1
-#endif
-    ) = 0;
+  virtual Void codeIntraDirLumaAng( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool isMultiplePU ) = 0;
   
   virtual Void codeIntraDirChroma( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
   virtual Void codeInterDir      ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
   virtual Void codeRefFrmIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList )      = 0;
   virtual Void codeMvd           ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList )      = 0;
   virtual Void codeDeltaQP       ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
-  virtual Void codeCoeffNxN      ( TComDataCU* pcCU, TCoeff* pcCoef, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight, UInt uiDepth, TextType eTType 
-#if ROT_TR    || CU_LEVEL_MPI
-    ,  int& bCbfCU
-#endif
-    ) = 0;
+  virtual Void codeCoeffNxN      ( TComDataCU* pcCU, TCoeff* pcCoef, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight, UInt uiDepth, TextType eTType ) = 0;
   virtual Void codeTransformSkipFlags ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt width, UInt height, TextType eTType ) = 0;
   virtual Void codeSAOBlkParam(SAOBlkParam& saoBlkParam, Bool* sliceEnabled, Bool leftMergeAvail, Bool aboveMergeAvail, Bool onlyEstMergeInfo = false)    =0;
   virtual Void estBit               (estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, TextType eTType) = 0;
@@ -151,19 +115,6 @@ public:
 
   virtual ~TEncEntropyIf() {}
 
-#if ALF_HM3_QC_REFACTOR
-  virtual Bool getAlfCtrl()                = 0;
-  virtual UInt getMaxAlfCtrlDepth()                = 0;
-  virtual Void setAlfCtrl(Bool bAlfCtrl)                = 0;
-  virtual Void setMaxAlfCtrlDepth(UInt uiMaxAlfCtrlDepth)                = 0;
-  virtual Void codeAlfCtrlDepth() = 0;
-  virtual Void codeAlfCtrlFlag   ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
-  virtual Void codeAlfFlag          ( UInt uiCode ) = 0;
-  virtual Void codeAlfUvlc          ( UInt uiCode ) = 0;
-  virtual Void codeAlfSvlc          ( Int   iCode ) = 0;
-  virtual Void codeAlfFlagNum       ( UInt uiCode, UInt minValue ) = 0;
-  virtual Void codeAlfCtrlFlag      ( UInt uiSymbol ) = 0;
-#endif
 };
 
 /// entropy encoder class
@@ -175,25 +126,13 @@ private:
   UInt    m_bakAbsPartIdxCU;
 
 public:
-#if QC_AC_ADAPT_WDOW
-  TComStats*                      m_pcStats;
-#endif  
   Void    setEntropyCoder           ( TEncEntropyIf* e, TComSlice* pcSlice );
   Void    setBitstream              ( TComBitIf* p )          { m_pcEntropyCoderIf->setBitstream(p);  }
   Void    resetBits                 ()                        { m_pcEntropyCoderIf->resetBits();      }
   Void    resetCoeffCost            ()                        { m_pcEntropyCoderIf->resetCoeffCost(); }
   UInt    getNumberOfWrittenBits    ()                        { return m_pcEntropyCoderIf->getNumberOfWrittenBits(); }
   UInt    getCoeffCost              ()                        { return  m_pcEntropyCoderIf->getCoeffCost(); }
-#if QC_AC_ADAPT_WDOW
-  Void    resetEntropy              ()                        
-  {
-    m_pcEntropyCoderIf->setStatesHandle (m_pcStats);
-    m_pcEntropyCoderIf->resetEntropy();  
-  }
-#else
   Void    resetEntropy              ()                        { m_pcEntropyCoderIf->resetEntropy();  }
-#endif
-
   Void    determineCabacInitIdx     ()                        { m_pcEntropyCoderIf->determineCabacInitIdx(); }
   
   Void    encodeSliceHeader         ( TComSlice* pcSlice );
@@ -201,11 +140,7 @@ public:
   Void    encodeTerminatingBit      ( UInt uiIsLast );
   Void    encodeSliceFinish         ();
   TEncEntropyIf*      m_pcEntropyCoderIf;
-#if QC_AC_ADAPT_WDOW
-  TEncSbac* getCABACCoder () {return (TEncSbac*)m_pcEntropyCoderIf;}
-  Void encodeCtxUpdateInfo(TComSlice* pcSlice,  TComStats* apcStats);
-#endif
-
+  
 public:
   Void encodeVPS               ( TComVPS* pcVPS);
   // SPS
@@ -214,15 +149,6 @@ public:
   Void encodeSplitFlag         ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bRD = false );
   Void encodeCUTransquantBypassFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
   Void encodeSkipFlag          ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
-#if QC_IMV
-  Void encodeiMVFlag          ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
-#endif
-#if QC_OBMC
-  Void encodeOBMCFlag          ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
-#endif
-#if QC_IC
-  Void encodeICFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx );
-#endif
   Void encodePUWise       ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
   Void encodeInterDirPU   ( TComDataCU* pcSubCU, UInt uiAbsPartIdx  );
   Void encodeRefFrmIdxPU  ( TComDataCU* pcSubCU, UInt uiAbsPartIdx, RefPicList eRefList );
@@ -230,27 +156,11 @@ public:
   Void encodeMVPIdxPU     ( TComDataCU* pcSubCU, UInt uiAbsPartIdx, RefPicList eRefList );
   Void encodeMergeFlag    ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void encodeMergeIndex   ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
-#if QC_FRUC_MERGE
-  Void encodeFRUCMgrMode ( TComDataCU* pcCU, UInt uiAbsPartIdx , UInt uiPUIdx );
-#endif
   Void encodePredMode          ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
-#if ROT_TR 
-    Void encodeROTIdx    ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth, Bool bRD = false );
-#endif
-#if CU_LEVEL_MPI
-    Void encodeMPIIdx    ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
-#endif
-#if QC_EMT
-  Void encodeEmtCuFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bCodeCuFlag );
-#endif
   Void encodePartSize          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bRD = false );
   Void encodeIPCMInfo          ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
   Void encodePredInfo          ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
-  Void encodeIntraDirModeLuma  ( TComDataCU* pcCU, UInt absPartIdx, Bool isMultiplePU = false 
-#if QC_USE_65ANG_MODES
-    , Int* piModes = NULL, Int iAboveLeftCase = -1
-#endif
-    );
+  Void encodeIntraDirModeLuma  ( TComDataCU* pcCU, UInt absPartIdx, Bool isMultiplePU = false );
   
   Void encodeIntraDirModeChroma( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
   
@@ -266,47 +176,15 @@ public:
   Void encodeScalingList       ( TComScalingList* scalingList );
 
 private:
-  Void xEncodeTransform        ( TComDataCU* pcCU,UInt offsetLumaOffset, UInt offsetChroma, UInt uiAbsPartIdx, UInt uiDepth, UInt width, UInt height, UInt uiTrIdx, Bool& bCodeDQP 
-#if ROT_TR    || CU_LEVEL_MPI
-    , Int& bCbfCU
-#endif
-    );
+  Void xEncodeTransform        ( TComDataCU* pcCU,UInt offsetLumaOffset, UInt offsetChroma, UInt uiAbsPartIdx, UInt uiDepth, UInt width, UInt height, UInt uiTrIdx, Bool& bCodeDQP );
 public:
-  Void encodeCoeff             ( TComDataCU* pcCU,                 UInt uiAbsPartIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight, Bool& bCodeDQP 
-#if ROT_TR  || CU_LEVEL_MPI
- , Int& bNonZeroCoeff 
-#endif
- );
+  Void encodeCoeff             ( TComDataCU* pcCU,                 UInt uiAbsPartIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight, Bool& bCodeDQP );
   
   Void encodeCoeffNxN         ( TComDataCU* pcCU, TCoeff* pcCoeff, UInt uiAbsPartIdx, UInt uiTrWidth, UInt uiTrHeight, UInt uiDepth, TextType eType );
   
   Void estimateBit             ( estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, TextType eTType);
   Void encodeSAOBlkParam(SAOBlkParam& saoBlkParam, Bool* sliceEnabled, Bool leftMergeAvail, Bool aboveMergeAvail){m_pcEntropyCoderIf->codeSAOBlkParam(saoBlkParam, sliceEnabled, leftMergeAvail, aboveMergeAvail, false);}
   static Int countNonZeroCoeffs( TCoeff* pcCoef, UInt uiSize );
-
-#if ALF_HM3_QC_REFACTOR
-  Void encodeAlfParam(ALFParam* pAlfParam);
-  Void encodeAlfCtrlFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
-  Void encodeAlfCtrlParam      ( ALFParam *pAlfParam );
-  Bool getAlfCtrl() {return m_pcEntropyCoderIf->getAlfCtrl();}
-  UInt getMaxAlfCtrlDepth() {return m_pcEntropyCoderIf->getMaxAlfCtrlDepth();}
-  Void setAlfCtrl(Bool bAlfCtrl) {m_pcEntropyCoderIf->setAlfCtrl(bAlfCtrl);}
-  Void setMaxAlfCtrlDepth(UInt uiMaxAlfCtrlDepth) {m_pcEntropyCoderIf->setMaxAlfCtrlDepth(uiMaxAlfCtrlDepth);}
-  Void codeAuxCountBit(ALFParam* pAlfParam, Int64* ruiRate);
-  Void codeFiltCountBit(ALFParam* pAlfParam, Int64* ruiRate);
-  Void codeAux (ALFParam* pAlfParam);
-  Void codeFilt (ALFParam* pAlfParam);
-  Int codeFilterCoeff(ALFParam* ALFp);
-  Int writeFilterCodingParams(int minKStart, int maxScanVal, int kMinTab[]);
-  Int writeFilterCoeffs(int sqrFiltLength, int filters_per_group, int pDepthInt[], 
-    int **FilterCoeff, int kMinTab[]);
-  Int golombEncode(int coeff, int k);
-  Int lengthGolomb(int coeffVal, int k);
-#endif
-#if QC_AC_ADAPT_WDOW
-  Void setStatsHandle ( TComStats*  pcStats)  {m_pcStats=pcStats;}
-  TComStats* getStatsHandle ()  {return m_pcStats;}
-#endif 
 
 };// END CLASS DEFINITION TEncEntropy
 

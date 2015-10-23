@@ -108,7 +108,7 @@ Void TComLoopFilter::destroy()
 {
   for( UInt uiDir = 0; uiDir < 2; uiDir++ )
   {
-    if (m_aapucBS[uiDir])
+    if (m_aapucBS)
     {
       delete [] m_aapucBS       [uiDir];
       m_aapucBS [uiDir] = NULL;
@@ -292,19 +292,6 @@ Void TComLoopFilter::xSetEdgefilterPU( TComDataCU* pcCU, UInt uiAbsZorderIdx )
   {
     case SIZE_2Nx2N:
     {
-#if QC_FRUC_MERGE
-      if( pcCU->getFRUCMgrMode( uiAbsZorderIdx ) )
-      {
-        assert( MIN_PU_SIZE == 4 && QC_FRUC_MERGE_REFINE_MINBLKSIZE == 4 );
-        const Int nUnits = QC_FRUC_MERGE_REFINE_MINBLKSIZE >> 2;
-        for( UInt nEdgeIdx = nUnits ; nEdgeIdx < uiWidthInBaseUnits ; nEdgeIdx += nUnits )
-        {
-          xSetEdgefilterMultiple( pcCU, uiAbsZorderIdx, uiDepth, EDGE_VER, nEdgeIdx, m_stLFCUParam.bInternalEdge );
-          xSetEdgefilterMultiple( pcCU, uiAbsZorderIdx, uiDepth, EDGE_HOR, nEdgeIdx, m_stLFCUParam.bInternalEdge );
-        }
-        break;
-      }
-#endif
       break;
     }
     case SIZE_2NxN:
@@ -444,9 +431,6 @@ Void TComLoopFilter::xGetBoundaryStrengthSingle ( TComDataCU* pcCU, Int iDir, UI
     }
     else
     {
-#if QC_MV_STORE_PRECISION_BIT
-      Int nThreshold = 4 << ( QC_MV_STORE_PRECISION_BIT - QC_MV_SIGNAL_PRECISION_BIT );
-#endif
       if (iDir == EDGE_HOR)
       {
         pcCUP = pcCUQ->getPUAbove(uiPartP, uiPartQ, !pcCU->getSlice()->getLFCrossSliceBoundaryFlag(), false, !m_bLFCrossTileBoundary);
@@ -480,45 +464,21 @@ Void TComLoopFilter::xGetBoundaryStrengthSingle ( TComDataCU* pcCU, Int iDir, UI
           {
             if ( piRefP0 == piRefQ0 )
             {
-#if QC_MV_STORE_PRECISION_BIT
-              uiBs  = ((abs(pcMvQ0.getHor() - pcMvP0.getHor()) >= nThreshold) ||
-                       (abs(pcMvQ0.getVer() - pcMvP0.getVer()) >= nThreshold) ||
-                       (abs(pcMvQ1.getHor() - pcMvP1.getHor()) >= nThreshold) ||
-                       (abs(pcMvQ1.getVer() - pcMvP1.getVer()) >= nThreshold)) ? 1 : 0;
-#else
               uiBs  = ((abs(pcMvQ0.getHor() - pcMvP0.getHor()) >= 4) ||
                        (abs(pcMvQ0.getVer() - pcMvP0.getVer()) >= 4) ||
                        (abs(pcMvQ1.getHor() - pcMvP1.getHor()) >= 4) ||
                        (abs(pcMvQ1.getVer() - pcMvP1.getVer()) >= 4)) ? 1 : 0;
-#endif
             }
             else
             {
-#if QC_MV_STORE_PRECISION_BIT
-              uiBs  = ((abs(pcMvQ1.getHor() - pcMvP0.getHor()) >= nThreshold) ||
-                       (abs(pcMvQ1.getVer() - pcMvP0.getVer()) >= nThreshold) ||
-                       (abs(pcMvQ0.getHor() - pcMvP1.getHor()) >= nThreshold) ||
-                       (abs(pcMvQ0.getVer() - pcMvP1.getVer()) >= nThreshold)) ? 1 : 0;
-#else
               uiBs  = ((abs(pcMvQ1.getHor() - pcMvP0.getHor()) >= 4) ||
                        (abs(pcMvQ1.getVer() - pcMvP0.getVer()) >= 4) ||
                        (abs(pcMvQ0.getHor() - pcMvP1.getHor()) >= 4) ||
                        (abs(pcMvQ0.getVer() - pcMvP1.getVer()) >= 4)) ? 1 : 0;
-#endif
             }
           }
           else    // Same L0 & L1
           {
-#if QC_MV_STORE_PRECISION_BIT
-            uiBs  = ((abs(pcMvQ0.getHor() - pcMvP0.getHor()) >= nThreshold) ||
-                     (abs(pcMvQ0.getVer() - pcMvP0.getVer()) >= nThreshold) ||
-                     (abs(pcMvQ1.getHor() - pcMvP1.getHor()) >= nThreshold) ||
-                     (abs(pcMvQ1.getVer() - pcMvP1.getVer()) >= nThreshold)) &&
-                    ((abs(pcMvQ1.getHor() - pcMvP0.getHor()) >= nThreshold) ||
-                     (abs(pcMvQ1.getVer() - pcMvP0.getVer()) >= nThreshold) ||
-                     (abs(pcMvQ0.getHor() - pcMvP1.getHor()) >= nThreshold) ||
-                     (abs(pcMvQ0.getVer() - pcMvP1.getVer()) >= nThreshold)) ? 1 : 0;
-#else
             uiBs  = ((abs(pcMvQ0.getHor() - pcMvP0.getHor()) >= 4) ||
                      (abs(pcMvQ0.getVer() - pcMvP0.getVer()) >= 4) ||
                      (abs(pcMvQ1.getHor() - pcMvP1.getHor()) >= 4) ||
@@ -527,7 +487,6 @@ Void TComLoopFilter::xGetBoundaryStrengthSingle ( TComDataCU* pcCU, Int iDir, UI
                      (abs(pcMvQ1.getVer() - pcMvP0.getVer()) >= 4) ||
                      (abs(pcMvQ0.getHor() - pcMvP1.getHor()) >= 4) ||
                      (abs(pcMvQ0.getVer() - pcMvP1.getVer()) >= 4)) ? 1 : 0;
-#endif
           }
         }
         else // for all different Ref_Idx
@@ -549,15 +508,9 @@ Void TComLoopFilter::xGetBoundaryStrengthSingle ( TComDataCU* pcCU, Int iDir, UI
         if (piRefP0 == NULL) pcMvP0.setZero();
         if (piRefQ0 == NULL) pcMvQ0.setZero();
         
-#if QC_MV_STORE_PRECISION_BIT
-        uiBs  = ((piRefP0 != piRefQ0) ||
-                 (abs(pcMvQ0.getHor() - pcMvP0.getHor()) >= nThreshold) ||
-                 (abs(pcMvQ0.getVer() - pcMvP0.getVer()) >= nThreshold)) ? 1 : 0;
-#else
         uiBs  = ((piRefP0 != piRefQ0) ||
                  (abs(pcMvQ0.getHor() - pcMvP0.getHor()) >= 4) ||
                  (abs(pcMvQ0.getVer() - pcMvP0.getVer()) >= 4)) ? 1 : 0;
-#endif
       }
     }   // enf of "if( one of BCBP == 0 )"
   }   // enf of "if( not Intra )"

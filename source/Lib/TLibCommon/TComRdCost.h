@@ -76,9 +76,6 @@ public:
   Int   iRows;
   Int   iCols;
   Int   iStep;
-#if QC_IC
-  Bool  bMRFlag;
-#endif
   FpDistFunc DistFunc;
   Int   bitDepth;
 
@@ -102,9 +99,6 @@ public:
     DistFunc = NULL;
     iSubShift = 0;
     bitDepth = 0;
-#if QC_IC
-    bMRFlag = false;
-#endif
   }
 };
 
@@ -176,11 +170,7 @@ public:
   Void    initRateDistortionModel( Int iSubPelSearchLimit );
   Void    xUninit();
 #endif
-#if QC_IMV
-  UInt    xGetComponentBits( Int iVal, Int iMvFlag = false );
-#else
   UInt    xGetComponentBits( Int iVal );
-#endif
   Void    getMotionCost( Bool bSad, Int iAdd ) { m_uiCost = (bSad ? m_uiLambdaMotionSAD + iAdd : m_uiLambdaMotionSSE + iAdd); }
   Void    setPredictor( TComMv& rcMv )
   {
@@ -192,48 +182,20 @@ public:
 #endif
   }
   Void    setCostScale( Int iCostScale )    { m_iCostScale = iCostScale; }
-#if QC_IMV
-  __inline UInt getCost( Int x, Int y, Int iMvFlag = false )
-#else
   __inline UInt getCost( Int x, Int y )
-#endif
   {
 #if FIX203
-#if QC_IMV
-    return m_uiCost * getBits(x, y, iMvFlag) >> 16;
-#else
     return m_uiCost * getBits(x, y) >> 16;
-#endif
 #else
     return (( m_uiCost * (m_puiHorCost[ x * (1<<m_iCostScale) ] + m_puiVerCost[ y * (1<<m_iCostScale) ]) ) >> 16);
 #endif
   }
   UInt    getCost( UInt b )                 { return ( m_uiCost * b ) >> 16; }
-#if QC_IMV
-  UInt    getBits( Int x, Int y, Int iMvFlag )          
-#else
   UInt    getBits( Int x, Int y )          
-#endif
   {
 #if FIX203
-#if QC_MV_STORE_PRECISION_BIT
-    Int nShift2SignalPrecision = QC_MV_STORE_PRECISION_BIT - QC_MV_SIGNAL_PRECISION_BIT;
-#if QC_IMV
-    return xGetComponentBits(((x << m_iCostScale) - (m_mvPredictor.getHor()>>nShift2SignalPrecision)), iMvFlag )
-      +      xGetComponentBits(((y << m_iCostScale) - (m_mvPredictor.getVer()>>nShift2SignalPrecision)), iMvFlag );
-#else
-    return xGetComponentBits((x << m_iCostScale) - (m_mvPredictor.getHor()>>nShift2SignalPrecision) )
-      +      xGetComponentBits((y << m_iCostScale) - (m_mvPredictor.getVer()>>nShift2SignalPrecision) );
-#endif
-#else
-#if QC_IMV
-    return xGetComponentBits((x << m_iCostScale) - m_mvPredictor.getHor(), iMvFlag )
-      +      xGetComponentBits((y << m_iCostScale) - m_mvPredictor.getVer(), iMvFlag );
-#else
     return xGetComponentBits((x << m_iCostScale) - m_mvPredictor.getHor())
     +      xGetComponentBits((y << m_iCostScale) - m_mvPredictor.getVer());
-#endif
-#endif
 #else
     return m_puiHorCost[ x * (1<<m_iCostScale)] + m_puiVerCost[ y * (1<<m_iCostScale) ];
 #endif
@@ -256,28 +218,14 @@ private:
   static UInt xGetSAD32         ( DistParam* pcDtParam );
   static UInt xGetSAD64         ( DistParam* pcDtParam );
   static UInt xGetSAD16N        ( DistParam* pcDtParam );
-#if QC_IC
-  static UInt xGetMRSAD         ( DistParam* pcDtParam );
-  static UInt xGetMRSAD4        ( DistParam* pcDtParam );
-  static UInt xGetMRSAD8        ( DistParam* pcDtParam );
-  static UInt xGetMRSAD16       ( DistParam* pcDtParam );
-  static UInt xGetMRSAD32       ( DistParam* pcDtParam );
-  static UInt xGetMRSAD64       ( DistParam* pcDtParam );
-  static UInt xGetMRSAD16N      ( DistParam* pcDtParam );
-#endif
+  
 #if AMP_SAD
   static UInt xGetSAD12         ( DistParam* pcDtParam );
   static UInt xGetSAD24         ( DistParam* pcDtParam );
   static UInt xGetSAD48         ( DistParam* pcDtParam );
-#if QC_IC
-  static UInt xGetMRSAD12       ( DistParam* pcDtParam );
-  static UInt xGetMRSAD24       ( DistParam* pcDtParam );
-  static UInt xGetMRSAD48       ( DistParam* pcDtParam );
+
 #endif
-#endif
-#if QC_IC
-  static UInt xGetMRHADs        ( DistParam* pcDtParam );
-#endif
+
   static UInt xGetHADs4         ( DistParam* pcDtParam );
   static UInt xGetHADs8         ( DistParam* pcDtParam );
   static UInt xGetHADs          ( DistParam* pcDtParam );
@@ -286,11 +234,7 @@ private:
   static UInt xCalcHADs8x8      ( Pel *piOrg, Pel *piCurr, Int iStrideOrg, Int iStrideCur, Int iStep );
   
 public:
-  UInt   getDistPart(Int bitDepth, Pel* piCur, Int iCurStride,  Pel* piOrg, Int iOrgStride, UInt uiBlkWidth, UInt uiBlkHeight, TextType eText = TEXT_LUMA, DFunc eDFunc = DF_SSE
-#if QC_IC
-    , Bool bMRFlag = false
-#endif
-    );
+  UInt   getDistPart(Int bitDepth, Pel* piCur, Int iCurStride,  Pel* piOrg, Int iOrgStride, UInt uiBlkWidth, UInt uiBlkHeight, TextType eText = TEXT_LUMA, DFunc eDFunc = DF_SSE );
 
 };// END CLASS DEFINITION TComRdCost
 

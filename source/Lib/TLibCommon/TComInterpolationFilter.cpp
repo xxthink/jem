@@ -44,9 +44,6 @@
 #include "TComInterpolationFilter.h"
 #include <assert.h>
 
-#if QC_SIMD_OPT
-#include <emmintrin.h>  
-#endif
 
 //! \ingroup TLibCommon
 //! \{
@@ -55,48 +52,6 @@
 // Tables
 // ====================================================================================================================
 
-#if QC_MV_STORE_PRECISION_BIT == 3
-// from SHVC upsampling filter
-const Short TComInterpolationFilter::m_lumaFilter[8][NTAPS_LUMA] =
-{
-  {  0, 0,   0, 64,  0,   0,  0,  0 },
-//  {  0, 1,  -3, 63,  4,  -2,  1,  0 },
-  { -1, 2,  -5, 62,  8,  -3,  1,  0 },
-//  { -1, 3,  -8, 60, 13,  -4,  1,  0 },
-  { -1, 4, -10, 58, 17,  -5,  1,  0 },
-//  { -1, 4, -11, 52, 26,  -8,  3, -1 }, 
-  { -1, 3,  -9, 47, 31, -10,  4, -1 },
-//  { -1, 4, -11, 45, 34, -10,  4, -1 },
-  { -1, 4, -11, 40, 40, -11,  4, -1 }, 
-//  { -1, 4, -10, 34, 45, -11,  4, -1 },
-  { -1, 4, -10, 31, 47,  -9,  3, -1 },
-//  { -1, 3,  -8, 26, 52, -11,  4, -1 }, 
-  {  0, 1,  -5, 17, 58, -10,  4, -1 },
-//  {  0, 1,  -4, 13, 60,  -8,  3, -1 },
-  {  0, 1,  -3,  8, 62,  -5,  2, -1 },
-//  {  0, 1,  -2,  4, 63,  -3,  1,  0 }
-};
-
-const Short TComInterpolationFilter::m_chromaFilter[16][NTAPS_CHROMA] =
-{
-  {  0, 64,  0,  0 },
-  { -2, 62,  4,  0 },
-  { -2, 58, 10, -2 },
-  { -4, 56, 14, -2 },
-  { -4, 54, 16, -2 }, 
-  { -6, 52, 20, -2 }, 
-  { -6, 46, 28, -4 }, 
-  { -4, 42, 30, -4 },
-  { -4, 36, 36, -4 }, 
-  { -4, 30, 42, -4 }, 
-  { -4, 28, 46, -6 },
-  { -2, 20, 52, -6 }, 
-  { -2, 16, 54, -4 },
-  { -2, 14, 56, -4 },
-  { -2, 10, 58, -2 }, 
-  {  0,  4, 62, -2 }  
-};
-#else
 const Short TComInterpolationFilter::m_lumaFilter[4][NTAPS_LUMA] =
 {
   {  0, 0,   0, 64,  0,   0, 0,  0 },
@@ -116,32 +71,6 @@ const Short TComInterpolationFilter::m_chromaFilter[8][NTAPS_CHROMA] =
   { -2, 16, 54, -4 },
   { -2, 10, 58, -2 }
 };
-#endif
-
-#if QC_FRUC_MERGE
-#if QC_MV_STORE_PRECISION_BIT == 3
-const Short TComInterpolationFilter::m_lumaFilterBilinear[8][NTAPS_LUMA_FRUC] =
-{
-  { 64,  0, },
-  { 56,  8, },
-  { 48, 16, },
-  { 40, 24, },
-  { 32, 32, },
-  { 24, 40, },
-  { 16, 48, },
-  {  8, 56, },
-};
-#else
-const Short TComInterpolationFilter::m_lumaFilterBilinear[4][NTAPS_LUMA_FRUC] =
-{
-  { 64,  0, },
-  { 48, 16, },
-  { 32, 32, },
-  { 16, 48, },
-};
-#endif
-
-#endif
 
 // ====================================================================================================================
 // Private member functions
@@ -217,109 +146,6 @@ Void TComInterpolationFilter::filterCopy(Int bitDepth, const Pel *src, Int srcSt
   }
 }
 
-#if QC_SIMD_OPT
-inline __m128i simdInterpolateLuma4( Short const *src , Int srcStride , __m128i *mmCoeff , const __m128i & mmOffset , Int shift )
-{
-  __m128i sumHi = _mm_setzero_si128();
-  __m128i sumLo = _mm_setzero_si128();
-  for( Int n = 0 ; n < 8 ; n++ )
-  {
-    __m128i mmPix = _mm_loadl_epi64( ( __m128i* )src );
-    __m128i hi = _mm_mulhi_epi16( mmPix , mmCoeff[n] );
-    __m128i lo = _mm_mullo_epi16( mmPix , mmCoeff[n] );
-    sumHi = _mm_add_epi32( sumHi , _mm_unpackhi_epi16( lo , hi ) );
-    sumLo = _mm_add_epi32( sumLo , _mm_unpacklo_epi16( lo , hi ) );
-    src += srcStride;
-  }
-  sumHi = _mm_srai_epi32( _mm_add_epi32( sumHi , mmOffset ) , shift );
-  sumLo = _mm_srai_epi32( _mm_add_epi32( sumLo , mmOffset ) , shift );
-  return( _mm_packs_epi32( sumLo , sumHi ) );
-}
-
-inline __m128i simdInterpolateChroma4( Short const *src , Int srcStride , __m128i *mmCoeff , const __m128i & mmOffset , Int shift )
-{
-  __m128i sumHi = _mm_setzero_si128();
-  __m128i sumLo = _mm_setzero_si128();
-  for( Int n = 0 ; n < 4 ; n++ )
-  {
-    __m128i mmPix = _mm_loadl_epi64( ( __m128i* )src );
-    __m128i hi = _mm_mulhi_epi16( mmPix , mmCoeff[n] );
-    __m128i lo = _mm_mullo_epi16( mmPix , mmCoeff[n] );
-    sumHi = _mm_add_epi32( sumHi , _mm_unpackhi_epi16( lo , hi ) );
-    sumLo = _mm_add_epi32( sumLo , _mm_unpacklo_epi16( lo , hi ) );
-    src += srcStride;
-  }
-  sumHi = _mm_srai_epi32( _mm_add_epi32( sumHi , mmOffset ) , shift );
-  sumLo = _mm_srai_epi32( _mm_add_epi32( sumLo , mmOffset ) , shift );
-  return( _mm_packs_epi32( sumLo , sumHi ) );
-}
-
-inline __m128i simdInterpolateLuma8( Short const *src , Int srcStride , __m128i *mmCoeff , const __m128i & mmOffset , Int shift )
-{
-  __m128i sumHi = _mm_setzero_si128();
-  __m128i sumLo = _mm_setzero_si128();
-  for( Int n = 0 ; n < 8 ; n++ )
-  {
-    __m128i mmPix = _mm_loadu_si128( ( __m128i* )src );
-    __m128i hi = _mm_mulhi_epi16( mmPix , mmCoeff[n] );
-    __m128i lo = _mm_mullo_epi16( mmPix , mmCoeff[n] );
-    sumHi = _mm_add_epi32( sumHi , _mm_unpackhi_epi16( lo , hi ) );
-    sumLo = _mm_add_epi32( sumLo , _mm_unpacklo_epi16( lo , hi ) );
-    src += srcStride;
-  }
-  sumHi = _mm_srai_epi32( _mm_add_epi32( sumHi , mmOffset ) , shift );
-  sumLo = _mm_srai_epi32( _mm_add_epi32( sumLo , mmOffset ) , shift );
-  return( _mm_packs_epi32( sumLo , sumHi ) );
-}
-
-#if QC_FRUC_MERGE
-inline __m128i simdInterpolateLuma2P8( Short const *src , Int srcStride , __m128i *mmCoeff , const __m128i & mmOffset , Int shift )
-{
-  __m128i sumHi = _mm_setzero_si128();
-  __m128i sumLo = _mm_setzero_si128();
-  for( Int n = 0 ; n < 2 ; n++ )
-  {
-    __m128i mmPix = _mm_loadu_si128( ( __m128i* )src );
-    __m128i hi = _mm_mulhi_epi16( mmPix , mmCoeff[n] );
-    __m128i lo = _mm_mullo_epi16( mmPix , mmCoeff[n] );
-    sumHi = _mm_add_epi32( sumHi , _mm_unpackhi_epi16( lo , hi ) );
-    sumLo = _mm_add_epi32( sumLo , _mm_unpacklo_epi16( lo , hi ) );
-    src += srcStride;
-  }
-  sumHi = _mm_srai_epi32( _mm_add_epi32( sumHi , mmOffset ) , shift );
-  sumLo = _mm_srai_epi32( _mm_add_epi32( sumLo , mmOffset ) , shift );
-  return( _mm_packs_epi32( sumLo , sumHi ) );
-}
-
-inline __m128i simdInterpolateLuma2P4( Short const *src , Int srcStride , __m128i *mmCoeff , const __m128i & mmOffset , Int shift )
-{
-  __m128i sumHi = _mm_setzero_si128();
-  __m128i sumLo = _mm_setzero_si128();
-  for( Int n = 0 ; n < 2 ; n++ )
-  {
-    __m128i mmPix = _mm_loadl_epi64( ( __m128i* )src );
-    __m128i hi = _mm_mulhi_epi16( mmPix , mmCoeff[n] );
-    __m128i lo = _mm_mullo_epi16( mmPix , mmCoeff[n] );
-    sumHi = _mm_add_epi32( sumHi , _mm_unpackhi_epi16( lo , hi ) );
-    sumLo = _mm_add_epi32( sumLo , _mm_unpacklo_epi16( lo , hi ) );
-    src += srcStride;
-  }
-  sumHi = _mm_srai_epi32( _mm_add_epi32( sumHi , mmOffset ) , shift );
-  sumLo = _mm_srai_epi32( _mm_add_epi32( sumLo , mmOffset ) , shift );
-  return( _mm_packs_epi32( sumLo , sumHi ) );
-}
-#endif
-
-inline __m128i simdClip3( __m128i mmMin , __m128i mmMax , __m128i mmPix )
-{
-  __m128i mmMask = _mm_cmpgt_epi16( mmPix , mmMin );
-  mmPix = _mm_or_si128( _mm_and_si128( mmMask , mmPix ) , _mm_andnot_si128( mmMask , mmMin ) );
-  mmMask = _mm_cmplt_epi16( mmPix , mmMax );
-  mmPix = _mm_or_si128( _mm_and_si128( mmMask , mmPix ) , _mm_andnot_si128( mmMask , mmMax ) );
-  return( mmPix );
-}
-#endif
-
 /**
  * \brief Apply FIR filter to a block of samples
  *
@@ -381,136 +207,6 @@ Void TComInterpolationFilter::filter(Int bitDepth, Short const *src, Int srcStri
     maxVal = 0;
   }
   
-#if QC_SIMD_OPT
-  if( N == 8 && !( width & 0x07 ) )
-  {
-    Short minVal = 0;
-    __m128i mmOffset = _mm_set1_epi32( offset );
-    __m128i mmCoeff[8];
-    __m128i mmMin = _mm_set1_epi16( minVal );
-    __m128i mmMax = _mm_set1_epi16( maxVal );
-    for( Int n = 0 ; n < 8 ; n++ )
-      mmCoeff[n] = _mm_set1_epi16( c[n] );
-    for( row = 0 ; row < height ; row++ )
-    {
-      for( col = 0 ; col < width ; col += 8 )
-      {
-        __m128i mmFiltered = simdInterpolateLuma8( src + col , cStride , mmCoeff , mmOffset , shift );
-        if( isLast )
-        {
-          mmFiltered = simdClip3( mmMin , mmMax , mmFiltered );
-        }
-        _mm_storeu_si128( ( __m128i * )( dst + col ) , mmFiltered );
-      }
-      src += srcStride;
-      dst += dstStride;
-    }
-    return;
-  }
-  else if( N == 8 && !( width & 0x03 ) )
-  {
-    Short minVal = 0;
-    __m128i mmOffset = _mm_set1_epi32( offset );
-    __m128i mmCoeff[8];
-    __m128i mmMin = _mm_set1_epi16( minVal );
-    __m128i mmMax = _mm_set1_epi16( maxVal );
-    for( Int n = 0 ; n < 8 ; n++ )
-      mmCoeff[n] = _mm_set1_epi16( c[n] );
-    for( row = 0 ; row < height ; row++ )
-    {
-      for( col = 0 ; col < width ; col += 4 )
-      {
-        __m128i mmFiltered = simdInterpolateLuma4( src + col , cStride , mmCoeff , mmOffset , shift );
-        if( isLast )
-        {
-          mmFiltered = simdClip3( mmMin , mmMax , mmFiltered );
-        }
-        _mm_storel_epi64( ( __m128i * )( dst + col ) , mmFiltered );
-      }
-      src += srcStride;
-      dst += dstStride;
-    }
-    return;
-  }
-  else if( N == 4 && !( width & 0x03 ) )
-  {
-    Short minVal = 0;
-    __m128i mmOffset = _mm_set1_epi32( offset );
-    __m128i mmCoeff[8];
-    __m128i mmMin = _mm_set1_epi16( minVal );
-    __m128i mmMax = _mm_set1_epi16( maxVal );
-    for( Int n = 0 ; n < 4 ; n++ )
-      mmCoeff[n] = _mm_set1_epi16( c[n] );
-    for( row = 0 ; row < height ; row++ )
-    {
-      for( col = 0 ; col < width ; col += 4 )
-      {
-        __m128i mmFiltered = simdInterpolateChroma4( src + col , cStride , mmCoeff , mmOffset , shift );
-        if( isLast )
-        {
-          mmFiltered = simdClip3( mmMin , mmMax , mmFiltered );
-        }
-        _mm_storel_epi64( ( __m128i * )( dst + col ) , mmFiltered );
-      }
-      src += srcStride;
-      dst += dstStride;
-    }
-    return;
-  }
-#if QC_FRUC_MERGE
-  else if( N == 2 && !( width & 0x07 ) )
-  {
-    Short minVal = 0;
-    __m128i mmOffset = _mm_set1_epi32( offset );
-    __m128i mmCoeff[2];
-    __m128i mmMin = _mm_set1_epi16( minVal );
-    __m128i mmMax = _mm_set1_epi16( maxVal );
-    for( Int n = 0 ; n < 2 ; n++ )
-      mmCoeff[n] = _mm_set1_epi16( c[n] );
-    for( row = 0 ; row < height ; row++ )
-    {
-      for( col = 0 ; col < width ; col += 8 )
-      {
-        __m128i mmFiltered = simdInterpolateLuma2P8( src + col , cStride , mmCoeff , mmOffset , shift );
-        if( isLast )
-        {
-          mmFiltered = simdClip3( mmMin , mmMax , mmFiltered );
-        }
-        _mm_storeu_si128( ( __m128i * )( dst + col ) , mmFiltered );
-      }
-      src += srcStride;
-      dst += dstStride;
-    }
-    return;
-  }
-  else if( N == 2 && !( width & 0x03 ) )
-  {
-    Short minVal = 0;
-    __m128i mmOffset = _mm_set1_epi32( offset );
-    __m128i mmCoeff[8];
-    __m128i mmMin = _mm_set1_epi16( minVal );
-    __m128i mmMax = _mm_set1_epi16( maxVal );
-    for( Int n = 0 ; n < 2 ; n++ )
-      mmCoeff[n] = _mm_set1_epi16( c[n] );
-    for( row = 0 ; row < height ; row++ )
-    {
-      for( col = 0 ; col < width ; col += 4 )
-      {
-        __m128i mmFiltered = simdInterpolateLuma2P4( src + col , cStride , mmCoeff , mmOffset , shift );
-        if( isLast )
-        {
-          mmFiltered = simdClip3( mmMin , mmMax , mmFiltered );
-        }
-        _mm_storel_epi64( ( __m128i * )( dst + col ) , mmFiltered );
-      }
-      src += srcStride;
-      dst += dstStride;
-    }
-    return;
-  }
-#endif
-#endif
-
   for (row = 0; row < height; row++)
   {
     for (col = 0; col < width; col++)
@@ -628,17 +324,9 @@ Void TComInterpolationFilter::filterVer(Int bitDepth, Pel *src, Int srcStride, S
  * \param  frac       Fractional sample offset
  * \param  isLast     Flag indicating whether it is the last filtering operation
  */
-Void TComInterpolationFilter::filterHorLuma(Pel *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height, Int frac, Bool isLast 
-#if QC_FRUC_MERGE
-  , Int nFilterIdx
-#endif
-  )
+Void TComInterpolationFilter::filterHorLuma(Pel *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height, Int frac, Bool isLast )
 {
-#if QC_MV_STORE_PRECISION_BIT
-  assert(frac >= 0 && frac < ( 1 << QC_MV_STORE_PRECISION_BIT ) );
-#else
   assert(frac >= 0 && frac < 4);
-#endif
   
   if ( frac == 0 )
   {
@@ -646,11 +334,6 @@ Void TComInterpolationFilter::filterHorLuma(Pel *src, Int srcStride, Short *dst,
   }
   else
   {
-#if QC_FRUC_MERGE
-    if( nFilterIdx == 1 )
-      filterHor<NTAPS_LUMA_FRUC>(g_bitDepthY, src, srcStride, dst, dstStride, width, height, isLast, m_lumaFilterBilinear[frac]);
-    else
-#endif
     filterHor<NTAPS_LUMA>(g_bitDepthY, src, srcStride, dst, dstStride, width, height, isLast, m_lumaFilter[frac]);
   }
 }
@@ -668,17 +351,9 @@ Void TComInterpolationFilter::filterHorLuma(Pel *src, Int srcStride, Short *dst,
  * \param  isFirst    Flag indicating whether it is the first filtering operation
  * \param  isLast     Flag indicating whether it is the last filtering operation
  */
-Void TComInterpolationFilter::filterVerLuma(Pel *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height, Int frac, Bool isFirst, Bool isLast 
-#if QC_FRUC_MERGE
-  , Int nFilterIdx
-#endif
-  )
+Void TComInterpolationFilter::filterVerLuma(Pel *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height, Int frac, Bool isFirst, Bool isLast )
 {
-#if QC_MV_STORE_PRECISION_BIT
-  assert(frac >= 0 && frac < (1 << QC_MV_STORE_PRECISION_BIT ) );
-#else
   assert(frac >= 0 && frac < 4);
-#endif
   
   if ( frac == 0 )
   {
@@ -686,11 +361,6 @@ Void TComInterpolationFilter::filterVerLuma(Pel *src, Int srcStride, Short *dst,
   }
   else
   {
-#if QC_FRUC_MERGE
-    if( nFilterIdx == 1 )
-      filterVer<NTAPS_LUMA_FRUC>(g_bitDepthY, src, srcStride, dst, dstStride, width, height, isFirst, isLast, m_lumaFilterBilinear[frac]);
-    else
-#endif
     filterVer<NTAPS_LUMA>(g_bitDepthY, src, srcStride, dst, dstStride, width, height, isFirst, isLast, m_lumaFilter[frac]);
   }
 }
@@ -709,11 +379,7 @@ Void TComInterpolationFilter::filterVerLuma(Pel *src, Int srcStride, Short *dst,
  */
 Void TComInterpolationFilter::filterHorChroma(Pel *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height, Int frac, Bool isLast )
 {
-#if QC_MV_STORE_PRECISION_BIT 
-  assert(frac >= 0 && frac < ( 1 << ( QC_MV_STORE_PRECISION_BIT + 1 ) ) );
-#else
   assert(frac >= 0 && frac < 8);
-#endif
   
   if ( frac == 0 )
   {
@@ -740,11 +406,7 @@ Void TComInterpolationFilter::filterHorChroma(Pel *src, Int srcStride, Short *ds
  */
 Void TComInterpolationFilter::filterVerChroma(Pel *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height, Int frac, Bool isFirst, Bool isLast )
 {
-#if QC_MV_STORE_PRECISION_BIT
-  assert(frac >= 0 && frac < ( 1 << ( QC_MV_STORE_PRECISION_BIT + 1 ) ) );
-#else
   assert(frac >= 0 && frac < 8);
-#endif
   
   if ( frac == 0 )
   {

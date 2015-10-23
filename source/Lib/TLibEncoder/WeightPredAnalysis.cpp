@@ -42,9 +42,6 @@
 #include "WeightPredAnalysis.h"
 
 #define ABS(a)    ((a) < 0 ? - (a) : (a))
-#if QC_IC
-#define DTHRESHIC (0.85)
-#endif
 #define DTHRESH (0.99)
 
 WeightPredAnalysis::WeightPredAnalysis()
@@ -312,11 +309,7 @@ Bool WeightPredAnalysis::xSelectWP(TComSlice *slice, wpScalingParam weightPredTa
       iSADnoWP += this->xCalcSADvalueWP(g_bitDepthC, pOrg, pRef, iWidth>>1, iHeight>>1, iOrgStride, iRefStride, iDenom, iDefaultWeight, 0);
 
       Double dRatio = ((Double)iSADWP / (Double)iSADnoWP);
-#if QC_IC
-      if( dRatio >= (Double) ( slice->getSPS()->getICFlag() ? DTHRESHIC : DTHRESH ) )
-#else
       if(dRatio >= (Double)DTHRESH)
-#endif
       {
         for ( Int iComp = 0; iComp < 3; iComp++ )
         {

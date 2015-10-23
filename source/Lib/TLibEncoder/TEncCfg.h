@@ -234,8 +234,6 @@ protected:
   Int       m_numPivots;
   Int       m_cameraIsoSpeedIdc;
   Int       m_cameraIsoSpeedValue;
-  Int       m_exposureIndexIdc;
-  Int       m_exposureIndexValue;
   Int       m_exposureCompensationValueSignFlag;
   Int       m_exposureCompensationValueNumerator;
   Int       m_exposureCompensationValueDenomIdc;
@@ -311,52 +309,7 @@ protected:
   Int       m_log2MaxMvLengthVertical;                        ///< Indicate the maximum absolute value of a decoded vertical MV component in quarter-pel luma units
 
   Bool      m_useStrongIntraSmoothing;                        ///< enable the use of strong intra smoothing (bi_linear interpolation) for 32x32 blocks when reference samples are flat.
-#if QC_SUB_PU_TMVP
-  UInt      m_uiSubPUTLog2Size;
-  Bool      m_bAtmvpFlag;
-#endif
-#if ALF_HM3_QC_REFACTOR
-  Bool      m_bUseALF;
-#endif
-#if QC_FRUC_MERGE
-  Int       m_nFRUCMgrMode;
-  Int       m_nFRUCRefineFilter;
-  Int       m_nFURCRefineRange;
-  Int       m_nFRUCSmallBlkRefineDepth;
-#endif
-#if QC_IMV
-  Bool      m_nIMV;
-  Int       m_nIMVMaxCand;
-#endif
-#if QC_EMT
-  Int       m_iUseIntraEMT;
-  Int       m_iUseInterEMT;
-  Int       m_iUseFastIntraEMT;
-  Int       m_iUseFastInterEMT;
-#endif
-#if QC_INTRA_4TAP_FILTER
-  Bool      m_bUse4TapIntraFilter;
-#endif
-#if INTRA_BOUNDARY_FILTER
-  Bool      m_bUseBoundaryFilter;
-#endif
-#if QC_USE_65ANG_MODES
-  Bool      m_bUseExtIntraAngMode;
-#endif
-#if QC_LARGE_CTU_FAST
-  Int       m_nLCTUFast;
-#endif
-#if QC_OBMC
-  Bool      m_bOBMC;
-  Int       m_nOBMCBlkSize;
-  Int       m_nAOBMCMaxCUSize;
-#endif
-#if QC_LMCHROMA
-  Bool      m_bUseLMChroma;
-#endif
-#if QC_IC
-  Bool      m_bUseIC;
-#endif
+
 public:
   TEncCfg()
   : m_puiColumnWidth()
@@ -399,7 +352,7 @@ public:
   Int       getMaxRefPicNum                 ()                              { return m_iMaxRefPicNum;           }
   Void      setMaxRefPicNum                 ( Int iMaxRefPicNum )           { m_iMaxRefPicNum = iMaxRefPicNum;  }
 
-  Int       getMaxTempLayer                 ()                              { return m_maxTempLayer;              } 
+  Bool      getMaxTempLayer                 ()                              { return m_maxTempLayer;              } 
   Void      setMaxTempLayer                 ( Int maxTempLayer )            { m_maxTempLayer = maxTempLayer;      }
   //======== Transform =============
   Void      setQuadtreeTULog2MaxSize        ( UInt  u )      { m_uiQuadtreeTULog2MaxSize = u; }
@@ -627,10 +580,6 @@ public:
   Int   getTMISEICameraIsoSpeedIdc()                         {  return m_cameraIsoSpeedIdc;  }
   Void  setTMISEICameraIsoSpeedValue(Int b)                  {  m_cameraIsoSpeedValue = b;  }
   Int   getTMISEICameraIsoSpeedValue()                       {  return m_cameraIsoSpeedValue;  }
-  Void  setTMISEIExposureIndexIdc(Int b)                     {  m_exposureIndexIdc = b;  }
-  Int   getTMISEIExposurIndexIdc()                           {  return m_exposureIndexIdc;  }
-  Void  setTMISEIExposureIndexValue(Int b)                   {  m_exposureIndexValue = b;  }
-  Int   getTMISEIExposurIndexValue()                         {  return m_exposureIndexValue;  }
   Void  setTMISEIExposureCompensationValueSignFlag(Int b)    {  m_exposureCompensationValueSignFlag = b;  }
   Int   getTMISEIExposureCompensationValueSignFlag()         {  return m_exposureCompensationValueSignFlag;  }
   Void  setTMISEIExposureCompensationValueNumerator(Int b)   {  m_exposureCompensationValueNumerator = b;  }
@@ -785,80 +734,6 @@ public:
   
   Bool getFrameOnlyConstraintFlag() const { return m_frameOnlyConstraintFlag; }
   Void setFrameOnlyConstraintFlag(Bool b) { m_frameOnlyConstraintFlag = b; }
-#if QC_SUB_PU_TMVP
-  Void setSubPUTLog2Size (UInt u)        {m_uiSubPUTLog2Size = u;} 
-  Void setAtmvp          (Bool b)        {m_bAtmvpFlag = b;}
-  Bool getAtmvp          ()              { return m_bAtmvpFlag; }
-#endif
-#if ALF_HM3_QC_REFACTOR
-  Void      setUseALF                       ( Bool  b )     { m_bUseALF   = b; }
-  Bool      getUseALF                       ()      { return m_bUseALF;     }
-#endif
-
-#if QC_FRUC_MERGE
-  Void setFRUCMgrMode(Int n)    { m_nFRUCMgrMode = n;     }
-  Int  getFRUCMgrMode()         { return m_nFRUCMgrMode;  }
-  Void setFRUCRefineFilter(Int n)  { m_nFRUCRefineFilter = n;     }
-  Int  getFRUCRefineFilter()       { return m_nFRUCRefineFilter;  }
-  Void setFRUCRefineRange(Int n)  { m_nFURCRefineRange = n;     }
-  Int  getFRUCRefineRange()       { return m_nFURCRefineRange;  }
-  Void setFRUCSmallBlkRefineDepth(Int n)  { m_nFRUCSmallBlkRefineDepth = n;     }
-  Int  getFRUCSmallBlkRefineDepth()       { return m_nFRUCSmallBlkRefineDepth;  }
-#endif
-
-#if QC_IMV
-  Void  setIMV(Bool n)  { m_nIMV = n;    }
-  Bool  getIMV()        { return m_nIMV; }
-  Void  setIMVMaxCand(Int n)  { m_nIMVMaxCand = n;    }
-  Int   getIMVMaxCand()       { return m_nIMVMaxCand; }
-#endif
-
-#if QC_LMCHROMA
-  Bool getUseLMChroma                       ()      { return m_bUseLMChroma;        }
-  Void setUseLMChroma                       ( Bool b ) { m_bUseLMChroma  = b;       }
-#endif
-
-#if QC_EMT
-  Void setUseFastIntraEMT(Int n) { m_iUseFastIntraEMT = n;     }
-  Int  getUseFastIntraEMT()      { return m_iUseFastIntraEMT;  }
-  Void setUseFastInterEMT(Int n) { m_iUseFastInterEMT = n;     }
-  Int  getUseFastInterEMT()      { return m_iUseFastInterEMT;  }
-#if QC_EMT_INTRA
-  Void setUseIntraEMT(Int n)     { m_iUseIntraEMT = n;     }
-  Int  getUseIntraEMT()          { return m_iUseIntraEMT;  }
-#endif
-#if QC_EMT_INTER
-  Void setUseInterEMT(Int n)     { m_iUseInterEMT = n;     }
-  Int  getUseInterEMT()          { return m_iUseInterEMT;  }
-#endif
-#endif
-
-#if QC_OBMC
-  Void   setOBMC(Bool bOBMC)                 { m_bOBMC = bOBMC;             }
-  Bool   getOBMC()                           { return m_bOBMC;              }
-  Void   setOBMCBlkSize(Int nBlkSize)        { m_nOBMCBlkSize = nBlkSize;   }
-  Int    getOBMCBlkSize()                    { return m_nOBMCBlkSize;       }
-#endif
-#if QC_INTRA_4TAP_FILTER
-  Bool   getUse4TapIntraFilter ()            { return m_bUse4TapIntraFilter; }
-  Void   setUse4TapIntraFilter ( Bool bUse4TapIntraFilter ) { m_bUse4TapIntraFilter = bUse4TapIntraFilter; }
-#endif
-#if INTRA_BOUNDARY_FILTER
-  Bool   getUseBoundaryFilter ()            { return m_bUseBoundaryFilter; }
-  Void   setUseBoundaryFilter ( Bool bUseBoundaryFilter ) { m_bUseBoundaryFilter = bUseBoundaryFilter; }
-#endif
-#if QC_USE_65ANG_MODES
-  Bool   getUseExtIntraAngModes ()            { return m_bUseExtIntraAngMode; }
-  Void   setUseExtIntraAngModes ( Bool bUseExtIntraAngMode ) { m_bUseExtIntraAngMode = bUseExtIntraAngMode; }
-#endif
-#if QC_LARGE_CTU_FAST
-  Void setLCTUFast(Int n)   { m_nLCTUFast = n; }
-  Int  getLCTUFast()        { return m_nLCTUFast;  }
-#endif
-#if QC_IC
-  Void   setUseIC( Bool bVal )    { m_bUseIC = bVal; }
-  Bool   getUseIC()               { return m_bUseIC; }
-#endif
 };
 
 //! \}

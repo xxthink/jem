@@ -55,59 +55,6 @@
 // ====================================================================================================================
 // Type definition
 // ====================================================================================================================
-#if ROT_TR
- __inline static Short  xMult ( Int i, UInt uiShift ) { return ((i)>>uiShift); }
-#endif
-void fastForwardDCT2_B4 (Short *block,Short *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDCT2_B4 (Short *coeff,Short *block,Int shift, Int line, Int zo, Int use);
-void fastForwardDCT2_B8 (Short *block,Short *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDCT2_B8 (Short *coeff,Short *block,Int shift, Int line, Int zo, Int use);
-void fastForwardDCT2_B16(Short *block,Short *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDCT2_B16(Short *coeff,Short *block,Int shift, Int line, Int zo, Int use);
-void fastForwardDCT2_B32(Short *block,Short *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDCT2_B32(Short *coeff,Short *block,Int shift, Int line, Int zo, Int use);
-void fastForwardDCT2_B64(Short *block,Short *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDCT2_B64(Short *coeff,Short *block,Int shift, Int line, Int zo, Int use);
-
-void fastForwardDST7_B4 (Short *block,Short *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDST7_B4 (Short *coeff,Short *block,Int shift, Int line, Int zo, Int use);
-#if QC_EMT
-void fastForwardDST7_B8 (Short *block,Short *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDST7_B8 (Short *coeff,Short *block,Int shift, Int line, Int zo, Int use);
-void fastForwardDST7_B16(Short *block,Short *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDST7_B16(Short *coeff,Short *block,Int shift, Int line, Int zo, Int use);
-void fastForwardDST7_B32(Short *block,Short *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDST7_B32(Short *coeff,Short *block,Int shift, Int line, Int zo, Int use);
-
-void fastForwardDCT5_B4 (Short *block,Short *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDCT5_B4 (Short *coeff,Short *block,Int shift, Int line, Int zo, Int use);
-void fastForwardDCT5_B8 (Short *block,Short *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDCT5_B8 (Short *coeff,Short *block,Int shift, Int line, Int zo, Int use);
-void fastForwardDCT5_B16(Short *block,Short *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDCT5_B16(Short *coeff,Short *block,Int shift, Int line, Int zo, Int use);
-void fastForwardDCT5_B32(Short *block,Short *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDCT5_B32(Short *coeff,Short *block,Int shift, Int line, Int zo, Int use);
-
-void fastForwardDCT8_B4 (Short *block,Short *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDCT8_B4 (Short *coeff,Short *block,Int shift, Int line, Int zo, Int use);
-void fastForwardDCT8_B8 (Short *block,Short *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDCT8_B8 (Short *coeff,Short *block,Int shift, Int line, Int zo, Int use);
-void fastForwardDCT8_B16(Short *block,Short *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDCT8_B16(Short *coeff,Short *block,Int shift, Int line, Int zo, Int use);
-void fastForwardDCT8_B32(Short *block,Short *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDCT8_B32(Short *coeff,Short *block,Int shift, Int line, Int zo, Int use);
-
-void fastForwardDST1_B4 (Short *block,Short *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDST1_B4 (Short *coeff,Short *block,Int shift, Int line, Int zo, Int use);
-void fastForwardDST1_B8 (Short *block,Short *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDST1_B8 (Short *coeff,Short *block,Int shift, Int line, Int zo, Int use);
-void fastForwardDST1_B16(Short *block,Short *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDST1_B16(Short *coeff,Short *block,Int shift, Int line, Int zo, Int use);
-void fastForwardDST1_B32(Short *block,Short *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDST1_B32(Short *coeff,Short *block,Int shift, Int line, Int zo, Int use);
-
-typedef void Trans (Short *, Short *, Int, Int, Int, Int);
-#endif
 
 typedef struct
 {
@@ -116,9 +63,7 @@ typedef struct
   Int lastXBits[32];
   Int lastYBits[32];
   Int m_greaterOneBits[NUM_ONE_FLAG_CTX][2];
-#if !QC_CTX_RESIDUALCODING
   Int m_levelAbsBits[NUM_ABS_FLAG_CTX][2];
-#endif
 
   Int blockCbpBits[3*NUM_QT_CBF_CTX][2];
   Int blockRootCbpBits[4][2];
@@ -180,10 +125,7 @@ public:
     , Bool bUseAdaptQpSelect = false
 #endif 
     );
-#if ROT_TR
-Void InvRotTransform4I(  Int* matrix, UChar index );
-Void RotTransform4I( Int* matrix, UChar index );
-#endif 
+  
   // transform & inverse transform functions
   Void transformNxN( TComDataCU* pcCU, 
                      Pel*        pcResidual, 
@@ -197,26 +139,9 @@ Void RotTransform4I( Int* matrix, UChar index );
                      UInt&       uiAbsSum, 
                      TextType    eTType, 
                      UInt        uiAbsPartIdx,
-                     Bool        useTransformSkip = false 
-#if QC_EMT
-                     , UChar     ucTrIdx = DCT2_HEVC
-#endif
-#if ROT_TR 
-   , UChar ucROTIdx = 0
-#endif
-                     );
+                     Bool        useTransformSkip = false );
 
-  Void invtransformNxN( Bool transQuantBypass, TextType eText, UInt uiMode,Pel* rpcResidual, UInt uiStride, TCoeff*   pcCoeff, UInt uiWidth, UInt uiHeight,  Int scalingListType, Bool useTransformSkip = false 
-#if QC_EMT
-    , UChar ucTrIdx = DCT2_HEVC
-#endif
-#if ROT_TR 
-   , UChar ucROTIdx = 0
-#endif
-#if QC_USE_65ANG_MODES
-    , Bool bUseExtIntraAngModes = false
-#endif
-    );
+  Void invtransformNxN( Bool transQuantBypass, TextType eText, UInt uiMode,Pel* rpcResidual, UInt uiStride, TCoeff*   pcCoeff, UInt uiWidth, UInt uiHeight,  Int scalingListType, Bool useTransformSkip = false );
   Void invRecurTransformNxN ( TComDataCU* pcCU, UInt uiAbsPartIdx, TextType eTxt, Pel* rpcResidual, UInt uiAddr,   UInt uiStride, UInt uiWidth, UInt uiHeight,
                              UInt uiMaxTrMode,  UInt uiTrMode, TCoeff* rpcCoeff );
   
@@ -229,54 +154,10 @@ Void RotTransform4I( Int* matrix, UChar index );
 #else
   Void setLambda(Double dLambda) { m_dLambda = dLambda;}
 #endif
-
-#if CR_FROM_CB_LAMBDA_ADJUSTMENT
-  Void setLambda( Double dLambda) { m_dLambda = dLambda; }
-  Double getlambda () { return m_dLambda; }
-#endif
-
   Void setRDOQOffset( UInt uiRDOQOffset ) { m_uiRDOQOffset = uiRDOQOffset; }
   
   estBitsSbacStruct* m_pcEstBitsSbac;
-#if QC_CTX_RESIDUALCODING
-  static Int getGrtZeroCtxInc    ( TCoeff*                         pcCoeff,
-                                   Int                             posX,
-                                   Int                             posY,
-                                   Int                             width
-                                  ,Int                             height
-                                  ,TextType                        textureType 
-                                  );
-  static Int getGrtOneCtxInc    ( TCoeff*                         pcCoeff,
-                                   Int                             posX,
-                                   Int                             posY,
-                                   Int                             width
-                                  ,Int                             height
-                                  ,TextType                        textureType 
-                                  );
-  static Int getGrtTwoCtxInc    ( TCoeff*                         pcCoeff,
-                                   Int                             posX,
-                                   Int                             posY,
-                                   Int                             width
-                                  ,Int                             height
-                                  ,TextType                        textureType 
-                                  );
-  static Int getRemainCoeffCtxInc( TCoeff*                         pcCoeff,
-                                   Int                             posX,
-                                   Int                             posY,
-                                   Int                             width
-                                  ,Int                             height
-                                  );
-  static Int      getSigCtxInc     ( TCoeff*                         pcCoeff,
-                                     Int                             posX,
-                                     Int                             posY,
-                                     Int                             width
-                                    ,Int                             height
-                                    ,TextType                        textureType
-                                    ,UInt&                           sumOne
-                                    ,UInt&                           sumTwo
-                                    ,UInt&                           sumAbs
-                                    );
-#else  
+  
   static Int      calcPatternSigCtx( const UInt* sigCoeffGroupFlag, UInt posXCG, UInt posYCG, Int width, Int height );
 
   static Int      getSigCtxInc     (
@@ -287,13 +168,9 @@ Void RotTransform4I( Int* matrix, UChar index );
                                      Int                             log2BlkSize,
                                      TextType                        textureType
                                     );
-#endif
   static UInt getSigCoeffGroupCtxInc  ( const UInt*                   uiSigCoeffGroupFlag,
                                        const UInt                       uiCGPosX,
                                        const UInt                       uiCGPosY,
-#if QC_CTX_RESIDUALCODING
-                                       const UInt                      scanIdx,
-#endif
                                        Int width, Int height);
   Void initScalingList                      ();
   Void destroyScalingList                   ();
@@ -303,11 +180,7 @@ Void RotTransform4I( Int* matrix, UChar index );
   Int* getDequantCoeff     ( UInt list, UInt qp, UInt size) {return m_dequantCoef[size][list][qp];}; //!< get DeQuant Coefficent
   Void setUseScalingList   ( Bool bUseScalingList){ m_scalingListEnabledFlag = bUseScalingList; };
   Bool getUseScalingList   (){ return m_scalingListEnabledFlag; };
-#if HM14_CLEAN_UP
-  Void setFlatScalingList  (Bool bEnc = true);
-#else
   Void setFlatScalingList  ();
-#endif
   Void xsetFlatScalingList ( UInt list, UInt size, UInt qp);
   Void xSetScalingListEnc  ( TComScalingList *scalingList, UInt list, UInt size, UInt qp);
   Void xSetScalingListDec  ( TComScalingList *scalingList, UInt list, UInt size, UInt qp);
@@ -330,9 +203,7 @@ protected:
   Double  m_sliceSumC[LEVEL_RANGE+1] ;  
 #endif
   Int*    m_plTempCoeff;
-#if ROT_TR
-  //Int* ROT_MATRIX;  
-#endif  
+  
   QpParam  m_cQP;
 #if RDOQ_CHROMA_LAMBDA
   Double   m_lambdas[3];
@@ -353,14 +224,7 @@ protected:
   Double   *m_errScale       [SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM][SCALING_LIST_REM_NUM]; ///< array of quantization matrix coefficient 4x4
 private:
   // forward Transform
-  Void xT   (Int bitDepth, UInt uiMode,Pel* pResidual, UInt uiStride, Int* plCoeff, Int iWidth, Int iHeight 
-#if QC_EMT
-    , UChar ucTrIdx
-#endif
-#if QC_USE_65ANG_MODES
-    , Bool bUseExtIntraAngModes = false
-#endif
-    );
+  Void xT   (Int bitDepth, UInt uiMode,Pel* pResidual, UInt uiStride, Int* plCoeff, Int iWidth, Int iHeight );
   
   // skipping Transform
   Void xTransformSkip (Int bitDepth, Pel* piBlkResi, UInt uiStride, Int* psCoeff, Int width, Int height );
@@ -428,14 +292,7 @@ __inline Int xGetICRate  ( UInt                            uiAbsLevel,
   Void xDeQuant(Int bitDepth, const TCoeff* pSrc, Int* pDes, Int iWidth, Int iHeight, Int scalingListType );
   
   // inverse transform
-  Void xIT    (Int bitDepth, UInt uiMode, Int* plCoef, Pel* pResidual, UInt uiStride, Int iWidth, Int iHeight 
-#if QC_EMT
-    , UChar ucTrIdx
-#endif
-#if QC_USE_65ANG_MODES
-    , Bool bUseExtIntraAngModes = false
-#endif
-    );
+  Void xIT    (Int bitDepth, UInt uiMode, Int* plCoef, Pel* pResidual, UInt uiStride, Int iWidth, Int iHeight );
   
   // inverse skipping transform
   Void xITransformSkip (Int bitDepth, Int* plCoef, Pel* pResidual, UInt uiStride, Int width, Int height );

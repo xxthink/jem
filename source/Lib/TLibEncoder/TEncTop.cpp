@@ -65,7 +65,7 @@ TEncTop::TEncTop()
 
   m_iMaxRefPicNum     = 0;
 
-#if FAST_BIT_EST && !(QC_AC_ADAPT_WDOW  ||   MULTI_PARAM_CABAC)
+#if FAST_BIT_EST
   ContextModel::buildNextStateTable();
 #endif
 
@@ -104,13 +104,6 @@ Void TEncTop::create ()
     m_cEncSAO.createEncData();
 #endif
   }
-#if ALF_HM3_QC_REFACTOR
-  if( m_bUseALF )
-  {
-    assert( g_bitDepthY = g_bitDepthC );
-    m_cAdaptiveLoopFilter.create( getSourceWidth(), getSourceHeight(), g_uiMaxCUWidth, g_uiMaxCUHeight, g_uiMaxCUDepth , g_bitDepthY , g_bitDepthY );
-  }
-#endif
 #if ADAPTIVE_QP_SELECTION
   if (m_bUseAdaptQpSelect)
   {
@@ -215,12 +208,6 @@ Void TEncTop::destroy ()
   }
   m_cLoopFilter.        destroy();
   m_cRateCtrl.          destroy();
-#if ALF_HM3_QC_REFACTOR
-  if(m_bUseALF)
-  {
-    m_cAdaptiveLoopFilter.destroy();
-  }
-#endif
 
   Int iDepth;
   for ( iDepth = 0; iDepth < g_uiMaxCUDepth+1; iDepth++ )
@@ -344,11 +331,7 @@ Void TEncTop::deletePicBuffer()
  \retval  rcListBitstreamOut  list of output bitstreams
  \retval  iNumEncoded         number of encoded pictures
  */
-#if QC_AC_ADAPT_WDOW
-Void TEncTop::encode(Bool flush, TComPicYuv* pcPicYuvOrg, TComList<TComPicYuv*>& rcListPicYuvRecOut, std::list<AccessUnit>& accessUnitsOut, Int& iNumEncoded, TComStats* m_apcStats )
-#else
 Void TEncTop::encode(Bool flush, TComPicYuv* pcPicYuvOrg, TComList<TComPicYuv*>& rcListPicYuvRecOut, std::list<AccessUnit>& accessUnitsOut, Int& iNumEncoded )
-#endif
 {
   if (pcPicYuvOrg) {
     // get original YUV
@@ -375,11 +358,8 @@ Void TEncTop::encode(Bool flush, TComPicYuv* pcPicYuvOrg, TComList<TComPicYuv*>&
   }
 
   // compress GOP
-#if QC_AC_ADAPT_WDOW
-  m_cGOPEncoder.compressGOP(m_iPOCLast, m_iNumPicRcvd, m_cListPic, rcListPicYuvRecOut, accessUnitsOut, false, false, m_apcStats);
-#else
+
   m_cGOPEncoder.compressGOP(m_iPOCLast, m_iNumPicRcvd, m_cListPic, rcListPicYuvRecOut, accessUnitsOut, false, false);
-#endif
 
   if ( m_RCEnableRateControl )
   {
@@ -412,11 +392,8 @@ void separateFields(Pel* org, Pel* dstField, UInt stride, UInt width, UInt heigh
   }
   
 }
-#if QC_AC_ADAPT_WDOW
-Void TEncTop::encode(Bool flush, TComPicYuv* pcPicYuvOrg, TComList<TComPicYuv*>& rcListPicYuvRecOut, std::list<AccessUnit>& accessUnitsOut, Int& iNumEncoded, bool isTff, TComStats* m_apcStats)
-#else
+
 Void TEncTop::encode(Bool flush, TComPicYuv* pcPicYuvOrg, TComList<TComPicYuv*>& rcListPicYuvRecOut, std::list<AccessUnit>& accessUnitsOut, Int& iNumEncoded, bool isTff)
-#endif
 {
   /* -- TOP FIELD -- */
   
@@ -465,11 +442,7 @@ Void TEncTop::encode(Bool flush, TComPicYuv* pcPicYuvOrg, TComList<TComPicYuv*>&
   
   if (m_iPOCLast == 0) // compress field 0
   {
-#if QC_AC_ADAPT_WDOW
-    m_cGOPEncoder.compressGOP(m_iPOCLast, m_iNumPicRcvd, m_cListPic, rcListPicYuvRecOut, accessUnitsOut, true, isTff, m_apcStats);
-#else
     m_cGOPEncoder.compressGOP(m_iPOCLast, m_iNumPicRcvd, m_cListPic, rcListPicYuvRecOut, accessUnitsOut, true, isTff);
-#endif
   }
   
   /* -- BOTTOM FIELD -- */
@@ -536,11 +509,8 @@ Void TEncTop::encode(Bool flush, TComPicYuv* pcPicYuvOrg, TComList<TComPicYuv*>&
   }
   
   // compress GOP
-#if QC_AC_ADAPT_WDOW
-  m_cGOPEncoder.compressGOP(m_iPOCLast, m_iNumPicRcvd, m_cListPic, rcListPicYuvRecOut, accessUnitsOut, true, isTff, m_apcStats);
-#else
   m_cGOPEncoder.compressGOP(m_iPOCLast, m_iNumPicRcvd, m_cListPic, rcListPicYuvRecOut, accessUnitsOut, true, isTff);
-#endif
+  
   iNumEncoded = m_iNumPicRcvd;
   m_iNumPicRcvd = 0;
   m_uiNumAllPicCoded += iNumEncoded;
@@ -684,7 +654,7 @@ Void TEncTop::xInitSPS()
 
   m_cSPS.setMaxTLayers( m_maxTempLayer );
   m_cSPS.setTemporalIdNestingFlag( ( m_maxTempLayer == 1 ) ? true : false );
-  for ( i = 0; i < min((Int)m_cSPS.getMaxTLayers(),(Int) MAX_TLAYER); i++ )
+  for ( i = 0; i < min(m_cSPS.getMaxTLayers(),(UInt) MAX_TLAYER); i++ )
   {
     m_cSPS.setMaxDecPicBuffering(m_maxDecPicBuffering[i], i);
     m_cSPS.setNumReorderPics(m_numReorderPics[i], i);
@@ -733,48 +703,6 @@ Void TEncTop::xInitSPS()
     pcVUI->setLog2MaxMvLengthHorizontal(getLog2MaxMvLengthHorizontal());
     pcVUI->setLog2MaxMvLengthVertical(getLog2MaxMvLengthVertical());
   }
-#if QC_SUB_PU_TMVP
-  m_cSPS.setAtmvpEnableFlag( m_bAtmvpFlag);
-  m_cSPS.setSubPUTLog2Size ( m_uiSubPUTLog2Size );
-#endif
-#if ALF_HM3_QC_REFACTOR
-  m_cSPS.setUseALF        ( m_bUseALF           );
-#endif
-#if QC_IMV
-  m_cSPS.setIMV( m_nIMV );
-  m_cSPS.setIMVMaxCand( m_nIMVMaxCand );
-#endif
-#if QC_FRUC_MERGE
-  m_cSPS.setUseFRUCMgrMode( m_nFRUCMgrMode );
-  m_cSPS.setFRUCRefineFilter( m_nFRUCRefineFilter );
-  m_cSPS.setFRUCRefineRange( m_nFURCRefineRange );
-  m_cSPS.setFRUCSmallBlkRefineDepth( m_nFRUCSmallBlkRefineDepth );
-#endif
-#if QC_EMT_INTRA
-  m_cSPS.setUseIntraEMT( m_iUseIntraEMT );
-#endif
-#if QC_EMT_INTER
-  m_cSPS.setUseInterEMT( m_iUseInterEMT );
-#endif
-#if INTRA_BOUNDARY_FILTER
-  m_cSPS.setUseBoundaryFilter( m_bUseBoundaryFilter );
-#endif
-#if QC_INTRA_4TAP_FILTER
-  m_cSPS.setUse4TapIntraFilter( m_bUse4TapIntraFilter );
-#endif
-#if QC_USE_65ANG_MODES
-  m_cSPS.setUseExtIntraAngModes( m_bUseExtIntraAngMode );
-#endif
-#if QC_OBMC
-  m_cSPS.setOBMC( m_bOBMC );
-  m_cSPS.setOBMCBlkSize( m_nOBMCBlkSize );
-#endif
-#if QC_LMCHROMA
-  m_cSPS.setUseLMChroma   ( m_bUseLMChroma           );  
-#endif
-#if QC_IC
-  m_cSPS.setICFlag( m_bUseIC );
-#endif
 }
 
 Void TEncTop::xInitPPS()

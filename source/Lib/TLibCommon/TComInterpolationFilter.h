@@ -46,9 +46,6 @@
 
 #define NTAPS_LUMA        8 ///< Number of taps for luma
 #define NTAPS_CHROMA      4 ///< Number of taps for chroma
-#if QC_FRUC_MERGE
-#define NTAPS_LUMA_FRUC   2
-#endif
 #define IF_INTERNAL_PREC 14 ///< Number of bits for internal precision
 #define IF_FILTER_PREC    6 ///< Log2 of sum of filter taps
 #define IF_INTERNAL_OFFS (1<<(IF_INTERNAL_PREC-1)) ///< Offset used internally
@@ -58,20 +55,8 @@
  */
 class TComInterpolationFilter
 {
-#if QC_MV_STORE_PRECISION_BIT == 3
-  static const Short m_lumaFilter[8][NTAPS_LUMA];     ///< Luma filter taps
-  static const Short m_chromaFilter[16][NTAPS_CHROMA]; ///< Chroma filter taps
-#else
   static const Short m_lumaFilter[4][NTAPS_LUMA];     ///< Luma filter taps
   static const Short m_chromaFilter[8][NTAPS_CHROMA]; ///< Chroma filter taps
-#endif
-#if QC_FRUC_MERGE
-#if QC_MV_STORE_PRECISION_BIT == 3
-  static const Short m_lumaFilterBilinear[8][NTAPS_LUMA_FRUC];     ///< Luma filter taps
-#else
-  static const Short m_lumaFilterBilinear[4][NTAPS_LUMA_FRUC];     ///< Luma filter taps
-#endif
-#endif
   
   static Void filterCopy(Int bitDepth, const Pel *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height, Bool isFirst, Bool isLast);
   
@@ -87,16 +72,8 @@ public:
   TComInterpolationFilter() {}
   ~TComInterpolationFilter() {}
 
-  Void filterHorLuma  (Pel *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height, Int frac,               Bool isLast 
-#if QC_FRUC_MERGE
-    , Int nFilterIdx = 0
-#endif
-    );
-  Void filterVerLuma  (Pel *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height, Int frac, Bool isFirst, Bool isLast 
-#if QC_FRUC_MERGE
-    , Int nFilterIdx = 0
-#endif
-    );
+  Void filterHorLuma  (Pel *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height, Int frac,               Bool isLast );
+  Void filterVerLuma  (Pel *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height, Int frac, Bool isFirst, Bool isLast );
   Void filterHorChroma(Pel *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height, Int frac,               Bool isLast );
   Void filterVerChroma(Pel *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height, Int frac, Bool isFirst, Bool isLast );
 };

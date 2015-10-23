@@ -56,9 +56,6 @@
 
 #include "TEncAnalyze.h"
 #include "TEncRateCtrl.h"
-#if ALF_HM3_QC_REFACTOR
-#include "TEncAdaptiveLoopFilter.h"
-#endif
 #include <vector>
 
 //! \ingroup TLibEncoder
@@ -84,9 +81,6 @@ private:
   Int                     m_iGopSize;
   Int                     m_iNumPicCoded;
   Bool                    m_bFirst;
-#if ALLOW_RECOVERY_POINT_AS_RAP
-  Int                     m_iLastRecoveryPicPOC;
-#endif
   
   //  Access channel
   TEncTop*                m_pcEncTop;
@@ -130,14 +124,6 @@ private:
   Bool                    m_pictureTimingSEIPresentInAU;
   Bool                    m_nestedBufferingPeriodSEIPresentInAU;
   Bool                    m_nestedPictureTimingSEIPresentInAU;
-#if ALF_HM3_QC_REFACTOR
-  // Adaptive Loop filter
-  TEncAdaptiveLoopFilter* m_pcAdaptiveLoopFilter;
-#endif
-#if QC_ALF_TMEPORAL_NUM
-  static Int           m_iStoredAlfParaNum;
-  ALFParam             m_acStoredAlfPara[QC_ALF_TMEPORAL_NUM];
-#endif
 public:
   TEncGOP();
   virtual ~TEncGOP();
@@ -146,11 +132,7 @@ public:
   Void  destroy     ();
   
   Void  init        ( TEncTop* pcTEncTop );
-#if QC_AC_ADAPT_WDOW
-  Void  compressGOP ( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rcListPic, TComList<TComPicYuv*>& rcListPicYuvRec, std::list<AccessUnit>& accessUnitsInGOP, Bool isField, Bool isTff, TComStats* m_apcStats);
-#else
   Void  compressGOP ( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rcListPic, TComList<TComPicYuv*>& rcListPicYuvRec, std::list<AccessUnit>& accessUnitsInGOP, Bool isField, Bool isTff );
-#endif
   Void  xAttachSliceDataToNalUnit (OutputNALUnit& rNalu, TComOutputBitstream*& rpcBitstreamRedirect);
 
   
@@ -200,11 +182,6 @@ protected:
     m_nestedPictureTimingSEIPresentInAU      = false;
   }
   Void dblMetric( TComPic* pcPic, UInt uiNumSlices );
-#if QC_AC_ADAPT_WDOW
-  public:
-  Int xUpdateTStates (UInt uiSliceType, UInt uiSliceQP,  TComStats* apcStats);  
-#endif
-
 };// END CLASS DEFINITION TEncGOP
 
 // ====================================================================================================================

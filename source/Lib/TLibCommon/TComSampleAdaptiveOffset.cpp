@@ -109,9 +109,8 @@ TComSampleAdaptiveOffset::TComSampleAdaptiveOffset()
   {
     m_offsetClipTable[compIdx] = NULL;
   }
-#if !SAO_SGN_FUNC
   m_signTable = NULL; 
-#endif
+
   
   m_lineBufWidth = 0;
   m_signLineBuf1 = NULL;
@@ -155,18 +154,12 @@ Void TComSampleAdaptiveOffset::create( Int picWidth, Int picHeight, UInt maxCUWi
     g_saoMaxOffsetQVal[compIdx] = (1<<(min(bitDepthSample,MAX_SAO_TRUNCATED_BITDEPTH)-5))-1; //Table 9-32, inclusive
   }
 
-#if !SAO_SGN_FUNC
   //look-up table for clipping
-  Int overallMaxSampleValue=0;
-#endif
   for(Int compIdx =0; compIdx < NUM_SAO_COMPONENTS; compIdx++)
   {
     Int bitDepthSample = (compIdx == SAO_Y)?g_bitDepthY:g_bitDepthC; //exclusive
     Int maxSampleValue = (1<< bitDepthSample); //exclusive
-    Int maxOffsetValue = (g_saoMaxOffsetQVal[compIdx] << m_offsetStepLog2[compIdx]);
-#if !SAO_SGN_FUNC
-    if (maxSampleValue>overallMaxSampleValue) overallMaxSampleValue=maxSampleValue;
-#endif
+    Int maxOffsetValue = (g_saoMaxOffsetQVal[compIdx] << m_offsetStepLog2[compIdx]); 
 
     m_offsetClipTable[compIdx] = new Int[(maxSampleValue + maxOffsetValue -1)+ (maxOffsetValue)+1 ]; //positive & negative range plus 0
     m_offsetClip[compIdx] = &(m_offsetClipTable[compIdx][maxOffsetValue]);
@@ -182,19 +175,20 @@ Void TComSampleAdaptiveOffset::create( Int picWidth, Int picHeight, UInt maxCUWi
       *(offsetClipPtr + maxSampleValue+ k) = maxSampleValue-1;
       *(offsetClipPtr -k -1 )              = 0;
     }
-  }
+    if(compIdx == SAO_Y) //g_bitDepthY is always larger than or equal to g_bitDepthC
+    {
+      m_signTable = new Short[ 2*(maxSampleValue-1) + 1 ];
+      m_sign = &(m_signTable[maxSampleValue-1]);
 
-#if !SAO_SGN_FUNC
-  m_signTable = new Short[ 2*(overallMaxSampleValue-1) + 1 ];
-  m_sign = &(m_signTable[overallMaxSampleValue-1]);
+      m_sign[0] = 0;
+      for(Int k=1; k< maxSampleValue; k++)
+      {
+        m_sign[k] = 1;
+        m_sign[-k]= -1;
+      }
+    }
+  }  
 
-  m_sign[0] = 0;
-  for(Int k=1; k< overallMaxSampleValue; k++)
-  {
-    m_sign[k] = 1;
-    m_sign[-k]= -1;
-  }
-#endif
 }
 
 Void TComSampleAdaptiveOffset::destroy()
@@ -213,12 +207,10 @@ Void TComSampleAdaptiveOffset::destroy()
       delete[] m_offsetClipTable[compIdx]; m_offsetClipTable[compIdx] = NULL;
     }
   }
-#if !SAO_SGN_FUNC
   if( m_signTable )
   {
     delete[] m_signTable; m_signTable = NULL;
   }
-#endif
 }
 
 Void TComSampleAdaptiveOffset::invertQuantOffsets(Int compIdx, Int typeIdc, Int typeAuxInfo, Int* dstOffsets, Int* srcOffsets)
@@ -385,24 +377,6 @@ Void TComSampleAdaptiveOffset::offsetBlock(Int compIdx, Int typeIdx, Int* offset
 
   Pel* srcLine = srcBlk;
   Pel* resLine = resBlk;
-#if HM14_CLEAN_UP
-  if( typeIdx != SAO_TYPE_BO )
-  {
-    memcpy( resLine , srcLine , width * sizeof( Pel ) );
-    srcLine += srcStride;
-    resLine += resStride;
-    for( Int n = 1 ; n < height - 1 ; n++ )
-    {
-      resLine[0] = srcLine[0];
-      resLine[width-1] = srcLine[width-1];
-      srcLine += srcStride;
-      resLine += resStride;
-    }
-    memcpy( resLine , srcLine , width * sizeof( Pel ) );
-    srcLine = srcBlk;
-    resLine = resBlk;
-  }
-#endif
 
   switch(typeIdx)
   {
@@ -413,18 +387,10 @@ Void TComSampleAdaptiveOffset::offsetBlock(Int compIdx, Int typeIdx, Int* offset
       endX   = isRightAvail ? width : (width -1);
       for (y=0; y< height; y++)
       {
-#if SAO_SGN_FUNC
-        signLeft = (Char)sgn(srcLine[startX] - srcLine[startX-1]);
-#else
         signLeft = (Char)m_sign[srcLine[startX] - srcLine[startX-1]];
-#endif
         for (x=startX; x< endX; x++)
         {
-#if SAO_SGN_FUNC
-          signRight = (Char)sgn(srcLine[x] - srcLine[x+1]); 
-#else
           signRight = (Char)m_sign[srcLine[x] - srcLine[x+1]]; 
-#endif
           edgeType =  signRight + signLeft;
           signLeft  = -signRight;
 
@@ -452,11 +418,7 @@ Void TComSampleAdaptiveOffset::offsetBlock(Int compIdx, Int typeIdx, Int* offset
       Pel* srcLineAbove= srcLine- srcStride;
       for (x=0; x< width; x++)
       {
-#if SAO_SGN_FUNC
-        signUpLine[x] = (Char)sgn(srcLine[x] - srcLineAbove[x]);
-#else
         signUpLine[x] = (Char)m_sign[srcLine[x] - srcLineAbove[x]];
-#endif
       }
 
       Pel* srcLineBelow;
@@ -466,11 +428,7 @@ Void TComSampleAdaptiveOffset::offsetBlock(Int compIdx, Int typeIdx, Int* offset
 
         for (x=0; x< width; x++)
         {
-#if SAO_SGN_FUNC
-          signDown  = (Char)sgn(srcLine[x] - srcLineBelow[x]);
-#else
           signDown  = (Char)m_sign[srcLine[x] - srcLineBelow[x]]; 
-#endif
           edgeType = signDown + signUpLine[x];
           signUpLine[x]= -signDown;
 
@@ -497,11 +455,7 @@ Void TComSampleAdaptiveOffset::offsetBlock(Int compIdx, Int typeIdx, Int* offset
       Pel* srcLineBelow= srcLine+ srcStride;
       for (x=startX; x< endX+1; x++)
       {
-#if SAO_SGN_FUNC
-        signUpLine[x] = (Char)sgn(srcLineBelow[x] - srcLine[x- 1]);
-#else
         signUpLine[x] = (Char)m_sign[srcLineBelow[x] - srcLine[x- 1]];
-#endif
       }
 
       //1st line
@@ -510,11 +464,7 @@ Void TComSampleAdaptiveOffset::offsetBlock(Int compIdx, Int typeIdx, Int* offset
       firstLineEndX   = isAboveAvail? endX: 1;
       for(x= firstLineStartX; x< firstLineEndX; x++)
       {
-#if SAO_SGN_FUNC
-        edgeType  =  sgn(srcLine[x] - srcLineAbove[x- 1]) - signUpLine[x+1];
-#else
         edgeType  =  m_sign[srcLine[x] - srcLineAbove[x- 1]] - signUpLine[x+1];
-#endif
         resLine[x] = offsetClip[srcLine[x] + offset[edgeType]];
       }
       srcLine  += srcStride;
@@ -528,21 +478,13 @@ Void TComSampleAdaptiveOffset::offsetBlock(Int compIdx, Int typeIdx, Int* offset
 
         for (x=startX; x<endX; x++)
         {
-#if SAO_SGN_FUNC
-          signDown =  (Char)sgn(srcLine[x] - srcLineBelow[x+ 1]);
-#else
           signDown =  (Char)m_sign[srcLine[x] - srcLineBelow[x+ 1]] ;
-#endif
           edgeType =  signDown + signUpLine[x];
           resLine[x] = offsetClip[srcLine[x] + offset[edgeType]];
 
           signDownLine[x+1] = -signDown; 
         }
-#if SAO_SGN_FUNC
-        signDownLine[startX] = (Char)sgn(srcLineBelow[startX] - srcLine[startX-1]);
-#else
         signDownLine[startX] = (Char)m_sign[srcLineBelow[startX] - srcLine[startX-1]];
-#endif
 
         signTmpLine  = signUpLine;
         signUpLine   = signDownLine;
@@ -558,11 +500,7 @@ Void TComSampleAdaptiveOffset::offsetBlock(Int compIdx, Int typeIdx, Int* offset
       lastLineEndX   = isBelowRightAvail ? width : (width -1);
       for(x= lastLineStartX; x< lastLineEndX; x++)
       {
-#if SAO_SGN_FUNC
-        edgeType =  sgn(srcLine[x] - srcLineBelow[x+ 1]) + signUpLine[x];
-#else
         edgeType =  m_sign[srcLine[x] - srcLineBelow[x+ 1]] + signUpLine[x];
-#endif
         resLine[x] = offsetClip[srcLine[x] + offset[edgeType]];
 
       }
@@ -580,11 +518,7 @@ Void TComSampleAdaptiveOffset::offsetBlock(Int compIdx, Int typeIdx, Int* offset
       Pel* srcLineBelow= srcLine+ srcStride;
       for (x=startX-1; x< endX; x++)
       {
-#if SAO_SGN_FUNC
-        signUpLine[x] = (Char)sgn(srcLineBelow[x] - srcLine[x+1]);
-#else
         signUpLine[x] = (Char)m_sign[srcLineBelow[x] - srcLine[x+1]];
-#endif
       }
 
 
@@ -594,11 +528,7 @@ Void TComSampleAdaptiveOffset::offsetBlock(Int compIdx, Int typeIdx, Int* offset
       firstLineEndX   = isAboveRightAvail ? width : (width-1);
       for(x= firstLineStartX; x< firstLineEndX; x++)
       {
-#if SAO_SGN_FUNC
-        edgeType = sgn(srcLine[x] - srcLineAbove[x+1]) -signUpLine[x-1];
-#else
         edgeType = m_sign[srcLine[x] - srcLineAbove[x+1]] -signUpLine[x-1];
-#endif
         resLine[x] = offsetClip[srcLine[x] + offset[edgeType]];
       }
       srcLine += srcStride;
@@ -611,20 +541,12 @@ Void TComSampleAdaptiveOffset::offsetBlock(Int compIdx, Int typeIdx, Int* offset
 
         for(x= startX; x< endX; x++)
         {
-#if SAO_SGN_FUNC
-          signDown =  (Char)sgn(srcLine[x] - srcLineBelow[x-1]);
-#else
           signDown =  (Char)m_sign[srcLine[x] - srcLineBelow[x-1]] ;
-#endif
           edgeType =  signDown + signUpLine[x];
           resLine[x] = offsetClip[srcLine[x] + offset[edgeType]];
           signUpLine[x-1] = -signDown; 
         }
-#if SAO_SGN_FUNC
-        signUpLine[endX-1] = (Char)sgn(srcLineBelow[endX-1] - srcLine[endX]);
-#else
         signUpLine[endX-1] = (Char)m_sign[srcLineBelow[endX-1] - srcLine[endX]];
-#endif
         srcLine  += srcStride;
         resLine += resStride;
       }
@@ -635,11 +557,7 @@ Void TComSampleAdaptiveOffset::offsetBlock(Int compIdx, Int typeIdx, Int* offset
       lastLineEndX   = isBelowAvail ? endX : 1;
       for(x= lastLineStartX; x< lastLineEndX; x++)
       {
-#if SAO_SGN_FUNC
-        edgeType = sgn(srcLine[x] - srcLineBelow[x-1]) + signUpLine[x];
-#else
         edgeType = m_sign[srcLine[x] - srcLineBelow[x-1]] + signUpLine[x];
-#endif
         resLine[x] = offsetClip[srcLine[x] + offset[edgeType]];
 
       }
@@ -674,7 +592,6 @@ Void TComSampleAdaptiveOffset::offsetCTU(Int ctu, TComPicYuv* srcYuv, TComPicYuv
 {
   Bool isLeftAvail,isRightAvail,isAboveAvail,isBelowAvail,isAboveLeftAvail,isAboveRightAvail,isBelowLeftAvail,isBelowRightAvail;
 
-#if !HM14_CLEAN_UP
   if( 
     (saoblkParam[SAO_Y ].modeIdc == SAO_MODE_OFF) &&
     (saoblkParam[SAO_Cb].modeIdc == SAO_MODE_OFF) &&
@@ -683,7 +600,6 @@ Void TComSampleAdaptiveOffset::offsetCTU(Int ctu, TComPicYuv* srcYuv, TComPicYuv
   {
     return;
   }
-#endif
 
   //block boundary availability
   pPic->getPicSym()->deriveLoopFilterBoundaryAvailibility(ctu, isLeftAvail,isRightAvail,isAboveAvail,isBelowAvail,isAboveLeftAvail,isAboveRightAvail,isBelowLeftAvail,isBelowRightAvail);
@@ -721,29 +637,6 @@ Void TComSampleAdaptiveOffset::offsetCTU(Int ctu, TComPicYuv* srcYuv, TComPicYuv
                   , isBelowLeftAvail, isBelowRightAvail
                   );
     }
-#if HM14_CLEAN_UP
-    else
-    {
-      Bool isLuma     = (compIdx == SAO_Y);
-      Int  formatShift= isLuma?0:1;
-      Int  blkWidth   = (width  >> formatShift);
-      Int  blkHeight  = (height >> formatShift);
-      Int  blkYPos    = (yPos   >> formatShift);
-      Int  blkXPos    = (xPos   >> formatShift);
-
-      Int  srcStride = isLuma?srcYuv->getStride():srcYuv->getCStride();
-      Pel* srcBlk    = getPicBuf(srcYuv, compIdx)+ (yPos >> formatShift)*srcStride+ (xPos >> formatShift);
-      Int  resStride  = isLuma?resYuv->getStride():resYuv->getCStride();
-      Pel* resBlk     = getPicBuf(resYuv, compIdx)+ blkYPos*resStride+ blkXPos;
-      Int nSize = blkWidth * sizeof( Pel );
-      for( Int n = 0 ; n < blkHeight ; n++ )
-      {
-        memcpy( resBlk , srcBlk , nSize );
-        srcBlk += srcStride;
-        resBlk += resStride;
-      }
-    }
-#endif
   } //compIdx
 
 }
@@ -755,17 +648,9 @@ Void TComSampleAdaptiveOffset::SAOProcess(TComPic* pDecPic)
   {
     return;
   }
-#if HM14_CLEAN_UP
-  m_tempPicYuv = pDecPic->replacePicYuvRecPointer( m_tempPicYuv );
-  TComPicYuv* resYuv = pDecPic->getPicYuvRec();
-  TComPicYuv* srcYuv = m_tempPicYuv;
-  srcYuv->setBorderExtension( false );
-  resYuv->setBorderExtension( false );
-#else
   TComPicYuv* resYuv = pDecPic->getPicYuvRec();
   TComPicYuv* srcYuv = m_tempPicYuv;
   resYuv->copyToPic(srcYuv);
-#endif
   for(Int ctu= 0; ctu < m_numCTUsPic; ctu++)
   {
     offsetCTU(ctu, srcYuv, resYuv, (pDecPic->getPicSym()->getSAOBlkParam())[ctu], pDecPic);

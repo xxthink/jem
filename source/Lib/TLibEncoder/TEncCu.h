@@ -49,9 +49,6 @@
 #include "TEncEntropy.h"
 #include "TEncSearch.h"
 #include "TEncRateCtrl.h"
-#if QC_IMV
-#include <set>
-#endif
 //! \ingroup TLibEncoder
 //! \{
 
@@ -71,15 +68,6 @@ private:
   
   TComDataCU**            m_ppcBestCU;      ///< Best CUs in each depth
   TComDataCU**            m_ppcTempCU;      ///< Temporary CUs in each depth
-#if QC_IMV
-  TComDataCU**            m_ppcTempCUIMVCache[NUMBER_OF_PART_SIZES]; 
-#endif
-#if QC_OBMC
-  TComDataCU**            m_ppcTempCUWoOBMC;      ///< Temporary CUs in each depth
-#endif
-#if QC_FRUC_MERGE
-  TComDataCU**            m_ppcFRUCBufferCU;      
-#endif
   UChar                   m_uhTotalDepth;
   
   TComYuv**               m_ppcPredYuvBest; ///< Best Prediction Yuv for each depth
@@ -89,11 +77,7 @@ private:
   TComYuv**               m_ppcResiYuvTemp; ///< Temporary Residual Yuv for each depth
   TComYuv**               m_ppcRecoYuvTemp; ///< Temporary Reconstruction Yuv for each depth
   TComYuv**               m_ppcOrigYuv;     ///< Original Yuv for each depth
-#if QC_OBMC
-  TComYuv**               m_ppcTmpYuv1;     ///< Temporary Yuv used for OBMC
-  TComYuv**               m_ppcTmpYuv2;     ///< Temporary Yuv used for OBMC
-  TComYuv**               m_ppcPredYuvWoOBMC; ///< Temporary Prediction Yuv for each depth
-#endif
+  
   //  Data : encoder control
   Bool                    m_bEncodeDQP;
   
@@ -113,16 +97,6 @@ private:
   TEncSbac***             m_pppcRDSbacCoder;
   TEncSbac*               m_pcRDGoOnSbacCoder;
   TEncRateCtrl*           m_pcRateCtrl;
-
-#if QC_SUB_PU_TMVP
-#if QC_SUB_PU_TMVP_EXT
-  TComMvField  * m_pMvFieldSP[2];
-  UChar        * m_phInterDirSP[2];
-#else
-  TComMvField  * m_pMvFieldSP;
-  UChar        * m_phInterDirSP;
-#endif
-#endif
 public:
   /// copy parameters from encoder class
   Void  init                ( TEncTop* pcEncTop );
@@ -154,24 +128,13 @@ protected:
   Void  xCheckBestMode      ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, UInt uiDepth        );
   
   Void  xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, Bool *earlyDetectionSkipMode);
-#if QC_FRUC_MERGE
-  Void  xCheckRDCostMerge2Nx2NFRUC( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU , Bool *earlyDetectionSkipMode );
-#endif
 
 #if AMP_MRG
-  Void  xCheckRDCostInter   ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, PartSize ePartSize, Bool bUseMRG = false 
-#if QC_IMV
-    , Bool bIMV = false , TComDataCU * pcCUInfo2Reuse = NULL 
-#endif
-    );
+  Void  xCheckRDCostInter   ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, PartSize ePartSize, Bool bUseMRG = false  );
 #else
   Void  xCheckRDCostInter   ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, PartSize ePartSize  );
 #endif
-  Void  xCheckRDCostIntra   ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, PartSize ePartSize  
-#if ROT_TR   || CU_LEVEL_MPI
-  , Int& bNonZeroCoeff 
-#endif
-  );
+  Void  xCheckRDCostIntra   ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, PartSize ePartSize  );
   Void  xCheckDQP           ( TComDataCU*  pcCU );
   
   Void  xCheckIntraPCM      ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU                      );
@@ -195,28 +158,8 @@ protected:
   Void deriveTestModeAMP (TComDataCU *&rpcBestCU, PartSize eParentPartSize, Bool &bTestAMP_Hor, Bool &bTestAMP_Ver);
 #endif
 #endif
+
   Void  xFillPCMBuffer     ( TComDataCU*& pCU, TComYuv* pOrgYuv ); 
-
-#if QC_IMV
-private:
-  typedef struct
-  {
-    Double    dRDCost;
-    Bool      bUseMrg;
-    PartSize  eInterPartSize;
-    TComDataCU * pcCUMode;
-  }SModeCand;
-
-  class cmpModeCand
-  {
-  public:
-    bool operator()(const SModeCand & r1 , const SModeCand & r2 ) const
-    {
-      return r1.dRDCost < r2.dRDCost;
-    }
-  };
-  std::set <SModeCand, cmpModeCand> m_setInterCand;
-#endif
 };
 
 //! \}

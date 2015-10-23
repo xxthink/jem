@@ -138,53 +138,25 @@ public:
   Pel*  getLumaAddr ( Int iCuAddr, Int uiAbsZorderIdx ) { return m_piPicOrgY + m_cuOffsetY[iCuAddr] + m_buOffsetY[g_auiZscanToRaster[uiAbsZorderIdx]]; }
   Pel*  getCbAddr   ( Int iCuAddr, Int uiAbsZorderIdx ) { return m_piPicOrgU + m_cuOffsetC[iCuAddr] + m_buOffsetC[g_auiZscanToRaster[uiAbsZorderIdx]]; }
   Pel*  getCrAddr   ( Int iCuAddr, Int uiAbsZorderIdx ) { return m_piPicOrgV + m_cuOffsetC[iCuAddr] + m_buOffsetC[g_auiZscanToRaster[uiAbsZorderIdx]]; }
-#if QC_SUB_PU_TMVP
-  Void  getTopLeftSamplePos( Int iCuAddr, Int iAbsZorderIdx, Int& riX, Int& riY );
-  Void  getCUAddrAndPartIdx( Int iX, Int iY, Int& riCuAddr, Int& riAbsZorderIdx );
-#endif
+  
   // ------------------------------------------------------------------------------------------------
   //  Miscellaneous
   // ------------------------------------------------------------------------------------------------
   
   //  Copy function to picture
-  Void  copyToPic       ( TComPicYuv*  pcPicYuvDst 
-#if HM14_CLEAN_UP || ALF_HM3_QC_REFACTOR
-    , Bool bMarginIncluded = true
-#endif
-    );
-  Void  copyToPicLuma   ( TComPicYuv*  pcPicYuvDst 
-#if HM14_CLEAN_UP || ALF_HM3_QC_REFACTOR
-    , Bool bMarginIncluded = true
-#endif
-    );
-  Void  copyToPicCb     ( TComPicYuv*  pcPicYuvDst 
-#if HM14_CLEAN_UP || ALF_HM3_QC_REFACTOR
-    , Bool bMarginIncluded = true
-#endif
-    );
-  Void  copyToPicCr     ( TComPicYuv*  pcPicYuvDst 
-#if HM14_CLEAN_UP || ALF_HM3_QC_REFACTOR
-    , Bool bMarginIncluded = true
-#endif
-    );
+  Void  copyToPic       ( TComPicYuv*  pcPicYuvDst );
+  Void  copyToPicLuma   ( TComPicYuv*  pcPicYuvDst );
+  Void  copyToPicCb     ( TComPicYuv*  pcPicYuvDst );
+  Void  copyToPicCr     ( TComPicYuv*  pcPicYuvDst );
   
   //  Extend function of picture buffer
-  Void  extendPicBorder      (
-#if HM14_CLEAN_UP || ALF_HM3_QC_REFACTOR
-    Int nMargin = -1      // use default margin
-#endif
-    );
+  Void  extendPicBorder      ();
   
   //  Dump picture
   Void  dump (Char* pFileName, Bool bAdd = false);
   
   // Set border extension flag
   Void  setBorderExtension(Bool b) { m_bIsBorderExtended = b; }
-#if QC_SUB_PU_TMVP
-  Int   m_iBaseUnitWidth;       ///< Width of Base Unit (with maximum depth or minimum size, m_iCuWidth >> Max. Depth)
-  Int   m_iBaseUnitHeight;      ///< Height of Base Unit (with maximum depth or minimum size, m_iCuHeight >> Max. Depth)
-  Int   m_iNumCuInWidth;
-#endif
 };// END CLASS DEFINITION TComPicYuv
 
 void calcChecksum(TComPicYuv& pic, UChar digest[3][16]);

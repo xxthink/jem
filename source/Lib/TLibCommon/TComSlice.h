@@ -44,9 +44,7 @@
 #include "CommonDef.h"
 #include "TComRom.h"
 #include "TComList.h"
-#if QC_AC_ADAPT_WDOW
-#include "TLibCommon/TComBitStream.h"
-#endif
+
 //! \ingroup TLibCommon
 //! \{
 
@@ -225,9 +223,9 @@ public:
 class TComPTL
 {
   ProfileTierLevel m_generalPTL;
-  ProfileTierLevel m_subLayerPTL    [MAX_TLAYER-1];      // max. value of max_sub_layers_minus1 is MAX_TLAYER-1 (= 6)
-  Bool m_subLayerProfilePresentFlag [MAX_TLAYER-1];
-  Bool m_subLayerLevelPresentFlag   [MAX_TLAYER-1];
+  ProfileTierLevel m_subLayerPTL[6];      // max. value of max_sub_layers_minus1 is 6
+  Bool m_subLayerProfilePresentFlag[6];
+  Bool m_subLayerLevelPresentFlag[6];
 
 public:
   TComPTL();
@@ -748,51 +746,6 @@ private:
   static const Int   m_winUnitX[MAX_CHROMA_FORMAT_IDC+1];
   static const Int   m_winUnitY[MAX_CHROMA_FORMAT_IDC+1];
   TComPTL     m_pcPTL;
-#if QC_SUB_PU_TMVP
-  Bool        m_bAtmvpEnableFlag;
-  UInt        m_uiSubPUTLog2Size;
-#endif
-#if ALF_HM3_QC_REFACTOR
-  Bool        m_bUseALF;
-#endif
-  
-#if QC_LMCHROMA
-  Bool        m_bUseLMChroma;
-#endif
-
-#if QC_EMT
-  Int         m_iUseIntraEMT;
-  Int         m_iUseInterEMT;
-#endif
-
-#if QC_INTRA_4TAP_FILTER
-  Bool m_iUse4TapIntraFilter;
-#endif
-#if INTRA_BOUNDARY_FILTER
-  Bool m_iUseBoundaryFilter;
-#endif
-#if QC_USE_65ANG_MODES
-  Bool m_iUseExtIntraAngMode;
-#endif
-#if QC_OBMC
-  Bool        m_bOBMC;
-  Int         m_nOBMCBlkSize;
-#endif
-
-#if QC_FRUC_MERGE
-  Int         m_nFRUCMgrMode;
-  Int         m_nFRUCRefineFilter;
-  Int         m_nFURCRefineRange;
-  Int         m_nFRUCSmallBlkRefineDepth;
-#endif
-
-#if QC_IMV
-  Bool  m_nIMV;
-  Int   m_nIMVMaxCand;
-#endif
-#if QC_IC
-  Bool        m_bICFlag;
-#endif
 public:
   TComSPS();
   virtual ~TComSPS();
@@ -914,71 +867,6 @@ public:
   Void setHrdParameters( UInt frameRate, UInt numDU, UInt bitRate, Bool randomAccess );
 
   TComPTL* getPTL()     { return &m_pcPTL; }
-#if QC_SUB_PU_TMVP
-  Bool  getAtmvpEnableFlag()              { return m_bAtmvpEnableFlag; }
-  Void  setAtmvpEnableFlag(Bool b)        { m_bAtmvpEnableFlag = b; }
-  UInt  getSubPUTLog2Size ()              { return m_uiSubPUTLog2Size; }
-  Void  setSubPUTLog2Size (UInt u)        { m_uiSubPUTLog2Size = u;} 
-#endif
-#if ALF_HM3_QC_REFACTOR
-  Bool getUseALF      ()         { return m_bUseALF;        }
-  Void setUseALF      ( Bool b ) { m_bUseALF  = b;          }
-#endif
-
-#if QC_LMCHROMA
-  Bool getUseLMChroma ()         { return m_bUseLMChroma;        }
-  Void setUseLMChroma ( Bool b ) { m_bUseLMChroma  = b;          }
-#endif
-
-#if QC_EMT_INTRA
-  Void setUseIntraEMT(Int n)    { m_iUseIntraEMT = n;     }
-  Int  getUseIntraEMT()         { return m_iUseIntraEMT;  }
-#endif
-#if QC_EMT_INTER
-  Void setUseInterEMT(Int n)    { m_iUseInterEMT = n;     }
-  Int  getUseInterEMT()         { return m_iUseInterEMT;  }
-#endif
-#if QC_INTRA_4TAP_FILTER
-  Void setUse4TapIntraFilter(Bool b)  { m_iUse4TapIntraFilter = b;     }
-  Bool getUse4TapIntraFilter()        { return m_iUse4TapIntraFilter;  }
-#endif
-#if INTRA_BOUNDARY_FILTER
-  Void setUseBoundaryFilter(Bool b)   { m_iUseBoundaryFilter = b;     }
-  Bool getUseBoundaryFilter()         { return m_iUseBoundaryFilter;  }
-#endif
-#if QC_USE_65ANG_MODES
-  Void setUseExtIntraAngModes(Bool b) { m_iUseExtIntraAngMode = b;     }
-  Bool getUseExtIntraAngModes()       { return m_iUseExtIntraAngMode;  }
-#endif
-#if QC_OBMC
-  Void setOBMC(Bool bOBMC)            { m_bOBMC = bOBMC;    }
-  Bool getOBMC()                      { return m_bOBMC;     }
-  Void setOBMCBlkSize(Int nBlkSize)   { m_nOBMCBlkSize = nBlkSize;    }
-  Int  getOBMCBlkSize()               { return m_nOBMCBlkSize;     }
-#endif
-
-#if QC_FRUC_MERGE
-  Void setUseFRUCMgrMode(Int n)    { m_nFRUCMgrMode = n;     }
-  Bool getUseFRUCMgrMode()         { return m_nFRUCMgrMode;  }
-  Void setFRUCRefineFilter(Int n)  { m_nFRUCRefineFilter = n;     }
-  Int  getFRUCRefineFilter()       { return m_nFRUCRefineFilter;  }
-  Void setFRUCRefineRange(Int n)  { m_nFURCRefineRange = n;     }
-  Int  getFRUCRefineRange()       { return m_nFURCRefineRange;  }
-  Void setFRUCSmallBlkRefineDepth(Int n)  { m_nFRUCSmallBlkRefineDepth = n;     }
-  Int  getFRUCSmallBlkRefineDepth()       { return m_nFRUCSmallBlkRefineDepth;  }
-#endif
-
-#if QC_IMV
-  Void  setIMV(Bool n)  { m_nIMV = n;    }
-  Bool  getIMV()       { return m_nIMV; }
-  Void  setIMVMaxCand(Int n)  { m_nIMVMaxCand = n;    }
-  Int   getIMVMaxCand()       { return m_nIMVMaxCand; }
-#endif
-
-#if QC_IC
-  Bool  getICFlag()         { return m_bICFlag;}
-  Void  setICFlag(Bool b)   { m_bICFlag = b;}
-#endif
 };
 
 /// Reference Picture Lists class
@@ -1251,14 +1139,7 @@ private:
   Int         m_aiRefPOCList  [2][MAX_NUM_REF+1];
   Bool        m_bIsUsedAsLongTerm[2][MAX_NUM_REF+1];
   Int         m_iDepth;
-
-#if QC_FRUC_MERGE
-  Int         m_iFrucRefIdxPair[2][MAX_NUM_REF+1];
-  Bool        m_bFrucRefIdxPairValid;
-  static Int  m_iScaleFactor[256][256];
-  static Bool m_bScaleFactorValid;
-#endif
- 
+  
   // referenced slice?
   Bool        m_bRefenced;
   
@@ -1267,25 +1148,10 @@ private:
   TComSPS*    m_pcSPS;
   TComPPS*    m_pcPPS;
   TComPic*    m_pcPic;
-#if QC_AC_ADAPT_WDOW
-#if INIT_PREVFRAME
-  Int         m_iCtxQPIdxStore;
-#endif
-  TComStats*  m_pcStats; 
-  Int         m_iCtxQPIdx;
-  Int         m_iQPIdx;
-#endif
-
 #if ADAPTIVE_QP_SELECTION
   TComTrQuant* m_pcTrQuant;
 #endif  
   UInt        m_colFromL0Flag;  // collocated picture from List0 flag
-
-#if SETTING_NO_OUT_PIC_PRIOR
-  Bool        m_noOutputPriorPicsFlag;
-  Bool        m_noRaslOutputFlag;
-  Bool        m_handleCraAsBlaFlag;
-#endif
   
   UInt        m_colRefIdx;
   UInt        m_maxNumMergeCand;
@@ -1327,9 +1193,6 @@ private:
   Bool       m_LFCrossSliceBoundaryFlag;
 
   Bool       m_enableTMVPFlag;
-#if QC_IC
-  Bool       m_bApplyIC;
-#endif
 public:
   TComSlice();
   virtual ~TComSlice(); 
@@ -1342,28 +1205,12 @@ public:
   
   Void      setPPS          ( TComPPS* pcPPS )         { assert(pcPPS!=NULL); m_pcPPS = pcPPS; m_iPPSId = pcPPS->getPPSId(); }
   TComPPS*  getPPS          () { return m_pcPPS; }
-#if QC_AC_ADAPT_WDOW
-  Void      setCtxMapQPIdx  (Int iQPIdx)  { m_iCtxQPIdx = iQPIdx; }
-  Void      setQPIdx        (Int iQPIdx)  { m_iQPIdx    = iQPIdx; }
-  Int       getQPIdx        ()            {  return  m_iQPIdx;    }
-  Int       getCtxMapQPIdx  ()            {  return  m_iCtxQPIdx; }
-#if INIT_PREVFRAME
-  Void      setCtxMapQPIdxforStore  (Int iQPIdx)  { m_iCtxQPIdxStore = iQPIdx; }  
-  Int       getCtxMapQPIdxforStore  ()            {  return  m_iCtxQPIdxStore; }
-#endif
-#endif
 
 #if ADAPTIVE_QP_SELECTION
   Void          setTrQuant          ( TComTrQuant* pcTrQuant ) { m_pcTrQuant = pcTrQuant; }
   TComTrQuant*  getTrQuant          () { return m_pcTrQuant; }
 #endif
-#if QC_IC
-  Void      setApplyIC( Bool b )       { m_bApplyIC = b; }
-  Bool      getApplyIC()               { return m_bApplyIC; }
-#if QC_IC_SPDUP
-  Void      xSetApplyIC();
-#endif
-#endif
+
   Void      setPPSId        ( Int PPSId )         { m_iPPSId = PPSId; }
   Int       getPPSId        () { return m_iPPSId; }
   Void      setPicOutputFlag( Bool b )         { m_PicOutputFlag = b;    }
@@ -1484,27 +1331,11 @@ public:
   Void applyReferencePictureSet( TComList<TComPic*>& rcListPic, TComReferencePictureSet *RPSList);
   Bool isTemporalLayerSwitchingPoint( TComList<TComPic*>& rcListPic );
   Bool isStepwiseTemporalLayerSwitchingPointCandidate( TComList<TComPic*>& rcListPic );
-#if ALLOW_RECOVERY_POINT_AS_RAP
-  Int       checkThatAllRefPicsAreAvailable( TComList<TComPic*>& rcListPic, TComReferencePictureSet *pReferencePictureSet, Bool printErrors, Int pocRandomAccess = 0, Bool bUseRecoveryPoint = false);
-  Void      createExplicitReferencePictureSetFromReference( TComList<TComPic*>& rcListPic, TComReferencePictureSet *pReferencePictureSet, Bool isRAP, Int pocRandomAccess = 0, Bool bUseRecoveryPoint = false);
-#else
   Int       checkThatAllRefPicsAreAvailable( TComList<TComPic*>& rcListPic, TComReferencePictureSet *pReferencePictureSet, Bool printErrors, Int pocRandomAccess = 0);
   Void      createExplicitReferencePictureSetFromReference( TComList<TComPic*>& rcListPic, TComReferencePictureSet *pReferencePictureSet, Bool isRAP);
-#endif
 
   Void setMaxNumMergeCand               (UInt val )         { m_maxNumMergeCand = val;                    }
   UInt getMaxNumMergeCand               ()                  { return m_maxNumMergeCand;                   }
-
-#if SETTING_NO_OUT_PIC_PRIOR
-  Void setNoOutputPriorPicsFlag              ( Bool val )         { m_noOutputPriorPicsFlag = val;                    }
-  Bool getNoOutputPriorPicsFlag              ()                   { return m_noOutputPriorPicsFlag;                   }
-
-  Void setNoRaslOutputFlag              ( Bool val )         { m_noRaslOutputFlag = val;                    }
-  Bool getNoRaslOutputFlag              ()                   { return m_noRaslOutputFlag;                   }
-
-  Void setHandleCraAsBlaFlag              ( Bool val )         { m_handleCraAsBlaFlag = val;                    }
-  Bool getHandleCraAsBlaFlag              ()                   { return m_handleCraAsBlaFlag;                   }
-#endif
 
   Void setSliceMode                     ( UInt uiMode )     { m_sliceMode = uiMode;                     }
   UInt getSliceMode                     ()                  { return m_sliceMode;                       }
@@ -1572,16 +1403,6 @@ public:
 
   Void      setEnableTMVPFlag     ( Bool   b )    { m_enableTMVPFlag = b; }
   Bool      getEnableTMVPFlag     ()              { return m_enableTMVPFlag;}
-
-#if QC_AC_ADAPT_WDOW
-  Void setStatsHandle ( TComStats*  pcStats)  {m_pcStats=pcStats;}
-  Void initStatsGlobal(); 
-  TComStats* getStatsHandle ()                {return m_pcStats; }
-#endif 
-#if QC_FRUC_MERGE
-  Int       getRefIdx4MVPair( RefPicList eCurRefPicList , Int nCurRefIdx );
-  inline Int getScaleFactor( Int iTDB , Int iTDD )  { return TComSlice::m_iScaleFactor[128+iTDB][128+iTDD]; }
-#endif
 
 protected:
   TComPic*  xGetRefPic  (TComList<TComPic*>& rcListPic,

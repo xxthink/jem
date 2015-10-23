@@ -99,16 +99,6 @@ private:
   Bool                    m_bFirstSliceInSequence;
   Bool                    m_prevSliceSkipped;
   Int                     m_skippedPOC;
-#if SETTING_NO_OUT_PIC_PRIOR  
-  Bool                    m_bFirstSliceInBitstream;
-  Int                     m_lastPOCNoOutputPriorPics;
-  Bool                    m_isNoOutputPriorPics;
-  Bool                    m_craNoRaslOutputFlag;    //value of variable NoRaslOutputFlag of the last CRA pic
-#endif
-
-#if ALF_HM3_QC_REFACTOR
-  TComAdaptiveLoopFilter  m_cAdaptiveLoopFilter;
-#endif
 
 public:
   TDecTop();
@@ -120,38 +110,18 @@ public:
   void setDecodedPictureHashSEIEnabled(Int enabled) { m_cGopDecoder.setDecodedPictureHashSEIEnabled(enabled); }
 
   Void  init();
-#if QC_AC_ADAPT_WDOW 
-  Bool  decode(InputNALUnit& nalu, Int& iSkipFrame, Int& iPOCLastDisplay,   TComStats*  m_apcStats);     
-#else
   Bool  decode(InputNALUnit& nalu, Int& iSkipFrame, Int& iPOCLastDisplay);
-#endif
-
+  
   Void  deletePicBuffer();
 
-  
-  TComSPS* getActiveSPS() { return m_parameterSetManagerDecoder.getActiveSPS(); }
-
-
   Void executeLoopFilters(Int& poc, TComList<TComPic*>*& rpcListPic);
-#if SETTING_NO_OUT_PIC_PRIOR  
-  Void  checkNoOutputPriorPics (TComList<TComPic*>*& rpcListPic);
-
-  Bool  getNoOutputPriorPicsFlag () { return m_isNoOutputPriorPics; }
-  Void  setNoOutputPriorPicsFlag (bool val) { m_isNoOutputPriorPics = val; }
-#endif
 
 protected:
   Void  xGetNewPicBuffer  (TComSlice* pcSlice, TComPic*& rpcPic);
   Void  xCreateLostPicture (Int iLostPOC);
 
   Void      xActivateParameterSets();
-#if QC_AC_ADAPT_WDOW
-  Bool      xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisplay, TComStats*  m_apcStats);
-  Void      xRecCtxUpdateInfo (UInt uiSliceType,Int iSliceQP, TComStats*  m_apcStats);
-  Void      xRecCtxWdowSizeUpdate(UInt uiSliceType, UInt uiSliceQP, UInt uiSizeX, UInt uiSizeY, CABACState * psCtxStates, Bool *uiCtxMap, UChar *uiCtxCodeIdx, UInt & uiStart, Bool bValid);
-#else
   Bool      xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisplay);
-#endif
   Void      xDecodeVPS();
   Void      xDecodeSPS();
   Void      xDecodePPS();
