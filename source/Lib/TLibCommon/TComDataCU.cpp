@@ -5837,4 +5837,34 @@ Void TComDataCU::getMaxMinCUDepth( UChar & rucMinDepth , UChar & rucMaxDepth , U
   rucMaxDepth = min( ( UChar )ucMaxCUDepth , ( UChar )( rucMaxDepth + 1 ) );
 }
 #endif
+
+#if COM16_C1045_BIO_HARMO_IMPROV
+Bool TComDataCU::isBIOLDB( UInt uiAbsPartIdx )
+{
+  Bool BIOLDB = false;
+  TComCUMvField * pCuMvField0 = getCUMvField( REF_PIC_LIST_0 );
+  TComCUMvField * pCuMvField1 = getCUMvField( REF_PIC_LIST_1 );
+  if( getSlice()->getCheckLDC()
+    && pCuMvField0->getRefIdx( uiAbsPartIdx ) >= 0 && pCuMvField1->getRefIdx( uiAbsPartIdx ) >= 0 )
+  {
+    Int pocCur = getSlice()->getPOC();
+    Int poc0 = getSlice()->getRefPOC( REF_PIC_LIST_0 , pCuMvField0->getRefIdx( uiAbsPartIdx ) );
+    Int poc1 = getSlice()->getRefPOC( REF_PIC_LIST_1 , pCuMvField1->getRefIdx( uiAbsPartIdx ) );
+    if( poc0 != poc1 && ( poc0 - pocCur ) * ( poc1 - pocCur ) > 0 )
+    {
+      const Int threshold = 0;
+      Int dT0 = poc0 - pocCur;
+      Int dT1 = poc1 - pocCur;
+      Bool zeroMv0 = ( pCuMvField0->getMv( uiAbsPartIdx ).getAbsHor() + pCuMvField0->getMv( uiAbsPartIdx ).getAbsVer() ) == 0;
+      Bool zeroMv1 = ( pCuMvField1->getMv( uiAbsPartIdx ).getAbsHor() + pCuMvField1->getMv( uiAbsPartIdx ).getAbsVer() ) == 0;
+      if( !zeroMv0 && !zeroMv1 )
+      {
+        BIOLDB = abs( dT0 * pCuMvField1->getMv( uiAbsPartIdx ).getHor() - dT1 * pCuMvField0->getMv( uiAbsPartIdx ).getHor() ) <= threshold 
+          && abs( dT0 * pCuMvField1->getMv( uiAbsPartIdx ).getVer() - dT1 * pCuMvField0->getMv( uiAbsPartIdx ).getVer() ) <= threshold;
+      }
+    }
+  }
+  return( BIOLDB );
+}
+#endif
 //! \}

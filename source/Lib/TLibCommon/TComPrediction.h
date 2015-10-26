@@ -182,7 +182,10 @@ protected:
 #if VCEG_AZ05_BIO                  
     , Bool bBIOapplied 
 #endif
-);
+#if COM16_C1045_BIO_HARMO_IMPROV
+    , TComDataCU * pCu
+#endif
+    );
 
   Void xGetLLSPrediction ( const Pel* pSrc0, Int iSrcStride, Pel* pDst0, Int iDstStride, UInt uiWidth, UInt uiHeight, UInt uiExt0, const ChromaFormat chFmt  DEBUG_STRING_FN_DECLARE(sDebug) );
 
