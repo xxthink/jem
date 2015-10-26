@@ -796,7 +796,7 @@ Void TComPrediction::motionCompensation ( TComDataCU* pcCU, TComYuv* pcYuvPred, 
     }
     else
     {
-#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP && !COM16_C1045_BIO_HARMO_IMPROV
       if ( pcCU->getMergeType(uiPartAddr))  
       {
         Int iNumSPInOneLine, iNumSP, iSPWidth, iSPHeight;
@@ -826,7 +826,16 @@ Void TComPrediction::motionCompensation ( TComDataCU* pcCU, TComYuv* pcYuvPred, 
       else
       {
 #endif
-      if ( xCheckIdenticalMotion( pcCU, uiPartAddr ) )
+      if ( xCheckIdenticalMotion( pcCU, uiPartAddr ) 
+#if COM16_C1045_BIO_HARMO_IMPROV 
+#if VCEG_AZ07_FRUC_MERGE
+        && pcCU->getFRUCMgrMode( uiPartAddr ) == 0
+#endif
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+        && pcCU->getMergeType( uiPartAddr ) == MGR_TYPE_DEFAULT_N
+#endif
+#endif
+        )
       {
         xPredInterUni (pcCU, uiPartAddr, iWidth, iHeight, REF_PIC_LIST_0, pcYuvPred );
       }
@@ -834,7 +843,7 @@ Void TComPrediction::motionCompensation ( TComDataCU* pcCU, TComYuv* pcYuvPred, 
       {
         xPredInterBi  (pcCU, uiPartAddr, iWidth, iHeight, pcYuvPred );
       }
-#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP && !COM16_C1045_BIO_HARMO_IMPROV
       }
 #endif
     }
@@ -874,7 +883,7 @@ Void TComPrediction::motionCompensation ( TComDataCU* pcCU, TComYuv* pcYuvPred, 
     }
     else
     {
-#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP && !COM16_C1045_BIO_HARMO_IMPROV
       if (pcCU->getMergeType(uiPartAddr))  
       {
         Int iNumSPInOneLine, iNumSP, iSPWidth, iSPHeight;
@@ -902,7 +911,16 @@ Void TComPrediction::motionCompensation ( TComDataCU* pcCU, TComYuv* pcYuvPred, 
       else
       {
 #endif
-      if ( xCheckIdenticalMotion( pcCU, uiPartAddr ) )
+      if ( xCheckIdenticalMotion( pcCU, uiPartAddr ) 
+#if COM16_C1045_BIO_HARMO_IMPROV
+#if VCEG_AZ07_FRUC_MERGE
+        && pcCU->getFRUCMgrMode( uiPartAddr ) == 0
+#endif
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+        && pcCU->getMergeType( uiPartAddr ) == MGR_TYPE_DEFAULT_N
+#endif
+#endif
+        )
       {
         xPredInterUni (pcCU, uiPartAddr, iWidth, iHeight, REF_PIC_LIST_0, pcYuvPred );
       }
@@ -910,7 +928,7 @@ Void TComPrediction::motionCompensation ( TComDataCU* pcCU, TComYuv* pcYuvPred, 
       {
         xPredInterBi  (pcCU, uiPartAddr, iWidth, iHeight, pcYuvPred );
       }
-#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP && !COM16_C1045_BIO_HARMO_IMPROV
       }
 #endif
     }
@@ -928,7 +946,7 @@ Void TComPrediction::xPredInterUni ( TComDataCU* pcCU, UInt uiPartAddr, Int iWid
 #endif
   )
 {
-#if VCEG_AZ07_FRUC_MERGE
+#if VCEG_AZ07_FRUC_MERGE || COM16_C1045_BIO_HARMO_IMPROV
   Int nBlkWidth = iWidth;
   Int nBlkHeight = iHeight;
   Int nBlkStepX = iWidth;
@@ -937,13 +955,35 @@ Void TComPrediction::xPredInterUni ( TComDataCU* pcCU, UInt uiPartAddr, Int iWid
   Int yRasterOffsetStep = 0;
   UInt uiIdxRasterStart = g_auiZscanToRaster[pcCU->getZorderIdxInCtu() + uiPartAddr];
   Int nBlkMCWidth = iWidth;
-  if( !bOBMC && pcCU->getFRUCMgrMode( uiPartAddr ) 
+  if( !bOBMC 
+#if COM16_C1045_BIO_HARMO_IMPROV
+    && ( false
+#if VCEG_AZ07_FRUC_MERGE
+    || pcCU->getFRUCMgrMode( uiPartAddr )
+#endif   
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+    || pcCU->getMergeType( uiPartAddr ) != MGR_TYPE_DEFAULT_N
+#endif
+    )
+#else
+    && pcCU->getFRUCMgrMode( uiPartAddr ) 
 #if VCEG_AZ05_BIO                  
     && !bBIOapplied
 #endif
+#endif
 )
   {
+#if COM16_C1045_BIO_HARMO_IMPROV
+    Int nRefineBlkSize = 4;
+#if VCEG_AZ07_FRUC_MERGE
+    if( pcCU->getFRUCMgrMode( uiPartAddr ) )
+    {
+      nRefineBlkSize = xFrucGetSubBlkSize( pcCU , uiPartAddr , nBlkWidth , nBlkHeight );
+    }
+#endif
+#else
     Int nRefineBlkSize = xFrucGetSubBlkSize( pcCU , uiPartAddr , nBlkWidth , nBlkHeight );
+#endif
     nBlkMCWidth = iWidth = iHeight = nRefineBlkSize;
     nBlkStepX = nBlkStepY = nRefineBlkSize;
     xRasterOffsetStep = nRefineBlkSize >> 2;
@@ -959,13 +999,17 @@ Void TComPrediction::xPredInterUni ( TComDataCU* pcCU, UInt uiPartAddr, Int iWid
   TComMv      cMv         = pcCU->getCUMvField( eRefPicList )->getMv( uiPartAddr );
   pcCU->clipMv(cMv);
 
-#if VCEG_AZ07_FRUC_MERGE
+#if VCEG_AZ07_FRUC_MERGE || COM16_C1045_BIO_HARMO_IMPROV
   // check whether later blocks have the same MV, refidx must been the same
   iWidth = nBlkMCWidth;
   for( Int xLater = x + nBlkStepX , xRasterOffsetLater = xRasterOffset + xRasterOffsetStep ; xLater < nBlkWidth ; xLater += nBlkStepX , xRasterOffsetLater += xRasterOffsetStep )
   {
     UInt uiPartAddrLater = g_auiRasterToZscan[uiIdxRasterStart+yRasterOffset+xRasterOffsetLater] - pcCU->getZorderIdxInCtu();
-    if( pcCU->getCUMvField( eRefPicList )->getMv( uiPartAddrLater ) == cMv )
+    if( pcCU->getCUMvField( eRefPicList )->getMv( uiPartAddrLater ) == cMv 
+#if COM16_C1045_BIO_HARMO_IMPROV
+      && pcCU->getCUMvField( eRefPicList )->getRefIdx( uiPartAddrLater ) == iRefIdx 
+#endif
+      )
     {
       iWidth += nBlkStepX;
       x += nBlkStepX;
@@ -1004,35 +1048,81 @@ Void TComPrediction::xPredInterBi ( TComDataCU* pcCU, UInt uiPartAddr, Int iWidt
 {
   TComYuv* pcMbYuv;
   Int      iRefIdx[NUM_REF_PIC_LIST_01] = {-1, -1};
+#if COM16_C1045_BIO_HARMO_IMPROV
+  Int nBlkWidth = iWidth;
+  Int nBlkHeight = iHeight;
+  Int nBlkStepX = iWidth;
+  Int nBlkStepY = iHeight;
+  Int xRasterOffsetStep = 0;
+  Int yRasterOffsetStep = 0;
+  UInt uiIdxRasterStart = g_auiZscanToRaster[pcCU->getZorderIdxInCtu() + uiPartAddr];
+  if( !bOBMC && ( false 
+#if VCEG_AZ07_FRUC_MERGE
+    || pcCU->getFRUCMgrMode( uiPartAddr ) 
+#endif
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+    || pcCU->getMergeType( uiPartAddr ) != MGR_TYPE_DEFAULT_N
+#endif
+    ) )
+  {
+    Int nRefineBlkSize = 4;
+#if VCEG_AZ07_FRUC_MERGE
+    if( pcCU->getFRUCMgrMode( uiPartAddr ) )
+    {
+      nRefineBlkSize = xFrucGetSubBlkSize( pcCU , uiPartAddr , nBlkWidth , nBlkHeight );
+    }
+#endif
+    iWidth = iHeight = nRefineBlkSize;
+    nBlkStepX = nBlkStepY = nRefineBlkSize;
+    xRasterOffsetStep = nRefineBlkSize >> 2;
+    yRasterOffsetStep = xRasterOffsetStep * pcCU->getPic()->getNumPartInCtuWidth();
+  }
+  for( Int y = 0 , yRasterOffset = 0 ; y < nBlkHeight ; y += nBlkStepY , yRasterOffset += yRasterOffsetStep )
+  {
+    for( Int x = 0 , xRasterOffset = 0 ; x < nBlkWidth ; x += nBlkStepX , xRasterOffset += xRasterOffsetStep )
+    {
+      uiPartAddr = g_auiRasterToZscan[uiIdxRasterStart+yRasterOffset+xRasterOffset] - pcCU->getZorderIdxInCtu();
+#endif
 #if VCEG_AZ05_BIO 
   Int      FrameNumber[3] = {-1, -1,-1};
   FrameNumber[2] = pcCU->getSlice()->getPOC();
   bool bBIOcheck0 = pcCU->getSlice()->getPPS()->getWPBiPred()    && pcCU->getSlice()->getSliceType() == B_SLICE; 
   bool bBIOcheck1 =  pcCU->getSlice()->getPPS()->getUseWP() && pcCU->getSlice()->getSliceType() == P_SLICE;
   bool bBIOapplied = false;
-if (pcCU->getSlice()->getSPS()->getUseBIO())
-{
-  for ( Int iRefList = 0; iRefList < 2; iRefList++ )
+  if (pcCU->getSlice()->getSPS()->getUseBIO())
   {
-    RefPicList eRefPicList = (iRefList ? REF_PIC_LIST_1 : REF_PIC_LIST_0);
-    iRefIdx[iRefList] = pcCU->getCUMvField( eRefPicList )->getRefIdx( uiPartAddr );
-    if ( iRefIdx[iRefList] >= 0 )
-      FrameNumber[iRefList] = pcCU->getSlice()->getRefPic(eRefPicList,iRefIdx[iRefList])->getPOC() ;
-  }
+    for ( Int iRefList = 0; iRefList < 2; iRefList++ )
+    {
+      RefPicList eRefPicList = (iRefList ? REF_PIC_LIST_1 : REF_PIC_LIST_0);
+      iRefIdx[iRefList] = pcCU->getCUMvField( eRefPicList )->getRefIdx( uiPartAddr );
+      if ( iRefIdx[iRefList] >= 0 )
+        FrameNumber[iRefList] = pcCU->getSlice()->getRefPic(eRefPicList,iRefIdx[iRefList])->getPOC() ;
+    }
 
-  if ( iRefIdx[0] >= 0 && iRefIdx[1] >= 0 ) // applied for only EL,  only if Bi-pred is from different "time directions"
-  {  
-    int d1 = FrameNumber[1] - FrameNumber[2], d0 = FrameNumber[2] - FrameNumber[0];
-    if (d1 * d0 > 0&&!bBIOcheck0&&! bBIOcheck1 )
+    if ( iRefIdx[0] >= 0 && iRefIdx[1] >= 0 ) // applied for only EL,  only if Bi-pred is from different "time directions"
+    {  
+      int d1 = FrameNumber[1] - FrameNumber[2], d0 = FrameNumber[2] - FrameNumber[0];
+      if (d1 * d0 > 0&&!bBIOcheck0&&! bBIOcheck1 )
+      {
+        bBIOapplied = true;
+      }
+    }
+
+#if COM16_C1045_BIO_HARMO_IMPROV
+    if( pcCU->getICFlag( uiPartAddr ) )
+    {
+      bBIOapplied = false;
+    }
+    else if( pcCU->isBIOLDB( uiPartAddr ) )
     {
       bBIOapplied = true;
     }
-  }
-
+#else
 #if VCEG_AZ07_FRUC_MERGE 
   if (pcCU->getFRUCMgrMode( uiPartAddr ) ) bBIOapplied = false;
 #endif
-}
+#endif
+  }
 #endif
   for ( UInt refList = 0; refList < NUM_REF_PIC_LIST_01; refList++ )
   {
@@ -1118,8 +1208,15 @@ if (pcCU->getSlice()->getSPS()->getUseBIO())
 #if VCEG_AZ05_BIO                  
       ,bBIOapplied
 #endif
-);
+#if COM16_C1045_BIO_HARMO_IMPROV
+      , pcCU 
+#endif
+      );
   }
+#if COM16_C1045_BIO_HARMO_IMPROV
+  }
+  }
+#endif
 }
 #if VCEG_AZ05_BIO 
 Void  TComPrediction::xGradFilterX(Pel*  piRefY, Int iRefStride,Pel*  piDstY,Int iDstStride,
@@ -1583,6 +1680,9 @@ Void TComPrediction::xWeightedAverage( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, I
 #if VCEG_AZ05_BIO                  
   ,bool bBIOapplied
 #endif
+#if COM16_C1045_BIO_HARMO_IMPROV
+  , TComDataCU * pCu
+#endif
 )
 {
   if( iRefIdx0 >= 0 && iRefIdx1 >= 0 )
@@ -1619,6 +1719,32 @@ Void TComPrediction::xWeightedAverage( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, I
       Pel* pDstY = pcYuvDst->getAddr(COMPONENT_Y,uiPartIdx); 
       Int iDstStride = pcYuvDst->getStride(COMPONENT_Y); 
       Pel* pSrcY0Temp = pSrcY0; Pel* pSrcY1Temp = pSrcY1;
+
+#if COM16_C1045_BIO_HARMO_IMPROV
+      Int dT0 = pCu->getSlice()->getRefPOC( REF_PIC_LIST_0 , iRefIdx0 ) - pCu->getSlice()->getPOC();
+      Int dT1 = pCu->getSlice()->getPOC() - pCu->getSlice()->getRefPOC( REF_PIC_LIST_1 , iRefIdx1 );
+      if( dT0 * dT1 < 0 )
+      {
+        Pel * tmpGradX0 = m_pGradX0;
+        Pel * tmpGradX1 = m_pGradX1;
+        Pel * tmpGradY0 = m_pGradY0;
+        Pel * tmpGradY1 = m_pGradY1;
+        for( y = 0; y < iHeightG; y++ )    
+        {
+          for( x =0; x < iWidthG ; x++ )
+          {
+            tmpGradX0[x] *= dT0;
+            tmpGradX1[x] *= dT1;
+            tmpGradY0[x] *= dT0;
+            tmpGradY1[x] *= dT1;
+          }
+          tmpGradX0 += iWidthG;
+          tmpGradX1 += iWidthG;
+          tmpGradY0 += iWidthG;
+          tmpGradY1 += iWidthG;
+        }
+      }
+#endif
 
       static const int  bitDepth =clipBitDepths.recon[toChannelType(COMPONENT_Y)];
       static const int  shiftNum    = IF_INTERNAL_PREC + 1 - bitDepth;

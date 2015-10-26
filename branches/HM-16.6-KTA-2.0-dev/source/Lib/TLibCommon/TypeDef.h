@@ -115,6 +115,8 @@
 #define VCEG_AZ05_BIO                                     1  /// bi-directional optical flow
 #define VCEG_AZ05_INTRA_MPI                               1  /// Multi-parameter Intra prediction
 #define VCEG_AZ05_ROT_TR                                  1
+
+#define COM16_C1045_BIO_HARMO_IMPROV                      1
 ///////////////////////////////////////////////////////////
 // KTA tools section end
 ///////////////////////////////////////////////////////////

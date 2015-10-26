@@ -465,6 +465,10 @@ public:
   Void          setIPCMFlag           (UInt uiIdx, Bool b )     { m_pbIPCMFlag[uiIdx] = b;           }
   Void          setIPCMFlagSubParts   (Bool bIpcmFlag, UInt uiAbsPartIdx, UInt uiDepth);
 
+#if COM16_C1045_BIO_HARMO_IMPROV
+  Bool          isBIOLDB( UInt uiAbsPartIdx );
+#endif
+
 #if ALF_HM3_REFACTOR
   UInt*         getAlfCtrlFlag        ()                        { return m_puiAlfCtrlFlag;            }
   UInt          getAlfCtrlFlag        ( UInt uiIdx )            { return m_puiAlfCtrlFlag[uiIdx];     }
