@@ -437,6 +437,10 @@ Void TEncSlice::initEncSlice( TComPic* pcPic, Int pocLast, Int pocCurr, Int iNum
   rpcSlice->setSliceArgument        ( m_pcCfg->getSliceArgument()        );
   rpcSlice->setSliceSegmentMode     ( m_pcCfg->getSliceSegmentMode()     );
   rpcSlice->setSliceSegmentArgument ( m_pcCfg->getSliceSegmentArgument() );
+#if QT_BT_STRUCTURE
+  rpcSlice->setMaxBTSize(rpcSlice->isIntra() ? MAX_BT_SIZE: MAX_BT_SIZE_INTER);
+  rpcSlice->setMinQTSize(rpcSlice->isIntra() ? MIN_QT_SIZE: MIN_QT_SIZE_INTER);
+#endif
   rpcSlice->setMaxNumMergeCand        ( m_pcCfg->getMaxNumMergeCand()        );
   xStoreWPparam( pPPS->getUseWP(), pPPS->getWPBiPred() );
 }
@@ -686,8 +690,15 @@ Void TEncSlice::compressSlice( TComPic*& rpcPic )
   m_pcSbacCoder->init( m_pcBinCABAC );
   m_pcEntropyCoder->setEntropyCoder   ( m_pcSbacCoder, pcSlice );
   m_pcEntropyCoder->resetEntropy      ();
+#if QT_BT_STRUCTURE
+  Int iMaxWIdx = g_aucConvertToBit[g_uiMaxCUWidth];
+  Int iMaxHIdx = g_aucConvertToBit[g_uiMaxCUHeight];
+  m_pppcRDSbacCoder[iMaxWIdx][iMaxHIdx][CI_CURR_BEST]->load(m_pcSbacCoder);
+  pppcRDSbacCoder = (TEncBinCABAC *) m_pppcRDSbacCoder[iMaxWIdx][iMaxHIdx][CI_CURR_BEST]->getEncBinIf();
+#else
   m_pppcRDSbacCoder[0][CI_CURR_BEST]->load(m_pcSbacCoder);
   pppcRDSbacCoder = (TEncBinCABAC *) m_pppcRDSbacCoder[0][CI_CURR_BEST]->getEncBinIf();
+#endif
   pppcRDSbacCoder->setBinCountingEnableFlag( false );
   pppcRDSbacCoder->setBinsCoded( 0 );
   
@@ -748,12 +759,20 @@ Void TEncSlice::compressSlice( TComPic*& rpcPic )
   }
   for (UInt ui = 0; ui < uiTilesAcross; ui++)
   {
+#if QT_BT_STRUCTURE
+    m_pcBufferSbacCoders[ui].load(m_pppcRDSbacCoder[iMaxWIdx][iMaxHIdx][CI_CURR_BEST]);  //init. state
+#else
     m_pcBufferSbacCoders[ui].load(m_pppcRDSbacCoder[0][CI_CURR_BEST]);  //init. state
+#endif
   }
 
   for ( UInt ui = 0 ; ui < iNumSubstreams ; ui++ ) //init all sbac coders for RD optimization
   {
+#if QT_BT_STRUCTURE
+    ppppcRDSbacCoders[ui][0][CI_CURR_BEST]->load(m_pppcRDSbacCoder[iMaxWIdx][iMaxHIdx][CI_CURR_BEST]);
+#else
     ppppcRDSbacCoders[ui][0][CI_CURR_BEST]->load(m_pppcRDSbacCoder[0][CI_CURR_BEST]);
+#endif
   }
 
   delete[] m_pcBufferLowLatSbacCoders;
@@ -764,8 +783,13 @@ Void TEncSlice::compressSlice( TComPic*& rpcPic )
   {
     m_pcBufferLowLatSbacCoders[ui].init( &m_pcBufferLowLatBinCoderCABACs[ui] );
   }
+#if QT_BT_STRUCTURE
+  for (UInt ui = 0; ui < uiTilesAcross; ui++)
+    m_pcBufferLowLatSbacCoders[ui].load(m_pppcRDSbacCoder[iMaxWIdx][iMaxHIdx][CI_CURR_BEST]);  //init. state
+#else
   for (UInt ui = 0; ui < uiTilesAcross; ui++)
     m_pcBufferLowLatSbacCoders[ui].load(m_pppcRDSbacCoder[0][CI_CURR_BEST]);  //init. state
+#endif
 
   UInt uiWidthInLCUs  = rpcPic->getPicSym()->getFrameWidthInCU();
   //UInt uiHeightInLCUs = rpcPic->getPicSym()->getFrameHeightInCU();
@@ -799,7 +823,11 @@ Void TEncSlice::compressSlice( TComPic*& rpcPic )
           }
         }
       }
+#if QT_BT_STRUCTURE
+      m_pppcRDSbacCoder[iMaxWIdx][iMaxHIdx][CI_CURR_BEST]->loadContexts( CTXMem[0] );
+#else
       m_pppcRDSbacCoder[0][CI_CURR_BEST]->loadContexts( CTXMem[0] );
+#endif
       ppppcRDSbacCoders[uiSubStrm][0][CI_CURR_BEST]->loadContexts( CTXMem[0] );
     }
     else
@@ -865,7 +893,11 @@ Void TEncSlice::compressSlice( TComPic*& rpcPic )
         ppppcRDSbacCoders[uiSubStrm][0][CI_CURR_BEST]->loadContexts( &m_pcBufferSbacCoders[uiTileCol] );
       }
     }
+#if QT_BT_STRUCTURE
+    m_pppcRDSbacCoder[iMaxWIdx][iMaxHIdx][CI_CURR_BEST]->load( ppppcRDSbacCoders[uiSubStrm][0][CI_CURR_BEST] ); //this load is used to simplify the code
+#else
     m_pppcRDSbacCoder[0][CI_CURR_BEST]->load( ppppcRDSbacCoders[uiSubStrm][0][CI_CURR_BEST] ); //this load is used to simplify the code
+#endif
 
     // reset the entropy coder
     if( uiCUAddr == rpcPic->getPicSym()->getTComTile(rpcPic->getPicSym()->getTileIdxMap(uiCUAddr))->getFirstCUAddr() &&                                   // must be first CU of tile
@@ -879,7 +911,11 @@ Void TEncSlice::compressSlice( TComPic*& rpcPic )
         sliceType = (SliceType) pcSlice->getPPS()->getEncCABACTableIdx();
       }
       m_pcEntropyCoder->updateContextTables ( sliceType, pcSlice->getSliceQp(), false );
+#if QT_BT_STRUCTURE
+      m_pcEntropyCoder->setEntropyCoder     ( m_pppcRDSbacCoder[iMaxWIdx][iMaxHIdx][CI_CURR_BEST], pcSlice );
+#else
       m_pcEntropyCoder->setEntropyCoder     ( m_pppcRDSbacCoder[0][CI_CURR_BEST], pcSlice );
+#endif
       m_pcEntropyCoder->updateContextTables ( sliceType, pcSlice->getSliceQp() );
       m_pcEntropyCoder->setEntropyCoder     ( m_pcSbacCoder, pcSlice );
     }
@@ -935,7 +971,11 @@ Void TEncSlice::compressSlice( TComPic*& rpcPic )
     m_pcCuEncoder->compressCU( pcCU );
 
     // restore entropy coder to an initial stage
+#if QT_BT_STRUCTURE
+    m_pcEntropyCoder->setEntropyCoder ( m_pppcRDSbacCoder[iMaxWIdx][iMaxHIdx][CI_CURR_BEST], pcSlice );
+#else
     m_pcEntropyCoder->setEntropyCoder ( m_pppcRDSbacCoder[0][CI_CURR_BEST], pcSlice );
+#endif
     m_pcEntropyCoder->setBitstream( &pcBitCounters[uiSubStrm] );
     m_pcCuEncoder->setBitCounter( &pcBitCounters[uiSubStrm] );
     m_pcBitCounter = &pcBitCounters[uiSubStrm];
@@ -956,7 +996,11 @@ Void TEncSlice::compressSlice( TComPic*& rpcPic )
       break;
     }
 
+#if QT_BT_STRUCTURE
+    ppppcRDSbacCoders[uiSubStrm][0][CI_CURR_BEST]->load( m_pppcRDSbacCoder[iMaxWIdx][iMaxHIdx][CI_CURR_BEST] );
+#else
     ppppcRDSbacCoders[uiSubStrm][0][CI_CURR_BEST]->load( m_pppcRDSbacCoder[0][CI_CURR_BEST] );
+#endif
     //Store probabilties of second LCU in line into buffer
     if ( ( uiCol == uiTileLCUX+1) && (depSliceSegmentsEnabled || (pcSlice->getPPS()->getNumSubstreams() > 1)) && m_pcCfg->getWaveFrontsynchro())
     {
@@ -1018,7 +1062,11 @@ Void TEncSlice::compressSlice( TComPic*& rpcPic )
     {
       CTXMem[1]->loadContexts( &m_pcBufferSbacCoders[uiTileCol] );//ctx 2.LCU
     }
+#if QT_BT_STRUCTURE
+     CTXMem[0]->loadContexts( m_pppcRDSbacCoder[iMaxWIdx][iMaxHIdx][CI_CURR_BEST] );//ctx end of dep.slice
+#else
      CTXMem[0]->loadContexts( m_pppcRDSbacCoder[0][CI_CURR_BEST] );//ctx end of dep.slice
+#endif
   }
   xRestoreWPparam( pcSlice );
 }

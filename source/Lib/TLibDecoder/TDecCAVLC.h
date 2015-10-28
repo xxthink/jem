@@ -67,8 +67,16 @@ public:
   /// rest entropy coder by intial QP and IDC in CABAC
   Void  resetEntropy        ( TComSlice* /*pcSlice*/  )     { assert(0); };
   Void  setBitstream        ( TComInputBitstream* p )   { m_pcBitstream = p; }
+#if QT_BT_STRUCTURE
+  Void  parseTransformSubdivFlag( TextType eType, UInt& ruiSubdivFlag, UInt uiLog2TransformBlockSize );
+#else
   Void  parseTransformSubdivFlag( UInt& ruiSubdivFlag, UInt uiLog2TransformBlockSize );
+#endif
+#if QT_BT_STRUCTURE
+  Void  parseQtCbf          ( TComDataCU* pcCU, UInt uiAbsPartIdx, TextType eType );
+#else
   Void  parseQtCbf          ( TComDataCU* pcCU, UInt uiAbsPartIdx, TextType eType, UInt uiTrDepth, UInt uiDepth );
+#endif
   Void  parseQtRootCbf      ( UInt uiAbsPartIdx, UInt& uiQtRootCbf );
   Void  parseVPS            ( TComVPS* pcVPS );
   Void  parseSPS            ( TComSPS* pcSPS );
@@ -87,6 +95,9 @@ public:
   Void  parseCUTransquantBypassFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   Void parseMergeFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx );
   Void parseMergeIndex      ( TComDataCU* pcCU, UInt& ruiMergeIndex );
+#if QT_BT_STRUCTURE
+  Void parseBTSplitMode     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight);
+#endif
   Void parseSplitFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   Void parsePartSize        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   Void parsePredMode        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );

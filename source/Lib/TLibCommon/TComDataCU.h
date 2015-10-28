@@ -80,20 +80,33 @@ private:
   UInt          m_uiCUPelX;           ///< CU position in a pixel (X)
   UInt          m_uiCUPelY;           ///< CU position in a pixel (Y)
   UInt          m_uiNumPartition;     ///< total number of minimum partitions in a CU
+#if QT_BT_STRUCTURE
+  UChar*        m_puhWidth[2];           ///< array of widths, for both luma and chroma
+  UChar*        m_puhHeight[2];          ///< array of heights, for both luma and chroma
+  UChar*        m_puhDepth[2];           ///< array of QT depths, for both luma and chroma
+#else
   UChar*        m_puhWidth;           ///< array of widths
   UChar*        m_puhHeight;          ///< array of heights
   UChar*        m_puhDepth;           ///< array of depths
+#endif
   Int           m_unitSize;           ///< size of a "minimum partition"
-  
+
   // -------------------------------------------------------------------------------------------------------------------
   // CU data
   // -------------------------------------------------------------------------------------------------------------------
   Bool*         m_skipFlag;           ///< array of skip flags
-  Char*         m_pePartSize;         ///< array of partition sizes
+#if !QT_BT_STRUCTURE
+  Char*         m_pePartSize;         ///< array of partition sizes  
+#endif
   Char*         m_pePredMode;         ///< array of prediction modes
   Bool*         m_CUTransquantBypass;   ///< array of cu_transquant_bypass flags
   Char*         m_phQP;               ///< array of QP values
+#if !QT_BT_STRUCTURE
   UChar*        m_puhTrIdx;           ///< array of transform indices
+#else
+  UChar*         m_puhBTSplitMode[2][2];     ///< [luma/chroma][0~3 BTDepth/4~7 BTDepth]: array of PU split mode for both luma and chroma: 0: no split; 1: hor split; 2: ver split. 
+                                      //e.g., m_puhBTSplitMode[] = 6 = 00 01 10 means: noSplit, horSplit, verSplit for BT depth=2, 1, 0, respectively.
+#endif
   UChar*        m_puhTransformSkip[3];///< array of transform skipping flags
   UChar*        m_puhCbf[3];          ///< array of coded block flags (CBF)
   TComCUMvField m_acCUMvField[2];     ///< array of motion vectors
@@ -129,6 +142,10 @@ private:
   TComMvField   m_cMvFieldC;          ///< motion vector of position C
   TComMv        m_cMvPred;            ///< motion vector predictor
   
+#if BT_RMV_REDUNDANT
+  UInt m_uiSplitConstrain;
+#endif
+
   // -------------------------------------------------------------------------------------------------------------------
   // coding tool information
   // -------------------------------------------------------------------------------------------------------------------
@@ -144,11 +161,17 @@ private:
   Char*         m_apiMVPIdx[2];       ///< array of motion vector predictor candidates
   Char*         m_apiMVPNum[2];       ///< array of number of possible motion vectors predictors
   Bool*         m_pbIPCMFlag;         ///< array of intra_pcm flags
+#if QT_BT_STRUCTURE
+  TextType      m_eType;    
+#endif
 
   // -------------------------------------------------------------------------------------------------------------------
   // misc. variables
   // -------------------------------------------------------------------------------------------------------------------
   
+#if PBINTRA_FAST
+  UInt          m_uiInterHAD;
+#endif
   Bool          m_bDecSubCu;          ///< indicates decoder-mode
   Double        m_dTotalCost;         ///< sum of partition RD costs
   UInt          m_uiTotalDistortion;  ///< sum of partition distortion
@@ -179,29 +202,57 @@ public:
   TComDataCU();
   virtual ~TComDataCU();
   
+#if ITSKIP
+  UChar* m_puiLastX;
+  UChar* m_puiLastY;
+  UChar* m_puiLastXCb;
+  UChar* m_puiLastYCb;
+  UChar* m_puiLastXCr;
+  UChar* m_puiLastYCr;
+#endif
   // -------------------------------------------------------------------------------------------------------------------
   // create / destroy / initialize / copy
   // -------------------------------------------------------------------------------------------------------------------
   
   Void          create                ( UInt uiNumPartition, UInt uiWidth, UInt uiHeight, Bool bDecSubCu, Int unitSize
+#if QT_BT_STRUCTURE
+    , UInt uiCUWidth, UInt uiCUHeight
+#endif
 #if ADAPTIVE_QP_SELECTION
     , Bool bGlobalRMARLBuffer = false
 #endif  
     );
+
+#if BT_RMV_REDUNDANT
+  Void setSplitConstrain( UInt uiTag ){ m_uiSplitConstrain = uiTag; }
+  UInt getSplitConstrain(            ){ return m_uiSplitConstrain ; }
+#endif
+
   Void          destroy               ();
   
   Void          initCU                ( TComPic* pcPic, UInt uiCUAddr );
+#if QT_BT_STRUCTURE
+  Void          initEstData           ( UInt uiDepth, Int qp, Bool bTransquantBypass, UInt uiWidth=0, UInt uiHeight=0, Int iBTSplitMode=-1 );
+#else
   Void          initEstData           ( UInt uiDepth, Int qp, Bool bTransquantBypass );
+#endif
   Void          initSubCU             ( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth, Int qp );
   Void          setOutsideCUPart      ( UInt uiAbsPartIdx, UInt uiDepth );
 
   Void          copySubCU             ( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth );
   Void          copyInterPredInfoFrom ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefPicList );
+#if QT_BT_STRUCTURE
+  Void          copyPartFrom          ( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight );
+  Void          copyToPic             ( UChar uiDepth, UInt uiWidth, UInt uiHeight );
+#else
   Void          copyPartFrom          ( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth );
-  
   Void          copyToPic             ( UChar uiDepth );
   Void          copyToPic             ( UChar uiDepth, UInt uiPartIdx, UInt uiPartDepth );
+#endif
   
+#if QT_BT_STRUCTURE
+  Void          initSubPU             ( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiCUDepth, UInt uiPUWidth, UInt uiPUHeight, UInt uiSplitMode, Int qp );
+#endif
   // -------------------------------------------------------------------------------------------------------------------
   // member functions for CU description
   // -------------------------------------------------------------------------------------------------------------------
@@ -215,34 +266,64 @@ public:
   UInt          getCUPelY             ()                        { return m_uiCUPelY;        }
   TComPattern*  getPattern            ()                        { return m_pcPattern;       }
   
+#if QT_BT_STRUCTURE
+  UChar*        getDepth              ()                        { return m_puhDepth[m_eType];        }
+  UChar         getDepth              ( UInt uiIdx )            { return m_puhDepth[m_eType][uiIdx]; }
+  Void          setDepth              ( UInt uiIdx, UChar  uh ) { m_puhDepth[m_eType][uiIdx] = uh;   }
+#else
   UChar*        getDepth              ()                        { return m_puhDepth;        }
   UChar         getDepth              ( UInt uiIdx )            { return m_puhDepth[uiIdx]; }
   Void          setDepth              ( UInt uiIdx, UChar  uh ) { m_puhDepth[uiIdx] = uh;   }
+#endif
   
   Void          setDepthSubParts      ( UInt uiDepth, UInt uiAbsPartIdx );
   
   // -------------------------------------------------------------------------------------------------------------------
   // member functions for CU data
   // -------------------------------------------------------------------------------------------------------------------
-  
+#if QT_BT_STRUCTURE
+  UChar*         getBTSplitModePart (UInt uiBTDepthIdx) { return m_puhBTSplitMode[m_eType][uiBTDepthIdx];}
+  UChar          getBTSplitModePart ( UInt uiBTDepthIdx, UInt uiIdx) { return m_puhBTSplitMode[m_eType][uiBTDepthIdx][uiIdx];}
+  UInt           getBTSplitMode (UInt uiIdx) { return ((UInt)m_puhBTSplitMode[m_eType][1][uiIdx]<<8) + m_puhBTSplitMode[m_eType][0][uiIdx];}
+  Void          setBTSplitModeSubParts ( UInt uiSplitMode, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight);
+  UInt          getBTSplitModeForBTDepth(UInt uiAbsPartIdx, UInt uiBTDepth);
+  UInt          getBTDepth(UInt uiAbsPartIdx, UInt uiBTWidth, UInt uiBTHeight);
+  UInt          getBTDepth(UInt uiAbsPartIdx);
+#else
   Char*         getPartitionSize      ()                        { return m_pePartSize;        }
   PartSize      getPartitionSize      ( UInt uiIdx )            { return static_cast<PartSize>( m_pePartSize[uiIdx] ); }
   Void          setPartitionSize      ( UInt uiIdx, PartSize uh){ m_pePartSize[uiIdx] = uh;   }
+#endif
   Void          setPartSizeSubParts   ( PartSize eMode, UInt uiAbsPartIdx, UInt uiDepth );
   Void          setCUTransquantBypassSubParts( Bool flag, UInt uiAbsPartIdx, UInt uiDepth );
   
   Bool*        getSkipFlag            ()                        { return m_skipFlag;          }
   Bool         getSkipFlag            (UInt idx)                { return m_skipFlag[idx];     }
   Void         setSkipFlag           ( UInt idx, Bool skip)     { m_skipFlag[idx] = skip;   }
+#if QT_BT_STRUCTURE
+  Void         setSkipFlagSubParts   ( Bool skip, UInt absPartIdx );
+#else
   Void         setSkipFlagSubParts   ( Bool skip, UInt absPartIdx, UInt depth );
+#endif
 
   Char*         getPredictionMode     ()                        { return m_pePredMode;        }
   PredMode      getPredictionMode     ( UInt uiIdx )            { return static_cast<PredMode>( m_pePredMode[uiIdx] ); }
   Bool*         getCUTransquantBypass ()                        { return m_CUTransquantBypass;        }
   Bool          getCUTransquantBypass( UInt uiIdx )             { return m_CUTransquantBypass[uiIdx]; }
   Void          setPredictionMode     ( UInt uiIdx, PredMode uh){ m_pePredMode[uiIdx] = uh;   }
+#if QT_BT_STRUCTURE
+  Void          setPredModeSubParts   ( PredMode eMode, UInt uiAbsPartIdx );
+#else
   Void          setPredModeSubParts   ( PredMode eMode, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
   
+#if QT_BT_STRUCTURE  
+  UChar*        getWidth              ()                        { return m_puhWidth[m_eType];          }
+  UChar         getWidth              ( UInt uiIdx )            { return m_puhWidth[m_eType][uiIdx];   }
+
+  UChar*        getHeight             ()                        { return m_puhHeight[m_eType];         }
+  UChar         getHeight             ( UInt uiIdx )            { return m_puhHeight[m_eType][uiIdx];  }
+#else
   UChar*        getWidth              ()                        { return m_puhWidth;          }
   UChar         getWidth              ( UInt uiIdx )            { return m_puhWidth[uiIdx];   }
   Void          setWidth              ( UInt uiIdx, UChar  uh ) { m_puhWidth[uiIdx] = uh;     }
@@ -250,6 +331,7 @@ public:
   UChar*        getHeight             ()                        { return m_puhHeight;         }
   UChar         getHeight             ( UInt uiIdx )            { return m_puhHeight[uiIdx];  }
   Void          setHeight             ( UInt uiIdx, UChar  uh ) { m_puhHeight[uiIdx] = uh;    }
+#endif
   
   Void          setSizeSubParts       ( UInt uiWidth, UInt uiHeight, UInt uiAbsPartIdx, UInt uiDepth );
   
@@ -265,18 +347,31 @@ public:
 
   Bool          isLosslessCoded(UInt absPartIdx);
   
+#if !QT_BT_STRUCTURE
   UChar*        getTransformIdx       ()                        { return m_puhTrIdx;          }
   UChar         getTransformIdx       ( UInt uiIdx )            { return m_puhTrIdx[uiIdx];   }
   Void          setTrIdxSubParts      ( UInt uiTrIdx, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
 
   UChar*        getTransformSkip      ( TextType eType)    { return m_puhTransformSkip[g_aucConvertTxtTypeToIdx[eType]];}
   UChar         getTransformSkip      ( UInt uiIdx,TextType eType)    { return m_puhTransformSkip[g_aucConvertTxtTypeToIdx[eType]][uiIdx];}
+#if QT_BT_STRUCTURE
+  Void          setTransformSkipSubParts  ( UInt useTransformSkip, TextType eType, UInt uiAbsPartIdx); 
+  Void          setTransformSkipSubParts  ( UInt useTransformSkipY, UInt useTransformSkipU, UInt useTransformSkipV, UInt uiAbsPartIdx );
+#else
   Void          setTransformSkipSubParts  ( UInt useTransformSkip, TextType eType, UInt uiAbsPartIdx, UInt uiDepth); 
   Void          setTransformSkipSubParts  ( UInt useTransformSkipY, UInt useTransformSkipU, UInt useTransformSkipV, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
 
+#if !QT_BT_STRUCTURE
   UInt          getQuadtreeTULog2MinSizeInCU( UInt absPartIdx );
+#endif
   
+#if QT_BT_STRUCTURE
   TComCUMvField* getCUMvField         ( RefPicList e )          { return  &m_acCUMvField[e];  }
+#else
+  TComCUMvField* getCUMvField         ( RefPicList e )          { return  &m_acCUMvField[e];  }
+#endif
   
   TCoeff*&      getCoeffY             ()                        { return m_pcTrCoeffY;        }
   TCoeff*&      getCoeffCb            ()                        { return m_pcTrCoeffCb;       }
@@ -293,14 +388,27 @@ public:
 
   UChar         getCbf    ( UInt uiIdx, TextType eType )                  { return m_puhCbf[g_aucConvertTxtTypeToIdx[eType]][uiIdx];  }
   UChar*        getCbf    ( TextType eType )                              { return m_puhCbf[g_aucConvertTxtTypeToIdx[eType]];         }
+#if !QT_BT_STRUCTURE
   UChar         getCbf    ( UInt uiIdx, TextType eType, UInt uiTrDepth )  { return ( ( getCbf( uiIdx, eType ) >> uiTrDepth ) & 0x1 ); }
+#endif
   Void          setCbf    ( UInt uiIdx, TextType eType, UChar uh )        { m_puhCbf[g_aucConvertTxtTypeToIdx[eType]][uiIdx] = uh;    }
   Void          clearCbf  ( UInt uiIdx, TextType eType, UInt uiNumParts );
+#if QT_BT_STRUCTURE  
+  TextType      getTextType                      () {return m_eType;}
+  Void          setTextType   (TextType eType) {m_eType = eType;}
+  UChar         getQtRootCbf          ( UInt uiIdx )                      { return getCbf( uiIdx, TEXT_LUMA ) || getCbf( uiIdx, TEXT_CHROMA_U ) || getCbf( uiIdx, TEXT_CHROMA_V ); }
+#else
   UChar         getQtRootCbf          ( UInt uiIdx )                      { return getCbf( uiIdx, TEXT_LUMA, 0 ) || getCbf( uiIdx, TEXT_CHROMA_U, 0 ) || getCbf( uiIdx, TEXT_CHROMA_V, 0 ); }
+#endif
   
+#if QT_BT_STRUCTURE
+  Void          setCbfSubParts        ( UInt uiCbfY, UInt uiCbfU, UInt uiCbfV, UInt uiAbsPartIdx          );
+  Void          setCbfSubParts        ( UInt uiCbf, TextType eTType, UInt uiAbsPartIdx  );
+#else
   Void          setCbfSubParts        ( UInt uiCbfY, UInt uiCbfU, UInt uiCbfV, UInt uiAbsPartIdx, UInt uiDepth          );
   Void          setCbfSubParts        ( UInt uiCbf, TextType eTType, UInt uiAbsPartIdx, UInt uiDepth                    );
   Void          setCbfSubParts        ( UInt uiCbf, TextType eTType, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth    );
+#endif
   
   // -------------------------------------------------------------------------------------------------------------------
   // member functions for coding tool information
@@ -309,14 +417,26 @@ public:
   Bool*         getMergeFlag          ()                        { return m_pbMergeFlag;               }
   Bool          getMergeFlag          ( UInt uiIdx )            { return m_pbMergeFlag[uiIdx];        }
   Void          setMergeFlag          ( UInt uiIdx, Bool b )    { m_pbMergeFlag[uiIdx] = b;           }
+#if QT_BT_STRUCTURE
+  Void          setMergeFlagSubParts  ( Bool bMergeFlag, UInt uiAbsPartIdx );
+#else
   Void          setMergeFlagSubParts  ( Bool bMergeFlag, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth );
+#endif
 
   UChar*        getMergeIndex         ()                        { return m_puhMergeIndex;                         }
   UChar         getMergeIndex         ( UInt uiIdx )            { return m_puhMergeIndex[uiIdx];                  }
   Void          setMergeIndex         ( UInt uiIdx, UInt uiMergeIndex ) { m_puhMergeIndex[uiIdx] = uiMergeIndex;  }
+#if QT_BT_STRUCTURE
+  Void          setMergeIndexSubParts ( UInt uiMergeIndex, UInt uiAbsPartIdx );
+#else
   Void          setMergeIndexSubParts ( UInt uiMergeIndex, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth );
+#endif
   template <typename T>
+#if QT_BT_STRUCTURE
+  Void          setSubPart            ( T bParameter, T* pbBaseLCU, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight );
+#else
   Void          setSubPart            ( T bParameter, T* pbBaseLCU, UInt uiCUAddr, UInt uiCUDepth, UInt uiPUIdx );
+#endif
 
 #if AMP_MRG
   Void          setMergeAMP( Bool b )      { m_bIsMergeAMP = b; }
@@ -326,17 +446,29 @@ public:
   UChar*        getLumaIntraDir       ()                        { return m_puhLumaIntraDir;           }
   UChar         getLumaIntraDir       ( UInt uiIdx )            { return m_puhLumaIntraDir[uiIdx];    }
   Void          setLumaIntraDir       ( UInt uiIdx, UChar  uh ) { m_puhLumaIntraDir[uiIdx] = uh;      }
+#if QT_BT_STRUCTURE
+  Void          setLumaIntraDirSubParts( UInt uiDir,  UInt uiAbsPartIdx );
+#else
   Void          setLumaIntraDirSubParts( UInt uiDir,  UInt uiAbsPartIdx, UInt uiDepth );
+#endif
   
   UChar*        getChromaIntraDir     ()                        { return m_puhChromaIntraDir;         }
   UChar         getChromaIntraDir     ( UInt uiIdx )            { return m_puhChromaIntraDir[uiIdx];  }
   Void          setChromaIntraDir     ( UInt uiIdx, UChar  uh ) { m_puhChromaIntraDir[uiIdx] = uh;    }
+#if QT_BT_STRUCTURE
+  Void          setChromIntraDirSubParts( UInt uiDir,  UInt uiAbsPartIdx );
+#else
   Void          setChromIntraDirSubParts( UInt uiDir,  UInt uiAbsPartIdx, UInt uiDepth );
+#endif
   
   UChar*        getInterDir           ()                        { return m_puhInterDir;               }
   UChar         getInterDir           ( UInt uiIdx )            { return m_puhInterDir[uiIdx];        }
   Void          setInterDir           ( UInt uiIdx, UChar  uh ) { m_puhInterDir[uiIdx] = uh;          }
+#if QT_BT_STRUCTURE
+  Void          setInterDirSubParts   ( UInt uiDir,  UInt uiAbsPartIdx );
+#else
   Void          setInterDirSubParts   ( UInt uiDir,  UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth );
+#endif
   Bool*         getIPCMFlag           ()                        { return m_pbIPCMFlag;               }
   Bool          getIPCMFlag           (UInt uiIdx )             { return m_pbIPCMFlag[uiIdx];        }
   Void          setIPCMFlag           (UInt uiIdx, Bool b )     { m_pbIPCMFlag[uiIdx] = b;           }
@@ -367,8 +499,13 @@ public:
   Int           getMVPNum             ( RefPicList eRefPicList, UInt uiIdx )              { return m_apiMVPNum[eRefPicList][uiIdx];     }
   Char*         getMVPNum             ( RefPicList eRefPicList )                          { return m_apiMVPNum[eRefPicList];            }
   
+#if QT_BT_STRUCTURE
+  Void          setMVPIdxSubParts     ( Int iMVPIdx, RefPicList eRefPicList, UInt uiAbsPartIdx );
+  Void          setMVPNumSubParts     ( Int iMVPNum, RefPicList eRefPicList, UInt uiAbsPartIdx );
+#else
   Void          setMVPIdxSubParts     ( Int iMVPIdx, RefPicList eRefPicList, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth );
   Void          setMVPNumSubParts     ( Int iMVPNum, RefPicList eRefPicList, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth );
+#endif
   
   Void          clipMv                ( TComMv&     rcMv     );
   Void          getMvPredLeft         ( TComMv&     rcMvPred )   { rcMvPred = m_cMvFieldA.getMv(); }
@@ -411,8 +548,13 @@ public:
   Void          deriveLeftRightTopIdx       ( UInt uiPartIdx, UInt& ruiPartIdxLT, UInt& ruiPartIdxRT );
   Void          deriveLeftBottomIdx         ( UInt uiPartIdx, UInt& ruiPartIdxLB );
   
+#if QT_BT_STRUCTURE
+  Void          deriveLeftRightTopIdxAdi    ( UInt& ruiPartIdxLT, UInt& ruiPartIdxRT, UInt uiPartOffset, UInt uiCuWidth, UInt uiCuHeight );
+  Void          deriveLeftBottomIdxAdi      ( UInt& ruiPartIdxLB, UInt  uiPartOffset, UInt uiCuWidth, UInt uiCuHeight );
+#else
   Void          deriveLeftRightTopIdxAdi    ( UInt& ruiPartIdxLT, UInt& ruiPartIdxRT, UInt uiPartOffset, UInt uiPartDepth );
   Void          deriveLeftBottomIdxAdi      ( UInt& ruiPartIdxLB, UInt  uiPartOffset, UInt uiPartDepth );
+#endif
   
   Bool          hasEqualMotion              ( UInt uiAbsPartIdx, TComDataCU* pcCandCU, UInt uiCandAbsPartIdx );
   Void          getInterMergeCandidates       ( UInt uiAbsPartIdx, UInt uiPUIdx, TComMvField* pcMFieldNeighbours, UChar* puhInterDirNeighbours, Int& numValidMergeCand, Int mrgCandIdx = -1 );
@@ -427,12 +569,16 @@ public:
   Bool          isIntra   ( UInt uiPartIdx )  { return m_pePredMode[ uiPartIdx ] == MODE_INTRA; }
   Bool          isSkipped ( UInt uiPartIdx );                                                     ///< SKIP (no residual)
   Bool          isBipredRestriction( UInt puIdx );
-
+#if NEIGHBOR_FAST
+  Void          getMaxMinCUDepth( UChar & rucMinDepth , UChar & rucMaxDepth , UInt uiAbsPartIdx );
+#endif
   // -------------------------------------------------------------------------------------------------------------------
   // member functions for symbol prediction (most probable / mode conversion)
   // -------------------------------------------------------------------------------------------------------------------
   
+#if !QT_BT_STRUCTURE
   UInt          getIntraSizeIdx                 ( UInt uiAbsPartIdx                                       );
+#endif
   
   Void          getAllowedChromaDir             ( UInt uiAbsPartIdx, UInt* uiModeList );
   Int           getIntraDirLumaPredictor        ( UInt uiAbsPartIdx, Int* uiIntraDirPred, Int* piMode = NULL );
@@ -440,7 +586,9 @@ public:
   // -------------------------------------------------------------------------------------------------------------------
   // member functions for SBAC context
   // -------------------------------------------------------------------------------------------------------------------
-  
+#if QT_BT_STRUCTURE
+  UInt          getCtxBTSplitFlag               ( UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight );
+#endif  
   UInt          getCtxSplitFlag                 ( UInt   uiAbsPartIdx, UInt uiDepth                   );
   UInt          getCtxQtCbf                     ( TextType eType, UInt uiTrDepth );
 
@@ -458,6 +606,9 @@ public:
   UInt&         getTotalDistortion()            { return m_uiTotalDistortion; }
   UInt&         getTotalBits()                  { return m_uiTotalBits;       }
   UInt&         getTotalNumPart()               { return m_uiNumPartition;    }
+#if PBINTRA_FAST
+  UInt&         getInterHAD()                   { return m_uiInterHAD; }
+#endif
 
   UInt          getCoefScanIdx(UInt uiAbsPartIdx, UInt uiWidth, Bool bIsLuma, Bool bIsIntra);
 

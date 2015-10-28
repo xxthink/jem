@@ -712,9 +712,14 @@ Void TComSampleAdaptiveOffset::xPCMRestoration(TComPic* pcPic)
   {
     for( UInt uiCUAddr = 0; uiCUAddr < pcPic->getNumCUsInFrame() ; uiCUAddr++ )
     {
+#if QT_BT_STRUCTURE
+      xPCMCURestoration(TEXT_LUMA, pcPic->getCU(uiCUAddr), 0, 0); 
+      xPCMCURestoration(TEXT_CHROMA_U, pcPic->getCU(uiCUAddr), 0, 0); 
+#else
       TComDataCU* pcCU = pcPic->getCU(uiCUAddr);
 
       xPCMCURestoration(pcCU, 0, 0); 
+#endif
     } 
   }
 }
@@ -725,7 +730,11 @@ Void TComSampleAdaptiveOffset::xPCMRestoration(TComPic* pcPic)
  * \param uiDepth CU depth
  * \returns Void
  */
+#if QT_BT_STRUCTURE
+Void TComSampleAdaptiveOffset::xPCMCURestoration ( TextType eType, TComDataCU* pcCU, UInt uiAbsZorderIdx, UInt uiDepth )
+#else
 Void TComSampleAdaptiveOffset::xPCMCURestoration ( TComDataCU* pcCU, UInt uiAbsZorderIdx, UInt uiDepth )
+#endif
 {
   TComPic* pcPic     = pcCU->getPic();
   UInt uiCurNumParts = pcPic->getNumPartInCU() >> (uiDepth<<1);
@@ -739,7 +748,11 @@ Void TComSampleAdaptiveOffset::xPCMCURestoration ( TComDataCU* pcCU, UInt uiAbsZ
       UInt uiLPelX   = pcCU->getCUPelX() + g_auiRasterToPelX[ g_auiZscanToRaster[uiAbsZorderIdx] ];
       UInt uiTPelY   = pcCU->getCUPelY() + g_auiRasterToPelY[ g_auiZscanToRaster[uiAbsZorderIdx] ];
       if( ( uiLPelX < pcCU->getSlice()->getSPS()->getPicWidthInLumaSamples() ) && ( uiTPelY < pcCU->getSlice()->getSPS()->getPicHeightInLumaSamples() ) )
+#if QT_BT_STRUCTURE
+        xPCMCURestoration( eType, pcCU, uiAbsZorderIdx, uiDepth+1 );
+#else
         xPCMCURestoration( pcCU, uiAbsZorderIdx, uiDepth+1 );
+#endif
     }
     return;
   }
@@ -747,9 +760,21 @@ Void TComSampleAdaptiveOffset::xPCMCURestoration ( TComDataCU* pcCU, UInt uiAbsZ
   // restore PCM samples
   if ((pcCU->getIPCMFlag(uiAbsZorderIdx)&& pcPic->getSlice(0)->getSPS()->getPCMFilterDisableFlag()) || pcCU->isLosslessCoded( uiAbsZorderIdx))
   {
+#if QT_BT_STRUCTURE
+    if (eType == TEXT_LUMA)
+    {
+      xPCMSampleRestoration (pcCU, uiAbsZorderIdx, uiDepth, eType    );
+    }
+    else
+    {
+      xPCMSampleRestoration (pcCU, uiAbsZorderIdx, uiDepth, TEXT_CHROMA_U);
+      xPCMSampleRestoration (pcCU, uiAbsZorderIdx, uiDepth, TEXT_CHROMA_V);
+    }
+#else
     xPCMSampleRestoration (pcCU, uiAbsZorderIdx, uiDepth, TEXT_LUMA    );
     xPCMSampleRestoration (pcCU, uiAbsZorderIdx, uiDepth, TEXT_CHROMA_U);
     xPCMSampleRestoration (pcCU, uiAbsZorderIdx, uiDepth, TEXT_CHROMA_V);
+#endif
   }
 }
 

@@ -620,6 +620,43 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     //  Set reference list
     pcSlice->setRefPicList ( rcListPic );
     
+#if AMAX_BT
+    if (!pcSlice->isIntra() ) 
+    {
+      Int refLayer=pcSlice->getDepth();
+      if( refLayer>9) refLayer=9; // Max layer is 10
+      if (refLayer >= 0 && g_uiNumBlk[refLayer] != 0)
+      {
+        Double dBlkSize = sqrt((Double)g_uiBlkSize[refLayer]/g_uiNumBlk[refLayer]);
+        if (dBlkSize < AMAXBT_TH32)
+        {
+          pcSlice->setMaxBTSize(32>MAX_BT_SIZE_INTER ? MAX_BT_SIZE_INTER: 32);
+        }
+        else if (dBlkSize < AMAXBT_TH64)
+        {
+          pcSlice->setMaxBTSize(64>MAX_BT_SIZE_INTER ? MAX_BT_SIZE_INTER: 64);
+        }
+        else
+        {
+          pcSlice->setMaxBTSize(128>MAX_BT_SIZE_INTER? MAX_BT_SIZE_INTER: 128);
+#if AMIN_QT
+          if (dBlkSize > AMINQT_TH32 && MAX_BT_DEPTH_INTER>=4)
+          {
+            pcSlice->setMinQTSize(32);
+          }
+#endif
+        }
+        printf("\n previous layer=%d, avg blk size = %3.2f, current max BT set to %d\n", refLayer, dBlkSize, pcSlice->getMaxBTSize());
+
+#if AMIN_QT
+        printf(" current min QT set to %d\n", pcSlice->getMinQTSize());
+#endif
+        g_uiBlkSize[refLayer] = 0;
+        g_uiNumBlk[refLayer] = 0;
+      }
+    }
+#endif
+
     //  Slice info. refinement
     if ( (pcSlice->getSliceType() == B_SLICE) && (pcSlice->getNumRefIdx(REF_PIC_LIST_1) == 0) )
     {
@@ -2638,7 +2675,11 @@ Void TEncGOP::dblMetric( TComPic* pcPic, UInt uiNumSlices )
   Pel* Rec    = pcPicYuvRec->getLumaAddr( 0 );
   Pel* tempRec = Rec;
   Int  stride = pcPicYuvRec->getStride();
+#if QT_BT_STRUCTURE
+  UInt log2maxTB = CTU_LOG2;
+#else
   UInt log2maxTB = pcPic->getSlice(0)->getSPS()->getQuadtreeTULog2MaxSize();
+#endif
   UInt maxTBsize = (1<<log2maxTB);
   const UInt minBlockArtSize = 8;
   const UInt picWidth = pcPicYuvRec->getWidth();

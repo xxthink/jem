@@ -50,10 +50,20 @@
 // Macros
 // ====================================================================================================================
 
+#if QT_BT_STRUCTURE
+#define     MAX_CU_SIZE             (1<<CTU_LOG2)
+#define     MAX_NUM_SPU_W           (1<<(CTU_LOG2-MIN_CU_LOG2))
+#define     NUM_MIN_CU              (1<<((CTU_LOG2-MIN_CU_LOG2)<<1))
+
+#define     MLS_CG_SIZE_LOG2        2    //4x4: coefficient group size (length) in log2 base
+#define     MAX_NUM_CG_TU           (1<< ((CTU_LOG2- MLS_CG_SIZE_LOG2)*2))  //max number of CGs in one TU
+#define     MAX_NUM_COEF_TU         (1<< (CTU_LOG2<<1))     //128x128
+#else
 #define     MAX_CU_DEPTH            6                           // log2(LCUSize)
 #define     MAX_CU_SIZE             (1<<(MAX_CU_DEPTH))         // maximum allowable size of CU
 #define     MIN_PU_SIZE             4
 #define     MAX_NUM_SPU_W           (MAX_CU_SIZE/MIN_PU_SIZE)   // maximum number of SPU in horizontal line
+#endif
 
 // ====================================================================================================================
 // Initialize / destroy functions
@@ -65,6 +75,11 @@ Void         initSigLastScan(UInt* pBuffD, UInt* pBuffH, UInt* pBuffV, Int iWidt
 // ====================================================================================================================
 // Data structure related table & variable
 // ====================================================================================================================
+
+#if AMAX_BT
+extern UInt g_uiBlkSize[ 10 ];
+extern UInt g_uiNumBlk[ 10 ];
+#endif
 
 // flexible conversion from relative to absolute index
 extern       UInt   g_auiZscanToRaster[ MAX_NUM_SPU_W*MAX_NUM_SPU_W ];
@@ -85,8 +100,13 @@ extern       UInt g_uiMaxCUHeight;
 extern       UInt g_uiMaxCUDepth;
 extern       UInt g_uiAddCUDepth;
 
+#if QT_BT_STRUCTURE
+#define MAX_TS_WIDTH  8
+#define MAX_TS_HEIGHT 8
+#else
 #define MAX_TS_WIDTH  4
 #define MAX_TS_HEIGHT 4
+#endif
 
 extern       UInt g_auiPUOffset[8];
 
@@ -99,11 +119,18 @@ extern       UInt g_auiPUOffset[8];
 #define SHIFT_INV_2ND         12 // Shift after second inverse transform stage
 
 extern Int g_quantScales[6];             // Q(QP%6)  
+#if QT_BT_STRUCTURE
+extern Int g_quantScales2[6];
+#endif
 extern Int g_invQuantScales[6];          // IQ(QP%6)
 extern const Short g_aiT4[4][4];
 extern const Short g_aiT8[8][8];
 extern const Short g_aiT16[16][16];
 extern const Short g_aiT32[32][32];
+#if QT_BT_STRUCTURE
+extern const short g_aiT64[64][64];
+extern const short g_aiT128[128][128];
+#endif
 
 // ====================================================================================================================
 // Luma QP to Chroma QP mapping
@@ -114,20 +141,34 @@ extern const UChar  g_aucChromaScale      [58];
 // ====================================================================================================================
 // Scanning order & context mapping table
 // ====================================================================================================================
-
+#if QT_BT_STRUCTURE
+extern UInt* g_sigCoefScan        [ NUM_COEFF_SCAN_TYPE ][ CTU_LOG2+1][CTU_LOG2+1 ];
+extern UInt* g_sigCoefGroupScan   [ NUM_COEFF_SCAN_TYPE ][ CTU_LOG2+1][CTU_LOG2+1 ];
+extern TranInfo g_transInfo       [CTU_LOG2+1][CTU_LOG2+1];
+extern const UInt   g_uiGroupIdx[ 128 ];  
+extern const UInt   g_uiMinInGroup[ 14 ];
+#else
 extern       UInt*  g_auiSigLastScan[ 3 ][ MAX_CU_DEPTH ];  // raster index from scanning index (diag, hor, ver)
-
 extern const UInt   g_uiGroupIdx[ 32 ];
 extern const UInt   g_uiMinInGroup[ 10 ];
+#endif
   
 extern const UInt   g_sigLastScan8x8[ 3 ][ 4 ];           //!< coefficient group scan order for 8x8 TUs
 extern       UInt   g_sigLastScanCG32x32[ 64 ];
+#if QT_BT_STRUCTURE
+extern       UInt   g_sigLastScanCG64x64[ 256 ];
+extern       UInt   g_sigLastScanCG128x128[1024];
+#endif
 
 // ====================================================================================================================
 // ADI table
 // ====================================================================================================================
 
+#if QT_BT_STRUCTURE
+extern const UChar  g_aucIntraModeNumFast[CTU_LOG2-MIN_CU_LOG2+1][CTU_LOG2-MIN_CU_LOG2+1];
+#else
 extern const UChar  g_aucIntraModeNumFast[ MAX_CU_DEPTH ];
+#endif
 
 // ====================================================================================================================
 // Bit-depth
@@ -155,7 +196,12 @@ extern const UChar g_aucDCTDSTMode_Hor[NUM_INTRA_MODE];
 // Misc.
 // ====================================================================================================================
 
+#if QT_BT_STRUCTURE
+extern       const UInt   g_uiLastPrefixCtx[8];
+extern       Char   g_aucConvertToBit  [ (1<<CTU_LOG2)+1 ];   // from width to log2(width)-2
+#else
 extern       Char   g_aucConvertToBit  [ MAX_CU_SIZE+1 ];   // from width to log2(width)-2
+#endif
 
 #ifndef ENC_DEC_TRACE
 # define ENC_DEC_TRACE 0
@@ -206,6 +252,10 @@ enum ScalingListSize
   SCALING_LIST_8x8,
   SCALING_LIST_16x16,
   SCALING_LIST_32x32,
+#if QT_BT_STRUCTURE
+  SCALING_LIST_64x64,
+  SCALING_LIST_128x128,
+#endif
   SCALING_LIST_SIZE_NUM
 };
 static const Char MatrixType[4][6][20] =

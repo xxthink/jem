@@ -168,7 +168,7 @@ Void TDecGop::filterPicture(TComPic*& rpcPic)
   {
     m_pcSAO->reconstructBlkSAOParams(rpcPic, rpcPic->getPicSym()->getSAOBlkParam());
     m_pcSAO->SAOProcess(rpcPic);
-    m_pcSAO->PCMLFDisableProcess(rpcPic);
+    m_pcSAO->PCMLFDisableProcess(rpcPic);    
   }
   rpcPic->compressMotion();
   Char c = (pcSlice->isIntra() ? 'I' : pcSlice->isInterP() ? 'P' : 'B');

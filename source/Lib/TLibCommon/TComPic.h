@@ -81,9 +81,46 @@ private:
 
   SEIMessages  m_SEIs; ///< Any SEI messages that have been received.  If !NULL we own the object.
 
+#if QT_BT_STRUCTURE
+  //for record codec block info.
+  Bool m_bCodedBlkInCTU[MAX_NUM_SPU_W][MAX_NUM_SPU_W];  
+  Int  m_iCodedArea;
+
+ //for encoder speedup
+  TComMv                m_cIntMv[NUM_MIN_CU][CTU_LOG2-MIN_CU_LOG2+1][CTU_LOG2-MIN_CU_LOG2+1][2][5]; //[zorder][w][h][refList][refIdx]
+  Bool                  m_bSetIntMv[NUM_MIN_CU][CTU_LOG2-MIN_CU_LOG2+1][CTU_LOG2-MIN_CU_LOG2+1][2][5]; //[zorder][w][h][refList][refIdx]
+  Bool                  m_bSkiped[NUM_MIN_CU][CTU_LOG2-MIN_CU_LOG2+1][CTU_LOG2-MIN_CU_LOG2+1]; //[zorder][w][h] , if skip mode, not try inter, intra
+  Bool                  m_bInter[NUM_MIN_CU][CTU_LOG2-MIN_CU_LOG2+1][CTU_LOG2-MIN_CU_LOG2+1]; //[zorder][w][h] , if inter mode, not try intra
+  Bool                  m_bIntra[NUM_MIN_CU][CTU_LOG2-MIN_CU_LOG2+1][CTU_LOG2-MIN_CU_LOG2+1]; // if intra mode, not try inter
+#endif
+
 public:
   TComPic();
   virtual ~TComPic();
+#if QT_BT_STRUCTURE
+  //to record coded block info.
+  Void          setCodedBlkInCTU(Bool bCoded, UInt uiBlkX, UInt uiBlkY, UInt uiWidth, UInt uiHeight);
+  Bool          getCodedBlkInCTU(UInt uiBlkX, UInt uiBlkY) {return m_bCodedBlkInCTU[uiBlkX][uiBlkY];}
+  Void          setCodedAreaInCTU(Int iArea);
+  Void          addCodedAreaInCTU(Int iArea);
+  Int           getCodedAreaInCTU();
+
+  //for encoder speed-up
+  Void          setSkiped(UInt uiZorder, UInt uiWidth, UInt uiHeight, Bool bSkip);
+  Bool          getSkiped(UInt uiZorder, UInt uiWidth, UInt uiHeight);
+  Void          clearAllSkiped();
+  Void          setInter(UInt uiZorder, UInt uiWidth, UInt uiHeight, Bool bInter);
+  Bool          getInter(UInt uiZorder, UInt uiWidth, UInt uiHeight);
+  Void          clearAllInter();
+  Void          setIntra(UInt uiZorder, UInt uiWidth, UInt uiHeight, Bool bIntra);
+  Bool          getIntra(UInt uiZorder, UInt uiWidth, UInt uiHeight);
+  Void          clearAllIntra();
+
+  Void          setIntMv(UInt uiZorder, UInt uiWidth, UInt uiHeight, RefPicList eRefList, UInt uiRefIdx, TComMv cMv);
+  TComMv        getIntMv(UInt uiZorder, UInt uiWidth, UInt uiHeight, RefPicList eRefList, UInt uiRefIdx);
+  Void          clearAllIntMv();
+  Bool          IsSetIntMv(UInt uiZorder, UInt uiWidth, UInt uiHeight, RefPicList eRefList, UInt uiRefIdx);
+#endif
   
   Void          create( Int iWidth, Int iHeight, UInt uiMaxWidth, UInt uiMaxHeight, UInt uiMaxDepth, Window &conformanceWindow, Window &defaultDisplayWindow, 
                         Int *numReorderPics, Bool bIsVirtual = false );

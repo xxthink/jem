@@ -62,16 +62,28 @@ class TEncCu;
 class TEncSearch : public TComPrediction
 {
 private:
+#if QT_BT_STRUCTURE
+  TCoeff***        m_pppcQTTempCoeffY;  
+  TCoeff***        m_pppcQTTempCoeffCb;
+  TCoeff***        m_pppcQTTempCoeffCr;
+#else
   TCoeff**        m_ppcQTTempCoeffY;
   TCoeff**        m_ppcQTTempCoeffCb;
   TCoeff**        m_ppcQTTempCoeffCr;
+#endif
   TCoeff*         m_pcQTTempCoeffY;
   TCoeff*         m_pcQTTempCoeffCb;
   TCoeff*         m_pcQTTempCoeffCr;
 #if ADAPTIVE_QP_SELECTION
+#if QT_BT_STRUCTURE
+  Int***           m_pppcQTTempArlCoeffY;
+  Int***           m_pppcQTTempArlCoeffCb;
+  Int***           m_pppcQTTempArlCoeffCr;
+#else
   Int**           m_ppcQTTempArlCoeffY;
   Int**           m_ppcQTTempArlCoeffCb;
   Int**           m_ppcQTTempArlCoeffCr;
+#endif
   Int*            m_pcQTTempArlCoeffY;
   Int*            m_pcQTTempArlCoeffCb;
   Int*            m_pcQTTempArlCoeffCr;
@@ -79,7 +91,11 @@ private:
   UChar*          m_puhQTTempTrIdx;
   UChar*          m_puhQTTempCbf[3];
   
+#if QT_BT_STRUCTURE
+  TComYuv**       m_ppcQTTempTComYuv;
+#else
   TComYuv*        m_pcQTTempTComYuv;
+#endif
   TComYuv         m_tmpYuvPred; // To be used in xGetInterPredictionError() to avoid constant memory allocation/deallocation
   Pel*            m_pSharedPredTransformSkip[3];
   TCoeff*         m_pcQTTempTUCoeffY;
@@ -111,7 +127,11 @@ protected:
   TComMv          m_acMvPredictors[3];
   
   // RD computation
+#if QT_BT_STRUCTURE
+  TEncSbac****    m_pppcRDSbacCoder;
+#else
   TEncSbac***     m_pppcRDSbacCoder;
+#endif
   TEncSbac*       m_pcRDGoOnSbacCoder;
   DistParam       m_cDistParam;
   
@@ -136,7 +156,11 @@ public:
             Int           iMaxDeltaQP,
             TEncEntropy*  pcEntropyCoder,
             TComRdCost*   pcRdCost,
+#if QT_BT_STRUCTURE
+            TEncSbac****  pppcRDSbacCoder,
+#else
             TEncSbac***   pppcRDSbacCoder,
+#endif
             TEncSbac*     pcRDGoOnSbacCoder );
   
 protected:
@@ -211,12 +235,19 @@ public:
   
   Void xEncPCM    (TComDataCU* pcCU, UInt uiAbsPartIdx, Pel* piOrg, Pel* piPCM, Pel* piPred, Pel* piResi, Pel* piReco, UInt uiStride, UInt uiWidth, UInt uiHeight, TextType eText);
   Void IPCMSearch (TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv*& rpcPredYuv, TComYuv*& rpcResiYuv, TComYuv*& rpcRecoYuv );
+#if MRG_FAST
+  static UInt updateCandList( UInt uiMode, Double uiCost, UInt uiFastCandNum, UInt * CandModeList, Double * CandCostList );
+#endif
 protected:
   
   // -------------------------------------------------------------------------------------------------------------------
   // Intra search
   // -------------------------------------------------------------------------------------------------------------------
   
+#if QT_BT_STRUCTURE
+  Void  xEncSubdivCbfQTCoeffLuma  (TComDataCU* pcCU, UInt uiTrDepth, UInt uiAbsPartIdx, Bool bRealCoeff);
+  Void  xEncSubdivCbfQTCoeffChroma  (TComDataCU* pcCU, UInt uiTrDepth, UInt uiAbsPartIdx, TextType eType, Bool bRealCoeff);
+#else
   Void  xEncSubdivCbfQT           ( TComDataCU*  pcCU,
                                     UInt         uiTrDepth,
                                     UInt         uiAbsPartIdx,
@@ -228,11 +259,19 @@ protected:
                                     UInt         uiAbsPartIdx,
                                     TextType     eTextType,
                                     Bool         bRealCoeff );
+#endif
   Void  xEncIntraHeader           ( TComDataCU*  pcCU,
                                     UInt         uiTrDepth,
                                     UInt         uiAbsPartIdx,
                                     Bool         bLuma,
                                     Bool         bChroma );
+#if QT_BT_STRUCTURE
+  UInt  xGetIntraBitsQT           ( TComDataCU*  pcCU,
+                                    UInt         uiTrDepth,
+                                    UInt         uiAbsPartIdx,
+                                    TextType     eType,
+                                    Bool         bRealCoeff );
+#else
   UInt  xGetIntraBitsQT           ( TComDataCU*  pcCU,
                                     UInt         uiTrDepth,
                                     UInt         uiAbsPartIdx,
@@ -244,6 +283,7 @@ protected:
                                    UInt          uiAbsPartIdx,
                                    UInt          uiChromaId,
                                    Bool          bRealCoeff );
+#endif
   
   Void  xIntraCodingLumaBlk       ( TComDataCU*  pcCU,
                                     UInt         uiTrDepth,
@@ -263,38 +303,55 @@ protected:
                                     UInt         uiChromaId,
                                     Int          default0Save1Load2 = 0 );
 
+
   Void  xRecurIntraCodingQT       ( TComDataCU*  pcCU, 
-                                    UInt         uiTrDepth,
-                                    UInt         uiAbsPartIdx, 
-                                    Bool         bLumaOnly,
-                                    TComYuv*     pcOrgYuv, 
-                                    TComYuv*     pcPredYuv, 
-                                    TComYuv*     pcResiYuv, 
-                                    UInt&        ruiDistY,
-                                    UInt&        ruiDistC,
+    UInt         uiTrDepth,
+    UInt         uiAbsPartIdx, 
+    Bool         bLumaOnly,
+    TComYuv*     pcOrgYuv, 
+    TComYuv*     pcPredYuv, 
+    TComYuv*     pcResiYuv, 
+    UInt&        ruiDistY,
+    UInt&        ruiDistC,
 #if HHI_RQT_INTRA_SPEEDUP
-                                   Bool         bCheckFirst,
+    Bool         bCheckFirst,
 #endif
-                                   Double&      dRDCost );
-  
+    Double&      dRDCost );
+
   Void  xSetIntraResultQT         ( TComDataCU*  pcCU,
-                                    UInt         uiTrDepth,
-                                    UInt         uiAbsPartIdx,
-                                    Bool         bLumaOnly,
-                                    TComYuv*     pcRecoYuv );
-  
+    UInt         uiTrDepth,
+    UInt         uiAbsPartIdx,
+    Bool         bLumaOnly,
+    TComYuv*     pcRecoYuv );
+
+#if QT_BT_STRUCTURE
   Void  xRecurIntraChromaCodingQT ( TComDataCU*  pcCU, 
-                                    UInt         uiTrDepth,
-                                    UInt         uiAbsPartIdx, 
-                                    TComYuv*     pcOrgYuv, 
-                                    TComYuv*     pcPredYuv, 
-                                    TComYuv*     pcResiYuv, 
-                                    UInt&        ruiDist );
+    UInt         uiTrDepth,
+    UInt         uiAbsPartIdx, 
+    TComYuv*     pcOrgYuv, 
+    TComYuv*     pcPredYuv, 
+    TComYuv*     pcResiYuv, 
+    UInt&        ruiDist, 
+    Bool         bCheckFirst,
+    TextType     eType);
+  Void  xSetIntraResultChromaQT   ( TComDataCU* pcCU,
+    UInt        uiTrDepth,
+    UInt        uiAbsPartIdx,
+    TComYuv*    pcRecoYuv,
+    TextType    eType);
+#else
+  Void  xRecurIntraChromaCodingQT ( TComDataCU*  pcCU, 
+    UInt         uiTrDepth,
+    UInt         uiAbsPartIdx, 
+    TComYuv*     pcOrgYuv, 
+    TComYuv*     pcPredYuv, 
+    TComYuv*     pcResiYuv, 
+    UInt&        ruiDist );
   Void  xSetIntraResultChromaQT   ( TComDataCU*  pcCU,
-                                    UInt         uiTrDepth,
-                                    UInt         uiAbsPartIdx,
-                                    TComYuv*     pcRecoYuv );
-  
+    UInt         uiTrDepth,
+    UInt         uiAbsPartIdx,
+    TComYuv*     pcRecoYuv );
+#endif
   Void  xStoreIntraResultQT       ( TComDataCU*  pcCU,
                                     UInt         uiTrDepth,
                                     UInt         uiAbsPartIdx,
@@ -442,12 +499,20 @@ protected:
   // T & Q & Q-1 & T-1
   // -------------------------------------------------------------------------------------------------------------------
   
+#if QT_BT_STRUCTURE
+  Void xEstimateResidualQT( TComDataCU* pcCU, TComYuv* pcResi, TextType eType, Double &rdCost, UInt &ruiBits, UInt &ruiDist, UInt *puiZeroDist );
+  Void xSetResidualQTData( TComDataCU* pcCU, TComYuv* pcResi, TextType eType, Bool bSpatial );
+  UInt xModeBitsIntra ( TComDataCU* pcCU, UInt uiMode );
+#else
   Void xEncodeResidualQT( TComDataCU* pcCU, UInt uiAbsPartIdx, const UInt uiDepth, Bool bSubdivAndCbf, TextType eType );
   Void xEstimateResidualQT( TComDataCU* pcCU, UInt uiQuadrant, UInt uiAbsPartIdx, UInt absTUPartIdx,TComYuv* pcResi, const UInt uiDepth, Double &rdCost, UInt &ruiBits, UInt &ruiDist, UInt *puiZeroDist );
   Void xSetResidualQTData( TComDataCU* pcCU, UInt uiQuadrant, UInt uiAbsPartIdx,UInt absTUPartIdx, TComYuv* pcResi, UInt uiDepth, Bool bSpatial );
   
   UInt  xModeBitsIntra ( TComDataCU* pcCU, UInt uiMode, UInt uiPU, UInt uiPartOffset, UInt uiDepth, UInt uiInitTrDepth );
+#endif
+#if !MRG_FAST  //move it to public definition
   UInt  xUpdateCandList( UInt uiMode, Double uiCost, UInt uiFastCandNum, UInt * CandModeList, Double * CandCostList );
+#endif
   
   // -------------------------------------------------------------------------------------------------------------------
   // compute symbol bits

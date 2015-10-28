@@ -37,7 +37,6 @@
 
 #include "NALread.h"
 #include "TDecTop.h"
-
 //! \ingroup TLibDecoder
 //! \{
 
@@ -291,6 +290,7 @@ Void TDecTop::xActivateParameterSets()
   g_uiMaxCUDepth  = sps->getMaxCUDepth();
   g_uiAddCUDepth  = max (0, sps->getLog2MinCodingBlockSize() - (Int)sps->getQuadtreeTULog2MinSize() );
 
+#if !QT_BT_STRUCTURE
   for (Int i = 0; i < sps->getLog2DiffMaxMinCodingBlockSize(); i++)
   {
     sps->setAMPAcc( i, sps->getUseAMP() );
@@ -300,6 +300,7 @@ Void TDecTop::xActivateParameterSets()
   {
     sps->setAMPAcc( i, 0 );
   }
+#endif
 
   m_cSAO.destroy();
 
@@ -612,7 +613,9 @@ Bool TDecTop::xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisp
   }
   else
   {
+#if !QT_BT_STRUCTURE
     m_cTrQuant.setFlatScalingList();
+#endif
     m_cTrQuant.setUseScalingList(false);
   }
 

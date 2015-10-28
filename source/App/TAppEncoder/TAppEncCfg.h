@@ -124,7 +124,9 @@ protected:
   UInt      m_uiMaxCUDepth;                                   ///< max. CU depth
   
   // transfom unit (TU) definition
+#if !QT_BT_STRUCTURE
   UInt      m_uiQuadtreeTULog2MaxSize;
+#endif
   UInt      m_uiQuadtreeTULog2MinSize;
   
   UInt      m_uiQuadtreeTUMaxDepthInter;

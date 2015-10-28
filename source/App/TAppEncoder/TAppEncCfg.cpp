@@ -75,6 +75,11 @@ TAppEncCfg::TAppEncCfg()
   m_startOfCodedInterval = NULL;
   m_codedPivotValue = NULL;
   m_targetPivotValue = NULL;
+#if QT_BT_STRUCTURE
+  m_uiMaxCUWidth = m_uiMaxCUHeight = 1<<CTU_LOG2;
+  m_uiMaxCUDepth = CTU_LOG2 - MIN_CU_LOG2;
+  m_uiQuadtreeTULog2MinSize = 1<<MIN_CU_LOG2;
+#endif
 }
 
 TAppEncCfg::~TAppEncCfg()
@@ -297,6 +302,7 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   ("NonPackedSource",   m_nonPackedConstraintFlag, false, "Indicate that source does not contain frame packing")
   ("FrameOnly",         m_frameOnlyConstraintFlag, false, "Indicate that the bitstream contains only frames")
   
+#if !QT_BT_STRUCTURE
   // Unit definition parameters
   ("MaxCUWidth",              m_uiMaxCUWidth,             64u)
   ("MaxCUHeight",             m_uiMaxCUHeight,            64u)
@@ -304,13 +310,11 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   ("MaxCUSize,s",             m_uiMaxCUWidth,             64u, "Maximum CU size")
   ("MaxCUSize,s",             m_uiMaxCUHeight,            64u, "Maximum CU size")
   ("MaxPartitionDepth,h",     m_uiMaxCUDepth,              4u, "CU depth")
-  
   ("QuadtreeTULog2MaxSize",   m_uiQuadtreeTULog2MaxSize,   6u, "Maximum TU size in logarithm base 2")
   ("QuadtreeTULog2MinSize",   m_uiQuadtreeTULog2MinSize,   2u, "Minimum TU size in logarithm base 2")
-  
   ("QuadtreeTUMaxDepthIntra", m_uiQuadtreeTUMaxDepthIntra, 1u, "Depth of TU tree for intra CUs")
   ("QuadtreeTUMaxDepthInter", m_uiQuadtreeTUMaxDepthInter, 2u, "Depth of TU tree for inter CUs")
-  
+#endif
   // Coding structure paramters
   ("IntraPeriod,-ip",         m_iIntraPeriod,              -1, "Intra period in frames, (-1: only first frame)")
   ("DecodingRefreshType,-dr", m_iDecodingRefreshType,       0, "Intra refresh type (0:none 1:CRA 2:IDR)")
@@ -854,17 +858,18 @@ Void TAppEncCfg::xCheckParameter()
   {
     xConfirmPara( m_iIntraPeriod > 0 && m_iIntraPeriod <= m_iGOPSize ,                      "Intra period must be larger than GOP size for periodic IDR pictures");
   }
+#if !QT_BT_STRUCTURE
   xConfirmPara( (m_uiMaxCUWidth  >> m_uiMaxCUDepth) < 4,                                    "Minimum partition width size should be larger than or equal to 8");
   xConfirmPara( (m_uiMaxCUHeight >> m_uiMaxCUDepth) < 4,                                    "Minimum partition height size should be larger than or equal to 8");
   xConfirmPara( m_uiMaxCUWidth < 16,                                                        "Maximum partition width size should be larger than or equal to 16");
   xConfirmPara( m_uiMaxCUHeight < 16,                                                       "Maximum partition height size should be larger than or equal to 16");
+#endif
   xConfirmPara( (m_iSourceWidth  % (m_uiMaxCUWidth  >> (m_uiMaxCUDepth-1)))!=0,             "Resulting coded frame width must be a multiple of the minimum CU size");
   xConfirmPara( (m_iSourceHeight % (m_uiMaxCUHeight >> (m_uiMaxCUDepth-1)))!=0,             "Resulting coded frame height must be a multiple of the minimum CU size");
-  
+#if !QT_BT_STRUCTURE
   xConfirmPara( m_uiQuadtreeTULog2MinSize < 2,                                        "QuadtreeTULog2MinSize must be 2 or greater.");
   xConfirmPara( m_uiQuadtreeTULog2MaxSize > 5,                                        "QuadtreeTULog2MaxSize must be 5 or smaller.");
   xConfirmPara( (1<<m_uiQuadtreeTULog2MaxSize) > m_uiMaxCUWidth,                                        "QuadtreeTULog2MaxSize must be log2(maxCUSize) or smaller.");
-  
   xConfirmPara( m_uiQuadtreeTULog2MaxSize < m_uiQuadtreeTULog2MinSize,                "QuadtreeTULog2MaxSize must be greater than or equal to m_uiQuadtreeTULog2MinSize.");
   xConfirmPara( (1<<m_uiQuadtreeTULog2MinSize)>(m_uiMaxCUWidth >>(m_uiMaxCUDepth-1)), "QuadtreeTULog2MinSize must not be greater than minimum CU size" ); // HS
   xConfirmPara( (1<<m_uiQuadtreeTULog2MinSize)>(m_uiMaxCUHeight>>(m_uiMaxCUDepth-1)), "QuadtreeTULog2MinSize must not be greater than minimum CU size" ); // HS
@@ -874,7 +879,8 @@ Void TAppEncCfg::xCheckParameter()
   xConfirmPara( m_uiMaxCUWidth < ( 1 << (m_uiQuadtreeTULog2MinSize + m_uiQuadtreeTUMaxDepthInter - 1) ), "QuadtreeTUMaxDepthInter must be less than or equal to the difference between log2(maxCUSize) and QuadtreeTULog2MinSize plus 1" );
   xConfirmPara( m_uiQuadtreeTUMaxDepthIntra < 1,                                                         "QuadtreeTUMaxDepthIntra must be greater than or equal to 1" );
   xConfirmPara( m_uiMaxCUWidth < ( 1 << (m_uiQuadtreeTULog2MinSize + m_uiQuadtreeTUMaxDepthIntra - 1) ), "QuadtreeTUMaxDepthInter must be less than or equal to the difference between log2(maxCUSize) and QuadtreeTULog2MinSize plus 1" );
-  
+#endif
+
   xConfirmPara(  m_maxNumMergeCand < 1,  "MaxNumMergeCand must be 1 or greater.");
   xConfirmPara(  m_maxNumMergeCand > 5,  "MaxNumMergeCand must be 5 or smaller.");
 
@@ -1363,6 +1369,7 @@ Void TAppEncCfg::xCheckParameter()
  */
 Void TAppEncCfg::xSetGlobal()
 {
+#if !QT_BT_STRUCTURE
   // set max CU width & height
   g_uiMaxCUWidth  = m_uiMaxCUWidth;
   g_uiMaxCUHeight = m_uiMaxCUHeight;
@@ -1374,6 +1381,7 @@ Void TAppEncCfg::xSetGlobal()
   m_uiMaxCUDepth += g_uiAddCUDepth;
   g_uiAddCUDepth++;
   g_uiMaxCUDepth = m_uiMaxCUDepth;
+#endif
   
   // set internal bit-depth and constants
   g_bitDepthY = m_internalBitDepthY;
@@ -1409,10 +1417,24 @@ Void TAppEncCfg::xPrintParameter()
     printf("Frame/Field                  : Frame based coding\n");
     printf("Frame index                  : %u - %d (%d frames)\n", m_FrameSkip, m_FrameSkip+m_framesToBeEncoded-1, m_framesToBeEncoded );
   }
+#if QT_BT_STRUCTURE
+  printf("CTU size                     : %d \n", 1<<CTU_LOG2);
+  printf("I slice (LS=luma samples, CS=chroma samples)      \n");
+  printf("maxBTSize(L,C)               : %d LS, %d CS\n", MAX_BT_SIZE, MAX_BT_SIZE_C>>1);
+  printf("minQTSize(L,C)               : %dx%d LS, %dx%d CS\n", MIN_QT_SIZE, MIN_QT_SIZE, MIN_QT_SIZE_C>>1, MIN_QT_SIZE_C>>1);
+  printf("minBTSize(L,C)               : %d LS, %d CS\n", MIN_BT_SIZE, MIN_BT_SIZE_C>>1);
+  printf("maxBTDepth(L,C)              : %d, %d\n", MAX_BT_DEPTH, MAX_BT_DEPTH_C);
+  printf("P, B slice       \n");
+  printf("maxBTSize(init)              : %d \n", MAX_BT_SIZE_INTER);
+  printf("minQTSize(init)              : %dx%d\n", MIN_QT_SIZE_INTER, MIN_QT_SIZE_INTER);
+  printf("minBTSize                    : %d\n", MIN_BT_SIZE_INTER);
+  printf("maxBTDepth                   : %d\n", MAX_BT_DEPTH_INTER);
+#else
   printf("CU size / depth              : %d / %d\n", m_uiMaxCUWidth, m_uiMaxCUDepth );
   printf("RQT trans. size (min / max)  : %d / %d\n", 1 << m_uiQuadtreeTULog2MinSize, 1 << m_uiQuadtreeTULog2MaxSize );
   printf("Max RQT depth inter          : %d\n", m_uiQuadtreeTUMaxDepthInter);
   printf("Max RQT depth intra          : %d\n", m_uiQuadtreeTUMaxDepthIntra);
+#endif
   printf("Min PCM size                 : %d\n", 1 << m_uiPCMLog2MinSize);
   printf("Motion search range          : %d\n", m_iSearchRange );
   printf("Intra period                 : %d\n", m_iIntraPeriod );

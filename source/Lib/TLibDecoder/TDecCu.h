@@ -58,10 +58,16 @@ class TDecCu
 {
 private:
   UInt                m_uiMaxDepth;       ///< max. number of depth
+#if QT_BT_STRUCTURE
+  TComYuv***          m_pppcYuvResiPU;
+  TComYuv***          m_pppcYuvRecoPU;
+  TComDataCU***       m_pppcCUPU;
+#else
   TComYuv**           m_ppcYuvResi;       ///< array of residual buffer
   TComYuv**           m_ppcYuvReco;       ///< array of prediction & reconstruction buffer
   TComDataCU**        m_ppcCU;            ///< CU data array
-  
+#endif
+
   // access channel
   TComTrQuant*        m_pcTrQuant;
   TComPrediction*     m_pcPrediction;
@@ -90,26 +96,46 @@ public:
   
 protected:
   
+#if QT_BT_STRUCTURE
+  Void xDecodeCU                ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight, UInt& ruiLastIdx, UInt& ruiLastDepth, UInt uiSplitConstrain = 0 );
+#else
   Void xDecodeCU                ( TComDataCU* pcCU,                       UInt uiAbsPartIdx, UInt uiDepth, UInt &ruiIsLast);
+#endif
   Void xFinishDecodeCU          ( TComDataCU* pcCU,                       UInt uiAbsPartIdx, UInt uiDepth, UInt &ruiIsLast);
   Bool xDecodeSliceEnd          ( TComDataCU* pcCU,                       UInt uiAbsPartIdx, UInt uiDepth);
+#if QT_BT_STRUCTURE
+  Void xDecompressCU            ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight );
+#else
   Void xDecompressCU            ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
   
   Void xReconInter              ( TComDataCU* pcCU, UInt uiDepth );
   
   Void  xReconIntraQT           ( TComDataCU* pcCU, UInt uiDepth );
+#if QT_BT_STRUCTURE
+  Void  xIntraRecLumaBlk        ( TComDataCU* pcCU, TComYuv* pcRecoYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv );
+  Void  xIntraRecChromaBlk      ( TComDataCU* pcCU, TComYuv* pcRecoYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv, UInt uiChromaId );
+#else
   Void  xIntraRecLumaBlk        ( TComDataCU* pcCU, UInt uiTrDepth, UInt uiAbsPartIdx, TComYuv* pcRecoYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv );
   Void  xIntraRecChromaBlk      ( TComDataCU* pcCU, UInt uiTrDepth, UInt uiAbsPartIdx, TComYuv* pcRecoYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv, UInt uiChromaId );
+#endif
   
   Void  xReconPCM               ( TComDataCU* pcCU, UInt uiDepth );
 
   Void xDecodeInterTexture      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   Void xDecodePCMTexture        ( TComDataCU* pcCU, UInt uiPartIdx, Pel *piPCM, Pel* piReco, UInt uiStride, UInt uiWidth, UInt uiHeight, TextType ttText);
   
+#if !QT_BT_STRUCTURE
   Void xCopyToPic               ( TComDataCU* pcCU, TComPic* pcPic, UInt uiZorderIdx, UInt uiDepth );
+#endif
 
+#if QT_BT_STRUCTURE
+  Void  xIntraLumaRecQT         ( TComDataCU* pcCU, TComYuv* pcRecoYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv );
+  Void  xIntraChromaRecQT       ( TComDataCU* pcCU, TComYuv* pcRecoYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv, TextType eType );
+#else
   Void  xIntraLumaRecQT         ( TComDataCU* pcCU, UInt uiTrDepth, UInt uiAbsPartIdx, TComYuv* pcRecoYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv );
   Void  xIntraChromaRecQT       ( TComDataCU* pcCU, UInt uiTrDepth, UInt uiAbsPartIdx, TComYuv* pcRecoYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv );
+#endif
 
   Bool getdQPFlag               ()                        { return m_bDecodeDQP;        }
   Void setdQPFlag               ( Bool b )                { m_bDecodeDQP = b;           }

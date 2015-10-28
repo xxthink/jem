@@ -700,7 +700,9 @@ private:
   Int         m_numReorderPics[MAX_TLAYER];
   
   // Tool list
+#if !QT_BT_STRUCTURE
   UInt        m_uiQuadtreeTULog2MaxSize;
+#endif
   UInt        m_uiQuadtreeTULog2MinSize;
   UInt        m_uiQuadtreeTUMaxDepthInter;
   UInt        m_uiQuadtreeTUMaxDepthIntra;
@@ -726,7 +728,9 @@ private:
   // Max physical transform size
   UInt        m_uiMaxTrSize;
   
+#if !QT_BT_STRUCTURE
   Int m_iAMPAcc[MAX_CU_DEPTH];
+#endif
   Bool        m_bUseSAO; 
 
   Bool        m_bTemporalIdNestingFlag; // temporal_id_nesting_flag
@@ -799,8 +803,10 @@ public:
   UInt getBitsForPOC  ()         { return m_uiBitsForPOC;   }
   Bool getUseAMP() { return m_useAMP; }
   Void setUseAMP( Bool b ) { m_useAMP = b; }
+#if !QT_BT_STRUCTURE
   Void setQuadtreeTULog2MaxSize( UInt u ) { m_uiQuadtreeTULog2MaxSize = u;    }
   UInt getQuadtreeTULog2MaxSize()         { return m_uiQuadtreeTULog2MaxSize; }
+#endif
   Void setQuadtreeTULog2MinSize( UInt u ) { m_uiQuadtreeTULog2MinSize = u;    }
   UInt getQuadtreeTULog2MinSize()         { return m_uiQuadtreeTULog2MinSize; }
   Void setQuadtreeTUMaxDepthInter( UInt u ) { m_uiQuadtreeTUMaxDepthInter = u;    }
@@ -819,9 +825,11 @@ public:
   Void setMaxTrSize   ( UInt u ) { m_uiMaxTrSize = u;       }
   UInt getMaxTrSize   ()         { return  m_uiMaxTrSize;   }
   
+#if !QT_BT_STRUCTURE
   // AMP accuracy
   Int       getAMPAcc   ( UInt uiDepth ) { return m_iAMPAcc[uiDepth]; }
   Void      setAMPAcc   ( UInt uiDepth, Int iAccu ) { assert( uiDepth < g_uiMaxCUDepth);  m_iAMPAcc[uiDepth] = iAccu; }
+#endif
 
   // Bit-depth
   Int      getBitDepthY() { return m_bitDepthY; }
@@ -1155,6 +1163,10 @@ private:
   
   UInt        m_colRefIdx;
   UInt        m_maxNumMergeCand;
+#if QT_BT_STRUCTURE
+  UInt        m_uiMaxBTSize;
+  UInt        m_uiMinQTSize;
+#endif
 
   Double      m_lambdas[3];
 
@@ -1336,6 +1348,12 @@ public:
 
   Void setMaxNumMergeCand               (UInt val )         { m_maxNumMergeCand = val;                    }
   UInt getMaxNumMergeCand               ()                  { return m_maxNumMergeCand;                   }
+#if QT_BT_STRUCTURE
+  Void setMaxBTSize                     (Int i)             { m_uiMaxBTSize = i; }
+  UInt getMaxBTSize                     ()                  { return m_uiMaxBTSize; }
+  Void setMinQTSize                     (Int i)             { m_uiMinQTSize = i;}
+  UInt getMinQTSize                     ()                  { return m_uiMinQTSize; }
+#endif
 
   Void setSliceMode                     ( UInt uiMode )     { m_sliceMode = uiMode;                     }
   UInt getSliceMode                     ()                  { return m_sliceMode;                       }

@@ -54,8 +54,13 @@ TEncTop::TEncTop()
   m_iPOCLast          = -1;
   m_iNumPicRcvd       =  0;
   m_uiNumAllPicCoded  =  0;
+#if QT_BT_STRUCTURE
+  m_pppcRDSbacCoderPU   =  NULL;
+  m_pppcBinCoderCABACPU =  NULL;
+#else
   m_pppcRDSbacCoder   =  NULL;
   m_pppcBinCoderCABAC =  NULL;
+#endif
   m_cRDGoOnSbacCoder.init( &m_cRDGoOnBinCoderCABAC );
 #if ENC_DEC_TRACE
   g_hTrace = fopen( "TraceEnc.txt", "wb" );
@@ -118,6 +123,31 @@ Void TEncTop::create ()
                       g_uiMaxCUWidth, g_uiMaxCUHeight, m_RCKeepHierarchicalBit, m_RCUseLCUSeparateModel, m_GOPList );
   }
 
+#if QT_BT_STRUCTURE
+  UInt uiNumWidthIdx = g_aucConvertToBit[g_uiMaxCUWidth] + 1;
+  UInt uiNumHeightIdx = g_aucConvertToBit[g_uiMaxCUHeight] + 1;
+
+  m_pppcRDSbacCoderPU = new TEncSbac*** [uiNumWidthIdx];
+  m_pppcBinCoderCABACPU = new TEncBinCABACCounter*** [uiNumWidthIdx];
+
+  for (Int w=0; w<uiNumWidthIdx; w++)
+  {
+    m_pppcRDSbacCoderPU[w] = new TEncSbac** [uiNumHeightIdx];
+    m_pppcBinCoderCABACPU[w] = new TEncBinCABACCounter** [uiNumHeightIdx];
+    for (Int h=0; h<uiNumHeightIdx; h++)
+    {
+      m_pppcRDSbacCoderPU[w][h] = new TEncSbac* [CI_NUM];
+      m_pppcBinCoderCABACPU[w][h] = new TEncBinCABACCounter* [CI_NUM];
+      for (Int iCIIdx = 0; iCIIdx < CI_NUM; iCIIdx ++ )
+      {
+        m_pppcRDSbacCoderPU[w][h][iCIIdx] = new TEncSbac;
+        m_pppcBinCoderCABACPU[w][h][iCIIdx] = new TEncBinCABACCounter;
+
+        m_pppcRDSbacCoderPU[w][h][iCIIdx]->init( m_pppcBinCoderCABACPU [w][h][iCIIdx] );
+      }
+    }
+  }
+#else
   m_pppcRDSbacCoder = new TEncSbac** [g_uiMaxCUDepth+1];
 #if FAST_BIT_EST
   m_pppcBinCoderCABAC = new TEncBinCABACCounter** [g_uiMaxCUDepth+1];
@@ -145,6 +175,7 @@ Void TEncTop::create ()
       m_pppcRDSbacCoder   [iDepth][iCIIdx]->init( m_pppcBinCoderCABAC [iDepth][iCIIdx] );
     }
   }
+#endif
 }
 
 /**
@@ -210,6 +241,27 @@ Void TEncTop::destroy ()
   m_cRateCtrl.          destroy();
 
   Int iDepth;
+#if QT_BT_STRUCTURE
+  UInt uiNumWidthIdx = g_aucConvertToBit[g_uiMaxCUWidth] + 1;
+  UInt uiNumHeightIdx = g_aucConvertToBit[g_uiMaxCUHeight] + 1;
+  for (Int w = 0; w<uiNumWidthIdx; w++)
+  {
+    for (Int h=0; h<uiNumHeightIdx; h++)
+    {
+      for (Int iCIIdx = 0; iCIIdx < CI_NUM; iCIIdx ++ )
+      {
+        delete m_pppcRDSbacCoderPU[w][h][iCIIdx];
+        delete m_pppcBinCoderCABACPU[w][h][iCIIdx];
+      }
+      delete[] m_pppcRDSbacCoderPU[w][h];
+      delete[] m_pppcBinCoderCABACPU[w][h];
+    }
+    delete[] m_pppcRDSbacCoderPU[w];
+    delete[] m_pppcBinCoderCABACPU[w];
+  }
+  delete[] m_pppcRDSbacCoderPU;
+  delete[] m_pppcBinCoderCABACPU;
+#else
   for ( iDepth = 0; iDepth < g_uiMaxCUDepth+1; iDepth++ )
   {
     for (Int iCIIdx = 0; iCIIdx < CI_NUM; iCIIdx ++ )
@@ -227,6 +279,7 @@ Void TEncTop::destroy ()
 
   delete [] m_pppcRDSbacCoder;
   delete [] m_pppcBinCoderCABAC;
+#endif
 
   for ( UInt ui = 0; ui < m_iNumSubstreams; ui++ )
   {
@@ -285,7 +338,11 @@ Void TEncTop::init(Bool isFieldCoding)
   // initialize transform & quantization class
   m_pcCavlcCoder = getCavlcCoder();
   
+#if QT_BT_STRUCTURE
+  m_cTrQuant.init( 1 << CTU_LOG2,
+#else
   m_cTrQuant.init( 1 << m_uiQuadtreeTULog2MaxSize,
+#endif
                   m_useRDOQ, 
                   m_useRDOQTS,
                   true 
@@ -615,22 +672,29 @@ Void TEncTop::xInitSPS()
 
   m_cSPS.setLog2MinCodingBlockSize(log2MinCUSize);
   m_cSPS.setLog2DiffMaxMinCodingBlockSize(m_cSPS.getMaxCUDepth()-g_uiAddCUDepth);
-  
+
   m_cSPS.setPCMLog2MinSize (m_uiPCMLog2MinSize);
   m_cSPS.setUsePCM        ( m_usePCM           );
   m_cSPS.setPCMLog2MaxSize( m_pcmLog2MaxSize  );
 
+#if !QT_BT_STRUCTURE
   m_cSPS.setQuadtreeTULog2MaxSize( m_uiQuadtreeTULog2MaxSize );
+#endif
   m_cSPS.setQuadtreeTULog2MinSize( m_uiQuadtreeTULog2MinSize );
   m_cSPS.setQuadtreeTUMaxDepthInter( m_uiQuadtreeTUMaxDepthInter    );
   m_cSPS.setQuadtreeTUMaxDepthIntra( m_uiQuadtreeTUMaxDepthIntra    );
   
   m_cSPS.setTMVPFlagsPresent(false);
 
+#if QT_BT_STRUCTURE
+  m_cSPS.setMaxTrSize   ( 1 << CTU_LOG2 );
+#else
   m_cSPS.setMaxTrSize   ( 1 << m_uiQuadtreeTULog2MaxSize );
+#endif
   
   Int i;
   
+#if !QT_BT_STRUCTURE
   for (i = 0; i < g_uiMaxCUDepth-g_uiAddCUDepth; i++ )
   {
     m_cSPS.setAMPAcc( i, m_useAMP );
@@ -643,6 +707,7 @@ Void TEncTop::xInitSPS()
   {
     m_cSPS.setAMPAcc(i, 0);
   }
+#endif
 
   m_cSPS.setBitDepthY( g_bitDepthY );
   m_cSPS.setBitDepthC( g_bitDepthC );

@@ -140,7 +140,9 @@ protected:
   Int       m_maxTempLayer;                      ///< Max temporal layer
   Bool m_useAMP;
   //======= Transform =============
+#if !QT_BT_STRUCTURE
   UInt      m_uiQuadtreeTULog2MaxSize;
+#endif
   UInt      m_uiQuadtreeTULog2MinSize;
   UInt      m_uiQuadtreeTUMaxDepthInter;
   UInt      m_uiQuadtreeTUMaxDepthIntra;
@@ -355,7 +357,9 @@ public:
   Bool      getMaxTempLayer                 ()                              { return m_maxTempLayer;              } 
   Void      setMaxTempLayer                 ( Int maxTempLayer )            { m_maxTempLayer = maxTempLayer;      }
   //======== Transform =============
+#if !QT_BT_STRUCTURE
   Void      setQuadtreeTULog2MaxSize        ( UInt  u )      { m_uiQuadtreeTULog2MaxSize = u; }
+#endif
   Void      setQuadtreeTULog2MinSize        ( UInt  u )      { m_uiQuadtreeTULog2MinSize = u; }
   Void      setQuadtreeTUMaxDepthInter      ( UInt  u )      { m_uiQuadtreeTUMaxDepthInter = u; }
   Void      setQuadtreeTUMaxDepthIntra      ( UInt  u )      { m_uiQuadtreeTUMaxDepthIntra = u; }
@@ -410,7 +414,9 @@ public:
   Int       getPad                          ( Int i )      { assert (i < 2 );                      return  m_aiPad[i]; }
   
   //======== Transform =============
+#if !QT_BT_STRUCTURE
   UInt      getQuadtreeTULog2MaxSize        ()      const { return m_uiQuadtreeTULog2MaxSize; }
+#endif
   UInt      getQuadtreeTULog2MinSize        ()      const { return m_uiQuadtreeTULog2MinSize; }
   UInt      getQuadtreeTUMaxDepthInter      ()      const { return m_uiQuadtreeTUMaxDepthInter; }
   UInt      getQuadtreeTUMaxDepthIntra      ()      const { return m_uiQuadtreeTUMaxDepthIntra; }

@@ -439,12 +439,20 @@ Void TEncCavlc::codeSPS( TComSPS* pcSPS )
   }
   assert( pcSPS->getMaxCUWidth() == pcSPS->getMaxCUHeight() );
 
+#if QT_BT_STRUCTURE
+  WRITE_UVLC( pcSPS->getLog2MinCodingBlockSize() - MIN_CU_LOG2,                                "log2_min_coding_block_size_minus2" );
+#else
   WRITE_UVLC( pcSPS->getLog2MinCodingBlockSize() - 3,                                "log2_min_coding_block_size_minus3" );
+#endif
   WRITE_UVLC( pcSPS->getLog2DiffMaxMinCodingBlockSize(),                             "log2_diff_max_min_coding_block_size" );
+#if QT_BT_STRUCTURE
+  WRITE_UVLC( pcSPS->getQuadtreeTULog2MinSize() - MIN_CU_LOG2,                                 "log2_min_transform_block_size_minus2" );
+#else
   WRITE_UVLC( pcSPS->getQuadtreeTULog2MinSize() - 2,                                 "log2_min_transform_block_size_minus2" );
   WRITE_UVLC( pcSPS->getQuadtreeTULog2MaxSize() - pcSPS->getQuadtreeTULog2MinSize(), "log2_diff_max_min_transform_block_size" );
   WRITE_UVLC( pcSPS->getQuadtreeTUMaxDepthInter() - 1,                               "max_transform_hierarchy_depth_inter" );
   WRITE_UVLC( pcSPS->getQuadtreeTUMaxDepthIntra() - 1,                               "max_transform_hierarchy_depth_intra" );
+#endif
   WRITE_FLAG( pcSPS->getScalingListFlag() ? 1 : 0,                                   "scaling_list_enabled_flag" ); 
   if(pcSPS->getScalingListFlag())
   {
@@ -868,6 +876,13 @@ Void TEncCavlc::codeSliceHeader         ( TComSlice* pcSlice )
     {
       xCodePredWeightTable( pcSlice );
     }
+#if QT_BT_STRUCTURE
+    if (!pcSlice->isIntra())
+    {
+      WRITE_UVLC(g_aucConvertToBit[g_uiMaxCUWidth] - g_aucConvertToBit[pcSlice->getMaxBTSize()], "max_binary_tree_unit_size");
+      WRITE_UVLC(g_aucConvertToBit[pcSlice->getMinQTSize()] - g_aucConvertToBit[4], "min_quadtree_unit_size");
+    }
+#endif
     assert(pcSlice->getMaxNumMergeCand()<=MRG_MAX_NUM_CANDS);
     if (!pcSlice->isIntra())
     {
@@ -1099,12 +1114,27 @@ Void TEncCavlc::codeSplitFlag   ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDe
   assert(0);
 }
 
+#if QT_BT_STRUCTURE
+Void TEncCavlc::codeBTSplitMode (TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight)
+{
+  assert(0);
+}
+#endif
+
+#if QT_BT_STRUCTURE
+Void TEncCavlc::codeTransformSubdivFlag( TextType eType, UInt uiSymbol, UInt uiCtx )
+#else
 Void TEncCavlc::codeTransformSubdivFlag( UInt uiSymbol, UInt uiCtx )
+#endif
 {
   assert(0);
 }
 
+#if QT_BT_STRUCTURE
+Void TEncCavlc::codeQtCbf( TComDataCU* pcCU, UInt uiAbsPartIdx, TextType eType )
+#else
 Void TEncCavlc::codeQtCbf( TComDataCU* pcCU, UInt uiAbsPartIdx, TextType eType, UInt uiTrDepth )
+#endif
 {
   assert(0);
 }
@@ -1307,7 +1337,11 @@ Void TEncCavlc::codeScalingList( TComScalingList* scalingList )
 Void TEncCavlc::xCodeScalingList(TComScalingList* scalingList, UInt sizeId, UInt listId)
 {
   Int coefNum = min(MAX_MATRIX_COEF_NUM,(Int)g_scalingListSize[sizeId]);
+#if QT_BT_STRUCTURE
+  UInt* scan  = (sizeId == 0) ? g_sigCoefScan [ SCAN_DIAG ] [ 2 ][ 2 ] :  g_sigCoefGroupScan[SCAN_DIAG][3][3]; //need to check
+#else
   UInt* scan  = (sizeId == 0) ? g_auiSigLastScan [ SCAN_DIAG ] [ 1 ] :  g_sigLastScanCG32x32;
+#endif
   Int nextCoef = SCALING_LIST_START_VALUE;
   Int data;
   Int *src = scalingList->getScalingListAddress(sizeId, listId);

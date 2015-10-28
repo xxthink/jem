@@ -103,14 +103,22 @@ public:
  
   Void codeInterModeFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiEncMode );
   Void codeSplitFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
-  
+#if QT_BT_STRUCTURE
+  Void codeBTSplitMode (TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight);
+#endif
+
   Void codePartSize      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   Void codePredMode      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   
   Void codeIPCMInfo      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
 
+#if QT_BT_STRUCTURE
+  Void codeTransformSubdivFlag( TextType eType, UInt uiSymbol, UInt uiCtx );
+  Void codeQtCbf         ( TComDataCU* pcCU, UInt uiAbsPartIdx, TextType eType );
+#else
   Void codeTransformSubdivFlag( UInt uiSymbol, UInt uiCtx );
   Void codeQtCbf         ( TComDataCU* pcCU, UInt uiAbsPartIdx, TextType eType, UInt uiTrDepth );
+#endif
   Void codeQtRootCbf     ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeQtCbfZero     ( TComDataCU* pcCU, TextType eType, UInt uiTrDepth );
   Void codeQtRootCbfZero ( TComDataCU* pcCU );

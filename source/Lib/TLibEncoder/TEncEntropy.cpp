@@ -134,7 +134,9 @@ Void TEncEntropy::encodeMergeIndex( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bR
   if( bRD )
   {
     uiAbsPartIdx = 0;
+#if !QT_BT_STRUCTURE
     assert( pcCU->getPartitionSize(uiAbsPartIdx) == SIZE_2Nx2N );
+#endif
   }
   m_pcEntropyCoderIf->codeMergeIndex( pcCU, uiAbsPartIdx );
 }
@@ -168,6 +170,17 @@ Void TEncEntropy::encodeSplitFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiD
   }
   m_pcEntropyCoderIf->codeSplitFlag( pcCU, uiAbsPartIdx, uiDepth );
 }
+
+#if QT_BT_STRUCTURE
+Void TEncEntropy::encodeBTSplitMode( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight, Bool bRD )
+{
+  if (bRD)
+  {
+    uiAbsPartIdx=0;
+  }
+  m_pcEntropyCoderIf->codeBTSplitMode(pcCU, uiAbsPartIdx, uiWidth, uiHeight);
+}
+#endif
 
 /** encode partition size
  * \param pcCU
@@ -207,7 +220,29 @@ Void TEncEntropy::encodeIPCMInfo( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD 
   
   m_pcEntropyCoderIf->codeIPCMInfo ( pcCU, uiAbsPartIdx );
 }
+#if QT_BT_STRUCTURE
+Void TEncEntropy::xEncodeTransform( TComDataCU* pcCU, TextType eType, UInt offset, UInt uiAbsPartIdx )
+{
+  if( eType==TEXT_LUMA && pcCU->getPredictionMode(uiAbsPartIdx) != MODE_INTRA && !pcCU->getCbf( uiAbsPartIdx, TEXT_CHROMA_U ) && !pcCU->getCbf( uiAbsPartIdx, TEXT_CHROMA_V ) )
+  {
+    assert(pcCU->getCbf( uiAbsPartIdx, TEXT_LUMA ) ); 
+  }
+  else
+  {
+    m_pcEntropyCoderIf->codeQtCbf( pcCU, uiAbsPartIdx, eType );
+  }
+  UInt cbf = pcCU->getCbf( uiAbsPartIdx, eType );
 
+  if (cbf)
+  {
+    TCoeff* pcCoeff = eType==TEXT_LUMA ? pcCU->getCoeffY(): (eType==TEXT_CHROMA_U ? pcCU->getCoeffCb(): pcCU->getCoeffCr());
+    UInt uiTrWidth = eType==TEXT_LUMA ? pcCU->getWidth(uiAbsPartIdx): pcCU->getWidth(uiAbsPartIdx)>>1;
+    UInt uiTrHeight = eType==TEXT_LUMA ? pcCU->getHeight(uiAbsPartIdx): pcCU->getHeight(uiAbsPartIdx)>>1;
+
+    m_pcEntropyCoderIf->codeCoeffNxN( pcCU, pcCoeff+offset, uiAbsPartIdx, uiTrWidth, uiTrHeight, 0, eType );
+  }
+}
+#else
 Void TEncEntropy::xEncodeTransform( TComDataCU* pcCU,UInt offsetLuma, UInt offsetChroma, UInt uiAbsPartIdx, UInt uiDepth, UInt width, UInt height, UInt uiTrIdx, Bool& bCodeDQP )
 {
   const UInt uiSubdiv = pcCU->getTransformIdx( uiAbsPartIdx ) + pcCU->getDepth( uiAbsPartIdx ) > uiDepth;
@@ -383,6 +418,7 @@ Void TEncEntropy::xEncodeTransform( TComDataCU* pcCU,UInt offsetLuma, UInt offse
   }
 }
 
+#endif
 // Intra direction for Luma
 Void TEncEntropy::encodeIntraDirModeLuma  ( TComDataCU* pcCU, UInt absPartIdx, Bool isMultiplePU )
 {
@@ -408,8 +444,24 @@ Void TEncEntropy::encodePredInfo( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD 
   }
   if( pcCU->isIntra( uiAbsPartIdx ) )                                 // If it is Intra mode, encode intra prediction mode.
   {
-    encodeIntraDirModeLuma  ( pcCU, uiAbsPartIdx,true );
-    encodeIntraDirModeChroma( pcCU, uiAbsPartIdx, bRD );
+#if QT_BT_STRUCTURE
+    if (pcCU->getTextType() == TEXT_LUMA)
+    {
+#endif
+      encodeIntraDirModeLuma  ( pcCU, uiAbsPartIdx,true );
+#if QT_BT_STRUCTURE
+      if (!pcCU->getSlice()->isIntra())
+      {
+        encodeIntraDirModeChroma( pcCU, uiAbsPartIdx, bRD );
+      }
+    }
+    else
+    {
+      encodeIntraDirModeChroma( pcCU, uiAbsPartIdx, bRD );
+    }
+#else
+      encodeIntraDirModeChroma( pcCU, uiAbsPartIdx, bRD );
+#endif
   }
   else                                                                // if it is Inter mode, encode motion vector and reference index
   {
@@ -430,10 +482,15 @@ Void TEncEntropy::encodePUWise( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD )
     uiAbsPartIdx = 0;
   }
   
+#if QT_BT_STRUCTURE
+  UInt uiNumPU = 1;
+  UInt uiPUOffset = 0;
+#else
   PartSize ePartSize = pcCU->getPartitionSize( uiAbsPartIdx );
   UInt uiNumPU = ( ePartSize == SIZE_2Nx2N ? 1 : ( ePartSize == SIZE_NxN ? 4 : 2 ) );
   UInt uiDepth = pcCU->getDepth( uiAbsPartIdx );
   UInt uiPUOffset = ( g_auiPUOffset[UInt( ePartSize )] << ( ( pcCU->getSlice()->getSPS()->getMaxCUDepth() - uiDepth ) << 1 ) ) >> 4;
+#endif
 
   for ( UInt uiPartIdx = 0, uiSubPartIdx = uiAbsPartIdx; uiPartIdx < uiNumPU; uiPartIdx++, uiSubPartIdx += uiPUOffset )
   {
@@ -522,15 +579,29 @@ Void TEncEntropy::encodeMVPIdxPU( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicLis
   return;
 }
 
+#if QT_BT_STRUCTURE
+Void TEncEntropy::encodeQtCbf( TComDataCU* pcCU, UInt uiAbsPartIdx, TextType eType )
+{
+  m_pcEntropyCoderIf->codeQtCbf( pcCU, uiAbsPartIdx, eType );
+}
+#else
 Void TEncEntropy::encodeQtCbf( TComDataCU* pcCU, UInt uiAbsPartIdx, TextType eType, UInt uiTrDepth )
 {
   m_pcEntropyCoderIf->codeQtCbf( pcCU, uiAbsPartIdx, eType, uiTrDepth );
 }
+#endif
 
+#if QT_BT_STRUCTURE
+Void TEncEntropy::encodeTransformSubdivFlag( TextType eType, UInt uiSymbol, UInt uiCtx )
+{
+  m_pcEntropyCoderIf->codeTransformSubdivFlag( eType, uiSymbol, uiCtx );
+}
+#else
 Void TEncEntropy::encodeTransformSubdivFlag( UInt uiSymbol, UInt uiCtx )
 {
   m_pcEntropyCoderIf->codeTransformSubdivFlag( uiSymbol, uiCtx );
 }
+#endif
 
 Void TEncEntropy::encodeQtRootCbf( TComDataCU* pcCU, UInt uiAbsPartIdx )
 {
@@ -571,9 +642,14 @@ Void TEncEntropy::encodeQP( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD )
  */
 Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight, Bool& bCodeDQP )
 {
+#if QT_BT_STRUCTURE
+  UInt uiLumaOffset = uiAbsPartIdx==0 ? 0 : (pcCU->getPic()->getCodedAreaInCTU() - uiWidth*uiHeight);
+  UInt uiChromaOffset = uiLumaOffset>>2;
+#else
   UInt uiMinCoeffSize = pcCU->getPic()->getMinCUWidth()*pcCU->getPic()->getMinCUHeight();
   UInt uiLumaOffset   = uiMinCoeffSize*uiAbsPartIdx;
   UInt uiChromaOffset = uiLumaOffset>>2;
+#endif
     
   if( pcCU->isIntra(uiAbsPartIdx) )
   {
@@ -584,7 +660,11 @@ Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
   }
   else
   {
+#if QT_BT_STRUCTURE
+    if( !pcCU->getMergeFlag( uiAbsPartIdx )  )
+#else
     if( !(pcCU->getMergeFlag( uiAbsPartIdx ) && pcCU->getPartitionSize(uiAbsPartIdx) == SIZE_2Nx2N ) )
+#endif
     {
       m_pcEntropyCoderIf->codeQtRootCbf( pcCU, uiAbsPartIdx );
     }
@@ -594,7 +674,19 @@ Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
     }
   }
   
+#if QT_BT_STRUCTURE
+  if (pcCU->getTextType() != TEXT_LUMA || !pcCU->getSlice()->isIntra())
+  {
+    xEncodeTransform( pcCU, TEXT_CHROMA_U, uiChromaOffset, uiAbsPartIdx);
+    xEncodeTransform( pcCU, TEXT_CHROMA_V, uiChromaOffset, uiAbsPartIdx);
+  }
+  if (pcCU->getTextType() == TEXT_LUMA )
+  {
+    xEncodeTransform( pcCU, TEXT_LUMA, uiLumaOffset, uiAbsPartIdx);   
+  }
+#else
   xEncodeTransform( pcCU, uiLumaOffset, uiChromaOffset, uiAbsPartIdx, uiDepth, uiWidth, uiHeight, 0, bCodeDQP);
+#endif
 }
 
 Void TEncEntropy::encodeCoeffNxN( TComDataCU* pcCU, TCoeff* pcCoeff, UInt uiAbsPartIdx, UInt uiTrWidth, UInt uiTrHeight, UInt uiDepth, TextType eType )
@@ -605,6 +697,14 @@ Void TEncEntropy::encodeCoeffNxN( TComDataCU* pcCU, TCoeff* pcCoeff, UInt uiAbsP
 
 Void TEncEntropy::estimateBit (estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, TextType eTType)
 {  
+#if QT_BT_STRUCTURE
+  if (width==2 || height==2)
+  {
+    //don't use RDOQ for 2xN
+    return;
+  }
+#endif
+
   eTType = eTType == TEXT_LUMA ? TEXT_LUMA : TEXT_CHROMA;
   
   m_pcEntropyCoderIf->estBit ( pcEstBitsSbac, width, height, eTType );
