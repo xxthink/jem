@@ -100,7 +100,6 @@ public:
   Void    create            ( UInt iWidth, UInt iHeight );  ///< Create  YUV buffer
   Void    destroy           ();                             ///< Destroy YUV buffer
   Void    clear             ();                             ///< clear   YUV buffer
-  
   // ------------------------------------------------------------------------------------------------------------------
   //  Copy, load, store YUV buffer
   // ------------------------------------------------------------------------------------------------------------------
@@ -137,14 +136,26 @@ public:
   // ------------------------------------------------------------------------------------------------------------------
   
   //  Clip(pcYuvSrc0 + pcYuvSrc1) -> m_apiBuf
+#if QT_BT_STRUCTURE
+  Void    addClip           ( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt uiTrUnitIdx, UInt uiWidth, UInt uiHeight );
+  Void    addClipLuma       ( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt uiTrUnitIdx, UInt uiWidth, UInt uiHeight );
+  Void    addClipChroma     ( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt uiTrUnitIdx, UInt uiWidth, UInt uiHeight );
+#else
   Void    addClip           ( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt uiTrUnitIdx, UInt uiPartSize );
   Void    addClipLuma       ( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt uiTrUnitIdx, UInt uiPartSize );
   Void    addClipChroma     ( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt uiTrUnitIdx, UInt uiPartSize );
+#endif
   
   //  pcYuvSrc0 - pcYuvSrc1 -> m_apiBuf
+#if QT_BT_STRUCTURE
+  Void    subtract          ( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt uiTrUnitIdx, UInt uiWidth, UInt uiHeight );
+  Void    subtractLuma      ( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt uiTrUnitIdx, UInt uiWidth, UInt uiHeight );
+  Void    subtractChroma    ( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt uiTrUnitIdx, UInt uiWidth, UInt uiHeight );
+#else
   Void    subtract          ( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt uiTrUnitIdx, UInt uiPartSize );
   Void    subtractLuma      ( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt uiTrUnitIdx, UInt uiPartSize );
   Void    subtractChroma    ( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt uiTrUnitIdx, UInt uiPartSize );
+#endif
   
   //  (pcYuvSrc0 + pcYuvSrc1)/2 for YUV partition
   Void    addAvg            ( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt iPartUnitIdx, UInt iWidth, UInt iHeight );

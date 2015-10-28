@@ -98,10 +98,17 @@ private:
   // RD cost computation
   TComBitCounter          m_cBitCounter;                  ///< bit counter for RD optimization
   TComRdCost              m_cRdCost;                      ///< RD cost computation class
+#if QT_BT_STRUCTURE
+  TEncSbac****            m_pppcRDSbacCoderPU;              ///< temporal storage for RD computation
+  TEncBinCABACCounter**** m_pppcBinCoderCABACPU;            ///< temporal CABAC state storage for RD computation 
+#else
   TEncSbac***             m_pppcRDSbacCoder;              ///< temporal storage for RD computation
+#endif
   TEncSbac                m_cRDGoOnSbacCoder;             ///< going on SBAC model for RD stage
 #if FAST_BIT_EST
+#if !QT_BT_STRUCTURE
   TEncBinCABACCounter***  m_pppcBinCoderCABAC;            ///< temporal CABAC state storage for RD computation
+#endif
   TEncBinCABACCounter     m_cRDGoOnBinCoderCABAC;         ///< going on bin coder CABAC for RD stage
 #else
   TEncBinCABAC***         m_pppcBinCoderCABAC;            ///< temporal CABAC state storage for RD computation
@@ -162,7 +169,11 @@ public:
   
   TComBitCounter*         getBitCounter         () { return  &m_cBitCounter;          }
   TComRdCost*             getRdCost             () { return  &m_cRdCost;              }
+#if QT_BT_STRUCTURE
+  TEncSbac****            getRDSbacCoder        () { return  m_pppcRDSbacCoderPU;       }
+#else
   TEncSbac***             getRDSbacCoder        () { return  m_pppcRDSbacCoder;       }
+#endif
   TEncSbac*               getRDGoOnSbacCoder    () { return  &m_cRDGoOnSbacCoder;     }
   TComBitCounter*         getBitCounters        () { return  m_pcBitCounters;         }
   TComRdCost*             getRdCosts            () { return  m_pcRdCosts;             }

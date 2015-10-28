@@ -73,7 +73,11 @@ protected:
   Int  getMergeList(TComPic* pic, Int ctu, SAOBlkParam* blkParams, std::vector<SAOBlkParam*>& mergeList);
   Void offsetCTU(Int ctu, TComPicYuv* srcYuv, TComPicYuv* resYuv, SAOBlkParam& saoblkParam, TComPic* pPic);
   Void xPCMRestoration(TComPic* pcPic);
+#if QT_BT_STRUCTURE
+  Void xPCMCURestoration ( TextType eType, TComDataCU* pcCU, UInt uiAbsZorderIdx, UInt uiDepth );
+#else
   Void xPCMCURestoration ( TComDataCU* pcCU, UInt uiAbsZorderIdx, UInt uiDepth );
+#endif
   Void xPCMSampleRestoration (TComDataCU* pcCU, UInt uiAbsZorderIdx, UInt uiDepth, TextType ttText);
 protected:
   UInt m_offsetStepLog2[NUM_SAO_COMPONENTS]; //offset step  

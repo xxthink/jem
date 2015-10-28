@@ -66,10 +66,24 @@ class TEncCu
 {
 private:
   
+#if !QT_BT_STRUCTURE
   TComDataCU**            m_ppcBestCU;      ///< Best CUs in each depth
   TComDataCU**            m_ppcTempCU;      ///< Temporary CUs in each depth
+#endif
   UChar                   m_uhTotalDepth;
   
+#if QT_BT_STRUCTURE
+  TComDataCU***            m_ppcBestCUPU;      ///< Best CUs in each depth
+  TComDataCU***            m_ppcTempCUPU;      ///< Temporary CUs in each depth
+  
+  TComYuv***               m_ppcPredYuvBestPU; ///< Best Prediction Yuv for each depth
+  TComYuv***               m_ppcResiYuvBestPU; ///< Best Residual Yuv for each depth
+  TComYuv***               m_ppcRecoYuvBestPU; ///< Best Reconstruction Yuv for each depth
+  TComYuv***               m_ppcPredYuvTempPU; ///< Temporary Prediction Yuv for each depth
+  TComYuv***               m_ppcResiYuvTempPU; ///< Temporary Residual Yuv for each depth
+  TComYuv***               m_ppcRecoYuvTempPU; ///< Temporary Reconstruction Yuv for each depth
+  TComYuv***               m_ppcOrigYuvPU;     ///< Original Yuv for each depth
+#else
   TComYuv**               m_ppcPredYuvBest; ///< Best Prediction Yuv for each depth
   TComYuv**               m_ppcResiYuvBest; ///< Best Residual Yuv for each depth
   TComYuv**               m_ppcRecoYuvBest; ///< Best Reconstruction Yuv for each depth
@@ -77,7 +91,8 @@ private:
   TComYuv**               m_ppcResiYuvTemp; ///< Temporary Residual Yuv for each depth
   TComYuv**               m_ppcRecoYuvTemp; ///< Temporary Reconstruction Yuv for each depth
   TComYuv**               m_ppcOrigYuv;     ///< Original Yuv for each depth
-  
+#endif
+
   //  Data : encoder control
   Bool                    m_bEncodeDQP;
   
@@ -94,7 +109,11 @@ private:
   TEncBinCABAC*           m_pcBinCABAC;
   
   // SBAC RD
+#if QT_BT_STRUCTURE
+  TEncSbac****            m_pppcRDSbacCoder;
+#else
   TEncSbac***             m_pppcRDSbacCoder;
+#endif
   TEncSbac*               m_pcRDGoOnSbacCoder;
   TEncRateCtrl*           m_pcRateCtrl;
 public:
@@ -109,7 +128,6 @@ public:
   
   /// CU analysis function
   Void  compressCU          ( TComDataCU*&  rpcCU );
-  
   /// CU encoding function
   Void  encodeCU            ( TComDataCU*    pcCU );
   
@@ -118,14 +136,26 @@ public:
 protected:
   Void  finishCU            ( TComDataCU*  pcCU, UInt uiAbsPartIdx,           UInt uiDepth        );
 #if AMP_ENC_SPEEDUP
+#if QT_BT_STRUCTURE
+  Void  xCompressCU         ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, UInt uiDepth, UInt uiWidth, UInt uiHeight, UInt uiBTSplitMode, UInt uiSplitConstrain = 0 );
+#else
   Void  xCompressCU         ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, UInt uiDepth, PartSize eParentPartSize = SIZE_NONE );
+#endif
 #else
   Void  xCompressCU         ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, UInt uiDepth        );
 #endif
+#if QT_BT_STRUCTURE
+  Void  xEncodeCU           ( TComDataCU*  pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight, UInt& ruiLastIdx, UInt& ruiLastDepth, UInt uiSplitConstrain = 0 );
+#else
   Void  xEncodeCU           ( TComDataCU*  pcCU, UInt uiAbsPartIdx,           UInt uiDepth        );
+#endif
   
   Int   xComputeQP          ( TComDataCU* pcCU, UInt uiDepth );
+#if QT_BT_STRUCTURE
+  Void  xCheckBestMode      ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, UInt uiDepth, UInt uiWidth=0, UInt uiHeight=0        );
+#else
   Void  xCheckBestMode      ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, UInt uiDepth        );
+#endif
   
   Void  xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, Bool *earlyDetectionSkipMode);
 
@@ -139,8 +169,18 @@ protected:
   
   Void  xCheckIntraPCM      ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU                      );
   Void  xCopyAMVPInfo       ( AMVPInfo* pSrc, AMVPInfo* pDst );
+#if QT_BT_STRUCTURE
+  Void  xCopyYuv2Pic        (TComPic* rpcPic, UInt uiCUAddr, UInt uiAbsPartIdx, UInt uiDepth, UInt uiSrcDepth, UInt uiSrcWidth, UInt uiSrcHeight, TComDataCU* pcCU, UInt uiLPelX, UInt uiTPelY );
+#else
   Void  xCopyYuv2Pic        (TComPic* rpcPic, UInt uiCUAddr, UInt uiAbsPartIdx, UInt uiDepth, UInt uiSrcDepth, TComDataCU* pcCU, UInt uiLPelX, UInt uiTPelY );
+#endif
+#if QT_BT_STRUCTURE
+  Void  xCopyYuv2PicSep     (TextType eType, TComPic* rpcPic, UInt uiCUAddr, UInt uiAbsPartIdx, UInt uiDepth, UInt uiSrcDepth, UInt uiSrcWidth, UInt uiSrcHeight, TComDataCU* pcCU, UInt uiLPelX, UInt uiTPelY );
+  Void  xCopyYuv2Tmp        ( UInt uhPartUnitIdx, UInt uiWidth, UInt uiHeight, UInt uiSplitMethod=0 );
+  Void  xCopyBestYuvFrom    ( UInt uhPartUnitIdx, UInt uiWidth, UInt uiHeight, UInt uiSplitMethod=0 );
+#else
   Void  xCopyYuv2Tmp        ( UInt uhPartUnitIdx, UInt uiDepth );
+#endif
 
   Bool getdQPFlag           ()                        { return m_bEncodeDQP;        }
   Void setdQPFlag           ( Bool b )                { m_bEncodeDQP = b;           }
@@ -151,11 +191,13 @@ protected:
   Int  xTuCollectARLStats(TCoeff* rpcCoeff, Int* rpcArlCoeff, Int NumCoeffInCU, Double* cSum, UInt* numSamples );
 #endif
 
+#if !QT_BT_STRUCTURE
 #if AMP_ENC_SPEEDUP 
 #if AMP_MRG
   Void deriveTestModeAMP (TComDataCU *&rpcBestCU, PartSize eParentPartSize, Bool &bTestAMP_Hor, Bool &bTestAMP_Ver, Bool &bTestMergeAMP_Hor, Bool &bTestMergeAMP_Ver);
 #else
   Void deriveTestModeAMP (TComDataCU *&rpcBestCU, PartSize eParentPartSize, Bool &bTestAMP_Hor, Bool &bTestAMP_Ver);
+#endif
 #endif
 #endif
 

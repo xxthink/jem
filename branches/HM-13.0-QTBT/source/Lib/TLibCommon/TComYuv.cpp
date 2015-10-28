@@ -398,26 +398,50 @@ Void TComYuv::copyPartToPartChroma( TComYuv* pcYuvDst, UInt uiPartIdx, UInt iWid
   }
 }
 
+#if QT_BT_STRUCTURE
+Void TComYuv::addClip( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt uiTrUnitIdx, UInt uiWidth, UInt uiHeight )
+{
+  addClipLuma   ( pcYuvSrc0, pcYuvSrc1, uiTrUnitIdx, uiWidth, uiHeight     );
+  addClipChroma ( pcYuvSrc0, pcYuvSrc1, uiTrUnitIdx, uiWidth>>1, uiHeight>>1  );
+}
+#else
 Void TComYuv::addClip( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt uiTrUnitIdx, UInt uiPartSize )
 {
   addClipLuma   ( pcYuvSrc0, pcYuvSrc1, uiTrUnitIdx, uiPartSize     );
   addClipChroma ( pcYuvSrc0, pcYuvSrc1, uiTrUnitIdx, uiPartSize>>1  );
 }
+#endif
 
+#if QT_BT_STRUCTURE
+Void TComYuv::addClipLuma( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt uiTrUnitIdx, UInt uiWidth, UInt uiHeight )
+#else
 Void TComYuv::addClipLuma( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt uiTrUnitIdx, UInt uiPartSize )
+#endif
 {
   Int x, y;
   
+#if QT_BT_STRUCTURE
+  Pel* pSrc0 = pcYuvSrc0->getLumaAddr( uiTrUnitIdx, uiWidth );
+  Pel* pSrc1 = pcYuvSrc1->getLumaAddr( uiTrUnitIdx, uiWidth );
+  Pel* pDst  = getLumaAddr( uiTrUnitIdx, uiWidth );
+#else
   Pel* pSrc0 = pcYuvSrc0->getLumaAddr( uiTrUnitIdx, uiPartSize );
   Pel* pSrc1 = pcYuvSrc1->getLumaAddr( uiTrUnitIdx, uiPartSize );
   Pel* pDst  = getLumaAddr( uiTrUnitIdx, uiPartSize );
+#endif
   
   UInt iSrc0Stride = pcYuvSrc0->getStride();
   UInt iSrc1Stride = pcYuvSrc1->getStride();
   UInt iDstStride  = getStride();
+#if QT_BT_STRUCTURE
+  for ( y = uiHeight-1; y >= 0; y-- )
+  {
+    for ( x = uiWidth-1; x >= 0; x-- )
+#else
   for ( y = uiPartSize-1; y >= 0; y-- )
   {
     for ( x = uiPartSize-1; x >= 0; x-- )
+#endif
     {
       pDst[x] = ClipY( pSrc0[x] + pSrc1[x] );
     }
@@ -427,23 +451,42 @@ Void TComYuv::addClipLuma( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt uiTrUnit
   }
 }
 
+#if QT_BT_STRUCTURE
+Void TComYuv::addClipChroma( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt uiTrUnitIdx, UInt uiWidth, UInt uiHeight )
+#else
 Void TComYuv::addClipChroma( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt uiTrUnitIdx, UInt uiPartSize )
+#endif
 {
   Int x, y;
   
+#if QT_BT_STRUCTURE
+  Pel* pSrcU0 = pcYuvSrc0->getCbAddr( uiTrUnitIdx, uiWidth );
+  Pel* pSrcU1 = pcYuvSrc1->getCbAddr( uiTrUnitIdx, uiWidth );
+  Pel* pSrcV0 = pcYuvSrc0->getCrAddr( uiTrUnitIdx, uiWidth );
+  Pel* pSrcV1 = pcYuvSrc1->getCrAddr( uiTrUnitIdx, uiWidth );
+  Pel* pDstU = getCbAddr( uiTrUnitIdx, uiWidth );
+  Pel* pDstV = getCrAddr( uiTrUnitIdx, uiWidth );
+#else
   Pel* pSrcU0 = pcYuvSrc0->getCbAddr( uiTrUnitIdx, uiPartSize );
   Pel* pSrcU1 = pcYuvSrc1->getCbAddr( uiTrUnitIdx, uiPartSize );
   Pel* pSrcV0 = pcYuvSrc0->getCrAddr( uiTrUnitIdx, uiPartSize );
   Pel* pSrcV1 = pcYuvSrc1->getCrAddr( uiTrUnitIdx, uiPartSize );
   Pel* pDstU = getCbAddr( uiTrUnitIdx, uiPartSize );
   Pel* pDstV = getCrAddr( uiTrUnitIdx, uiPartSize );
+#endif
   
   UInt  iSrc0Stride = pcYuvSrc0->getCStride();
   UInt  iSrc1Stride = pcYuvSrc1->getCStride();
   UInt  iDstStride  = getCStride();
+#if QT_BT_STRUCTURE
+  for ( y = uiHeight-1; y >= 0; y-- )
+  {
+    for ( x = uiWidth-1; x >= 0; x-- )
+#else
   for ( y = uiPartSize-1; y >= 0; y-- )
   {
     for ( x = uiPartSize-1; x >= 0; x-- )
+#endif
     {
       pDstU[x] = ClipC( pSrcU0[x] + pSrcU1[x] );
       pDstV[x] = ClipC( pSrcV0[x] + pSrcV1[x] );
@@ -458,26 +501,50 @@ Void TComYuv::addClipChroma( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt uiTrUn
   }
 }
 
+#if QT_BT_STRUCTURE
+Void TComYuv::subtract( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt uiTrUnitIdx, UInt uiWidth, UInt uiHeight )
+{
+  subtractLuma  ( pcYuvSrc0, pcYuvSrc1,  uiTrUnitIdx, uiWidth, uiHeight    );
+  subtractChroma( pcYuvSrc0, pcYuvSrc1,  uiTrUnitIdx, uiWidth>>1, uiHeight>>1 );
+}
+#else
 Void TComYuv::subtract( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt uiTrUnitIdx, UInt uiPartSize )
 {
   subtractLuma  ( pcYuvSrc0, pcYuvSrc1,  uiTrUnitIdx, uiPartSize    );
   subtractChroma( pcYuvSrc0, pcYuvSrc1,  uiTrUnitIdx, uiPartSize>>1 );
 }
+#endif
 
+#if QT_BT_STRUCTURE
+Void TComYuv::subtractLuma( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt uiTrUnitIdx, UInt uiWidth, UInt uiHeight )
+#else
 Void TComYuv::subtractLuma( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt uiTrUnitIdx, UInt uiPartSize )
+#endif
 {
   Int x, y;
   
+#if QT_BT_STRUCTURE
+  Pel* pSrc0 = pcYuvSrc0->getLumaAddr( uiTrUnitIdx, uiWidth );
+  Pel* pSrc1 = pcYuvSrc1->getLumaAddr( uiTrUnitIdx, uiWidth );
+  Pel* pDst  = getLumaAddr( uiTrUnitIdx, uiWidth );
+#else
   Pel* pSrc0 = pcYuvSrc0->getLumaAddr( uiTrUnitIdx, uiPartSize );
   Pel* pSrc1 = pcYuvSrc1->getLumaAddr( uiTrUnitIdx, uiPartSize );
   Pel* pDst  = getLumaAddr( uiTrUnitIdx, uiPartSize );
+#endif
   
   Int  iSrc0Stride = pcYuvSrc0->getStride();
   Int  iSrc1Stride = pcYuvSrc1->getStride();
   Int  iDstStride  = getStride();
+#if QT_BT_STRUCTURE
+  for ( y = uiHeight-1; y >= 0; y-- )
+  {
+    for ( x = uiWidth-1; x >= 0; x-- )
+#else
   for ( y = uiPartSize-1; y >= 0; y-- )
   {
     for ( x = uiPartSize-1; x >= 0; x-- )
+#endif
     {
       pDst[x] = pSrc0[x] - pSrc1[x];
     }
@@ -487,23 +554,42 @@ Void TComYuv::subtractLuma( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt uiTrUni
   }
 }
 
+#if QT_BT_STRUCTURE
+Void TComYuv::subtractChroma( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt uiTrUnitIdx, UInt uiWidth, UInt uiHeight )
+#else
 Void TComYuv::subtractChroma( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, UInt uiTrUnitIdx, UInt uiPartSize )
+#endif
 {
   Int x, y;
   
+#if QT_BT_STRUCTURE
+  Pel* pSrcU0 = pcYuvSrc0->getCbAddr( uiTrUnitIdx, uiWidth );
+  Pel* pSrcU1 = pcYuvSrc1->getCbAddr( uiTrUnitIdx, uiWidth );
+  Pel* pSrcV0 = pcYuvSrc0->getCrAddr( uiTrUnitIdx, uiWidth );
+  Pel* pSrcV1 = pcYuvSrc1->getCrAddr( uiTrUnitIdx, uiWidth );
+  Pel* pDstU  = getCbAddr( uiTrUnitIdx, uiWidth );
+  Pel* pDstV  = getCrAddr( uiTrUnitIdx, uiWidth );
+#else
   Pel* pSrcU0 = pcYuvSrc0->getCbAddr( uiTrUnitIdx, uiPartSize );
   Pel* pSrcU1 = pcYuvSrc1->getCbAddr( uiTrUnitIdx, uiPartSize );
   Pel* pSrcV0 = pcYuvSrc0->getCrAddr( uiTrUnitIdx, uiPartSize );
   Pel* pSrcV1 = pcYuvSrc1->getCrAddr( uiTrUnitIdx, uiPartSize );
   Pel* pDstU  = getCbAddr( uiTrUnitIdx, uiPartSize );
   Pel* pDstV  = getCrAddr( uiTrUnitIdx, uiPartSize );
+#endif
   
   Int  iSrc0Stride = pcYuvSrc0->getCStride();
   Int  iSrc1Stride = pcYuvSrc1->getCStride();
   Int  iDstStride  = getCStride();
+#if QT_BT_STRUCTURE
+  for ( y = uiHeight-1; y >= 0; y-- )
+  {
+    for ( x = uiWidth-1; x >= 0; x-- )
+#else
   for ( y = uiPartSize-1; y >= 0; y-- )
   {
     for ( x = uiPartSize-1; x >= 0; x-- )
+#endif
     {
       pDstU[x] = pSrcU0[x] - pSrcU1[x];
       pDstV[x] = pSrcV0[x] - pSrcV1[x];

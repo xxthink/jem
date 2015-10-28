@@ -209,6 +209,10 @@ private:
   static UInt xGetSSE16         ( DistParam* pcDtParam );
   static UInt xGetSSE32         ( DistParam* pcDtParam );
   static UInt xGetSSE64         ( DistParam* pcDtParam );
+#if QT_BT_STRUCTURE
+  static UInt xGetSSE128         ( DistParam* pcDtParam );
+  static UInt xGetSSE256         ( DistParam* pcDtParam );
+#endif
   static UInt xGetSSE16N        ( DistParam* pcDtParam );
   
   static UInt xGetSAD           ( DistParam* pcDtParam );
@@ -217,13 +221,20 @@ private:
   static UInt xGetSAD16         ( DistParam* pcDtParam );
   static UInt xGetSAD32         ( DistParam* pcDtParam );
   static UInt xGetSAD64         ( DistParam* pcDtParam );
+#if QT_BT_STRUCTURE
+  static UInt xGetSAD128         ( DistParam* pcDtParam );
+  static UInt xGetSAD256         ( DistParam* pcDtParam );
+#endif
   static UInt xGetSAD16N        ( DistParam* pcDtParam );
   
 #if AMP_SAD
   static UInt xGetSAD12         ( DistParam* pcDtParam );
   static UInt xGetSAD24         ( DistParam* pcDtParam );
   static UInt xGetSAD48         ( DistParam* pcDtParam );
-
+#if QT_BT_STRUCTURE
+  static UInt xGetSAD96         ( DistParam* pcDtParam );
+  static UInt xGetSAD192         ( DistParam* pcDtParam );
+#endif
 #endif
 
   static UInt xGetHADs4         ( DistParam* pcDtParam );
@@ -232,6 +243,14 @@ private:
   static UInt xCalcHADs2x2      ( Pel *piOrg, Pel *piCurr, Int iStrideOrg, Int iStrideCur, Int iStep );
   static UInt xCalcHADs4x4      ( Pel *piOrg, Pel *piCurr, Int iStrideOrg, Int iStrideCur, Int iStep );
   static UInt xCalcHADs8x8      ( Pel *piOrg, Pel *piCurr, Int iStrideOrg, Int iStrideCur, Int iStep );
+#if QT_BT_STRUCTURE
+  static UInt xCalcHADs16x4     ( Pel *piOrg, Pel *piCurr, Int iStrideOrg, Int iStrideCur, Int iStep );
+  static UInt xCalcHADs4x16     ( Pel *piOrg, Pel *piCurr, Int iStrideOrg, Int iStrideCur, Int iStep );
+  static UInt xCalcHADs16x8     ( Pel *piOrg, Pel *piCurr, Int iStrideOrg, Int iStrideCur );
+  static UInt xCalcHADs8x16     ( Pel *piOrg, Pel *piCurr, Int iStrideOrg, Int iStrideCur );
+  static UInt xCalcHADs4x8     ( Pel *piOrg, Pel *piCurr, Int iStrideOrg, Int iStrideCur );
+  static UInt xCalcHADs8x4     ( Pel *piOrg, Pel *piCurr, Int iStrideOrg, Int iStrideCur );
+#endif
   
 public:
   UInt   getDistPart(Int bitDepth, Pel* piCur, Int iCurStride,  Pel* piOrg, Int iOrgStride, UInt uiBlkWidth, UInt uiBlkHeight, TextType eText = TEXT_LUMA, DFunc eDFunc = DF_SSE );

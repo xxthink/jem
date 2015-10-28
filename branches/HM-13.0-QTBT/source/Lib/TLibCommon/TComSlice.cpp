@@ -1396,7 +1396,9 @@ TComSPS::TComSPS()
 , m_uiMaxCUHeight             ( 32)
 , m_uiMaxCUDepth              (  3)
 , m_bLongTermRefsPresent      (false)
+#if !QT_BT_STRUCTURE
 , m_uiQuadtreeTULog2MaxSize   (  0)
+#endif
 , m_uiQuadtreeTULog2MinSize   (  0)
 , m_uiQuadtreeTUMaxDepthInter (  0)
 , m_uiQuadtreeTUMaxDepthIntra (  0)
@@ -1946,7 +1948,9 @@ Void TComScalingList::init()
       m_scalingListCoef[sizeId][listId] = new Int [min(MAX_MATRIX_COEF_NUM,(Int)g_scalingListSize[sizeId])];
     }
   }
+#if !QT_BT_STRUCTURE
   m_scalingListCoef[SCALING_LIST_32x32][3] = m_scalingListCoef[SCALING_LIST_32x32][1]; // copy address for 32x32
+#endif
 }
 
 /** destroy quantization matrix array
@@ -2126,3 +2130,4 @@ TComPTL::TComPTL()
 }
 
 //! \}
+

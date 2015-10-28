@@ -45,6 +45,9 @@
 
 //! \ingroup TLibCommon
 //! \{
+#if QT_BT_STRUCTURE
+class TComDataCU;
+#endif
 
 // ====================================================================================================================
 // Type definition
@@ -96,6 +99,9 @@ private:
   Char*     m_piRefIdx;
   UInt      m_uiNumPartition;
   AMVPInfo  m_cAMVPInfo;
+#if QT_BT_STRUCTURE
+  TComDataCU* m_pcCU;
+#endif
     
   template <typename T>
   Void setAll( T *p, T const & val, PartSize eCUMode, Int iPartAddr, UInt uiDepth, Int iPartIdx );
@@ -117,6 +123,9 @@ public:
 
   Void    clearMvField();
   
+#if QT_BT_STRUCTURE
+  Void    copyFromTo( TComCUMvField const * pcCUMvFieldSrc, Int iNumPart, Int iPartAddrSrc, Int iPartAddrDst );
+#endif
   Void    copyFrom( TComCUMvField const * pcCUMvFieldSrc, Int iNumPartSrc, Int iPartAddrDst );
   Void    copyTo  ( TComCUMvField* pcCUMvFieldDst, Int iPartAddrDst ) const;
   Void    copyTo  ( TComCUMvField* pcCUMvFieldDst, Int iPartAddrDst, UInt uiOffset, UInt uiNumPart ) const;
@@ -135,6 +144,15 @@ public:
   // set
   // ------------------------------------------------------------------------------------------------------------------
   
+#if QT_BT_STRUCTURE
+  Void    setCU(TComDataCU* pcCU) { m_pcCU = pcCU;}
+  Void    setMvd(TComMv cMvd, Int iIdx)
+  {
+    m_pcMvd[iIdx] = cMvd;
+  }
+  Void    setMv        ( TComMv  cMv,     Int iIdx) { m_pcMv    [iIdx] =  cMv ;     }
+  Void    setRefIdx    ( Int     iRefIdx, Int iIdx ) { m_piRefIdx[iIdx] = iRefIdx; }
+#endif
   Void    setAllMv     ( TComMv const & rcMv,         PartSize eCUMode, Int iPartAddr, UInt uiDepth, Int iPartIdx=0 );
   Void    setAllMvd    ( TComMv const & rcMvd,        PartSize eCUMode, Int iPartAddr, UInt uiDepth, Int iPartIdx=0 );
   Void    setAllRefIdx ( Int iRefIdx,                 PartSize eMbMode, Int iPartAddr, UInt uiDepth, Int iPartIdx=0 );

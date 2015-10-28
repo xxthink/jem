@@ -561,8 +561,13 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
     }
   }
 
+#if QT_BT_STRUCTURE
+  READ_UVLC( uiCode, "log2_min_coding_block_size_minus2" );      
+  Int log2MinCUSize = uiCode + MIN_CU_LOG2;
+#else
   READ_UVLC( uiCode, "log2_min_coding_block_size_minus3" );      
   Int log2MinCUSize = uiCode + 3;
+#endif
   pcSPS->setLog2MinCodingBlockSize(log2MinCUSize);
   READ_UVLC( uiCode, "log2_diff_max_min_coding_block_size" );
   pcSPS->setLog2DiffMaxMinCodingBlockSize(uiCode);
@@ -575,13 +580,18 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
   Int maxCUDepthDelta = uiCode;
   pcSPS->setMaxCUWidth  ( 1<<(log2MinCUSize + maxCUDepthDelta) ); 
   pcSPS->setMaxCUHeight ( 1<<(log2MinCUSize + maxCUDepthDelta) );
+#if QT_BT_STRUCTURE
+  READ_UVLC( uiCode, "log2_min_transform_block_size_minus2" );   pcSPS->setQuadtreeTULog2MinSize( uiCode + MIN_CU_LOG2 );
+#else
   READ_UVLC( uiCode, "log2_min_transform_block_size_minus2" );   pcSPS->setQuadtreeTULog2MinSize( uiCode + 2 );
-
   READ_UVLC( uiCode, "log2_diff_max_min_transform_block_size" ); pcSPS->setQuadtreeTULog2MaxSize( uiCode + pcSPS->getQuadtreeTULog2MinSize() );
+#endif
   pcSPS->setMaxTrSize( 1<<(uiCode + pcSPS->getQuadtreeTULog2MinSize()) );
 
+#if !QT_BT_STRUCTURE
   READ_UVLC( uiCode, "max_transform_hierarchy_depth_inter" );    pcSPS->setQuadtreeTUMaxDepthInter( uiCode+1 );
   READ_UVLC( uiCode, "max_transform_hierarchy_depth_intra" );    pcSPS->setQuadtreeTUMaxDepthIntra( uiCode+1 );
+#endif
 
   Int addCuDepth = max (0, log2MinCUSize - (Int)pcSPS->getQuadtreeTULog2MinSize() );
   pcSPS->setMaxCUDepth( maxCUDepthDelta + addCuDepth ); 
@@ -1163,6 +1173,21 @@ Void TDecCavlc::parseSliceHeader (TComSlice*& rpcSlice, ParameterSetManagerDecod
       xParsePredWeightTable(rpcSlice);
       rpcSlice->initWpScaling();
     }
+#if QT_BT_STRUCTURE
+    if (!rpcSlice->isIntra())
+    {
+      READ_UVLC(uiCode, "max_binary_tree_unit_size");
+      UInt maxCU = rpcSlice->getSPS()->getMaxCUWidth();
+      rpcSlice->setMaxBTSize(maxCU>>uiCode);
+      READ_UVLC(uiCode, "min_quadtree_unit_size");
+      rpcSlice->setMinQTSize(4<<uiCode);
+    }
+    else
+    {
+      rpcSlice->setMaxBTSize(MAX_BT_SIZE);
+      rpcSlice->setMinQTSize(MIN_QT_SIZE);
+    }
+#endif
     if (!rpcSlice->isIntra())
     {
       READ_UVLC( uiCode, "five_minus_max_num_merge_cand");
@@ -1443,6 +1468,13 @@ Void TDecCavlc::parseMVPIdx( Int& /*riMVPIdx*/ )
   assert(0);
 }
 
+#if QT_BT_STRUCTURE
+Void TDecCavlc::parseBTSplitMode     ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiWidth*/, UInt /*uiHeight*/ )
+{
+  assert(0);
+}
+#endif
+
 Void TDecCavlc::parseSplitFlag     ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/ )
 {
   assert(0);
@@ -1517,12 +1549,20 @@ Void TDecCavlc::parseCoeffNxN( TComDataCU* /*pcCU*/, TCoeff* /*pcCoef*/, UInt /*
   assert(0);
 }
 
+#if QT_BT_STRUCTURE
+Void TDecCavlc::parseTransformSubdivFlag( TextType , UInt& /*ruiSubdivFlag*/, UInt /*uiLog2TransformBlockSize*/ )
+#else
 Void TDecCavlc::parseTransformSubdivFlag( UInt& /*ruiSubdivFlag*/, UInt /*uiLog2TransformBlockSize*/ )
+#endif
 {
   assert(0);
 }
 
+#if QT_BT_STRUCTURE
+Void TDecCavlc::parseQtCbf( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, TextType /*eType*/ )
+#else
 Void TDecCavlc::parseQtCbf( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, TextType /*eType*/, UInt /*uiTrDepth*/, UInt /*uiDepth*/ )
+#endif
 {
   assert(0);
 }
@@ -1711,7 +1751,11 @@ Void TDecCavlc::xDecodeScalingList(TComScalingList *scalingList, UInt sizeId, UI
   Int data;
   Int scalingListDcCoefMinus8 = 0;
   Int nextCoef = SCALING_LIST_START_VALUE;
+#if QT_BT_STRUCTURE
+  UInt* scan  = (sizeId == 0) ? g_sigCoefScan [ SCAN_DIAG ] [ 2 ][ 2 ] :  g_sigCoefGroupScan[SCAN_DIAG][3][3]; //need to check
+#else
   UInt* scan  = (sizeId == 0) ? g_auiSigLastScan [ SCAN_DIAG ] [ 1 ] :  g_sigLastScanCG32x32;
+#endif
   Int *dst = scalingList->getScalingListAddress(sizeId, listId);
 
   if( sizeId > SCALING_LIST_8x8 )

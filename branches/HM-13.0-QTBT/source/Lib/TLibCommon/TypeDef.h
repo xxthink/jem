@@ -38,6 +38,60 @@
 #ifndef _TYPEDEF__
 #define _TYPEDEF__
 
+//definitions of QTBT
+#define QT_BT_STRUCTURE   1
+#define CTU_LOG2          7 //1<<CTU_LOG2: 64x64 or 128x128 
+#define MIN_CU_LOG2       2 //1<<MIN_CU_LOG2: 2x2 or 4x4
+
+#if MIN_CU_LOG2==1
+#define DF_MODIFY             1 //deblocking modifications
+#else
+#define DF_MODIFY             0
+#endif
+
+//QTBT high level parameters
+//for I slice luma CTB configuration para.
+#define MAX_BT_DEPTH   4      // <=7
+#define MAX_BT_SIZE    32     // [1<<MIN_QT_SIZE, 1<<CTU_LOG2]
+#define MIN_QT_SIZE    16      //
+#define MIN_BT_SIZE    4      // can be set down to 1<<MIN_CU_LOG2
+
+//for I slice chroma CTB configuration para. (in luma samples)
+#define MAX_BT_DEPTH_C         0      //<=7
+#define MAX_BT_SIZE_C          32     //[1<<MIN_QT_SIZE_C, 1<<CTU_LOG2]
+#define MIN_QT_SIZE_C          4     
+#define MIN_BT_SIZE_C          4     //can be set down to 4
+
+//for P/B slice CTU config. para.
+#define MAX_BT_DEPTH_INTER  4     //<=7
+#define MAX_BT_SIZE_INTER  128    //for initialization, [1<<MIN_BT_SIZE_INTER, 1<<CTU_LOG2]
+#define MIN_QT_SIZE_INTER  16     //for initialization
+#define MIN_BT_SIZE_INTER  4      //
+//end of QTBT high level parameters
+
+//fast algorithms
+#define AMAX_BT      1          //slice level adaptive maxBT for P/B slice
+#define AMAXBT_TH32  15.0
+#define AMAXBT_TH64  30.0
+#define AMIN_QT      1          //slice level adaptive minQT for P/B slice
+#define AMINQT_TH32  40.0
+
+#define SKIP_DEPTH   3
+#define SKIPHORNOVERQT_DEPTH_TH 2
+
+#define BT_RMV_REDUNDANT                        1  ///< Remove redundant BT structure for B/P slice
+
+#define MRG_FAST         1 //merge mode RDO, first SATD select <=3 candidates, then full RDO.
+  #define NUM_MRG_SATD_CAND    4
+  #define MRG_FAST_RATIO       1.25
+#define NEIGHBOR_FAST        1    
+#define PBINTRA_FAST    1   //Intra CU fast for B/P slice
+  #define PBINTRA_RATIO    1.1
+
+#define ITSKIP       1 //inverse transform not used for zero-line, for transform size > 32
+
+//end of QTBT definitions
+
 //! \ingroup TLibCommon
 //! \{
 #define BUGFIX_INTRAPERIOD 1
@@ -90,8 +144,10 @@
 
 #define FAST_BIT_EST                1   ///< G763: Table-based bit estimation for CABAC
 
+#if !QT_BT_STRUCTURE
 #define MLS_GRP_NUM                         64     ///< G644 : Max number of coefficient groups, max(16, 64)
 #define MLS_CG_SIZE                         4      ///< G644 : Coefficient group size of 4x4
+#endif
 
 #define ADAPTIVE_QP_SELECTION               1      ///< G382: Adaptive reconstruction levels, non-normative part for adaptive QP selection
 #if ADAPTIVE_QP_SELECTION
@@ -390,6 +446,61 @@ enum RefPicList
 /// distortion function index
 enum DFunc
 {
+#if QT_BT_STRUCTURE
+  DF_DEFAULT  = 0,
+  DF_SSE      ,      ///< general size SSE
+  DF_SSE4     ,      ///<   4xM SSE
+  DF_SSE8     ,      ///<   8xM SSE
+  DF_SSE16    ,      ///<  16xM SSE
+  DF_SSE32    ,      ///<  32xM SSE
+  DF_SSE64    ,      ///<  64xM SSE
+  DF_SSE128   ,      ///< 128xM SSE
+  DF_SSE256   ,      ///< 256xM SSE
+  DF_SSE16N   ,      ///< 16NxM SSE  
+
+  DF_SAD      ,      ///< general size SAD
+  DF_SAD4     ,      ///<   4xM SAD
+  DF_SAD8     ,     ///<   8xM SAD
+  DF_SAD16    ,     ///<  16xM SAD
+  DF_SAD32    ,     ///<  32xM SAD
+  DF_SAD64    ,     ///<  64xM SAD
+  DF_SAD128   ,      ///< 128xM SAD
+  DF_SAD256   ,      ///< 256xM SAD
+  DF_SAD16N   ,     ///< 16NxM SAD
+
+  DF_SADS     ,     ///< general size SAD with step
+  DF_SADS4    ,     ///<   4xM SAD with step
+  DF_SADS8    ,     ///<   8xM SAD with step
+  DF_SADS16   ,     ///<  16xM SAD with step
+  DF_SADS32   ,     ///<  32xM SAD with step
+  DF_SADS64   ,     ///<  64xM SAD with step
+  DF_SADS128   ,      ///< 128xM SAD with step
+  DF_SADS256   ,      ///< 256xM SAD with step
+  DF_SADS16N  ,     ///< 16NxM SAD with step
+
+  DF_HADS     ,     ///< general size Hadamard with step
+  DF_HADS4    ,     ///<   4xM HAD with step
+  DF_HADS8    ,     ///<   8xM HAD with step
+  DF_HADS16   ,     ///<  16xM HAD with step
+  DF_HADS32   ,     ///<  32xM HAD with step
+  DF_HADS64   ,     ///<  64xM HAD with step
+  DF_HADS128   ,      ///< 128xM HAD with step
+  DF_HADS256   ,      ///< 256xM HAD with step
+  DF_HADS16N  ,     ///< 16NxM HAD with step
+
+  DF_SAD12    ,//= 43,
+  DF_SAD24    ,//= 44,
+  DF_SAD48    ,//= 45,
+  DF_SAD96    ,
+  DF_SAD192    ,
+  DF_SADS12   ,//= 46,
+  DF_SADS24   ,//= 47,
+  DF_SADS48   ,//= 48,
+  DF_SADS96    ,
+  DF_SADS192    ,
+
+  DF_SSE_FRAME //= 50     ///< Frame-based SSE
+#else
   DF_DEFAULT  = 0,
   DF_SSE      = 1,      ///< general size SSE
   DF_SSE4     = 2,      ///<   4xM SSE
@@ -436,6 +547,7 @@ enum DFunc
 #else
   DF_SSE_FRAME = 33     ///< Frame-based SSE
 #endif
+#endif
 };
 
 /// index for SBAC based RD optimization
@@ -466,7 +578,19 @@ enum COEFF_SCAN_TYPE
   SCAN_DIAG = 0,         ///< up-right diagonal scan
   SCAN_HOR,              ///< horizontal first scan
   SCAN_VER               ///< vertical first scan
+#if QT_BT_STRUCTURE
+  ,NUM_COEFF_SCAN_TYPE
+#endif
 };
+
+#if QT_BT_STRUCTURE
+struct TranInfo 
+{
+  Int widthLog2;
+  Int heightLog2;
+};
+
+#endif
 
 namespace Profile
 {
