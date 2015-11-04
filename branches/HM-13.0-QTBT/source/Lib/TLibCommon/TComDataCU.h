@@ -90,7 +90,7 @@ private:
   UChar*        m_puhDepth;           ///< array of depths
 #endif
   Int           m_unitSize;           ///< size of a "minimum partition"
-
+  
   // -------------------------------------------------------------------------------------------------------------------
   // CU data
   // -------------------------------------------------------------------------------------------------------------------
@@ -246,6 +246,7 @@ public:
   Void          copyToPic             ( UChar uiDepth, UInt uiWidth, UInt uiHeight );
 #else
   Void          copyPartFrom          ( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth );
+  
   Void          copyToPic             ( UChar uiDepth );
   Void          copyToPic             ( UChar uiDepth, UInt uiPartIdx, UInt uiPartDepth );
 #endif
