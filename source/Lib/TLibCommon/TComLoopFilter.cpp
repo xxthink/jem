@@ -316,6 +316,7 @@ Void TComLoopFilter::xDeblockCU( TComDataCU* pcCU, UInt uiAbsZorderIdx, UInt uiD
 #else
   UInt uiPelsInPart = g_uiMaxCUWidth >> g_uiMaxCUDepth;
   UInt PartIdxIncr = DEBLOCK_SMALLEST_BLOCK / uiPelsInPart ? DEBLOCK_SMALLEST_BLOCK / uiPelsInPart : 1 ;
+  
   UInt uiSizeInPU = pcPic->getNumPartInWidth()>>(uiDepth);
   
   for ( UInt iEdge = 0; iEdge < uiSizeInPU ; iEdge+=PartIdxIncr)
@@ -782,7 +783,7 @@ Void TComLoopFilter::xEdgeFilterLuma( TComDataCU* pcCU, UInt uiAbsZorderIdx, UIn
           bPartPNoFilter = bPartPNoFilter || (pcCUP->isLosslessCoded(uiPartPIdx) );
           bPartQNoFilter = bPartQNoFilter || (pcCUQ->isLosslessCoded(uiPartQIdx) );
         }
-    
+
         if (d < iBeta)
         { 
           Bool bFilterP = (dp < iSideThreshold);

@@ -100,6 +100,7 @@ public:
   Void    create            ( UInt iWidth, UInt iHeight );  ///< Create  YUV buffer
   Void    destroy           ();                             ///< Destroy YUV buffer
   Void    clear             ();                             ///< clear   YUV buffer
+  
   // ------------------------------------------------------------------------------------------------------------------
   //  Copy, load, store YUV buffer
   // ------------------------------------------------------------------------------------------------------------------

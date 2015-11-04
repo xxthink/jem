@@ -1,38 +1,38 @@
 /* The copyright in this software is being made available under the BSD
-* License, included below. This software may be subject to other third party
-* and contributor rights, including patent rights, and no such rights are
-* granted under this license.  
-*
-* Copyright (c) 2010-2014, ITU/ISO/IEC
-* All rights reserved.
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions are met:
-*
-*  * Redistributions of source code must retain the above copyright notice,
-*    this list of conditions and the following disclaimer.
-*  * Redistributions in binary form must reproduce the above copyright notice,
-*    this list of conditions and the following disclaimer in the documentation
-*    and/or other materials provided with the distribution.
-*  * Neither the name of the ITU/ISO/IEC nor the names of its contributors may
-*    be used to endorse or promote products derived from this software without
-*    specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-* ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS
-* BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-* CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-* SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-* INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-* CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-* ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
-* THE POSSIBILITY OF SUCH DAMAGE.
-*/
+ * License, included below. This software may be subject to other third party
+ * and contributor rights, including patent rights, and no such rights are
+ * granted under this license.  
+ *
+ * Copyright (c) 2010-2014, ITU/ISO/IEC
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ *  * Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ *  * Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *  * Neither the name of the ITU/ISO/IEC nor the names of its contributors may
+ *    be used to endorse or promote products derived from this software without
+ *    specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 /** \file     TComPrediction.cpp
-\brief    prediction class
+    \brief    prediction class
 */
 
 #include <memory.h>
@@ -54,7 +54,7 @@ TComPrediction::TComPrediction()
 
 TComPrediction::~TComPrediction()
 {
-
+  
   delete[] m_piYuvExt;
 
   m_acYuvPred[0].destroy();
@@ -66,7 +66,7 @@ TComPrediction::~TComPrediction()
   {
     delete [] m_pLumaRecBuffer;
   }
-
+  
   Int i, j;
   for (i = 0; i < 4; i++)
   {
@@ -179,31 +179,31 @@ Pel TComPrediction::predIntraGetPredValDC( Int* pSrc, Int iSrcStride, UInt iWidt
   {
     pDcVal = pSrc[-1]; // Default DC value already calculated and placed in the prediction array if no neighbors are available
   }
-
+  
   return pDcVal;
 }
 
 // Function for deriving the angular Intra predictions
 
 /** Function for deriving the simplified angular intra predictions.
-* \param pSrc pointer to reconstructed sample array
-* \param srcStride the stride of the reconstructed sample array
-* \param rpDst reference to pointer for the prediction sample array
-* \param dstStride the stride of the prediction sample array
-* \param width the width of the block
-* \param height the height of the block
-* \param dirMode the intra prediction mode index
-* \param blkAboveAvailable boolean indication if the block above is available
-* \param blkLeftAvailable boolean indication if the block to the left is available
-*
-* This function derives the prediction samples for the angular mode based on the prediction direction indicated by
-* the prediction mode index. The prediction direction is given by the displacement of the bottom row of the block and
-* the reference row above the block in the case of vertical prediction or displacement of the rightmost column
-* of the block and reference column left from the block in the case of the horizontal prediction. The displacement
-* is signalled at 1/32 pixel accuracy. When projection of the predicted pixel falls inbetween reference samples,
-* the predicted value for the pixel is linearly interpolated from the reference samples. All reference samples are taken
-* from the extended main reference.
-*/
+ * \param pSrc pointer to reconstructed sample array
+ * \param srcStride the stride of the reconstructed sample array
+ * \param rpDst reference to pointer for the prediction sample array
+ * \param dstStride the stride of the prediction sample array
+ * \param width the width of the block
+ * \param height the height of the block
+ * \param dirMode the intra prediction mode index
+ * \param blkAboveAvailable boolean indication if the block above is available
+ * \param blkLeftAvailable boolean indication if the block to the left is available
+ *
+ * This function derives the prediction samples for the angular mode based on the prediction direction indicated by
+ * the prediction mode index. The prediction direction is given by the displacement of the bottom row of the block and
+ * the reference row above the block in the case of vertical prediction or displacement of the rightmost column
+ * of the block and reference column left from the block in the case of the horizontal prediction. The displacement
+ * is signalled at 1/32 pixel accuracy. When projection of the predicted pixel falls inbetween reference samples,
+ * the predicted value for the pixel is linearly interpolated from the reference samples. All reference samples are taken
+ * from the extended main reference.
+ */
 Void TComPrediction::xPredIntraAng(Int bitDepth, Int* pSrc, Int srcStride, Pel*& rpDst, Int dstStride, UInt width, UInt height, UInt dirMode, Bool blkAboveAvailable, Bool blkLeftAvailable, Bool bFilter )
 {
   Int k,l;
@@ -514,9 +514,9 @@ Void TComPrediction::predIntraChromaAng( Int* piSrc, UInt uiDirMode, Pel* piPred
 }
 
 /** Function for checking identical motion.
-* \param TComDataCU* pcCU
-* \param UInt PartAddr
-*/
+ * \param TComDataCU* pcCU
+ * \param UInt PartAddr
+ */
 Bool TComPrediction::xCheckIdenticalMotion ( TComDataCU* pcCU, UInt PartAddr )
 {
   if( pcCU->getSlice()->isInterB() && !pcCU->getSlice()->getPPS()->getWPBiPred() )
@@ -644,7 +644,7 @@ Void TComPrediction::xPredInterBi ( TComDataCU* pcCU, UInt uiPartAddr, Int iWidt
     else
     {
       if ( ( pcCU->getSlice()->getPPS()->getUseWP()       && pcCU->getSlice()->getSliceType() == P_SLICE ) || 
-        ( pcCU->getSlice()->getPPS()->getWPBiPred() && pcCU->getSlice()->getSliceType() == B_SLICE ) )
+           ( pcCU->getSlice()->getPPS()->getWPBiPred() && pcCU->getSlice()->getSliceType() == B_SLICE ) )
       {
         xPredInterUni ( pcCU, uiPartAddr, iWidth, iHeight, eRefPicList, pcMbYuv, true );
       }
@@ -670,26 +670,26 @@ Void TComPrediction::xPredInterBi ( TComDataCU* pcCU, UInt uiPartAddr, Int iWidt
 }
 
 /**
-* \brief Generate motion-compensated luma block
-*
-* \param cu       Pointer to current CU
-* \param refPic   Pointer to reference picture
-* \param partAddr Address of block within CU
-* \param mv       Motion vector
-* \param width    Width of block
-* \param height   Height of block
-* \param dstPic   Pointer to destination picture
-* \param bi       Flag indicating whether bipred is used
-*/
+ * \brief Generate motion-compensated luma block
+ *
+ * \param cu       Pointer to current CU
+ * \param refPic   Pointer to reference picture
+ * \param partAddr Address of block within CU
+ * \param mv       Motion vector
+ * \param width    Width of block
+ * \param height   Height of block
+ * \param dstPic   Pointer to destination picture
+ * \param bi       Flag indicating whether bipred is used
+ */
 Void TComPrediction::xPredInterLumaBlk( TComDataCU *cu, TComPicYuv *refPic, UInt partAddr, TComMv *mv, Int width, Int height, TComYuv *&dstPic, Bool bi )
 {
   Int refStride = refPic->getStride();  
   Int refOffset = ( mv->getHor() >> 2 ) + ( mv->getVer() >> 2 ) * refStride;
   Pel *ref      = refPic->getLumaAddr( cu->getAddr(), cu->getZorderIdxInCU() + partAddr ) + refOffset;
-
+  
   Int dstStride = dstPic->getStride();
   Pel *dst      = dstPic->getLumaAddr( partAddr );
-
+  
   Int xFrac = mv->getHor() & 0x3;
   Int yFrac = mv->getVer() & 0x3;
 
@@ -715,42 +715,42 @@ Void TComPrediction::xPredInterLumaBlk( TComDataCU *cu, TComPicYuv *refPic, UInt
 }
 
 /**
-* \brief Generate motion-compensated chroma block
-*
-* \param cu       Pointer to current CU
-* \param refPic   Pointer to reference picture
-* \param partAddr Address of block within CU
-* \param mv       Motion vector
-* \param width    Width of block
-* \param height   Height of block
-* \param dstPic   Pointer to destination picture
-* \param bi       Flag indicating whether bipred is used
-*/
+ * \brief Generate motion-compensated chroma block
+ *
+ * \param cu       Pointer to current CU
+ * \param refPic   Pointer to reference picture
+ * \param partAddr Address of block within CU
+ * \param mv       Motion vector
+ * \param width    Width of block
+ * \param height   Height of block
+ * \param dstPic   Pointer to destination picture
+ * \param bi       Flag indicating whether bipred is used
+ */
 Void TComPrediction::xPredInterChromaBlk( TComDataCU *cu, TComPicYuv *refPic, UInt partAddr, TComMv *mv, Int width, Int height, TComYuv *&dstPic, Bool bi )
 {
   Int     refStride  = refPic->getCStride();
   Int     dstStride  = dstPic->getCStride();
-
+  
   Int     refOffset  = (mv->getHor() >> 3) + (mv->getVer() >> 3) * refStride;
-
+  
   Pel*    refCb     = refPic->getCbAddr( cu->getAddr(), cu->getZorderIdxInCU() + partAddr ) + refOffset;
   Pel*    refCr     = refPic->getCrAddr( cu->getAddr(), cu->getZorderIdxInCU() + partAddr ) + refOffset;
-
+  
   Pel* dstCb = dstPic->getCbAddr( partAddr );
   Pel* dstCr = dstPic->getCrAddr( partAddr );
-
+  
   Int     xFrac  = mv->getHor() & 0x7;
   Int     yFrac  = mv->getVer() & 0x7;
   UInt    cxWidth  = width  >> 1;
   UInt    cxHeight = height >> 1;
-
+  
   Int     extStride = m_filteredBlockTmp[0].getStride();
   Short*  extY      = m_filteredBlockTmp[0].getLumaAddr();
-
+  
   Int filterSize = NTAPS_CHROMA;
-
+  
   Int halfFilterSize = (filterSize>>1);
-
+  
   if ( yFrac == 0 )
   {
     m_if.filterHorChroma(refCb, refStride, dstCb,  dstStride, cxWidth, cxHeight, xFrac, !bi);    
@@ -765,7 +765,7 @@ Void TComPrediction::xPredInterChromaBlk( TComDataCU *cu, TComPicYuv *refPic, UI
   {
     m_if.filterHorChroma(refCb - (halfFilterSize-1)*refStride, refStride, extY,  extStride, cxWidth, cxHeight+filterSize-1, xFrac, false);
     m_if.filterVerChroma(extY  + (halfFilterSize-1)*extStride, extStride, dstCb, dstStride, cxWidth, cxHeight  , yFrac, false, !bi);
-
+    
     m_if.filterHorChroma(refCr - (halfFilterSize-1)*refStride, refStride, extY,  extStride, cxWidth, cxHeight+filterSize-1, xFrac, false);
     m_if.filterVerChroma(extY  + (halfFilterSize-1)*extStride, extStride, dstCr, dstStride, cxWidth, cxHeight  , yFrac, false, !bi);    
   }
@@ -811,15 +811,15 @@ Void TComPrediction::getMvPredAMVP( TComDataCU* pcCU, UInt uiPartIdx, UInt uiPar
 }
 
 /** Function for deriving planar intra prediction.
-* \param pSrc pointer to reconstructed sample array
-* \param srcStride the stride of the reconstructed sample array
-* \param rpDst reference to pointer for the prediction sample array
-* \param dstStride the stride of the prediction sample array
-* \param width the width of the block
-* \param height the height of the block
-*
-* This function derives the prediction samples for planar mode (intra coding).
-*/
+ * \param pSrc pointer to reconstructed sample array
+ * \param srcStride the stride of the reconstructed sample array
+ * \param rpDst reference to pointer for the prediction sample array
+ * \param dstStride the stride of the prediction sample array
+ * \param width the width of the block
+ * \param height the height of the block
+ *
+ * This function derives the prediction samples for planar mode (intra coding).
+ */
 Void TComPrediction::xPredIntraPlanar( Int* pSrc, Int srcStride, Pel* rpDst, Int dstStride, UInt width, UInt height )
 {
 #if !QT_BT_STRUCTURE
@@ -890,15 +890,15 @@ Void TComPrediction::xPredIntraPlanar( Int* pSrc, Int srcStride, Pel* rpDst, Int
 }
 
 /** Function for filtering intra DC predictor.
-* \param pSrc pointer to reconstructed sample array
-* \param iSrcStride the stride of the reconstructed sample array
-* \param rpDst reference to pointer for the prediction sample array
-* \param iDstStride the stride of the prediction sample array
-* \param iWidth the width of the block
-* \param iHeight the height of the block
-*
-* This function performs filtering left and top edges of the prediction samples for DC mode (intra coding).
-*/
+ * \param pSrc pointer to reconstructed sample array
+ * \param iSrcStride the stride of the reconstructed sample array
+ * \param rpDst reference to pointer for the prediction sample array
+ * \param iDstStride the stride of the prediction sample array
+ * \param iWidth the width of the block
+ * \param iHeight the height of the block
+ *
+ * This function performs filtering left and top edges of the prediction samples for DC mode (intra coding).
+ */
 Void TComPrediction::xDCPredFiltering( Int* pSrc, Int iSrcStride, Pel*& rpDst, Int iDstStride, Int iWidth, Int iHeight )
 {
   Pel* pDst = rpDst;

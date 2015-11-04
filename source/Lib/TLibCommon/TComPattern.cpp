@@ -1,38 +1,38 @@
 /* The copyright in this software is being made available under the BSD
-* License, included below. This software may be subject to other third party
-* and contributor rights, including patent rights, and no such rights are
-* granted under this license.  
-*
-* Copyright (c) 2010-2014, ITU/ISO/IEC
-* All rights reserved.
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions are met:
-*
-*  * Redistributions of source code must retain the above copyright notice,
-*    this list of conditions and the following disclaimer.
-*  * Redistributions in binary form must reproduce the above copyright notice,
-*    this list of conditions and the following disclaimer in the documentation
-*    and/or other materials provided with the distribution.
-*  * Neither the name of the ITU/ISO/IEC nor the names of its contributors may
-*    be used to endorse or promote products derived from this software without
-*    specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-* ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS
-* BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-* CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-* SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-* INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-* CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-* ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
-* THE POSSIBILITY OF SUCH DAMAGE.
-*/
+ * License, included below. This software may be subject to other third party
+ * and contributor rights, including patent rights, and no such rights are
+ * granted under this license.  
+ *
+ * Copyright (c) 2010-2014, ITU/ISO/IEC
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ *  * Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ *  * Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *  * Neither the name of the ITU/ISO/IEC nor the names of its contributors may
+ *    be used to endorse or promote products derived from this software without
+ *    specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 /** \file     TComPattern.cpp
-\brief    neighbouring pixel access classes
+    \brief    neighbouring pixel access classes
 */
 
 #include "TComPic.h"
@@ -55,12 +55,12 @@ const UChar TComPattern::m_aucIntraFilter[5] =
 #if QT_BT_STRUCTURE
   10, //2x2
 #endif
-    10, //4x4
-    7, //8x8
-    1, //16x16
-    0, //32x32
+  10, //4x4
+  7, //8x8
+  1, //16x16
+  0, //32x32
 #if CTU_LOG2 > 5
-    10, //64x64
+  10, //64x64
 #endif
 };
 
@@ -69,12 +69,12 @@ const UChar TComPattern::m_aucIntraFilter[5] =
 // ====================================================================================================================
 
 /** \param  piTexture     pixel data
-\param  iRoiWidth     pattern width
-\param  iRoiHeight    pattern height
-\param  iStride       buffer stride
-\param  iOffsetLeft   neighbour offset (left)
-\param  iOffsetAbove  neighbour offset (above)
-*/
+ \param  iRoiWidth     pattern width
+ \param  iRoiHeight    pattern height
+ \param  iStride       buffer stride
+ \param  iOffsetLeft   neighbour offset (left)
+ \param  iOffsetAbove  neighbour offset (above)
+ */
 Void TComPatternParam::setPatternParamPel ( Pel* piTexture,
                                            Int iRoiWidth,
                                            Int iRoiHeight,
@@ -91,15 +91,15 @@ Void TComPatternParam::setPatternParamPel ( Pel* piTexture,
 }
 
 /**
-\param  pcCU          CU data structure
-\param  iComp         component index (0=Y, 1=Cb, 2=Cr)
-\param  iRoiWidth     pattern width
-\param  iRoiHeight    pattern height
-\param  iStride       buffer stride
-\param  iOffsetLeft   neighbour offset (left)
-\param  iOffsetAbove  neighbour offset (above)
-\param  uiAbsPartIdx  part index
-*/
+ \param  pcCU          CU data structure
+ \param  iComp         component index (0=Y, 1=Cb, 2=Cr)
+ \param  iRoiWidth     pattern width
+ \param  iRoiHeight    pattern height
+ \param  iStride       buffer stride
+ \param  iOffsetLeft   neighbour offset (left)
+ \param  iOffsetAbove  neighbour offset (above)
+ \param  uiAbsPartIdx  part index
+ */
 Void TComPatternParam::setPatternParamCU( TComDataCU* pcCU,
                                          UChar       iComp,
                                          UChar       iRoiWidth,
@@ -110,12 +110,12 @@ Void TComPatternParam::setPatternParamCU( TComDataCU* pcCU,
 {
   m_iOffsetLeft   = iOffsetLeft;
   m_iOffsetAbove  = iOffsetAbove;
-
+  
   m_iROIWidth     = iRoiWidth;
   m_iROIHeight    = iRoiHeight;
-
+  
   UInt uiAbsZorderIdx = pcCU->getZorderIdxInCU() + uiAbsPartIdx;
-
+  
   if ( iComp == 0 )
   {
     m_iPatternStride  = pcCU->getPic()->getStride();
@@ -151,7 +151,7 @@ Void TComPattern::initPattern ( Pel* piY,
   m_cPatternY. setPatternParamPel( piY,  iRoiWidth,      iRoiHeight,      iStride,      iOffsetLeft,      iOffsetAbove      );
   m_cPatternCb.setPatternParamPel( piCb, iRoiWidth >> 1, iRoiHeight >> 1, iStride >> 1, iOffsetLeft >> 1, iOffsetAbove >> 1 );
   m_cPatternCr.setPatternParamPel( piCr, iRoiWidth >> 1, iRoiHeight >> 1, iStride >> 1, iOffsetLeft >> 1, iOffsetAbove >> 1 );
-
+  
   return;
 }
 
@@ -163,14 +163,14 @@ Void TComPattern::initPattern( TComDataCU* pcCU, UInt uiPartDepth, UInt uiAbsPar
 {
   Int   uiOffsetLeft  = 0;
   Int   uiOffsetAbove = 0;
-
+  
 #if QT_BT_STRUCTURE
   UInt  uiCurrPicPelX    = pcCU->getCUPelX() ;
   UInt  uiCurrPicPelY    = pcCU->getCUPelY() ;
 #else
   UChar uiWidth          = pcCU->getWidth (0)>>uiPartDepth;
   UChar uiHeight         = pcCU->getHeight(0)>>uiPartDepth;
-
+  
   UInt  uiAbsZorderIdx   = pcCU->getZorderIdxInCU() + uiAbsPartIdx;
   UInt  uiCurrPicPelX    = pcCU->getCUPelX() + g_auiRasterToPelX[ g_auiZscanToRaster[uiAbsZorderIdx] ];
   UInt  uiCurrPicPelY    = pcCU->getCUPelY() + g_auiRasterToPelY[ g_auiZscanToRaster[uiAbsZorderIdx] ];
@@ -180,12 +180,12 @@ Void TComPattern::initPattern( TComDataCU* pcCU, UInt uiPartDepth, UInt uiAbsPar
   {
     uiOffsetLeft = 1;
   }
-
+  
   if( uiCurrPicPelY != 0 )
   {
     uiOffsetAbove = 1;
   }
-
+  
   m_cPatternY .setPatternParamCU( pcCU, 0, uiWidth,      uiHeight,      uiOffsetLeft, uiOffsetAbove, uiAbsPartIdx );
   m_cPatternCb.setPatternParamCU( pcCU, 1, uiWidth >> 1, uiHeight >> 1, uiOffsetLeft, uiOffsetAbove, uiAbsPartIdx );
   m_cPatternCr.setPatternParamCU( pcCU, 2, uiWidth >> 1, uiHeight >> 1, uiOffsetLeft, uiOffsetAbove, uiAbsPartIdx );
@@ -218,7 +218,7 @@ Void TComPattern::initAdiPattern( TComDataCU* pcCU, UInt uiZorderIdxInPart, UInt
   Int   iTotalUnits = 0;
   Bool  bNeighborFlags[4 * MAX_NUM_SPU_W + 1];
   Int   iNumIntraNeighbor = 0;
-
+  
   UInt uiPartIdxLT, uiPartIdxRT, uiPartIdxLB;
 
 #if QT_BT_STRUCTURE
@@ -242,7 +242,7 @@ Void TComPattern::initAdiPattern( TComDataCU* pcCU, UInt uiZorderIdxInPart, UInt
 #else
   pcCU->deriveLeftRightTopIdxAdi( uiPartIdxLT, uiPartIdxRT, uiZorderIdxInPart, uiPartDepth );
   pcCU->deriveLeftBottomIdxAdi  ( uiPartIdxLB,              uiZorderIdxInPart, uiPartDepth );
-
+  
   iUnitSize      = g_uiMaxCUWidth >> g_uiMaxCUDepth;
   iNumUnitsInCu  = uiCuWidth / iUnitSize;
   iTotalUnits    = (iNumUnitsInCu << 2) + 1;
@@ -253,24 +253,24 @@ Void TComPattern::initAdiPattern( TComDataCU* pcCU, UInt uiZorderIdxInPart, UInt
   iNumIntraNeighbor  += isAboveRightAvailable( pcCU, uiPartIdxLT, uiPartIdxRT, bNeighborFlags+(iNumUnitsInCu*3)+1 );
   iNumIntraNeighbor  += isLeftAvailable      ( pcCU, uiPartIdxLT, uiPartIdxLB, bNeighborFlags+(iNumUnitsInCu*2)-1 );
   iNumIntraNeighbor  += isBelowLeftAvailable ( pcCU, uiPartIdxLT, uiPartIdxLB, bNeighborFlags+ iNumUnitsInCu   -1 );
-
+  
   bAbove = true;
   bLeft  = true;
 #endif
 
   uiWidth=uiCuWidth2+1;
   uiHeight=uiCuHeight2+1;
-
+  
   if (((uiWidth<<2)>iOrgBufStride)||((uiHeight<<2)>iOrgBufHeight))
   {
     return;
   }
-
+  
   piRoiOrigin = pcCU->getPic()->getPicYuvRec()->getLumaAddr(pcCU->getAddr(), pcCU->getZorderIdxInCU()+uiZorderIdxInPart);
   piAdiTemp   = piAdiBuf;
 
   fillReferenceSamples (g_bitDepthY, piRoiOrigin, piAdiTemp, bNeighborFlags, iNumIntraNeighbor, iUnitSize, iNumUnitsInCu, iTotalUnits, uiCuWidth, uiCuHeight, uiWidth, uiHeight, iPicStride, bLMmode);
-
+  
   Int   i;
   // generate filtered intra prediction samples
   Int iBufSize = uiCuHeight2 + uiCuWidth2 + 1;  // left and left above border + above and above right border + top left corner = length of 3. filter buffer
@@ -328,7 +328,7 @@ Void TComPattern::initAdiPattern( TComDataCU* pcCU, UInt uiZorderIdxInPart, UInt
       {
         piFilterBufN[i] = ((uiCuHeight2-i)*bottomLeft + i*topLeft + uiCuHeight) >> shift;
       }
-
+  
       for (i = 1; i < uiCuWidth2; i++)
       {
         piFilterBufN[uiCuHeight2 + i] = ((uiCuWidth2-i)*topLeft + i*topRight + uiCuWidth) >> shift;
@@ -392,7 +392,7 @@ Void TComPattern::initAdiPatternChroma( TComDataCU* pcCU, UInt uiZorderIdxInPart
   Int   iTotalUnits = 0;
   Bool  bNeighborFlags[4 * MAX_NUM_SPU_W + 1];
   Int   iNumIntraNeighbor = 0;
-
+  
   UInt uiPartIdxLT, uiPartIdxRT, uiPartIdxLB;
 
 #if QT_BT_STRUCTURE
@@ -402,7 +402,7 @@ Void TComPattern::initAdiPatternChroma( TComDataCU* pcCU, UInt uiZorderIdxInPart
   pcCU->deriveLeftRightTopIdxAdi( uiPartIdxLT, uiPartIdxRT, uiZorderIdxInPart, uiPartDepth );
   pcCU->deriveLeftBottomIdxAdi  ( uiPartIdxLB,              uiZorderIdxInPart, uiPartDepth );
 #endif
-
+  
   iUnitSize      = (g_uiMaxCUWidth >> g_uiMaxCUDepth) >> 1; // for chroma
 #if QT_BT_STRUCTURE
   Int iNumUnitsInWidth = (uiCuWidth / iUnitSize)>>1;
@@ -436,32 +436,32 @@ Void TComPattern::initAdiPatternChroma( TComDataCU* pcCU, UInt uiZorderIdxInPart
   iNumIntraNeighbor  += isAboveRightAvailable( pcCU, uiPartIdxLT, uiPartIdxRT, bNeighborFlags+(iNumUnitsInCu*3)+1 );
   iNumIntraNeighbor  += isLeftAvailable      ( pcCU, uiPartIdxLT, uiPartIdxLB, bNeighborFlags+(iNumUnitsInCu*2)-1 );
   iNumIntraNeighbor  += isBelowLeftAvailable ( pcCU, uiPartIdxLT, uiPartIdxLB, bNeighborFlags+ iNumUnitsInCu   -1 );
-
+  
   bAbove = true;
   bLeft  = true;
-
+  
   uiCuWidth=uiCuWidth>>1;  // for chroma
   uiCuHeight=uiCuHeight>>1;  // for chroma
-
+  
   uiWidth=uiCuWidth*2+1;
   uiHeight=uiCuHeight*2+1;
 #endif
-
+  
   if ((4*uiWidth>iOrgBufStride)||(4*uiHeight>iOrgBufHeight))
   {
     return;
   }
-
+  
   // get Cb pattern
   piRoiOrigin = pcCU->getPic()->getPicYuvRec()->getCbAddr(pcCU->getAddr(), pcCU->getZorderIdxInCU()+uiZorderIdxInPart);
   piAdiTemp   = piAdiBuf;
 
   fillReferenceSamples (g_bitDepthC, piRoiOrigin, piAdiTemp, bNeighborFlags, iNumIntraNeighbor, iUnitSize, iNumUnitsInCu, iTotalUnits, uiCuWidth, uiCuHeight, uiWidth, uiHeight, iPicStride);
-
+  
   // get Cr pattern
   piRoiOrigin = pcCU->getPic()->getPicYuvRec()->getCrAddr(pcCU->getAddr(), pcCU->getZorderIdxInCU()+uiZorderIdxInPart);
   piAdiTemp   = piAdiBuf+uiWidth*uiHeight;
-
+  
   fillReferenceSamples (g_bitDepthC, piRoiOrigin, piAdiTemp, bNeighborFlags, iNumIntraNeighbor, iUnitSize, iNumUnitsInCu, iTotalUnits, uiCuWidth, uiCuHeight, uiWidth, uiHeight, iPicStride);
 }
 
@@ -520,7 +520,7 @@ Void TComPattern::fillReferenceSamples(Int bitDepth, Pel* piRoiOrigin, Int* piAd
     {
       piAdiTemp[1+i] = piRoiTemp[i];
     }
-
+    
     // Fill top right border with rec. samples
     piRoiTemp = piRoiOrigin - iPicStride + uiCuWidth;
 #if QT_BT_STRUCTURE
@@ -551,7 +551,7 @@ Void TComPattern::fillReferenceSamples(Int bitDepth, Pel* piRoiOrigin, Int* piAd
     {
       piAdiLine[i] = iDCValue;
     }
-
+    
     // Fill top-left sample
     piRoiTemp = piRoiOrigin - iPicStride - 1;
     piAdiLineTemp = piAdiLine + (iNumUnits2*iUnitSize);
@@ -714,13 +714,13 @@ Int* TComPattern::getAdiCrBuf(Int iCuWidth,Int iCuHeight, Int* piAdiBuf)
 }
 
 /** Get pointer to reference samples for intra prediction
-* \param uiDirMode   prediction mode index
-* \param log2BlkSize size of block (2 = 4x4, 3 = 8x8, 4 = 16x16, 5 = 32x32, 6 = 64x64)
-* \param piAdiBuf    pointer to unfiltered reference samples
-* \return            pointer to (possibly filtered) reference samples
-*
-* The prediction mode index is used to determine whether a smoothed reference sample buffer is returned.
-*/
+ * \param uiDirMode   prediction mode index
+ * \param log2BlkSize size of block (2 = 4x4, 3 = 8x8, 4 = 16x16, 5 = 32x32, 6 = 64x64)
+ * \param piAdiBuf    pointer to unfiltered reference samples
+ * \return            pointer to (possibly filtered) reference samples
+ *
+ * The prediction mode index is used to determine whether a smoothed reference sample buffer is returned.
+ */
 #if QT_BT_STRUCTURE
 Int* TComPattern::getPredictorPtr( UInt uiDirMode, UInt uiLog2BlkWidth, UInt uiLog2BlkHeight, Int* piAdiBuf )
 #else
@@ -752,7 +752,7 @@ Int* TComPattern::getPredictorPtr( UInt uiDirMode, UInt log2BlkSize, Int* piAdiB
   Int width  = 1 << log2BlkSize;
   Int height = 1 << log2BlkSize;
 #endif
-
+  
   piSrc = getAdiOrgBuf( width, height, piAdiBuf );
 
   if ( ucFiltIdx )
