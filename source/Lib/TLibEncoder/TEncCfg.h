@@ -432,6 +432,9 @@ protected:
 #if VCEG_AZ05_ROT_TR
   Bool      m_useROT;
 #endif
+#if COM16_C1016_AFFINE
+  Bool      m_useAffine;
+#endif
  std::string m_summaryOutFilename;                           ///< filename to use for producing summary output file.
   std::string m_summaryPicFilenameBase;                       ///< Base filename to use for producing summary picture output files. The actual filenames used will have I.txt, P.txt and B.txt appended.
   UInt        m_summaryVerboseness;                           ///< Specifies the level of the verboseness of the text output.
@@ -1077,6 +1080,10 @@ public:
 #if VCEG_AZ05_ROT_TR
   Bool getUseROT ()                                             { return m_useROT;        }
   Void setUseROT ( Bool b )                                     { m_useROT  = b;       }
+#endif
+#if COM16_C1016_AFFINE
+  Bool getUseAffine()                                           { return m_useAffine; }
+  Void setUseAffine(Bool b)                                     { m_useAffine = b;    }
 #endif
 };
 

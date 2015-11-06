@@ -74,6 +74,10 @@
 #define NUM_OBMC_FLAG_CTX             1       ///< number of context models for OBMC flag
 #endif
 
+#if COM16_C1016_AFFINE
+#define NUM_AFFINE_FLAG_CTX           3       ///< number of context models for affine flag
+#endif
+
 #if VCEG_AZ07_IMV
 #define NUM_IMV_FLAG_CTX              3       ///< number of context models for iMV flag
 #endif
@@ -349,6 +353,16 @@ INIT_OBMC_FLAG[NUMBER_OF_SLICE_TYPES][NUM_OBMC_FLAG_CTX] =
   { 201, }, 
   { 201, }, 
   { CNU, }, 
+};
+#endif
+
+#if COM16_C1016_AFFINE
+static const UChar 
+INIT_AFFINE_FLAG[3][NUM_AFFINE_FLAG_CTX] =  
+{
+  { 197,  185,  201, }, 
+  { 197,  185,  201, }, 
+  { CNU,  CNU,  CNU, }, 
 };
 #endif
 

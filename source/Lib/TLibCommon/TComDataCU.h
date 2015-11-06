@@ -187,6 +187,10 @@ private:
   UChar*        m_puhEmtCuFlag;       ///< array of CU-level flags enabling EMT
 #endif
 
+#if COM16_C1016_AFFINE
+  Bool*         m_affineFlag;         ///< array of affine flags
+#endif
+
   // -------------------------------------------------------------------------------------------------------------------
   // misc. variables
   // -------------------------------------------------------------------------------------------------------------------
@@ -202,8 +206,16 @@ private:
 protected:
 
   /// add possible motion vector predictor candidates
-  Bool          xAddMVPCand           ( AMVPInfo* pInfo, RefPicList eRefPicList, Int iRefIdx, UInt uiPartUnitIdx, MVP_DIR eDir );
-  Bool          xAddMVPCandOrder      ( AMVPInfo* pInfo, RefPicList eRefPicList, Int iRefIdx, UInt uiPartUnitIdx, MVP_DIR eDir );
+  Bool          xAddMVPCand           ( AMVPInfo* pInfo, RefPicList eRefPicList, Int iRefIdx, UInt uiPartUnitIdx, MVP_DIR eDir
+#if COM16_C1016_AFFINE
+    , bool bAffine=false
+#endif
+    );
+  Bool          xAddMVPCandOrder      ( AMVPInfo* pInfo, RefPicList eRefPicList, Int iRefIdx, UInt uiPartUnitIdx, MVP_DIR eDir 
+#if COM16_C1016_AFFINE
+    , bool bAffine=false
+#endif
+    );
 
   Void          deriveRightBottomIdx        ( UInt uiPartIdx, UInt& ruiPartIdxRB );
 #if VCEG_AZ06_IC
@@ -503,6 +515,27 @@ public:
                                               Bool bEnforceSliceRestriction=true, 
                                               Bool planarAtLCUBoundary = true,
                                               Bool bEnforceTileRestriction=true );
+#endif
+
+#if COM16_C1016_AFFINE
+  Bool*        getAffineFlag            ()                       { return m_affineFlag;            }
+  Bool         getAffineFlag            ( UInt idx )             { return m_affineFlag[idx];       }
+  Void         setAffineFlag            ( UInt idx, Bool affine) { m_affineFlag[idx] = affine;     }
+  Void         setAffineFlagSubParts    ( Bool bAffineFlag, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth );
+  Bool         isAffine                 ( UInt uiAbsPartIdx );
+  UInt         getCtxAffineFlag         ( UInt uiAbsPartIdx );
+
+  Void         setAllAffineMvField      ( UInt uiAbsPartIdx, UInt uiPuIdx, TComMvField *pcMvField, RefPicList eRefPicList, UInt uiDepth );
+  Void         setAllAffineMv           ( UInt uiAbsPartIdx, UInt uiPuIdx, TComMv acMv[3], RefPicList eRefPicList, UInt uiDepth );
+  Void         setAllAffineMvd          ( UInt uiAbsPartIdx, UInt uiPuIdx, TComMv acMvd[3], RefPicList eRefPicList, UInt uiDepth );
+
+  // construct affine inter candidate list
+  Void         fillAffineMvpCand ( UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefPicList, Int iRefIdx, AffineAMVPInfo* pInfo );
+  Bool         isValidAffineCandidate ( UInt uiAbsPartIdx, UInt uiPUIdx, TComMv cMv0, TComMv cMv1, TComMv cMv2, Int& riDV );
+
+  // construct affine merge candidate list
+  Void         getAffineMergeCandidates ( UInt uiAbsPartIdx, UInt uiPuIdx, TComMvField (*pcMFieldNeighbours)[3], UChar* puhInterDirNeighbours, Int& numValidMergeCand, Int mrgCandIdx = -1 );
+  Bool         isAffineMrgFlagCoded     ( UInt uiAbsPartIdx, UInt uiPUIdx );
 #endif
 
   // -------------------------------------------------------------------------------------------------------------------

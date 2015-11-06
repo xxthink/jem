@@ -773,6 +773,10 @@ Void TEncTop::xInitSPS()
 #if VCEG_AZ05_ROT_TR
   m_cSPS.setUseROT( m_useROT );
 #endif
+
+#if COM16_C1016_AFFINE
+  m_cSPS.setUseAffine( m_useAffine );
+#endif
 }
 
 Void TEncTop::xInitHrdParameters()

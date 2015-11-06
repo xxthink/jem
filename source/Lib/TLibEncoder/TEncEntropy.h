@@ -167,6 +167,10 @@ public:
   virtual Void codeEmtTuIdx      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
   virtual Void codeEmtCuFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bRootCbf ) = 0;
 #endif
+
+#if COM16_C1016_AFFINE
+  virtual Void codeAffineFlag    ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
+#endif
 };
 
 /// entropy encoder class
@@ -308,6 +312,10 @@ public:
 #endif
 #if COM16_C806_EMT
   Void encodeEmtCuFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bCodeCuFlag );
+#endif
+
+#if COM16_C1016_AFFINE
+  Void encodeAffineFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiPuIdx );
 #endif
 };// END CLASS DEFINITION TEncEntropy
 

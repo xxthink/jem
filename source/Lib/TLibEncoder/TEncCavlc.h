@@ -193,6 +193,10 @@ public:
   Void codeEmtTuIdx      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth);
   Void codeEmtCuFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bRootCbf );
 #endif
+
+#if COM16_C1016_AFFINE
+  Void codeAffineFlag    ( TComDataCU* pcCU, UInt uiAbsPartIdx );
+#endif
 };
 
 //! \}

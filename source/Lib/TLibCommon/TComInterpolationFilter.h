@@ -53,6 +53,12 @@
 #define IF_FILTER_PREC    6 ///< Log2 of sum of filter taps
 #define IF_INTERNAL_OFFS (1<<(IF_INTERNAL_PREC-1)) ///< Offset used internally
 
+#if COM16_C1016_AFFINE
+#define IF_FILTER_PREC_AFFINE    8  ///< Log2 of sum of affine filter taps
+#define NFRACS_LUMA_AFFINE       64 ///< Number of fraction positions for luma affine MCP
+#define NFRACS_CHROMA_AFFINE     64 ///< Number of fraction positions for chroma affine MCP
+#endif
+
 /**
  * \brief Interpolation filter class
  */
@@ -73,6 +79,11 @@ class TComInterpolationFilter
 #endif
 #endif
 
+#if COM16_C1016_AFFINE
+  static const Short m_lumaFilterAffine[(NFRACS_LUMA_AFFINE)*NTAPS_LUMA];
+  static const Short m_chromaFilterAffine[(NFRACS_CHROMA_AFFINE)*NTAPS_CHROMA];
+#endif
+
   static Void filterCopy(Int bitDepth, const Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Bool isFirst, Bool isLast);
 
   template<Int N, Bool isVertical, Bool isFirst, Bool isLast>
@@ -82,6 +93,16 @@ class TComInterpolationFilter
   static Void filterHor(Int bitDepth, Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height,               Bool isLast, TFilterCoeff const *coeff);
   template<Int N>
   static Void filterVer(Int bitDepth, Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Bool isFirst, Bool isLast, TFilterCoeff const *coeff);
+
+#if COM16_C1016_AFFINE
+  template<Int N, Bool isVertical, Bool isFirst, Bool isLast>
+  static Void filterAffine(Int bitDepth, Pel const *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height, Short const *coeff);
+
+  template<Int N>
+  static Void filterHorAffine(Int bitDepth, Pel *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height,               Bool isLast, Short const *coeff);
+  template<Int N>
+  static Void filterVerAffine(Int bitDepth, Pel *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height, Bool isFirst, Bool isLast, Short const *coeff);
+#endif
 
 public:
   TComInterpolationFilter() {}
@@ -97,6 +118,11 @@ public:
     , Int nFilterIdx = 0
 #endif
     );
+
+#if COM16_C1016_AFFINE
+  Void filterHorAffine(const ComponentID compID, Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Int frac,               Bool isLast, const ChromaFormat fmt, const Int bitDepth );
+  Void filterVerAffine(const ComponentID compID, Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Int frac, Bool isFirst, Bool isLast, const ChromaFormat fmt, const Int bitDepth );
+#endif
 };
 
 //! \}

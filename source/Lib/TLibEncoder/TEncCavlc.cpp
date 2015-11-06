@@ -624,6 +624,9 @@ Void TEncCavlc::codeSPS( const TComSPS* pcSPS )
 #if VCEG_AZ05_ROT_TR
  WRITE_FLAG( pcSPS->getUseROT () ? 1 : 0,                "rot_enabled_flag" ); 
 #endif
+#if COM16_C1016_AFFINE
+ WRITE_FLAG( pcSPS->getUseAffine() ? 1 : 0,              "affine_enabled_flag" );
+#endif
   // KTA tools
 
   Bool sps_extension_present_flag=false;
@@ -1791,6 +1794,13 @@ Void TEncCavlc:: codeCtxUpdateInfo           (TComSlice* pcSlice,  TComStats* ap
      xRunCoding( apcStats->m_uiCtxMAP[uiSliceType][iQP], NUM_CTX_PBSLICE);
      xCtxCodewordCoding(apcStats->m_uiCtxMAP[uiSliceType][iQP], apcStats->m_uiCtxCodeIdx[uiSliceType][iQP],NUM_CTX_PBSLICE);
    }
+}
+#endif
+
+#if COM16_C1016_AFFINE
+Void TEncCavlc::codeAffineFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
+{
+  assert(0);
 }
 #endif
 

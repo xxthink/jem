@@ -828,6 +828,9 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
 #if VCEG_AZ05_ROT_TR
   READ_FLAG( uiCode, "rot_enabled_flag" );      pcSPS->setUseROT( uiCode );
 #endif
+#if COM16_C1016_AFFINE
+  READ_FLAG( uiCode, "affine_enabled_flag");    pcSPS->setUseAffine( uiCode );
+#endif
   // KTA tools
 
   READ_FLAG( uiCode, "sps_extension_present_flag");
@@ -2353,6 +2356,18 @@ Void TDecCavlc::parseEmtTuIdx( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt
   assert(0);
 }
 Void TDecCavlc::parseEmtCuFlag( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/, Bool /*bRootCbf*/ )
+{
+  assert(0);
+}
+#endif
+
+#if COM16_C1016_AFFINE
+Void TDecCavlc::parseAffineFlag( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/, UInt /*uiPuIdx*/ )
+{
+  assert(0);
+}
+
+Void  TDecCavlc::parseAffineMvd( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiPartIdx*/, UInt /*uiDepth*/, RefPicList /*eRefList*/ )
 {
   assert(0);
 }

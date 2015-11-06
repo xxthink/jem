@@ -656,6 +656,14 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         if( !bICFlag )
         {
 #endif
+#if COM16_C1016_AFFINE
+        if( rpcTempCU->getSlice()->getSPS()->getUseAffine() )
+        {
+          xCheckRDCostAffineMerge2Nx2N( rpcBestCU, rpcTempCU );
+          rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
+        }
+#endif
+
         xCheckRDCostMerge2Nx2N( rpcBestCU, rpcTempCU DEBUG_STRING_PASS_INTO(sDebug), &earlyDetectionSkipMode );//by Merge for inter_2Nx2N
         rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
 #if VCEG_AZ06_IC
@@ -1529,7 +1537,21 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
     m_pcEntropyCoder->encodeFRUCMgrMode( pcCU , uiAbsPartIdx , 0 );
     if( !pcCU->getFRUCMgrMode( uiAbsPartIdx ) )
 #endif
+#if COM16_C1016_AFFINE
+    {
+      if ( pcCU->isAffineMrgFlagCoded(uiAbsPartIdx, 0) )
+      {
+        m_pcEntropyCoder->encodeAffineFlag( pcCU, uiAbsPartIdx, 0 );
+      }
+
+      if ( !pcCU->isAffine(uiAbsPartIdx) )
+      {
+        m_pcEntropyCoder->encodeMergeIndex( pcCU, uiAbsPartIdx );
+      }
+    }
+#else
     m_pcEntropyCoder->encodeMergeIndex( pcCU, uiAbsPartIdx );
+#endif
 #if VCEG_AZ06_IC
     m_pcEntropyCoder->encodeICFlag  ( pcCU, uiAbsPartIdx );
 #endif
@@ -2523,6 +2545,98 @@ Void TEncCu::xCtuCollectARLStats(TComDataCU* pCtu )
   }
   m_pcTrQuant->getSliceSumC()[LEVEL_RANGE] += cSum[ LEVEL_RANGE ] ;
   m_pcTrQuant->getSliceNSamples()[LEVEL_RANGE] += numSamples[ LEVEL_RANGE ] ;
+}
+#endif
+
+#if COM16_C1016_AFFINE
+Void TEncCu::xCheckRDCostAffineMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU )
+{
+  assert( rpcTempCU->getSlice()->getSliceType() != I_SLICE );
+  if ( getFastDeltaQp() )
+  {
+    return;
+  }
+
+  TComMvField cAffineMvField[2][3];
+  UChar uhInterDirNeighbours[1] = {0};
+  Int numValidMergeCand = 0;
+  const Bool bTransquantBypassFlag = rpcTempCU->getCUTransquantBypass(0);
+
+  UChar uhDepth = rpcTempCU->getDepth( 0 );
+  rpcTempCU->setPartSizeSubParts( SIZE_2Nx2N, 0, uhDepth );
+
+  rpcTempCU->getAffineMergeCandidates( 0, 0, cAffineMvField, uhInterDirNeighbours, numValidMergeCand );
+  if ( numValidMergeCand == -1 )
+  {
+    return;
+  }
+  Int mergeCandBuffer[1] = {0};
+
+  UInt iteration;
+  if ( rpcTempCU->isLosslessCoded(0))
+  {
+    iteration = 1;
+  }
+  else
+  {
+    iteration = 2;
+  }
+
+  for ( UInt uiNoResidual = 0; uiNoResidual < iteration; ++uiNoResidual )
+  {
+    for ( UInt uiMergeCand = 0; uiMergeCand < numValidMergeCand; ++uiMergeCand )
+    {
+      if ( !( uiNoResidual==1 && mergeCandBuffer[uiMergeCand]==1 ) )
+      {
+        // set MC parameters
+        rpcTempCU->setPredModeSubParts( MODE_INTER, 0, uhDepth );
+        rpcTempCU->setCUTransquantBypassSubParts( bTransquantBypassFlag, 0, uhDepth );
+        rpcTempCU->setChromaQpAdjSubParts( bTransquantBypassFlag ? 0 : m_cuChromaQpOffsetIdxPlus1, 0, uhDepth );
+        rpcTempCU->setPartSizeSubParts( SIZE_2Nx2N, 0, uhDepth );
+        rpcTempCU->setAffineFlagSubParts( true, 0, 0, uhDepth );
+        rpcTempCU->setMergeFlagSubParts( true, 0, 0, uhDepth );
+        rpcTempCU->setMergeIndexSubParts( uiMergeCand, 0, 0, uhDepth );
+        rpcTempCU->setInterDirSubParts( uhInterDirNeighbours[uiMergeCand], 0, 0, uhDepth );
+        rpcTempCU->setAllAffineMvField( 0, 0, cAffineMvField[0 + 2*uiMergeCand], REF_PIC_LIST_0, 0 );
+        rpcTempCU->setAllAffineMvField( 0, 0, cAffineMvField[1 + 2*uiMergeCand], REF_PIC_LIST_1, 0 );
+
+#if COM16_C806_OBMC
+        rpcTempCU->setOBMCFlagSubParts( true, 0, uhDepth );
+#endif
+
+        // do MC
+        m_pcPredSearch->motionCompensation ( rpcTempCU, m_ppcPredYuvTemp[uhDepth] );
+
+#if COM16_C806_OBMC
+        m_pcPredSearch->subBlockOBMC( rpcTempCU, 0, m_ppcPredYuvTemp[uhDepth], m_ppcTmpYuv1[uhDepth], m_ppcTmpYuv2[uhDepth] );
+#endif
+        // estimate residual and encode everything
+        m_pcPredSearch->encodeResAndCalcRdInterCU( rpcTempCU,
+                                                   m_ppcOrigYuv    [uhDepth],
+                                                   m_ppcPredYuvTemp[uhDepth],
+                                                   m_ppcResiYuvTemp[uhDepth],
+                                                   m_ppcResiYuvBest[uhDepth],
+                                                   m_ppcRecoYuvTemp[uhDepth],
+                                                   (uiNoResidual != 0) 
+#if COM16_C806_EMT
+                                                   , rpcBestCU->getTotalCost()
+#endif
+          );
+
+        if ( uiNoResidual == 0 && rpcTempCU->getQtRootCbf(0) == 0 )
+        {
+          // If no residual when allowing for one, then set mark to not try case where residual is forced to 0
+          mergeCandBuffer[uiMergeCand] = 1;
+        }
+
+        rpcTempCU->setSkipFlagSubParts( rpcTempCU->getQtRootCbf(0) == 0, 0, uhDepth );
+        Int orgQP = rpcTempCU->getQP( 0 );
+        xCheckDQP( rpcTempCU );
+        xCheckBestMode(rpcBestCU, rpcTempCU, uhDepth);
+        rpcTempCU->initEstData( uhDepth, orgQP, bTransquantBypassFlag );
+      }
+    }
+  }
 }
 #endif
 //! \}

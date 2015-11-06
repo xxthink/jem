@@ -117,6 +117,7 @@
 #define VCEG_AZ05_ROT_TR                                  1
 
 #define COM16_C1045_BIO_HARMO_IMPROV                      1
+#define COM16_C1016_AFFINE                                1  ///< Affine model based inter prediction
 ///////////////////////////////////////////////////////////
 // KTA tools section end
 ///////////////////////////////////////////////////////////

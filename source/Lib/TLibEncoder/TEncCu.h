@@ -160,6 +160,9 @@ protected:
 #if VCEG_AZ07_FRUC_MERGE
   Void  xCheckRDCostMerge2Nx2NFRUC( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU , Bool *earlyDetectionSkipMode );
 #endif
+#if COM16_C1016_AFFINE
+  Void  xCheckRDCostAffineMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU );
+#endif
 
 #if AMP_MRG
   Void  xCheckRDCostInter   ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, PartSize ePartSize DEBUG_STRING_FN_DECLARE(sDebug), Bool bUseMRG = false 

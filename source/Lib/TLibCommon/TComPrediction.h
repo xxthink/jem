@@ -280,6 +280,13 @@ public:
   Void xCalcLMParameters ( Int x, Int y, Int xx, Int xy, Int iCountShift, Int iPredType, Int bitDepth, Int &a, Int &b, Int &iShift );
 #endif
 
+#if COM16_C1016_AFFINE
+  Bool xCheckIdenticalAffineMotion ( TComDataCU* pcCU, UInt PartAddr, Int iWidth, Int iHeight );
+  Void xPredAffineBlk              ( const ComponentID compID, TComDataCU *cu, TComPicYuv *refPic, UInt partAddr, TComMv acMv[3], Int width, Int height, TComYuv *dstPic, Bool bi, const Int bitDepth );
+
+  Void getMvPredAffineAMVP         ( TComDataCU* pcCU, UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefPicList, TComMv acMvPred[3] );
+#endif
+
   Pel  predIntraGetPredValDC      ( const Pel* pSrc, Int iSrcStride, UInt iWidth, UInt iHeight);
 
   Pel*  getPredictorPtr           ( const ComponentID compID, const Bool bUseFilteredPredictions )
