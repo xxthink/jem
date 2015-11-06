@@ -303,26 +303,25 @@ protected:
                                     UInt         uiChromaId,
                                     Int          default0Save1Load2 = 0 );
 
-
   Void  xRecurIntraCodingQT       ( TComDataCU*  pcCU, 
-    UInt         uiTrDepth,
-    UInt         uiAbsPartIdx, 
-    Bool         bLumaOnly,
-    TComYuv*     pcOrgYuv, 
-    TComYuv*     pcPredYuv, 
-    TComYuv*     pcResiYuv, 
-    UInt&        ruiDistY,
-    UInt&        ruiDistC,
+                                    UInt         uiTrDepth,
+                                    UInt         uiAbsPartIdx, 
+                                    Bool         bLumaOnly,
+                                    TComYuv*     pcOrgYuv, 
+                                    TComYuv*     pcPredYuv, 
+                                    TComYuv*     pcResiYuv, 
+                                    UInt&        ruiDistY,
+                                    UInt&        ruiDistC,
 #if HHI_RQT_INTRA_SPEEDUP
-    Bool         bCheckFirst,
+                                   Bool         bCheckFirst,
 #endif
-    Double&      dRDCost );
-
+                                   Double&      dRDCost );
+  
   Void  xSetIntraResultQT         ( TComDataCU*  pcCU,
-    UInt         uiTrDepth,
-    UInt         uiAbsPartIdx,
-    Bool         bLumaOnly,
-    TComYuv*     pcRecoYuv );
+                                    UInt         uiTrDepth,
+                                    UInt         uiAbsPartIdx,
+                                    Bool         bLumaOnly,
+                                    TComYuv*     pcRecoYuv );
 
 #if QT_BT_STRUCTURE
   Void  xRecurIntraChromaCodingQT ( TComDataCU*  pcCU, 
@@ -341,16 +340,16 @@ protected:
     TextType    eType);
 #else
   Void  xRecurIntraChromaCodingQT ( TComDataCU*  pcCU, 
-    UInt         uiTrDepth,
-    UInt         uiAbsPartIdx, 
-    TComYuv*     pcOrgYuv, 
-    TComYuv*     pcPredYuv, 
-    TComYuv*     pcResiYuv, 
-    UInt&        ruiDist );
+                                    UInt         uiTrDepth,
+                                    UInt         uiAbsPartIdx, 
+                                    TComYuv*     pcOrgYuv, 
+                                    TComYuv*     pcPredYuv, 
+                                    TComYuv*     pcResiYuv, 
+                                    UInt&        ruiDist );
   Void  xSetIntraResultChromaQT   ( TComDataCU*  pcCU,
-    UInt         uiTrDepth,
-    UInt         uiAbsPartIdx,
-    TComYuv*     pcRecoYuv );
+                                    UInt         uiTrDepth,
+                                    UInt         uiAbsPartIdx,
+                                    TComYuv*     pcRecoYuv );
 #endif
   Void  xStoreIntraResultQT       ( TComDataCU*  pcCU,
                                     UInt         uiTrDepth,
