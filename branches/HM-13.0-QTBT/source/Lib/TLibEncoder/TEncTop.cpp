@@ -672,7 +672,7 @@ Void TEncTop::xInitSPS()
 
   m_cSPS.setLog2MinCodingBlockSize(log2MinCUSize);
   m_cSPS.setLog2DiffMaxMinCodingBlockSize(m_cSPS.getMaxCUDepth()-g_uiAddCUDepth);
-
+  
   m_cSPS.setPCMLog2MinSize (m_uiPCMLog2MinSize);
   m_cSPS.setUsePCM        ( m_usePCM           );
   m_cSPS.setPCMLog2MaxSize( m_pcmLog2MaxSize  );
