@@ -126,6 +126,9 @@ TEncSbac::TEncSbac()
 , m_cEmtTuIdxSCModel                   ( 1,             1,               NUM_EMT_TU_IDX_CTX            , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cEmtCuFlagSCModel                  ( 1,             1,               NUM_EMT_CU_FLAG_CTX           , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
+#if COM16_C1016_AFFINE
+, m_cCUAffineFlagSCModel               ( 1,             1,               NUM_AFFINE_FLAG_CTX           , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 {
   assert( m_numContextModels <= MAX_NUM_CTX_MOD );
 }
@@ -211,6 +214,9 @@ Void TEncSbac::resetEntropy           (const TComSlice *pSlice)
   m_cEmtTuIdxSCModel.initBuffer                   ( eSliceType, iQp, (UChar*)INIT_EMT_TU_IDX );
   m_cEmtCuFlagSCModel.initBuffer                  ( eSliceType, iQp, (UChar*)INIT_EMT_CU_FLAG );
 #endif 
+#if COM16_C1016_AFFINE
+  m_cCUAffineFlagSCModel.initBuffer               ( eSliceType, iQp, (UChar*)INIT_AFFINE_FLAG );
+#endif
 
   for (UInt statisticIndex = 0; statisticIndex < RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS ; statisticIndex++)
   {
@@ -298,6 +304,9 @@ SliceType TEncSbac::determineCabacInitIdx(const TComSlice *pSlice)
 #endif
 #if VCEG_AZ06_IC
       curCost += m_cCUICFlagSCModel.calcCost                   ( curSliceType, qp, (UChar*)INIT_IC_FLAG );
+#endif
+#if COM16_C1016_AFFINE
+      curCost += m_cCUAffineFlagSCModel.calcCost               ( curSliceType, qp, (UChar*)INIT_AFFINE_FLAG );
 #endif
       if (curCost < bestCost)
       {
@@ -2789,6 +2798,30 @@ Void TEncSbac::codeEmtCuFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth,
   }
 }
 #endif
+
+#if COM16_C1016_AFFINE
+/** code affine flag
+ * \param pcCU
+ * \param uiAbsPartIdx 
+ * \returns Void
+ */
+Void TEncSbac::codeAffineFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
+{
+  // get context function is here
+  UInt uiSymbol = pcCU->isAffine( uiAbsPartIdx ) ? 1 : 0;
+  UInt uiCtxAffine = pcCU->getCtxAffineFlag( uiAbsPartIdx );
+  m_pcBinIf->encodeBin( uiSymbol, m_cCUAffineFlagSCModel.get( 0, 0, uiCtxAffine ) );
+
+  DTRACE_CABAC_VL( g_nSymbolCounter++ );
+  DTRACE_CABAC_T( "\tAffineFlag" );
+  DTRACE_CABAC_T( "\tuiCtxAffine: ");
+  DTRACE_CABAC_V( uiCtxAffine );
+  DTRACE_CABAC_T( "\tuiSymbol: ");
+  DTRACE_CABAC_V( uiSymbol );
+  DTRACE_CABAC_T( "\n");
+}
+#endif
+
 #if VCEG_AZ07_BAC_ADAPT_WDOW
 Void TEncSbac::xUpdateWindowSize ( SliceType eSliceType, Int uiQPIdx, TComStats* apcStats )
 {

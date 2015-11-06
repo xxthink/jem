@@ -157,6 +157,11 @@ public:
   virtual Void parseEmtTuIdx      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
   virtual Void parseEmtCuFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bRootCbf ) = 0;
 #endif
+
+#if COM16_C1016_AFFINE
+  virtual Void parseAffineFlag    ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPuIdx ) = 0;
+  virtual Void parseAffineMvd     ( TComDataCU* pcCU, UInt uiAbsPartAddr, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList ) = 0;
+#endif
 };
 
 /// entropy decoder class
@@ -278,6 +283,10 @@ public:
   Void decodeFilterCoeff (ALFParam* pAlfParam);
   Int  golombDecode(Int k);
   Void decodeAlfCtrlParam      ( ALFParam *pAlfParam );
+#endif
+
+#if COM16_C1016_AFFINE
+  Void decodeAffineFlag        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPuIdx );
 #endif
 
 };// END CLASS DEFINITION TDecEntropy

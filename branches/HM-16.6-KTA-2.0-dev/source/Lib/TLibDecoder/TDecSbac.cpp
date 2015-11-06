@@ -126,6 +126,9 @@ TDecSbac::TDecSbac()
 , m_cEmtTuIdxSCModel                         ( 1,             1,                      NUM_EMT_TU_IDX_CTX                   , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cEmtCuFlagSCModel                        ( 1,             1,                      NUM_EMT_CU_FLAG_CTX                  , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
+#if COM16_C1016_AFFINE
+, m_cCUAffineFlagSCModel                     ( 1,             1,               NUM_AFFINE_FLAG_CTX                  , m_contextModels + m_numContextModels,          m_numContextModels)
+#endif
 {
   assert( m_numContextModels <= MAX_NUM_CTX_MOD );
 }
@@ -234,6 +237,9 @@ Void TDecSbac::resetEntropy(TComSlice* pSlice)
 #if COM16_C806_EMT
   m_cEmtTuIdxSCModel.initBuffer                   ( sliceType, qp, (UChar*)INIT_EMT_TU_IDX );
   m_cEmtCuFlagSCModel.initBuffer                  ( sliceType, qp, (UChar*)INIT_EMT_CU_FLAG );
+#endif
+#if COM16_C1016_AFFINE
+  m_cCUAffineFlagSCModel.initBuffer               ( sliceType, qp, (UChar*)INIT_AFFINE_FLAG );
 #endif
 
   for (UInt statisticIndex = 0; statisticIndex < RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS ; statisticIndex++)
@@ -540,6 +546,12 @@ Void TDecSbac::parseiMVFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
   {
     return;
   }
+#if COM16_C1016_AFFINE
+  else if( pcCU->getAffineFlag( uiAbsPartIdx ) && pcCU->getPartitionSize( uiAbsPartIdx ) == SIZE_2Nx2N )
+  {
+    return;
+  }
+#endif
 
   UInt uiSymbol = 0;
   UInt uiCtxiMV = pcCU->getCtxiMVFlag( uiAbsPartIdx );
@@ -2642,6 +2654,111 @@ Void TDecSbac::loadContextsFromPrev (TComStats* apcStats, SliceType eSliceType, 
 #endif
     }
   }
+}
+#endif
+
+#if COM16_C1016_AFFINE
+/** parse affine flag
+ * \param pcCU
+ * \param uiAbsPartIdx 
+ * \param uiDepth
+ * \returns Void
+ */
+Void TDecSbac::parseAffineFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPuIdx )
+{
+  if( pcCU->getSlice()->isIntra() )
+  {
+    return;
+  }
+
+  UInt uiSymbol = 0;
+  UInt uiCtxAffine = pcCU->getCtxAffineFlag( uiAbsPartIdx );
+  m_pcTDecBinIf->decodeBin( uiSymbol, m_cCUAffineFlagSCModel.get( 0, 0, uiCtxAffine ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__AFFINE_FLAG) );
+
+  DTRACE_CABAC_VL( g_nSymbolCounter++ );
+  DTRACE_CABAC_T( "\tAffineFlag" );
+  DTRACE_CABAC_T( "\tuiCtxAffine: ");
+  DTRACE_CABAC_V( uiCtxAffine );
+  DTRACE_CABAC_T( "\tuiSymbol: ");
+  DTRACE_CABAC_V( uiSymbol );
+  DTRACE_CABAC_T( "\n");
+
+  pcCU->setAffineFlagSubParts( uiSymbol ? true : false, uiAbsPartIdx, uiPuIdx, uiDepth );
+}
+
+Void TDecSbac::parseAffineMvd( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList )
+{
+  TComMv acMvd[3];
+
+  for ( Int i=0; i<2; i++ )
+  {
+    UInt uiSymbol;
+    UInt uiHorAbs;
+    UInt uiVerAbs;
+    UInt uiHorSign = 0;
+    UInt uiVerSign = 0;
+    ContextModel *pCtx = m_cCUMvdSCModel.get( 0 );
+
+    if(pcCU->getSlice()->getMvdL1ZeroFlag() && eRefList == REF_PIC_LIST_1 && pcCU->getInterDir(uiAbsPartIdx)==3)
+    {
+      uiHorAbs=0;
+      uiVerAbs=0;
+    }
+    else
+    {
+      m_pcTDecBinIf->decodeBin( uiHorAbs, *pCtx RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD) );
+      m_pcTDecBinIf->decodeBin( uiVerAbs, *pCtx  RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD) );
+
+      const Bool bHorAbsGr0 = uiHorAbs != 0;
+      const Bool bVerAbsGr0 = uiVerAbs != 0;
+      pCtx++;
+
+      if( bHorAbsGr0 )
+      {
+        m_pcTDecBinIf->decodeBin( uiSymbol, *pCtx RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD) );
+        uiHorAbs += uiSymbol;
+      }
+
+      if( bVerAbsGr0 )
+      {
+        m_pcTDecBinIf->decodeBin( uiSymbol, *pCtx RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD) );
+        uiVerAbs += uiSymbol;
+      }
+
+      if( bHorAbsGr0 )
+      {
+        if( 2 == uiHorAbs )
+        {
+          xReadEpExGolomb( uiSymbol, 1 RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD_EP) );
+          uiHorAbs += uiSymbol;
+        }
+
+        m_pcTDecBinIf->decodeBinEP( uiHorSign RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD_EP) );
+      }
+
+      if( bVerAbsGr0 )
+      {
+        if( 2 == uiVerAbs )
+        {
+          xReadEpExGolomb( uiSymbol, 1 RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD_EP) );
+          uiVerAbs += uiSymbol;
+        }
+
+        m_pcTDecBinIf->decodeBinEP( uiVerSign RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD_EP) );
+      }
+    }
+
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+    TComMv cMv( uiHorSign ? -Int( uiHorAbs ): uiHorAbs, uiVerSign ? -Int( uiVerAbs ) : uiVerAbs );
+    cMv <<= VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE;
+#else
+    const TComMv cMv( uiHorSign ? -Int( uiHorAbs ): uiHorAbs, uiVerSign ? -Int( uiVerAbs ) : uiVerAbs );
+#endif
+    acMvd[i] = cMv;
+  }
+
+  pcCU->setAllAffineMvd( uiAbsPartIdx, uiPartIdx, acMvd, eRefList, uiDepth );
+  return;
 }
 #endif
 

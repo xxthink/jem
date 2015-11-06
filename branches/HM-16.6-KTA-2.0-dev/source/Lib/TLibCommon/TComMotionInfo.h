@@ -61,6 +61,14 @@ typedef struct _AMVPInfo
   Int    iN;                                ///< number of motion vector predictor candidates
 } AMVPInfo;
 
+#if COM16_C1016_AFFINE
+typedef struct _AffineAMVPInfo
+{
+  TComMv m_acMvCand[ AMVP_MAX_NUM_CANDS_MEM ][3];  ///< array of affine motion vector predictor candidates
+  Int    iN;                                       ///< number of affine motion vector predictor candidates
+} AffineAMVPInfo;
+#endif
+
 // ====================================================================================================================
 // Class definition
 // ====================================================================================================================
@@ -106,6 +114,9 @@ private:
   Char*     m_piRefIdx;
   UInt      m_uiNumPartition;
   AMVPInfo  m_cAMVPInfo;
+#if COM16_C1016_AFFINE
+  AffineAMVPInfo m_cAffineAMVPInfo;
+#endif
 
   template <typename T>
   Void setAll( T *p, T const & val, PartSize eCUMode, Int iPartAddr, UInt uiDepth, Int iPartIdx );
@@ -138,9 +149,14 @@ public:
   TComMv const & getMv    ( Int iIdx ) const { return  m_pcMv    [iIdx]; }
   TComMv const & getMvd   ( Int iIdx ) const { return  m_pcMvd   [iIdx]; }
   Int            getRefIdx( Int iIdx ) const { return  m_piRefIdx[iIdx]; }
-#if VCEG_AZ07_FRUC_MERGE
+#if VCEG_AZ07_FRUC_MERGE || COM16_C1016_AFFINE
   Void           setMv    ( TComMv  cMv,     Int iIdx ) { m_pcMv    [iIdx] = cMv;     }
   Void           setRefIdx( Int     iRefIdx, Int iIdx ) { m_piRefIdx[iIdx] = iRefIdx; }
+#endif
+
+#if COM16_C1016_AFFINE
+  Void            setMvd   ( TComMv cMvd, Int iIdx )     { m_pcMvd   [iIdx] = cMvd;    }
+  AffineAMVPInfo* getAffineAMVPInfo () { return &m_cAffineAMVPInfo; }
 #endif
 
   AMVPInfo* getAMVPInfo () { return &m_cAMVPInfo; }

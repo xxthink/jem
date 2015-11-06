@@ -192,6 +192,11 @@ public:
   Void  loadContextsFromPrev  ( TComStats* apcStats, SliceType eSliceType, Int iQPIdx, Bool bFromGloble, Int iQPIdxRst =-1, Bool bAfterLastISlice= false );
 #endif
 
+#if COM16_C1016_AFFINE
+  Void  parseAffineFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPuIdx );
+  Void  parseAffineMvd        ( TComDataCU* pcCU, UInt uiAbsPartAddr, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList );
+#endif
+
   Void  parseExplicitRdpcmMode( TComTU &rTu, ComponentID compID );
 
 private:
@@ -263,6 +268,10 @@ private:
 #if COM16_C806_EMT
   ContextModel3DBuffer m_cEmtTuIdxSCModel;
   ContextModel3DBuffer m_cEmtCuFlagSCModel;
+#endif
+
+#if COM16_C1016_AFFINE
+  ContextModel3DBuffer m_cCUAffineFlagSCModel;
 #endif
 
   UInt m_golombRiceAdaptationStatistics[RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS];

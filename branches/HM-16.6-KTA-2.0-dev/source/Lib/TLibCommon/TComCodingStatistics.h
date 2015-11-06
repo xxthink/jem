@@ -118,6 +118,10 @@ enum TComCodingStatisticsType
   STATS__CABAC_BITS__EMT_TU_INDX,
 #endif
 
+#if COM16_C1016_AFFINE
+  STATS__CABAC_BITS__AFFINE_FLAG,
+#endif
+
 #if VCEG_AZ05_INTRA_MPI
   STATS__CABAC_BITS__MPI_FLAG,
 #endif

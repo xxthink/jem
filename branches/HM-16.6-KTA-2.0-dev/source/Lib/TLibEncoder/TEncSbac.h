@@ -224,6 +224,10 @@ public:
   Void codeEmtCuFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bRootCbf );
 #endif
 
+#if COM16_C1016_AFFINE
+  Void codeAffineFlag    ( TComDataCU* pcCU, UInt uiAbsPartIdx );
+#endif
+
 private:
   ContextModel         m_contextModels[MAX_NUM_CTX_MOD];
   Int                  m_numContextModels;
@@ -295,6 +299,10 @@ private:
 #if COM16_C806_EMT
   ContextModel3DBuffer m_cEmtTuIdxSCModel;
   ContextModel3DBuffer m_cEmtCuFlagSCModel;
+#endif
+
+#if COM16_C1016_AFFINE
+  ContextModel3DBuffer m_cCUAffineFlagSCModel;
 #endif
 
   UInt m_golombRiceAdaptationStatistics[RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS];

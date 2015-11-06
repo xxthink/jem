@@ -1626,6 +1626,9 @@ TComSPS::TComSPS()
 #if COM16_C806_LMCHROMA
 , m_useLMChroma              (false)
 #endif
+#if COM16_C1016_AFFINE
+, m_useAffine                (false)
+#endif
 , m_bPCMFilterDisableFlag     (false)
 , m_uiBitsForPOC              (  8)
 , m_numLongTermRefPicSPS      (  0)

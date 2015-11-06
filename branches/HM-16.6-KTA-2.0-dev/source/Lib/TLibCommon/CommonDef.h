@@ -322,9 +322,22 @@ static const Int NUM_WDOW =                                         4; ///< coul
 #if VCEG_AZ05_MULTI_PARAM_CABAC
 static const Int ALPHA0 =                                           4; ///< 2^ALPHA0 is "window size" for probability up-date
 #endif
+
+#if COM16_C1016_AFFINE
+static const Int AFFINE_MAX_NUM_V0 =                                3; ///< max number of motion candidates in top-left corner
+static const Int AFFINE_MAX_NUM_V1 =                                2; ///< max number of motion candidates in top-right corner
+static const Int AFFINE_MAX_NUM_V2 =                                2; ///< max number of motion candidates in left-bottom corner
+static const Int AFFINE_MAX_NUM_COMB =                             12; ///< max number of combined motion candidates
+static const Int AFFINE_MIN_BLOCK_SIZE =                            4; ///< Minimum affine MC block size
+#endif
+
 // ====================================================================================================================
 // Macro functions
 // ====================================================================================================================
+
+#if COM16_C1016_AFFINE
+#define SIGN(x)                       ( x >= 0 ? 1 : -1 )
+#endif
 
 template <typename T> inline T Clip3 (const T minVal, const T maxVal, const T a) { return std::min<T> (std::max<T> (minVal, a) , maxVal); }  ///< general min/max clip
 template <typename T> inline T ClipBD(const T x, const Int bitDepth)             { return Clip3(T(0), T((1 << bitDepth)-1), x);           }

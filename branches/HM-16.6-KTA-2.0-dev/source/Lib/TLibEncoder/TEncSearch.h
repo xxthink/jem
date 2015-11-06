@@ -113,6 +113,11 @@ private:
   Pel*            m_resiPUBuffer[NUMBER_OF_STORED_RESIDUAL_TYPES];
 #endif
 
+#if COM16_C1016_AFFINE
+  Int*            m_tmpError;
+  Double*         m_tmpDerivate[2];
+#endif
+
 protected:
   // interface to option
   TEncCfg*        m_pcEncCfg;
@@ -518,6 +523,57 @@ protected:
                                     TComMv&      rcMvQter,
                                     Distortion&  ruiCost
                                    );
+
+  #if COM16_C1016_AFFINE
+  Void predAffineInterSearch    ( TComDataCU* pcCU,
+                                  TComYuv*    pcOrgYuv,
+                                  Int         iPartIdx,
+                                  UInt&       ruiLastMode,
+                                  Distortion& ruiAffineCost,
+                                  TComMv      cHevcMv[2][33] );
+
+  Void xAffineMotionEstimation  ( TComDataCU*   pcCU,
+                                  TComYuv*      pcYuvOrg,
+                                  Int           iPartIdx,
+                                  RefPicList    eRefPicList,
+                                  TComMv        acMvPred[3],
+                                  Int           iRefIdxPred,
+                                  TComMv        acMv[3],
+                                  UInt&         ruiBits,
+                                  Distortion&   ruiCost,
+                                  Bool          bBi = false  );
+  
+  Bool xEstimateAffineAMVP      ( TComDataCU*   pcCU, 
+                                  TComYuv*      pcOrgYuv, 
+                                  UInt          uiPartIdx, 
+                                  RefPicList    eRefPicList, 
+                                  Int           iRefIdx,
+                                  TComMv        acMvPred[3], 
+                                  Distortion*   puiDistBiP );
+
+  Distortion xGetAffineTemplateCost ( TComDataCU* pcCU,
+                                      UInt        uiPartAddr,
+                                      TComYuv*    pcOrgYuv,
+                                      TComYuv*    pcTemplateCand,
+                                      TComMv      acMvCand[3],
+                                      Int         iMVPIdx,
+                                      Int         iMVPNum,
+                                      RefPicList  eRefPicList,
+                                      Int         iRefIdx,
+                                      Int         iSizeX,
+                                      Int         iSizeY );
+
+  Void xCopyAffineAMVPInfo     ( AffineAMVPInfo* pSrc, AffineAMVPInfo* pDst );
+
+  Void solveEqual( Double** dEqualCoeff, Int iOrder, Double* dAffinePara );
+
+  Void xCheckBestAffineMVP      ( TComDataCU* pcCU,
+                                  RefPicList  eRefPicList,
+                                  TComMv acMv[3], TComMv acMvPred[3],
+                                  Int&        riMVPIdx,
+                                  UInt&       ruiBits,
+                                  Distortion& ruiCost );
+#endif
 
   Void xExtDIFUpSamplingH( TComPattern* pcPattern );
   Void xExtDIFUpSamplingQ( TComPattern* pcPatternKey, TComMv halfPelRef );

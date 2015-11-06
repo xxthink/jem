@@ -859,6 +859,9 @@ private:
 #if VCEG_AZ05_ROT_TR
   Bool             m_useROT;
 #endif
+#if COM16_C1016_AFFINE
+  Bool             m_useAffine;
+#endif
  // Parameter
   BitDepths        m_bitDepths;
   Int              m_qpBDOffset[MAX_NUM_CHANNEL_TYPE];
@@ -1095,6 +1098,10 @@ public:
 #if VCEG_AZ05_ROT_TR
  Bool                   getUseROT ()  const                                                        { return m_useROT;        }
  Void                   setUseROT ( Bool b )                                                       { m_useROT  = b;          }
+#endif
+#if COM16_C1016_AFFINE
+ Bool                   getUseAffine ()  const                                                     { return m_useAffine; }
+  Void                  setUseAffine ( Bool b )                                                    { m_useAffine = b;    }
 #endif
   // KTA tools
 

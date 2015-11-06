@@ -440,6 +440,9 @@ Void TAppEncTop::xInitLibCfg()
 #if VCEG_AZ05_ROT_TR
  m_cTEncTop.setUseROT                            ( m_useROT );
 #endif
+#if COM16_C1016_AFFINE
+ m_cTEncTop.setUseAffine                         ( m_useAffine );
+#endif
   m_cTEncTop.setSummaryOutFilename                                ( m_summaryOutFilename );
   m_cTEncTop.setSummaryPicFilenameBase                            ( m_summaryPicFilenameBase );
   m_cTEncTop.setSummaryVerboseness                                ( m_summaryVerboseness );
