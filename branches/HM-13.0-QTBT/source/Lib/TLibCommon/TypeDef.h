@@ -40,6 +40,7 @@
 
 //definitions of QTBT
 #define QT_BT_STRUCTURE   1
+#if QT_BT_STRUCTURE
 #define CTU_LOG2          7 //1<<CTU_LOG2: 64x64 or 128x128 
 #define MIN_CU_LOG2       2 //1<<MIN_CU_LOG2: 2x2 or 4x4
 
@@ -89,7 +90,7 @@
   #define PBINTRA_RATIO    1.1
 
 #define ITSKIP       1 //inverse transform not used for zero-line, for transform size > 32
-
+#endif
 //end of QTBT definitions
 
 //! \ingroup TLibCommon

@@ -79,19 +79,19 @@ Void TDecCu::create( UInt uiMaxDepth, UInt uiMaxWidth, UInt uiMaxHeight )
   m_ppcCU      = new TComDataCU*[m_uiMaxDepth-1];
 #endif
 
+#if !QT_BT_STRUCTURE
   UInt uiNumPartitions;
   for ( UInt ui = 0; ui < m_uiMaxDepth-1; ui++ )
   {
     uiNumPartitions = 1<<( ( m_uiMaxDepth - ui - 1 )<<1 );
-#if !QT_BT_STRUCTURE
     UInt uiWidth  = uiMaxWidth  >> ui;
     UInt uiHeight = uiMaxHeight >> ui;
 
     m_ppcYuvResi[ui] = new TComYuv;    m_ppcYuvResi[ui]->create( uiWidth, uiHeight );
     m_ppcYuvReco[ui] = new TComYuv;    m_ppcYuvReco[ui]->create( uiWidth, uiHeight );
     m_ppcCU     [ui] = new TComDataCU; m_ppcCU     [ui]->create( uiNumPartitions, uiWidth, uiHeight, true, uiMaxWidth >> (m_uiMaxDepth - 1) );
-#endif
   }
+#endif
 
 #if QT_BT_STRUCTURE
   UInt uiNumWidthIdx = g_aucConvertToBit[uiMaxWidth] + 1;
@@ -109,7 +109,9 @@ Void TDecCu::create( UInt uiMaxDepth, UInt uiMaxWidth, UInt uiMaxHeight )
     m_pppcYuvRecoPU[wIdx] = new TComYuv*[uiNumHeightIdx];
     for (UInt hIdx=0; hIdx<uiNumHeightIdx; hIdx++)
     {
+#if !QT_BT_STRUCTURE
       uiNumPartitions = 1<<(wIdx+hIdx);
+#endif
       UInt uiWidth = 1<<(wIdx+MIN_CU_LOG2);
       UInt uiHeight = 1<<(hIdx+MIN_CU_LOG2);
 

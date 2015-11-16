@@ -58,7 +58,9 @@ using namespace std;
  */
 Void TEncCu::create(UChar uhTotalDepth, UInt uiMaxWidth, UInt uiMaxHeight)
 {
+#if !QT_BT_STRUCTURE
   Int i;
+#endif
   
   m_uhTotalDepth   = uhTotalDepth + 1;
 #if !QT_BT_STRUCTURE
@@ -74,11 +76,11 @@ Void TEncCu::create(UChar uhTotalDepth, UInt uiMaxWidth, UInt uiMaxHeight)
   m_ppcOrigYuv     = new TComYuv*[m_uhTotalDepth-1];
 #endif
   
+#if !QT_BT_STRUCTURE
   UInt uiNumPartitions;
   for( i=0 ; i<m_uhTotalDepth-1 ; i++)
   {
     uiNumPartitions = 1<<( ( m_uhTotalDepth - i - 1 )<<1 );
-#if !QT_BT_STRUCTURE
     UInt uiWidth  = uiMaxWidth  >> i;
     UInt uiHeight = uiMaxHeight >> i;
     
@@ -94,8 +96,8 @@ Void TEncCu::create(UChar uhTotalDepth, UInt uiMaxWidth, UInt uiMaxHeight)
     m_ppcRecoYuvTemp[i] = new TComYuv; m_ppcRecoYuvTemp[i]->create(uiWidth, uiHeight);
     
     m_ppcOrigYuv    [i] = new TComYuv; m_ppcOrigYuv    [i]->create(uiWidth, uiHeight);
-#endif
   }
+#endif
   
 #if QT_BT_STRUCTURE
   UInt uiNumWidthIdx = g_aucConvertToBit[uiMaxWidth] + 1;
@@ -127,7 +129,9 @@ Void TEncCu::create(UChar uhTotalDepth, UInt uiMaxWidth, UInt uiMaxHeight)
 
     for (UInt hIdx=0; hIdx<uiNumHeightIdx; hIdx++)
     {
+#if !QT_BT_STRUCTURE
       uiNumPartitions = 1<<(wIdx+hIdx);
+#endif
       UInt uiWidth = 1<<(wIdx+MIN_CU_LOG2);
       UInt uiHeight = 1<<(hIdx+MIN_CU_LOG2);
 
@@ -612,7 +616,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, UInt u
   Bool    bSubBranch = true;
 
   // variable for Cbf fast mode PU decision
+#if !QT_BT_STRUCTURE
   Bool    doNotBlockPu = true;
+#endif
   Bool earlyDetectionSkipMode = false;
 
   Bool bBoundary = false;
@@ -712,10 +718,12 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, UInt u
           // 2Nx2N, NxN
           xCheckRDCostInter( rpcBestCU, rpcTempCU, SIZE_2Nx2N );
           rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
+#if !QT_BT_STRUCTURE
           if(m_pcEncCfg->getUseCbfFastMode())
           {
             doNotBlockPu = rpcBestCU->getQtRootCbf( 0 ) != 0;
           }
+#endif
         }
       }
 
@@ -2029,6 +2037,7 @@ Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTem
   bestIsSkip = rpcBestCU->getPic()->getSkiped(rpcBestCU->getZorderIdxInCU(), rpcBestCU->getWidth(0), rpcBestCU->getHeight(0));
 #endif
 
+#if !QT_BT_STRUCTURE
   UInt iteration;
   if ( rpcTempCU->isLosslessCoded(0))
   {
@@ -2038,6 +2047,7 @@ Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTem
   {
     iteration = 2;
   }
+#endif
 
 #if MRG_FAST
   UInt uiNumMrgSATDCand = NUM_MRG_SATD_CAND;

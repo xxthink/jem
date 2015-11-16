@@ -1219,13 +1219,13 @@ Void TDecSbac::parseCoeffNx2( TComDataCU* pcCU, TCoeff* pcCoef, UInt uiAbsPartId
     uiGoRiceParam    = 0;
     Int numNonZero = 0;
 
-    Int lastNZPosInCG = -1, firstNZPosInCG = 4;
+    Int lastNZPosInCG = -1;//, firstNZPosInCG = 4;
 
     Int pos[4];
     if( iScanPosSig == (Int) uiScanPosLast )
     {
       lastNZPosInCG  = iScanPosSig;
-      firstNZPosInCG = iScanPosSig;
+      // firstNZPosInCG = iScanPosSig;
       iScanPosSig--;
       pos[ numNonZero ] = uiBlkPosLast;
       numNonZero = 1;
@@ -1278,7 +1278,7 @@ Void TDecSbac::parseCoeffNx2( TComDataCU* pcCU, TCoeff* pcCoef, UInt uiAbsPartId
         {
           lastNZPosInCG = iScanPosSig;
         }
-        firstNZPosInCG = iScanPosSig;
+        // firstNZPosInCG = iScanPosSig;
       }
     }
 

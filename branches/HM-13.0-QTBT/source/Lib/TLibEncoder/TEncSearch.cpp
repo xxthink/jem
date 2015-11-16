@@ -4603,7 +4603,9 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv*&
     pcCU->setMVPNumSubParts( -1, REF_PIC_LIST_1, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr));
 #endif
 
+#if !QT_BT_STRUCTURE
     UInt uiMEBits = 0;
+#endif
     // Set Motion Field_
     cMv[1] = mvValidList1;
     iRefIdx[1] = refIdxValidList1;
@@ -4629,7 +4631,9 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv*&
         pcCU->setMVPNumSubParts( aaiMvpNum[0][aiZeroMvdRefIdx[0]], REF_PIC_LIST_0, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr));
         pcCU->setMVPIdxSubParts( aiZeroMvdMvpIdx[1], REF_PIC_LIST_1, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr));
         pcCU->setMVPNumSubParts( aaiMvpNum[1][aiZeroMvdRefIdx[1]], REF_PIC_LIST_1, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr));
+#if !QT_BT_STRUCTURE
         uiMEBits = auiZeroMvdBits[2];
+#endif
       }
       else if (iZeroMvdDir == 1)
       {        
@@ -4641,7 +4645,9 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv*&
         
         pcCU->setMVPIdxSubParts( aiZeroMvdMvpIdx[0], REF_PIC_LIST_0, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr));
         pcCU->setMVPNumSubParts( aaiMvpNum[0][aiZeroMvdRefIdx[0]], REF_PIC_LIST_0, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr));
+#if !QT_BT_STRUCTURE
         uiMEBits = auiZeroMvdBits[0];
+#endif
       }
       else if (iZeroMvdDir == 2)
       {
@@ -4653,7 +4659,9 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv*&
         
         pcCU->setMVPIdxSubParts( aiZeroMvdMvpIdx[1], REF_PIC_LIST_1, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr));
         pcCU->setMVPNumSubParts( aaiMvpNum[1][aiZeroMvdRefIdx[1]], REF_PIC_LIST_1, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr));
+#if !QT_BT_STRUCTURE
         uiMEBits = auiZeroMvdBits[1];
+#endif
       }
       else
       {
@@ -4702,7 +4710,9 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv*&
       pcCU->setMVPNumSubParts( aaiMvpNum[1][iRefIdxBi[1]], REF_PIC_LIST_1, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr));
 #endif
 
+#if !QT_BT_STRUCTURE
       uiMEBits = uiBits[2];
+#endif
     }
     else if ( uiCost[0] <= uiCost[1] )
     {
@@ -4726,7 +4736,9 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv*&
       pcCU->setMVPNumSubParts( aaiMvpNum[0][iRefIdx[0]], REF_PIC_LIST_0, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr));
 #endif
 
+#if !QT_BT_STRUCTURE
       uiMEBits = uiBits[0];
+#endif
     }
     else
     {
@@ -4750,7 +4762,9 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv*&
       pcCU->setMVPNumSubParts( aaiMvpNum[1][iRefIdx[1]], REF_PIC_LIST_1, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr));
 #endif
 
+#if !QT_BT_STRUCTURE
       uiMEBits = uiBits[1];
+#endif
     }
 #if AMP_MRG
     } // end if bTestNormalMC
@@ -5868,7 +5882,7 @@ Void TEncSearch::xEstimateResidualQT( TComDataCU* pcCU, TComYuv* pcResi, TextTyp
   UInt uiSingleBits = 0;
   UInt uiSingleDist = 0;
   UInt uiAbsSum = 0;
-  UInt uiBestTransformMode = 0;
+  // UInt uiBestTransformMode = 0;
 
   m_pcRDGoOnSbacCoder->store( m_pppcRDSbacCoder[ uiWIdx][uiHIdx ][ CI_QT_TRAFO_ROOT ] );
 
@@ -6086,7 +6100,7 @@ Void TEncSearch::xEstimateResidualQT( TComDataCU* pcCU, TComYuv* pcResi, TextTyp
       {
         uiDist = uiNonzeroDist;
         uiAbsSum = uiAbsSumTransformSkip;
-        uiBestTransformMode = 1;
+        // uiBestTransformMode = 1;
       }
 
       pcCU->setCbfSubParts( uiAbsSum ? uiSetCbf : 0, eType, 0  );

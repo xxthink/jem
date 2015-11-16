@@ -1227,7 +1227,7 @@ Void TEncSbac::codeCoeffNx2( TComDataCU* pcCU, TCoeff* pcCoef, UInt uiAbsPartIdx
     Int absCoeff[16];
     UInt coeffSigns = 0;
 
-    Int lastNZPosInCG = -1, firstNZPosInCG = 4; 
+    Int lastNZPosInCG = -1;//, firstNZPosInCG = 4; 
 
     if( iScanPosSig == scanPosLast )
     {
@@ -1235,7 +1235,7 @@ Void TEncSbac::codeCoeffNx2( TComDataCU* pcCU, TCoeff* pcCoef, UInt uiAbsPartIdx
       coeffSigns    = ( pcCoef[ posLast ] < 0 );
       numNonZero    = 1;
       lastNZPosInCG  = iScanPosSig;
-      firstNZPosInCG = iScanPosSig;
+      // firstNZPosInCG = iScanPosSig;
       iScanPosSig--;
     }
 
@@ -1279,7 +1279,7 @@ Void TEncSbac::codeCoeffNx2( TComDataCU* pcCU, TCoeff* pcCoef, UInt uiAbsPartIdx
           {
             lastNZPosInCG = iScanPosSig;
           }
-          firstNZPosInCG = iScanPosSig;
+          // firstNZPosInCG = iScanPosSig;
         }
       }
     }
