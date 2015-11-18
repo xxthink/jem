@@ -435,6 +435,9 @@ protected:
 #if COM16_C1016_AFFINE
   Bool      m_useAffine;
 #endif
+#if COM16_C983_RSAF
+  Bool      m_useRSAF;
+#endif
  std::string m_summaryOutFilename;                           ///< filename to use for producing summary output file.
   std::string m_summaryPicFilenameBase;                       ///< Base filename to use for producing summary picture output files. The actual filenames used will have I.txt, P.txt and B.txt appended.
   UInt        m_summaryVerboseness;                           ///< Specifies the level of the verboseness of the text output.
@@ -1084,6 +1087,10 @@ public:
 #if COM16_C1016_AFFINE
   Bool getUseAffine()                                           { return m_useAffine; }
   Void setUseAffine(Bool b)                                     { m_useAffine = b;    }
+#endif
+#if COM16_C983_RSAF
+  Bool getUseRSAF()                                             { return m_useRSAF; }
+  Void setUseRSAF(Bool b)                                       { m_useRSAF = b;    }
 #endif
 };
 

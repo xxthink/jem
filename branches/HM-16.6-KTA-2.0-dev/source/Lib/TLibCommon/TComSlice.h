@@ -862,6 +862,9 @@ private:
 #if COM16_C1016_AFFINE
   Bool             m_useAffine;
 #endif
+#if COM16_C983_RSAF
+  Bool             m_useRSAF;
+#endif
  // Parameter
   BitDepths        m_bitDepths;
   Int              m_qpBDOffset[MAX_NUM_CHANNEL_TYPE];
@@ -1103,6 +1106,11 @@ public:
  Bool                   getUseAffine ()  const                                                     { return m_useAffine; }
   Void                  setUseAffine ( Bool b )                                                    { m_useAffine = b;    }
 #endif
+#if COM16_C983_RSAF
+ Bool                   getUseRSAF ()  const                                                       { return m_useRSAF; }
+ Void                   setUseRSAF ( Bool b )                                                      { m_useRSAF = b;    }
+#endif
+
   // KTA tools
 
   // Sequence parameter set range extension syntax

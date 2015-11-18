@@ -831,6 +831,9 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
 #if COM16_C1016_AFFINE
   READ_FLAG( uiCode, "affine_enabled_flag");    pcSPS->setUseAffine( uiCode );
 #endif
+#if COM16_C983_RSAF
+  READ_FLAG( uiCode, "rsaf_enabled_flag");      pcSPS->setUseRSAF( uiCode );
+#endif
   // KTA tools
 
   READ_FLAG( uiCode, "sps_extension_present_flag");

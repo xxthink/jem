@@ -128,6 +128,24 @@ typedef struct
   Int golombRiceAdaptationStatistics[RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS];
 } estBitsSbacStruct;
 
+#if COM16_C983_RSAF
+typedef struct  
+{
+  Int64 minCost;
+  Int minPos;
+  Int finalChange;
+} BitHidingInCG_Coeff;
+
+typedef struct 
+{
+  Bool bHide;
+  Bool bAvailable;
+  Bool bNonSBH;
+  BitHidingInCG_Coeff oddCoeff;
+  BitHidingInCG_Coeff evenCoeff;
+} BitHidingInCGInfo;
+#endif
+
 // ====================================================================================================================
 // Class definition
 // ====================================================================================================================
@@ -189,7 +207,12 @@ Void RotTransform4I( Int* matrix, UChar index );
                            TCoeff        * rpcArlCoeff,
 #endif
                            TCoeff         & uiAbsSum,
-                     const QpParam        & cQP );
+                     const QpParam        & cQP 
+#if COM16_C983_RSAF
+                         , Bool             bRSAFflagToHide,
+                           Bool           & bHidden
+#endif
+                     );
 
 
   Void invTransformNxN(      TComTU       & rTu,
@@ -367,7 +390,12 @@ private:
 #endif
                      TCoeff       &uiAbsSum,
                const ComponentID   compID,
-               const QpParam      &cQP );
+               const QpParam      &cQP 
+#if COM16_C983_RSAF
+                   , Bool          bRSAFflagToHide,
+                     Bool         &bHidden
+#endif
+               );
 
 #if T0196_SELECTIVE_RDOQ
   Bool xNeedRDOQ(    TComTU       &rTu,
@@ -386,7 +414,12 @@ private:
 #endif
                                            TCoeff       &uiAbsSum,
                                      const ComponentID   compID,
-                                     const QpParam      &cQP );
+                                     const QpParam      &cQP 
+#if COM16_C983_RSAF
+                                         , Bool          bRSAFflagToHide, 
+                                           Bool         &bHidden
+#endif
+                                     );
 
 __inline UInt              xGetCodedLevel  ( Double&          rd64CodedCost,
                                              Double&          rd64CodedCost0,
@@ -455,6 +488,77 @@ public:
                                        const Int          strideT,
                                        const Bool         reverse);
 
+#if COM16_C983_RSAF
+public:
+  static Bool getChecksum(                     TComDataCU*  pcCU, 
+                                                   TCoeff*  pcCoeff, 
+                                                     UInt   uiAbsPartIdx, 
+                                                     UInt   uiWidth, 
+                                                     UInt   uiHeight, 
+                          const TUEntropyCodingParameters&  codingParameters, 
+                                                     UInt   uiPosDiv, 
+                                                     UInt   uiPosRes, 
+                                                      Int&  iAbsSum);
+
+private:
+  UInt getMapSBH(        TComDataCU*  pcCU, 
+                             TCoeff*  plSrcCoeff, 
+                             TCoeff*  piDstCoeff, 
+                               UInt   uiAbsPartIdx, 
+                               UInt   uiWidth, 
+                               UInt   uiHeight, 
+    const TUEntropyCodingParameters&  codingParameters, 
+          vector<BitHidingInCGInfo>&  l_cgbh,
+                              Int64   rdFactor, 
+                                Int*  deltaU, 
+                                Int*  rateIncUp, 
+                                Int*  rateIncDown, 
+                                Int*  sigRateDelta );
+
+  Bool getBestPos( UInt   uiSignFlag, 
+                    Int   lastCG, 
+                    Int&  firstNZPosInCG, 
+                    Int   lastNZPosInCG, 
+             const UInt*  scan, 
+                 TCoeff*  plSrcCoeff, 
+                 TCoeff*  piDstCoeff, 
+                   UInt   subPos,
+                  Int64   rdFactor, 
+                    Int*  deltaU, 
+                    Int*  rateIncUp, 
+                    Int*  rateIncDown, 
+                    Int*  sigRateDelta, 
+                   UInt   uiPosDiv,
+                   UInt   uiPosRes,
+                  Int64&  minCostInc, 
+                    Int&  minPos, 
+                    Int&  finalChange, 
+                   Bool   bSearchConstrained = false);
+
+  Void fixWorstCase(                      TComDataCU*  pcCU, 
+                                              TCoeff*  plSrcCoeff, 
+                                              TCoeff*  piDstCoeff, 
+                                                UInt   uiAbsPartIdx, 
+                                                UInt   uiWidth, 
+                                                UInt   uiHeight, 
+                     const TUEntropyCodingParameters&  codingParameters,
+                                               Int64   rdFactor, 
+                                                 Int*  deltaU, 
+                                                 Int*  rateIncUp, 
+                                                 Int*  rateIncDown, 
+                                                 Int*  sigRateDelta, 
+                                                Bool   bRestrictDownCost );
+
+  Void fixSBH(                            TCoeff*  plSrcCoeff, 
+                                          TCoeff*  piDstCoeff, 
+                                            UInt   uiAbsPartIdx, 
+                                            UInt   uiWidth, 
+                                            UInt   uiHeight, 
+                 const TUEntropyCodingParameters&  codingParameters, 
+                       vector<BitHidingInCGInfo>&  l_cgbh);
+
+
+#endif
 };// END CLASS DEFINITION TComTrQuant
 
 //! \}

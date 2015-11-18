@@ -1139,6 +1139,9 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 #if COM16_C1016_AFFINE
   ("AFFINE",                                     m_useAffine,         true, "Enable affine transform prediction")
 #endif
+#if COM16_C983_RSAF
+  ("RSAF",                                       m_useRSAF,         true, "Enable reference sample adaptive filter")
+#endif
   ;
 
   for(Int i=1; i<MAX_GOP+1; i++)
@@ -2637,6 +2640,9 @@ Void TAppEncCfg::xPrintParameter()
 #endif
 #if COM16_C1016_AFFINE
   printf("AFFINE:%d ", m_useAffine);
+#endif
+#if COM16_C983_RSAF
+  printf("RSAF:%d ", m_useRSAF);
 #endif
     printf("\n\n");
 

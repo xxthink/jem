@@ -777,6 +777,9 @@ Void TEncTop::xInitSPS()
 #if COM16_C1016_AFFINE
   m_cSPS.setUseAffine( m_useAffine );
 #endif
+#if COM16_C983_RSAF
+  m_cSPS.setUseRSAF( m_useRSAF );
+#endif
 }
 
 Void TEncTop::xInitHrdParameters()

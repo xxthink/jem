@@ -1629,6 +1629,9 @@ TComSPS::TComSPS()
 #if COM16_C1016_AFFINE
 , m_useAffine                (false)
 #endif
+#if COM16_C983_RSAF
+, m_useRSAF                   (false)
+#endif
 , m_bPCMFilterDisableFlag     (false)
 , m_uiBitsForPOC              (  8)
 , m_numLongTermRefPicSPS      (  0)

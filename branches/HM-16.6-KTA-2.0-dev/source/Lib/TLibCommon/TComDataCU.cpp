@@ -180,6 +180,11 @@ Void TComDataCU::create( ChromaFormat chromaFormatIDC, UInt uiNumPartition, UInt
 #endif
     m_pePartSize         = new Char[ uiNumPartition ];
     memset( m_pePartSize, NUMBER_OF_PART_SIZES,uiNumPartition * sizeof( *m_pePartSize ) );
+
+#if COM16_C983_RSAF
+    m_puhIntraFiltFlag = new UChar[uiNumPartition];
+#endif
+
     m_pePredMode         = new Char[ uiNumPartition ];
     m_CUTransquantBypass = new Bool[ uiNumPartition ];
 
@@ -337,6 +342,13 @@ Void TComDataCU::destroy()
     { 
       delete[] m_ROTIdx;          
       m_ROTIdx          = NULL; 
+    }
+#endif
+#if COM16_C983_RSAF
+    if ( m_puhIntraFiltFlag )
+    { 
+      delete[] m_puhIntraFiltFlag;  
+      m_puhIntraFiltFlag = NULL; 
     }
 #endif
     if ( m_pePartSize )
@@ -625,6 +637,10 @@ Void TComDataCU::initCtu( TComPic* pcPic, UInt ctuRsAddr )
 #if VCEG_AZ05_ROT_TR
   memset( m_ROTIdx            , 0,                      m_uiNumPartition * sizeof( *m_ROTIdx ) );
 #endif
+#if COM16_C983_RSAF
+  memset(m_puhIntraFiltFlag   , 0,                      m_uiNumPartition * sizeof(*m_puhIntraFiltFlag));
+#endif 
+
   memset( m_pePartSize        , NUMBER_OF_PART_SIZES,       m_uiNumPartition * sizeof( *m_pePartSize ) );
   memset( m_pePredMode        , NUMBER_OF_PREDICTION_MODES, m_uiNumPartition * sizeof( *m_pePredMode ) );
   memset( m_CUTransquantBypass, false,                      m_uiNumPartition * sizeof( *m_CUTransquantBypass) );
@@ -929,6 +945,10 @@ Void TComDataCU::initSubCU( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth, 
 #if COM16_C1016_AFFINE
   memset( m_affineFlag,         0, iSizeInBool  );
 #endif
+#if COM16_C983_RSAF 
+  memset( m_puhIntraFiltFlag     , 0,  sizeof( *m_puhIntraFiltFlag )   * m_uiNumPartition );
+#endif
+
 
   for (UInt ch=0; ch<MAX_NUM_CHANNEL_TYPE; ch++)
   {
@@ -958,6 +978,10 @@ Void TComDataCU::initSubCU( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth, 
   memset( m_puhHeight,         uhHeight, iSizeInUchar );
 #endif
   memset( m_pbIPCMFlag,        0, iSizeInBool  );
+#if COM16_C983_RSAF
+  memset( m_puhIntraFiltFlag,  0, iSizeInUchar );
+#endif
+
   for (UInt ui = 0; ui < m_uiNumPartition; ui++)
   {
     m_skipFlag[ui]   = false;
@@ -972,6 +996,9 @@ Void TComDataCU::initSubCU( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth, 
 #endif
     m_pePartSize[ui] = NUMBER_OF_PART_SIZES;
     m_pePredMode[ui] = NUMBER_OF_PREDICTION_MODES;
+#if COM16_C983_RSAF
+    m_puhIntraFiltFlag[ui]   = false;
+#endif
     m_CUTransquantBypass[ui] = false;
     m_ChromaQpAdj[ui] = 0;
 
@@ -1061,6 +1088,9 @@ Void TComDataCU::copySubCU( TComDataCU* pcCU, UInt uiAbsPartIdx )
   m_ChromaQpAdj = pcCU->getChromaQpAdj()  + uiPart;
   m_pePartSize = pcCU->getPartitionSize() + uiPart;
   m_pePredMode=pcCU->getPredictionMode()  + uiPart;
+#if COM16_C983_RSAF
+  m_puhIntraFiltFlag    = pcCU->getLumaIntraFilter() + uiPart;
+#endif
   m_CUTransquantBypass  = pcCU->getCUTransquantBypass()+uiPart;
 
   m_pbMergeFlag         = pcCU->getMergeFlag()        + uiPart;
@@ -1362,7 +1392,9 @@ Void TComDataCU::copyToPic( UChar uhDepth )
 #if COM16_C806_LARGE_CTU
   Int sizeInUshort = sizeof( UShort ) * m_uiNumPartition;
 #endif
-
+#if COM16_C983_RSAF
+  memcpy( pCtu->getLumaIntraFilter() + m_absZIdxInCtu, m_puhIntraFiltFlag, sizeof( *m_puhIntraFiltFlag ) * m_uiNumPartition );
+#endif
   memcpy( pCtu->getSkipFlag() + m_absZIdxInCtu, m_skipFlag, sizeof( *m_skipFlag ) * m_uiNumPartition );
 #if VCEG_AZ05_INTRA_MPI
   memcpy( pCtu->getMPIIdx()   + m_absZIdxInCtu, m_MPIIdx, sizeof( *m_MPIIdx ) * m_uiNumPartition );

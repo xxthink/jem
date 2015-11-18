@@ -3187,7 +3187,12 @@ Void TComTrQuant::xQuant(       TComTU       &rTu,
 #endif
                                 TCoeff       &uiAbsSum,
                           const ComponentID   compID,
-                          const QpParam      &cQP )
+                          const QpParam      &cQP 
+#if COM16_C983_RSAF
+                              , Bool          bRSAFflagToHide,
+                                Bool&         bHidden
+#endif
+                          )
 {
   const TComRectangle &rect = rTu.getRect(compID);
   const UInt uiWidth        = rect.width;
@@ -3213,9 +3218,19 @@ Void TComTrQuant::xQuant(       TComTU       &rTu,
     {
 #endif
 #if ADAPTIVE_QP_SELECTION
-      xRateDistOptQuant( rTu, piCoef, pDes, pArlDes, uiAbsSum, compID, cQP );
+      xRateDistOptQuant( rTu, piCoef, pDes, pArlDes, uiAbsSum, compID, cQP 
+#if COM16_C983_RSAF
+                       , bRSAFflagToHide, 
+                         bHidden
+#endif
+        );
 #else
-      xRateDistOptQuant( rTu, piCoef, pDes, uiAbsSum, compID, cQP );
+      xRateDistOptQuant( rTu, piCoef, pDes, uiAbsSum, compID, cQP 
+#if COM16_C983_RSAF
+                       , bRSAFflagToHide, 
+                         bHidden
+#endif
+        );
 #endif
 #if T0196_SELECTIVE_RDOQ
     }
@@ -3709,7 +3724,12 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
                                       TCoeff       *  pcArlCoeff,
 #endif
                                       TCoeff        & uiAbsSum,
-                                const QpParam       & cQP )
+                                const QpParam       & cQP 
+#if COM16_C983_RSAF
+                                    , Bool            bRSAFflagToHide, 
+                                      Bool          & bHidden
+#endif
+                                )
 {
   const TComRectangle &rect = rTu.getRect(compID);
   const UInt uiWidth        = rect.width;
@@ -3814,7 +3834,12 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
 #if ADAPTIVE_QP_SELECTION
               pcArlCoeff,
 #endif
-              uiAbsSum, compID, cQP );
+              uiAbsSum, compID, cQP 
+#if COM16_C983_RSAF
+            , bRSAFflagToHide, 
+              bHidden
+#endif
+              );
 
 #if DEBUG_TRANSFORM_AND_QUANTISE
       std::cout << g_debugCounter << ": " << uiWidth << "x" << uiHeight << " channel " << compID << " TU at output of quantiser\n";
@@ -4496,7 +4521,12 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
 #endif
                                                             TCoeff       &uiAbsSum,
                                                       const ComponentID   compID,
-                                                      const QpParam      &cQP  )
+                                                      const QpParam      &cQP  
+#if COM16_C983_RSAF
+                                                          , Bool          bRSAFflagToHide
+                                                          , Bool         &bHidden
+#endif
+                                                      )
 {
   const TComRectangle  & rect             = rTu.getRect(compID);
   const UInt             uiWidth          = rect.width;
@@ -4970,6 +5000,257 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
 
     Int lastCG = -1;
     Int absSum = 0 ;
+
+#if COM16_C983_RSAF
+    if (uiWidth <= 32 && uiWidth > 4 && pcCU->getSlice()->getSPS()->getUseRSAF())
+    {
+      vector<BitHidingInCGInfo> l_cgbh;
+      UInt res = getMapSBH( pcCU, 
+                            plSrcCoeff, 
+                            piDstCoeff, 
+                            uiAbsPartIdx, 
+                            uiWidth, 
+                            uiHeight, 
+                            codingParameters, 
+                            l_cgbh,
+                            rdFactor, 
+                            deltaU, 
+                            rateIncUp, 
+                            rateIncDown, 
+                            sigRateDelta );
+
+      if (res) //any SBH_THRESHOLD
+      {
+        Int bestMBHIdx = -1;
+        UInt64 bestDiff = std::numeric_limits<Int64>::max();
+
+        Bool bMB = bRSAFflagToHide; 
+        assert(uiWidth>=4);
+
+        Bool bNoMBH = bHidden ||  (uiWidth<8);
+        bNoMBH |= (compID != COMPONENT_Y);
+
+        if (bNoMBH) 
+        {
+          fixSBH( plSrcCoeff, piDstCoeff, uiAbsPartIdx, uiWidth, uiHeight, codingParameters, l_cgbh);
+        }
+        else 
+        {
+          bHidden = true;
+          if (res==2) // at least one CG with SBH
+          { 
+            //find best CG for even/odd manipulation
+            for (Int i=0;i<l_cgbh.size(); i++)
+            {
+              if (l_cgbh[i].bHide && !l_cgbh[i].bNonSBH) 
+              {
+                const Int64 currDiff = abs(l_cgbh[i].evenCoeff.minCost-l_cgbh[i].oddCoeff.minCost);
+                if (bestDiff>currDiff) 
+                {
+                  bestDiff = currDiff;
+                  bestMBHIdx = i;
+                }
+              }
+            }
+
+            if (bestMBHIdx>=0) 
+            {
+              //skip best group for common SBH 
+              l_cgbh[bestMBHIdx].bHide = false; 
+
+              //perform SBH for all CGs except the skipped one
+              fixSBH( plSrcCoeff, piDstCoeff, uiAbsPartIdx, uiWidth, uiHeight, codingParameters, l_cgbh);
+            }
+              //calculate checksum for all even coeffs for MBH:
+            Int iAbsSum;
+            Bool bChecksum = getChecksum(pcCU, piDstCoeff, uiAbsPartIdx, uiWidth, uiHeight, codingParameters, 2, 1, iAbsSum);
+
+            Int minPos = -1;
+            Int finalChange = 0;
+
+            if (bestMBHIdx>=0) 
+            {
+              if (bChecksum==bMB) 
+              {
+                //modify odd
+                minPos = l_cgbh[bestMBHIdx].oddCoeff.minPos;
+                finalChange = l_cgbh[bestMBHIdx].oddCoeff.finalChange;
+              }
+              else
+              {
+                //modify even
+                minPos = l_cgbh[bestMBHIdx].evenCoeff.minPos;
+                finalChange = l_cgbh[bestMBHIdx].evenCoeff.finalChange;
+              }
+            }
+
+            Int minPosEven = -1;
+            Int64 minCostEven = std::numeric_limits<Int64>::max();
+            Int minPosOdd = -1;
+            Int64 minCostOdd = std::numeric_limits<Int64>::max();
+
+            Int finalChangeEven = 0;
+
+            for (Int i=0;i<l_cgbh.size(); i++)
+            {
+              if (l_cgbh[i].bHide && l_cgbh[i].bNonSBH) 
+              {
+                if (l_cgbh[i].evenCoeff.minCost < minCostEven) 
+                {
+                  minCostEven = l_cgbh[i].evenCoeff.minCost;
+                  minPosEven = l_cgbh[i].evenCoeff.minPos;
+                  finalChangeEven = l_cgbh[i].evenCoeff.finalChange;
+                }
+
+                if (l_cgbh[i].oddCoeff.minCost < minCostOdd) 
+                {
+                  minCostOdd = l_cgbh[i].oddCoeff.minCost;
+                  minPosOdd = l_cgbh[i].oddCoeff.minPos;
+                }
+              }
+            }
+              if ( (minPosEven<0)||(minPosOdd<0) ) 
+              {
+                assert(bestMBHIdx>=0);
+                if(plSrcCoeff[minPos]>=0)
+                {
+                  piDstCoeff[minPos] += finalChange;
+                }
+                else
+                {
+                  piDstCoeff[minPos] -= finalChange ; 
+                }
+              }
+              else
+              {
+                if (bestMBHIdx<0) 
+                {
+                  if (bChecksum!=bMB) 
+                  {
+                    minPos      = minPosEven; 
+                    finalChange = finalChangeEven;
+                    assert(minPos >= 0);
+                    if(plSrcCoeff[minPos]>=0)
+                    {
+                      piDstCoeff[minPos] += finalChange;
+                    }
+                    else
+                    {
+                      piDstCoeff[minPos] -= finalChange;
+                    }
+                  }
+                } 
+                else if (bChecksum==bMB)
+                {
+                  if (l_cgbh[bestMBHIdx].oddCoeff.minCost > (l_cgbh[bestMBHIdx].evenCoeff.minCost + minCostEven))
+                  {
+                    //modify two bits
+                    minPos      = l_cgbh[bestMBHIdx].evenCoeff.minPos;
+                    finalChange = l_cgbh[bestMBHIdx].evenCoeff.finalChange;
+                    if(plSrcCoeff[minPos] >= 0)
+                    {
+                      piDstCoeff[minPos] += finalChange;
+                    }
+                    else
+                    {
+                      piDstCoeff[minPos] -= finalChange; 
+                    }
+
+                    minPos = minPosEven; finalChange=finalChangeEven;
+                    if(plSrcCoeff[minPos] >= 0)
+                    {
+                      piDstCoeff[minPos] += finalChange;
+                    }
+                    else
+                    {
+                      piDstCoeff[minPos] -= finalChange; 
+                    }
+                  } 
+                  else 
+                  {
+                    minPos = l_cgbh[bestMBHIdx].oddCoeff.minPos;
+                    finalChange = l_cgbh[bestMBHIdx].oddCoeff.finalChange;
+                    if(plSrcCoeff[minPos]>=0)
+                    {
+                      piDstCoeff[minPos] += finalChange;
+                    }
+                    else
+                    {
+                      piDstCoeff[minPos] -= finalChange ; 
+                    }
+                  }
+                }
+                else
+                {
+                  if (l_cgbh[bestMBHIdx].evenCoeff.minCost > (l_cgbh[bestMBHIdx].oddCoeff.minCost + minCostEven))
+                  {
+                    //modify two bits
+                    minPos      = l_cgbh[bestMBHIdx].oddCoeff.minPos;
+                    finalChange = l_cgbh[bestMBHIdx].oddCoeff.finalChange;
+                    if(plSrcCoeff[minPos]>=0)
+                    {
+                      piDstCoeff[minPos] += finalChange;
+                    }
+                    else
+                    {
+                      piDstCoeff[minPos] -= finalChange; 
+                    }
+                    minPos = minPosEven; finalChange=finalChangeEven;
+                    if(plSrcCoeff[minPos]>=0)
+                    {
+                      piDstCoeff[minPos] += finalChange;
+                    }
+                    else
+                    {
+                      piDstCoeff[minPos] -= finalChange; 
+                    }
+                  } 
+                  else 
+                  {
+                    if(plSrcCoeff[minPos]>=0)
+                    {
+                      piDstCoeff[minPos] += finalChange;
+                    }
+                    else
+                    {
+                      piDstCoeff[minPos] -= finalChange; 
+                    }
+                  }
+                }
+              }
+          } 
+          else
+          { // no SBH CGs: modify both odd and even
+            assert(res==1);
+
+            //calculate checksum for all even coeffs for MBH:
+            Int iAbsSum;
+            Bool bChecksum = getChecksum(pcCU, piDstCoeff, uiAbsPartIdx, uiWidth, uiHeight, codingParameters, 2, 1, iAbsSum);
+            assert(iAbsSum>1);
+
+            if (bChecksum!=bMB) 
+            {
+              fixWorstCase( pcCU, 
+                            plSrcCoeff, 
+                            piDstCoeff, 
+                            uiAbsPartIdx, 
+                            uiWidth, 
+                            uiHeight, 
+                            codingParameters,
+                            rdFactor, 
+                            deltaU, 
+                            rateIncUp, 
+                            rateIncDown, 
+                            sigRateDelta, 
+                            iAbsSum==2);
+            }
+          }
+        }
+      }
+      return;
+    }
+#endif
+
     Int n ;
 
     for( Int subSet = (uiWidth*uiHeight-1) >> MLS_CG_SIZE; subSet >= 0; subSet-- )
@@ -5093,6 +5374,610 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
     }
   }
 }
+
+#if COM16_C983_RSAF
+Void TComTrQuant::fixWorstCase(       TComDataCU                * pcCU, 
+                                      TCoeff                    * plSrcCoeff, 
+                                      TCoeff                    * piDstCoeff, 
+                                      UInt                        uiAbsPartIdx, 
+                                      UInt                        uiWidth, 
+                                      UInt                        uiHeight, 
+                                const TUEntropyCodingParameters&  codingParameters,
+                                      Int64                       rdFactor, 
+                                      Int                       * deltaU, 
+                                      Int                       * rateIncUp, 
+                                      Int                       * rateIncDown, 
+                                      Int                       * sigRateDelta, 
+                                      Bool                        bRestrictDownCost ) 
+{ 
+  Int n;
+
+  //===== decode significance flags =====
+  const UInt *scan   = codingParameters.scan;  
+  Int lastCG = -1;
+  Int minPosEven=-1, minPosOdd=-1;
+  Int bestPosEven=-1, bestPosOdd=-1;
+  Int64 bestCost=std::numeric_limits<Int64>::max();
+  Int bestChangeOdd=0, bestChangeEven=0;
+  UInt uiCGCount=0;
+
+  for( Int subSet = (uiWidth*uiHeight-1) >> MLS_CG_SIZE; subSet >= 0; --subSet )
+  {
+    Int  subPos     = subSet << MLS_CG_SIZE;
+    Int  firstNZPosInCG=SCAN_SET_SIZE , lastNZPosInCG=-1 ;
+    Int64 curCost=std::numeric_limits<Int64>::max();
+    Int curChange=0; 
+    Int finalChange=0;
+    Int64 costUp, costDown=std::numeric_limits<Int64>::max();
+    minPosEven=-1;
+    minPosOdd=-1;
+    
+    for(n = SCAN_SET_SIZE-1; n >= 0; --n )
+    {
+      if( piDstCoeff[ scan[ n + subPos ]] )
+      {
+        lastNZPosInCG = n;
+        break;
+      }
+    }
+
+    for(n = 0; n <SCAN_SET_SIZE; n++ )
+    {
+      if( piDstCoeff[ scan[ n + subPos ]] )
+      {
+        firstNZPosInCG = n;
+        break;
+      }
+    }
+
+    // Skip wrong CGs:
+    if (lastNZPosInCG<0) continue;
+    if( lastNZPosInCG-firstNZPosInCG<SBH_THRESHOLD ) continue;
+
+    uiCGCount++;
+
+    if (lastCG==-1) lastCG=1;
+
+    Int finalChangeEven = 0;
+    Int64 minCostIncEven=std::numeric_limits<Int64>::max();
+
+    for (n = 0 ; n < (lastCG==1?(lastNZPosInCG+1):SCAN_SET_SIZE); n+=2)  //odd positions
+    { 
+      UInt signbit = (piDstCoeff[scan[subPos+firstNZPosInCG]]>0?0:1);
+      UInt uiBlkPos   = scan[ n + subPos ];
+      if(piDstCoeff[ uiBlkPos ] != 0 )
+      {
+
+        costUp   = rdFactor * ( - deltaU[uiBlkPos] ) + rateIncUp[uiBlkPos] ;
+        costDown = rdFactor * (   deltaU[uiBlkPos] ) + rateIncDown[uiBlkPos] - ( abs(piDstCoeff[uiBlkPos])==1?((1<<15)+sigRateDelta[uiBlkPos]):0 );
+
+        if((1 == lastCG) && (lastNZPosInCG == n) && (1 == abs(piDstCoeff[uiBlkPos])))
+        {
+          costDown -= (4<<15);//"4<<15" is the cost of removing the last coefficient tha is equal to 1
+        }
+
+        if (bRestrictDownCost) 
+        {
+          costDown = std::numeric_limits<Int64>::max();
+        }
+
+        if(costUp<costDown)
+        {  
+          curCost = costUp;
+          curChange =  1 ;
+        }
+        else               
+        {
+          curChange = -1 ;
+          if(n==firstNZPosInCG && abs(piDstCoeff[uiBlkPos])==1)
+          {
+            curCost = std::numeric_limits<Int64>::max()>>1 ;
+          }
+          else
+          {
+            curCost = costDown ; 
+          }
+        }
+      }
+      else
+      {
+        curCost = rdFactor*(- (abs(deltaU[uiBlkPos]))) + (1<<15) + rateIncUp[uiBlkPos] + sigRateDelta[uiBlkPos]; //(1<<15) is the cost of a new significant bit
+        curChange = 1;
+
+        if(n < firstNZPosInCG)
+        {
+          UInt thissignbit = (plSrcCoeff[uiBlkPos]>=0?0:1);
+          if(thissignbit != signbit )
+          {
+            curCost = std::numeric_limits<Int64>::max()>>1;
+          }
+        }
+      }
+
+      if(0 == ((plSrcCoeff[uiBlkPos]>=0)?(piDstCoeff[uiBlkPos]+curChange):(piDstCoeff[uiBlkPos]-curChange)))
+      {
+        if(n == firstNZPosInCG)
+        {
+          Int tmpFirstNZPosInCG = -1;
+          for(Int nTmp = 0; nTmp < SCAN_SET_SIZE; ++nTmp)
+          {
+            if((nTmp != firstNZPosInCG) && (piDstCoeff[scan[nTmp + subPos]]))
+            {
+              tmpFirstNZPosInCG = nTmp;
+              break;
+            }
+          }
+          assert(tmpFirstNZPosInCG >= 0);
+          if(lastNZPosInCG-tmpFirstNZPosInCG<SBH_THRESHOLD) continue;
+        }
+        else if(n == lastNZPosInCG)
+        {
+          Int tmpLastNZPosInCG = -1;
+          for(Int nTmp = SCAN_SET_SIZE-1; nTmp >= 0; --nTmp)
+          {
+            if((nTmp != lastNZPosInCG) && piDstCoeff[scan[nTmp+subPos]])
+            {
+              tmpLastNZPosInCG = nTmp;
+              break;
+            }
+          }
+          assert(tmpLastNZPosInCG >= 0);
+          if((tmpLastNZPosInCG-firstNZPosInCG) < SBH_THRESHOLD) continue;
+
+        }                                
+      }
+      else if (((piDstCoeff[uiBlkPos] == numeric_limits<Pel>::max()) || (piDstCoeff[uiBlkPos] == numeric_limits<Pel>::min())) && (curChange==1))
+      {   
+        if (costDown<curCost)
+        {
+          curChange = -1;
+          curCost = costDown;
+        }
+        else assert(0);//continue;
+      }
+
+      finalChange = curChange ;
+      minPosOdd = uiBlkPos ;
+
+      if((piDstCoeff[minPosOdd] == numeric_limits<Pel>::max()) || (piDstCoeff[minPosOdd] == numeric_limits<Pel>::min()))
+      {
+        finalChange = -1;
+      }
+
+      // try change
+      if(plSrcCoeff[minPosOdd] >= 0)
+      {
+        piDstCoeff[minPosOdd] += finalChange ;
+      }
+      else
+      {
+        piDstCoeff[minPosOdd] -= finalChange ; 
+      }   
+
+      Int tmpLastNZPosInCG=-1;
+      Int tmpFirstNZPosInCG=SCAN_SET_SIZE;
+      Int tmpN;
+      for(tmpN = (SCAN_SET_SIZE-1); tmpN >= 0; --tmpN)
+      {
+        if(piDstCoeff[scan[tmpN + subPos]])
+        {
+          tmpLastNZPosInCG = tmpN;
+          break;
+        }
+      }
+
+      for(tmpN = 0; tmpN < SCAN_SET_SIZE; ++tmpN)
+      {
+        if(piDstCoeff[scan[tmpN + subPos]])
+        {
+          tmpFirstNZPosInCG = tmpN;
+          break;
+        }
+      }
+      assert((tmpLastNZPosInCG-tmpFirstNZPosInCG) >= SBH_THRESHOLD);
+
+      getBestPos(signbit, 
+                 lastCG, 
+                 tmpFirstNZPosInCG, 
+                 tmpLastNZPosInCG, 
+                 scan, 
+                 plSrcCoeff, 
+                 piDstCoeff, 
+                 subPos,
+                 rdFactor, 
+                 deltaU, 
+                 rateIncUp, 
+                 rateIncDown, 
+                 sigRateDelta, 
+                 2, //denominator for integer division that defines a data hiding pattern
+                 1, //remainder
+                 minCostIncEven, 
+                 minPosEven, 
+                 finalChangeEven);
+
+      curCost+=minCostIncEven;
+
+      if (curCost < bestCost) 
+      {
+        bestCost = curCost;
+        bestPosEven=minPosEven;
+        bestPosOdd=minPosOdd;
+        bestChangeOdd = finalChange;
+        bestChangeEven = finalChangeEven;
+      }
+
+      // restore:
+      if(plSrcCoeff[minPosOdd] < 0)
+      {
+        piDstCoeff[minPosOdd] += finalChange;
+      }
+      else
+      {
+        piDstCoeff[minPosOdd] -= finalChange; 
+      }
+    }
+    if(lastCG == 1) lastCG=0;
+  }
+  if (!uiCGCount) assert(0); // function should be called in the case there is at least 1 CG with the distance greater than SBH_THRESHOLD
+  assert(bestPosOdd >= 0);
+  assert(bestPosEven >= 0);
+
+  //final change of the best positioned coefficients:
+  if(plSrcCoeff[bestPosOdd] >= 0)
+  {
+    piDstCoeff[bestPosOdd] += bestChangeOdd;
+  }
+  else
+  {
+    piDstCoeff[bestPosOdd] -= bestChangeOdd; 
+  }
+
+  if(plSrcCoeff[bestPosEven] >= 0)
+  {
+    piDstCoeff[bestPosEven] += bestChangeEven;
+  }
+  else
+  {
+    piDstCoeff[bestPosEven] -= bestChangeEven; 
+  }
+}
+
+Void TComTrQuant::fixSBH(                          TCoeff*  plSrcCoeff, 
+                                                   TCoeff*  piDstCoeff, 
+                                                     UInt   uiAbsPartIdx, 
+                                                     UInt   uiWidth, 
+                                                     UInt   uiHeight, 
+                          const TUEntropyCodingParameters&  codingParameters, 
+                                vector<BitHidingInCGInfo>&  l_cgbh ) 
+{
+  for(Int i = 0; i < l_cgbh.size(); ++i) 
+  {
+    if ((l_cgbh[i].bAvailable) && (l_cgbh[i].bHide))
+    {
+      const BitHidingInCG_Coeff& cCoeff = (l_cgbh[i].evenCoeff.minCost < l_cgbh[i].oddCoeff.minCost) ? l_cgbh[i].evenCoeff : l_cgbh[i].oddCoeff;
+      Int minPos = cCoeff.minPos;
+      Int finalChange = cCoeff.finalChange;
+      assert(abs(finalChange) == 1);
+      if(plSrcCoeff[minPos] >= 0)
+      {
+        piDstCoeff[minPos] += finalChange ;
+      }
+      else
+      {
+        piDstCoeff[minPos] -= finalChange ; 
+      }
+    }
+  }
+
+}
+
+
+UInt TComTrQuant::getMapSBH(                       TComDataCU*  pcCU, 
+                                                       TCoeff*  plSrcCoeff, 
+                                                       TCoeff*  piDstCoeff, 
+                                                         UInt   uiAbsPartIdx, 
+                                                         UInt   uiWidth, 
+                                                         UInt   uiHeight,
+                              const TUEntropyCodingParameters&  codingParameters, 
+                                    vector<BitHidingInCGInfo>&  l_cgbh,
+                                                        Int64   rdFactor, 
+                                                          Int*  deltaU, 
+                                                          Int*  rateIncUp, 
+                                                          Int*  rateIncDown, 
+                                                          Int*  sigRateDelta  )
+{
+  l_cgbh.clear();
+  const UInt* scan              = codingParameters.scan;
+
+  Int  n; 
+  UInt CGCount = 0;
+  Int  absSum  = 0;
+  Int  lastCG  = -1;
+  Bool bFound  = false;
+
+  for(Int subSet = ((uiWidth*uiHeight-1) >> MLS_CG_SIZE); subSet >= 0; --subSet)
+  {
+    Int  subPos = subSet << MLS_CG_SIZE;
+    Int  firstNZPosInCG = SCAN_SET_SIZE, lastNZPosInCG = -1 ;
+    absSum = 0;
+
+    for(n = SCAN_SET_SIZE-1; n >= 0; --n)
+    {
+      if(piDstCoeff[scan[n + subPos]])
+      {
+        lastNZPosInCG = n;
+        break;
+      }
+    }
+
+    for(n = 0; n <SCAN_SET_SIZE; ++n)
+    {
+      if(piDstCoeff[scan[n + subPos]])
+      {
+        firstNZPosInCG = n;
+        break;
+      }
+    }
+
+    BitHidingInCGInfo cgbh;
+    cgbh.bAvailable   = false;
+    cgbh.bHide        = false;
+    cgbh.bNonSBH      = false;
+
+    if (lastNZPosInCG>0) 
+    {
+      if (lastCG == -1) lastCG=1;
+      for(n = firstNZPosInCG; n <= lastNZPosInCG; ++n)
+      {
+        absSum += abs(piDstCoeff[scan[n + subPos]]);
+      }
+
+      if ((lastNZPosInCG-firstNZPosInCG) >= SBH_THRESHOLD)
+      {
+        cgbh.bAvailable = true;
+        UInt signbit = (piDstCoeff[scan[subPos + firstNZPosInCG]] > 0) ? 0 : 1;
+
+        getBestPos(signbit, 
+                   lastCG, 
+                   firstNZPosInCG, 
+                   lastNZPosInCG, 
+                   scan, 
+                   plSrcCoeff, 
+                   piDstCoeff, 
+                   subPos,
+                   rdFactor, 
+                   deltaU, 
+                   rateIncUp, 
+                   rateIncDown, 
+                   sigRateDelta, 
+                   2, //denominator for integer division that defines a data hiding pattern
+                   0, //remainder
+                   cgbh.oddCoeff.minCost,                                                                                                                            
+                   cgbh.oddCoeff.minPos, 
+                   cgbh.oddCoeff.finalChange);
+        
+        getBestPos(signbit, 
+                   lastCG, 
+                   firstNZPosInCG, 
+                   lastNZPosInCG, 
+                   scan, 
+                   plSrcCoeff, 
+                   piDstCoeff, 
+                   subPos,
+                   rdFactor, 
+                   deltaU, 
+                   rateIncUp, 
+                   rateIncDown, 
+                   sigRateDelta, 
+                   2, //denominator for integer division that defines a data hiding pattern
+                   1, //remainder
+                   cgbh.evenCoeff.minCost, 
+                   cgbh.evenCoeff.minPos, 
+                   cgbh.evenCoeff.finalChange);
+
+        if(signbit != (absSum & 0x1)) 
+        {
+          cgbh.bHide = true;
+          ++CGCount;
+        }         
+        bFound = true;
+      }
+    }
+
+    if(lastCG != -1) l_cgbh.push_back(cgbh);
+    if(lastCG ==  1) lastCG=0;
+  }
+
+  if (!bFound)  return 0;
+  if (!CGCount) return 1;
+  return 2;
+}
+
+
+Bool TComTrQuant::getChecksum(                     TComDataCU*   pcCU, 
+                                                       TCoeff*   pcCoeff, 
+                                                         UInt    uiAbsPartIdx, 
+                                                         UInt    uiWidth, 
+                                                         UInt    uiHeight, 
+                               const TUEntropyCodingParameters&  codingParameters, 
+                                                          UInt   uiPosDiv, 
+                                                          UInt   uiPosRes, 
+                                                           Int&  iAbsSum )
+{
+  //===== decode significance flags =====
+  const UInt* scan            = codingParameters.scan;
+
+  Int n; 
+  Int absSum    = 0;
+  iAbsSum       = 0;
+  for(Int subSet = ((uiWidth*uiHeight-1) >> MLS_CG_SIZE); subSet >= 0; --subSet)
+  {
+    Int  subPos         = subSet << MLS_CG_SIZE;
+
+    for(n = 0; n < SCAN_SET_SIZE; ++n)
+    {
+      iAbsSum += abs(pcCoeff[scan[n + subPos]]);
+      if((n%uiPosDiv) != uiPosRes) continue;
+      absSum += pcCoeff[scan[n + subPos]];
+    }
+  }
+  return (absSum & 0x1);
+}
+
+Bool TComTrQuant::getBestPos( UInt   uiSignFlag, 
+                               Int   lastCG, 
+                               Int&  firstNZPosInCG, 
+                               Int   lastNZPosInCG, 
+                        const UInt*  scan, 
+                            TCoeff*  plSrcCoeff, 
+                            TCoeff*  piDstCoeff, 
+                              UInt   subPos,
+                             Int64   rdFactor, 
+                               Int*  deltaU, 
+                               Int*  rateIncUp, 
+                               Int*  rateIncDown, 
+                               Int*  sigRateDelta, 
+                              UInt   uiPosDiv, 
+                              UInt   uiPosRes, 
+                             Int64&  minCostInc, 
+                               Int&  minPos, 
+                               Int&  finalChange, 
+                              Bool   bSearchConstrained ) 
+{
+  // calculate the cost 
+  Int64      curCost = std::numeric_limits<Int64>::max();
+          minCostInc = std::numeric_limits<Int64>::max();
+  Int      curChange = 0;
+              minPos = -1; 
+         finalChange = 0;
+  Int          min_n = firstNZPosInCG;
+  Bool         found = false;
+  Int64 costUp, costDown;
+  
+  for( Int n = (bSearchConstrained ? lastNZPosInCG : ((lastCG == 1) ? lastNZPosInCG : (SCAN_SET_SIZE-1))); n >= (bSearchConstrained ? firstNZPosInCG : 0); --n) 
+  {
+    costUp   = std::numeric_limits<Int64>::max();
+    costDown = std::numeric_limits<Int64>::max();
+
+    if ((n % uiPosDiv) != uiPosRes) continue;
+
+    UInt uiBlkPos = scan[n + subPos];
+    if(piDstCoeff[uiBlkPos] != 0)
+    {
+      costUp   = rdFactor * (- deltaU[uiBlkPos]) + rateIncUp[uiBlkPos];
+      costDown = rdFactor * (  deltaU[uiBlkPos]) + rateIncDown[uiBlkPos] - ((abs(piDstCoeff[uiBlkPos]) == 1) ? ((1<<15) + sigRateDelta[uiBlkPos]) : 0); //(1<<15) is the cost of a new significant bit
+
+      if((lastCG == 1) && (lastNZPosInCG == n) && (abs(piDstCoeff[uiBlkPos]) == 1))
+      {
+        costDown -= (4<<15); //"4<<15" is the cost of removing the last coefficient tha is equal to 1
+      }
+
+      if(costUp < costDown)
+      {  
+        curCost = costUp;
+        curChange =  1;
+      }
+      else               
+      {
+        curChange = -1;
+        if (((n == firstNZPosInCG)) && (abs(piDstCoeff[uiBlkPos]) == 1))
+        {
+          curCost = std::numeric_limits<Int64>::max() ;
+        }
+        else
+        {
+          curCost = costDown ; 
+        }
+      }
+    }
+    else
+    {
+      curCost = rdFactor*(- (abs(deltaU[uiBlkPos]))) + (1<<15) + rateIncUp[uiBlkPos] + sigRateDelta[uiBlkPos];
+      curChange = 1;
+
+      if((n<firstNZPosInCG) && (!bSearchConstrained))
+      {
+        UInt thissignbit = (plSrcCoeff[uiBlkPos]>=0) ? 0 : 1;
+        if(thissignbit != uiSignFlag)
+        {
+          curCost = std::numeric_limits<Int64>::max();
+        }
+      }
+    }
+
+    if(curCost < minCostInc)
+    {
+      if (!bSearchConstrained)
+      {
+        if(0 == ((plSrcCoeff[uiBlkPos] >= 0) ? (piDstCoeff[uiBlkPos] + curChange) : (piDstCoeff[uiBlkPos]-curChange)))
+        {
+          if(n == firstNZPosInCG)
+          {
+            Int tmpFirstNZPosInCG = -1;
+            for(Int nTmp = 0; nTmp < SCAN_SET_SIZE; ++nTmp)
+            {
+              if((nTmp != firstNZPosInCG) && (piDstCoeff[scan[nTmp + subPos]]))
+              {
+                tmpFirstNZPosInCG = nTmp;
+                break;
+              }
+            }
+            assert(tmpFirstNZPosInCG >= 0);
+            if(lastNZPosInCG-tmpFirstNZPosInCG<SBH_THRESHOLD) continue;
+          }
+          else if(n == lastNZPosInCG)
+          {
+            Int tmpLastNZPosInCG = -1;
+            for(Int nTmp = SCAN_SET_SIZE-1; nTmp >= 0; --nTmp )
+            {
+              if((nTmp != lastNZPosInCG) && piDstCoeff[scan[nTmp+subPos]])
+              {
+                tmpLastNZPosInCG = nTmp;
+                break;
+              }
+            }
+            assert(tmpLastNZPosInCG>=0);
+            if((tmpLastNZPosInCG - firstNZPosInCG) < SBH_THRESHOLD) continue;                 
+
+          }                                
+        }
+        else if (((piDstCoeff[uiBlkPos] == numeric_limits<Pel>::max()) || (piDstCoeff[uiBlkPos] == numeric_limits<Pel>::min())) && (curChange == 1))
+        {   
+          if (costDown < minCostInc)
+            {
+              curChange = -1;
+              curCost = costDown;
+            }
+          else 
+          {
+            assert(0);
+          }
+        }
+      }
+      minCostInc = curCost ;
+      finalChange = curChange ;
+      minPos = uiBlkPos ;
+      min_n=n;
+      found = true;
+    }
+  }
+
+  if((piDstCoeff[minPos] == numeric_limits<Pel>::max()) || (piDstCoeff[minPos] == numeric_limits<Pel>::min()))
+  {
+    finalChange = -1;
+  }
+
+  assert(found);
+  if (found) 
+  {
+    assert(minPos >= 0);
+    assert(minPos < MAX_TU_SIZE*MAX_TU_SIZE);
+    assert((min_n % uiPosDiv) == uiPosRes);
+  }
+
+  return found;
+}
+#endif
 
 #if VCEG_AZ07_CTX_RESIDUALCODING
 Int TComTrQuant::getGrtZeroCtxInc( TCoeff*                         pcCoeff,

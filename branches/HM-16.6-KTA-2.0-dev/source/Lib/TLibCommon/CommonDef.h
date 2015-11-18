@@ -177,6 +177,11 @@ static const Int MLS_CG_LOG2_WIDTH =                                2;
 static const Int MLS_CG_LOG2_HEIGHT =                               2;
 static const Int MLS_CG_SIZE =                                      4; ///< Coefficient group size of 4x4; = MLS_CG_LOG2_WIDTH + MLS_CG_LOG2_HEIGHT
 
+#if COM16_C983_RSAF
+static const Int SCAN_SET_SIZE =                                   (1 << MLS_CG_SIZE); ///< Coefficient group size of 4x4; = MLS_CG_LOG2_WIDTH + MLS_CG_LOG2_HEIGHT
+#endif
+
+
 #if ADAPTIVE_QP_SELECTION
 static const Int ARL_C_PRECISION =                                  7; ///< G382: 7-bit arithmetic precision
 static const Int LEVEL_RANGE =                                     30; ///< G382: max coefficient level in statistics collection
