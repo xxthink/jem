@@ -97,6 +97,35 @@ Void TComPatternParam::setPatternParamPel ( Pel* piTexture,
   m_bitDepth       = bitDepth;
 }
 
+
+// ====================================================================================================================
+// Initialize static members (TComPattern)
+// ====================================================================================================================
+
+#if COM16_C983_RSAF
+//Implementations of low-pass filters used in RSAF
+inline Pel lp3tapFilterHor(const Pel* pCurPxl) //[1, 2, 1]/4 low-pass filter for processing rows
+{
+  return((pCurPxl[-1] + (pCurPxl[0]<<1) + pCurPxl[1] + 2)>>2);
+}
+
+inline Pel lp5tapFilterHor(const Pel* pCurPxl) //[2, 3, 6, 3, 2]/16 low-pass filter for processing rows
+{
+  return((pCurPxl[-1] + pCurPxl[1] + ((pCurPxl[-2] + pCurPxl[-1] + pCurPxl[0] + pCurPxl[1] + pCurPxl[2])<<1) + (pCurPxl[0]<<2) + 8)>>4);
+}
+
+inline Pel lp3tapFilterVer(const Pel* pCurPxl, Int iStride) //[1, 2, 1]/4 low-pass filter for processing columns
+{
+  return((pCurPxl[-iStride] + (pCurPxl[0]<<1) + pCurPxl[iStride] + 2)>>2);
+}
+
+inline Pel lp5tapFilterVer(const Pel* pCurPxl, Int iStride) //[2, 3, 6, 3, 2]/16 low-pass filter for processing columns
+{
+  Int iDoubleStride = (iStride<<1);
+  return((pCurPxl[-iStride] + pCurPxl[iStride] + ((pCurPxl[-iDoubleStride] + pCurPxl[-iStride] + pCurPxl[0] + pCurPxl[iStride] + pCurPxl[iDoubleStride])<<1) + (pCurPxl[0]<<2) + 8)>>4);
+}
+#endif
+
 // ====================================================================================================================
 // Public member functions (TComPattern)
 // ====================================================================================================================
@@ -111,9 +140,19 @@ Void TComPattern::initPattern (Pel* piY,
 }
 
 
+
 // TODO: move this function to TComPrediction.cpp.
-Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID compID, const Bool bFilterRefSamples DEBUG_STRING_FN_DECLARE(sDebug))
+Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID compID, const Bool bFilterRefSamples 
+#if COM16_C983_RSAF
+   , Bool bRSAF
+#endif
+  DEBUG_STRING_FN_DECLARE(sDebug)
+  )
 {
+#if COM16_C983_RSAF
+  bRSAF &= (compID==COMPONENT_Y);
+#endif
+
   const ChannelType chType    = toChannelType(compID);
 
   TComDataCU *pcCU=rTu.getCU();
@@ -172,7 +211,6 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
                           piRoiOrigin, piIntraTemp, bNeighborFlags, iNumIntraNeighbor,  iUnitWidth, iUnitHeight, iAboveUnits, iLeftUnits,
                           uiROIWidth, uiROIHeight, iPicStride);
 
-
 #if DEBUG_STRING
     if (DebugOptionList::DebugString_Pred.getInt()&DebugStringGetPredModeMask(MODE_INTRA))
     {
@@ -193,7 +231,11 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
     }
 #endif
 
+#if !COM16_C983_RSAF
     if (bFilterRefSamples)
+#else
+    if (bFilterRefSamples || bRSAF)
+#endif
     {
       // generate filtered intra prediction samples
 
@@ -204,6 +246,13 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
       //------------------------------------------------
 
       Bool useStrongIntraSmoothing = isLuma(chType) && sps.getUseStrongIntraSmoothing();
+
+#if COM16_C983_RSAF
+      if (pcCU->getSlice()->getSPS()->getUseRSAF())
+      {
+        useStrongIntraSmoothing &= compID != COMPONENT_Y;
+      }
+#endif
 
       const Pel bottomLeft = piIntraTemp[stride * uiTuHeight2];
       const Pel topLeft    = piIntraTemp[0];
@@ -247,7 +296,20 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
       {
         for(UInt i=1; i<uiTuHeight2; i++, piDestPtr-=stride, piSrcPtr-=stride)
         {
+#if COM16_C983_RSAF
+          Bool bIsWeak = !bRSAF || !bFilterRefSamples;
+
+          if ((1 == i) || (uiTuHeight2-1 == i) || (compID != COMPONENT_Y) || (bIsWeak)) 
+          {
+            *piDestPtr = lp3tapFilterVer(piSrcPtr,stride);
+          } 
+          else 
+          {
+            *piDestPtr = lp5tapFilterVer(piSrcPtr,stride);
+          }
+#else
           *piDestPtr = ( piSrcPtr[stride] + 2*piSrcPtr[0] + piSrcPtr[-stride] + 2 ) >> 2;
+#endif
         }
       }
 
@@ -285,7 +347,20 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
       {
         for(UInt i=1; i<uiTuWidth2; i++, piDestPtr++, piSrcPtr++)
         {
+#if COM16_C983_RSAF
+          Bool bIsWeak = !bRSAF || !bFilterRefSamples;
+          
+          if ((1 == i) || (uiTuWidth2-1 == i) || (compID!=COMPONENT_Y) || (bIsWeak)) 
+          {
+            *piDestPtr = lp3tapFilterHor(piSrcPtr);
+          } 
+          else 
+          {
+            *piDestPtr = lp5tapFilterHor(piSrcPtr);
+          }
+#else
           *piDestPtr = ( piSrcPtr[1] + 2*piSrcPtr[0] + piSrcPtr[-1] + 2 ) >> 2;
+#endif
         }
       }
 
@@ -312,8 +387,6 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
       }
     }
 #endif
-
-
     }
   }
   DEBUG_STRING_APPEND(sDebug, ss.str())
@@ -538,7 +611,11 @@ Void fillReferenceSamples( const Int bitDepth,
   }
 }
 
-Bool TComPrediction::filteringIntraReferenceSamples(const ComponentID compID, UInt uiDirMode, UInt uiTuChWidth, UInt uiTuChHeight, const ChromaFormat chFmt, const Bool intraReferenceSmoothingDisabled)
+Bool TComPrediction::filteringIntraReferenceSamples(const ComponentID compID, UInt uiDirMode, UInt uiTuChWidth, UInt uiTuChHeight, const ChromaFormat chFmt, const Bool intraReferenceSmoothingDisabled
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+                                                   , Bool enableRSAF
+#endif
+                                                   )
 {
   Bool bFilter;
 
@@ -563,7 +640,11 @@ Bool TComPrediction::filteringIntraReferenceSamples(const ComponentID compID, UI
       Int diff = min<Int>(abs((Int) uiDirMode - HOR_IDX), abs((Int)uiDirMode - VER_IDX));
       UInt sizeIndex=g_aucConvertToBit[uiTuChWidth];
       assert(sizeIndex < MAX_INTRA_FILTER_DEPTHS);
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+      bFilter = diff > m_aucIntraFilter[toChannelType(compID)][sizeIndex] -   ( (compID==COMPONENT_Y && enableRSAF && sizeIndex==1) ? 2 : 0);
+#else
       bFilter = diff > m_aucIntraFilter[toChannelType(compID)][sizeIndex];
+#endif
     }
   }
   return bFilter;

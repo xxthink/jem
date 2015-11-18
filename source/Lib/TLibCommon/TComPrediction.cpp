@@ -383,6 +383,9 @@ Void TComPrediction::xPredIntraAng(       Int bitDepth,
 #if VCEG_AZ07_INTRA_4TAP_FILTER
                                           , Bool enable4TapFilter
 #endif
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+                                          , Bool enableRSAF
+#endif
                                           )
 {
   Int width=Int(uiWidth);
@@ -517,7 +520,12 @@ Void TComPrediction::xPredIntraAng(       Int bitDepth,
           {
             Int p[4], x, refMainIndex;
             const Pel nMin = 0, nMax = (1 << bitDepth) - 1;
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+            Int *f =  ((channelType==CHANNEL_TYPE_LUMA) && enableRSAF) ? g_aiIntraCubicFilter[deltaFract] : ( (width<=8) ? g_aiIntraCubicFilter[deltaFract] : g_aiIntraGaussFilter[deltaFract] );
+#else
             Int *f = (width<=8) ? g_aiIntraCubicFilter[deltaFract] : g_aiIntraGaussFilter[deltaFract];
+#endif
+
             
             for (x=0;x<width;x++)
             {
@@ -531,7 +539,11 @@ Void TComPrediction::xPredIntraAng(       Int bitDepth,
 
               pDst[y*dstStride+x] =  (Pel)( ( f[0]*p[0] + f[1]*p[1] + f[2]*p[2] + f[3]*p[3] + 128 ) >> 8 );
 
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+              if (enableRSAF || width<=8)
+#else
               if( width<=8 ) // for blocks larger than 8x8, Gaussian interpolation filter with positive coefficients is used, no Clipping is necessary
+#endif
               {
                 pDst[y*dstStride+x] =  Clip3( nMin, nMax, pDst[y*dstStride+x] );
               }
@@ -675,11 +687,20 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
       const Bool              enable4TapFilter     = pcCU->getSlice()->getSPS()->getUseIntra4TapFilter();
 #endif
 #if VCEG_AZ07_INTRA_BOUNDARY_FILTER
+
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+      const Bool              enableBoundaryFilter = pcCU->getSlice()->getSPS()->getUseIntraBoundaryFilter() && (pcCU->getMPIIdx(uiAbsPartIdx) <= 1 || pcCU->getWidth(uiAbsPartIdx)>=16 || !pcCU->getSlice()->getSPS()->getUseRSAF() );
+#else
       const Bool              enableBoundaryFilter = pcCU->getSlice()->getSPS()->getUseIntraBoundaryFilter();
+#endif
+
 #endif
       xPredIntraAng( channelsBitDepthForPrediction, ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight, channelType, uiDirMode, enableEdgeFilters 
 #if VCEG_AZ07_INTRA_4TAP_FILTER
         , enable4TapFilter
+#endif
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+        , pcCU->getSlice()->getSPS()->getUseRSAF()
 #endif
         );
 

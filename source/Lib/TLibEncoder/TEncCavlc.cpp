@@ -627,6 +627,9 @@ Void TEncCavlc::codeSPS( const TComSPS* pcSPS )
 #if COM16_C1016_AFFINE
  WRITE_FLAG( pcSPS->getUseAffine() ? 1 : 0,              "affine_enabled_flag" );
 #endif
+#if COM16_C983_RSAF
+ WRITE_FLAG( pcSPS->getUseRSAF() ? 1 : 0,                "rsaf_enabled_flag" );
+#endif
   // KTA tools
 
   Bool sps_extension_present_flag=false;

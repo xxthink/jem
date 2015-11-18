@@ -158,6 +158,11 @@ private:
 #if COM16_C806_OBMC
   Bool*         m_OBMCFlag;           ///< array of OBMC flags
 #endif
+
+#if COM16_C983_RSAF
+  UChar*        m_puhIntraFiltFlag;
+#endif
+
 #if VCEG_AZ07_FRUC_MERGE
   UChar*        m_puhFRUCMgrMode;
 #endif
@@ -476,6 +481,12 @@ public:
   Bool          getIPCMFlag           (UInt uiIdx )             { return m_pbIPCMFlag[uiIdx];        }
   Void          setIPCMFlag           (UInt uiIdx, Bool b )     { m_pbIPCMFlag[uiIdx] = b;           }
   Void          setIPCMFlagSubParts   (Bool bIpcmFlag, UInt uiAbsPartIdx, UInt uiDepth);
+
+#if COM16_C983_RSAF
+  UChar*        getLumaIntraFilter    ()                        const { return m_puhIntraFiltFlag;         }
+  UChar         getLumaIntraFilter    (UInt uiIdx)              const { return m_puhIntraFiltFlag[uiIdx];  }
+  Void          setLumaIntraFilter    (UInt uiIdx, Bool value)  const { m_puhIntraFiltFlag[uiIdx] = value; }
+#endif
 
 #if COM16_C1045_BIO_HARMO_IMPROV
   Bool          isBIOLDB( UInt uiAbsPartIdx );

@@ -306,6 +306,10 @@ protected:
                                     const ComponentID   compID,
                                           TComTU        &rTu
                                     DEBUG_STRING_FN_DECLARE(sTest)
+#if COM16_C983_RSAF
+                                        , Bool         bFilter
+                                        , Bool&        bHidden
+#endif
                                          ,Int           default0Save1Load2 = 0
 #if COM16_C806_EMT
                                          ,UInt*         puiSigNum = NULL
@@ -327,6 +331,24 @@ protected:
                                     Double&      dRDCost,
                                     TComTU      &rTu
                                     DEBUG_STRING_FN_DECLARE(sDebug));
+
+#if COM16_C983_RSAF
+  Void  xRecurIntraCodingLumaQT_RSAF (TComYuv*    pcOrgYuv,
+                                      TComYuv*    pcPredYuv,
+                                      TComYuv*    pcResiYuv,
+#if COM16_C806_LARGE_CTU
+                                      Pel*        resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES],
+#else
+                                      Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE],
+#endif
+                                      Distortion& ruiDistY,
+#if HHI_RQT_INTRA_SPEEDUP
+                                      Bool         bCheckFirst,
+#endif
+                                      Double&      dRDCost,
+                                      TComTU      &rTu
+                                      DEBUG_STRING_FN_DECLARE(sDebug));
+#endif
 
   Void  xSetIntraResultLumaQT     ( TComYuv*     pcRecoYuv,
                                     TComTU &rTu);

@@ -655,14 +655,40 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
   const UInt uiChFinalMode = ((chFmt == CHROMA_422)       && !bIsLuma) ? g_chroma422IntraAngleMappingTable[uiChCodedMode] : uiChCodedMode;
 
   //===== init availability pattern =====
-  const Bool bUseFilteredPredictions=TComPrediction::filteringIntraReferenceSamples(compID, uiChFinalMode, uiWidth, uiHeight, chFmt, pcCU->getSlice()->getSPS()->getSpsRangeExtension().getIntraSmoothingDisabledFlag());
+#if !COM16_C983_RSAF
+  const 
+#endif
+        Bool bUseFilteredPredictions=TComPrediction::filteringIntraReferenceSamples(compID, 
+                                                                                    uiChFinalMode, 
+                                                                                    uiWidth, 
+                                                                                    uiHeight, 
+                                                                                    chFmt, 
+                                                                                    pcCU->getSlice()->getSPS()->getSpsRangeExtension().getIntraSmoothingDisabledFlag()
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+                                                                                  , sps.getUseRSAF()
+#endif
+                                                                                   );
 
 #if DEBUG_STRING
   std::ostream &ss(std::cout);
 #endif
 
+#if COM16_C983_RSAF
+  Bool bFilter = false;
+  if (compID==COMPONENT_Y && sps.getUseRSAF())
+  {
+    bFilter = (pcCU->getLumaIntraFilter( uiAbsPartIdx )) != 0;
+    bFilter &= !(pcCU->getWidth(0)>32);
+  }
+#endif
+
+
   DEBUG_STRING_NEW(sTemp)
-  m_pcPrediction->initIntraPatternChType( rTu, compID, bUseFilteredPredictions  DEBUG_STRING_PASS_INTO(sTemp) );
+  m_pcPrediction->initIntraPatternChType( rTu, compID, bUseFilteredPredictions  
+#if COM16_C983_RSAF
+                                        , (compID==COMPONENT_Y) ? bFilter : false
+#endif
+                                          DEBUG_STRING_PASS_INTO(sTemp) );
 
 
   //===== get prediction signal =====
@@ -675,7 +701,13 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
   }
   else
   {
-#endif  
+#endif 
+#if COM16_C983_RSAF
+  if (compID==COMPONENT_Y && sps.getUseRSAF()) 
+  {
+    bUseFilteredPredictions = (bFilter != false);
+  }
+#endif
     m_pcPrediction->predIntraAng( compID,   uiChFinalMode, 0 /* Decoder does not have an original image */, 0, piPred, uiStride, rTu, bUseFilteredPredictions );
 
 #if COM16_C806_LMCHROMA

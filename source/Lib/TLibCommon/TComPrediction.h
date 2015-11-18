@@ -123,6 +123,9 @@ protected:
 #if VCEG_AZ07_INTRA_4TAP_FILTER
     , Bool enable4TapFilter = false
 #endif
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+    , Bool enableRSAF = false 
+#endif
     );
   Void xPredIntraPlanar         ( const Pel* pSrc, Int srcStride, Pel* rpDst, Int dstStride, UInt width, UInt height );
 
@@ -298,10 +301,17 @@ public:
   /// set parameters from CU data for accessing intra data
   Void initIntraPatternChType ( TComTU &rTu,
                               const ComponentID compID, const Bool bFilterRefSamples
+#if COM16_C983_RSAF
+                              , Bool bRSAF = false
+#endif
                               DEBUG_STRING_FN_DECLARE(sDebug)
                               );
 
-  static Bool filteringIntraReferenceSamples(const ComponentID compID, UInt uiDirMode, UInt uiTuChWidth, UInt uiTuChHeight, const ChromaFormat chFmt, const Bool intraReferenceSmoothingDisabled);
+  static Bool filteringIntraReferenceSamples(const ComponentID compID, UInt uiDirMode, UInt uiTuChWidth, UInt uiTuChHeight, const ChromaFormat chFmt, const Bool intraReferenceSmoothingDisabled
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+                                            , Bool enableRSAF
+#endif
+                                            );
 
   static Bool UseDPCMForFirstPassIntraEstimation(TComTU &rTu, const UInt uiDirMode);
 };

@@ -1634,6 +1634,9 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
 #endif
     )
 {
+#if COM16_C983_RSAF
+  Bool bHidden=false;
+#endif
   TComDataCU* pcCU=rTu.getCU();
   const UInt uiAbsPartIdx=rTu.GetAbsPartIdxTU(compID);
   const TComRectangle &rRect=rTu.getRect(compID);
@@ -1811,6 +1814,9 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
   Bool bVer8x8 = uiWidth == 8 && uiHeight == 8 && codingParameters.scanType == SCAN_VER;
   Bool bNonZig8x8 = bHor8x8 || bVer8x8; 
 #endif
+#if COM16_C983_RSAF
+    Bool bCheckBH = false;
+#endif
   for( Int iSubSet = iLastScanSet; iSubSet >= 0; iSubSet-- )
   {
     Int  iSubPos   = iSubSet << MLS_CG_SIZE;
@@ -1920,7 +1926,9 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
   bCbfCU = true;
 #endif
      Bool signHidden = ( lastNZPosInCG - firstNZPosInCG >= SBH_THRESHOLD );
-
+#if COM16_C983_RSAF
+      bCheckBH |= signHidden; 
+#endif
       absSum = 0;
 #if VCEG_AZ07_CTX_RESIDUALCODING
       UInt uiBin;
@@ -2154,6 +2162,24 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
     {
       parseEmtTuIdx( pcCU, uiAbsPartIdx, rTu.GetTransformDepthTotal() ); 
     }
+  }
+#endif
+#if COM16_C983_RSAF
+  if (compID==COMPONENT_Y)
+  {
+    pcCU->setLumaIntraFilter(uiAbsPartIdx, false);
+  }
+    
+  if (compID==COMPONENT_Y && pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx)!=DC_IDX && pcCU->getWidth(uiAbsPartIdx)<=32 && uiWidth > 4 && pcCU->getPartitionSize(uiAbsPartIdx)==SIZE_2Nx2N)
+  {
+      Int iAbsSum = -1;
+
+      if ( (!bHidden) && bCheckBH  ) 
+      {
+        Bool bChecksum = TComTrQuant::getChecksum(pcCU, pcCoef, uiAbsPartIdx, uiWidth, uiHeight, codingParameters, 2, 1, iAbsSum);
+
+        pcCU->setLumaIntraFilter(uiAbsPartIdx, bChecksum);
+      }
   }
 #endif
 

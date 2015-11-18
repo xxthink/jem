@@ -443,6 +443,9 @@ Void TAppEncTop::xInitLibCfg()
 #if COM16_C1016_AFFINE
  m_cTEncTop.setUseAffine                         ( m_useAffine );
 #endif
+#if COM16_C983_RSAF
+  m_cTEncTop.setUseRSAF                         ( m_useRSAF );
+#endif
   m_cTEncTop.setSummaryOutFilename                                ( m_summaryOutFilename );
   m_cTEncTop.setSummaryPicFilenameBase                            ( m_summaryPicFilenameBase );
   m_cTEncTop.setSummaryVerboseness                                ( m_summaryVerboseness );

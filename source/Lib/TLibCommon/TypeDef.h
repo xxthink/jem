@@ -118,6 +118,13 @@
 
 #define COM16_C1045_BIO_HARMO_IMPROV                      1
 #define COM16_C1016_AFFINE                                1  ///< Affine model based inter prediction
+
+#define COM16_C983_RSAF                                   1  // Reference sample adaptive filtering for intra coding and index hiding 
+
+#if COM16_C983_RSAF
+#define COM16_C983_RSAF_PREVENT_OVERSMOOTHING             1  // Harmonization with intra-prediction tools   
+#endif
+
 ///////////////////////////////////////////////////////////
 // KTA tools section end
 ///////////////////////////////////////////////////////////
