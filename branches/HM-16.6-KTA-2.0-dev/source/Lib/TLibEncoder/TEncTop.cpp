@@ -163,6 +163,8 @@ Void TEncTop::create ()
 #endif
 #if VCEG_AZ05_ROT_TR
   m_cSPS.setUseROT( m_useROT );
+#elif COM16_C1044_NSST
+  m_cSPS.setUseNSST( m_useNSST );
 #endif
 }
 
@@ -772,6 +774,8 @@ Void TEncTop::xInitSPS()
 #endif
 #if VCEG_AZ05_ROT_TR
   m_cSPS.setUseROT( m_useROT );
+#elif COM16_C1044_NSST
+  m_cSPS.setUseNSST( m_useNSST );
 #endif
 
 #if COM16_C1016_AFFINE

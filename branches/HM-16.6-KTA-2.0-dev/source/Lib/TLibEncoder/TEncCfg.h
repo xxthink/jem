@@ -431,6 +431,8 @@ protected:
 #endif
 #if VCEG_AZ05_ROT_TR
   Bool      m_useROT;
+#elif COM16_C1044_NSST
+  Bool      m_useNSST;
 #endif
 #if COM16_C1016_AFFINE
   Bool      m_useAffine;
@@ -1083,6 +1085,9 @@ public:
 #if VCEG_AZ05_ROT_TR
   Bool getUseROT ()                                             { return m_useROT;        }
   Void setUseROT ( Bool b )                                     { m_useROT  = b;       }
+#elif COM16_C1044_NSST
+  Bool getUseNSST ()                                            { return m_useNSST;     }
+  Void setUseNSST ( Bool b )                                    { m_useNSST  = b;       }
 #endif
 #if COM16_C1016_AFFINE
   Bool getUseAffine()                                           { return m_useAffine; }

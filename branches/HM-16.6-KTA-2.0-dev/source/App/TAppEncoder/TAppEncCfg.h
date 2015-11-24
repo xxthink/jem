@@ -419,6 +419,8 @@ protected:
 #endif
 #if VCEG_AZ05_ROT_TR
   Bool      m_useROT;
+#elif COM16_C1044_NSST
+  Bool      m_useNSST;
 #endif
 #if COM16_C1016_AFFINE
   Bool      m_useAffine;

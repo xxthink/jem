@@ -155,6 +155,14 @@ extern TMatrixCoeff g_aiTr32[NUM_TRANS_TYPE][32][32];
 extern TMatrixCoeff g_aiTr64[NUM_TRANS_TYPE][64][64];
 #endif
 
+#if COM16_C1044_NSST
+extern const UChar g_NsstLut[NUM_INTRA_MODE-1];
+extern const Int   g_aiNsst4x4[12][3][16][16];
+#if VCEG_AZ07_CTX_RESIDUALCODING
+extern const UInt  g_auiCoefScanFirstCG8x8[3][16];
+#endif
+#endif
+
 #if VCEG_AZ07_INTRA_4TAP_FILTER
 extern Int g_aiIntraCubicFilter[32][4];
 extern Int g_aiIntraGaussFilter[32][4];

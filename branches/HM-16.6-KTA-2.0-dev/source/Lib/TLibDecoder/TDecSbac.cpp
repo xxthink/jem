@@ -69,7 +69,7 @@ TDecSbac::TDecSbac()
 #if VCEG_AZ05_INTRA_MPI
 , m_cMPIIdxSCModel                           ( 1,             1,                      NUM_MPI_CTX                          , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
-#if VCEG_AZ05_ROT_TR
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 , m_cROTidxSCModel                           ( 1,             1,                      NUM_ROT_TR_CTX               , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
 , m_cCUMergeFlagExtSCModel                   ( 1,             1,                      NUM_MERGE_FLAG_EXT_CTX               , m_contextModels + m_numContextModels, m_numContextModels)
@@ -181,7 +181,7 @@ Void TDecSbac::resetEntropy(TComSlice* pSlice)
 #if VCEG_AZ05_INTRA_MPI
   m_cMPIIdxSCModel.initBuffer                     ( sliceType, qp, (UChar*)INIT_MPIIdx_FLAG );
 #endif
-#if VCEG_AZ05_ROT_TR
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   m_cROTidxSCModel.initBuffer        ( sliceType, qp, (UChar*)INIT_ROT_TR_IDX );
 #endif
   m_cCUMergeFlagExtSCModel.initBuffer             ( sliceType, qp, (UChar*)INIT_MERGE_FLAG_EXT );
@@ -677,10 +677,14 @@ Void TDecSbac::parseMPIIdx(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth)
   }
 }
 #endif
-#if VCEG_AZ05_ROT_TR
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 Void TDecSbac::parseROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 { 
+#if COM16_C1044_NSST
+  if (!pcCU->getSlice()->getSPS()->getUseNSST()) 
+#else
   if (!pcCU->getSlice()->getSPS()->getUseROT()) 
+#endif
   {
     pcCU->setROTIdxSubParts(0, uiAbsPartIdx, uiDepth);
     return;
@@ -692,6 +696,26 @@ Void TDecSbac::parseROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 #endif
     && !pcCU->getCUTransquantBypass(uiAbsPartIdx)
     )  iNumberOfPassesROT = 4;
+
+#if COM16_C1044_NSST
+  if( iNumberOfPassesROT==4 && pcCU->getPartitionSize(uiAbsPartIdx)==SIZE_2Nx2N )
+  {
+    iNumberOfPassesROT = pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) <= DC_IDX ? 3 : 4;
+  }
+
+  if( iNumberOfPassesROT==3 )
+  {
+    UInt uiSymbol = 0;
+    m_pcTDecBinIf->decodeBin( uiSymbol, m_cROTidxSCModel.get(0,0, 0 ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG) );
+    if( uiSymbol )
+    {
+      m_pcTDecBinIf->decodeBin( uiSymbol, m_cROTidxSCModel.get(0,0, 1 ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG) );
+      uiSymbol ++;
+    }
+    pcCU->setROTIdxSubParts( uiSymbol, uiAbsPartIdx,  uiDepth ); 
+  }
+  else
+#endif
   if (iNumberOfPassesROT>1) // for only 1 pass no signaling is needed 
   {
       UInt uiSymbol0 = 0;
@@ -1629,7 +1653,7 @@ Void TDecSbac::parseLastSignificantXY( UInt& uiPosLastX, UInt& uiPosLastY, Int w
 }
 
 Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID 
-#if VCEG_AZ05_ROT_TR
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& bCbfCU
 #endif
     )
@@ -1922,7 +1946,7 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
 
     if( numNonZero > 0 )
     {
-#if VCEG_AZ05_ROT_TR 
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   bCbfCU = true;
 #endif
      Bool signHidden = ( lastNZPosInCG - firstNZPosInCG >= SBH_THRESHOLD );

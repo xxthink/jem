@@ -217,6 +217,9 @@ static const Int PLANAR_IDX =                                       0;
 static const Int VER_IDX =                                         26; ///< index for intra VERTICAL   mode
 static const Int HOR_IDX =                                         10; ///< index for intra HORIZONTAL mode
 static const Int DC_IDX =                                           1; ///< index for intra DC mode
+#if COM16_C1044_NSST
+static const Int DIA_IDX =                                         18; ///< index for intra Diagonal mode
+#endif
 #if COM16_C806_LMCHROMA
 static const Int NUM_CHROMA_MODE =                                  6; ///< total number of chroma modes
 static const Int LM_CHROMA_IDX =                                   35; ///< chroma mode index for derived from LM mode

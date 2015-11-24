@@ -190,7 +190,7 @@ Void TEncEntropy::encodeMPIIdx(TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD)
   m_pcEntropyCoderIf->codeMPIIdx(pcCU, uiAbsPartIdx);
 }
 #endif
-#if VCEG_AZ05_ROT_TR 
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 Void TEncEntropy::encodeROTIdx( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth, Bool bRD )
 { 
 
@@ -297,7 +297,7 @@ Void TEncEntropy::encodeIPCMInfo( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD 
 }
 
 Void TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComTU &rTu
-#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI
+#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST
   , Int& bCbfCU
 #endif
   )
@@ -409,7 +409,7 @@ Void TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComT
     do
     {
       xEncodeTransform( bCodeDQP, codeChromaQpAdj, tuRecurseChild 
-#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI
+#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST
         , bCbfCU
 #endif
         );
@@ -499,7 +499,7 @@ Void TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComT
                 }
 #endif
                 m_pcEntropyCoderIf->codeCoeffNxN( subTUIterator, (pcCU->getCoeff(compID) + subTUIterator.getCoefficientOffset(compID)), compID 
-#if  VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI
+#if  VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST
                   , bCbfCU
 #endif
                   );
@@ -523,7 +523,7 @@ Void TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComT
             if (cbf[compID] != 0)
             {
               m_pcEntropyCoderIf->codeCoeffNxN( rTu, (pcCU->getCoeff(compID) + rTu.getCoefficientOffset(compID)), compID
-#if  VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI
+#if  VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST
                 , bCbfCU
 #endif
                 );
@@ -824,7 +824,7 @@ Void TEncEntropy::encodeChromaQpAdjustment( TComDataCU* cu, UInt absPartIdx, Boo
 
 //! encode coefficients
 Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool& bCodeDQP, Bool& codeChromaQpAdj
-#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI
+#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST
   , Int& bNonZeroCoeff 
 #endif
   )
@@ -864,18 +864,18 @@ Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
 #endif
 
 
-#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI 
+#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST
   Int  bCbfCU = false;
 #endif   
   xEncodeTransform( bCodeDQP, codeChromaQpAdj, tuRecurse
-#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI
+#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST
     , bCbfCU
 #endif
     );
-#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI
+#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST
   bNonZeroCoeff = bCbfCU;
 #endif
-#if VCEG_AZ05_ROT_TR 
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   /// put conditions if sometimes flag is not encoded
   if (bCbfCU  )
     encodeROTIdx( pcCU, uiAbsPartIdx, uiDepth );
@@ -886,7 +886,7 @@ Void TEncEntropy::encodeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID
 {
   TComDataCU *pcCU = rTu.getCU();
 
-#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI 
+#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST
   Int  bCbfCU = false;
 #endif
 
@@ -906,7 +906,7 @@ Void TEncEntropy::encodeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID
         if (subTUCBF != 0)
         {
           m_pcEntropyCoderIf->codeCoeffNxN( subTUIterator, (pcCoef + (subTUIterator.GetSectionNumber() * subTUSize)), compID
-#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI
+#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST
             , bCbfCU
 #endif
             );
@@ -917,7 +917,7 @@ Void TEncEntropy::encodeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID
     else
     {
       m_pcEntropyCoderIf->codeCoeffNxN(rTu, pcCoef, compID
-#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI
+#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST
         , bCbfCU
 #endif
         );
