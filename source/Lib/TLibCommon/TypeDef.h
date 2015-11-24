@@ -114,7 +114,7 @@
 #define VCEG_AZ05_MULTI_PARAM_CABAC                       1  /// CABAC probability estimation with 2 windows 
 #define VCEG_AZ05_BIO                                     1  /// bi-directional optical flow
 #define VCEG_AZ05_INTRA_MPI                               1  /// Multi-parameter Intra prediction
-#define VCEG_AZ05_ROT_TR                                  1
+#define VCEG_AZ05_ROT_TR                                  0
 
 #define COM16_C1045_BIO_HARMO_IMPROV                      1
 #define COM16_C1016_AFFINE                                1  ///< Affine model based inter prediction
@@ -125,6 +125,10 @@
 #define COM16_C983_RSAF_PREVENT_OVERSMOOTHING             1  // Harmonization with intra-prediction tools   
 #endif
 
+#define COM16_C1044_NSST                                  1  // Non-Separable Secondary Transform
+#if COM16_C1044_NSST && VCEG_AZ05_ROT_TR
+#error
+#endif
 ///////////////////////////////////////////////////////////
 // KTA tools section end
 ///////////////////////////////////////////////////////////

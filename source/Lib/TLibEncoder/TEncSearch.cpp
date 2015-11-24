@@ -3565,6 +3565,17 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         UInt       uiMode = modeIdx;
         Distortion uiSad  = 0;
 
+#if COM16_C1044_NSST
+        if( pcCU->getPartitionSize(0)==SIZE_2Nx2N )
+        {
+          const Int iNumberOfPassesROT = ( uiMode<=DC_IDX ) ? 3 : 4;
+          if( iNumberOfPassesROT <= pcCU->getROTIdx(0) )
+          {
+            continue;
+          }
+        }
+#endif
+
 #if VCEG_AZ07_INTRA_65ANG_MODES
         if( uiMode>DC_IDX && (uiMode&1) )
         {
@@ -3616,6 +3627,18 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
           for( Int subModeIdx = -1; subModeIdx <= 1; subModeIdx+=2 )
           {
             UInt uiMode = uiParentMode + subModeIdx;
+            
+#if COM16_C1044_NSST
+            if( pcCU->getPartitionSize(0)==SIZE_2Nx2N )
+            {
+              const Int iNumberOfPassesROT = ( uiMode<=DC_IDX ) ? 3 : 4;
+              if( iNumberOfPassesROT <= pcCU->getROTIdx(0) )
+              {
+                continue;
+              }
+            }
+#endif
+
             if( !bSatdChecked[uiMode] )
             {
               const Bool bUseFilter=TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, uiMode, puRect.width, puRect.height, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag()
@@ -3659,6 +3682,17 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         {
           Bool mostProbableModeIncluded = false;
           Int mostProbableMode = uiPreds[j];
+        
+#if COM16_C1044_NSST
+          if( pcCU->getPartitionSize(0)==SIZE_2Nx2N )
+          {
+            const Int iNumberOfPassesROT = ( mostProbableMode<=DC_IDX ) ? 3 : 4;
+            if( iNumberOfPassesROT <= pcCU->getROTIdx(0) )
+            {
+              continue;
+            }
+          }
+#endif
 
           for( Int i=0; i < numModesForFullRD; i++)
           {
@@ -7536,11 +7570,11 @@ Void  TEncSearch::xAddSymbolBitsInter( TComDataCU* pcCU, UInt& ruiBits )
 #endif
     Bool codeDeltaQp = false;
     Bool codeChromaQpAdj = false;
-#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI
+#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST
     Int bNonZeroCoeff = false;
 #endif
     m_pcEntropyCoder->encodeCoeff   ( pcCU, 0, pcCU->getDepth(0), codeDeltaQp, codeChromaQpAdj
-#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI
+#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST
       , bNonZeroCoeff
 #endif
       );

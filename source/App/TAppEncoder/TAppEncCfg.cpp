@@ -1135,6 +1135,8 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 #endif
 #if VCEG_AZ05_ROT_TR
   ("ROT",                                        m_useROT,            true, "Enable adaptive secondary transform")
+#elif COM16_C1044_NSST
+  ("NSST",                                        m_useNSST,            true, "Enable non-separable secondary transform")
 #endif
 #if COM16_C1016_AFFINE
   ("AFFINE",                                     m_useAffine,         true, "Enable affine transform prediction")
@@ -2637,6 +2639,8 @@ Void TAppEncCfg::xPrintParameter()
 #endif
 #if VCEG_AZ05_ROT_TR
   printf("ROT:%d ", m_useROT        );
+#elif COM16_C1044_NSST
+  printf("NSST:%d ", m_useNSST        );
 #endif
 #if COM16_C1016_AFFINE
   printf("AFFINE:%d ", m_useAffine);

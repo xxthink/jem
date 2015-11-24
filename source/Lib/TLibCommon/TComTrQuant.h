@@ -196,6 +196,9 @@ public:
 #if VCEG_AZ05_ROT_TR
 Void InvRotTransform4I(  Int* matrix, UChar index );
 Void RotTransform4I( Int* matrix, UChar index );
+#elif COM16_C1044_NSST
+Void FwdNsst4x4( Int* src, UInt uiMode, UChar index );
+Void InvNsst4x4( Int* src, UInt uiMode, UChar index );
 #endif 
   // transform & inverse transform functions
   Void transformNxN(       TComTU         & rTu,

@@ -134,7 +134,7 @@ public:
 #if VCEG_AZ05_INTRA_MPI
   Void parseMPIIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
-#if VCEG_AZ05_ROT_TR
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Void parseROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
   Void parseMergeFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx );
@@ -165,7 +165,7 @@ public:
 
   Void parseLastSignificantXY( UInt& uiPosLastX, UInt& uiPosLastY, Int width, Int height, ComponentID component, UInt uiScanIdx );
   Void parseCoeffNxN      ( class TComTU &rTu, ComponentID compID  
-#if VCEG_AZ05_ROT_TR
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& bCbfCU
 #endif
     );
@@ -207,7 +207,7 @@ private:
 #if VCEG_AZ05_INTRA_MPI
   ContextModel3DBuffer m_cMPIIdxSCModel;
 #endif
-#if VCEG_AZ05_ROT_TR
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   ContextModel3DBuffer m_cROTidxSCModel;
 #endif
   ContextModel3DBuffer m_cCUMergeFlagExtSCModel;

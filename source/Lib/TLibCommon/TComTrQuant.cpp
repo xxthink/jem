@@ -3662,7 +3662,48 @@ Void TComTrQuant::RotTransform4I( Int* matrix, UChar index )
     matrix[n+12] = temp[n+12];
   } // for n, vertical ROT
 }
+#elif COM16_C1044_NSST
+Void TComTrQuant::FwdNsst4x4( Int* src, UInt uiMode, UChar index )
+{
+  const Int *iT = g_aiNsst4x4[uiMode][index][0];
+  Int coef, temp[16];
+
+  assert( index<4 );
+
+  for (Int j=0; j<16; j++)
+  {
+    coef = src[ 0]*iT[ 0] + src[ 1]*iT[ 1] + src[ 2]*iT[ 2] + src[ 3]*iT[ 3] +
+           src[ 4]*iT[ 4] + src[ 5]*iT[ 5] + src[ 6]*iT[ 6] + src[ 7]*iT[ 7] +
+           src[ 8]*iT[ 8] + src[ 9]*iT[ 9] + src[10]*iT[10] + src[11]*iT[11] +
+           src[12]*iT[12] + src[13]*iT[13] + src[14]*iT[14] + src[15]*iT[15];
+    temp[j] = ( coef + 128 ) >> 8;
+    iT  += 16;
+  }
+
+  memcpy( src, temp, 16*sizeof(Int) );
+}
+
+Void TComTrQuant::InvNsst4x4( Int* src, UInt uiMode, UChar index )
+{
+  const Int *iT = g_aiNsst4x4[uiMode][index][0];
+  Int  temp[16], resi;
+
+  assert( index<4 );
+
+  for (Int j=0; j<16; j++)
+  {
+    resi = src[ 0]*iT[ 0*16] + src[ 1]*iT[ 1*16] + src[ 2]*iT[ 2*16] + src[ 3]*iT[ 3*16] +
+           src[ 4]*iT[ 4*16] + src[ 5]*iT[ 5*16] + src[ 6]*iT[ 6*16] + src[ 7]*iT[ 7*16] +
+           src[ 8]*iT[ 8*16] + src[ 9]*iT[ 9*16] + src[10]*iT[10*16] + src[11]*iT[11*16] +
+           src[12]*iT[12*16] + src[13]*iT[13*16] + src[14]*iT[14*16] + src[15]*iT[15*16];
+    temp[j] = ( resi + 128 ) >> 8;
+    iT  ++;
+  }
+
+  memcpy( src, temp, 16*sizeof(Int) );
+}
 #endif
+
 #if COM16_C806_EMT
 UChar TComTrQuant::getEmtTrIdx( TComTU &rTu, const ComponentID compID )
 {
@@ -3828,6 +3869,88 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
           }
              }
   }
+#elif COM16_C1044_NSST
+      if (pcCU->getROTIdx(uiAbsPartIdx) )
+      {           
+        static Int NSST_MATRIX[16];
+        Int iSubGroupXMax = Clip3 (1,16,(Int)( (uiWidth>>2)));
+        Int iSubGroupYMax = Clip3 (1,16,(Int)( (uiHeight>>2)));
+
+        Int iOffSetX = 0;
+        Int iOffSetY = 0;
+        Int y = 0;
+        Int* piCoeffTemp = m_plTempCoeff;
+        Int* piNsstTemp = NSST_MATRIX;
+        Int iString2CopySize = 4*sizeof(Int);
+
+        const UInt uiLog2BlockSize = g_aucConvertToBit[ uiWidth ] + 2;
+        const UInt uiScanIdx = pcCU->getCoefScanIdx(uiAbsPartIdx, uiWidth, uiHeight, compID);
+        const UInt log2BlockWidth  = g_aucConvertToBit[uiWidth]  + 2;
+        const UInt log2BlockHeight = g_aucConvertToBit[uiHeight] + 2;
+#if VCEG_AZ07_CTX_RESIDUALCODING
+        const UInt *scan = uiLog2BlockSize==3 ? g_auiCoefScanFirstCG8x8[uiScanIdx] : g_scanOrder[ SCAN_GROUPED_4x4 ][ uiScanIdx ][ log2BlockWidth    ][ log2BlockHeight    ];
+#else
+        const UInt *scan = g_scanOrder[ SCAN_GROUPED_4x4 ][ uiScanIdx ][ log2BlockWidth    ][ log2BlockHeight    ];
+#endif
+
+        UInt uiIntraMode = pcCU->getIntraDir( toChannelType(compID), uiAbsPartIdx);
+        if( compID != COMPONENT_Y )
+        {
+          if( uiIntraMode == DM_CHROMA_IDX )
+          {
+            uiIntraMode = pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx );
+          }
+#if COM16_C806_LMCHROMA
+          else if( uiIntraMode == LM_CHROMA_IDX )
+          {
+            uiIntraMode = PLANAR_IDX;
+          }
+#endif
+        }
+
+        assert( uiIntraMode<NUM_INTRA_MODE-1 );
+        const Int iNsstCandNum = ( uiIntraMode<=DC_IDX ) ? 3 : 4;
+
+        if( iNsstCandNum > pcCU->getROTIdx(uiAbsPartIdx) )
+        {
+          for (Int iSubGroupX = 0; iSubGroupX<iSubGroupXMax; iSubGroupX++)
+          {
+            for (Int iSubGroupY = 0; iSubGroupY<iSubGroupYMax; iSubGroupY++)
+            {
+              iOffSetX = 4*iSubGroupX;
+              iOffSetY = 4*iSubGroupY*uiWidth;
+              piNsstTemp = NSST_MATRIX;
+              piCoeffTemp = m_plTempCoeff+iOffSetX+iOffSetY;
+
+              for(  y = 0; y < 4; y++ )
+              {  
+                if( uiIntraMode>DIA_IDX )
+                {
+                  piNsstTemp[ 0] = piCoeffTemp[0]; piNsstTemp[ 4] = piCoeffTemp[1];
+                  piNsstTemp[ 8] = piCoeffTemp[2]; piNsstTemp[12] = piCoeffTemp[3];
+                  piNsstTemp ++;
+                }
+                else
+                {
+                  ::memcpy(piNsstTemp, piCoeffTemp, iString2CopySize); 
+                  piNsstTemp +=4;
+                }
+                piCoeffTemp +=uiWidth;
+              }
+
+              FwdNsst4x4( NSST_MATRIX, g_NsstLut[uiIntraMode], pcCU->getROTIdx(uiAbsPartIdx)-1 );
+
+              piNsstTemp = NSST_MATRIX;
+              piCoeffTemp = m_plTempCoeff+iOffSetX+iOffSetY;
+
+              for(  y = 0; y < 16; y++ )
+              {    
+                piCoeffTemp[scan[y]] = piNsstTemp[y];
+              }
+            }
+          }
+        }
+      }
 #endif
       xQuant( rTu, m_plTempCoeff, rpcCoeff,
 
@@ -3961,6 +4084,87 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
           }
         }
   }
+#elif COM16_C1044_NSST
+    if (pcCU->getROTIdx(uiAbsPartIdx))
+    {   
+      Char ucNsstIdx = pcCU->getROTIdx(uiAbsPartIdx) ;
+      static Int NSST_MATRIX[16];
+      Int iSubGroupXMax = Clip3 (1,16,(Int)( (uiWidth>>2)));
+      Int iSubGroupYMax = Clip3 (1,16,(Int)( (uiHeight>>2)));
+      Int iOffSetX = 0;
+      Int iOffSetY = 0;
+      Int y = 0;
+      Int* piCoeffTemp = m_plTempCoeff;
+      Int* piNsstTemp = NSST_MATRIX;
+      Int iString2CopySize = 4*sizeof(Int);
+
+      const UInt uiLog2BlockSize = g_aucConvertToBit[ uiWidth ] + 2;
+      const UInt uiScanIdx = pcCU->getCoefScanIdx(uiAbsPartIdx, uiWidth, uiHeight, compID);
+      const UInt log2BlockWidth  = g_aucConvertToBit[uiWidth]  + 2;
+      const UInt log2BlockHeight = g_aucConvertToBit[uiHeight] + 2;
+#if VCEG_AZ07_CTX_RESIDUALCODING
+      const UInt *scan = uiLog2BlockSize==3 ? g_auiCoefScanFirstCG8x8[uiScanIdx] : g_scanOrder[ SCAN_GROUPED_4x4 ][ uiScanIdx ][ log2BlockWidth    ][ log2BlockHeight    ];
+#else
+      const UInt *scan = g_scanOrder[ SCAN_GROUPED_4x4 ][ uiScanIdx ][ log2BlockWidth    ][ log2BlockHeight    ];
+#endif
+
+      UInt uiIntraMode = pcCU->getIntraDir( toChannelType(compID), uiAbsPartIdx);
+      if( compID != COMPONENT_Y )
+      {
+        if( uiIntraMode == DM_CHROMA_IDX )
+        {
+          uiIntraMode = pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx );
+        }
+#if COM16_C806_LMCHROMA
+        else if( uiIntraMode == LM_CHROMA_IDX )
+        {
+          uiIntraMode = PLANAR_IDX;
+        }
+#endif
+      }
+
+      assert( uiIntraMode<NUM_INTRA_MODE-1 );
+      const Int iNsstCandNum = ( uiIntraMode<=DC_IDX ) ? 3 : 4;
+
+      if( iNsstCandNum > ucNsstIdx )
+      {
+        for (Int iSubGroupX = 0; iSubGroupX<iSubGroupXMax; iSubGroupX++)
+        {
+          for (Int iSubGroupY = 0; iSubGroupY<iSubGroupYMax; iSubGroupY++)
+          {
+            iOffSetX = 4*iSubGroupX;
+            iOffSetY = 4*iSubGroupY*uiWidth;
+            piNsstTemp = NSST_MATRIX;
+            piCoeffTemp = m_plTempCoeff+iOffSetX+iOffSetY;
+
+            for(  y = 0; y < 16; y++ )
+            {    
+              piNsstTemp[y] = piCoeffTemp[scan[y]];
+            }
+
+            InvNsst4x4( NSST_MATRIX, g_NsstLut[uiIntraMode], ucNsstIdx-1 );
+
+            piNsstTemp = NSST_MATRIX;
+            piCoeffTemp = m_plTempCoeff+iOffSetX+iOffSetY;
+            for(  y = 0; y < 4; y++ )
+            {    
+              if( uiIntraMode>DIA_IDX )
+              {
+                piCoeffTemp[0] = piNsstTemp[ 0]; piCoeffTemp[1] = piNsstTemp[ 4];
+                piCoeffTemp[2] = piNsstTemp[ 8]; piCoeffTemp[3] = piNsstTemp[12];
+                piNsstTemp ++;
+              }
+              else
+              {
+                ::memcpy( piCoeffTemp, piNsstTemp, iString2CopySize); 
+                piNsstTemp +=4;
+              }
+              piCoeffTemp +=uiWidth;          
+            }
+          }
+        }
+      }
+    }
 #endif
 #if DEBUG_TRANSFORM_AND_QUANTISE
     std::cout << g_debugCounter << ": " << uiWidth << "x" << uiHeight << " channel " << compID << " TU between dequantiser and inverse-transform\n";

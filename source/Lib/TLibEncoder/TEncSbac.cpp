@@ -67,7 +67,7 @@ TEncSbac::TEncSbac()
 #if VCEG_AZ05_INTRA_MPI
 , m_cMPIIdxSCModel                     ( 1,             1,                      NUM_MPI_CTX                          , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
-#if VCEG_AZ05_ROT_TR
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 , m_cROTidxSCModel           ( 1,             1,               NUM_ROT_TR_CTX             , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
 , m_cCUMergeFlagExtSCModel             ( 1,             1,                      NUM_MERGE_FLAG_EXT_CTX               , m_contextModels + m_numContextModels, m_numContextModels)
@@ -157,7 +157,7 @@ Void TEncSbac::resetEntropy           (const TComSlice *pSlice)
 #if VCEG_AZ05_INTRA_MPI
   m_cMPIIdxSCModel.initBuffer                     ( eSliceType, iQp, (UChar*)INIT_MPIIdx_FLAG );
 #endif 
-#if VCEG_AZ05_ROT_TR
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   m_cROTidxSCModel.initBuffer        ( eSliceType, iQp, (UChar*)INIT_ROT_TR_IDX );
 #endif
   m_cCUMergeFlagExtSCModel.initBuffer             ( eSliceType, iQp, (UChar*)INIT_MERGE_FLAG_EXT);
@@ -254,7 +254,7 @@ SliceType TEncSbac::determineCabacInitIdx(const TComSlice *pSlice)
 #if VCEG_AZ05_INTRA_MPI
       curCost += m_cMPIIdxSCModel.calcCost                     ( curSliceType, qp, (UChar*)INIT_MPIIdx_FLAG );
 #endif
-#if VCEG_AZ05_ROT_TR
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
       curCost += m_cROTidxSCModel.calcCost        ( curSliceType, qp, (UChar*)INIT_ROT_TR_IDX );
 #endif
       curCost += m_cCUMergeFlagExtSCModel.calcCost             ( curSliceType, qp, (UChar*)INIT_MERGE_FLAG_EXT);
@@ -757,10 +757,14 @@ Void TEncSbac::codeMPIIdx(TComDataCU* pcCU, UInt uiAbsPartIdx)
   }
 }
 #endif
-#if VCEG_AZ05_ROT_TR  
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 Void TEncSbac::codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
 {
+#if COM16_C1044_NSST
+  if (!pcCU->getSlice()->getSPS()->getUseNSST()) return;
+#else
   if (!pcCU->getSlice()->getSPS()->getUseROT()) return;
+#endif
   Int iNumberOfPassesROT = 1;
   if( pcCU->isIntra(uiAbsPartIdx)
 #if VCEG_AZ05_INTRA_MPI
@@ -768,6 +772,25 @@ Void TEncSbac::codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
 #endif  
     && !pcCU->getCUTransquantBypass(uiAbsPartIdx)
     )  iNumberOfPassesROT = 4;
+
+#if COM16_C1044_NSST
+  if( iNumberOfPassesROT==4 && pcCU->getPartitionSize(uiAbsPartIdx)==SIZE_2Nx2N )
+  {
+    iNumberOfPassesROT = pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) <= DC_IDX ? 3 : 4;
+  }
+
+  if( iNumberOfPassesROT==3 )
+  {
+    Int idxROT = pcCU->getROTIdx( uiAbsPartIdx );
+    assert(idxROT<3);
+    m_pcBinIf->encodeBin( idxROT ? 1 : 0, m_cROTidxSCModel.get(0,0, 0 ) );
+    if( idxROT )
+    {
+      m_pcBinIf->encodeBin( (idxROT-1) ? 1 : 0, m_cROTidxSCModel.get(0,0, 1 ) );
+    }
+  }
+  else
+#endif
   if (iNumberOfPassesROT>1) // for only 1 pass no signaling is needed 
   {
       Int idxROT = pcCU->getROTIdx( uiAbsPartIdx );
@@ -1592,7 +1615,7 @@ Void TEncSbac::codeLastSignificantXY( UInt uiPosX, UInt uiPosY, Int width, Int h
 }
 
 Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID 
-#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI
+#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST
   , Int& bCbfCU
 #endif
   )
@@ -1827,7 +1850,7 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
 #endif
       coeffSigns    = ( pcCoef[ posLast ] < 0 );
       numNonZero    = 1;
-#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI
+#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST
       bCbfCU += abs(pcCoef[posLast]);
 #endif
       lastNZPosInCG  = iScanPosSig;
@@ -1897,7 +1920,7 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
 #endif
           absCoeff[ numNonZero ] = Int(abs( pcCoef[ uiBlkPos ] ));
           coeffSigns = 2 * coeffSigns + ( pcCoef[ uiBlkPos ] < 0 );
-#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI 
+#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST
           bCbfCU += absCoeff[numNonZero];
 #endif
           numNonZero++;

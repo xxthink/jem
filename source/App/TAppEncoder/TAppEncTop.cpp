@@ -439,6 +439,8 @@ Void TAppEncTop::xInitLibCfg()
 #endif
 #if VCEG_AZ05_ROT_TR
  m_cTEncTop.setUseROT                            ( m_useROT );
+#elif COM16_C1044_NSST
+ m_cTEncTop.setUseNSST                           ( m_useNSST );
 #endif
 #if COM16_C1016_AFFINE
  m_cTEncTop.setUseAffine                         ( m_useAffine );

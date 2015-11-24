@@ -107,8 +107,8 @@ private:
 #if VCEG_AZ05_INTRA_MPI
   Char*          m_MPIIdx;             ///< array of MPIIdxs
 #endif
-#if VCEG_AZ05_ROT_TR
-  Char*          m_ROTIdx;          ///< array of ROTIdxs
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+  Char*          m_ROTIdx;          ///< array of ROTIdxs; When NSST is enabled, the same member varaible of ROT is re-used
 #endif
   Char*          m_pePartSize;         ///< array of partition sizes
   Char*          m_pePredMode;         ///< array of prediction modes
@@ -300,8 +300,8 @@ public:
   Void          setMPIIdx               ( UInt idx, Char MPIIdx)  { m_MPIIdx[idx] = MPIIdx;   }
   Void          setMPIIdxSubParts       ( Char MPIIdx, UInt absPartIdx, UInt depth );
 #endif
-#if VCEG_AZ05_ROT_TR
-  Char*         getROTIdx               ()                        { return m_ROTIdx;          }
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+  Char*         getROTIdx               ()                        { return m_ROTIdx;          } // When NSST is enabled, the same interface functions of ROT is re-used
   Char          getROTIdx               ( UInt idx)               { return m_ROTIdx[idx];     }
   Void          setROTIdx               ( UInt idx, Char ROTIdx)  { m_ROTIdx[idx] = ROTIdx;   }
   Void          setROTIdxSubParts       ( Char ROTIdx, UInt absPartIdx, UInt depth );

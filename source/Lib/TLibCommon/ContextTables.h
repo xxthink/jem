@@ -61,7 +61,7 @@
 #if VCEG_AZ05_INTRA_MPI
 #define NUM_MPI_CTX                   2       /// < number of context models for MPI Idx coding
 #endif
-#if VCEG_AZ05_ROT_TR
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
  #define NUM_ROT_TR_CTX               7       /// < number of context models for ROT Idx coding
 #endif
 #define NUM_MERGE_FLAG_EXT_CTX        1       ///< number of context models for merge flag of merge extended
@@ -287,7 +287,7 @@ INIT_MPIIdx_FLAG[NUMBER_OF_SLICE_TYPES][NUM_MPI_CTX] =
   { 139, 139 },
 };
 #endif
-#if VCEG_AZ05_ROT_TR
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 static const UChar 
 INIT_ROT_TR_IDX[3][NUM_ROT_TR_CTX] =  
 {

@@ -827,6 +827,8 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
 #endif
 #if VCEG_AZ05_ROT_TR
   READ_FLAG( uiCode, "rot_enabled_flag" );      pcSPS->setUseROT( uiCode );
+#elif COM16_C1044_NSST
+  READ_FLAG( uiCode, "nsst_enabled_flag" );     pcSPS->setUseNSST( uiCode );
 #endif
 #if COM16_C1016_AFFINE
   READ_FLAG( uiCode, "affine_enabled_flag");    pcSPS->setUseAffine( uiCode );
@@ -1862,7 +1864,7 @@ Void TDecCavlc::parseChromaQpAdjustment( TComDataCU* /*pcCU*/, UInt /*uiAbsPartI
 }
 
 Void TDecCavlc::parseCoeffNxN( TComTU &/*rTu*/, ComponentID /*compID*/ 
-#if VCEG_AZ05_ROT_TR
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& /*g_bCbfCU*/
 #endif
     )
@@ -1900,7 +1902,7 @@ Void TDecCavlc::parseMPIIdx ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt 
   assert(0);
 }
 #endif
-#if VCEG_AZ05_ROT_TR  
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 Void TDecCavlc::parseROTIdx ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/ )
 {
   assert(0);

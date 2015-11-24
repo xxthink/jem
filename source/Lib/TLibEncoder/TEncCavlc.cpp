@@ -623,6 +623,8 @@ Void TEncCavlc::codeSPS( const TComSPS* pcSPS )
 #endif
 #if VCEG_AZ05_ROT_TR
  WRITE_FLAG( pcSPS->getUseROT () ? 1 : 0,                "rot_enabled_flag" ); 
+#elif COM16_C1044_NSST
+  WRITE_FLAG( pcSPS->getUseNSST () ? 1 : 0,              "nsst_enabled_flag" ); 
 #endif
 #if COM16_C1016_AFFINE
  WRITE_FLAG( pcSPS->getUseAffine() ? 1 : 0,              "affine_enabled_flag" );
@@ -1294,7 +1296,7 @@ Void TEncCavlc::codeMPIIdx    ( TComDataCU* pcCU, UInt uiAbsPartIdx )
   assert(0);
 }
 #endif
-#if VCEG_AZ05_ROT_TR  
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 Void TEncCavlc::codeROTIdx    ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth )
 {
   assert(0);
@@ -1439,7 +1441,7 @@ Void TEncCavlc::codeChromaQpAdjustment( TComDataCU* /*pcCU*/, UInt /*uiAbsPartId
 }
 
 Void TEncCavlc::codeCoeffNxN    ( TComTU& /*rTu*/, TCoeff* /*pcCoef*/, const ComponentID /*compID*/ 
-#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI
+#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST
   , Int& bCbfCU
 #endif
   )

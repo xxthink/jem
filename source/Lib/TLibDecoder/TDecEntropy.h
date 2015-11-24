@@ -104,7 +104,7 @@ public:
 #if VCEG_AZ05_INTRA_MPI
   virtual Void parseMPIIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
 #endif
-#if VCEG_AZ05_ROT_TR  
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   virtual Void parseROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
 #endif
   virtual Void parseMergeIndex    ( TComDataCU* pcCU, UInt& ruiMergeIndex ) = 0;
@@ -133,7 +133,7 @@ public:
   virtual Void parseIPCMInfo     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth) = 0;
 
   virtual Void parseCoeffNxN( class TComTU &rTu, ComponentID compID  
-#if VCEG_AZ05_ROT_TR
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& bCbfCU
 #endif
     ) = 0;
@@ -230,7 +230,7 @@ public:
 #if VCEG_AZ05_INTRA_MPI
   Void decodeMPIIdx            ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
-#if VCEG_AZ05_ROT_TR  
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Void decodeROTIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
 #if COM16_C806_OBMC
@@ -264,7 +264,7 @@ public:
 private:
 
   Void xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjCoded, TComTU &rTu, const Int quadtreeTULog2MinSizeInCU 
-#if VCEG_AZ05_ROT_TR
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& bCbfCU
 #endif
     );
