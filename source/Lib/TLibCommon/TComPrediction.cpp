@@ -689,7 +689,11 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 #if VCEG_AZ07_INTRA_BOUNDARY_FILTER
 
 #if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+#if VCEG_AZ05_INTRA_MPI
       const Bool              enableBoundaryFilter = pcCU->getSlice()->getSPS()->getUseIntraBoundaryFilter() && (pcCU->getMPIIdx(uiAbsPartIdx) <= 1 || pcCU->getWidth(uiAbsPartIdx)>=16 || !pcCU->getSlice()->getSPS()->getUseRSAF() );
+#else
+      const Bool              enableBoundaryFilter = pcCU->getSlice()->getSPS()->getUseIntraBoundaryFilter() && ( pcCU->getWidth(uiAbsPartIdx)>=16 || !pcCU->getSlice()->getSPS()->getUseRSAF() );
+#endif
 #else
       const Bool              enableBoundaryFilter = pcCU->getSlice()->getSPS()->getUseIntraBoundaryFilter();
 #endif
