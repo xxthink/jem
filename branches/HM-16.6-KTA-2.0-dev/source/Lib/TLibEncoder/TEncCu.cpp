@@ -1107,9 +1107,10 @@ for ( iROTidx = 0; iROTidx<iNumberOfPassesROT; iROTidx++)
 #endif
 #if VCEG_AZ05_INTRA_MPI
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
- iMPIidx = 0;   iNumberOfPassesMPI = 2;
-if( rpcTempCU->getSlice()->getSliceType() != I_SLICE)  iNumberOfPassesMPI = 2;
-if (iROTidx) iNumberOfPassesMPI = 1;
+  iMPIidx = 0;   iNumberOfPassesMPI = 2;
+  if( rpcTempCU->getSlice()->getSliceType() != I_SLICE)  iNumberOfPassesMPI = 2;
+  if (!rpcTempCU->getSlice()->getSPS()->getUseMPI()) iNumberOfPassesMPI = 1;
+  if (iROTidx) iNumberOfPassesMPI = 1;
 #endif
            for (iMPIidx = 0; iMPIidx<iNumberOfPassesMPI; iMPIidx++)
             {
