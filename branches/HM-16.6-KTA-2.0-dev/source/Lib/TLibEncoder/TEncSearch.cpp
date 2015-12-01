@@ -8677,6 +8677,10 @@ Void TEncSearch::xAffineMotionEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, I
   }
   uiCostBest = (UInt)( floor( fWeight * (Double)uiCostBest ) + (Double)m_pcRdCost->getCost( uiBitsBest ) );
 
+#if COM16_C1016_AFFINE
+  memcpy( acMv, acMvTemp, sizeof(TComMv) * 3 );
+#endif
+
   Int iIterTime = bBi ? 5 : 7;
   for ( Int iter=0; iter<iIterTime; iter++ )    // iterate loop
   {

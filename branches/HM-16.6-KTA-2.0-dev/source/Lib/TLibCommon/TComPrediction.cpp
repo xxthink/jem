@@ -4816,6 +4816,14 @@ Bool TComPrediction::xCheckIdenticalAffineMotion ( TComDataCU* pcCU, UInt PartAd
  */
 Void TComPrediction::xPredAffineBlk(const ComponentID compID, TComDataCU *cu, TComPicYuv *refPic, UInt partAddr, TComMv acMv[3], Int width, Int height, TComYuv *dstPic, Bool bi, const Int bitDepth )
 {
+#if COM16_C1016_AFFINE
+  if ( acMv[0] == acMv[1] )
+  {
+    xPredInterBlk( compID, cu, refPic, partAddr, &acMv[0], width, height, dstPic, bi, bitDepth );
+    return;
+  }
+#endif
+
   Int     refStride  = refPic->getStride(compID);
   Int     dstStride  = dstPic->getStride(compID);
 
