@@ -621,6 +621,9 @@ Void TEncCavlc::codeSPS( const TComSPS* pcSPS )
 #if VCEG_AZ05_INTRA_MPI
   WRITE_FLAG( pcSPS->getUseMPI () ? 1 : 0,                "mpi_enabled_flag" ); 
 #endif
+#if COM16_C1046_PDPC_INTRA
+  WRITE_FLAG( pcSPS->getUsePDPC() ? 1 : 0,                "pdpc_enabled_flag" );
+#endif
 #if VCEG_AZ05_ROT_TR
  WRITE_FLAG( pcSPS->getUseROT () ? 1 : 0,                "rot_enabled_flag" ); 
 #elif COM16_C1044_NSST
@@ -1296,6 +1299,13 @@ Void TEncCavlc::codeMPIIdx    ( TComDataCU* pcCU, UInt uiAbsPartIdx )
   assert(0);
 }
 #endif
+#if COM16_C1046_PDPC_INTRA
+Void TEncCavlc::codePDPCIdx(TComDataCU* pcCU, UInt uiAbsPartIdx)
+{
+  assert(0);
+}
+#endif
+
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 Void TEncCavlc::codeROTIdx    ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth )
 {
@@ -1441,7 +1451,7 @@ Void TEncCavlc::codeChromaQpAdjustment( TComDataCU* /*pcCU*/, UInt /*uiAbsPartId
 }
 
 Void TEncCavlc::codeCoeffNxN    ( TComTU& /*rTu*/, TCoeff* /*pcCoef*/, const ComponentID /*compID*/ 
-#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST
+#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
   , Int& bCbfCU
 #endif
   )

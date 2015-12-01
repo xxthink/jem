@@ -161,6 +161,9 @@ Void TEncTop::create ()
 #if VCEG_AZ05_INTRA_MPI
   m_cSPS.setUseMPI( m_useMPI );
 #endif
+#if COM16_C1046_PDPC_INTRA
+  m_cSPS.setUsePDPC(m_usePDPC);
+#endif
 #if VCEG_AZ05_ROT_TR
   m_cSPS.setUseROT( m_useROT );
 #elif COM16_C1044_NSST
@@ -771,6 +774,9 @@ Void TEncTop::xInitSPS()
 #endif
 #if VCEG_AZ05_INTRA_MPI
   m_cSPS.setUseMPI( m_useMPI );
+#endif
+#if COM16_C1046_PDPC_INTRA
+  m_cSPS.setUsePDPC(m_usePDPC);
 #endif
 #if VCEG_AZ05_ROT_TR
   m_cSPS.setUseROT( m_useROT );

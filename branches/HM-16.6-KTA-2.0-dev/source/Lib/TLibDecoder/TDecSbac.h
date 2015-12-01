@@ -134,6 +134,9 @@ public:
 #if VCEG_AZ05_INTRA_MPI
   Void parseMPIIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
+#if COM16_C1046_PDPC_INTRA
+  Void parsePDPCIdx      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth);
+#endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Void parseROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
@@ -206,6 +209,9 @@ private:
   ContextModel3DBuffer m_cCUSkipFlagSCModel;
 #if VCEG_AZ05_INTRA_MPI
   ContextModel3DBuffer m_cMPIIdxSCModel;
+#endif
+#if COM16_C1046_PDPC_INTRA
+  ContextModel3DBuffer m_cPDPCIdxSCModel;
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   ContextModel3DBuffer m_cROTidxSCModel;

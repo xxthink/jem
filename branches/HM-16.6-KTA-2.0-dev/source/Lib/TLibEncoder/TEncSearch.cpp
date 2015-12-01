@@ -1226,6 +1226,9 @@ TEncSearch::xEncIntraHeader( TComDataCU*  pcCU,
 #if VCEG_AZ05_INTRA_MPI 
         m_pcEntropyCoder->encodeMPIIdx(pcCU, 0, true);
 #endif
+#if COM16_C1046_PDPC_INTRA 
+        m_pcEntropyCoder->encodePDPCIdx( pcCU, 0, true);
+#endif
       }
       m_pcEntropyCoder  ->encodePartSize( pcCU, 0, pcCU->getDepth(0), true );
 
@@ -2004,7 +2007,11 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
 
       Bool bExceptionalCase = (pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx) == DC_IDX);
 
+#if COM16_C1046_PDPC_RSAF_HARMONIZATION  //when PDPC is on, do not hide anything
+      Bool iDefaultMode = bExceptionalCase || (uiLog2TrSize <= 2) || (pcCU->getPartitionSize(uiAbsPartIdx) != SIZE_2Nx2N) || pcCU->getPDPCIdx(uiAbsPartIdx) == 1;
+#else
       Int iDefaultMode =  bExceptionalCase || (uiLog2TrSize <= 2) || (pcCU->getPartitionSize(uiAbsPartIdx) != SIZE_2Nx2N);
+#endif
 
       Int iCheckLimit = (Int)(!iDefaultMode);
       Bool bSingleHidden = iDefaultMode;
@@ -3586,8 +3593,8 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #endif
 
         const Bool bUseFilter=TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, uiMode, puRect.width, puRect.height, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag()
-#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
-                                                                           , sps.getUseRSAF()
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING 
+          , sps.getUseRSAF()
 #endif
                                                                             );
 
@@ -3642,8 +3649,8 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
             if( !bSatdChecked[uiMode] )
             {
               const Bool bUseFilter=TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, uiMode, puRect.width, puRect.height, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag()
-#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
-                                                                                  , sps.getUseRSAF()
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING 
+                , sps.getUseRSAF() 
 #endif
                                                                                   );
 
@@ -7570,11 +7577,11 @@ Void  TEncSearch::xAddSymbolBitsInter( TComDataCU* pcCU, UInt& ruiBits )
 #endif
     Bool codeDeltaQp = false;
     Bool codeChromaQpAdj = false;
-#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST
+#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
     Int bNonZeroCoeff = false;
 #endif
     m_pcEntropyCoder->encodeCoeff   ( pcCU, 0, pcCU->getDepth(0), codeDeltaQp, codeChromaQpAdj
-#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST
+#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
       , bNonZeroCoeff
 #endif
       );

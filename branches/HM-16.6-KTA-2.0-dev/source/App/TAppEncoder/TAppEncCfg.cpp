@@ -1133,6 +1133,9 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 #if VCEG_AZ05_INTRA_MPI
   ("MPI",                                        m_useMPI,            true, "Enable multi-parameter Intra prediction")
 #endif
+#if COM16_C1046_PDPC_INTRA
+  ("PDPC",                                       m_usePDPC,           true, "Position dependent intra prediction combination")
+#endif
 #if VCEG_AZ05_ROT_TR
   ("ROT",                                        m_useROT,            true, "Enable adaptive secondary transform")
 #elif COM16_C1044_NSST
@@ -2636,6 +2639,9 @@ Void TAppEncCfg::xPrintParameter()
 #endif
 #if VCEG_AZ05_INTRA_MPI
   printf("MPI:%d ", m_useMPI        );
+#endif
+#if COM16_C1046_PDPC_INTRA
+  printf("PDPC:%d ", m_usePDPC      );
 #endif
 #if VCEG_AZ05_ROT_TR
   printf("ROT:%d ", m_useROT        );

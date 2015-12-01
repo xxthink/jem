@@ -5206,7 +5206,11 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
     Int absSum = 0 ;
 
 #if COM16_C983_RSAF
+#if COM16_C1046_PDPC_RSAF_HARMONIZATION
+    if (uiWidth <= 32 && uiWidth > 4 && pcCU->getSlice()->getSPS()->getUseRSAF() && pcCU->getPDPCIdx(uiAbsPartIdx) == 0)
+#else
     if (uiWidth <= 32 && uiWidth > 4 && pcCU->getSlice()->getSPS()->getUseRSAF())
+#endif
     {
       vector<BitHidingInCGInfo> l_cgbh;
       UInt res = getMapSBH( pcCU, 

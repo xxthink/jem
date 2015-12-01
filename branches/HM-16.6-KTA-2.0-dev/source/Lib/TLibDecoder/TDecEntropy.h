@@ -104,6 +104,9 @@ public:
 #if VCEG_AZ05_INTRA_MPI
   virtual Void parseMPIIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
 #endif
+#if COM16_C1046_PDPC_INTRA
+  virtual Void parsePDPCIdx       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth) = 0;
+#endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   virtual Void parseROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
 #endif
@@ -230,6 +233,10 @@ public:
 #if VCEG_AZ05_INTRA_MPI
   Void decodeMPIIdx            ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
+#if COM16_C1046_PDPC_INTRA
+  Void decodePDPCIdx           ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth);
+#endif
+
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Void decodeROTIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif

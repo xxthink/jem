@@ -217,6 +217,10 @@ extern const Int g_quantInterDefault8x8[8*8];
 
 extern const UInt g_scalingListSize [SCALING_LIST_SIZE_NUM];
 extern const UInt g_scalingListSizeX[SCALING_LIST_SIZE_NUM];
+
+#if COM16_C1046_PDPC_INTRA
+extern const Int g_pdpc_pred_param[5][2][35][7];
+#endif
 //! \}
 
 #endif  //__TCOMROM__
