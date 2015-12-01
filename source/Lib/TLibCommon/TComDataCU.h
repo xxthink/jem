@@ -107,6 +107,9 @@ private:
 #if VCEG_AZ05_INTRA_MPI
   Char*          m_MPIIdx;             ///< array of MPIIdxs
 #endif
+#if COM16_C1046_PDPC_INTRA
+  Char*          m_PDPCIdx;             ///< array of PDPCIdxs
+#endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Char*          m_ROTIdx;          ///< array of ROTIdxs; When NSST is enabled, the same member varaible of ROT is re-used
 #endif
@@ -300,6 +303,14 @@ public:
   Void          setMPIIdx               ( UInt idx, Char MPIIdx)  { m_MPIIdx[idx] = MPIIdx;   }
   Void          setMPIIdxSubParts       ( Char MPIIdx, UInt absPartIdx, UInt depth );
 #endif
+
+#if COM16_C1046_PDPC_INTRA
+  Char*         getPDPCIdx               ()                          { return m_PDPCIdx; }
+  Char          getPDPCIdx               (UInt idx)                  { return m_PDPCIdx[idx]; }
+  Void          setPDPCIdx               (UInt idx, Char PDPCIdx)    { m_PDPCIdx[idx] = PDPCIdx; }
+  Void          setPDPCIdxSubParts       (Char PDPCIdx, UInt absPartIdx, UInt depth);
+#endif
+
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Char*         getROTIdx               ()                        { return m_ROTIdx;          } // When NSST is enabled, the same interface functions of ROT is re-used
   Char          getROTIdx               ( UInt idx)               { return m_ROTIdx[idx];     }

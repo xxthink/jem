@@ -438,6 +438,9 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
 #if VCEG_AZ05_INTRA_MPI
   m_pcEntropyDecoder->decodeMPIIdx(pcCU, uiAbsPartIdx, uiDepth);
 #endif
+#if COM16_C1046_PDPC_INTRA
+  m_pcEntropyDecoder->decodePDPCIdx(pcCU, uiAbsPartIdx, uiDepth);
+#endif
   m_pcEntropyDecoder->decodePartSize( pcCU, uiAbsPartIdx, uiDepth );
 
   if (pcCU->isIntra( uiAbsPartIdx ) && pcCU->getPartitionSize( uiAbsPartIdx ) == SIZE_2Nx2N )
@@ -675,7 +678,11 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
 
 #if COM16_C983_RSAF
   Bool bFilter = false;
+#if COM16_C1046_PDPC_RSAF_HARMONIZATION
+  if (compID == COMPONENT_Y && sps.getUseRSAF() && pcCU->getPDPCIdx(uiAbsPartIdx) == 0)
+#else
   if (compID==COMPONENT_Y && sps.getUseRSAF())
+#endif
   {
     bFilter = (pcCU->getLumaIntraFilter( uiAbsPartIdx )) != 0;
     bFilter &= !(pcCU->getWidth(0)>32);

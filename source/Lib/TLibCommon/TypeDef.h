@@ -113,7 +113,7 @@
 
 #define VCEG_AZ05_MULTI_PARAM_CABAC                       1  /// CABAC probability estimation with 2 windows 
 #define VCEG_AZ05_BIO                                     1  /// bi-directional optical flow
-#define VCEG_AZ05_INTRA_MPI                               1  /// Multi-parameter Intra prediction
+#define VCEG_AZ05_INTRA_MPI                               0  /// Multi-parameter Intra prediction
 #define VCEG_AZ05_ROT_TR                                  0
 
 #define COM16_C1045_BIO_HARMO_IMPROV                      1
@@ -129,6 +129,16 @@
 #if COM16_C1044_NSST && VCEG_AZ05_ROT_TR
 #error
 #endif
+
+#define COM16_C1046_PDPC_INTRA                            1  ///< Position dependent intra prediction combination
+#if COM16_C1046_PDPC_INTRA && COM16_C983_RSAF
+#define COM16_C1046_PDPC_RSAF_HARMONIZATION               1  ///< Harmonization between PDPC and RSAF
+#endif
+
+#if COM16_C1046_PDPC_INTRA && VCEG_AZ05_INTRA_MPI
+#error
+#endif
+
 ///////////////////////////////////////////////////////////
 // KTA tools section end
 ///////////////////////////////////////////////////////////

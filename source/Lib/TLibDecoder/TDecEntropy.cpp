@@ -100,6 +100,15 @@ Void TDecEntropy::decodeMPIIdx(TComDataCU* pcSubCU, UInt uiAbsPartIdx, UInt uiDe
   m_pcEntropyDecoderIf->parseMPIIdx(pcSubCU, uiAbsPartIdx, uiDepth);
 }
 #endif
+
+#if COM16_C1046_PDPC_INTRA
+Void TDecEntropy::decodePDPCIdx(TComDataCU* pcSubCU, UInt uiAbsPartIdx, UInt uiDepth)
+{
+  m_pcEntropyDecoderIf->parsePDPCIdx(pcSubCU, uiAbsPartIdx, uiDepth);
+}
+#endif
+
+
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST 
 Void TDecEntropy::decodeROTIdx( TComDataCU* pcSubCU, UInt uiAbsPartIdx, UInt uiDepth )
 { 

@@ -61,6 +61,9 @@
 #if VCEG_AZ05_INTRA_MPI
 #define NUM_MPI_CTX                   2       /// < number of context models for MPI Idx coding
 #endif
+#if COM16_C1046_PDPC_INTRA
+#define NUM_PDPC_CTX                  2      /// < number of context models for MPI Idx coding
+#endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
  #define NUM_ROT_TR_CTX               7       /// < number of context models for ROT Idx coding
 #endif
@@ -281,6 +284,15 @@ INIT_SKIP_FLAG[NUMBER_OF_SLICE_TYPES][NUM_SKIP_FLAG_CTX] =
 #if VCEG_AZ05_INTRA_MPI
 static const UChar
 INIT_MPIIdx_FLAG[NUMBER_OF_SLICE_TYPES][NUM_MPI_CTX] =
+{
+  { 107, 107 },
+  { 107, 107 },
+  { 139, 139 },
+};
+#endif
+#if COM16_C1046_PDPC_INTRA
+static const UChar
+INIT_PDPCIdx_FLAG[NUMBER_OF_SLICE_TYPES][NUM_PDPC_CTX] =
 {
   { 107, 107 },
   { 107, 107 },

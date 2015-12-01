@@ -67,6 +67,9 @@ TEncSbac::TEncSbac()
 #if VCEG_AZ05_INTRA_MPI
 , m_cMPIIdxSCModel                     ( 1,             1,                      NUM_MPI_CTX                          , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
+#if COM16_C1046_PDPC_INTRA
+ , m_cPDPCIdxSCModel                   (1,              1,                      NUM_PDPC_CTX                         , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 , m_cROTidxSCModel           ( 1,             1,               NUM_ROT_TR_CTX             , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
@@ -157,6 +160,9 @@ Void TEncSbac::resetEntropy           (const TComSlice *pSlice)
 #if VCEG_AZ05_INTRA_MPI
   m_cMPIIdxSCModel.initBuffer                     ( eSliceType, iQp, (UChar*)INIT_MPIIdx_FLAG );
 #endif 
+#if COM16_C1046_PDPC_INTRA
+  m_cPDPCIdxSCModel.initBuffer                    ( eSliceType, iQp, (UChar*)INIT_PDPCIdx_FLAG);
+#endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   m_cROTidxSCModel.initBuffer        ( eSliceType, iQp, (UChar*)INIT_ROT_TR_IDX );
 #endif
@@ -253,6 +259,9 @@ SliceType TEncSbac::determineCabacInitIdx(const TComSlice *pSlice)
       curCost += m_cCUSkipFlagSCModel.calcCost                 ( curSliceType, qp, (UChar*)INIT_SKIP_FLAG );
 #if VCEG_AZ05_INTRA_MPI
       curCost += m_cMPIIdxSCModel.calcCost                     ( curSliceType, qp, (UChar*)INIT_MPIIdx_FLAG );
+#endif
+#if COM16_C1046_PDPC_INTRA
+      curCost += m_cPDPCIdxSCModel.calcCost                    ( curSliceType, qp, (UChar*)INIT_PDPCIdx_FLAG);
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
       curCost += m_cROTidxSCModel.calcCost        ( curSliceType, qp, (UChar*)INIT_ROT_TR_IDX );
@@ -757,6 +766,38 @@ Void TEncSbac::codeMPIIdx(TComDataCU* pcCU, UInt uiAbsPartIdx)
   }
 }
 #endif
+
+#if COM16_C1046_PDPC_INTRA
+ Void TEncSbac::codePDPCIdx(TComDataCU* pcCU, UInt uiAbsPartIdx)
+ {
+  if (!pcCU->getSlice()->getSPS()->getUsePDPC()) return;
+  if (pcCU->getPredictionMode(uiAbsPartIdx) == MODE_INTER)
+  {
+    return;
+  }
+  Int iNumberOfPassesPDPC = 1;
+  if (pcCU->getSlice()->getSliceType() == I_SLICE) iNumberOfPassesPDPC = 2;
+  else iNumberOfPassesPDPC = 2;
+  if (iNumberOfPassesPDPC > 1) // for only 1 pass no signaling is needed 
+  {
+    if (iNumberOfPassesPDPC > 2)  // 3 or 4
+    {
+      Int idxPDPC = pcCU->getPDPCIdx(uiAbsPartIdx);
+      const UInt uiSymbol0 = (idxPDPC >> 1);
+      const UInt uiSymbol1 = (idxPDPC % 2);
+      m_pcBinIf->encodeBin(uiSymbol0, m_cPDPCIdxSCModel.get(0, 0, 0));
+      m_pcBinIf->encodeBin(uiSymbol1, m_cPDPCIdxSCModel.get(0, 0, 1));
+    }
+    else //iNumberOfPassesMPI==2
+    {
+      Int idxPDPC = pcCU->getPDPCIdx(uiAbsPartIdx);
+      const UInt uiSymbol = idxPDPC;
+      m_pcBinIf->encodeBin(uiSymbol, m_cPDPCIdxSCModel.get(0, 0, 0));
+    }
+   }
+ }
+#endif
+
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 Void TEncSbac::codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
 {
@@ -769,6 +810,9 @@ Void TEncSbac::codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
   if( pcCU->isIntra(uiAbsPartIdx)
 #if VCEG_AZ05_INTRA_MPI
     && pcCU->getMPIIdx(uiAbsPartIdx) ==0
+#endif  
+#if COM16_C1046_PDPC_INTRA
+    && pcCU->getPDPCIdx(uiAbsPartIdx) == 0
 #endif  
     && !pcCU->getCUTransquantBypass(uiAbsPartIdx)
     )  iNumberOfPassesROT = 4;
@@ -1615,7 +1659,7 @@ Void TEncSbac::codeLastSignificantXY( UInt uiPosX, UInt uiPosY, Int width, Int h
 }
 
 Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID 
-#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST
+#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
   , Int& bCbfCU
 #endif
   )
@@ -1850,7 +1894,7 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
 #endif
       coeffSigns    = ( pcCoef[ posLast ] < 0 );
       numNonZero    = 1;
-#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST
+#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
       bCbfCU += abs(pcCoef[posLast]);
 #endif
       lastNZPosInCG  = iScanPosSig;
@@ -1920,7 +1964,7 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
 #endif
           absCoeff[ numNonZero ] = Int(abs( pcCoef[ uiBlkPos ] ));
           coeffSigns = 2 * coeffSigns + ( pcCoef[ uiBlkPos ] < 0 );
-#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST
+#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
           bCbfCU += absCoeff[numNonZero];
 #endif
           numNonZero++;

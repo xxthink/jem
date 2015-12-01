@@ -115,6 +115,12 @@ TComPrediction::TComPrediction()
   m_pPred1  = new Pel [BIO_TEMP_BUFFER_SIZE];
   iRefListIdx = -1;  
 #endif
+#if COM16_C1046_PDPC_INTRA
+  piTempRef = new Int[4 * MAX_CU_SIZE + 1];
+  piFiltRef = new Int[4 * MAX_CU_SIZE + 1];
+  piBinBuff = new Int[4 * MAX_CU_SIZE + 9];
+#endif
+
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
   m_puiW = NULL;
   m_puiH = NULL;
@@ -151,6 +157,13 @@ Void TComPrediction::destroy()
   if( m_pPred0  != NULL )     {delete [] m_pPred0  ; m_pPred0 = NULL;}
   if( m_pPred1  != NULL )     {delete [] m_pPred1  ; m_pPred1 = NULL;}
 #endif
+
+#if COM16_C1046_PDPC_INTRA
+  if (piTempRef != NULL)    { delete[] piTempRef;  piTempRef = NULL; }
+  if (piFiltRef != NULL)    { delete[] piFiltRef;  piFiltRef = NULL; }
+  if (piBinBuff != NULL)    { delete[] piBinBuff;  piBinBuff = NULL; }
+#endif
+
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
   if( m_puiW != NULL )
   {
@@ -620,6 +633,11 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
   // get starting pixel in block
   const Int sw = (2 * iWidth + 1);
 
+#if COM16_C1046_PDPC_INTRA
+  TComDataCU *const pcCU = rTu.getCU();
+  const UInt uiAbsPartIdx = rTu.GetAbsPartIdxTU();
+#endif
+
   if ( bUseLosslessDPCM )
   {
     const Pel *ptrSrc = getPredictorPtr( compID, false );
@@ -661,7 +679,125 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
   }
   else
   {
+#if COM16_C1046_PDPC_INTRA
+#if !COM16_C1046_PDPC_RSAF_HARMONIZATION
+    Pel *ptrSrc = getPredictorPtr(compID, false);
+#endif
+    Int iBlkSizeGrp = std::min(4, 1 + (Int)g_aucConvertToBit[iWidth]); //Block Size
+    Int iPdpcIdx = 0; //PDPC Idx
+    
+    if (pcCU->getPDPCIdx(uiAbsPartIdx) && pcCU->getCUPelX() && pcCU->getCUPelY() && pcCU->getSlice()->getSPS()->getUsePDPC())
+    {
+      PartSize eSize = pcCU->getPartitionSize(uiAbsPartIdx);
+      iPdpcIdx = pcCU->getPDPCIdx(uiAbsPartIdx);
+
+      if (iPdpcIdx > 3) iPdpcIdx = 0;
+      if ((eSize == SIZE_NxN) && (iBlkSizeGrp == 1)) iBlkSizeGrp = 0;
+    }
+
+    //pdpc applied
+    if (iPdpcIdx != 0) 
+    {
+#if COM16_C1046_PDPC_RSAF_HARMONIZATION 
+      Pel *ptrSrc = getPredictorPtr(compID, false);
+#endif
+      const Int iBlkSize = iWidth;
+      const Int iSrcStride = (iWidth<<1) + 1;
+      const Int iDoubleWidth = iWidth<<1;
+
+#if VCEG_AZ07_INTRA_65ANG_MODES
+      Int   iSelMode = (uiDirMode > 1 ? 18 + ((Int(uiDirMode) - 34)>>1) : uiDirMode);
+      const Int * pPdpcPar = g_pdpc_pred_param[iBlkSizeGrp][iPdpcIdx][iSelMode];
+#else
+      Int * pPdpcPar = g_pdpc_pred_param[iBlkSizeGrp][iPdpcIdx][uiDirMode];
+#endif
+
+      Int * piRefVector = piTempRef + iDoubleWidth;
+      Int * piLowpRefer = piFiltRef + iDoubleWidth;
+
+      //unfiltered reference
+      for (Int j = 0; j <= iDoubleWidth; j++)
+        piRefVector[j] = ptrSrc[j];
+
+      for (Int i = 1; i <= iDoubleWidth; i++)
+        piRefVector[-i] = ptrSrc[i*iSrcStride];
+
+
+      if (pPdpcPar[5] != 0) 
+      { // filter reference samples
+        xReferenceFilter(iBlkSize, pPdpcPar[4], pPdpcPar[5], piRefVector, piLowpRefer);
+        for (Int j = 0; j <= iDoubleWidth; j++)
+          ptrSrc[j] = piLowpRefer[j];
+        for (Int i = 1; i <= iDoubleWidth; i++)
+          ptrSrc[i*iSrcStride] = piLowpRefer[-i];
+      }
+
+
+      if (uiDirMode == PLANAR_IDX)
+        xPredIntraPlanar(ptrSrc + sw + 1, sw, pDst, uiStride, iWidth, iHeight);
+      else
+      {
+        const Bool            enableEdgeFilters = !(pcCU->isRDPCMEnabled(uiAbsPartIdx) && pcCU->getCUTransquantBypass(uiAbsPartIdx));
+#if O0043_BEST_EFFORT_DECODING
+        const Int channelsBitDepthForPrediction = rTu.getCU()->getSlice()->getSPS()->getStreamBitDepth(channelType);
+#else
+        const Int channelsBitDepthForPrediction = rTu.getCU()->getSlice()->getSPS()->getBitDepth(channelType);
+#endif
+#if VCEG_AZ07_INTRA_4TAP_FILTER
+        const Bool             enable4TapFilter = pcCU->getSlice()->getSPS()->getUseIntra4TapFilter();
+#endif
+
+        xPredIntraAng(channelsBitDepthForPrediction, ptrSrc + sw + 1, sw, pDst, uiStride, iWidth, iHeight, channelType, uiDirMode, enableEdgeFilters
+#if VCEG_AZ07_INTRA_4TAP_FILTER
+          , enable4TapFilter
+#endif
+          );
+      }
+
+      //use unfiltered reference sample for weighted prediction
+      if (pPdpcPar[5] != 0) 
+      {
+        for (int j = 0; j <= iDoubleWidth; j++)
+          ptrSrc[j] = piRefVector[j];
+
+        for (int i = 1; i <= iDoubleWidth; i++)
+          ptrSrc[i*iSrcStride] = piRefVector[-i];
+      }
+
+      Int scale = (iBlkSize < 32 ? 0 : 1);
+      Int bitDepth = rTu.getCU()->getSlice()->getSPS()->getBitDepth(channelType);
+      Int ParShift = 6; //normalization factor
+      Int ParScale = 1 << ParShift;
+      Int ParOffset = 1 << (ParShift - 1);
+
+      for (Int row = 0; row < iBlkSize; row++) 
+      {
+        Int pos          = row * uiStride;
+        Int shiftRow     = row >> scale;
+        Int Coeff_Top    = pPdpcPar[2] >> shiftRow;
+        Int Coeff_offset = pPdpcPar[3] >> shiftRow;
+
+        for (Int col = 0; col < iBlkSize; col++, pos++) 
+        {
+          Int shiftCol      = col >> scale;
+          Int Coeff_Left    = pPdpcPar[0] >> shiftCol;
+          Int Coeff_TopLeft = (pPdpcPar[1] >> shiftCol) + Coeff_offset;
+          Int Coeff_Cur     = ParScale - Coeff_Left - Coeff_Top + Coeff_TopLeft;
+
+          Int sampleVal = (Coeff_Left* piRefVector[-row - 1] + Coeff_Top * piRefVector[col + 1] - Coeff_TopLeft * piRefVector[0] + Coeff_Cur * pDst[pos] + ParOffset) >> ParShift;
+          pDst[pos] = Clip3(0, ((1 << bitDepth) - 1), sampleVal);
+        }
+      }
+      return; //terminate the prediction process
+    }
+#else
     const Pel *ptrSrc = getPredictorPtr( compID, bUseFilteredPredSamples );
+#endif
+
+#if COM16_C1046_PDPC_RSAF_HARMONIZATION
+    const Pel *ptrSrc = getPredictorPtr(compID, bUseFilteredPredSamples);
+#endif
+
 #if VCEG_AZ05_INTRA_MPI
     TComDataCU *const pcCU = rTu.getCU();
     const UInt              uiAbsPartIdx = rTu.GetAbsPartIdxTU();
@@ -673,7 +809,7 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
     else
     {
       // Create the prediction
-#if !VCEG_AZ05_INTRA_MPI
+#if !VCEG_AZ05_INTRA_MPI && !COM16_C1046_PDPC_INTRA
       TComDataCU *const pcCU = rTu.getCU();
       const UInt              uiAbsPartIdx      = rTu.GetAbsPartIdxTU();
 #endif
@@ -686,13 +822,18 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 #if VCEG_AZ07_INTRA_4TAP_FILTER
       const Bool              enable4TapFilter     = pcCU->getSlice()->getSPS()->getUseIntra4TapFilter();
 #endif
+
 #if VCEG_AZ07_INTRA_BOUNDARY_FILTER
 
 #if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
 #if VCEG_AZ05_INTRA_MPI
       const Bool              enableBoundaryFilter = pcCU->getSlice()->getSPS()->getUseIntraBoundaryFilter() && (pcCU->getMPIIdx(uiAbsPartIdx) <= 1 || pcCU->getWidth(uiAbsPartIdx)>=16 || !pcCU->getSlice()->getSPS()->getUseRSAF() );
 #else
-      const Bool              enableBoundaryFilter = pcCU->getSlice()->getSPS()->getUseIntraBoundaryFilter() && ( pcCU->getWidth(uiAbsPartIdx)>=16 || !pcCU->getSlice()->getSPS()->getUseRSAF() );
+#if COM16_C1046_PDPC_INTRA
+      const Bool              enableBoundaryFilter = pcCU->getSlice()->getSPS()->getUseIntraBoundaryFilter() && (pcCU->getPDPCIdx(uiAbsPartIdx) <= 1 || pcCU->getWidth(uiAbsPartIdx) >= 16 || !pcCU->getSlice()->getSPS()->getUseRSAF());
+#else
+      const Bool              enableBoundaryFilter = pcCU->getSlice()->getSPS()->getUseIntraBoundaryFilter() && (pcCU->getWidth(uiAbsPartIdx) >= 16 || !pcCU->getSlice()->getSPS()->getUseRSAF());
+#endif
 #endif
 #else
       const Bool              enableBoundaryFilter = pcCU->getSlice()->getSPS()->getUseIntraBoundaryFilter();
@@ -4825,4 +4966,72 @@ Void TComPrediction::getMvPredAffineAMVP( TComDataCU* pcCU, UInt uiPartIdx, UInt
 }
 #endif
 
+
+#if COM16_C1046_PDPC_INTRA
+void TComPrediction::xReferenceFilter(Int iBlkSize, Int iOrigWeight, Int iFilterOrder, Int * piRefrVector, Int * piLowPassRef)
+{
+  const Int imCoeff[3][4] = 
+  {
+    { 20, 15, 6, 1 },
+    { 16, 14, 7, 3 },
+    { 14, 12, 9, 4 } 
+  };
+
+  const Int * piFc;
+  const Int iDoubleSize = 2 * iBlkSize;                   // symmetric representation
+  Int * piTmp = &piBinBuff[2 * MAX_CU_SIZE + 4];   // to  use negative indexes
+  Int * piDat = piRefrVector;
+  Int * piRes = piLowPassRef;
+  
+  for (Int k = -iDoubleSize; k <= iDoubleSize; k++)
+    piTmp[k] = piDat[k];
+
+  for (Int n = 1; n <= 3; n++)
+  {
+    piTmp[-iDoubleSize - n] = piTmp[-iDoubleSize - 1 + n];
+    piTmp[iDoubleSize + n] = piTmp[iDoubleSize + 1 - n];
+  }
+
+  switch (iFilterOrder) 
+  {
+  case 0:
+    break;
+  case 1:
+    for (Int k = -iDoubleSize; k <= iDoubleSize; k++)
+      piRes[k] = ((piTmp[k] << 1) + piTmp[k - 1] + piTmp[k + 1] + 2) >> 2;
+    break;
+  case 2:
+    for (Int k = -iDoubleSize; k <= iDoubleSize; k++)
+      piRes[k] = ((piTmp[k] << 1) + ((piTmp[k] + piTmp[k - 1] + piTmp[k + 1]) << 2) + piTmp[k - 2] + piTmp[k + 2] + 8) >> 4;
+    break;
+  case 3:
+  case 5:
+  case 7:
+    piFc = imCoeff[(iFilterOrder - 3) >> 1];
+    for (Int k = -iDoubleSize; k <= iDoubleSize; k++)
+    {
+      Int s = 32 + piFc[0] * piTmp[k];
+      for (Int n = 1; n < 4; n++)
+        s += piFc[n] * (piTmp[k - n] + piTmp[k + n]);
+      piRes[k] = s >> 6;
+    }
+    break;
+  default:
+    printf("Invalid intra prediction reference filter order %d", iFilterOrder);
+    exit(1);
+  }
+
+  Int ParShift = 6; //normalization factor
+  Int ParScale = 1 << ParShift;
+  Int ParOffset = 1 << (ParShift - 1);
+
+  if (iOrigWeight != 0) 
+  {
+    Int iCmptWeight = ParScale - iOrigWeight;
+    for (Int k = -iDoubleSize; k <= iDoubleSize; k++)
+      piLowPassRef[k] = (iOrigWeight * piRefrVector[k] + iCmptWeight * piLowPassRef[k] + ParOffset) >> ParShift;
+  }
+}
+
+#endif
 //! \}

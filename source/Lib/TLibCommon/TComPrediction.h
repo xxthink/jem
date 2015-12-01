@@ -47,6 +47,9 @@
 #include "TComRdCost.h"
 #include <list>
 #endif
+#if COM16_C1046_PDPC_INTRA
+#include "TComRom.h"
+#endif
 
 // forward declaration
 class TComMv;
@@ -54,6 +57,7 @@ class TComTU;
 #if VCEG_AZ07_FRUC_MERGE
 class TComMvField;
 #endif
+
 //! \ingroup TLibCommon
 //! \{
 
@@ -94,6 +98,12 @@ protected:
   Pel*   m_pPred0 ;
   Pel*   m_pPred1 ;
   Int    iRefListIdx;
+#endif
+
+#if COM16_C1046_PDPC_INTRA
+  Int* piTempRef;
+  Int* piFiltRef;
+  Int* piBinBuff;
 #endif
   Pel*      m_piYuvExt[MAX_NUM_COMPONENT][NUM_PRED_BUF];
   Int       m_iYuvExtSize;
@@ -191,7 +201,9 @@ protected:
     );
 
   Void xGetLLSPrediction ( const Pel* pSrc0, Int iSrcStride, Pel* pDst0, Int iDstStride, UInt uiWidth, UInt uiHeight, UInt uiExt0, const ChromaFormat chFmt  DEBUG_STRING_FN_DECLARE(sDebug) );
-
+#if COM16_C1046_PDPC_INTRA
+  Void xReferenceFilter  (Int iBlkSize, Int iOrigWeight, Int iFilterOrder, Int * piRefVector, Int * piLowPassRef);
+#endif
   Void xDCPredFiltering( const Pel* pSrc, Int iSrcStride, Pel* pDst, Int iDstStride, Int iWidth, Int iHeight, ChannelType channelType );
 
 #if VCEG_AZ05_INTRA_MPI
