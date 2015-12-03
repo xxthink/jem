@@ -6092,8 +6092,8 @@ Bool TComDataCU::isBIOLDB( UInt uiAbsPartIdx )
       Bool zeroMv1 = ( pCuMvField1->getMv( uiAbsPartIdx ).getAbsHor() + pCuMvField1->getMv( uiAbsPartIdx ).getAbsVer() ) == 0;
       if( !zeroMv0 && !zeroMv1 )
       {
-        BIOLDB = abs( dT0 * pCuMvField1->getMv( uiAbsPartIdx ).getHor() - dT1 * pCuMvField0->getMv( uiAbsPartIdx ).getHor() ) <= threshold 
-          && abs( dT0 * pCuMvField1->getMv( uiAbsPartIdx ).getVer() - dT1 * pCuMvField0->getMv( uiAbsPartIdx ).getVer() ) <= threshold;
+        BIOLDB = dT0 * pCuMvField1->getMv( uiAbsPartIdx ).getHor() == dT1 * pCuMvField0->getMv( uiAbsPartIdx ).getHor() 
+          && dT0 * pCuMvField1->getMv( uiAbsPartIdx ).getVer() == dT1 * pCuMvField0->getMv( uiAbsPartIdx ).getVer();
       }
     }
   }
