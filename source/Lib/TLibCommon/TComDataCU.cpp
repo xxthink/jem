@@ -6085,7 +6085,6 @@ Bool TComDataCU::isBIOLDB( UInt uiAbsPartIdx )
     Int poc1 = getSlice()->getRefPOC( REF_PIC_LIST_1 , pCuMvField1->getRefIdx( uiAbsPartIdx ) );
     if( poc0 != poc1 && ( poc0 - pocCur ) * ( poc1 - pocCur ) > 0 )
     {
-      const Int threshold = 0;
       Int dT0 = poc0 - pocCur;
       Int dT1 = poc1 - pocCur;
       Bool zeroMv0 = ( pCuMvField0->getMv( uiAbsPartIdx ).getAbsHor() + pCuMvField0->getMv( uiAbsPartIdx ).getAbsVer() ) == 0;
