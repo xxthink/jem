@@ -1334,11 +1334,7 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
                                       const ComponentID compID,
                                             TComTU&     rTu
                                       DEBUG_STRING_FN_DECLARE(sDebug)
-#if COM16_C983_RSAF
-                                          , Bool        bFilter
-                                          , Bool&       bHidden
-#endif
-                                           ,Int         default0Save1Load2
+                                           , Int        default0Save1Load2
 #if COM16_C806_EMT
                                            , UInt*      puiSigNum
 #endif
@@ -1411,7 +1407,8 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
 #endif
   {
 #if COM16_C983_RSAF
-      Bool bUseFilteredPredictions=TComPrediction::filteringIntraReferenceSamples(compID, uiChFinalMode, uiWidth, uiHeight, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag()
+    Bool bFilter = pcCU->getLumaIntraFilter(uiAbsPartIdx);
+    Bool bUseFilteredPredictions=TComPrediction::filteringIntraReferenceSamples(compID, uiChFinalMode, uiWidth, uiHeight, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag()
 #if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
                                                                                 , sps.getUseRSAF()
 #endif
@@ -1562,10 +1559,6 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
     pcArlCoeff,
 #endif
     uiAbsSum, cQP 
-#if COM16_C983_RSAF
-  , bFilter, 
-    bHidden
-#endif
     );
 
 #if COM16_C806_EMT
@@ -1837,168 +1830,6 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
 
   if( bCheckFull )
   {
-    if(checkTransformSkip == true)
-    {
-      assert(0); // 4x4 TUs are not supported yet
-      //----- store original entropy coding status -----
-      m_pcRDGoOnSbacCoder->store( m_pppcRDSbacCoder[ uiFullDepth ][ CI_QT_TRAFO_ROOT ] );
-
-      Distortion singleDistTmpLuma                    = 0;
-      UInt       singleCbfTmpLuma                     = 0;
-
-      Double     singleCostTmp                        = 0;
-      Int        firstCheckId                         = 0;
-
-      for(Int modeId = firstCheckId; modeId < 2; modeId ++)
-      {
-#if COM16_C806_EMT
-#if HHI_RQT_INTRA_SPEEDUP
-        UChar numTrIdxCands = ((modeId == firstCheckId && !bCheckInitTrDepth) ? nNumTrCands : 1 );
-#else
-        UChar numTrIdxCands = ((modeId == firstCheckId) ? nNumTrCands : 1 );
-#endif
-
-        for (UChar ucTrIdx = 0; ucTrIdx < numTrIdxCands; ucTrIdx++)
-        {
-          // Skip checking other transform candidates if zero CBF is encountered
-          if( ucTrIdx && !uiSingleCbfLuma && bAllIntra && m_pcEncCfg->getUseFastIntraEMT() )
-          {
-            continue;
-          }
-#endif
-
-        DEBUG_STRING_NEW(sModeString)
-        Int  default0Save1Load2 = 0;
-        singleDistTmpLuma=0;
-#if COM16_C806_EMT
-        if (modeId == firstCheckId && ucTrIdx == 0)
-#else
-        if(modeId == firstCheckId)
-#endif
-        {
-          default0Save1Load2 = 1;
-        }
-        else
-        {
-          default0Save1Load2 = 2;
-        }
-
-#if COM16_C806_EMT
-#if HHI_RQT_INTRA_SPEEDUP
-        pcCU->setEmtTuIdxSubParts( bCheckInitTrDepth?ucSavedEmtTrIdx:ucTrIdx, uiAbsPartIdx, uiFullDepth );
-#else
-        pcCU->setEmtTuIdxSubParts( txIdx, uiAbsPartIdx, uiFullDepth );
-#endif 
-#endif
-
-        pcCU->setTransformSkipSubParts ( modeId, COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan );
-
-#if COM16_C983_RSAF
-        Bool bStub = true;
-#endif
-        xIntraCodingTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv, 
-#if COM16_C806_LARGE_CTU
-          m_resiSingleBuffer[uiLog2TrSize],
-#else
-          resiLumaSingle, 
-#endif
-          false, singleDistTmpLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sModeString)
-#if COM16_C983_RSAF
-          , false ,
-            bStub
-#endif
-          , default0Save1Load2 
-#if COM16_C806_EMT
-          , &uiSigNum
-#endif
-          );
-
-        singleCbfTmpLuma = pcCU->getCbf( uiAbsPartIdx, COMPONENT_Y, uiTrDepth );
-
-        //----- determine rate and r-d cost -----
-#if COM16_C806_EMT
-        if( (modeId == 1 && singleCbfTmpLuma == 0) || (modeId==0 && ucTrIdx && ucTrIdx!=DCT2_EMT && uiSigNum<=g_iEmtSigNumThr) )
-#else
-        if(modeId == 1 && singleCbfTmpLuma == 0)
-#endif
-        {
-          //In order not to code TS flag when cbf is zero, the case for TS with cbf being zero is forbidden.
-          singleCostTmp = MAX_DOUBLE;
-        }
-        else
-        {
-          UInt uiSingleBits = xGetIntraBitsQT( rTu, true, false, false );
-          singleCostTmp     = m_pcRdCost->calcRdCost( uiSingleBits, singleDistTmpLuma );
-        }
-
-
-
-
-
-
-
-
-        if(singleCostTmp < dSingleCost)
-        {
-          DEBUG_STRING_SWAP(sDebug, sModeString)
-          dSingleCost   = singleCostTmp;
-          uiSingleDistLuma = singleDistTmpLuma;
-          uiSingleCbfLuma = singleCbfTmpLuma;
-#if COM16_C806_EMT
-          bestTrIdx     = ucTrIdx;
-#endif
-
-
-          bestModeId[COMPONENT_Y] = modeId;
-          if(bestModeId[COMPONENT_Y] == firstCheckId)
-          {
-            xStoreIntraResultQT(COMPONENT_Y, rTu );
-            m_pcRDGoOnSbacCoder->store( m_pppcRDSbacCoder[ uiFullDepth ][ CI_TEMP_BEST ] );
-          }
-
-          if (pcCU->getSlice()->getPPS()->getPpsRangeExtension().getCrossComponentPredictionEnabledFlag())
-          {
-            const Int xOffset = rTu.getRect( COMPONENT_Y ).x0;
-            const Int yOffset = rTu.getRect( COMPONENT_Y ).y0;
-            for (UInt storedResidualIndex = 0; storedResidualIndex < NUMBER_OF_STORED_RESIDUAL_TYPES; storedResidualIndex++)
-            {
-              if (bMaintainResidual[storedResidualIndex])
-              {
-                xStoreCrossComponentPredictionResult(resiLuma[storedResidualIndex], 
-#if COM16_C806_LARGE_CTU
-                  m_resiSingleBuffer[uiLog2TrSize][storedResidualIndex],
-#else
-                  resiLumaSingle[storedResidualIndex], 
-#endif
-                  rTu, xOffset, yOffset, MAX_CU_SIZE, MAX_CU_SIZE);
-              }
-            }
-          }
-        }
-        if (modeId == firstCheckId)
-        {
-          m_pcRDGoOnSbacCoder->load ( m_pppcRDSbacCoder[ uiFullDepth ][ CI_QT_TRAFO_ROOT ] );
-        }
-#if COM16_C806_EMT
-        }
-#endif
-      }
-
-      pcCU ->setTransformSkipSubParts ( bestModeId[COMPONENT_Y], COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan );
-#if COM16_C806_EMT
-      pcCU ->setEmtTuIdxSubParts ( bestTrIdx, uiAbsPartIdx, uiFullDepth );
-#endif
-
-      if(bestModeId[COMPONENT_Y] == firstCheckId)
-      {
-        xLoadIntraResultQT(COMPONENT_Y, rTu );
-        pcCU->setCbfSubParts  ( uiSingleCbfLuma << uiTrDepth, COMPONENT_Y, uiAbsPartIdx, rTu.GetTransformDepthTotalAdj(COMPONENT_Y) );
-
-        m_pcRDGoOnSbacCoder->load( m_pppcRDSbacCoder[ uiFullDepth ][ CI_TEMP_BEST ] );
-      }
-    }
-    else
-    {
       //----- store original entropy coding status -----
       if(bCheckSplit)
       {
@@ -2017,7 +1848,7 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
       Bool bSingleHidden = iDefaultMode;
 
 #if COM16_C806_EMT
-      bCheckInitTrDepth = false;//!!
+      bCheckInitTrDepth = false;
 #endif
       Bool doRestore = true;
 
@@ -2063,6 +1894,8 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
 #endif
         pcCU ->setTransformSkipSubParts ( 0, COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan );
 
+        pcCU->setLumaIntraFilter(uiAbsPartIdx, bFilter);
+        pcCU->setLumaIntraFilterHidden(uiAbsPartIdx, iDefaultMode);
 
         xIntraCodingTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv, 
 #if COM16_C806_LARGE_CTU
@@ -2070,7 +1903,7 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
 #else
           resiLumaSingle, 
 #endif
-          false, singleDistYTmp, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sDebug), bFilter, bSingleHidden
+          false, singleDistYTmp, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sDebug)
 #if COM16_C806_EMT
           , default0Save1Load2, &uiSigNum
 #endif
@@ -2078,8 +1911,12 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
 
         doRestore = true;
 
+        bSingleHidden = pcCU->isLumaIntraFilterHidden(uiAbsPartIdx);
         if (!bFilter)
-            bSingleHidden = true;
+        {
+           bSingleHidden = true;
+           pcCU->setLumaIntraFilterHidden(uiAbsPartIdx, bSingleHidden);
+        }
 
         {
           singleCbfYTmp   = pcCU->getCbf( uiAbsPartIdx, COMPONENT_Y, uiTrDepth );
@@ -2176,7 +2013,6 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
         pcCU->setCbfSubParts  ( uiSingleCbfLuma << uiTrDepth, COMPONENT_Y, uiAbsPartIdx, uiFullDepth );
         m_pcRDGoOnSbacCoder->load( m_pppcRDSbacCoder[ uiFullDepth ][ CI_TEMP_BEST ] );
       }
-    } 
   }
 
   pcCU->setLumaIntraFilter(uiAbsPartIdx, bSingleFilter);
@@ -2501,7 +2337,8 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
 #endif
 
 #if COM16_C983_RSAF
-        Bool bStub=true;
+        pcCU->setLumaIntraFilter(uiAbsPartIdx, false);
+        pcCU->setLumaIntraFilterHidden(uiAbsPartIdx, true);
 #endif
         pcCU->setTransformSkipSubParts ( modeId, COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan );
         xIntraCodingTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv, 
@@ -2511,10 +2348,6 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
           resiLumaSingle, 
 #endif
           false, singleDistTmpLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sModeString)
-#if COM16_C983_RSAF
-          , false 
-          , bStub
-#endif
           , default0Save1Load2 
 #if COM16_C806_EMT
           , &uiSigNum
@@ -2635,7 +2468,8 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
       //----- code luma/chroma block with given intra prediction mode and store Cbf-----
 
 #if COM16_C983_RSAF
-      Bool bStub=true;
+      pcCU->setLumaIntraFilter(uiAbsPartIdx, false);
+      pcCU->setLumaIntraFilterHidden(uiAbsPartIdx, true);
 #endif
 #if COM16_C806_EMT
 #if HHI_RQT_INTRA_SPEEDUP
@@ -2650,12 +2484,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
 #else
         resiLumaSingle, 
 #endif
-        false, singleDistYTmp, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sDebug)
-#if COM16_C983_RSAF
-      , false 
-      , bStub
-#endif
-      , default0Save1Load2, &uiSigNum);
+        false, singleDistYTmp, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sDebug), default0Save1Load2, &uiSigNum);
 #else
       dSingleCost   = 0.0;
 
@@ -3241,14 +3070,10 @@ TEncSearch::xRecurIntraChromaCodingQT(TComYuv*    pcOrgYuv,
             singleDistCTmp = 0;
 
 #if COM16_C983_RSAF
-              Bool bStub=true;
+            pcCU->setLumaIntraFilter(uiAbsPartIdx, false);
+            pcCU->setLumaIntraFilterHidden(uiAbsPartIdx, true);
 #endif
-            xIntraCodingTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv, resiLuma, (crossCPredictionModeId != 0), singleDistCTmp, compID, TUIterator DEBUG_STRING_PASS_INTO(sDebugMode), 
-#if COM16_C983_RSAF
-                                 false,
-                                 bStub,
-#endif
-                                 default0Save1Load2);
+            xIntraCodingTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv, resiLuma, (crossCPredictionModeId != 0), singleDistCTmp, compID, TUIterator DEBUG_STRING_PASS_INTO(sDebugMode), default0Save1Load2);
 
             singleCbfCTmp = pcCU->getCbf( subTUAbsPartIdx, compID, uiTrDepth);
 
@@ -6787,9 +6612,9 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
                   memcpy(&bestResiComp[y * tuCompRect.width], (pcResiCurrComp + (y * resiStride)), (sizeof(Pel) * tuCompRect.width));
                 }
               }
-
 #if COM16_C983_RSAF
-              Bool bStub=true;
+              pcCU->setLumaIntraFilter(uiAbsPartIdx, false);
+              pcCU->setLumaIntraFilterHidden(uiAbsPartIdx, true);
 #endif
 
               if (bUseCrossCPrediction)
@@ -6811,9 +6636,6 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
                                           currentARLCoefficients,
 #endif
                                           currAbsSum, cQP
-#if COM16_C983_RSAF
-                                        , false, bStub
-#endif
                                           );
               }
               else
@@ -6823,9 +6645,6 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
                                           currentARLCoefficients,
 #endif
                                           currAbsSum, cQP
-#if COM16_C983_RSAF
-                                        , false, bStub
-#endif
                                           );
               }
 

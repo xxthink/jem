@@ -1708,9 +1708,6 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
 #endif
     )
 {
-#if COM16_C983_RSAF
-  Bool bHidden=false;
-#endif
   TComDataCU* pcCU=rTu.getCU();
   const UInt uiAbsPartIdx=rTu.GetAbsPartIdxTU(compID);
   const TComRectangle &rRect=rTu.getRect(compID);
@@ -2248,7 +2245,7 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
   {
       Int iAbsSum = -1;
 
-      if ( (!bHidden) && bCheckBH  ) 
+      if ( bCheckBH  ) 
       {
         Bool bChecksum = TComTrQuant::getChecksum(pcCU, pcCoef, uiAbsPartIdx, uiWidth, uiHeight, codingParameters, 2, 1, iAbsSum);
         pcCU->setLumaIntraFilter(uiAbsPartIdx, bChecksum);

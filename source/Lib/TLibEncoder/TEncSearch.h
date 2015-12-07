@@ -306,10 +306,6 @@ protected:
                                     const ComponentID   compID,
                                           TComTU        &rTu
                                     DEBUG_STRING_FN_DECLARE(sTest)
-#if COM16_C983_RSAF
-                                        , Bool         bFilter
-                                        , Bool&        bHidden
-#endif
                                          ,Int           default0Save1Load2 = 0
 #if COM16_C806_EMT
                                          ,UInt*         puiSigNum = NULL

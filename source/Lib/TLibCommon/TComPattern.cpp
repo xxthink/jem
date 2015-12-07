@@ -246,14 +246,13 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
       //------------------------------------------------
 
       Bool useStrongIntraSmoothing = isLuma(chType) && sps.getUseStrongIntraSmoothing();
-
 #if COM16_C983_RSAF
       if (pcCU->getSlice()->getSPS()->getUseRSAF())
       {
-        useStrongIntraSmoothing &= compID != COMPONENT_Y;
+        useStrongIntraSmoothing = false;
       }
+      const Bool bIsWeakSmoothing = !bRSAF || !bFilterRefSamples;
 #endif
-
       const Pel bottomLeft = piIntraTemp[stride * uiTuHeight2];
       const Pel topLeft    = piIntraTemp[0];
       const Pel topRight   = piIntraTemp[uiTuWidth2];
@@ -294,19 +293,19 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
       }
       else
       {
+#if COM16_C983_RSAF
+        //First pixel always use weak smoothing
+        *piDestPtr = lp3tapFilterVer(piSrcPtr,stride);
+        piDestPtr-=stride; 
+        piSrcPtr-=stride;
+
+        for(UInt i=2; i<uiTuHeight2; i++, piDestPtr-=stride, piSrcPtr-=stride)
+#else
         for(UInt i=1; i<uiTuHeight2; i++, piDestPtr-=stride, piSrcPtr-=stride)
+#endif
         {
 #if COM16_C983_RSAF
-          Bool bIsWeak = !bRSAF || !bFilterRefSamples;
-
-          if ((1 == i) || (uiTuHeight2-1 == i) || (compID != COMPONENT_Y) || (bIsWeak)) 
-          {
-            *piDestPtr = lp3tapFilterVer(piSrcPtr,stride);
-          } 
-          else 
-          {
-            *piDestPtr = lp5tapFilterVer(piSrcPtr,stride);
-          }
+          *piDestPtr = ( bIsWeakSmoothing || (i == uiTuHeight2-1) ) ? lp3tapFilterVer(piSrcPtr,stride) : lp5tapFilterVer(piSrcPtr,stride);
 #else
           *piDestPtr = ( piSrcPtr[stride] + 2*piSrcPtr[0] + piSrcPtr[-stride] + 2 ) >> 2;
 #endif
@@ -345,19 +344,19 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
       }
       else
       {
-        for(UInt i=1; i<uiTuWidth2; i++, piDestPtr++, piSrcPtr++)
-        {
 #if COM16_C983_RSAF
-          Bool bIsWeak = !bRSAF || !bFilterRefSamples;
-          
-          if ((1 == i) || (uiTuWidth2-1 == i) || (compID!=COMPONENT_Y) || (bIsWeak)) 
-          {
-            *piDestPtr = lp3tapFilterHor(piSrcPtr);
-          } 
-          else 
-          {
-            *piDestPtr = lp5tapFilterHor(piSrcPtr);
-          }
+        //First pixel always use weak smoothing
+        *piDestPtr = lp3tapFilterHor(piSrcPtr);
+        piDestPtr++; 
+        piSrcPtr++;
+
+        for(UInt i=2; i<uiTuWidth2; i++, piDestPtr++, piSrcPtr++)
+#else
+        for(UInt i=1; i<uiTuWidth2; i++, piDestPtr++, piSrcPtr++)
+#endif
+        {
+#if COM16_C983_RSAF         
+          *piDestPtr = ( bIsWeakSmoothing || (i == uiTuWidth2-1) ) ? lp3tapFilterHor(piSrcPtr) : lp5tapFilterHor(piSrcPtr);
 #else
           *piDestPtr = ( piSrcPtr[1] + 2*piSrcPtr[0] + piSrcPtr[-1] + 2 ) >> 2;
 #endif

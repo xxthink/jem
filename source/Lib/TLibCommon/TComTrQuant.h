@@ -211,10 +211,6 @@ Void InvNsst4x4( Int* src, UInt uiMode, UChar index );
 #endif
                            TCoeff         & uiAbsSum,
                      const QpParam        & cQP 
-#if COM16_C983_RSAF
-                         , Bool             bRSAFflagToHide,
-                           Bool           & bHidden
-#endif
                      );
 
 
@@ -394,10 +390,6 @@ private:
                      TCoeff       &uiAbsSum,
                const ComponentID   compID,
                const QpParam      &cQP 
-#if COM16_C983_RSAF
-                   , Bool          bRSAFflagToHide,
-                     Bool         &bHidden
-#endif
                );
 
 #if T0196_SELECTIVE_RDOQ
@@ -418,10 +410,6 @@ private:
                                            TCoeff       &uiAbsSum,
                                      const ComponentID   compID,
                                      const QpParam      &cQP 
-#if COM16_C983_RSAF
-                                         , Bool          bRSAFflagToHide, 
-                                           Bool         &bHidden
-#endif
                                      );
 
 __inline UInt              xGetCodedLevel  ( Double&          rd64CodedCost,

@@ -3188,10 +3188,6 @@ Void TComTrQuant::xQuant(       TComTU       &rTu,
                                 TCoeff       &uiAbsSum,
                           const ComponentID   compID,
                           const QpParam      &cQP 
-#if COM16_C983_RSAF
-                              , Bool          bRSAFflagToHide,
-                                Bool&         bHidden
-#endif
                           )
 {
   const TComRectangle &rect = rTu.getRect(compID);
@@ -3218,19 +3214,9 @@ Void TComTrQuant::xQuant(       TComTU       &rTu,
     {
 #endif
 #if ADAPTIVE_QP_SELECTION
-      xRateDistOptQuant( rTu, piCoef, pDes, pArlDes, uiAbsSum, compID, cQP 
-#if COM16_C983_RSAF
-                       , bRSAFflagToHide, 
-                         bHidden
-#endif
-        );
+      xRateDistOptQuant( rTu, piCoef, pDes, pArlDes, uiAbsSum, compID, cQP );
 #else
-      xRateDistOptQuant( rTu, piCoef, pDes, uiAbsSum, compID, cQP 
-#if COM16_C983_RSAF
-                       , bRSAFflagToHide, 
-                         bHidden
-#endif
-        );
+      xRateDistOptQuant( rTu, piCoef, pDes, uiAbsSum, compID, cQP );
 #endif
 #if T0196_SELECTIVE_RDOQ
     }
@@ -3766,10 +3752,6 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
 #endif
                                       TCoeff        & uiAbsSum,
                                 const QpParam       & cQP 
-#if COM16_C983_RSAF
-                                    , Bool            bRSAFflagToHide, 
-                                      Bool          & bHidden
-#endif
                                 )
 {
   const TComRectangle &rect = rTu.getRect(compID);
@@ -3958,11 +3940,7 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
               pcArlCoeff,
 #endif
               uiAbsSum, compID, cQP 
-#if COM16_C983_RSAF
-            , bRSAFflagToHide, 
-              bHidden
-#endif
-              );
+            );
 
 #if DEBUG_TRANSFORM_AND_QUANTISE
       std::cout << g_debugCounter << ": " << uiWidth << "x" << uiHeight << " channel " << compID << " TU at output of quantiser\n";
@@ -4726,11 +4704,7 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
                                                             TCoeff       &uiAbsSum,
                                                       const ComponentID   compID,
                                                       const QpParam      &cQP  
-#if COM16_C983_RSAF
-                                                          , Bool          bRSAFflagToHide
-                                                          , Bool         &bHidden
-#endif
-                                                      )
+                                                    )
 {
   const TComRectangle  & rect             = rTu.getRect(compID);
   const UInt             uiWidth          = rect.width;
@@ -4743,6 +4717,11 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
   const Bool             extendedPrecision = pcCU->getSlice()->getSPS()->getSpsRangeExtension().getExtendedPrecisionProcessingFlag();
   const Int              maxLog2TrDynamicRange = pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID));
   const Int              channelBitDepth = rTu.getCU()->getSlice()->getSPS()->getBitDepth(channelType);
+
+#if COM16_C983_RSAF
+  const Bool             bRSAFflagToHide = pcCU->getLumaIntraFilter(uiAbsPartIdx);
+        Bool             bHidden         = pcCU->isLumaIntraFilterHidden(uiAbsPartIdx);
+#endif
 
   /* for 422 chroma blocks, the effective scaling applied during transformation is not a power of 2, hence it cannot be
    * implemented as a bit-shift (the quantised result will be sqrt(2) * larger than required). Alternatively, adjust the
@@ -5244,7 +5223,7 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
         }
         else 
         {
-          bHidden = true;
+          pcCU->setLumaIntraFilterHidden(uiAbsPartIdx, true); 
           if (res==2) // at least one CG with SBH
           { 
             //find best CG for even/odd manipulation

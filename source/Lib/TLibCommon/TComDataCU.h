@@ -164,6 +164,7 @@ private:
 
 #if COM16_C983_RSAF
   UChar*        m_puhIntraFiltFlag;
+  Bool*        m_pbFiltFlagHidden;
 #endif
 
 #if VCEG_AZ07_FRUC_MERGE
@@ -497,6 +498,10 @@ public:
   UChar*        getLumaIntraFilter    ()                        const { return m_puhIntraFiltFlag;         }
   UChar         getLumaIntraFilter    (UInt uiIdx)              const { return m_puhIntraFiltFlag[uiIdx];  }
   Void          setLumaIntraFilter    (UInt uiIdx, Bool value)  const { m_puhIntraFiltFlag[uiIdx] = value; }
+
+  Bool*         isLumaIntraFilterHidden  ()                       const { return m_pbFiltFlagHidden;         }
+  Bool          isLumaIntraFilterHidden  (UInt uiIdx)             const { return m_pbFiltFlagHidden[uiIdx];  }
+  Void          setLumaIntraFilterHidden (UInt uiIdx, Bool value) const { m_pbFiltFlagHidden[uiIdx] = value; }
 #endif
 
 #if COM16_C1045_BIO_HARMO_IMPROV
