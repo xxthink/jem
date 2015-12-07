@@ -125,6 +125,7 @@
 #define COM16_C983_RSAF                                   1  ///< Adaptive reference sample smoothing
 #if COM16_C983_RSAF                                          
 #define COM16_C983_RSAF_PREVENT_OVERSMOOTHING             1  ///< Harmonization with intra-prediction tools   
+#define COM16_C983_RSAF_ESTIMATION_MODE_FULL              1  ///< Full/fast estimation of the possiblity to hide the RSAF flag
 #endif                                                       
 
 #define COM16_C1044_NSST                                  1  ///< Mode dependent non-separable secondary transforms
