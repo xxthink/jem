@@ -1770,15 +1770,29 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
 #if HHI_RQT_INTRA_SPEEDUP
   Int maxTuSize = pcCU->getSlice()->getSPS()->getQuadtreeTULog2MaxSize();
   Int isIntraSlice = (pcCU->getSlice()->getSliceType() == I_SLICE);
+#if !COM16_C983_RSAF_ESTIMATION_MODE_FULL
+  // don't check split if TU size is less or equal to max TU size
+  Bool noSplitIntraMaxTuSize = bCheckFull;
+#endif
   if(m_pcEncCfg->getRDpenalty() && ! isIntraSlice)
   {
+#if !COM16_C983_RSAF_ESTIMATION_MODE_FULL
+    // in addition don't check split if TU size is less or equal to 16x16 TU size for non-intra slice
+    noSplitIntraMaxTuSize = ( uiLog2TrSize  <= min(maxTuSize,4) );
+#endif
+
     // if maximum RD-penalty don't check TU size 32x32
     if(m_pcEncCfg->getRDpenalty()==2)
     {
       bCheckFull    = ( uiLog2TrSize  <= min(maxTuSize,4));
     }
   }
-
+#if !COM16_C983_RSAF_ESTIMATION_MODE_FULL
+  if( bCheckFirst && noSplitIntraMaxTuSize )
+  {
+    bCheckSplit = false;
+  }
+#endif
 #else
   Int maxTuSize = pcCU->getSlice()->getSPS()->getQuadtreeTULog2MaxSize();
   Int isIntraSlice = (pcCU->getSlice()->getSliceType() == I_SLICE);
@@ -3774,8 +3788,7 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
     } // RSAF-enabled modes loop
 #endif 
 
-
-#if COM16_C983_RSAF
+#if COM16_C983_RSAF && COM16_C983_RSAF_ESTIMATION_MODE_FULL
     if (!isBestRSAF)
 #endif
 
@@ -3810,6 +3823,17 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
       // determine residual for partition
       Distortion uiPUDistY = 0;
       Double     dPUCost   = 0.0;
+#if COM16_C983_RSAF && !COM16_C983_RSAF_ESTIMATION_MODE_FULL
+      if (isBestRSAF)
+        xRecurIntraCodingLumaQT_RSAF( pcOrgYuv, pcPredYuv, pcResiYuv, 
+#if COM16_C806_LARGE_CTU
+                m_resiPUBuffer,
+#else
+                resiLumaPU, 
+#endif
+        uiPUDistY, false, dPUCost, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sModeTree));
+      else
+#endif
 
       xRecurIntraCodingLumaQT( pcOrgYuv, pcPredYuv, pcResiYuv, 
 #if COM16_C806_LARGE_CTU
