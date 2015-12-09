@@ -84,7 +84,10 @@ public:
 #if VCEG_AZ05_INTRA_MPI
   virtual Void codeMPIIdx        (TComDataCU* pcCU, UInt uiAbsPartIdx)   = 0;
 #endif
-#if VCEG_AZ05_ROT_TR
+#if COM16_C1046_PDPC_INTRA
+  virtual Void codePDPCIdx       (TComDataCU* pcCU, UInt uiAbsPartIdx) = 0;
+#endif
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
    virtual Void codeROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth ) = 0;
 #endif
 #if VCEG_AZ07_IMV
@@ -129,7 +132,7 @@ public:
   virtual Void codeDeltaQP       ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
   virtual Void codeChromaQpAdjustment( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
   virtual Void codeCoeffNxN      ( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID 
-#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI
+#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
     , int& bCbfCU
 #endif
     ) = 0;
@@ -166,6 +169,10 @@ public:
 #if COM16_C806_EMT
   virtual Void codeEmtTuIdx      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
   virtual Void codeEmtCuFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bRootCbf ) = 0;
+#endif
+
+#if COM16_C1016_AFFINE
+  virtual Void codeAffineFlag    ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
 #endif
 };
 
@@ -231,7 +238,10 @@ public:
 #if VCEG_AZ05_INTRA_MPI
   Void encodeMPIIdx       ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false);
 #endif
-#if VCEG_AZ05_ROT_TR 
+#if COM16_C1046_PDPC_INTRA
+  Void encodePDPCIdx      ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false);
+#endif
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     Void encodeROTIdx    ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth, Bool bRD = false );
 #endif
 #if VCEG_AZ07_FRUC_MERGE
@@ -262,14 +272,14 @@ public:
 
 private:
   Void xEncodeTransform        ( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComTU &rTu
-#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI
+#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
     , Int& bCbfCU
 #endif
     );
 
 public:
   Void encodeCoeff             ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool& bCodeDQP, Bool& codeChromaQpAdj
-#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI
+#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
     , Int& bNonZeroCoeff
 #endif
     );
@@ -308,6 +318,10 @@ public:
 #endif
 #if COM16_C806_EMT
   Void encodeEmtCuFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bCodeCuFlag );
+#endif
+
+#if COM16_C1016_AFFINE
+  Void encodeAffineFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiPuIdx );
 #endif
 };// END CLASS DEFINITION TEncEntropy
 

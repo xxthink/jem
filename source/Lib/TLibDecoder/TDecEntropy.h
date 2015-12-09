@@ -104,7 +104,10 @@ public:
 #if VCEG_AZ05_INTRA_MPI
   virtual Void parseMPIIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
 #endif
-#if VCEG_AZ05_ROT_TR  
+#if COM16_C1046_PDPC_INTRA
+  virtual Void parsePDPCIdx       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth) = 0;
+#endif
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   virtual Void parseROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
 #endif
   virtual Void parseMergeIndex    ( TComDataCU* pcCU, UInt& ruiMergeIndex ) = 0;
@@ -133,7 +136,7 @@ public:
   virtual Void parseIPCMInfo     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth) = 0;
 
   virtual Void parseCoeffNxN( class TComTU &rTu, ComponentID compID  
-#if VCEG_AZ05_ROT_TR
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& bCbfCU
 #endif
     ) = 0;
@@ -156,6 +159,11 @@ public:
 #if COM16_C806_EMT
   virtual Void parseEmtTuIdx      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
   virtual Void parseEmtCuFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bRootCbf ) = 0;
+#endif
+
+#if COM16_C1016_AFFINE
+  virtual Void parseAffineFlag    ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPuIdx ) = 0;
+  virtual Void parseAffineMvd     ( TComDataCU* pcCU, UInt uiAbsPartAddr, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList ) = 0;
 #endif
 };
 
@@ -225,7 +233,11 @@ public:
 #if VCEG_AZ05_INTRA_MPI
   Void decodeMPIIdx            ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
-#if VCEG_AZ05_ROT_TR  
+#if COM16_C1046_PDPC_INTRA
+  Void decodePDPCIdx           ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth);
+#endif
+
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Void decodeROTIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
 #if COM16_C806_OBMC
@@ -259,7 +271,7 @@ public:
 private:
 
   Void xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjCoded, TComTU &rTu, const Int quadtreeTULog2MinSizeInCU 
-#if VCEG_AZ05_ROT_TR
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& bCbfCU
 #endif
     );
@@ -278,6 +290,10 @@ public:
   Void decodeFilterCoeff (ALFParam* pAlfParam);
   Int  golombDecode(Int k);
   Void decodeAlfCtrlParam      ( ALFParam *pAlfParam );
+#endif
+
+#if COM16_C1016_AFFINE
+  Void decodeAffineFlag        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPuIdx );
 #endif
 
 };// END CLASS DEFINITION TDecEntropy

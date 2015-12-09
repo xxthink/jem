@@ -67,7 +67,10 @@ TEncSbac::TEncSbac()
 #if VCEG_AZ05_INTRA_MPI
 , m_cMPIIdxSCModel                     ( 1,             1,                      NUM_MPI_CTX                          , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
-#if VCEG_AZ05_ROT_TR
+#if COM16_C1046_PDPC_INTRA
+ , m_cPDPCIdxSCModel                   (1,              1,                      NUM_PDPC_CTX                         , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 , m_cROTidxSCModel           ( 1,             1,               NUM_ROT_TR_CTX             , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
 , m_cCUMergeFlagExtSCModel             ( 1,             1,                      NUM_MERGE_FLAG_EXT_CTX               , m_contextModels + m_numContextModels, m_numContextModels)
@@ -126,6 +129,9 @@ TEncSbac::TEncSbac()
 , m_cEmtTuIdxSCModel                   ( 1,             1,               NUM_EMT_TU_IDX_CTX            , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cEmtCuFlagSCModel                  ( 1,             1,               NUM_EMT_CU_FLAG_CTX           , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
+#if COM16_C1016_AFFINE
+, m_cCUAffineFlagSCModel               ( 1,             1,               NUM_AFFINE_FLAG_CTX           , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 {
   assert( m_numContextModels <= MAX_NUM_CTX_MOD );
 }
@@ -154,7 +160,10 @@ Void TEncSbac::resetEntropy           (const TComSlice *pSlice)
 #if VCEG_AZ05_INTRA_MPI
   m_cMPIIdxSCModel.initBuffer                     ( eSliceType, iQp, (UChar*)INIT_MPIIdx_FLAG );
 #endif 
-#if VCEG_AZ05_ROT_TR
+#if COM16_C1046_PDPC_INTRA
+  m_cPDPCIdxSCModel.initBuffer                    ( eSliceType, iQp, (UChar*)INIT_PDPCIdx_FLAG);
+#endif
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   m_cROTidxSCModel.initBuffer        ( eSliceType, iQp, (UChar*)INIT_ROT_TR_IDX );
 #endif
   m_cCUMergeFlagExtSCModel.initBuffer             ( eSliceType, iQp, (UChar*)INIT_MERGE_FLAG_EXT);
@@ -211,6 +220,9 @@ Void TEncSbac::resetEntropy           (const TComSlice *pSlice)
   m_cEmtTuIdxSCModel.initBuffer                   ( eSliceType, iQp, (UChar*)INIT_EMT_TU_IDX );
   m_cEmtCuFlagSCModel.initBuffer                  ( eSliceType, iQp, (UChar*)INIT_EMT_CU_FLAG );
 #endif 
+#if COM16_C1016_AFFINE
+  m_cCUAffineFlagSCModel.initBuffer               ( eSliceType, iQp, (UChar*)INIT_AFFINE_FLAG );
+#endif
 
   for (UInt statisticIndex = 0; statisticIndex < RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS ; statisticIndex++)
   {
@@ -248,7 +260,10 @@ SliceType TEncSbac::determineCabacInitIdx(const TComSlice *pSlice)
 #if VCEG_AZ05_INTRA_MPI
       curCost += m_cMPIIdxSCModel.calcCost                     ( curSliceType, qp, (UChar*)INIT_MPIIdx_FLAG );
 #endif
-#if VCEG_AZ05_ROT_TR
+#if COM16_C1046_PDPC_INTRA
+      curCost += m_cPDPCIdxSCModel.calcCost                    ( curSliceType, qp, (UChar*)INIT_PDPCIdx_FLAG);
+#endif
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
       curCost += m_cROTidxSCModel.calcCost        ( curSliceType, qp, (UChar*)INIT_ROT_TR_IDX );
 #endif
       curCost += m_cCUMergeFlagExtSCModel.calcCost             ( curSliceType, qp, (UChar*)INIT_MERGE_FLAG_EXT);
@@ -298,6 +313,9 @@ SliceType TEncSbac::determineCabacInitIdx(const TComSlice *pSlice)
 #endif
 #if VCEG_AZ06_IC
       curCost += m_cCUICFlagSCModel.calcCost                   ( curSliceType, qp, (UChar*)INIT_IC_FLAG );
+#endif
+#if COM16_C1016_AFFINE
+      curCost += m_cCUAffineFlagSCModel.calcCost               ( curSliceType, qp, (UChar*)INIT_AFFINE_FLAG );
 #endif
       if (curCost < bestCost)
       {
@@ -748,17 +766,75 @@ Void TEncSbac::codeMPIIdx(TComDataCU* pcCU, UInt uiAbsPartIdx)
   }
 }
 #endif
-#if VCEG_AZ05_ROT_TR  
+
+#if COM16_C1046_PDPC_INTRA
+ Void TEncSbac::codePDPCIdx(TComDataCU* pcCU, UInt uiAbsPartIdx)
+ {
+  if (!pcCU->getSlice()->getSPS()->getUsePDPC()) return;
+  if (pcCU->getPredictionMode(uiAbsPartIdx) == MODE_INTER)
+  {
+    return;
+  }
+  Int iNumberOfPassesPDPC = 1;
+  if (pcCU->getSlice()->getSliceType() == I_SLICE) iNumberOfPassesPDPC = 2;
+  else iNumberOfPassesPDPC = 2;
+  if (iNumberOfPassesPDPC > 1) // for only 1 pass no signaling is needed 
+  {
+    if (iNumberOfPassesPDPC > 2)  // 3 or 4
+    {
+      Int idxPDPC = pcCU->getPDPCIdx(uiAbsPartIdx);
+      const UInt uiSymbol0 = (idxPDPC >> 1);
+      const UInt uiSymbol1 = (idxPDPC % 2);
+      m_pcBinIf->encodeBin(uiSymbol0, m_cPDPCIdxSCModel.get(0, 0, 0));
+      m_pcBinIf->encodeBin(uiSymbol1, m_cPDPCIdxSCModel.get(0, 0, 1));
+    }
+    else //iNumberOfPassesMPI==2
+    {
+      Int idxPDPC = pcCU->getPDPCIdx(uiAbsPartIdx);
+      const UInt uiSymbol = idxPDPC;
+      m_pcBinIf->encodeBin(uiSymbol, m_cPDPCIdxSCModel.get(0, 0, 0));
+    }
+   }
+ }
+#endif
+
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 Void TEncSbac::codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
 {
+#if COM16_C1044_NSST
+  if (!pcCU->getSlice()->getSPS()->getUseNSST()) return;
+#else
   if (!pcCU->getSlice()->getSPS()->getUseROT()) return;
+#endif
   Int iNumberOfPassesROT = 1;
   if( pcCU->isIntra(uiAbsPartIdx)
 #if VCEG_AZ05_INTRA_MPI
     && pcCU->getMPIIdx(uiAbsPartIdx) ==0
 #endif  
+#if COM16_C1046_PDPC_INTRA
+    && pcCU->getPDPCIdx(uiAbsPartIdx) == 0
+#endif  
     && !pcCU->getCUTransquantBypass(uiAbsPartIdx)
     )  iNumberOfPassesROT = 4;
+
+#if COM16_C1044_NSST
+  if( iNumberOfPassesROT==4 && pcCU->getPartitionSize(uiAbsPartIdx)==SIZE_2Nx2N )
+  {
+    iNumberOfPassesROT = pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) <= DC_IDX ? 3 : 4;
+  }
+
+  if( iNumberOfPassesROT==3 )
+  {
+    Int idxROT = pcCU->getROTIdx( uiAbsPartIdx );
+    assert(idxROT<3);
+    m_pcBinIf->encodeBin( idxROT ? 1 : 0, m_cROTidxSCModel.get(0,0, 0 ) );
+    if( idxROT )
+    {
+      m_pcBinIf->encodeBin( (idxROT-1) ? 1 : 0, m_cROTidxSCModel.get(0,0, 1 ) );
+    }
+  }
+  else
+#endif
   if (iNumberOfPassesROT>1) // for only 1 pass no signaling is needed 
   {
       Int idxROT = pcCU->getROTIdx( uiAbsPartIdx );
@@ -1583,7 +1659,7 @@ Void TEncSbac::codeLastSignificantXY( UInt uiPosX, UInt uiPosY, Int width, Int h
 }
 
 Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID 
-#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI
+#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
   , Int& bCbfCU
 #endif
   )
@@ -1818,7 +1894,7 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
 #endif
       coeffSigns    = ( pcCoef[ posLast ] < 0 );
       numNonZero    = 1;
-#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI
+#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
       bCbfCU += abs(pcCoef[posLast]);
 #endif
       lastNZPosInCG  = iScanPosSig;
@@ -1888,7 +1964,7 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
 #endif
           absCoeff[ numNonZero ] = Int(abs( pcCoef[ uiBlkPos ] ));
           coeffSigns = 2 * coeffSigns + ( pcCoef[ uiBlkPos ] < 0 );
-#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI 
+#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
           bCbfCU += absCoeff[numNonZero];
 #endif
           numNonZero++;
@@ -2789,6 +2865,30 @@ Void TEncSbac::codeEmtCuFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth,
   }
 }
 #endif
+
+#if COM16_C1016_AFFINE
+/** code affine flag
+ * \param pcCU
+ * \param uiAbsPartIdx 
+ * \returns Void
+ */
+Void TEncSbac::codeAffineFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
+{
+  // get context function is here
+  UInt uiSymbol = pcCU->isAffine( uiAbsPartIdx ) ? 1 : 0;
+  UInt uiCtxAffine = pcCU->getCtxAffineFlag( uiAbsPartIdx );
+  m_pcBinIf->encodeBin( uiSymbol, m_cCUAffineFlagSCModel.get( 0, 0, uiCtxAffine ) );
+
+  DTRACE_CABAC_VL( g_nSymbolCounter++ );
+  DTRACE_CABAC_T( "\tAffineFlag" );
+  DTRACE_CABAC_T( "\tuiCtxAffine: ");
+  DTRACE_CABAC_V( uiCtxAffine );
+  DTRACE_CABAC_T( "\tuiSymbol: ");
+  DTRACE_CABAC_V( uiSymbol );
+  DTRACE_CABAC_T( "\n");
+}
+#endif
+
 #if VCEG_AZ07_BAC_ADAPT_WDOW
 Void TEncSbac::xUpdateWindowSize ( SliceType eSliceType, Int uiQPIdx, TComStats* apcStats )
 {

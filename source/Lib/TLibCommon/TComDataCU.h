@@ -107,8 +107,11 @@ private:
 #if VCEG_AZ05_INTRA_MPI
   Char*          m_MPIIdx;             ///< array of MPIIdxs
 #endif
-#if VCEG_AZ05_ROT_TR
-  Char*          m_ROTIdx;          ///< array of ROTIdxs
+#if COM16_C1046_PDPC_INTRA
+  Char*          m_PDPCIdx;             ///< array of PDPCIdxs
+#endif
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+  Char*          m_ROTIdx;          ///< array of ROTIdxs; When NSST is enabled, the same member varaible of ROT is re-used
 #endif
   Char*          m_pePartSize;         ///< array of partition sizes
   Char*          m_pePredMode;         ///< array of prediction modes
@@ -158,6 +161,12 @@ private:
 #if COM16_C806_OBMC
   Bool*         m_OBMCFlag;           ///< array of OBMC flags
 #endif
+
+#if COM16_C983_RSAF
+  UChar*        m_puhIntraFiltFlag;
+  Bool*        m_pbFiltFlagHidden;
+#endif
+
 #if VCEG_AZ07_FRUC_MERGE
   UChar*        m_puhFRUCMgrMode;
 #endif
@@ -187,6 +196,10 @@ private:
   UChar*        m_puhEmtCuFlag;       ///< array of CU-level flags enabling EMT
 #endif
 
+#if COM16_C1016_AFFINE
+  Bool*         m_affineFlag;         ///< array of affine flags
+#endif
+
   // -------------------------------------------------------------------------------------------------------------------
   // misc. variables
   // -------------------------------------------------------------------------------------------------------------------
@@ -202,8 +215,16 @@ private:
 protected:
 
   /// add possible motion vector predictor candidates
-  Bool          xAddMVPCand           ( AMVPInfo* pInfo, RefPicList eRefPicList, Int iRefIdx, UInt uiPartUnitIdx, MVP_DIR eDir );
-  Bool          xAddMVPCandOrder      ( AMVPInfo* pInfo, RefPicList eRefPicList, Int iRefIdx, UInt uiPartUnitIdx, MVP_DIR eDir );
+  Bool          xAddMVPCand           ( AMVPInfo* pInfo, RefPicList eRefPicList, Int iRefIdx, UInt uiPartUnitIdx, MVP_DIR eDir
+#if COM16_C1016_AFFINE
+    , bool bAffine=false
+#endif
+    );
+  Bool          xAddMVPCandOrder      ( AMVPInfo* pInfo, RefPicList eRefPicList, Int iRefIdx, UInt uiPartUnitIdx, MVP_DIR eDir 
+#if COM16_C1016_AFFINE
+    , bool bAffine=false
+#endif
+    );
 
   Void          deriveRightBottomIdx        ( UInt uiPartIdx, UInt& ruiPartIdxRB );
 #if VCEG_AZ06_IC
@@ -283,8 +304,16 @@ public:
   Void          setMPIIdx               ( UInt idx, Char MPIIdx)  { m_MPIIdx[idx] = MPIIdx;   }
   Void          setMPIIdxSubParts       ( Char MPIIdx, UInt absPartIdx, UInt depth );
 #endif
-#if VCEG_AZ05_ROT_TR
-  Char*         getROTIdx               ()                        { return m_ROTIdx;          }
+
+#if COM16_C1046_PDPC_INTRA
+  Char*         getPDPCIdx               ()                          { return m_PDPCIdx; }
+  Char          getPDPCIdx               (UInt idx)                  { return m_PDPCIdx[idx]; }
+  Void          setPDPCIdx               (UInt idx, Char PDPCIdx)    { m_PDPCIdx[idx] = PDPCIdx; }
+  Void          setPDPCIdxSubParts       (Char PDPCIdx, UInt absPartIdx, UInt depth);
+#endif
+
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+  Char*         getROTIdx               ()                        { return m_ROTIdx;          } // When NSST is enabled, the same interface functions of ROT is re-used
   Char          getROTIdx               ( UInt idx)               { return m_ROTIdx[idx];     }
   Void          setROTIdx               ( UInt idx, Char ROTIdx)  { m_ROTIdx[idx] = ROTIdx;   }
   Void          setROTIdxSubParts       ( Char ROTIdx, UInt absPartIdx, UInt depth );
@@ -465,6 +494,20 @@ public:
   Void          setIPCMFlag           (UInt uiIdx, Bool b )     { m_pbIPCMFlag[uiIdx] = b;           }
   Void          setIPCMFlagSubParts   (Bool bIpcmFlag, UInt uiAbsPartIdx, UInt uiDepth);
 
+#if COM16_C983_RSAF
+  UChar*        getLumaIntraFilter    ()                        const { return m_puhIntraFiltFlag;         }
+  UChar         getLumaIntraFilter    (UInt uiIdx)              const { return m_puhIntraFiltFlag[uiIdx];  }
+  Void          setLumaIntraFilter    (UInt uiIdx, Bool value)  const { m_puhIntraFiltFlag[uiIdx] = value; }
+
+  Bool*         isLumaIntraFilterHidden  ()                       const { return m_pbFiltFlagHidden;         }
+  Bool          isLumaIntraFilterHidden  (UInt uiIdx)             const { return m_pbFiltFlagHidden[uiIdx];  }
+  Void          setLumaIntraFilterHidden (UInt uiIdx, Bool value) const { m_pbFiltFlagHidden[uiIdx] = value; }
+#endif
+
+#if COM16_C1045_BIO_HARMO_IMPROV
+  Bool          isBIOLDB( UInt uiAbsPartIdx );
+#endif
+
 #if ALF_HM3_REFACTOR
   UInt*         getAlfCtrlFlag        ()                        { return m_puiAlfCtrlFlag;            }
   UInt          getAlfCtrlFlag        ( UInt uiIdx )            { return m_puiAlfCtrlFlag[uiIdx];     }
@@ -499,6 +542,27 @@ public:
                                               Bool bEnforceSliceRestriction=true, 
                                               Bool planarAtLCUBoundary = true,
                                               Bool bEnforceTileRestriction=true );
+#endif
+
+#if COM16_C1016_AFFINE
+  Bool*        getAffineFlag            ()                       { return m_affineFlag;            }
+  Bool         getAffineFlag            ( UInt idx )             { return m_affineFlag[idx];       }
+  Void         setAffineFlag            ( UInt idx, Bool affine) { m_affineFlag[idx] = affine;     }
+  Void         setAffineFlagSubParts    ( Bool bAffineFlag, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth );
+  Bool         isAffine                 ( UInt uiAbsPartIdx );
+  UInt         getCtxAffineFlag         ( UInt uiAbsPartIdx );
+
+  Void         setAllAffineMvField      ( UInt uiAbsPartIdx, UInt uiPuIdx, TComMvField *pcMvField, RefPicList eRefPicList, UInt uiDepth );
+  Void         setAllAffineMv           ( UInt uiAbsPartIdx, UInt uiPuIdx, TComMv acMv[3], RefPicList eRefPicList, UInt uiDepth );
+  Void         setAllAffineMvd          ( UInt uiAbsPartIdx, UInt uiPuIdx, TComMv acMvd[3], RefPicList eRefPicList, UInt uiDepth );
+
+  // construct affine inter candidate list
+  Void         fillAffineMvpCand ( UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefPicList, Int iRefIdx, AffineAMVPInfo* pInfo );
+  Bool         isValidAffineCandidate ( UInt uiAbsPartIdx, UInt uiPUIdx, TComMv cMv0, TComMv cMv1, TComMv cMv2, Int& riDV );
+
+  // construct affine merge candidate list
+  Void         getAffineMergeCandidates ( UInt uiAbsPartIdx, UInt uiPuIdx, TComMvField (*pcMFieldNeighbours)[3], UChar* puhInterDirNeighbours, Int& numValidMergeCand, Int mrgCandIdx = -1 );
+  Bool         isAffineMrgFlagCoded     ( UInt uiAbsPartIdx, UInt uiPUIdx );
 #endif
 
   // -------------------------------------------------------------------------------------------------------------------

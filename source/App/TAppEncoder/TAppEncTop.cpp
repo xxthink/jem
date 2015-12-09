@@ -437,8 +437,19 @@ Void TAppEncTop::xInitLibCfg()
 #if VCEG_AZ05_INTRA_MPI
  m_cTEncTop.setUseMPI                            ( m_useMPI );
 #endif
+#if COM16_C1046_PDPC_INTRA
+ m_cTEncTop.setUsePDPC                           ( m_usePDPC );
+#endif
 #if VCEG_AZ05_ROT_TR
  m_cTEncTop.setUseROT                            ( m_useROT );
+#elif COM16_C1044_NSST
+ m_cTEncTop.setUseNSST                           ( m_useNSST );
+#endif
+#if COM16_C1016_AFFINE
+ m_cTEncTop.setUseAffine                         ( m_useAffine );
+#endif
+#if COM16_C983_RSAF
+  m_cTEncTop.setUseRSAF                         ( m_useRSAF );
 #endif
   m_cTEncTop.setSummaryOutFilename                                ( m_summaryOutFilename );
   m_cTEncTop.setSummaryPicFilenameBase                            ( m_summaryPicFilenameBase );

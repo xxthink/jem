@@ -621,8 +621,19 @@ Void TEncCavlc::codeSPS( const TComSPS* pcSPS )
 #if VCEG_AZ05_INTRA_MPI
   WRITE_FLAG( pcSPS->getUseMPI () ? 1 : 0,                "mpi_enabled_flag" ); 
 #endif
+#if COM16_C1046_PDPC_INTRA
+  WRITE_FLAG( pcSPS->getUsePDPC() ? 1 : 0,                "pdpc_enabled_flag" );
+#endif
 #if VCEG_AZ05_ROT_TR
  WRITE_FLAG( pcSPS->getUseROT () ? 1 : 0,                "rot_enabled_flag" ); 
+#elif COM16_C1044_NSST
+  WRITE_FLAG( pcSPS->getUseNSST () ? 1 : 0,              "nsst_enabled_flag" ); 
+#endif
+#if COM16_C1016_AFFINE
+ WRITE_FLAG( pcSPS->getUseAffine() ? 1 : 0,              "affine_enabled_flag" );
+#endif
+#if COM16_C983_RSAF
+ WRITE_FLAG( pcSPS->getUseRSAF() ? 1 : 0,                "rsaf_enabled_flag" );
 #endif
   // KTA tools
 
@@ -1288,7 +1299,14 @@ Void TEncCavlc::codeMPIIdx    ( TComDataCU* pcCU, UInt uiAbsPartIdx )
   assert(0);
 }
 #endif
-#if VCEG_AZ05_ROT_TR  
+#if COM16_C1046_PDPC_INTRA
+Void TEncCavlc::codePDPCIdx(TComDataCU* pcCU, UInt uiAbsPartIdx)
+{
+  assert(0);
+}
+#endif
+
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 Void TEncCavlc::codeROTIdx    ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth )
 {
   assert(0);
@@ -1433,7 +1451,7 @@ Void TEncCavlc::codeChromaQpAdjustment( TComDataCU* /*pcCU*/, UInt /*uiAbsPartId
 }
 
 Void TEncCavlc::codeCoeffNxN    ( TComTU& /*rTu*/, TCoeff* /*pcCoef*/, const ComponentID /*compID*/ 
-#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI
+#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
   , Int& bCbfCU
 #endif
   )
@@ -1791,6 +1809,13 @@ Void TEncCavlc:: codeCtxUpdateInfo           (TComSlice* pcSlice,  TComStats* ap
      xRunCoding( apcStats->m_uiCtxMAP[uiSliceType][iQP], NUM_CTX_PBSLICE);
      xCtxCodewordCoding(apcStats->m_uiCtxMAP[uiSliceType][iQP], apcStats->m_uiCtxCodeIdx[uiSliceType][iQP],NUM_CTX_PBSLICE);
    }
+}
+#endif
+
+#if COM16_C1016_AFFINE
+Void TEncCavlc::codeAffineFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
+{
+  assert(0);
 }
 #endif
 

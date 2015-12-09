@@ -47,6 +47,9 @@
 #include "TComRdCost.h"
 #include <list>
 #endif
+#if COM16_C1046_PDPC_INTRA
+#include "TComRom.h"
+#endif
 
 // forward declaration
 class TComMv;
@@ -54,6 +57,7 @@ class TComTU;
 #if VCEG_AZ07_FRUC_MERGE
 class TComMvField;
 #endif
+
 //! \ingroup TLibCommon
 //! \{
 
@@ -95,6 +99,12 @@ protected:
   Pel*   m_pPred1 ;
   Int    iRefListIdx;
 #endif
+
+#if COM16_C1046_PDPC_INTRA
+  Int* piTempRef;
+  Int* piFiltRef;
+  Int* piBinBuff;
+#endif
   Pel*      m_piYuvExt[MAX_NUM_COMPONENT][NUM_PRED_BUF];
   Int       m_iYuvExtSize;
 
@@ -122,6 +132,9 @@ protected:
   Void xPredIntraAng            ( Int bitDepth, const Pel* pSrc, Int srcStride, Pel* pDst, Int dstStride, UInt width, UInt height, ChannelType channelType, UInt dirMode, const Bool bEnableEdgeFilters 
 #if VCEG_AZ07_INTRA_4TAP_FILTER
     , Bool enable4TapFilter = false
+#endif
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+    , Bool enableRSAF = false 
 #endif
     );
   Void xPredIntraPlanar         ( const Pel* pSrc, Int srcStride, Pel* rpDst, Int dstStride, UInt width, UInt height );
@@ -182,10 +195,15 @@ protected:
 #if VCEG_AZ05_BIO                  
     , Bool bBIOapplied 
 #endif
-);
+#if COM16_C1045_BIO_HARMO_IMPROV
+    , TComDataCU * pCu
+#endif
+    );
 
   Void xGetLLSPrediction ( const Pel* pSrc0, Int iSrcStride, Pel* pDst0, Int iDstStride, UInt uiWidth, UInt uiHeight, UInt uiExt0, const ChromaFormat chFmt  DEBUG_STRING_FN_DECLARE(sDebug) );
-
+#if COM16_C1046_PDPC_INTRA
+  Void xReferenceFilter  (Int iBlkSize, Int iOrigWeight, Int iFilterOrder, Int * piRefVector, Int * piLowPassRef);
+#endif
   Void xDCPredFiltering( const Pel* pSrc, Int iSrcStride, Pel* pDst, Int iDstStride, Int iWidth, Int iHeight, ChannelType channelType );
 
 #if VCEG_AZ05_INTRA_MPI
@@ -277,6 +295,13 @@ public:
   Void xCalcLMParameters ( Int x, Int y, Int xx, Int xy, Int iCountShift, Int iPredType, Int bitDepth, Int &a, Int &b, Int &iShift );
 #endif
 
+#if COM16_C1016_AFFINE
+  Bool xCheckIdenticalAffineMotion ( TComDataCU* pcCU, UInt PartAddr, Int iWidth, Int iHeight );
+  Void xPredAffineBlk              ( const ComponentID compID, TComDataCU *cu, TComPicYuv *refPic, UInt partAddr, TComMv acMv[3], Int width, Int height, TComYuv *dstPic, Bool bi, const Int bitDepth );
+
+  Void getMvPredAffineAMVP         ( TComDataCU* pcCU, UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefPicList, TComMv acMvPred[3] );
+#endif
+
   Pel  predIntraGetPredValDC      ( const Pel* pSrc, Int iSrcStride, UInt iWidth, UInt iHeight);
 
   Pel*  getPredictorPtr           ( const ComponentID compID, const Bool bUseFilteredPredictions )
@@ -288,10 +313,17 @@ public:
   /// set parameters from CU data for accessing intra data
   Void initIntraPatternChType ( TComTU &rTu,
                               const ComponentID compID, const Bool bFilterRefSamples
+#if COM16_C983_RSAF
+                              , Bool bRSAF = false
+#endif
                               DEBUG_STRING_FN_DECLARE(sDebug)
                               );
 
-  static Bool filteringIntraReferenceSamples(const ComponentID compID, UInt uiDirMode, UInt uiTuChWidth, UInt uiTuChHeight, const ChromaFormat chFmt, const Bool intraReferenceSmoothingDisabled);
+  static Bool filteringIntraReferenceSamples(const ComponentID compID, UInt uiDirMode, UInt uiTuChWidth, UInt uiTuChHeight, const ChromaFormat chFmt, const Bool intraReferenceSmoothingDisabled
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+                                            , Bool enableRSAF
+#endif
+                                            );
 
   static Bool UseDPCMForFirstPassIntraEstimation(TComTU &rTu, const UInt uiDirMode);
 };

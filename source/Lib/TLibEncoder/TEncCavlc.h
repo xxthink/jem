@@ -106,7 +106,10 @@ public:
 #if VCEG_AZ05_INTRA_MPI
   Void codeMPIIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx );
 #endif
-#if VCEG_AZ05_ROT_TR  
+#if COM16_C1046_PDPC_INTRA
+  Void codePDPCIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx);
+#endif
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Void codeROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth );
 #endif
 #if VCEG_AZ07_IMV
@@ -154,7 +157,7 @@ public:
   Void codeChromaQpAdjustment( TComDataCU* pcCU, UInt uiAbsPartIdx );
 
   Void codeCoeffNxN      ( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID 
-#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI
+#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
     , Int& bCbfCU
 #endif
     );
@@ -192,6 +195,10 @@ public:
 #if COM16_C806_EMT
   Void codeEmtTuIdx      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth);
   Void codeEmtCuFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bRootCbf );
+#endif
+
+#if COM16_C1016_AFFINE
+  Void codeAffineFlag    ( TComDataCU* pcCU, UInt uiAbsPartIdx );
 #endif
 };
 

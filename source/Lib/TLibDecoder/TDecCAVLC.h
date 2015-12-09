@@ -99,7 +99,11 @@ public:
 #if VCEG_AZ05_INTRA_MPI
   Void parseMPIIdx          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
-#if VCEG_AZ05_ROT_TR
+#if COM16_C1046_PDPC_INTRA
+  Void parsePDPCIdx         ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth);
+#endif
+
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Void parseROTIdx       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
   Void parseMergeFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx );
@@ -124,7 +128,7 @@ public:
   Void parseChromaQpAdjustment( TComDataCU* cu, UInt absPartIdx, UInt depth);
 
   Void parseCoeffNxN        ( class TComTU &rTu, ComponentID compID 
-#if VCEG_AZ05_ROT_TR
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& bCbfCU
 #endif
     );
@@ -161,6 +165,11 @@ public:
 #if COM16_C806_EMT
   Void parseEmtTuIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   Void parseEmtCuFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bRootCbf );
+#endif
+
+#if COM16_C1016_AFFINE
+  Void  parseAffineFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPuIdx );
+  Void  parseAffineMvd      ( TComDataCU* pcCU, UInt uiAbsPartAddr, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList );
 #endif
 
 protected:
