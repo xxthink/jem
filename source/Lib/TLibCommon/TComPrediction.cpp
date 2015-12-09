@@ -852,7 +852,7 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 #if VCEG_AZ05_INTRA_MPI
       if (!pcCU->getMPIIdx(uiAbsPartIdx) && (uiDirMode == DC_IDX))
 #else
-      if ((uiDirMode == DC_IDX))
+      if ( uiDirMode == DC_IDX )
 #endif
       {
         xDCPredFiltering( ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight, channelType );
