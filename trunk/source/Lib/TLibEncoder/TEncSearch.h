@@ -113,6 +113,11 @@ private:
   Pel*            m_resiPUBuffer[NUMBER_OF_STORED_RESIDUAL_TYPES];
 #endif
 
+#if COM16_C1016_AFFINE
+  Int*            m_tmpError;
+  Double*         m_tmpDerivate[2];
+#endif
+
 protected:
   // interface to option
   TEncCfg*        m_pcEncCfg;
@@ -323,6 +328,24 @@ protected:
                                     TComTU      &rTu
                                     DEBUG_STRING_FN_DECLARE(sDebug));
 
+#if COM16_C983_RSAF
+  Void  xRecurIntraCodingLumaQT_RSAF (TComYuv*    pcOrgYuv,
+                                      TComYuv*    pcPredYuv,
+                                      TComYuv*    pcResiYuv,
+#if COM16_C806_LARGE_CTU
+                                      Pel*        resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES],
+#else
+                                      Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE],
+#endif
+                                      Distortion& ruiDistY,
+#if HHI_RQT_INTRA_SPEEDUP
+                                      Bool         bCheckFirst,
+#endif
+                                      Double&      dRDCost,
+                                      TComTU      &rTu
+                                      DEBUG_STRING_FN_DECLARE(sDebug));
+#endif
+
   Void  xSetIntraResultLumaQT     ( TComYuv*     pcRecoYuv,
                                     TComTU &rTu);
 
@@ -518,6 +541,57 @@ protected:
                                     TComMv&      rcMvQter,
                                     Distortion&  ruiCost
                                    );
+
+  #if COM16_C1016_AFFINE
+  Void predAffineInterSearch    ( TComDataCU* pcCU,
+                                  TComYuv*    pcOrgYuv,
+                                  Int         iPartIdx,
+                                  UInt&       ruiLastMode,
+                                  Distortion& ruiAffineCost,
+                                  TComMv      cHevcMv[2][33] );
+
+  Void xAffineMotionEstimation  ( TComDataCU*   pcCU,
+                                  TComYuv*      pcYuvOrg,
+                                  Int           iPartIdx,
+                                  RefPicList    eRefPicList,
+                                  TComMv        acMvPred[3],
+                                  Int           iRefIdxPred,
+                                  TComMv        acMv[3],
+                                  UInt&         ruiBits,
+                                  Distortion&   ruiCost,
+                                  Bool          bBi = false  );
+  
+  Bool xEstimateAffineAMVP      ( TComDataCU*   pcCU, 
+                                  TComYuv*      pcOrgYuv, 
+                                  UInt          uiPartIdx, 
+                                  RefPicList    eRefPicList, 
+                                  Int           iRefIdx,
+                                  TComMv        acMvPred[3], 
+                                  Distortion*   puiDistBiP );
+
+  Distortion xGetAffineTemplateCost ( TComDataCU* pcCU,
+                                      UInt        uiPartAddr,
+                                      TComYuv*    pcOrgYuv,
+                                      TComYuv*    pcTemplateCand,
+                                      TComMv      acMvCand[3],
+                                      Int         iMVPIdx,
+                                      Int         iMVPNum,
+                                      RefPicList  eRefPicList,
+                                      Int         iRefIdx,
+                                      Int         iSizeX,
+                                      Int         iSizeY );
+
+  Void xCopyAffineAMVPInfo     ( AffineAMVPInfo* pSrc, AffineAMVPInfo* pDst );
+
+  Void solveEqual( Double** dEqualCoeff, Int iOrder, Double* dAffinePara );
+
+  Void xCheckBestAffineMVP      ( TComDataCU* pcCU,
+                                  RefPicList  eRefPicList,
+                                  TComMv acMv[3], TComMv acMvPred[3],
+                                  Int&        riMVPIdx,
+                                  UInt&       ruiBits,
+                                  Distortion& ruiCost );
+#endif
 
   Void xExtDIFUpSamplingH( TComPattern* pcPattern );
   Void xExtDIFUpSamplingQ( TComPattern* pcPatternKey, TComMv halfPelRef );

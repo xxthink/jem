@@ -134,7 +134,10 @@ public:
 #if VCEG_AZ05_INTRA_MPI
   Void parseMPIIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
-#if VCEG_AZ05_ROT_TR
+#if COM16_C1046_PDPC_INTRA
+  Void parsePDPCIdx      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth);
+#endif
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Void parseROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
   Void parseMergeFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx );
@@ -165,7 +168,7 @@ public:
 
   Void parseLastSignificantXY( UInt& uiPosLastX, UInt& uiPosLastY, Int width, Int height, ComponentID component, UInt uiScanIdx );
   Void parseCoeffNxN      ( class TComTU &rTu, ComponentID compID  
-#if VCEG_AZ05_ROT_TR
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& bCbfCU
 #endif
     );
@@ -192,6 +195,11 @@ public:
   Void  loadContextsFromPrev  ( TComStats* apcStats, SliceType eSliceType, Int iQPIdx, Bool bFromGloble, Int iQPIdxRst =-1, Bool bAfterLastISlice= false );
 #endif
 
+#if COM16_C1016_AFFINE
+  Void  parseAffineFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPuIdx );
+  Void  parseAffineMvd        ( TComDataCU* pcCU, UInt uiAbsPartAddr, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList );
+#endif
+
   Void  parseExplicitRdpcmMode( TComTU &rTu, ComponentID compID );
 
 private:
@@ -202,7 +210,10 @@ private:
 #if VCEG_AZ05_INTRA_MPI
   ContextModel3DBuffer m_cMPIIdxSCModel;
 #endif
-#if VCEG_AZ05_ROT_TR
+#if COM16_C1046_PDPC_INTRA
+  ContextModel3DBuffer m_cPDPCIdxSCModel;
+#endif
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   ContextModel3DBuffer m_cROTidxSCModel;
 #endif
   ContextModel3DBuffer m_cCUMergeFlagExtSCModel;
@@ -263,6 +274,10 @@ private:
 #if COM16_C806_EMT
   ContextModel3DBuffer m_cEmtTuIdxSCModel;
   ContextModel3DBuffer m_cEmtCuFlagSCModel;
+#endif
+
+#if COM16_C1016_AFFINE
+  ContextModel3DBuffer m_cCUAffineFlagSCModel;
 #endif
 
   UInt m_golombRiceAdaptationStatistics[RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS];

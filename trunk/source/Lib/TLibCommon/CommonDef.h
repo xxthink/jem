@@ -177,6 +177,11 @@ static const Int MLS_CG_LOG2_WIDTH =                                2;
 static const Int MLS_CG_LOG2_HEIGHT =                               2;
 static const Int MLS_CG_SIZE =                                      4; ///< Coefficient group size of 4x4; = MLS_CG_LOG2_WIDTH + MLS_CG_LOG2_HEIGHT
 
+#if COM16_C983_RSAF
+static const Int SCAN_SET_SIZE =                                   (1 << MLS_CG_SIZE); ///< Coefficient group size of 4x4; = MLS_CG_LOG2_WIDTH + MLS_CG_LOG2_HEIGHT
+#endif
+
+
 #if ADAPTIVE_QP_SELECTION
 static const Int ARL_C_PRECISION =                                  7; ///< G382: 7-bit arithmetic precision
 static const Int LEVEL_RANGE =                                     30; ///< G382: max coefficient level in statistics collection
@@ -212,6 +217,9 @@ static const Int PLANAR_IDX =                                       0;
 static const Int VER_IDX =                                         26; ///< index for intra VERTICAL   mode
 static const Int HOR_IDX =                                         10; ///< index for intra HORIZONTAL mode
 static const Int DC_IDX =                                           1; ///< index for intra DC mode
+#if COM16_C1044_NSST
+static const Int DIA_IDX =                                         18; ///< index for intra Diagonal mode
+#endif
 #if COM16_C806_LMCHROMA
 static const Int NUM_CHROMA_MODE =                                  6; ///< total number of chroma modes
 static const Int LM_CHROMA_IDX =                                   35; ///< chroma mode index for derived from LM mode
@@ -322,9 +330,22 @@ static const Int NUM_WDOW =                                         4; ///< coul
 #if VCEG_AZ05_MULTI_PARAM_CABAC
 static const Int ALPHA0 =                                           4; ///< 2^ALPHA0 is "window size" for probability up-date
 #endif
+
+#if COM16_C1016_AFFINE
+static const Int AFFINE_MAX_NUM_V0 =                                3; ///< max number of motion candidates in top-left corner
+static const Int AFFINE_MAX_NUM_V1 =                                2; ///< max number of motion candidates in top-right corner
+static const Int AFFINE_MAX_NUM_V2 =                                2; ///< max number of motion candidates in left-bottom corner
+static const Int AFFINE_MAX_NUM_COMB =                             12; ///< max number of combined motion candidates
+static const Int AFFINE_MIN_BLOCK_SIZE =                            4; ///< Minimum affine MC block size
+#endif
+
 // ====================================================================================================================
 // Macro functions
 // ====================================================================================================================
+
+#if COM16_C1016_AFFINE
+#define SIGN(x)                       ( x >= 0 ? 1 : -1 )
+#endif
 
 template <typename T> inline T Clip3 (const T minVal, const T maxVal, const T a) { return std::min<T> (std::max<T> (minVal, a) , maxVal); }  ///< general min/max clip
 template <typename T> inline T ClipBD(const T x, const Int bitDepth)             { return Clip3(T(0), T((1 << bitDepth)-1), x);           }

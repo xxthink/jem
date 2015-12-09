@@ -61,7 +61,10 @@
 #if VCEG_AZ05_INTRA_MPI
 #define NUM_MPI_CTX                   2       /// < number of context models for MPI Idx coding
 #endif
-#if VCEG_AZ05_ROT_TR
+#if COM16_C1046_PDPC_INTRA
+#define NUM_PDPC_CTX                  2      /// < number of context models for MPI Idx coding
+#endif
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
  #define NUM_ROT_TR_CTX               7       /// < number of context models for ROT Idx coding
 #endif
 #define NUM_MERGE_FLAG_EXT_CTX        1       ///< number of context models for merge flag of merge extended
@@ -72,6 +75,10 @@
 #endif
 #if COM16_C806_OBMC
 #define NUM_OBMC_FLAG_CTX             1       ///< number of context models for OBMC flag
+#endif
+
+#if COM16_C1016_AFFINE
+#define NUM_AFFINE_FLAG_CTX           3       ///< number of context models for affine flag
 #endif
 
 #if VCEG_AZ07_IMV
@@ -283,7 +290,16 @@ INIT_MPIIdx_FLAG[NUMBER_OF_SLICE_TYPES][NUM_MPI_CTX] =
   { 139, 139 },
 };
 #endif
-#if VCEG_AZ05_ROT_TR
+#if COM16_C1046_PDPC_INTRA
+static const UChar
+INIT_PDPCIdx_FLAG[NUMBER_OF_SLICE_TYPES][NUM_PDPC_CTX] =
+{
+  { 107, 107 },
+  { 107, 107 },
+  { 139, 139 },
+};
+#endif
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 static const UChar 
 INIT_ROT_TR_IDX[3][NUM_ROT_TR_CTX] =  
 {
@@ -349,6 +365,16 @@ INIT_OBMC_FLAG[NUMBER_OF_SLICE_TYPES][NUM_OBMC_FLAG_CTX] =
   { 201, }, 
   { 201, }, 
   { CNU, }, 
+};
+#endif
+
+#if COM16_C1016_AFFINE
+static const UChar 
+INIT_AFFINE_FLAG[3][NUM_AFFINE_FLAG_CTX] =  
+{
+  { 197,  185,  201, }, 
+  { 197,  185,  201, }, 
+  { CNU,  CNU,  CNU, }, 
 };
 #endif
 

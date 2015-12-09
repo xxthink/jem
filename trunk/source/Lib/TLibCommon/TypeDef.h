@@ -50,71 +50,98 @@
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////
-#define ALF_HM3_REFACTOR                                  1  ///< Adaptive loop filter with 4x4 block activity adaptation 
+#define ALF_HM3_REFACTOR                                  1  ///< Adaptive loop filter (ALF)
 #if ALF_HM3_REFACTOR
 #define COM16_C806_ALF_TEMPPRED_NUM                       6  ///< 0: no temporal prediction
 #endif
 
-#define COM16_C806_VCEG_AZ10_SUB_PU_TMVP                  1  ///< CY: sub-block level temporal motion prediction (a.k.a. ATMVP) 
+#define COM16_C806_VCEG_AZ10_SUB_PU_TMVP                  1  ///< Sub-PU level motion vector prediction
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP                     
 #define COM16_C806_HEVC_MOTION_CONSTRAINT_REMOVAL         1
 #define COM16_C806_DISABLE_4X4_PU                         1
 #define COM16_C806_GEN_MRG_IMPROVEMENT                    1
 #endif
 
-#define COM16_C806_OBMC                                   1  ///< Overlapped Block Motion Compensation (OBMC)
+#define COM16_C806_OBMC                                   1  ///< Overlapped block motion compensation (OBMC)
 #if COM16_C806_OBMC
-#define COM16_C806_AOBMC_MAXCUSIZE                        16 //   Maximum CU size which can apply OBMC adaptively, larger CUs always apply OBMC
+#define COM16_C806_AOBMC_MAXCUSIZE                        16 ///< Maximum CU size which can apply OBMC adaptively, larger CUs always apply OBMC
 #endif
 
-#define COM16_C806_EMT                                    1  ///< Enhanced Multiple Transform (EMT)
+#define COM16_C806_EMT                                    1  ///< Explicit multiple core transform
 
-#define COM16_C806_T64                                    1  ///< Enable 64x64 Transform
+#define COM16_C806_T64                                    1  ///< 64x64 transform
 
 #if COM16_C806_EMT || COM16_C806_T64
 #define COM16_C806_TRANS_PREC                             2  ///< Integer transform matrix precision
 #endif
 
-#define COM16_C806_LARGE_CTU                              1  ///< CTU size larger than 64x64, supporting up to 256x256 CTU size in the software,
+#define COM16_C806_LARGE_CTU                              1  ///< Large CTU up to 256x256
 
-#define COM16_C806_LMCHROMA                               1  ///< Cross component prediction: predict chroma from luma or Cr from Cb with linear model
+#define COM16_C806_LMCHROMA                               1  ///< Cross-component linear model (CCLM) prediction
 #if COM16_C806_LMCHROMA
 #define COM16_C806_CR_FROM_CB_LAMBDA_ADJUSTMENT           1
 #endif
 
 #define COM16_C806_SIMD_OPT                               1  ///< SIMD optimization, no impact on RD performance
 
-#define VCEG_AZ07_IMV                                     1  ///< Adaptive MV resolution
+#define VCEG_AZ07_IMV                                     1  ///< Locally adaptive motion vector resolution (AMVR)
 
-#define VCEG_AZ07_FRUC_MERGE                              1  ///< Merge mode based on frame rate up-conversion (FRUC)
+#define VCEG_AZ07_FRUC_MERGE                              1  ///< Pattern matched motion vector derivation
 #if VCEG_AZ07_FRUC_MERGE
 #define VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE          1  ///< additional precision bit for MV storage
 #endif
 
-#define VCEG_AZ06_IC                                      1  ///< Illumination Compensation
+#define VCEG_AZ06_IC                                      1  ///< Local illumination compensation (LIC)
 #if VCEG_AZ06_IC
-#define VCEG_AZ06_IC_SPEEDUP                              1  //speedup of IC
+#define VCEG_AZ06_IC_SPEEDUP                              1  ///< speedup of IC
 #endif
 
-#define VCEG_AZ07_INTRA_4TAP_FILTER                       1 ///< Intra 4-tap interpolation filters
-#define VCEG_AZ07_INTRA_BOUNDARY_FILTER                   1 ///< Intra boundary filtering
-#if VCEG_AZ07_INTRA_BOUNDARY_FILTER
-#define VCEG_AZ07_INTRA_BOUNDARY_FILTER_MULTI_LINE        1 /// 0: Filter one boundary line, 1: Filter 4 boundary lines
+#define VCEG_AZ07_INTRA_4TAP_FILTER                       1  ///< 4-tap interpolation filter for intra prediction
+#define VCEG_AZ07_INTRA_BOUNDARY_FILTER                   1  ///< Addtional boundary filter or intra prediction
+#if VCEG_AZ07_INTRA_BOUNDARY_FILTER                          
+#define VCEG_AZ07_INTRA_BOUNDARY_FILTER_MULTI_LINE        1  ///< 0: Filter one boundary line, 1: Filter 4 boundary lines
+#endif                                                       
+
+#define VCEG_AZ07_INTRA_65ANG_MODES                       1  ///< 65 intra prediction directions
+
+#define VCEG_AZ07_ECABAC                                  1  ///< CABAC improvements
+#if VCEG_AZ07_ECABAC                                         
+#define VCEG_AZ07_CTX_RESIDUALCODING                      1  ///< Context modeling for transform coefficient levels
+#define VCEG_AZ07_BAC_ADAPT_WDOW                          1  ///< Multi-hypothesis probability estimation
+#define VCEG_AZ07_INIT_PREVFRAME                          1  ///< Initialization for context models
+#endif                                                       
+
+#define VCEG_AZ05_MULTI_PARAM_CABAC                       1  ///< CABAC probability estimation with 2 windows 
+#define VCEG_AZ05_BIO                                     1  ///< Bi-directional optical flow (BIO)
+#define VCEG_AZ05_INTRA_MPI                               0  ///< Multi-parameter Intra prediction
+#define VCEG_AZ05_ROT_TR                                  0  
+
+#if VCEG_AZ05_BIO                                            
+#define COM16_C1045_BIO_HARMO_IMPROV                      1  ///< Improvement of BIO
+#endif                                                       
+
+#define COM16_C1016_AFFINE                                1  ///< Affine motion prediction
+
+#define COM16_C983_RSAF                                   1  ///< Adaptive reference sample smoothing
+#if COM16_C983_RSAF                                          
+#define COM16_C983_RSAF_PREVENT_OVERSMOOTHING             1  ///< Harmonization with intra-prediction tools   
+#define COM16_C983_RSAF_ESTIMATION_MODE_FULL              1  ///< Full/fast estimation of the possiblity to hide the RSAF flag
+#endif                                                       
+
+#define COM16_C1044_NSST                                  1  ///< Mode dependent non-separable secondary transforms
+#if COM16_C1044_NSST && VCEG_AZ05_ROT_TR                     
+#error                                                       
+#endif                                                       
+
+#define COM16_C1046_PDPC_INTRA                            1  ///< Position dependent intra prediction combination
+#if COM16_C1046_PDPC_INTRA && COM16_C983_RSAF                
+#define COM16_C1046_PDPC_RSAF_HARMONIZATION               1  ///< Harmonization between PDPC and RSAF
 #endif
 
-#define VCEG_AZ07_INTRA_65ANG_MODES                       1 ///< Extended angular intra prediction, including 65 angular modes & 6 MPMs
-
-#define VCEG_AZ07_ECABAC                                  1  /// CABAC improvements
-#if VCEG_AZ07_ECABAC
-#define VCEG_AZ07_CTX_RESIDUALCODING                      1  /// new ctx for residual coding
-#define VCEG_AZ07_BAC_ADAPT_WDOW                          1  /// binary arithmetic code with adaptive window sizes
-#define VCEG_AZ07_INIT_PREVFRAME                          1  /// context states initialized from previously coded frames
+#if COM16_C1046_PDPC_INTRA && VCEG_AZ05_INTRA_MPI
+#error
 #endif
 
-#define VCEG_AZ05_MULTI_PARAM_CABAC                       1  /// CABAC probability estimation with 2 windows 
-#define VCEG_AZ05_BIO                                     1  /// bi-directional optical flow
-#define VCEG_AZ05_INTRA_MPI                               1  /// Multi-parameter Intra prediction
-#define VCEG_AZ05_ROT_TR                                  1
 ///////////////////////////////////////////////////////////
 // KTA tools section end
 ///////////////////////////////////////////////////////////

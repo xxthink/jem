@@ -856,8 +856,19 @@ private:
 #if VCEG_AZ05_INTRA_MPI
   Bool             m_useMPI;
 #endif
+#if COM16_C1046_PDPC_INTRA
+  Bool             m_usePDPC;
+#endif
 #if VCEG_AZ05_ROT_TR
   Bool             m_useROT;
+#elif COM16_C1044_NSST
+  Bool             m_useNSST;
+#endif
+#if COM16_C1016_AFFINE
+  Bool             m_useAffine;
+#endif
+#if COM16_C983_RSAF
+  Bool             m_useRSAF;
 #endif
  // Parameter
   BitDepths        m_bitDepths;
@@ -1092,10 +1103,26 @@ public:
  Bool                   getUseMPI ()  const                                                        { return m_useMPI;        }
  Void                   setUseMPI ( Bool b )                                                       { m_useMPI  = b;          }
 #endif
+#if COM16_C1046_PDPC_INTRA
+ Bool                   getUsePDPC()  const                                                        { return m_usePDPC; }
+ Void                   setUsePDPC( Bool b )                                                       { m_usePDPC = b; }
+#endif
 #if VCEG_AZ05_ROT_TR
  Bool                   getUseROT ()  const                                                        { return m_useROT;        }
  Void                   setUseROT ( Bool b )                                                       { m_useROT  = b;          }
+#elif COM16_C1044_NSST
+ Bool                   getUseNSST ()  const                                                       { return m_useNSST;        }
+ Void                   setUseNSST ( Bool b )                                                      { m_useNSST  = b;          }
 #endif
+#if COM16_C1016_AFFINE
+ Bool                   getUseAffine ()  const                                                     { return m_useAffine; }
+  Void                  setUseAffine ( Bool b )                                                    { m_useAffine = b;    }
+#endif
+#if COM16_C983_RSAF
+ Bool                   getUseRSAF ()  const                                                       { return m_useRSAF; }
+ Void                   setUseRSAF ( Bool b )                                                      { m_useRSAF = b;    }
+#endif
+
   // KTA tools
 
   // Sequence parameter set range extension syntax

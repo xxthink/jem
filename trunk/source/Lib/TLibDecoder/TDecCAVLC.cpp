@@ -825,8 +825,19 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
 #if VCEG_AZ05_INTRA_MPI
   READ_FLAG( uiCode, "mpi_enabled_flag" );      pcSPS->setUseMPI( uiCode );
 #endif
+#if COM16_C1046_PDPC_INTRA
+  READ_FLAG(uiCode, "pdpc_enabled_flag");      pcSPS->setUsePDPC(uiCode);
+#endif
 #if VCEG_AZ05_ROT_TR
   READ_FLAG( uiCode, "rot_enabled_flag" );      pcSPS->setUseROT( uiCode );
+#elif COM16_C1044_NSST
+  READ_FLAG( uiCode, "nsst_enabled_flag" );     pcSPS->setUseNSST( uiCode );
+#endif
+#if COM16_C1016_AFFINE
+  READ_FLAG( uiCode, "affine_enabled_flag");    pcSPS->setUseAffine( uiCode );
+#endif
+#if COM16_C983_RSAF
+  READ_FLAG( uiCode, "rsaf_enabled_flag");      pcSPS->setUseRSAF( uiCode );
 #endif
   // KTA tools
 
@@ -1856,7 +1867,7 @@ Void TDecCavlc::parseChromaQpAdjustment( TComDataCU* /*pcCU*/, UInt /*uiAbsPartI
 }
 
 Void TDecCavlc::parseCoeffNxN( TComTU &/*rTu*/, ComponentID /*compID*/ 
-#if VCEG_AZ05_ROT_TR
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& /*g_bCbfCU*/
 #endif
     )
@@ -1894,7 +1905,15 @@ Void TDecCavlc::parseMPIIdx ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt 
   assert(0);
 }
 #endif
-#if VCEG_AZ05_ROT_TR  
+
+#if COM16_C1046_PDPC_INTRA
+Void TDecCavlc::parsePDPCIdx(TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/)
+{
+  assert(0);
+}
+#endif
+
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 Void TDecCavlc::parseROTIdx ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/ )
 {
   assert(0);
@@ -2353,6 +2372,18 @@ Void TDecCavlc::parseEmtTuIdx( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt
   assert(0);
 }
 Void TDecCavlc::parseEmtCuFlag( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/, Bool /*bRootCbf*/ )
+{
+  assert(0);
+}
+#endif
+
+#if COM16_C1016_AFFINE
+Void TDecCavlc::parseAffineFlag( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/, UInt /*uiPuIdx*/ )
+{
+  assert(0);
+}
+
+Void  TDecCavlc::parseAffineMvd( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiPartIdx*/, UInt /*uiDepth*/, RefPicList /*eRefList*/ )
 {
   assert(0);
 }

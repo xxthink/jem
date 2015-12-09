@@ -656,6 +656,14 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         if( !bICFlag )
         {
 #endif
+#if COM16_C1016_AFFINE
+        if( rpcTempCU->getSlice()->getSPS()->getUseAffine() )
+        {
+          xCheckRDCostAffineMerge2Nx2N( rpcBestCU, rpcTempCU );
+          rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
+        }
+#endif
+
         xCheckRDCostMerge2Nx2N( rpcBestCU, rpcTempCU DEBUG_STRING_PASS_INTO(sDebug), &earlyDetectionSkipMode );//by Merge for inter_2Nx2N
         rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
 #if VCEG_AZ06_IC
@@ -1002,7 +1010,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
              ((rpcBestCU->getCbf( 0, COMPONENT_Cr ) != 0) && (numberValidComponents > COMPONENT_Cr))  // avoid very complex intra if it is unlikely
             )))
         {
-#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI
+#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
           Int bNonZeroCoeff = 0;
 #endif
 #if VCEG_AZ05_INTRA_MPI
@@ -1010,75 +1018,106 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
           if (rpcTempCU->getSlice()->getSliceType() != I_SLICE)  iNumberOfPassesMPI = 2;
           if (!rpcTempCU->getSlice()->getSPS()->getUseMPI()) iNumberOfPassesMPI = 1;
 #endif
-#if VCEG_AZ05_ROT_TR
+
+#if COM16_C1046_PDPC_INTRA
+          Char iPDPCidx = 0;  Char iNumberOfPassesPDPC = 2;
+          if (rpcTempCU->getSlice()->getSliceType() != I_SLICE)  iNumberOfPassesPDPC = 2;
+          if (!rpcTempCU->getSlice()->getSPS()->getUsePDPC()) iNumberOfPassesPDPC = 1;
+#endif
+
+
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
    Char iROTidx = 0; Char iNumberOfPassesROT = 4;  
+#if COM16_C1044_NSST
+   if (!rpcTempCU->getSlice()->getSPS()->getUseNSST()) iNumberOfPassesROT = 1;
+#else
    if (!rpcTempCU->getSlice()->getSPS()->getUseROT()) iNumberOfPassesROT = 1;
-for ( iROTidx = 0; iROTidx<iNumberOfPassesROT; iROTidx++)
-{ 
+#endif
+   for (iROTidx = 0; iROTidx < iNumberOfPassesROT; iROTidx++)
+   {
 #endif
 #if VCEG_AZ05_INTRA_MPI
-#if VCEG_AZ05_ROT_TR
-  if (iROTidx) iNumberOfPassesMPI = 1;
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+     if (iROTidx) iNumberOfPassesMPI = 1;
 #endif
-          for (iMPIidx = 0; iMPIidx<iNumberOfPassesMPI; iMPIidx++)
-          {
+     for (iMPIidx = 0; iMPIidx<iNumberOfPassesMPI; iMPIidx++)
+     {
+#endif
+
+#if COM16_C1046_PDPC_INTRA
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+       if (iROTidx) iNumberOfPassesPDPC = 1;
+#endif
+       for (iPDPCidx = 0; iPDPCidx < iNumberOfPassesPDPC; iPDPCidx++)
+       {
 #endif
 #if COM16_C806_EMT
-          UChar ucEmtUsage = ( ( rpcTempCU->getWidth(0) > EMT_INTRA_MAX_CU ) || ( rpcTempCU->getSlice()->getSPS()->getUseIntraEMT()==0 ) ) ? 1 : 2;
-          for (UChar ucCuFlag = 0; ucCuFlag < ucEmtUsage; ucCuFlag++)
-          {
-            if( ucCuFlag && bEarlySkipIntra && m_pcEncCfg->getUseFastInterEMT() )
-            {
-              continue;
-            }
-            rpcTempCU->setEmtCuFlagSubParts(ucCuFlag, 0, uiDepth);
+         UChar ucEmtUsage = ((rpcTempCU->getWidth(0) > EMT_INTRA_MAX_CU) || (rpcTempCU->getSlice()->getSPS()->getUseIntraEMT() == 0)) ? 1 : 2;
+         for (UChar ucCuFlag = 0; ucCuFlag < ucEmtUsage; ucCuFlag++)
+         {
+           if (ucCuFlag && bEarlySkipIntra && m_pcEncCfg->getUseFastInterEMT())
+           {
+             continue;
+           }
+           rpcTempCU->setEmtCuFlagSubParts(ucCuFlag, 0, uiDepth);
 #if VCEG_AZ05_INTRA_MPI
-            rpcTempCU->setMPIIdxSubParts(iMPIidx, 0, uiDepth);
+           rpcTempCU->setMPIIdxSubParts(iMPIidx, 0, uiDepth);
 #endif
-#if VCEG_AZ05_ROT_TR
-    rpcTempCU->setROTIdxSubParts(iROTidx, 0,  uiDepth ); 
+#if COM16_C1046_PDPC_INTRA
+           rpcTempCU->setPDPCIdxSubParts(iPDPCidx, 0, uiDepth);
 #endif
-    xCheckRDCostIntra( rpcBestCU, rpcTempCU, intraCost, SIZE_2Nx2N DEBUG_STRING_PASS_INTO(sDebug)
-#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI
-              , bNonZeroCoeff
+
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+           rpcTempCU->setROTIdxSubParts(iROTidx, 0, uiDepth);
 #endif
-              );
-            if( !ucCuFlag && !rpcBestCU->isIntra(0) && m_pcEncCfg->getUseFastInterEMT() )
-            {
-              static const Double thEmtInterFastSkipIntra = 1.4; // Skip checking Intra if "2Nx2N using DCT2" is worse than best Inter mode
-              if( rpcTempCU->getTotalCost()>thEmtInterFastSkipIntra*dBestInterCost )
-              {
-                bEarlySkipIntra = true;
-              }
-            }
-            if( !ucCuFlag && m_pcEncCfg->getUseFastIntraEMT() )
-            {
-              dIntra2Nx2NCost = (rpcBestCU->isIntra(0) && rpcBestCU->getPartitionSize(0)==SIZE_2Nx2N) ? rpcBestCU->getTotalCost() : rpcTempCU->getTotalCost();
-            }
-            rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
-          }
+           xCheckRDCostIntra(rpcBestCU, rpcTempCU, intraCost, SIZE_2Nx2N DEBUG_STRING_PASS_INTO(sDebug)
+#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+             , bNonZeroCoeff
+#endif
+             );
+           if (!ucCuFlag && !rpcBestCU->isIntra(0) && m_pcEncCfg->getUseFastInterEMT())
+           {
+             static const Double thEmtInterFastSkipIntra = 1.4; // Skip checking Intra if "2Nx2N using DCT2" is worse than best Inter mode
+             if (rpcTempCU->getTotalCost() > thEmtInterFastSkipIntra*dBestInterCost)
+             {
+               bEarlySkipIntra = true;
+             }
+           }
+           if (!ucCuFlag && m_pcEncCfg->getUseFastIntraEMT())
+           {
+             dIntra2Nx2NCost = (rpcBestCU->isIntra(0) && rpcBestCU->getPartitionSize(0) == SIZE_2Nx2N) ? rpcBestCU->getTotalCost() : rpcTempCU->getTotalCost();
+           }
+           rpcTempCU->initEstData(uiDepth, iQP, bIsLosslessMode);
+         }
 #else
 #if VCEG_AZ05_INTRA_MPI
-          rpcTempCU->setMPIIdxSubParts(iMPIidx, 0,  uiDepth ); 
+         rpcTempCU->setMPIIdxSubParts(iMPIidx, 0,  uiDepth ); 
 #endif
-#if VCEG_AZ05_ROT_TR
-    rpcTempCU->setROTIdxSubParts(iROTidx, 0,  uiDepth ); 
+#if COM16_C1046_PDPC_INTRA
+         rpcTempCU->setPDPCIdxSubParts(iPDPCidx, 0,  uiDepth ); 
 #endif
-          xCheckRDCostIntra( rpcBestCU, rpcTempCU, intraCost, SIZE_2Nx2N DEBUG_STRING_PASS_INTO(sDebug)
-#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI
-            , bNonZeroCoeff
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+         rpcTempCU->setROTIdxSubParts(iROTidx, 0,  uiDepth ); 
 #endif
-            );
-          rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
+         xCheckRDCostIntra( rpcBestCU, rpcTempCU, intraCost, SIZE_2Nx2N DEBUG_STRING_PASS_INTO(sDebug)
+#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+           , bNonZeroCoeff
+#endif
+           );
+         rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
 #endif
 #if VCEG_AZ05_INTRA_MPI
-          if (rpcBestCU->isIntra(0) && !bNonZeroCoeff) break;
-          }
+         if (rpcBestCU->isIntra(0) && !bNonZeroCoeff) break;
+       }
 #endif
-#if VCEG_AZ05_ROT_TR  
-  if (rpcBestCU->isIntra(0) && !bNonZeroCoeff) break;
-  //if (bNonZeroCoeff>rpcTempCU->getWidth(0)*rpcTempCU->getHeight(0) && rpcTempCU->getSlice()->getSliceType() == I_SLICE) break;
-    }   
+#if COM16_C1046_PDPC_INTRA
+       if (rpcBestCU->isIntra(0) && !bNonZeroCoeff) break;
+     }
+#endif
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+     if (rpcBestCU->isIntra(0) && !bNonZeroCoeff) break;
+     //if (bNonZeroCoeff>rpcTempCU->getWidth(0)*rpcTempCU->getHeight(0) && rpcTempCU->getSlice()->getSliceType() == I_SLICE) break;
+   }
 #endif
           if( uiDepth == sps.getLog2DiffMaxMinCodingBlockSize() 
 #if COM16_C806_EMT
@@ -1086,78 +1125,103 @@ for ( iROTidx = 0; iROTidx<iNumberOfPassesROT; iROTidx++)
 #endif
             )
           {
-#if COM16_C806_EMT && (VCEG_AZ05_ROT_TR ||VCEG_AZ05_INTRA_MPI)
+#if COM16_C806_EMT && (VCEG_AZ05_ROT_TR ||VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST|| COM16_C1046_PDPC_INTRA)
             UChar ucEmtUsage = ((rpcTempCU->getWidth(0) > EMT_INTRA_MAX_CU) || (rpcTempCU->getSlice()->getSPS()->getUseIntraEMT() == 0)) ? 1 : 2;
 #endif
-#if VCEG_AZ05_ROT_TR
-for ( iROTidx = 0; iROTidx<iNumberOfPassesROT; iROTidx++)
-{
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+            for (iROTidx = 0; iROTidx < iNumberOfPassesROT; iROTidx++)
+            {
 #endif
 #if VCEG_AZ05_INTRA_MPI
-#if VCEG_AZ05_ROT_TR
- iMPIidx = 0;   iNumberOfPassesMPI = 2;
-if( rpcTempCU->getSlice()->getSliceType() != I_SLICE)  iNumberOfPassesMPI = 2;
-if (iROTidx) iNumberOfPassesMPI = 1;
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+  iMPIidx = 0;   iNumberOfPassesMPI = 2;
+  if( rpcTempCU->getSlice()->getSliceType() != I_SLICE)  iNumberOfPassesMPI = 2;
+  if (!rpcTempCU->getSlice()->getSPS()->getUseMPI()) iNumberOfPassesMPI = 1;
+  if (iROTidx) iNumberOfPassesMPI = 1;
 #endif
-           for (iMPIidx = 0; iMPIidx<iNumberOfPassesMPI; iMPIidx++)
-            {
-#endif 
-            if( rpcTempCU->getWidth(0) > ( 1 << sps.getQuadtreeTULog2MinSize() ) )
-            {
-              Double tmpIntraCost;
-#if COM16_C806_EMT
-              for (UChar ucCuFlag = 0; ucCuFlag < ucEmtUsage; ucCuFlag++)
+              for (iMPIidx = 0; iMPIidx<iNumberOfPassesMPI; iMPIidx++)
               {
-                if ( ucCuFlag && bAllIntra && m_pcEncCfg->getUseFastIntraEMT() )
+#endif 
+
+#if COM16_C1046_PDPC_INTRA
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+                iPDPCidx = 0;   iNumberOfPassesPDPC = 2;
+                if (rpcTempCU->getSlice()->getSliceType() != I_SLICE)  iNumberOfPassesPDPC = 2;
+                if (!rpcTempCU->getSlice()->getSPS()->getUsePDPC()) iNumberOfPassesPDPC = 1;
+                if (iROTidx) iNumberOfPassesPDPC = 1;
+#endif
+                for (iPDPCidx = 0; iPDPCidx<iNumberOfPassesPDPC; iPDPCidx++)
                 {
-                  static const Double thEmtIntraFastSkipNxN = 1.2; // Skip checking "NxN using EMT" if "NxN using DCT2" is worse than "2Nx2N using DCT2"
-                  if ( dIntraNxNCost > thEmtIntraFastSkipNxN*dIntra2Nx2NCost )
+#endif 
+
+                  if (rpcTempCU->getWidth(0) >(1 << sps.getQuadtreeTULog2MinSize()))
                   {
-                    break;
-                  }
-                }
-                rpcTempCU->setEmtCuFlagSubParts(ucCuFlag, 0, uiDepth);
+                    Double tmpIntraCost;
+#if COM16_C806_EMT
+                    for (UChar ucCuFlag = 0; ucCuFlag < ucEmtUsage; ucCuFlag++)
+                    {
+                      if (ucCuFlag && bAllIntra && m_pcEncCfg->getUseFastIntraEMT())
+                      {
+                        static const Double thEmtIntraFastSkipNxN = 1.2; // Skip checking "NxN using EMT" if "NxN using DCT2" is worse than "2Nx2N using DCT2"
+                        if (dIntraNxNCost > thEmtIntraFastSkipNxN*dIntra2Nx2NCost)
+                        {
+                          break;
+                        }
+                      }
+                      rpcTempCU->setEmtCuFlagSubParts(ucCuFlag, 0, uiDepth);
 #if VCEG_AZ05_INTRA_MPI
-                rpcTempCU->setMPIIdxSubParts(iMPIidx, 0, uiDepth);
+                      rpcTempCU->setMPIIdxSubParts(iMPIidx, 0, uiDepth);
 #endif
-#if VCEG_AZ05_ROT_TR
-                rpcTempCU->setROTIdxSubParts(iROTidx, 0,  uiDepth ); 
+#if COM16_C1046_PDPC_INTRA
+                      rpcTempCU->setPDPCIdxSubParts(iPDPCidx, 0, uiDepth);
 #endif
-xCheckRDCostIntra( rpcBestCU, rpcTempCU, tmpIntraCost, SIZE_NxN DEBUG_STRING_PASS_INTO(sDebug)
-#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI
-                  , bNonZeroCoeff
+
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+                      rpcTempCU->setROTIdxSubParts(iROTidx, 0, uiDepth);
 #endif
-                  );
-                if( !ucCuFlag && m_pcEncCfg->getUseFastIntraEMT() )
-                {
-                  dIntraNxNCost = (rpcBestCU->isIntra(0) && rpcBestCU->getPartitionSize(0)==SIZE_NxN) ? rpcBestCU->getTotalCost() : rpcTempCU->getTotalCost();
-                }
-                intraCost = std::min(intraCost, tmpIntraCost);
-                rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
-              }
+                      xCheckRDCostIntra(rpcBestCU, rpcTempCU, tmpIntraCost, SIZE_NxN DEBUG_STRING_PASS_INTO(sDebug)
+#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+                        , bNonZeroCoeff
+#endif
+                        );
+                      if (!ucCuFlag && m_pcEncCfg->getUseFastIntraEMT())
+                      {
+                        dIntraNxNCost = (rpcBestCU->isIntra(0) && rpcBestCU->getPartitionSize(0) == SIZE_NxN) ? rpcBestCU->getTotalCost() : rpcTempCU->getTotalCost();
+                      }
+                      intraCost = std::min(intraCost, tmpIntraCost);
+                      rpcTempCU->initEstData(uiDepth, iQP, bIsLosslessMode);
+                    }
 #else
 #if VCEG_AZ05_INTRA_MPI
-              rpcTempCU->setMPIIdxSubParts(iMPIidx, 0,  uiDepth ); 
+                    rpcTempCU->setMPIIdxSubParts(iMPIidx, 0,  uiDepth ); 
 #endif
-#if VCEG_AZ05_ROT_TR
-  rpcTempCU->setROTIdxSubParts(iROTidx, 0,  uiDepth ); 
+#if COM16_C1046_PDPC_INTRA
+                    rpcTempCU->setPDPCIdxSubParts(iPDPCidx, 0,  uiDepth ); 
 #endif
-  xCheckRDCostIntra( rpcBestCU, rpcTempCU, tmpIntraCost, SIZE_NxN DEBUG_STRING_PASS_INTO(sDebug)
-#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI
-                ,  bNonZeroCoeff 
+
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+                    rpcTempCU->setROTIdxSubParts(iROTidx, 0,  uiDepth ); 
 #endif
-                );
-              intraCost = std::min(intraCost, tmpIntraCost);
-              rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
+                    xCheckRDCostIntra( rpcBestCU, rpcTempCU, tmpIntraCost, SIZE_NxN DEBUG_STRING_PASS_INTO(sDebug)
+#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+                      ,  bNonZeroCoeff 
 #endif
-            }
+                      );
+                    intraCost = std::min(intraCost, tmpIntraCost);
+                    rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
+#endif
+                  }
 #if VCEG_AZ05_INTRA_MPI
-            if (rpcBestCU->isIntra(0) && !bNonZeroCoeff) break;
-            }
+                  if (rpcBestCU->isIntra(0) && !bNonZeroCoeff) break;
+                }
 #endif
-#if VCEG_AZ05_ROT_TR  
- if (rpcBestCU->isIntra(0) && !bNonZeroCoeff) break;
-    }
+#if COM16_C1046_PDPC_INTRA
+                if (rpcBestCU->isIntra(0) && !bNonZeroCoeff) break;
+              }
+#endif
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST 
+              if (rpcBestCU->isIntra(0) && !bNonZeroCoeff) break;
+            }
 #endif
           }
         }
@@ -1529,7 +1593,21 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
     m_pcEntropyCoder->encodeFRUCMgrMode( pcCU , uiAbsPartIdx , 0 );
     if( !pcCU->getFRUCMgrMode( uiAbsPartIdx ) )
 #endif
+#if COM16_C1016_AFFINE
+    {
+      if ( pcCU->isAffineMrgFlagCoded(uiAbsPartIdx, 0) )
+      {
+        m_pcEntropyCoder->encodeAffineFlag( pcCU, uiAbsPartIdx, 0 );
+      }
+
+      if ( !pcCU->isAffine(uiAbsPartIdx) )
+      {
+        m_pcEntropyCoder->encodeMergeIndex( pcCU, uiAbsPartIdx );
+      }
+    }
+#else
     m_pcEntropyCoder->encodeMergeIndex( pcCU, uiAbsPartIdx );
+#endif
 #if VCEG_AZ06_IC
     m_pcEntropyCoder->encodeICFlag  ( pcCU, uiAbsPartIdx );
 #endif
@@ -1541,6 +1619,9 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 #if VCEG_AZ05_INTRA_MPI
   m_pcEntropyCoder->encodeMPIIdx(pcCU, uiAbsPartIdx);
 #endif   
+#if COM16_C1046_PDPC_INTRA
+  m_pcEntropyCoder->encodePDPCIdx(pcCU, uiAbsPartIdx);
+#endif  
   m_pcEntropyCoder->encodePartSize( pcCU, uiAbsPartIdx, uiDepth );
 
   if (pcCU->isIntra( uiAbsPartIdx ) && pcCU->getPartitionSize( uiAbsPartIdx ) == SIZE_2Nx2N )
@@ -1566,11 +1647,11 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
   // Encode Coefficients
   Bool bCodeDQP = getdQPFlag();
   Bool codeChromaQpAdj = getCodeChromaQpAdjFlag();
-#if  VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI
+#if  VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
   Int bNonZeroCoeff = false;
 #endif
   m_pcEntropyCoder->encodeCoeff( pcCU, uiAbsPartIdx, uiDepth, bCodeDQP, codeChromaQpAdj
-#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI
+#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
     , bNonZeroCoeff
 #endif
     );
@@ -2159,7 +2240,7 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
                                 Double      &cost,
                                 PartSize     eSize
                                 DEBUG_STRING_FN_DECLARE(sDebug)
-#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI
+#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
                                 , Int& bNonZeroCoeff
 #endif
                                 )
@@ -2237,19 +2318,24 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
 #if VCEG_AZ05_INTRA_MPI
   m_pcEntropyCoder->encodeMPIIdx(rpcTempCU, 0, true);
 #endif 
+
+#if COM16_C1046_PDPC_INTRA
+  m_pcEntropyCoder->encodePDPCIdx(rpcTempCU, 0, true);
+#endif
+
   m_pcEntropyCoder->encodePartSize( rpcTempCU, 0, uiDepth, true );
   m_pcEntropyCoder->encodePredInfo( rpcTempCU, 0 );
   m_pcEntropyCoder->encodeIPCMInfo(rpcTempCU, 0, true );
 
   // Encode Coefficients
-#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI
+#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
   bNonZeroCoeff = false;
 #endif
 
   Bool bCodeDQP = getdQPFlag();
   Bool codeChromaQpAdjFlag = getCodeChromaQpAdjFlag();
   m_pcEntropyCoder->encodeCoeff( rpcTempCU, 0, uiDepth, bCodeDQP, codeChromaQpAdjFlag
-#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI
+#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
     , bNonZeroCoeff
 #endif
     );
@@ -2523,6 +2609,98 @@ Void TEncCu::xCtuCollectARLStats(TComDataCU* pCtu )
   }
   m_pcTrQuant->getSliceSumC()[LEVEL_RANGE] += cSum[ LEVEL_RANGE ] ;
   m_pcTrQuant->getSliceNSamples()[LEVEL_RANGE] += numSamples[ LEVEL_RANGE ] ;
+}
+#endif
+
+#if COM16_C1016_AFFINE
+Void TEncCu::xCheckRDCostAffineMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU )
+{
+  assert( rpcTempCU->getSlice()->getSliceType() != I_SLICE );
+  if ( getFastDeltaQp() )
+  {
+    return;
+  }
+
+  TComMvField cAffineMvField[2][3];
+  UChar uhInterDirNeighbours[1] = {0};
+  Int numValidMergeCand = 0;
+  const Bool bTransquantBypassFlag = rpcTempCU->getCUTransquantBypass(0);
+
+  UChar uhDepth = rpcTempCU->getDepth( 0 );
+  rpcTempCU->setPartSizeSubParts( SIZE_2Nx2N, 0, uhDepth );
+
+  rpcTempCU->getAffineMergeCandidates( 0, 0, cAffineMvField, uhInterDirNeighbours, numValidMergeCand );
+  if ( numValidMergeCand == -1 )
+  {
+    return;
+  }
+  Int mergeCandBuffer[1] = {0};
+
+  UInt iteration;
+  if ( rpcTempCU->isLosslessCoded(0))
+  {
+    iteration = 1;
+  }
+  else
+  {
+    iteration = 2;
+  }
+
+  for ( UInt uiNoResidual = 0; uiNoResidual < iteration; ++uiNoResidual )
+  {
+    for ( UInt uiMergeCand = 0; uiMergeCand < numValidMergeCand; ++uiMergeCand )
+    {
+      if ( !( uiNoResidual==1 && mergeCandBuffer[uiMergeCand]==1 ) )
+      {
+        // set MC parameters
+        rpcTempCU->setPredModeSubParts( MODE_INTER, 0, uhDepth );
+        rpcTempCU->setCUTransquantBypassSubParts( bTransquantBypassFlag, 0, uhDepth );
+        rpcTempCU->setChromaQpAdjSubParts( bTransquantBypassFlag ? 0 : m_cuChromaQpOffsetIdxPlus1, 0, uhDepth );
+        rpcTempCU->setPartSizeSubParts( SIZE_2Nx2N, 0, uhDepth );
+        rpcTempCU->setAffineFlagSubParts( true, 0, 0, uhDepth );
+        rpcTempCU->setMergeFlagSubParts( true, 0, 0, uhDepth );
+        rpcTempCU->setMergeIndexSubParts( uiMergeCand, 0, 0, uhDepth );
+        rpcTempCU->setInterDirSubParts( uhInterDirNeighbours[uiMergeCand], 0, 0, uhDepth );
+        rpcTempCU->setAllAffineMvField( 0, 0, cAffineMvField[0 + 2*uiMergeCand], REF_PIC_LIST_0, 0 );
+        rpcTempCU->setAllAffineMvField( 0, 0, cAffineMvField[1 + 2*uiMergeCand], REF_PIC_LIST_1, 0 );
+
+#if COM16_C806_OBMC
+        rpcTempCU->setOBMCFlagSubParts( true, 0, uhDepth );
+#endif
+
+        // do MC
+        m_pcPredSearch->motionCompensation ( rpcTempCU, m_ppcPredYuvTemp[uhDepth] );
+
+#if COM16_C806_OBMC
+        m_pcPredSearch->subBlockOBMC( rpcTempCU, 0, m_ppcPredYuvTemp[uhDepth], m_ppcTmpYuv1[uhDepth], m_ppcTmpYuv2[uhDepth] );
+#endif
+        // estimate residual and encode everything
+        m_pcPredSearch->encodeResAndCalcRdInterCU( rpcTempCU,
+                                                   m_ppcOrigYuv    [uhDepth],
+                                                   m_ppcPredYuvTemp[uhDepth],
+                                                   m_ppcResiYuvTemp[uhDepth],
+                                                   m_ppcResiYuvBest[uhDepth],
+                                                   m_ppcRecoYuvTemp[uhDepth],
+                                                   (uiNoResidual != 0) 
+#if COM16_C806_EMT
+                                                   , rpcBestCU->getTotalCost()
+#endif
+          );
+
+        if ( uiNoResidual == 0 && rpcTempCU->getQtRootCbf(0) == 0 )
+        {
+          // If no residual when allowing for one, then set mark to not try case where residual is forced to 0
+          mergeCandBuffer[uiMergeCand] = 1;
+        }
+
+        rpcTempCU->setSkipFlagSubParts( rpcTempCU->getQtRootCbf(0) == 0, 0, uhDepth );
+        Int orgQP = rpcTempCU->getQP( 0 );
+        xCheckDQP( rpcTempCU );
+        xCheckBestMode(rpcBestCU, rpcTempCU, uhDepth);
+        rpcTempCU->initEstData( uhDepth, orgQP, bTransquantBypassFlag );
+      }
+    }
+  }
 }
 #endif
 //! \}
