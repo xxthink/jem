@@ -1127,9 +1127,9 @@ Void TDecCu::xDeriveCUMV( TComDataCU * pcCU , UInt uiAbsPartIdx , UInt uiDepth )
             abICFlag,
 #endif
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
-            eMergeCandTypeNieghors , m_pMvFieldSP , m_phInterDirSP ,
+            eMergeCandTypeNieghors , m_pMvFieldSP , m_phInterDirSP  
 #endif
-            uiMergeIndex );
+            );
         }
         pcCU->setInterDirSubParts( uhInterDirNeighbours[uiMergeIndex], uiSubPartIdx, uiPartIdx, uiDepth );
 #if VCEG_AZ06_IC
