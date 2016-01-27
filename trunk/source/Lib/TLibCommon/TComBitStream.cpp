@@ -450,6 +450,7 @@ TComStats::TComStats()
       }
     }
 #endif
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ05_MULTI_PARAM_CABAC
   for (int iQP=0;  iQP< NUM_QP_PROB; iQP++)
   {
     for (int uiSliceType=0;  uiSliceType< 3; uiSliceType++)
@@ -461,6 +462,7 @@ TComStats::TComStats()
       }
     }
   }
+#endif
 }
 
 TComStats::~TComStats()
