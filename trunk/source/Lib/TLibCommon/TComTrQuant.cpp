@@ -3864,8 +3864,9 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
         Int* piCoeffTemp = m_plTempCoeff;
         Int* piNsstTemp = NSST_MATRIX;
         Int iString2CopySize = 4*sizeof(Int);
-
+#if VCEG_AZ07_CTX_RESIDUALCODING
         const UInt uiLog2BlockSize = g_aucConvertToBit[ uiWidth ] + 2;
+#endif
         const UInt uiScanIdx = pcCU->getCoefScanIdx(uiAbsPartIdx, uiWidth, uiHeight, compID);
         const UInt log2BlockWidth  = g_aucConvertToBit[uiWidth]  + 2;
         const UInt log2BlockHeight = g_aucConvertToBit[uiHeight] + 2;
@@ -4076,7 +4077,9 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
       Int* piNsstTemp = NSST_MATRIX;
       Int iString2CopySize = 4*sizeof(Int);
 
+#if VCEG_AZ07_CTX_RESIDUALCODING
       const UInt uiLog2BlockSize = g_aucConvertToBit[ uiWidth ] + 2;
+#endif
       const UInt uiScanIdx = pcCU->getCoefScanIdx(uiAbsPartIdx, uiWidth, uiHeight, compID);
       const UInt log2BlockWidth  = g_aucConvertToBit[uiWidth]  + 2;
       const UInt log2BlockHeight = g_aucConvertToBit[uiHeight] + 2;
