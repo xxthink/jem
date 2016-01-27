@@ -70,9 +70,12 @@ public:
 #endif
   virtual ~TComStats();
  
+#if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ05_MULTI_PARAM_CABAC
   Bool   m_uiCtxMAP[3][NUM_QP_PROB][MAX_NUM_CTX_MOD];
   UInt   m_uiNumCtx[3][NUM_QP_PROB];
   UChar  m_uiCtxCodeIdx[3][NUM_QP_PROB][MAX_NUM_CTX_MOD];
+#endif
+
   QPFlag aaQPUsed[3][NUM_QP_PROB];
 
 #if VCEG_AZ07_INIT_PREVFRAME
