@@ -1177,7 +1177,12 @@ Void TComPrediction::xPredInterUni ( TComDataCU* pcCU, UInt uiPartAddr, Int iWid
   Int yRasterOffsetStep = 0;
   UInt uiIdxRasterStart = g_auiZscanToRaster[pcCU->getZorderIdxInCtu() + uiPartAddr];
   Int nBlkMCWidth = iWidth;
-  if( !bOBMC 
+  if( 
+#if VCEG_AZ07_FRUC_MERGE
+    !bOBMC 
+#else
+    true
+#endif
 #if COM16_C1045_BIO_HARMO_IMPROV
     && ( false
 #if VCEG_AZ07_FRUC_MERGE
@@ -1193,7 +1198,7 @@ Void TComPrediction::xPredInterUni ( TComDataCU* pcCU, UInt uiPartAddr, Int iWid
     && !bBIOapplied
 #endif
 #endif
-)
+    )
   {
 #if COM16_C1045_BIO_HARMO_IMPROV
     Int nRefineBlkSize = 4;
@@ -1256,7 +1261,7 @@ Void TComPrediction::xPredInterUni ( TComDataCU* pcCU, UInt uiPartAddr, Int iWid
 #endif
       );
   }
-#if VCEG_AZ07_FRUC_MERGE
+#if VCEG_AZ07_FRUC_MERGE || COM16_C1045_BIO_HARMO_IMPROV
     }
   }
 #endif
@@ -1278,7 +1283,13 @@ Void TComPrediction::xPredInterBi ( TComDataCU* pcCU, UInt uiPartAddr, Int iWidt
   Int xRasterOffsetStep = 0;
   Int yRasterOffsetStep = 0;
   UInt uiIdxRasterStart = g_auiZscanToRaster[pcCU->getZorderIdxInCtu() + uiPartAddr];
-  if( !bOBMC && ( false 
+  if( 
+#if VCEG_AZ07_FRUC_MERGE
+    !bOBMC 
+#else
+    true
+#endif
+    && ( false 
 #if VCEG_AZ07_FRUC_MERGE
     || pcCU->getFRUCMgrMode( uiPartAddr ) 
 #endif
