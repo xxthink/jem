@@ -1122,12 +1122,12 @@ Void TDecCu::xDeriveCUMV( TComDataCU * pcCU , UInt uiAbsPartIdx , UInt uiDepth )
         else
         {
           uiMergeIndex = pcCU->getMergeIndex(uiSubPartIdx);
-          pcSubCU->getInterMergeCandidates( uiSubPartIdx-uiAbsPartIdx, uiPartIdx, cMvFieldNeighbours, uhInterDirNeighbours, numValidMergeCand, 
+          pcSubCU->getInterMergeCandidates( uiSubPartIdx-uiAbsPartIdx, uiPartIdx, cMvFieldNeighbours, uhInterDirNeighbours, numValidMergeCand
 #if VCEG_AZ06_IC
-            abICFlag,
+            , abICFlag
 #endif
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
-            eMergeCandTypeNieghors , m_pMvFieldSP , m_phInterDirSP  
+            , eMergeCandTypeNieghors , m_pMvFieldSP , m_phInterDirSP  
 #endif
             );
         }
