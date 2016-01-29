@@ -2509,12 +2509,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
 #else
         resiLumaSingle, 
 #endif
-        false, uiSingleDistLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sDebug)
-#if COM16_C983_RSAF
-      , false 
-      , bStub
-#endif
-        );
+        false, uiSingleDistLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sDebug) );
 #endif
 
 #if COM16_C806_EMT
