@@ -1342,11 +1342,14 @@ Void TComPrediction::xPredInterBi ( TComDataCU* pcCU, UInt uiPartAddr, Int iWidt
     }
 
 #if COM16_C1045_BIO_HARMO_IMPROV
+#if VCEG_AZ06_IC
     if( pcCU->getICFlag( uiPartAddr ) )
     {
       bBIOapplied = false;
     }
-    else if( pcCU->isBIOLDB( uiPartAddr ) )
+    else
+#endif
+    if( pcCU->isBIOLDB( uiPartAddr ) )
     {
       bBIOapplied = true;
     }
