@@ -799,7 +799,7 @@ Bool TVideoIOYuv::write( TComPicYuv* pPicYuvUser, const InputColourSpaceConversi
   {
     dstPicYuv = new TComPicYuv;
     dstPicYuv->create( pPicYuv->getWidth(COMPONENT_Y), pPicYuv->getHeight(COMPONENT_Y), pPicYuv->getChromaFormat(), pPicYuv->getWidth(COMPONENT_Y), pPicYuv->getHeight(COMPONENT_Y), 0, false );
-    pPicYuv->copyToPic(dstPicYuv);
+    pPicYuv->copyToPic(dstPicYuv, MAX_NUM_COMPONENT, false); // don't include margin.
 
     for(UInt comp=0; comp<dstPicYuv->getNumberValidComponents(); comp++)
     {
@@ -824,7 +824,7 @@ Bool TVideoIOYuv::write( TComPicYuv* pPicYuvUser, const InputColourSpaceConversi
     const UInt csx = pPicYuv->getComponentScaleX(compID);
     const UInt csy = pPicYuv->getComponentScaleY(compID);
     const Int planeOffset =  (confLeft>>csx) + (confTop>>csy) * pPicYuv->getStride(compID);
-    if (! writePlane(m_cHandle, dstPicYuv->getAddr(compID) + planeOffset, is16bit, iStride444, width444, height444, compID, dstPicYuv->getChromaFormat(), format, m_fileBitdepth[ch]))
+    if (! writePlane(m_cHandle, dstPicYuv->getAddr(compID) + planeOffset, is16bit, dstPicYuv->getStride(COMPONENT_Y), width444, height444, compID, dstPicYuv->getChromaFormat(), format, m_fileBitdepth[ch]))
     {
       retval=false;
     }
@@ -889,7 +889,7 @@ Bool TVideoIOYuv::write( TComPicYuv* pPicYuvUserTop, TComPicYuv* pPicYuvUserBott
     {
       dstPicYuv = new TComPicYuv;
       dstPicYuv->create( pPicYuv->getWidth(COMPONENT_Y), pPicYuv->getHeight(COMPONENT_Y), pPicYuv->getChromaFormat(), pPicYuv->getWidth(COMPONENT_Y), pPicYuv->getHeight(COMPONENT_Y), 0, false );
-      pPicYuv->copyToPic(dstPicYuv);
+      pPicYuv->copyToPic(dstPicYuv, MAX_NUM_COMPONENT, false); // don't include margin.
 
       for(UInt comp=0; comp<dstPicYuv->getNumberValidComponents(); comp++)
       {
