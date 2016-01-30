@@ -765,7 +765,7 @@ Bool TVideoIOYuv::write( TComPicYuv* pPicYuvUser, const InputColourSpaceConversi
   TComPicYuv *pPicYuv=(ipCSC==IPCOLOURSPACE_UNCHANGED) ? pPicYuvUser : &cPicYuvCSCd;
 
   // compute actual YUV frame size excluding padding size
-  const Int   iStride444 = pPicYuv->getStride(COMPONENT_Y);
+  //const Int   iStride444 = pPicYuv->getStride(COMPONENT_Y);
   const UInt width444  = pPicYuv->getWidth(COMPONENT_Y) - confLeft - confRight;
   const UInt height444 = pPicYuv->getHeight(COMPONENT_Y) -  confTop  - confBottom;
   Bool is16bit = false;
