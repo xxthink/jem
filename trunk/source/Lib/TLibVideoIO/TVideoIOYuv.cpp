@@ -799,7 +799,11 @@ Bool TVideoIOYuv::write( TComPicYuv* pPicYuvUser, const InputColourSpaceConversi
   {
     dstPicYuv = new TComPicYuv;
     dstPicYuv->create( pPicYuv->getWidth(COMPONENT_Y), pPicYuv->getHeight(COMPONENT_Y), pPicYuv->getChromaFormat(), pPicYuv->getWidth(COMPONENT_Y), pPicYuv->getHeight(COMPONENT_Y), 0, false );
-    pPicYuv->copyToPic(dstPicYuv, MAX_NUM_COMPONENT, false); // don't include margin.
+    pPicYuv->copyToPic(dstPicYuv 
+#if ALF_HM3_REFACTOR
+      , MAX_NUM_COMPONENT, false // don't include margin.
+#endif
+      ); 
 
     for(UInt comp=0; comp<dstPicYuv->getNumberValidComponents(); comp++)
     {
@@ -889,7 +893,11 @@ Bool TVideoIOYuv::write( TComPicYuv* pPicYuvUserTop, TComPicYuv* pPicYuvUserBott
     {
       dstPicYuv = new TComPicYuv;
       dstPicYuv->create( pPicYuv->getWidth(COMPONENT_Y), pPicYuv->getHeight(COMPONENT_Y), pPicYuv->getChromaFormat(), pPicYuv->getWidth(COMPONENT_Y), pPicYuv->getHeight(COMPONENT_Y), 0, false );
-      pPicYuv->copyToPic(dstPicYuv, MAX_NUM_COMPONENT, false); // don't include margin.
+      pPicYuv->copyToPic(dstPicYuv
+#if ALF_HM3_REFACTOR
+        , MAX_NUM_COMPONENT, false // don't include margin.
+#endif
+        ); 
 
       for(UInt comp=0; comp<dstPicYuv->getNumberValidComponents(); comp++)
       {
