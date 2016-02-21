@@ -68,7 +68,10 @@ UInt g_uiDepth2IntraTempSize[5] = { 3, 3, 3, 3, 3 };
 #define KLT_MODE             65533 ///< Mark the mode as KLT mode
 
 #include <iostream>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
 #include "../../extlib/Eigen/Dense"
+#pragma GCC diagnostic pop
 using namespace Eigen;
 using namespace Eigen::internal;
 using namespace Eigen::Architecture;
