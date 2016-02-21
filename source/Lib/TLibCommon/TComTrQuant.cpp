@@ -52,7 +52,7 @@
 #if KLT_COMMON //only support 4x4-32x32 now
 UInt g_uiDepth2MaxCandiNum[5] = { MAX_CANDI_NUM, MAX_CANDI_NUM, MAX_CANDI_NUM, MAX_CANDI_NUM, MAX_CANDI_NUM };
 UInt g_uiDepth2MinCandiNum[5] = { 8, 8, 8, 8, 8 };
-Int g_maxValueThre = INT_MAX;
+Int g_maxValueThre = MAX_INT;
 
 UInt g_uiDepth2Width[5] = { 4, 8, 16, 32, 64 };
 //template size ===========
@@ -68,7 +68,7 @@ UInt g_uiDepth2IntraTempSize[5] = { 3, 3, 3, 3, 3 };
 #define KLT_MODE             65533 ///< Mark the mode as KLT mode
 
 #include <iostream>
-#include <Eigen/Dense>
+#include "../../extlib/Eigen/Dense"
 using namespace Eigen;
 using namespace Eigen::internal;
 using namespace Eigen::Architecture;
@@ -4187,7 +4187,7 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
 #if KLT_COMMON
       if (useKLT && (compID == 0))
       {
-          const UInt   log2BlockSize = g_aucConvertToBit[uiWidth] + 2;
+          // const UInt   log2BlockSize = g_aucConvertToBit[uiWidth] + 2;
           //UInt scanIdx = pcCU->getCoefScanIdx(uiAbsPartIdx, uiWidth, uiHeight, compID);
           TUEntropyCodingParameters codingParameters;
           getTUEntropyCodingParameters(codingParameters, rTu, compID);
@@ -8522,9 +8522,9 @@ Void TComTrQuant::candidateSearch(TComDataCU *pcCU, UInt uiPartAddr, UInt uiBlkS
     Pel **tarPatch = m_pppTarPatch[uiTarDepth];
     Int      iRefIdx[2] = { -1, -1 };
     TComMv      cMvs[2];
-    UInt     uiCandiNum = 0;
+    // UInt     uiCandiNum = 0;
     UInt uiTargetCandiNum = g_uiDepth2MaxCandiNum[uiTarDepth];
-    UInt uiLibSizeMinusOne = uiTargetCandiNum - 1;
+    // UInt uiLibSizeMinusOne = uiTargetCandiNum - 1;
 
     const Int channelBitDepth = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
     //Initialize the library for saving the best candidates
@@ -8532,7 +8532,7 @@ Void TComTrQuant::candidateSearch(TComDataCU *pcCU, UInt uiPartAddr, UInt uiBlkS
     Short setId = -1; //to record the reference picture.
 
     Int iCurrPOC = pcCU->getPic()->getPOC();
-    Int iRefPOC;
+    Int iRefPOC = 0;
     TComMv cMvRef;
 
     Int iRefPOCs[2] = { 0, 0 };
@@ -8560,7 +8560,7 @@ Void TComTrQuant::candidateSearch(TComDataCU *pcCU, UInt uiPartAddr, UInt uiBlkS
         {
             TComMv   cMv;
             Int iTargetPOC = pcCU->getSlice()->getRefPic(eRefPicList, iRefIdxTemp)->getPOC();
-            Int minDistancePOC = INT_MAX;
+            Int minDistancePOC = MAX_INT;
             Int distance;
             //use the reference frame (having mvs) with nearest distacne from the current iTargetPOC 
             for (Int filledId = 0; filledId < filledNum; filledId++)
@@ -8812,7 +8812,7 @@ Bool TComTrQuant::candidateTrain(TComDataCU *pcCU, UInt uiAbsPartIdx, UInt uiBlk
 
 Bool TComTrQuant::prepareKLTSamplesInter(TComDataCU *pcCU, UInt uiAbsPartIdx, UInt uiBlkSize, UInt uiTempSize)
 {
-    Bool bSucceedFlag = true;
+    // Bool bSucceedFlag = true;
     UInt uiTarDepth = g_aucConvertToBit[uiBlkSize];
     UInt uiHeight = uiBlkSize;
     UInt uiWidth = uiHeight;
@@ -8961,7 +8961,7 @@ Void TComTrQuant::candidateSearchIntra(TComDataCU *pcCU, UInt uiPartAddr, UInt u
     UInt uiPatchSize = uiBlkSize + uiTempSize;
     UInt uiTarDepth = g_aucConvertToBit[uiBlkSize];
     Pel **tarPatch = getTargetPatch(uiTarDepth);
-    UInt uiCandiNum = 0;
+    // UInt uiCandiNum = 0;
     UInt uiTargetCandiNum = g_uiDepth2MaxCandiNum[uiTarDepth];
     TComPic *pPic = pcCU->getPic();
     TComPicYuv *pPicYuv = pPic->getPicYuvRec();
@@ -9068,7 +9068,7 @@ Void  TComTrQuant::searchCandidateFromOnePicIntra(TComDataCU *pcCU, UInt uiPartA
         {
             continue;
         }
-        Pel *refMove = ref + mvYMin*refStride + mvXMin;
+        // Pel *refMove = ref + mvYMin*refStride + mvXMin;
 
         for (iYOffset = mvYMax; iYOffset >= mvYMin; iYOffset--)
         {
@@ -9103,7 +9103,7 @@ Void  TComTrQuant::searchCandidateFromOnePicIntra(TComDataCU *pcCU, UInt uiPartA
         Int mvYMax = mvYMaxs[regionId];
         Int mvXMin = mvXMins[regionId];
         Int mvXMax = mvXMaxs[regionId];
-        Pel *refMove = ref + mvYMin*refStride + mvXMin;
+        // Pel *refMove = ref + mvYMin*refStride + mvXMin;
         if (mvXMax < mvXMin)
         {
             continue;
@@ -9128,14 +9128,14 @@ Bool TComTrQuant::generateTMPrediction(Pel *piPred, UInt uiStride, UInt uiBlkSiz
     Bool bSucceedFlag = true;
     UInt uiPatchSize = uiBlkSize + uiTempSize;
     UInt uiTarDepth = g_aucConvertToBit[uiBlkSize];
-    Pel **tarPatch = m_pppTarPatch[uiTarDepth];
+    // Pel **tarPatch = m_pppTarPatch[uiTarDepth];
     //count collected candidate number
     DistType *pDiff = m_tempLibFast.getDiff();
     DistType maxDiff = m_tempLibFast.getDiffMax();
     Int k;
     UInt uiInvalidCount = 0;
     UInt uiTargetCandiNum = g_uiDepth2MaxCandiNum[uiTarDepth];
-    UInt uiAllowMinCandiNum = g_uiDepth2MinCandiNum[uiTarDepth];
+    // UInt uiAllowMinCandiNum = g_uiDepth2MinCandiNum[uiTarDepth];
 
     for (k = uiTargetCandiNum - 1; k >= 0; k--)
     {
@@ -9159,7 +9159,7 @@ Bool TComTrQuant::generateTMPrediction(Pel *piPred, UInt uiStride, UInt uiBlkSiz
 
     Int *pX = m_tempLibFast.getX();
     Int *pY = m_tempLibFast.getY();
-    Short *pId = m_tempLibFast.getId();
+    // Short *pId = m_tempLibFast.getId();
     Short setId;
     Pel *ref;
     Int picStride = getStride();
@@ -9241,13 +9241,13 @@ Bool TComTrQuant::prepareKLTSamplesIntra(Pel *piPred, UInt uiStride, UInt uiBlkS
     }
     UInt uiHeight = uiBlkSize;
     UInt uiWidth = uiHeight;
-    Bool bSucceedFlag = true;
-    UInt uiPatchSize = uiBlkSize + uiTempSize;
-    Pel **tarPatch = m_pppTarPatch[uiTarDepth];
+    // Bool bSucceedFlag = true;
+    // UInt uiPatchSize = uiBlkSize + uiTempSize;
+    // Pel **tarPatch = m_pppTarPatch[uiTarDepth];
 
     Int k;
-    UInt uiInvalidCount = 0;
-    UInt uiTargetCandiNum = g_uiDepth2MaxCandiNum[uiTarDepth];
+    // UInt uiInvalidCount = 0;
+    // UInt uiTargetCandiNum = g_uiDepth2MaxCandiNum[uiTarDepth];
 
     Pel*  pPred = piPred;
     Int i = 0;
@@ -9262,7 +9262,7 @@ Bool TComTrQuant::prepareKLTSamplesIntra(Pel *piPred, UInt uiStride, UInt uiBlkS
     }
     Int *pX = m_tempLibFast.getX();
     Int *pY = m_tempLibFast.getY();
-    Short *pId = m_tempLibFast.getId();
+    // Short *pId = m_tempLibFast.getId();
     Short setId;
     Pel *ref;
     Int picStride = getStride();

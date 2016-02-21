@@ -875,7 +875,7 @@ TDecCu::xIntraRecBlkTM( TComYuv*    pcRecoYuv,
     {
         return;
     }
-    const Bool       bIsLuma = isLuma(compID);
+    // const Bool       bIsLuma = isLuma(compID);
 
 
     TComDataCU *pcCU = rTu.getCU();
@@ -887,15 +887,15 @@ TDecCu::xIntraRecBlkTM( TComYuv*    pcRecoYuv,
     const UInt uiHeight = tuRect.height;
     const UInt uiStride = pcRecoYuv->getStride(compID);
     Pel* piPred = pcPredYuv->getAddr(compID, uiAbsPartIdx);
-    const ChromaFormat chFmt = rTu.GetChromaFormat();
+    // const ChromaFormat chFmt = rTu.GetChromaFormat();
     assert(uiWidth == uiHeight);
 
     Bool useKLT = false;
     UInt uiBlkSize = uiWidth;
     UInt uiTarDepth = g_aucConvertToBit[uiBlkSize];
-    const UInt  uiZOrder = pcCU->getZorderIdxInCtu() + uiAbsPartIdx;
-    Pel   *pCurrStart = pcCU->getPic()->getPicYuvRec()->getAddr(compID, pcCU->getCtuRsAddr(), uiZOrder);
-    UInt  uiPicStride = pcCU->getPic()->getStride(compID);
+    // const UInt  uiZOrder = pcCU->getZorderIdxInCtu() + uiAbsPartIdx;
+    // Pel   *pCurrStart = pcCU->getPic()->getPicYuvRec()->getAddr(compID, pcCU->getCtuRsAddr(), uiZOrder);
+    // UInt  uiPicStride = pcCU->getPic()->getStride(compID);
 
     UInt uiTempSize = g_uiDepth2IntraTempSize[uiTarDepth];
     m_pcTrQuant->getTargetTemplate(pcCU, uiAbsPartIdx, uiAbsPartIdx, pcPredYuv, uiBlkSize, uiTempSize);
@@ -953,8 +953,8 @@ TDecCu::xIntraRecBlkTM( TComYuv*    pcRecoYuv,
 
     const Bool useCrossComponentPrediction = isChroma(compID) && (pcCU->getCrossComponentPredictionAlpha(uiAbsPartIdx, compID) != 0);
     assert(useCrossComponentPrediction == false);
-    const Pel* pResiLuma = pcResiYuv->getAddr(COMPONENT_Y, uiAbsPartIdx);
-    const Int  strideLuma = pcResiYuv->getStride(COMPONENT_Y);
+    // const Pel* pResiLuma = pcResiYuv->getAddr(COMPONENT_Y, uiAbsPartIdx);
+    // const Int  strideLuma = pcResiYuv->getStride(COMPONENT_Y);
 
     Pel* pPred = piPred;
     Pel* pResi = piResi;

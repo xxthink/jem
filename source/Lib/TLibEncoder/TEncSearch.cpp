@@ -121,6 +121,9 @@ static Void offsetSubTUCBFs(TComTU &rTu, const ComponentID compID)
 TEncSearch::TEncSearch()
 : m_puhQTTempTrIdx(NULL)
 , m_pcQTTempTComYuv(NULL)
+#if INTER_KLT
+, m_pcQTTempTComYuvRec (NULL)
+#endif
 , m_pcEncCfg (NULL)
 , m_pcTrQuant (NULL)
 , m_pcRdCost (NULL)
@@ -136,9 +139,6 @@ TEncSearch::TEncSearch()
 #if COM16_C806_EMT
 , m_puhQTTempEmtTuIdx (NULL)
 , m_puhQTTempEmtCuFlag (NULL)
-#endif
-#if INTER_KLT
-, m_pcQTTempTComYuvRec (NULL)
 #endif
 {
   for (UInt ch=0; ch<MAX_NUM_COMPONENT; ch++)
@@ -1769,7 +1769,7 @@ Bool TEncSearch::xIntraCodingTUBlockTM(TComYuv*    pcOrgYuv,
     const UInt           uiTrDepth = rTu.GetTransformDepthRelAdj(compID);
     const UInt           uiFullDepth = rTu.GetTransformDepthTotal();
     const UInt           uiLog2TrSize = rTu.GetLog2LumaTrSize();
-    const ChromaFormat   chFmt = pcOrgYuv->getChromaFormat();
+    // const ChromaFormat   chFmt = pcOrgYuv->getChromaFormat();
     const ChannelType    chType = toChannelType(compID);
     const Int            bitDepth = sps.getBitDepth(chType);
 
@@ -1798,9 +1798,9 @@ Bool TEncSearch::xIntraCodingTUBlockTM(TComYuv*    pcOrgYuv,
     //const UInt           uiChCodedMode = (uiChPredMode == DM_CHROMA_IDX && !bIsLuma) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, getChromasCorrespondingPULumaIdx(uiAbsPartIdx, chFmt, partsPerMinCU)) : uiChPredMode;
     //const UInt           uiChFinalMode = ((chFmt == CHROMA_422) && !bIsLuma) ? g_chroma422IntraAngleMappingTable[uiChCodedMode] : uiChCodedMode;
 
-    const Int            blkX = g_auiRasterToPelX[g_auiZscanToRaster[uiAbsPartIdx]];
-    const Int            blkY = g_auiRasterToPelY[g_auiZscanToRaster[uiAbsPartIdx]];
-    const Int            bufferOffset = blkX + (blkY * MAX_CU_SIZE);
+    // const Int            blkX = g_auiRasterToPelX[g_auiZscanToRaster[uiAbsPartIdx]];
+    // const Int            blkY = g_auiRasterToPelY[g_auiZscanToRaster[uiAbsPartIdx]];
+    // const Int            bufferOffset = blkX + (blkY * MAX_CU_SIZE);
     //Pel  *const    encoderLumaResidual = resiLuma[RESIDUAL_ENCODER_SIDE] + bufferOffset;
     //Pel  *const    reconstructedLumaResidual = resiLuma[RESIDUAL_RECONSTRUCTED] + bufferOffset;
     //const Bool           bUseCrossCPrediction = isChroma(compID) && (uiChPredMode == DM_CHROMA_IDX) && checkCrossCPrediction;
@@ -1823,8 +1823,8 @@ Bool TEncSearch::xIntraCodingTUBlockTM(TComYuv*    pcOrgYuv,
     {
         UInt uiBlkSize = uiWidth;
         UInt uiTarDepth = g_aucConvertToBit[uiBlkSize];
-        Pel   *pCurrStart = pcCU->getPic()->getPicYuvRec()->getAddr(compID, pcCU->getCtuRsAddr(), uiZOrder);
-        UInt  uiPicStride = pcCU->getPic()->getPicYuvRec()->getStride( compID );
+        // Pel   *pCurrStart = pcCU->getPic()->getPicYuvRec()->getAddr(compID, pcCU->getCtuRsAddr(), uiZOrder);
+        // UInt  uiPicStride = pcCU->getPic()->getPicYuvRec()->getStride( compID );
 
         UInt uiTempSize = g_uiDepth2IntraTempSize[uiTarDepth];
         m_pcTrQuant->getTargetTemplate(pcCU, uiAbsPartIdx, uiAbsPartIdx, pcPredYuv, uiBlkSize, uiTempSize);
@@ -1949,7 +1949,7 @@ Bool TEncSearch::xIntraCodingTUBlockTM(TComYuv*    pcOrgYuv,
             TUEntropyCodingParameters codingParameters;
             getTUEntropyCodingParameters(codingParameters, rTu, compID);
 
-            const UInt  uiLog2BlockSize = g_aucConvertToBit[uiWidth] + 2;
+            // const UInt  uiLog2BlockSize = g_aucConvertToBit[uiWidth] + 2;
             scan = codingParameters.scan;
             recoverOrderCoeff(pcCoeff, scan, uiWidth, uiHeight);
 #if ADAPTIVE_QP_SELECTION
@@ -4257,7 +4257,7 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
     DEBUG_STRING_NEW(sPU)
     UInt       uiBestPUMode  = 0;
 #if INTRA_KLT
-    UInt       uiBestNonRSAFPUMode[2] = { 0, 0 };
+    // UInt       uiBestNonRSAFPUMode[2] = { 0, 0 };
 #endif
     Distortion uiBestPUDistY = 0;
     Double     dBestPUCost   = MAX_DOUBLE;
@@ -4382,7 +4382,7 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         uiBestPUDistY = uiPUDistY;
         dBestPUCost   = dPUCost;
 #if INTRA_KLT
-        uiBestNonRSAFPUMode[isNonRSAF] = uiBestPUMode;
+        // uiBestNonRSAFPUMode[isNonRSAF] = uiBestPUMode;
 #endif
 #if COM16_C806_EMT
         if ( 1==ucEmtUsageFlag && m_pcEncCfg->getUseFastIntraEMT() )
@@ -7811,7 +7811,7 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
     // Save reconstruction to (1) facilitate the following utilization in next blocks; (2) backup the possible best reconstruction.
     Bool bCodeChroma = false;
     Int numValidCompCurr = bCodeChroma ? numValidComp : 1;
-    const ChromaFormat chromaFormatIDC = pcCU->getSlice()->getSPS()->getChromaFormatIdc();
+    // const ChromaFormat chromaFormatIDC = pcCU->getSlice()->getSPS()->getChromaFormatIdc();
     
     for (UInt ch = 0; ch < numValidCompCurr; ch++)
     {
@@ -7820,7 +7820,7 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
         const TComRectangle &rect = rTu.getRect(compID);
         const UInt           uiWidth = rect.width;
         const UInt           uiHeight = rect.height;
-        const UInt        uiAbsPartIdx = rTu.GetAbsPartIdxTU();
+        // const UInt        uiAbsPartIdx = rTu.GetAbsPartIdxTU();
         Pel *pcPtrPred = pcPred->getAddr(compID, uiAbsPartIdx);
         UInt uiStridePred = pcPred->getStride(compID);
         Pel *pcPtrRes = m_pcQTTempTComYuv[uiQTTempAccessLayer].getAddr(compID, uiAbsPartIdx);
@@ -8051,9 +8051,9 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
       for (UInt ch = 0; ch < numValidCompCurr; ch++)
       {
           const ComponentID compID = ComponentID(ch);
-          const TComRectangle &rect = rTu.getRect(compID);
-          const UInt           uiWidth = rect.width;
-          const UInt           uiHeight = rect.height;
+          // const TComRectangle &rect = rTu.getRect(compID);
+          // const UInt           uiWidth = rect.width;
+          // const UInt           uiHeight = rect.height;
 
           UInt    uiZOrder = pcCU->getZorderIdxInCtu() + uiAbsPartIdx;
           Pel*  piSrc = m_pcQTTempTComYuvRec[uiQTLayer].getAddr(compID, uiAbsPartIdx);
