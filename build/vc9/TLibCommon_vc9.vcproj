@@ -106,7 +106,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="$(SolutionDir)\..\source\Lib\;$(SolutionDir)\..\compat\msvc"
+				AdditionalIncludeDirectories="$(SolutionDir)\..\extlib\;$(SolutionDir)\..\source\Lib\;$(SolutionDir)\..\compat\msvc"
 				PreprocessorDefinitions="WIN32;_DEBUG;_LIB;_CRT_SECURE_NO_WARNINGS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -144,7 +144,7 @@
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="$(SolutionDir)\vc9\$(PlatformName)\$(ConfigurationName)\$(RootNamespace)"
+			OutputDirectory="$(SolutionDir)\..\extlib\;$(SolutionDir)\vc9\$(PlatformName)\$(ConfigurationName)\$(RootNamespace)"
 			IntermediateDirectory="$(SolutionDir)\vc9\$(PlatformName)\$(ConfigurationName)\$(RootNamespace)"
 			ConfigurationType="4"
 			CharacterSet="2"
@@ -171,7 +171,7 @@
 				InlineFunctionExpansion="2"
 				EnableIntrinsicFunctions="false"
 				FavorSizeOrSpeed="1"
-				AdditionalIncludeDirectories="$(SolutionDir)\..\source\Lib\;$(SolutionDir)\..\compat\msvc"
+				AdditionalIncludeDirectories="$(SolutionDir)\..\extlib\;$(SolutionDir)\..\source\Lib\;$(SolutionDir)\..\compat\msvc"
 				PreprocessorDefinitions="WIN32;_LIB;_CRT_SECURE_NO_WARNINGS"
 				StringPooling="true"
 				RuntimeLibrary="0"
@@ -237,7 +237,7 @@
 				InlineFunctionExpansion="2"
 				EnableIntrinsicFunctions="false"
 				FavorSizeOrSpeed="1"
-				AdditionalIncludeDirectories="$(SolutionDir)\..\source\Lib\;$(SolutionDir)\..\compat\msvc"
+				AdditionalIncludeDirectories="$(SolutionDir)\..\extlib\;$(SolutionDir)\..\source\Lib\;$(SolutionDir)\..\compat\msvc"
 				PreprocessorDefinitions="WIN32;_LIB;_CRT_SECURE_NO_WARNINGS"
 				StringPooling="true"
 				RuntimeLibrary="0"

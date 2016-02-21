@@ -326,6 +326,9 @@ public:
                                             );
 
   static Bool UseDPCMForFirstPassIntraEstimation(TComTU &rTu, const UInt uiDirMode);
+#if INTER_KLT
+  Void interpolatePic(TComPic* pcPic);
+#endif
 };
 
 //! \}

@@ -121,6 +121,9 @@ static const Double MAX_DOUBLE =                             1.7e+308; ///< max.
 
 static const Int MAX_GOP =                                         64; ///< max. value of hierarchical GOP size
 static const Int MAX_NUM_REF_PICS =                                16; ///< max. number of pictures used for reference
+#if KLT_COMMON
+static const Int MAX_NUM_REF_IDS = ((MAX_NUM_REF_PICS << 1) + (MAX_CANDI_NUM << 4)); //(MAX_NUM_REF_PICS << 4 + MAX_CANDI_NUM* 15);
+#endif
 static const Int MAX_NUM_REF =                                     16; ///< max. number of entries in picture reference list
 static const Int MAX_QP =                                          51;
 static const Int NOT_VALID =                                       -1;

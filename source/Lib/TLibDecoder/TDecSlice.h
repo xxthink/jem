@@ -81,6 +81,9 @@ public:
     , ALFParam & alfParam
 #endif
     );
+#if INTER_KLT
+  Void InterpolatePic    ( TComPic* pcPic );
+#endif
 };
 
 //! \}

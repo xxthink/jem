@@ -41,7 +41,12 @@
 
 //! \ingroup TLibDecoder
 //! \{
-
+#if INTER_KLT
+extern UInt g_uiDepth2TempSize[5];
+#endif
+#if INTRA_KLT
+extern UInt g_uiDepth2IntraTempSize[5];
+#endif
 // ====================================================================================================================
 // Constructor / destructor / create / destroy
 // ====================================================================================================================
@@ -856,6 +861,182 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
   }
 }
 
+#if INTRA_KLT
+Void
+TDecCu::xIntraRecBlkTM( TComYuv*    pcRecoYuv,
+                      TComYuv*    pcPredYuv,
+                      TComYuv*    pcResiYuv,
+                      const ComponentID compID,
+                      TComTU     &rTu,
+                      Int genPred0genPredAndtrainKLT1Ori2
+                      )
+{
+    if (!rTu.ProcessComponentSection(compID))
+    {
+        return;
+    }
+    const Bool       bIsLuma = isLuma(compID);
+
+
+    TComDataCU *pcCU = rTu.getCU();
+    const TComSPS &sps = *(pcCU->getSlice()->getSPS());
+    const UInt uiAbsPartIdx = rTu.GetAbsPartIdxTU();
+
+    const TComRectangle &tuRect = rTu.getRect(compID);
+    const UInt uiWidth = tuRect.width;
+    const UInt uiHeight = tuRect.height;
+    const UInt uiStride = pcRecoYuv->getStride(compID);
+    Pel* piPred = pcPredYuv->getAddr(compID, uiAbsPartIdx);
+    const ChromaFormat chFmt = rTu.GetChromaFormat();
+    assert(uiWidth == uiHeight);
+
+    Bool useKLT = false;
+    UInt uiBlkSize = uiWidth;
+    UInt uiTarDepth = g_aucConvertToBit[uiBlkSize];
+    const UInt  uiZOrder = pcCU->getZorderIdxInCtu() + uiAbsPartIdx;
+    Pel   *pCurrStart = pcCU->getPic()->getPicYuvRec()->getAddr(compID, pcCU->getCtuRsAddr(), uiZOrder);
+    UInt  uiPicStride = pcCU->getPic()->getStride(compID);
+
+    UInt uiTempSize = g_uiDepth2IntraTempSize[uiTarDepth];
+    m_pcTrQuant->getTargetTemplate(pcCU, uiAbsPartIdx, uiAbsPartIdx, pcPredYuv, uiBlkSize, uiTempSize);
+    m_pcTrQuant->candidateSearchIntra(pcCU, uiAbsPartIdx, uiBlkSize, uiTempSize);
+    Int foundCandiNum;
+    Bool bSuccessful = m_pcTrQuant->generateTMPrediction(piPred, uiStride, uiBlkSize, uiTempSize, genPred0genPredAndtrainKLT1Ori2, foundCandiNum);
+    if (1 == genPred0genPredAndtrainKLT1Ori2 && bSuccessful)
+    {
+        useKLT = m_pcTrQuant->calcKLTIntra(piPred, uiStride, uiBlkSize, uiTempSize);
+    }
+    assert(foundCandiNum >= 1);
+
+    //===== inverse transform =====
+    Pel*      piResi = pcResiYuv->getAddr(compID, uiAbsPartIdx);
+    TCoeff*   pcCoeff = pcCU->getCoeff(compID) + rTu.getCoefficientOffset(compID);
+
+    const QpParam cQP(*pcCU, compID);
+
+
+    DEBUG_STRING_NEW(sDebug);
+#if DEBUG_STRING
+    const Int debugPredModeMask = DebugStringGetPredModeMask(MODE_INTRA);
+    std::string *psDebug = (DebugOptionList::DebugString_InvTran.getInt()&debugPredModeMask) ? &sDebug : 0;
+#endif
+
+    if (pcCU->getCbf(uiAbsPartIdx, compID, rTu.GetTransformDepthRel()) != 0)
+    {
+        const UInt *scan;
+        if (useKLT)
+        {
+            TUEntropyCodingParameters codingParameters;
+            getTUEntropyCodingParameters(codingParameters, rTu, compID);
+            scan = codingParameters.scan;
+            recoverOrderCoeff(pcCoeff, scan, uiWidth, uiHeight);
+        }
+        m_pcTrQuant->invTransformNxN(rTu, compID, piResi, uiStride, pcCoeff, cQP, useKLT DEBUG_STRING_PASS_INTO(psDebug));
+        if (useKLT)
+        {
+            reOrderCoeff(pcCoeff, scan, uiWidth, uiHeight);
+        }
+    }
+    else
+    {
+        for (UInt y = 0; y < uiHeight; y++)
+        {
+            for (UInt x = 0; x < uiWidth; x++)
+            {
+                piResi[(y * uiStride) + x] = 0;
+            }
+        }
+    }
+
+    //===== reconstruction =====
+    const UInt uiRecIPredStride = pcCU->getPic()->getPicYuvRec()->getStride(compID);
+
+    const Bool useCrossComponentPrediction = isChroma(compID) && (pcCU->getCrossComponentPredictionAlpha(uiAbsPartIdx, compID) != 0);
+    assert(useCrossComponentPrediction == false);
+    const Pel* pResiLuma = pcResiYuv->getAddr(COMPONENT_Y, uiAbsPartIdx);
+    const Int  strideLuma = pcResiYuv->getStride(COMPONENT_Y);
+
+    Pel* pPred = piPred;
+    Pel* pResi = piResi;
+    Pel* pReco = pcRecoYuv->getAddr(compID, uiAbsPartIdx);
+    Pel* pRecIPred = pcCU->getPic()->getPicYuvRec()->getAddr(compID, pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu() + uiAbsPartIdx);
+
+
+#if DEBUG_STRING
+    const Bool bDebugPred = ((DebugOptionList::DebugString_Pred.getInt()&debugPredModeMask) && DEBUG_STRING_CHANNEL_CONDITION(compID));
+    const Bool bDebugResi = ((DebugOptionList::DebugString_Resi.getInt()&debugPredModeMask) && DEBUG_STRING_CHANNEL_CONDITION(compID));
+    const Bool bDebugReco = ((DebugOptionList::DebugString_Reco.getInt()&debugPredModeMask) && DEBUG_STRING_CHANNEL_CONDITION(compID));
+    if (bDebugPred || bDebugResi || bDebugReco)
+    {
+        ss << "###: " << "CompID: " << compID << " pred mode (ch/fin): " << uiChPredMode << "/" << uiChFinalMode << " absPartIdx: " << rTu.GetAbsPartIdxTU() << std::endl;
+    }
+#endif
+
+    const Int clipbd = sps.getBitDepth(toChannelType(compID));
+#if O0043_BEST_EFFORT_DECODING
+    const Int bitDepthDelta = sps.getStreamBitDepth(toChannelType(compID)) - clipbd;
+#endif
+
+    for (UInt uiY = 0; uiY < uiHeight; uiY++)
+    {
+#if DEBUG_STRING
+        if (bDebugPred || bDebugResi || bDebugReco)
+        {
+            ss << "###: ";
+        }
+
+        if (bDebugPred)
+        {
+            ss << " - pred: ";
+            for (UInt uiX = 0; uiX < uiWidth; uiX++)
+            {
+                ss << pPred[uiX] << ", ";
+            }
+        }
+        if (bDebugResi)
+        {
+            ss << " - resi: ";
+        }
+#endif
+
+        for (UInt uiX = 0; uiX < uiWidth; uiX++)
+        {
+#if DEBUG_STRING
+            if (bDebugResi)
+            {
+                ss << pResi[uiX] << ", ";
+            }
+#endif
+#if O0043_BEST_EFFORT_DECODING
+            pReco[uiX] = ClipBD(rightShiftEvenRounding<Pel>(pPred[uiX] + pResi[uiX], bitDepthDelta), clipbd);
+#else
+            pReco[uiX] = ClipBD(pPred[uiX] + pResi[uiX], clipbd);
+#endif
+            pRecIPred[uiX] = pReco[uiX];
+        }
+#if DEBUG_STRING
+        if (bDebugReco)
+        {
+            ss << " - reco: ";
+            for (UInt uiX = 0; uiX < uiWidth; uiX++)
+            {
+                ss << pReco[uiX] << ", ";
+            }
+        }
+
+        if (bDebugPred || bDebugResi || bDebugReco)
+        {
+            ss << "\n";
+        }
+#endif
+        pPred += uiStride;
+        pResi += uiStride;
+        pReco += uiStride;
+        pRecIPred += uiRecIPredStride;
+    }
+}
+#endif
+
 
 Void
 TDecCu::xReconIntraQT( TComDataCU* pcCU, UInt uiDepth )
@@ -909,7 +1090,20 @@ TDecCu::xIntraRecQT(TComYuv*    pcRecoYuv,
   {
     if (isLuma(chType))
     {
+#if INTRA_KLT
+        Bool bTMFlag = (Bool)pcCU->getKLTFlag(uiAbsPartIdx, COMPONENT_Y);
+        if (bTMFlag)
+        {
+            Int genPred0genPredAndtrainKLT1Ori2 = GENPRED0GENPREDANDTRAINKLT1ORI2;
+            xIntraRecBlkTM(pcRecoYuv, pcPredYuv, pcResiYuv, COMPONENT_Y, rTu, genPred0genPredAndtrainKLT1Ori2);
+        }
+        else
+        {
+            xIntraRecBlk(pcRecoYuv, pcPredYuv, pcResiYuv, COMPONENT_Y, rTu);
+        }
+#else
       xIntraRecBlk( pcRecoYuv, pcPredYuv, pcResiYuv, COMPONENT_Y,  rTu );
+#endif
     }
     else
     {
@@ -944,12 +1138,18 @@ Void TDecCu::xDecodeInterTexture ( TComDataCU* pcCU, UInt uiDepth )
 
   TComTURecurse tuRecur(pcCU, 0, uiDepth);
 
+#if INTER_KLT
+  TComYuv* pcPred = m_ppcYuvReco[uiDepth];
+#endif
   for(UInt ch=0; ch<pcCU->getPic()->getNumberValidComponents(); ch++)
   {
     const ComponentID compID=ComponentID(ch);
     DEBUG_STRING_OUTPUT(std::cout, debug_reorder_data_inter_token[compID])
-
+#if INTER_KLT
+    m_pcTrQuant->invRecurTransformNxN ( compID, m_ppcYuvResi[uiDepth], tuRecur, pcPred);
+#else
     m_pcTrQuant->invRecurTransformNxN ( compID, m_ppcYuvResi[uiDepth], tuRecur );
+#endif
   }
 
   DEBUG_STRING_OUTPUT(std::cout, debug_reorder_data_inter_token[MAX_NUM_COMPONENT])

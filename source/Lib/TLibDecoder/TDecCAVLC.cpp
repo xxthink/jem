@@ -1895,6 +1895,13 @@ Void TDecCavlc::parseTransformSkipFlags (TComTU &/*rTu*/, ComponentID /*componen
   assert(0);
 }
 
+#if KLT_COMMON
+Void TDecCavlc::parseKLTFlags(TComTU & /*&rTu*/, ComponentID /*component*/)
+{
+    assert(0);
+}
+#endif
+
 Void TDecCavlc::parseMergeFlag ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/, UInt /*uiPUIdx*/ )
 {
   assert(0);
@@ -2389,4 +2396,3 @@ Void  TDecCavlc::parseAffineMvd( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UI
 }
 #endif
 //! \}
-

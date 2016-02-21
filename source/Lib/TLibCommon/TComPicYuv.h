@@ -158,7 +158,9 @@ public:
     Int nMargin = -1      // use default margin
 #endif
     );
-
+#if KLT_COMMON
+  Void          fillPicRecBoundary(const BitDepths bitDepths);
+#endif
   //  Dump picture
   Void          dump              (const Char* pFileName, const BitDepths &bitDepths, Bool bAdd = false) const ;
 
