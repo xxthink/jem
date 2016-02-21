@@ -1803,6 +1803,9 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     pcPic->getPicYuvRec()->copyToPic(pcPicYuvRecOut);
 
     pcPic->setReconMark   ( true );
+#if INTER_KLT
+    m_pcSliceEncoder->InterpolatePic(pcPic);
+#endif
     m_bFirst = false;
     m_iNumPicCoded++;
     m_totalCoded ++;

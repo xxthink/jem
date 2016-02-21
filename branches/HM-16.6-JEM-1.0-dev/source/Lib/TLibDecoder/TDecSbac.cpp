@@ -104,6 +104,9 @@ TDecSbac::TDecSbac()
 , m_cSaoMergeSCModel                         ( 1,             1,                      NUM_SAO_MERGE_FLAG_CTX               , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cSaoTypeIdxSCModel                       ( 1,             1,                      NUM_SAO_TYPE_IDX_CTX                 , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cTransformSkipSCModel                    ( 1,             MAX_NUM_CHANNEL_TYPE,   NUM_TRANSFORMSKIP_FLAG_CTX           , m_contextModels + m_numContextModels, m_numContextModels)
+#if KLT_COMMON
+, m_cKLTFlagSCModel                          ( 1,             MAX_NUM_CHANNEL_TYPE,   NUM_KLT_FLAG_CTX                     , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 , m_CUTransquantBypassFlagSCModel            ( 1,             1,                      NUM_CU_TRANSQUANT_BYPASS_FLAG_CTX    , m_contextModels + m_numContextModels, m_numContextModels)
 , m_explicitRdpcmFlagSCModel                 ( 1,             MAX_NUM_CHANNEL_TYPE,   NUM_EXPLICIT_RDPCM_FLAG_CTX          , m_contextModels + m_numContextModels, m_numContextModels)
 , m_explicitRdpcmDirSCModel                  ( 1,             MAX_NUM_CHANNEL_TYPE,   NUM_EXPLICIT_RDPCM_DIR_CTX           , m_contextModels + m_numContextModels, m_numContextModels)
@@ -219,6 +222,9 @@ Void TDecSbac::resetEntropy(TComSlice* pSlice)
   m_cSaoTypeIdxSCModel.initBuffer                 ( sliceType, qp, (UChar*)INIT_SAO_TYPE_IDX );
   m_cCUTransSubdivFlagSCModel.initBuffer          ( sliceType, qp, (UChar*)INIT_TRANS_SUBDIV_FLAG );
   m_cTransformSkipSCModel.initBuffer              ( sliceType, qp, (UChar*)INIT_TRANSFORMSKIP_FLAG );
+#if KLT_COMMON
+  m_cKLTFlagSCModel.initBuffer                    ( sliceType, qp, (UChar*)INIT_KLT_FLAG );
+#endif
   m_CUTransquantBypassFlagSCModel.initBuffer      ( sliceType, qp, (UChar*)INIT_CU_TRANSQUANT_BYPASS_FLAG );
   m_explicitRdpcmFlagSCModel.initBuffer           ( sliceType, qp, (UChar*)INIT_EXPLICIT_RDPCM_FLAG);
   m_explicitRdpcmDirSCModel.initBuffer            ( sliceType, qp, (UChar*)INIT_EXPLICIT_RDPCM_DIR);
@@ -1570,6 +1576,83 @@ Void TDecSbac::parseTransformSkipFlags (TComTU &rTu, ComponentID component)
   pcCU->setTransformSkipPartRange( useTransformSkip, component, uiAbsPartIdx, rTu.GetAbsPartIdxNumParts(component));
 }
 
+#if KLT_COMMON
+//void TDecSbac::parseKLTFlags(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt width, UInt height, UInt uiDepth, ComponentID component)
+//{
+//  if (pcCU->getCUTransquantBypass(uiAbsPartIdx))
+//  {
+//      return;
+//  }
+//  UInt uiMaxTrWidth = g_uiDepth2Width[USE_MORE_BLOCKSIZE_DEPTH_MAX - 1];
+//  UInt uiMinTrWidth = g_uiDepth2Width[USE_MORE_BLOCKSIZE_DEPTH_MIN - 1];
+//  Bool checkKLTY = ((width == height) && (width <= uiMaxTrWidth) && (width >= uiMinTrWidth) && (component == 0));
+//  if (checkKLTY == false)
+//  {
+//      return;
+//  }
+//  UInt useKLTFlag = 0;
+//
+//  m_pcTDecBinIf->decodeBin(useKLTFlag, m_cKLTFlagSCModel.get(0, toChannelType(component), 0));
+//
+//  if (toChannelType(component) != CHANNEL_TYPE_LUMA)
+//  {
+//      const UInt uiLog2TrafoSize = g_aucConvertToBit[pcCU->getSlice()->getSPS()->getMaxCUWidth()] + 2 - uiDepth;
+//      if (uiLog2TrafoSize == 2)
+//      {
+//          uiDepth--;
+//      }
+//  }
+//  DTRACE_CABAC_VL(g_nSymbolCounter++)
+//  DTRACE_CABAC_T("\tparseKLTFlag()");
+//  DTRACE_CABAC_T("\tsymbol=")
+//  DTRACE_CABAC_V(useKLTFlag)
+//  DTRACE_CABAC_T("\tAddr=")
+//  DTRACE_CABAC_V(pcCU->getAddr())
+//  DTRACE_CABAC_T("\tetype=")
+//  DTRACE_CABAC_V(eTType)
+//  DTRACE_CABAC_T("\tuiAbsPartIdx=")
+//  DTRACE_CABAC_V(uiAbsPartIdx)
+//  DTRACE_CABAC_T("\n")
+//
+//  pcCU->setKLTFlagSubParts(useKLTFlag, component, uiAbsPartIdx, uiDepth);
+//}
+
+Void TDecSbac::parseKLTFlags(TComTU &rTu, ComponentID component)
+{
+    TComDataCU* pcCU = rTu.getCU();
+    UInt uiAbsPartIdx = rTu.GetAbsPartIdxTU(component);
+
+    if (pcCU->getCUTransquantBypass(uiAbsPartIdx))
+    {
+        return;
+    }
+
+    //if (!TUCompRectHasAssociatedTransformSkipFlag(rTu.getRect(component), pcCU->getSlice()->getPPS()->getPpsRangeExtension().getLog2MaxTransformSkipBlockSize()))
+    //{
+    //  return;
+    //}
+
+    UInt useKLTFlag = 0;
+
+    m_pcTDecBinIf->decodeBin(useKLTFlag, m_cKLTFlagSCModel.get(0, toChannelType(component), 0)
+        RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(TComCodingStatisticsClassType(STATS__CABAC_BITS__TRANSFORM_SKIP_FLAGS, component))
+        );
+
+    DTRACE_CABAC_VL(g_nSymbolCounter++)
+    DTRACE_CABAC_T("\tparseKLTFlag()");
+    DTRACE_CABAC_T("\tsymbol=")
+    DTRACE_CABAC_V(useKLTFlag)
+    DTRACE_CABAC_T("\tAddr=")
+    DTRACE_CABAC_V(pcCU->getCtuRsAddr())
+    DTRACE_CABAC_T("\tetype=")
+    DTRACE_CABAC_V(component)
+    DTRACE_CABAC_T("\tuiAbsPartIdx=")
+    DTRACE_CABAC_V(rTu.GetAbsPartIdxTU())
+    DTRACE_CABAC_T("\n")
+
+    pcCU->setKLTPartRange(useKLTFlag, component, uiAbsPartIdx, rTu.GetAbsPartIdxNumParts(component));
+}
+#endif
 
 /** Parse (X,Y) position of the last significant coefficient
  * \param uiPosLastX reference to X component of last coefficient
@@ -1815,6 +1898,57 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
       }
     }
   }
+
+#if KLT_COMMON
+  UInt uiMaxTrWidth = g_uiDepth2Width[USE_MORE_BLOCKSIZE_DEPTH_MAX - 1];
+  UInt uiMinTrWidth = g_uiDepth2Width[USE_MORE_BLOCKSIZE_DEPTH_MIN - 1];
+  Bool bCheckKLTFlag = (toChannelType(compID) == CHANNEL_TYPE_LUMA) && (uiWidth == uiHeight) && (uiWidth <= uiMaxTrWidth) && (uiWidth >= uiMinTrWidth);
+  if (bCheckKLTFlag && pcCU->getSlice()->getPPS()->getUseTransformSkip())
+  {
+      UInt useTransformSkip = pcCU->getTransformSkip(uiAbsPartIdx, compID);
+      bCheckKLTFlag &= !useTransformSkip;
+  }
+
+#if INTER_KLT && !INTRA_KLT //only inter
+  bCheckKLTFlag &= (!pcCU->isIntra(uiAbsPartIdx));
+#endif
+#if !INTER_KLT && INTRA_KLT //only intra
+  bCheckKLTFlag &= (pcCU->isIntra(uiAbsPartIdx));
+#endif
+#if !INTER_KLT && !INTRA_KLT //none
+  bCheckKLTFlag = false;
+#endif
+
+#define VIEW_COUNT 0
+#if VIEW_COUNT
+  //test 
+  static int CountSDT[4] = { 0, 0, 0, 0 };
+  static int countCheckNum = 0;
+  static int countSDTNum = 0;
+#endif
+  if (bCheckKLTFlag)
+  {
+      parseKLTFlags(rTu, compID); 
+#if VIEW_COUNT
+      countCheckNum++;
+      //test
+      UInt kltFlag = pcCU->getKLTFlag(uiAbsPartIdx, compID);
+      if (kltFlag)
+      {
+          countSDTNum++;
+          switch (uiWidth)
+          {
+              case 4:  CountSDT[0]++; break;
+              case 8:  CountSDT[1]++; break;
+              case 16:  CountSDT[2]++; break;
+              case 32:  CountSDT[3]++; break;
+              default: break;
+          }
+          printf("%d,%d: %d,%d,%d,%d\n", countCheckNum, countSDTNum, CountSDT[0], CountSDT[1], CountSDT[2], CountSDT[3]);
+      }
+#endif
+  }
+#endif
 
   Int uiIntraMode = -1;
   const Bool       bIsLuma = isLuma(compID);
@@ -2252,7 +2386,16 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
       }
   }
 #endif
-
+#if SHOW_COEFF
+  UInt uiSize = uiWidth* uiHeight;
+  DTRACE_CABAC_T("Coeffs: ");
+  for (UInt ui = 0; ui < uiSize; ui++)
+  {
+      DTRACE_CABAC_V(pcCoef[ui]);
+      DTRACE_CABAC_T(",");
+  }
+  DTRACE_CABAC_T("\n");
+#endif
   return;
 }
 

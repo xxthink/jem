@@ -53,6 +53,43 @@
 //! \ingroup TLibCommon
 //! \{
 
+#if KLT_COMMON
+short **g_ppsEigenVector[USE_MORE_BLOCKSIZE_DEPTH_MAX];
+#if INTER_KLT
+Bool g_bEnableCheck = true;
+#endif
+Void reOrderCoeff(TCoeff *pcCoef, const UInt *scan, UInt uiWidth, UInt uiHeight)
+{
+    TCoeff coeff[1024];
+    UInt uiMaxNumCoeff = uiWidth * uiHeight;
+    memcpy(coeff, pcCoef, uiMaxNumCoeff*sizeof(TCoeff));
+
+    for (UInt i = 0; i < uiMaxNumCoeff; i++)
+    {
+        pcCoef[scan[i]] = coeff[i];
+    }
+}
+Void recoverOrderCoeff(TCoeff *pcCoef, const UInt *scan, UInt uiWidth, UInt uiHeight)
+{
+    TCoeff coeff[1024];
+    UInt uiMaxNumCoeff = uiWidth * uiHeight;
+    memcpy(coeff, pcCoef, uiMaxNumCoeff*sizeof(TCoeff));
+    for (UInt i = 0; i < uiMaxNumCoeff; i++)
+    {
+        pcCoef[i] = coeff[scan[i]];
+    }
+}
+#endif
+#if INTRA_KLT
+Int getZorder(Int iLCUX, Int iLCUY, Int NumInRow)
+{
+    //get raster id
+    Int rasterId = (iLCUY >> 2)*NumInRow + (iLCUX >> 2);
+    Int zOrder = g_auiRasterToZscan[rasterId];
+    return zOrder;
+}
+#endif
+
 const Char* nalUnitTypeToString(NalUnitType type)
 {
   switch (type)
@@ -1990,6 +2027,7 @@ const Int g_pdpc_pred_param[5][2][35][7] =
 
 
 #endif
+
 
 
 //! \}

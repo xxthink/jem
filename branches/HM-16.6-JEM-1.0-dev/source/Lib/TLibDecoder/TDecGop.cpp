@@ -291,6 +291,9 @@ Void TDecGop::filterPicture(TComPic* pcPic)
 
   pcPic->setOutputMark(pcPic->getSlice(0)->getPicOutputFlag() ? true : false);
   pcPic->setReconMark(true);
+#if INTER_KLT
+  m_pcSliceDecoder->InterpolatePic(pcPic);
+#endif
 }
 
 /**

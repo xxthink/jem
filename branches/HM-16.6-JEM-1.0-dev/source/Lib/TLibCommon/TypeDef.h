@@ -50,6 +50,66 @@
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////
+#define INTER_KLT                           1 ///< Enable inter SDT(KLT)
+#define INTRA_KLT                           1 ///< Enable intra SDT(KLT)
+#define KLT_COMMON                          (INTER_KLT || INTRA_KLT)
+
+//intra SDT
+#if INTRA_KLT
+#define GENPRED0GENPREDANDTRAINKLT1ORI2     1 ///<0: Template matching prediction; 1: TM prediction + KLT; 2: Original method
+#define TMPRED_CANDI_NUM                    8 ///< Candidate number for intra prediction; should <= 32
+#define SEARCHRANGEINTRA                    64 ///< Intra search range (-SEARCHRANGE,+SEARCHRANGE)
+#endif
+
+//inter SDT
+#if INTER_KLT
+#define SEARCHRANGE                         32 ///< Search range for inter coding (-SEARCHRANGE,+SEARCHRANGE)
+#define SEARCH_SIZE                         ((SEARCHRANGE<<1) + 1)*((SEARCHRANGE<<1) + 1)
+#endif
+
+#if KLT_COMMON
+//Parameters
+#define USE_MORE_BLOCKSIZE_DEPTH_MIN        1 ///< (default 1) To indicate minimum block size for KLT. 1~4 means 4x4, 8x8, 16x16, 32x32 respectively.
+#define USE_MORE_BLOCKSIZE_DEPTH_MAX        4 ///< (default 4) To indicate maximum block size for KLT. 1~4 means 4x4, 8x8, 16x16, 32x32 respectively.
+
+#define MAX_CANDI_NUM                       100 ///< Max allowable candidate number. The candidate number for different size blocks can be set.
+
+//About basis
+#define FORCE_USE_GIVENNUM_BASIS            1 /// (default 1) If defined, force to use up to FORCE_BASIS_NUM basis to reduce complexity.
+#if FORCE_USE_GIVENNUM_BASIS
+#define FORCE_BASIS_NUM                     32 /// number of basis utilized (for speeding up).
+#endif
+#define FILL_MORE_BASIS                     0 /// (default 0) If defined, will fill other basis.
+
+//Fixed parameters
+#define KLTBASIS_SHIFTBIT                   10 ///< KLT scale factor is BLOCK_SIZE*(1<<KLTBASIS_SHIFTBIT); (log2(width)+KLTBASIS_SHIFTBIT <= 15); If 6, then the first base vector is {64,...,64}. We use 10.
+#define USE_SSD_DISTANCE                    0  ///< (default 0) If defined, use SSD distance.
+#define USE_SAD_DISTANCE                    1  ///< (default 1) If defined, use SAD distance.
+#define INIT_THRESHOULD_SHIFTBITS           2  ///< (default 2) Early skip threshold for checking distance.
+#define IGNORE_THRESHOULD_OF_LARGEST        1e-6
+
+//Speed up
+#define FAST_DERIVE_KLT                     1  ///< (default 1) If defined, will use fast algorithm to calculate KLT basis
+#if FAST_DERIVE_KLT
+#define FAST_KLT_CANDINUM                   MAX_CANDI_NUM  //If MAX_CANDI_NUM > blkSize, fast algorithm will be performed.
+#endif
+#define USE_SSE_SPEEDUP                     0  ///< (default 0) If defined, will use sse for speeding up (Note: should use x64 compile mode)
+#if USE_SSE_SPEEDUP
+#define USE_SSE_SCLAE                       1 ///< (default 1) If defined, will use sse for calculating the scaling of float to get integer KLT basis
+#define USE_FLOATXSHORT_SSE                 1 ///< (default 1) If defined, will use float*short
+#define USE_SHORTXSHORT_SSE                 1 ///< (default 1) If defined, will use sse to calculate short x short multiplication
+#if USE_SHORTXSHORT_SSE
+#define USE_TRANSPOSE_CANDDIATEARRAY        1 ///< (default 1) If defined, will use transpose of candidate array to facilitate the vector multiplication
+#endif
+#if USE_SAD_DISTANCE
+#define USE_SSE_BLK_SAD                     1 //< If defined, will calculate the block difference use intel SSE 
+#define USE_SSE_TMP_SAD                     1 //< If defined, will calculate the template difference use intel SSE 
+#endif
+#endif
+
+#endif
+
+
 #define ALF_HM3_REFACTOR                                  1  ///< Adaptive loop filter (ALF)
 #if ALF_HM3_REFACTOR
 #define COM16_C806_ALF_TEMPPRED_NUM                       6  ///< 0: no temporal prediction
@@ -329,6 +389,13 @@ typedef       UInt64          Distortion;        ///< distortion measurement
 typedef       UInt            Distortion;        ///< distortion measurement
 #endif
 
+#if KLT_COMMON
+#if USE_SSD_DISTANCE || USE_SAD_DISTANCE
+typedef       int             DistType;
+#endif
+typedef       Float           covMatrixType;
+typedef       float           EigenType;
+#endif
 // ====================================================================================================================
 // Enumeration
 // ====================================================================================================================

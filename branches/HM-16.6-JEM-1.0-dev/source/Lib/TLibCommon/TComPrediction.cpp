@@ -5042,4 +5042,96 @@ void TComPrediction::xReferenceFilter(Int iBlkSize, Int iOrigWeight, Int iFilter
 }
 
 #endif
+
+#if INTER_KLT
+Void TComPrediction::interpolatePic(TComPic* pcPic)
+{
+    //only perform over luma
+    TComPicYuv *refPic = pcPic->getPicYuvRec();
+
+    Int filterSize = NTAPS_LUMA;
+    Int halfFilterSize = (filterSize >> 1);
+    Pel *srcPtr;
+    Pel *dstPtr;
+    const ChromaFormat chFmt = pcPic->getChromaFormat();
+    Int nFRUCMode = FRUC_MERGE_OFF;
+    Int nFilterIdx = nFRUCMode ? pcPic->getSlice(0)->getSPS()->getFRUCRefineFilter() : 0;
+    Int bitDepth = pcPic->getSlice(0)->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA);
+
+    TComPicYuv *refPicArray[4][4];
+    pcPic->m_apcQuaPicYuv[0][0] = pcPic->getPicYuvRec();
+    for (UInt uiRow = 0; uiRow < 4; uiRow++)
+    {
+        for (UInt uiCol = 0; uiCol < 4; uiCol++)
+        {
+            refPicArray[uiRow][uiCol] = pcPic->m_apcQuaPicYuv[uiRow][uiCol];
+            refPicArray[uiRow][uiCol]->setBorderExtension(false);
+        }
+    }
+    
+    refPic->setBorderExtension(false);
+    refPic->extendPicBorder();
+    Int componentnum = 1; 
+    for (UInt comp = COMPONENT_Y; comp < componentnum; comp++)
+    {
+        const ComponentID compID = ComponentID(comp);
+        UInt uiDstStride = refPicArray[0][0]->getStride(compID);
+        UInt uiRefStride = pcPic->getStride(compID);
+        UInt uiWidth = refPic->getWidth(compID);
+        UInt uiHeight = refPic->getHeight(compID);
+
+        //--------------
+        //Interpolation over luma
+        //yFrac = 0 : (0,1)(0,2)(0,3)
+        srcPtr = refPic->getAddr(compID) - (halfFilterSize - 1)*uiRefStride;
+        for (Int xFrac = 1; xFrac <= 3; xFrac++)
+        {
+            dstPtr = refPicArray[0][xFrac]->getAddr(compID) - (halfFilterSize - 1)*uiRefStride;
+            m_if.filterHor(compID, srcPtr, uiRefStride, dstPtr, uiDstStride, uiWidth, uiHeight + filterSize - 1, xFrac, true, chFmt, bitDepth
+#if VCEG_AZ07_FRUC_MERGE
+                , nFilterIdx
+#endif
+                );
+        }
+
+        //xFrac = 0: (1,0)(2,0)(3,0)
+        srcPtr = refPic->getAddr(compID);
+        for (Int yFrac = 1; yFrac <= 3; yFrac++)
+        {
+            dstPtr = refPicArray[yFrac][0]->getAddr(compID);
+            m_if.filterVer(compID, srcPtr, uiRefStride, dstPtr, uiDstStride, uiWidth, uiHeight, yFrac, true, true, chFmt, bitDepth
+#if VCEG_AZ07_FRUC_MERGE
+                , nFilterIdx
+#endif
+                );
+        }
+
+        //other positions
+        //(1,1)(2,1)(3,1)
+        //(2,1)(2,2)(2,3)
+        //(3,1)(3,2)(3,3)
+        for (Int xFrac = 1; xFrac <= 3; xFrac++)
+        {
+            srcPtr = refPicArray[0][xFrac]->getAddr(compID);
+            for (Int yFrac = 1; yFrac <= 3; yFrac++)
+            {
+                dstPtr = refPicArray[yFrac][xFrac]->getAddr(compID);
+                m_if.filterVer(compID, srcPtr, uiRefStride, dstPtr, uiDstStride, uiWidth, uiHeight, yFrac, true, true, chFmt, bitDepth
+#if VCEG_AZ07_FRUC_MERGE
+                    , nFilterIdx
+#endif
+                    );
+            }
+        }
+    }
+
+    for (Int yFrac = 0; yFrac <= 3; yFrac++)
+    {
+        for (Int xFrac = 0; xFrac <= 3; xFrac++)
+        {
+            refPicArray[yFrac][xFrac]->extendPicBorder();
+        }
+    }
+}
+#endif
 //! \}

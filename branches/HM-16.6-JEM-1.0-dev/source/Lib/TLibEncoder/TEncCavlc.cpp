@@ -1389,6 +1389,16 @@ Void TEncCavlc::codeTransformSkipFlags (TComTU& /*rTu*/, ComponentID /*component
   assert(0);
 }
 
+
+#if KLT_COMMON
+Void TEncCavlc::codeKLTFlags (TComTU& /*rTu*/, ComponentID /*component*/)
+
+{
+    assert(0);
+}
+#endif
+
+
 /** Code I_PCM information.
  * \param pcCU pointer to CU
  * \param uiAbsPartIdx CU index

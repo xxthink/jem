@@ -187,6 +187,11 @@ public:
    * return the current list of SEI messages associated with this picture.
    * Pointer is valid until this->destroy() is called */
   const SEIMessages& getSEIs() const { return m_SEIs; }
+
+#if INTER_KLT
+  TComPicYuv*   m_apcQuaPicYuv[4][4];     //   quarter pixel reconstructed pictures (fractional pixels); 
+  TComPicYuv*   getPicQuaYuvRec(UInt uiRow, UInt uiCol)     { return  m_apcQuaPicYuv[uiRow][uiCol]; }
+#endif
 };// END CLASS DEFINITION TComPic
 
 //! \}
