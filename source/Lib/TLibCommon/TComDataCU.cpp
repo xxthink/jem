@@ -1195,7 +1195,7 @@ Void TComDataCU::copySubCU( TComDataCU* pcCU, UInt uiAbsPartIdx )
     m_puhCbf[comp]                        = pcCU->getCbf(ComponentID(comp))                           + uiPart;
     m_explicitRdpcmMode[comp]             = pcCU->getExplicitRdpcmMode(ComponentID(comp))             + uiPart;
 #if KLT_COMMON
-    m_puhKLTFlag[comp]                    = pcCU->getKLTFlag(ComponentID(comp)) + uiPart;
+    m_puhKLTFlag[comp]                    = pcCU->getKLTFlag(ComponentID(comp))                       + uiPart;
 #endif
   }
 
@@ -3377,7 +3377,6 @@ Void TComDataCU::setExplicitRdpcmModePartRange ( UInt rdpcmMode, ComponentID com
 #if KLT_COMMON
 Void TComDataCU::setKLTFlagSubParts(const UInt useKLT[MAX_NUM_COMPONENT], UInt uiAbsPartIdx, UInt uiDepth)
 {
-    //UInt uiCurrPartNumb = m_pcPic->getNumPartInCU() >> (uiDepth << 1);
     UInt uiCurrPartNumb = m_pcPic->getNumPartitionsInCtu() >> (uiDepth << 1);
 
     for (UInt i = 0; i<MAX_NUM_COMPONENT; i++)
@@ -3391,14 +3390,6 @@ Void TComDataCU::setKLTFlagSubParts(UInt useKLTY, ComponentID compID, UInt uiAbs
 
     memset(m_puhKLTFlag[compID] + uiAbsPartIdx, useKLTY, sizeof(UChar)* uiCurrPartNumb);
 }
-//
-//Void TComDataCU::setKLTFlagSubParts(UInt useKLTY, TextType eType, UInt uiAbsPartIdx, UInt uiDepth)
-//{
-//  UInt uiCurrPartNumb = m_pcPic->getNumPartInCU() >> (uiDepth << 1);
-//
-//  memset(m_puhKLTFlag[g_aucConvertTxtTypeToIdx[eType]] + uiAbsPartIdx, useKLTY, sizeof(UChar)* uiCurrPartNumb);
-//}
-
 Void TComDataCU::setKLTPartRange(UInt useKLTY, ComponentID compID, UInt uiAbsPartIdx, UInt uiCoveredPartIdxes)
 {
     memset((m_puhKLTFlag[compID] + uiAbsPartIdx), useKLTY, (sizeof(UChar)* uiCoveredPartIdxes));

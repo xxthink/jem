@@ -398,32 +398,31 @@ Void InvNsst4x4( Int* src, UInt uiMode, UChar index );
   DistType calcTemplateDiff(Pel *ref, UInt uiStride, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, DistType iMax);
   Void calcCovMatrix(TrainDataType **pData, UInt uiSampleNum, covMatrixType *pCovMatrix, UInt uiDim);
   Bool deriveKLT(UInt uiBlkSize, UInt uiUseCandiNumber);
-  Bool derive1DimKLT_Fast(UInt uiBlkSize, DistType *pDiff, UInt uiUseCandiNumber);
-  Bool derive1DimKLT(UInt uiBlkSize, DistType *pDiff, UInt uiUseCandiNumber);
+  Bool derive1DimKLT_Fast(UInt uiBlkSize, UInt uiUseCandiNumber);
+  Bool derive1DimKLT(UInt uiBlkSize, UInt uiUseCandiNumber);
   Bool derive2DimKLT(UInt uiBlkSize, DistType *pDiff);
   Pel  **getTargetPatch(UInt uiDepth) { return m_pppTarPatch[uiDepth]; }
   Pel* getRefPicUsed(UInt uiId) { return m_refPicUsed[uiId]; }
   Void setRefPicUsed(UInt uiId, Pel *ref) { m_refPicUsed[uiId] = ref; }
   UInt getStride() { return m_uiPicStride; }
   Void setStride(UInt uiPicStride) { m_uiPicStride = uiPicStride; }
-
 #endif
 #if INTRA_KLT
-  Void searchCandidateFromOnePicIntra(TComDataCU *pcCU, UInt uiPartAddr, TComPic* refPicSrc, TComPicYuv *refPic, TComMv  cMv, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, UInt setId);
+  Void searchCandidateFromOnePicIntra(TComDataCU *pcCU, UInt uiPartAddr, TComPic* refPicSrc, TComPicYuv *refPic, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, UInt setId);
   Void candidateSearchIntra(TComDataCU *pcCU, UInt uiPartAddr, UInt uiBlkSize, UInt uiTempSize);
-  Bool generateTMPrediction(Pel *piPred, UInt uiStride, UInt uiBlkSize, UInt uiTempSize, Int genPred0genPredAndtrainKLT1, Int &foundCandiNum);
-  Void getTargetTemplate(TComDataCU *pcCU, UInt uiAbsPartIdx, UInt absTUPartIdx, TComYuv* pcPred, UInt uiBlkSize, UInt uiTempSize);
-  Bool calcKLTIntra(Pel *piPred, UInt uiStride, UInt uiBlkSize, UInt uiTempSize);
-  Bool prepareKLTSamplesIntra(Pel *piPred, UInt uiStride, UInt uiBlkSize, UInt uiTempSize);
+  Bool generateTMPrediction(Pel *piPred, UInt uiStride, UInt uiBlkSize, UInt uiTempSize, Int &foundCandiNum);
+  Void getTargetTemplate(TComDataCU *pcCU, UInt uiAbsPartIdx, UInt uiBlkSize, UInt uiTempSize);
+  Bool calcKLTIntra(Pel *piPred, UInt uiStride, UInt uiBlkSize);
+  Bool prepareKLTSamplesIntra(Pel *piPred, UInt uiStride, UInt uiBlkSize);
 #endif
 #if INTER_KLT
   Void getTargetPatch(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt absTUPartIdx, TComYuv* pcPred, UInt uiBlkSize, UInt uiTempSize);
   Void candidateSearch(TComDataCU *pcCU, UInt uiPartAddr, UInt uiBlkSize, UInt uiTempSize);
-  Void searchCandidateFromOnePicInteger(TComDataCU *pcCU, UInt uiPartAddr, TComPic* refPicSrc, TComPicYuv *refPic, TComMv  cMv, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, UInt setId, Bool bInteger);
+  Void searchCandidateFromOnePicInteger(TComDataCU *pcCU, UInt uiPartAddr, TComPicYuv *refPic, TComMv  cMv, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, UInt setId);
   Void searchCandidateFraBasedOnInteger(TComDataCU *pcCU, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, UInt uiPartAddr, Short setIdFraStart);
   Void RecordPosition(UInt uiTargetCandiNum);
-  Bool candidateTrain(TComDataCU *pcCU, UInt uiAbsPartIdx, UInt uiBlkSize, UInt uiTempSize);
-  Bool prepareKLTSamplesInter(TComDataCU *pcCU, UInt uiAbsPartIdx, UInt uiBlkSize, UInt uiTempSize);
+  Bool candidateTrain(UInt uiBlkSize, UInt uiTempSize);
+  Bool prepareKLTSamplesInter(UInt uiBlkSize, UInt uiTempSize);
   Void setRefPicBuf(UInt uiId, TComPic *refPic) { m_refPicBuf[uiId] = refPic; }
   TComPic* getRefPicBuf(UInt uiId) { return m_refPicBuf[uiId]; }
   DistType calcPatchDiff(Pel *ref, UInt uiStride, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, DistType iMax);

@@ -56,7 +56,7 @@
 
 //intra SDT
 #if INTRA_KLT
-#define GENPRED0GENPREDANDTRAINKLT1ORI2     1 ///<0: Template matching prediction; 1: TM prediction + KLT; 2: Original method
+#define GENPRED0GENPREDANDTRAINKLT1ORI2     1 ///< (default 1) 0: Template matching prediction; 1: TM prediction + KLT; 2: Original method
 #define TMPRED_CANDI_NUM                    8 ///< Candidate number for intra prediction; should <= 32
 #define SEARCHRANGEINTRA                    64 ///< Intra search range (-SEARCHRANGE,+SEARCHRANGE)
 #endif
@@ -102,8 +102,8 @@
 #define USE_TRANSPOSE_CANDDIATEARRAY        1 ///< (default 1) If defined, will use transpose of candidate array to facilitate the vector multiplication
 #endif
 #if USE_SAD_DISTANCE
-#define USE_SSE_BLK_SAD                     1 //< If defined, will calculate the block difference use intel SSE 
-#define USE_SSE_TMP_SAD                     1 //< If defined, will calculate the template difference use intel SSE 
+#define USE_SSE_BLK_SAD                     1 ///< If defined, will calculate the block difference use intel SSE 
+#define USE_SSE_TMP_SAD                     1 ///< If defined, will calculate the template difference use intel SSE 
 #endif
 #endif
 

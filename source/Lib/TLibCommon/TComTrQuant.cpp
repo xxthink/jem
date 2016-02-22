@@ -65,7 +65,7 @@ UInt g_uiDepth2IntraTempSize[5] = { 3, 3, 3, 3, 3 };
 
 #define USE_EIGLIBDOUBLE                    1 ///<(default 1) If defined, will use double type for deriving eigen vectors
 #define USE_FLOAT_COV                       1 ///<(default 1) If defined, will use the float rather than double for covariance
-#define KLT_MODE             65533 ///< Mark the mode as KLT mode
+#define KLT_MODE                        65533 ///< Mark the mode as KLT mode
 
 #include <iostream>
 
@@ -4202,11 +4202,9 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
 #if KLT_COMMON
       if (useKLT && (compID == 0))
       {
-          // const UInt   log2BlockSize = g_aucConvertToBit[uiWidth] + 2;
-          //UInt scanIdx = pcCU->getCoefScanIdx(uiAbsPartIdx, uiWidth, uiHeight, compID);
           TUEntropyCodingParameters codingParameters;
           getTUEntropyCodingParameters(codingParameters, rTu, compID);
-          const UInt *scan = codingParameters.scan; // g_auiSigLastScan[scanIdx][log2BlockSize - 1];
+          const UInt *scan = codingParameters.scan; 
           reOrderCoeff(m_plTempCoeff, scan, uiWidth, uiHeight);
       }
 #endif 
@@ -4587,7 +4585,7 @@ Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,
                 UInt uiTempSize = g_uiDepth2TempSize[uiTarDepth];
                 getTargetPatch(pcCU, absPartIdxTU, absPartIdxTU, pcPred, tuWidth, uiTempSize);
                 candidateSearch(pcCU, absPartIdxTU, tuWidth, uiTempSize);
-                Bool bKLTAvailable = candidateTrain(pcCU, absPartIdxTU, tuWidth, uiTempSize);
+                Bool bKLTAvailable = candidateTrain(tuWidth, uiTempSize);
                 useKLT = bKLTAvailable;
                 if (useKLT)
                 {
@@ -8092,7 +8090,6 @@ void xIKLTr(Int bitDepth, TCoeff *coeff, TCoeff *block, UInt uiTrSize)  //void x
 Bool TComTrQuant::deriveKLT(UInt uiBlkSize, UInt uiUseCandiNumber)
 {
     Bool bSucceedFlag = true;
-    DistType *pDiff = m_tempLibFast.getDiff();
 #if FAST_DERIVE_KLT
     Int fast_klt_blksize = 8;
     if (FAST_KLT_CANDINUM > 64)
@@ -8110,14 +8107,14 @@ Bool TComTrQuant::deriveKLT(UInt uiBlkSize, UInt uiUseCandiNumber)
 
     if (uiBlkSize >= fast_klt_blksize)
     {
-        bSucceedFlag = derive1DimKLT_Fast(uiBlkSize, pDiff, uiUseCandiNumber);
+        bSucceedFlag = derive1DimKLT_Fast(uiBlkSize, uiUseCandiNumber);
     }
     else
     {
-        bSucceedFlag = derive1DimKLT(uiBlkSize, pDiff, uiUseCandiNumber);
+        bSucceedFlag = derive1DimKLT(uiBlkSize, uiUseCandiNumber);
     }
 #else
-    bSucceedFlag = derive1DimKLT(uiBlkSize, pDiff, iUseCandiNumber);
+    bSucceedFlag = derive1DimKLT(uiBlkSize, iUseCandiNumber);
 #endif
     return bSucceedFlag;
 }
@@ -8157,7 +8154,7 @@ void OrderData(int *IdRecord, _Ty *pData, UInt uiSize)
     }
 }
 
-Bool TComTrQuant::derive1DimKLT(UInt uiBlkSize, DistType *pDiff, UInt uiUseCandiNumber)
+Bool TComTrQuant::derive1DimKLT(UInt uiBlkSize, UInt uiUseCandiNumber)
 {
     Bool bSucceed = true;
     UInt uiTarDepth = g_aucConvertToBit[uiBlkSize];
@@ -8208,7 +8205,7 @@ Bool TComTrQuant::derive1DimKLT(UInt uiBlkSize, DistType *pDiff, UInt uiUseCandi
     return bSucceed;
 }
 
-Bool TComTrQuant::derive1DimKLT_Fast(UInt uiBlkSize, DistType *pDiff, UInt uiUseCandiNumber)
+Bool TComTrQuant::derive1DimKLT_Fast(UInt uiBlkSize, UInt uiUseCandiNumber)
 {
     Bool bSucceed = true;
     UInt uiTarDepth = g_aucConvertToBit[uiBlkSize];
@@ -8347,7 +8344,6 @@ Void TComTrQuant::calcCovMatrixXXt(TrainDataType **pData, UInt uiSampleNum, covM
             covValue = 0;
             for (Int i = 0; i < uiDim; i++)
             {
-                //covValue += pDataRow[i] * pData[uiCol][i];
                 covValue += (*(pDataRow++)) * (*(pDataCol++));
             }
 #endif
@@ -8359,7 +8355,6 @@ Void TComTrQuant::calcCovMatrixXXt(TrainDataType **pData, UInt uiSampleNum, covM
     {
         for (UInt uiCol = uiRow + 1; uiCol < uiSampleNum; uiCol++)
         {
-            //pCovMatrix[uiRow*  +uiCol] = pCovMatrix[uiCol*uiSampleNum + uiRow];
             pCovMatrix[uiRow*uiSampleNum + uiCol] = pCovMatrix[uiCol*uiSampleNum + uiRow];
         }
     }
@@ -8475,7 +8470,6 @@ void GramSchmidtOrthogonalization(EigenType **pMatrix, int dim, int startdim, in
     }
 }
 #endif
-
 #endif
 
 #if INTER_KLT 
@@ -8537,10 +8531,7 @@ Void TComTrQuant::candidateSearch(TComDataCU *pcCU, UInt uiPartAddr, UInt uiBlkS
     Pel **tarPatch = m_pppTarPatch[uiTarDepth];
     Int      iRefIdx[2] = { -1, -1 };
     TComMv      cMvs[2];
-    // UInt     uiCandiNum = 0;
     UInt uiTargetCandiNum = g_uiDepth2MaxCandiNum[uiTarDepth];
-    // UInt uiLibSizeMinusOne = uiTargetCandiNum - 1;
-
     const Int channelBitDepth = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
     //Initialize the library for saving the best candidates
     m_tempLibFast.initDiff(uiPatchSize, channelBitDepth, uiTargetCandiNum);
@@ -8620,8 +8611,7 @@ Void TComTrQuant::candidateSearch(TComDataCU *pcCU, UInt uiPartAddr, UInt uiBlkS
             setRefPicUsed(setId, ref); //to facilitate the access of each candidate point 
             setRefPicBuf(setId, refPic);
             setStride(refPicRec->getStride(compID));
-            Bool bInteger = true;
-            searchCandidateFromOnePicInteger(pcCU, uiPartAddr, refPic, refPicRec, cMv, tarPatch, uiPatchSize, uiTempSize, setId, bInteger);
+            searchCandidateFromOnePicInteger(pcCU, uiPartAddr, refPicRec, cMv, tarPatch, uiPatchSize, uiTempSize, setId);
         }
     }
 
@@ -8630,7 +8620,7 @@ Void TComTrQuant::candidateSearch(TComDataCU *pcCU, UInt uiPartAddr, UInt uiBlkS
     searchCandidateFraBasedOnInteger(pcCU, tarPatch, uiPatchSize, uiTempSize, uiPartAddr, setIdFraStart);
 }
 
-Void TComTrQuant::searchCandidateFromOnePicInteger(TComDataCU *pcCU, UInt uiPartAddr, TComPic* refPicSrc, TComPicYuv *refPic, TComMv  cMv, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, UInt setId, Bool bInteger)
+Void TComTrQuant::searchCandidateFromOnePicInteger(TComDataCU *pcCU, UInt uiPartAddr, TComPicYuv *refPic, TComMv  cMv, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, UInt setId)
 {
     const ComponentID compID = COMPONENT_Y;
     UInt uiBlkSize = uiPatchSize - uiTempSize;
@@ -8814,10 +8804,10 @@ Void TComTrQuant::RecordPosition(UInt uiTargetCandiNum)
 }
 
 
-Bool TComTrQuant::candidateTrain(TComDataCU *pcCU, UInt uiAbsPartIdx, UInt uiBlkSize, UInt uiTempSize)
+Bool TComTrQuant::candidateTrain(UInt uiBlkSize, UInt uiTempSize)
 {
     Bool bSucceedFlag = true;
-    bSucceedFlag = prepareKLTSamplesInter(pcCU, uiAbsPartIdx, uiBlkSize, uiTempSize);
+    bSucceedFlag = prepareKLTSamplesInter(uiBlkSize, uiTempSize);
     if (bSucceedFlag)
     {
         bSucceedFlag = deriveKLT(uiBlkSize, m_uiVaildCandiNum);
@@ -8825,9 +8815,8 @@ Bool TComTrQuant::candidateTrain(TComDataCU *pcCU, UInt uiAbsPartIdx, UInt uiBlk
     return bSucceedFlag;
 }
 
-Bool TComTrQuant::prepareKLTSamplesInter(TComDataCU *pcCU, UInt uiAbsPartIdx, UInt uiBlkSize, UInt uiTempSize)
+Bool TComTrQuant::prepareKLTSamplesInter(UInt uiBlkSize, UInt uiTempSize)
 {
-    // Bool bSucceedFlag = true;
     UInt uiTarDepth = g_aucConvertToBit[uiBlkSize];
     UInt uiHeight = uiBlkSize;
     UInt uiWidth = uiHeight;
@@ -8933,7 +8922,7 @@ Void TempLibFast::initTemplateDiff(UInt uiPatchSize, UInt uiBlkSize, Int bitDept
     }
 }
 
-Void TComTrQuant::getTargetTemplate(TComDataCU *pcCU, UInt uiAbsPartIdx, UInt absTUPartIdx, TComYuv* pcPred, UInt uiBlkSize, UInt uiTempSize)
+Void TComTrQuant::getTargetTemplate(TComDataCU *pcCU, UInt uiAbsPartIdx, UInt uiBlkSize, UInt uiTempSize)
 {
     const ComponentID compID = COMPONENT_Y;
     UInt uiPatchSize = uiBlkSize + uiTempSize;
@@ -8976,19 +8965,16 @@ Void TComTrQuant::candidateSearchIntra(TComDataCU *pcCU, UInt uiPartAddr, UInt u
     UInt uiPatchSize = uiBlkSize + uiTempSize;
     UInt uiTarDepth = g_aucConvertToBit[uiBlkSize];
     Pel **tarPatch = getTargetPatch(uiTarDepth);
-    // UInt uiCandiNum = 0;
     UInt uiTargetCandiNum = g_uiDepth2MaxCandiNum[uiTarDepth];
     TComPic *pPic = pcCU->getPic();
     TComPicYuv *pPicYuv = pPic->getPicYuvRec();
     //Initialize the library for saving the best candidates
     m_tempLibFast.initTemplateDiff(uiPatchSize, uiBlkSize, channelBitDepth, uiTargetCandiNum);
     Short setId = 0; //record the reference picture.
-    TComMv cMv;
-    cMv.setZero();
-    searchCandidateFromOnePicIntra(pcCU, uiPartAddr, pPic, pPicYuv, cMv, tarPatch, uiPatchSize, uiTempSize, setId);
+    searchCandidateFromOnePicIntra(pcCU, uiPartAddr, pPic, pPicYuv, tarPatch, uiPatchSize, uiTempSize, setId);
 }
 
-Void  TComTrQuant::searchCandidateFromOnePicIntra(TComDataCU *pcCU, UInt uiPartAddr, TComPic* refPicSrc, TComPicYuv *refPic, TComMv  cMv, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, UInt setId)
+Void  TComTrQuant::searchCandidateFromOnePicIntra(TComDataCU *pcCU, UInt uiPartAddr, TComPic* refPicSrc, TComPicYuv *refPic, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, UInt setId)
 {
     const ComponentID compID = COMPONENT_Y;
     UInt uiBlkSize = uiPatchSize - uiTempSize;
@@ -9083,8 +9069,6 @@ Void  TComTrQuant::searchCandidateFromOnePicIntra(TComDataCU *pcCU, UInt uiPartA
         {
             continue;
         }
-        // Pel *refMove = ref + mvYMin*refStride + mvXMin;
-
         for (iYOffset = mvYMax; iYOffset >= mvYMin; iYOffset--)
         {
             for (iXOffset = mvXMax; iXOffset >= mvXMin; iXOffset--)
@@ -9118,7 +9102,6 @@ Void  TComTrQuant::searchCandidateFromOnePicIntra(TComDataCU *pcCU, UInt uiPartA
         Int mvYMax = mvYMaxs[regionId];
         Int mvXMin = mvXMins[regionId];
         Int mvXMax = mvXMaxs[regionId];
-        // Pel *refMove = ref + mvYMin*refStride + mvXMin;
         if (mvXMax < mvXMin)
         {
             continue;
@@ -9138,19 +9121,17 @@ Void  TComTrQuant::searchCandidateFromOnePicIntra(TComDataCU *pcCU, UInt uiPartA
     }
 }
 
-Bool TComTrQuant::generateTMPrediction(Pel *piPred, UInt uiStride, UInt uiBlkSize, UInt uiTempSize, Int genPred0genPredAndtrainKLT1, Int &foundCandiNum)
+Bool TComTrQuant::generateTMPrediction(Pel *piPred, UInt uiStride, UInt uiBlkSize, UInt uiTempSize, Int &foundCandiNum)
 {
     Bool bSucceedFlag = true;
     UInt uiPatchSize = uiBlkSize + uiTempSize;
     UInt uiTarDepth = g_aucConvertToBit[uiBlkSize];
-    // Pel **tarPatch = m_pppTarPatch[uiTarDepth];
-    //count collected candidate number
+     //count collected candidate number
     DistType *pDiff = m_tempLibFast.getDiff();
     DistType maxDiff = m_tempLibFast.getDiffMax();
     Int k;
     UInt uiInvalidCount = 0;
     UInt uiTargetCandiNum = g_uiDepth2MaxCandiNum[uiTarDepth];
-    // UInt uiAllowMinCandiNum = g_uiDepth2MinCandiNum[uiTarDepth];
 
     for (k = uiTargetCandiNum - 1; k >= 0; k--)
     {
@@ -9174,7 +9155,6 @@ Bool TComTrQuant::generateTMPrediction(Pel *piPred, UInt uiStride, UInt uiBlkSiz
 
     Int *pX = m_tempLibFast.getX();
     Int *pY = m_tempLibFast.getY();
-    // Short *pId = m_tempLibFast.getId();
     Short setId;
     Pel *ref;
     Int picStride = getStride();
@@ -9235,9 +9215,9 @@ Bool TComTrQuant::generateTMPrediction(Pel *piPred, UInt uiStride, UInt uiBlkSiz
     return bSucceedFlag;
 }
 
-Bool TComTrQuant::calcKLTIntra(Pel *piPred, UInt uiStride, UInt uiBlkSize, UInt uiTempSize)
+Bool TComTrQuant::calcKLTIntra(Pel *piPred, UInt uiStride, UInt uiBlkSize)
 {
-    Bool bSucceedFlag = prepareKLTSamplesIntra(piPred, uiStride, uiBlkSize, uiTempSize);
+    Bool bSucceedFlag = prepareKLTSamplesIntra(piPred, uiStride, uiBlkSize);
     if (bSucceedFlag == false)
     {
         return bSucceedFlag;
@@ -9246,7 +9226,7 @@ Bool TComTrQuant::calcKLTIntra(Pel *piPred, UInt uiStride, UInt uiBlkSize, UInt 
     return bSucceedFlag;
 }
 
-Bool TComTrQuant::prepareKLTSamplesIntra(Pel *piPred, UInt uiStride, UInt uiBlkSize, UInt uiTempSize)
+Bool TComTrQuant::prepareKLTSamplesIntra(Pel *piPred, UInt uiStride, UInt uiBlkSize)
 {
     UInt uiTarDepth = g_aucConvertToBit[uiBlkSize];
     UInt uiAllowMinCandiNum = g_uiDepth2MinCandiNum[uiTarDepth];
@@ -9256,14 +9236,7 @@ Bool TComTrQuant::prepareKLTSamplesIntra(Pel *piPred, UInt uiStride, UInt uiBlkS
     }
     UInt uiHeight = uiBlkSize;
     UInt uiWidth = uiHeight;
-    // Bool bSucceedFlag = true;
-    // UInt uiPatchSize = uiBlkSize + uiTempSize;
-    // Pel **tarPatch = m_pppTarPatch[uiTarDepth];
-
     Int k;
-    // UInt uiInvalidCount = 0;
-    // UInt uiTargetCandiNum = g_uiDepth2MaxCandiNum[uiTarDepth];
-
     Pel*  pPred = piPred;
     Int i = 0;
     Pel predBlk[MAX_1DTRANS_LEN] = { 0 };
@@ -9277,7 +9250,6 @@ Bool TComTrQuant::prepareKLTSamplesIntra(Pel *piPred, UInt uiStride, UInt uiBlkS
     }
     Int *pX = m_tempLibFast.getX();
     Int *pY = m_tempLibFast.getY();
-    // Short *pId = m_tempLibFast.getId();
     Short setId;
     Pel *ref;
     Int picStride = getStride();

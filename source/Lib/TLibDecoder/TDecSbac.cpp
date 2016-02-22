@@ -1577,46 +1577,6 @@ Void TDecSbac::parseTransformSkipFlags (TComTU &rTu, ComponentID component)
 }
 
 #if KLT_COMMON
-//void TDecSbac::parseKLTFlags(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt width, UInt height, UInt uiDepth, ComponentID component)
-//{
-//  if (pcCU->getCUTransquantBypass(uiAbsPartIdx))
-//  {
-//      return;
-//  }
-//  UInt uiMaxTrWidth = g_uiDepth2Width[USE_MORE_BLOCKSIZE_DEPTH_MAX - 1];
-//  UInt uiMinTrWidth = g_uiDepth2Width[USE_MORE_BLOCKSIZE_DEPTH_MIN - 1];
-//  Bool checkKLTY = ((width == height) && (width <= uiMaxTrWidth) && (width >= uiMinTrWidth) && (component == 0));
-//  if (checkKLTY == false)
-//  {
-//      return;
-//  }
-//  UInt useKLTFlag = 0;
-//
-//  m_pcTDecBinIf->decodeBin(useKLTFlag, m_cKLTFlagSCModel.get(0, toChannelType(component), 0));
-//
-//  if (toChannelType(component) != CHANNEL_TYPE_LUMA)
-//  {
-//      const UInt uiLog2TrafoSize = g_aucConvertToBit[pcCU->getSlice()->getSPS()->getMaxCUWidth()] + 2 - uiDepth;
-//      if (uiLog2TrafoSize == 2)
-//      {
-//          uiDepth--;
-//      }
-//  }
-//  DTRACE_CABAC_VL(g_nSymbolCounter++)
-//  DTRACE_CABAC_T("\tparseKLTFlag()");
-//  DTRACE_CABAC_T("\tsymbol=")
-//  DTRACE_CABAC_V(useKLTFlag)
-//  DTRACE_CABAC_T("\tAddr=")
-//  DTRACE_CABAC_V(pcCU->getAddr())
-//  DTRACE_CABAC_T("\tetype=")
-//  DTRACE_CABAC_V(eTType)
-//  DTRACE_CABAC_T("\tuiAbsPartIdx=")
-//  DTRACE_CABAC_V(uiAbsPartIdx)
-//  DTRACE_CABAC_T("\n")
-//
-//  pcCU->setKLTFlagSubParts(useKLTFlag, component, uiAbsPartIdx, uiDepth);
-//}
-
 Void TDecSbac::parseKLTFlags(TComTU &rTu, ComponentID component)
 {
     TComDataCU* pcCU = rTu.getCU();
@@ -1626,12 +1586,6 @@ Void TDecSbac::parseKLTFlags(TComTU &rTu, ComponentID component)
     {
         return;
     }
-
-    //if (!TUCompRectHasAssociatedTransformSkipFlag(rTu.getRect(component), pcCU->getSlice()->getPPS()->getPpsRangeExtension().getLog2MaxTransformSkipBlockSize()))
-    //{
-    //  return;
-    //}
-
     UInt useKLTFlag = 0;
 
     m_pcTDecBinIf->decodeBin(useKLTFlag, m_cKLTFlagSCModel.get(0, toChannelType(component), 0)
@@ -1919,34 +1873,9 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
   bCheckKLTFlag = false;
 #endif
 
-#define VIEW_COUNT 0
-#if VIEW_COUNT
-  //test 
-  static int CountSDT[4] = { 0, 0, 0, 0 };
-  static int countCheckNum = 0;
-  static int countSDTNum = 0;
-#endif
   if (bCheckKLTFlag)
   {
       parseKLTFlags(rTu, compID); 
-#if VIEW_COUNT
-      countCheckNum++;
-      //test
-      UInt kltFlag = pcCU->getKLTFlag(uiAbsPartIdx, compID);
-      if (kltFlag)
-      {
-          countSDTNum++;
-          switch (uiWidth)
-          {
-              case 4:  CountSDT[0]++; break;
-              case 8:  CountSDT[1]++; break;
-              case 16:  CountSDT[2]++; break;
-              case 32:  CountSDT[3]++; break;
-              default: break;
-          }
-          printf("%d,%d: %d,%d,%d,%d\n", countCheckNum, countSDTNum, CountSDT[0], CountSDT[1], CountSDT[2], CountSDT[3]);
-      }
-#endif
   }
 #endif
 

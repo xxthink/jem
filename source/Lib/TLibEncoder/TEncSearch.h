@@ -321,17 +321,10 @@ protected:
   Bool xIntraCodingTUBlockTM(TComYuv*    pcOrgYuv,
                                       TComYuv*    pcPredYuv,
                                       TComYuv*    pcResiYuv,
-#if COM16_C806_LARGE_CTU
-                                      Pel*        resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES],
-#else
-                                      Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE],
-#endif
-                                      const Bool        checkCrossCPrediction,
                                       Distortion& ruiDist,
                                       const ComponentID compID,
                                       TComTU&     rTu
                                       DEBUG_STRING_FN_DECLARE(sDebug)
-                                      , Int        default0Save1Load2
 #if COM16_C806_EMT
                                       , UInt*      puiSigNum
 #endif

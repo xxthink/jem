@@ -2312,23 +2312,12 @@ Void TEncCu::xCheckRDCostInterKLT(TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU
 #endif
 
     m_pcPredSearch->encodeResAndCalcRdInterCU( rpcTempCU, m_ppcOrigYuv[uhDepth], 
-//#if COM16_C806_OBMC
-//      nOBMC == 0 ? m_ppcPredYuvWoOBMC[uhDepth] :
-//#endif
         m_ppcPredYuvTemp[uhDepth], m_ppcResiYuvTemp[uhDepth], m_ppcResiYuvBest[uhDepth], m_ppcRecoYuvTemp[uhDepth], false
 #if COM16_C806_EMT
         , rpcBestCU->getTotalCost()
 #endif
         DEBUG_STRING_PASS_INTO(sTest)
         );
-
-//  m_pcPredSearch->encodeResAndCalcRdInterCU(rpcTempCU, m_ppcOrigYuv[uhDepth],
-//      m_ppcPredYuvTemp[uhDepth],
-//      m_ppcResiYuvTemp[uhDepth], m_ppcResiYuvBest[uhDepth], m_ppcRecoYuvTemp[uhDepth], false
-//#if QC_EMT_INTER_FAST
-//      , rpcBestCU->getTotalCost()
-//#endif
-//      );
     if (bSkipPossible)
     {
         rpcTempCU->setSkipFlagSubParts(rpcTempCU->getQtRootCbf(0) == 0, 0, uhDepth);
