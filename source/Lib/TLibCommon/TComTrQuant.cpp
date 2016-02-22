@@ -69,6 +69,7 @@ UInt g_uiDepth2IntraTempSize[5] = { 3, 3, 3, 3, 3 };
 
 #include <iostream>
 
+#ifdef __GNUC__
 #if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6)
 #pragma GCC diagnostic push
 #endif
@@ -78,6 +79,9 @@ UInt g_uiDepth2IntraTempSize[5] = { 3, 3, 3, 3, 3 };
 #pragma GCC diagnostic pop
 #else
 #pragma GCC diagnostic warning "-Wshadow"
+#endif
+#else
+#include "../../extlib/Eigen/Dense"
 #endif
 
 using namespace Eigen;
