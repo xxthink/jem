@@ -175,7 +175,6 @@ public:
   Void parseTransformSkipFlags ( class TComTU &rTu, ComponentID component );
 
 #if KLT_COMMON
-  //Void parseKLTFlags      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt width, UInt height, UInt uiDepth, ComponentID compID);
   Void parseKLTFlags      ( TComTU &rTu, ComponentID component);
 #endif
 

@@ -1439,36 +1439,6 @@ Void TEncSbac::codeQtCbf( TComTU &rTu, const ComponentID compID, const Bool lowe
 }
 
 #if KLT_COMMON
-//void TEncSbac::codeKLTFlags(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt width, UInt height, ComponentID component)
-//{
-//  if (pcCU->getCUTransquantBypass(uiAbsPartIdx))
-//  {
-//      return;
-//  }
-//  UInt uiMaxTrWidth = g_uiDepth2Width[USE_MORE_BLOCKSIZE_DEPTH_MAX - 1];
-//  UInt uiMinTrWidth = g_uiDepth2Width[USE_MORE_BLOCKSIZE_DEPTH_MIN - 1];
-//
-//  Bool checkKLTY = ((width == height) && (width <= uiMaxTrWidth) && (width >= uiMinTrWidth) && (toChannelType(component) == CHANNEL_TYPE_LUMA));
-//  if (checkKLTY == false)
-//  {
-//      return;
-//  }
-//
-//  UInt useKLTFlag = pcCU->getKLTFlag(uiAbsPartIdx, component);
-//  m_pcBinIf->encodeBin(useKLTFlag, m_cKLTFlagSCModel.get(0, toChannelType(component), 0));
-//
-//  DTRACE_CABAC_VL(g_nSymbolCounter++)
-//  DTRACE_CABAC_T("\tparseKLTFlag()");
-//  DTRACE_CABAC_T("\tsymbol=")
-//  DTRACE_CABAC_V(useKLTFlag)
-//  DTRACE_CABAC_T("\tAddr=")
-//  DTRACE_CABAC_V(pcCU->getAddr())
-//  DTRACE_CABAC_T("\tetype=")
-//  DTRACE_CABAC_V(eTType)
-//  DTRACE_CABAC_T("\tuiAbsPartIdx=")
-//  DTRACE_CABAC_V(uiAbsPartIdx)
-//  DTRACE_CABAC_T("\n")
-//}
 Void TEncSbac::codeKLTFlags(TComTU &rTu, ComponentID component)
 {
     TComDataCU* pcCU = rTu.getCU();

@@ -875,8 +875,6 @@ TDecCu::xIntraRecBlkTM( TComYuv*    pcRecoYuv,
     {
         return;
     }
-    // const Bool       bIsLuma = isLuma(compID);
-
 
     TComDataCU *pcCU = rTu.getCU();
     const TComSPS &sps = *(pcCU->getSlice()->getSPS());
@@ -887,24 +885,19 @@ TDecCu::xIntraRecBlkTM( TComYuv*    pcRecoYuv,
     const UInt uiHeight = tuRect.height;
     const UInt uiStride = pcRecoYuv->getStride(compID);
     Pel* piPred = pcPredYuv->getAddr(compID, uiAbsPartIdx);
-    // const ChromaFormat chFmt = rTu.GetChromaFormat();
     assert(uiWidth == uiHeight);
 
     Bool useKLT = false;
     UInt uiBlkSize = uiWidth;
     UInt uiTarDepth = g_aucConvertToBit[uiBlkSize];
-    // const UInt  uiZOrder = pcCU->getZorderIdxInCtu() + uiAbsPartIdx;
-    // Pel   *pCurrStart = pcCU->getPic()->getPicYuvRec()->getAddr(compID, pcCU->getCtuRsAddr(), uiZOrder);
-    // UInt  uiPicStride = pcCU->getPic()->getStride(compID);
-
     UInt uiTempSize = g_uiDepth2IntraTempSize[uiTarDepth];
-    m_pcTrQuant->getTargetTemplate(pcCU, uiAbsPartIdx, uiAbsPartIdx, pcPredYuv, uiBlkSize, uiTempSize);
+    m_pcTrQuant->getTargetTemplate(pcCU, uiAbsPartIdx, uiBlkSize, uiTempSize);
     m_pcTrQuant->candidateSearchIntra(pcCU, uiAbsPartIdx, uiBlkSize, uiTempSize);
     Int foundCandiNum;
-    Bool bSuccessful = m_pcTrQuant->generateTMPrediction(piPred, uiStride, uiBlkSize, uiTempSize, genPred0genPredAndtrainKLT1Ori2, foundCandiNum);
+    Bool bSuccessful = m_pcTrQuant->generateTMPrediction(piPred, uiStride, uiBlkSize, uiTempSize, foundCandiNum);
     if (1 == genPred0genPredAndtrainKLT1Ori2 && bSuccessful)
     {
-        useKLT = m_pcTrQuant->calcKLTIntra(piPred, uiStride, uiBlkSize, uiTempSize);
+        useKLT = m_pcTrQuant->calcKLTIntra(piPred, uiStride, uiBlkSize);
     }
     assert(foundCandiNum >= 1);
 
@@ -923,7 +916,7 @@ TDecCu::xIntraRecBlkTM( TComYuv*    pcRecoYuv,
 
     if (pcCU->getCbf(uiAbsPartIdx, compID, rTu.GetTransformDepthRel()) != 0)
     {
-        const UInt *scan;
+        const UInt *scan = NULL;
         if (useKLT)
         {
             TUEntropyCodingParameters codingParameters;
@@ -953,14 +946,10 @@ TDecCu::xIntraRecBlkTM( TComYuv*    pcRecoYuv,
 
     const Bool useCrossComponentPrediction = isChroma(compID) && (pcCU->getCrossComponentPredictionAlpha(uiAbsPartIdx, compID) != 0);
     assert(useCrossComponentPrediction == false);
-    // const Pel* pResiLuma = pcResiYuv->getAddr(COMPONENT_Y, uiAbsPartIdx);
-    // const Int  strideLuma = pcResiYuv->getStride(COMPONENT_Y);
-
     Pel* pPred = piPred;
     Pel* pResi = piResi;
     Pel* pReco = pcRecoYuv->getAddr(compID, uiAbsPartIdx);
     Pel* pRecIPred = pcCU->getPic()->getPicYuvRec()->getAddr(compID, pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu() + uiAbsPartIdx);
-
 
 #if DEBUG_STRING
     const Bool bDebugPred = ((DebugOptionList::DebugString_Pred.getInt()&debugPredModeMask) && DEBUG_STRING_CHANNEL_CONDITION(compID));
