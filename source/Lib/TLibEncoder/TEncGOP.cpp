@@ -1178,6 +1178,15 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
       pcSlice->setAssociatedIRAPPOC(m_associatedIRAPPOC);
     }
     // Do decoding refresh marking if any
+#if FIX_TICKET12 
+    if( pcSlice->getSPS()->getUseALF() )
+    {
+      if( m_pcAdaptiveLoopFilter->refreshAlfTempPred( pcSlice->getNalUnitType() , pcSlice->getPOC() ) )
+      {
+        m_iStoredAlfParaNum = 0;
+      }
+    }
+#endif
     pcSlice->decodingRefreshMarking(m_pocCRA, m_bRefreshPending, rcListPic, m_pcCfg->getEfficientFieldIRAPEnabled());
     m_pcEncTop->selectReferencePictureSet(pcSlice, pocCurr, iGOPid);
     if (!m_pcCfg->getEfficientFieldIRAPEnabled())
@@ -1284,6 +1293,7 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
       pcSlice->setSliceType ( P_SLICE );
     }
     pcSlice->setEncCABACTableIdx(m_pcSliceEncoder->getEncCABACTableIdx());
+
 
     if (pcSlice->getSliceType() == B_SLICE)
     {
@@ -1584,7 +1594,11 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
       m_pcAdaptiveLoopFilter->resetALFParam( &cAlfParam );
       m_pcAdaptiveLoopFilter->ALFProcess( &cAlfParam, pcPic->getSlice(0)->getLambdas()[0], pcPic->getSlice(0)->getLambdas()[1], uiDist, uiBits, cAlfParam.alf_max_depth
 #if COM16_C806_ALF_TEMPPRED_NUM
+#if FIX_TICKET12
+        , (pcSlice->getSliceType()== I_SLICE ? NULL: m_acStoredAlfPara), m_iStoredAlfParaNum
+#else
         , m_acStoredAlfPara, m_iStoredAlfParaNum
+#endif
 #endif
         );
 #if COM16_C806_ALF_TEMPPRED_NUM

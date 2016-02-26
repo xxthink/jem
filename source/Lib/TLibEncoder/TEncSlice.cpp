@@ -1078,7 +1078,11 @@ Void TEncSlice::encodeSlice   ( TComPic* pcPic, TComOutputBitstream* pcSubstream
         m_pcEntropyCoder->setAlfCtrl(false);
       }
 
-      m_pcEntropyCoder->encodeAlfParam(&alfParam,pcSlice->getSPS()->getMaxTotalCUDepth());
+      m_pcEntropyCoder->encodeAlfParam(&alfParam,pcSlice->getSPS()->getMaxTotalCUDepth()
+#if FIX_TICKET12
+        , pcSlice
+#endif
+        );
       if(alfParam.cu_control_flag)
       {
         m_pcEntropyCoder->encodeAlfCtrlParam(&alfParam);

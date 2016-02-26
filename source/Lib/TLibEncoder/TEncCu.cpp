@@ -412,7 +412,7 @@ Void TEncCu::compressCtu( TComDataCU* pCtu )
  */
 Void TEncCu::encodeCtu ( TComDataCU* pCtu )
 {
-  if ( pCtu->getSlice()->getPPS()->getUseDQP() )
+  if (pCtu->getSlice()->getPPS()->getUseDQP())
   {
     setdQPFlag(true);
   }

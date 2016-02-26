@@ -1906,5 +1906,34 @@ Void TComAdaptiveLoopFilter::setAlfCtrlFlags(ALFParam *pAlfParam, TComDataCU *pc
   }
 }
 
+#if FIX_TICKET12
+Bool TComAdaptiveLoopFilter::refreshAlfTempPred( NalUnitType naluType , Int poc )
+{
+  static bool pendingRefresh = false;
+  static Int pocLastCRA = 0;
+  Bool refresh = false;
+
+  if( pendingRefresh == true && pocLastCRA < poc )
+  {
+    refresh = true;
+    pendingRefresh = false;   
+  }
+
+  if( NAL_UNIT_CODED_SLICE_BLA_W_LP <= naluType && naluType <= NAL_UNIT_CODED_SLICE_IDR_N_LP )
+  {
+    refresh = true;
+    pendingRefresh = true;
+    pocLastCRA = poc;
+  }
+  else if( naluType == NAL_UNIT_CODED_SLICE_CRA )
+  {
+    pendingRefresh = true;
+    pocLastCRA = poc;
+  }
+
+  return( refresh );
+}
+#endif
+
 #endif
 

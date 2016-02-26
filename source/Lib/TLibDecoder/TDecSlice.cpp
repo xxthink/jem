@@ -151,7 +151,11 @@ Void TDecSlice::decompressSlice(TComInputBitstream** ppcSubstreams, TComPic* pcP
 #if ALF_HM3_REFACTOR
     if ( pcSlice->getSPS()->getUseALF() && ctuRsAddr == 0 )
     {
-      m_pcEntropyDecoder->decodeAlfParam(&alfParam, pcSlice->getSPS()->getMaxTotalCUDepth());
+      m_pcEntropyDecoder->decodeAlfParam(&alfParam, pcSlice->getSPS()->getMaxTotalCUDepth()
+#if FIX_TICKET12
+        , pcSlice
+#endif
+        );
     }
 #endif
 

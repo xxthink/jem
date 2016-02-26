@@ -263,6 +263,10 @@ public:
   
   // interface function
   Void ALFProcess             ( TComPic* pcPic, ALFParam* pcAlfParam); ///< interface function for ALF process
+
+#if FIX_TICKET12
+  Bool refreshAlfTempPred( NalUnitType nalu , Int poc );
+#endif
   
   static Int ALFTapHToTapV(Int tapH);
   static Int ALFTapHToNumCoeff(Int tapH);

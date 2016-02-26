@@ -1231,7 +1231,11 @@ Void  print(ALFParam* pAlfParam)
   printf("\n");
 }
 
-Void TEncEntropy::encodeAlfParam(ALFParam* pAlfParam , UInt uiMaxTotalCUDepth )
+Void TEncEntropy::encodeAlfParam(ALFParam* pAlfParam , UInt uiMaxTotalCUDepth
+#if FIX_TICKET12
+        ,const TComSlice * pSlice
+#endif
+  )
 {
   m_pcEntropyCoderIf->codeAlfFlag(pAlfParam->alf_flag);
   if (!pAlfParam->alf_flag)
@@ -1239,6 +1243,13 @@ Void TEncEntropy::encodeAlfParam(ALFParam* pAlfParam , UInt uiMaxTotalCUDepth )
   Int pos;
 #if COM16_C806_ALF_TEMPPRED_NUM
   //encode temporal prediction flag and index
+#if FIX_TICKET12
+  if( pSlice->getSliceType() == I_SLICE)
+  {
+    assert(pAlfParam->temproalPredFlag == false);
+  }
+  else
+#endif
   m_pcEntropyCoderIf->codeAlfFlag( pAlfParam->temproalPredFlag ? 1 : 0 );
   if( pAlfParam->temproalPredFlag )
   {
