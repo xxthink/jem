@@ -1185,6 +1185,10 @@ Void TEncSlice::encodeSlice   ( TComPic* pcPic, TComOutputBitstream* pcSubstream
   }
 #endif
 
+#if PARALLEL_ENCODING_RAS_CABAC_INIT_PRESENT  
+  m_eLastNALUType = pcSlice->getNalUnitType();
+#endif
+
   if (pcSlice->getPPS()->getCabacInitPresentFlag() && !pcSlice->getPPS()->getDependentSliceSegmentsEnabledFlag())
   {
     m_encCABACTableIdx = m_pcEntropyCoder->determineCabacInitIdx(pcSlice);

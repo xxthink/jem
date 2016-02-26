@@ -1292,6 +1292,14 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     {
       pcSlice->setSliceType ( P_SLICE );
     }
+#if PARALLEL_ENCODING_RAS_CABAC_INIT_PRESENT  
+    // Prevent encoder from using cross RAP information
+    if ((pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_TRAIL_N || pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_TRAIL_R || pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_TSA_N || pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_TSA_R || pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_STSA_R || pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_STSA_N) && // current slice belongs to trailing picture 
+      (m_pcSliceEncoder->getLastNALUType() == NAL_UNIT_CODED_SLICE_RADL_N || m_pcSliceEncoder->getLastNALUType() == NAL_UNIT_CODED_SLICE_RADL_R || m_pcSliceEncoder->getLastNALUType() == NAL_UNIT_CODED_SLICE_RASL_N || m_pcSliceEncoder->getLastNALUType() == NAL_UNIT_CODED_SLICE_RASL_R))      // previous slice belongs to leading picture
+    {
+      m_pcSliceEncoder->setEncCABACTableIdx(pcSlice->getSliceType());
+    }
+#endif
     pcSlice->setEncCABACTableIdx(m_pcSliceEncoder->getEncCABACTableIdx());
 
 
