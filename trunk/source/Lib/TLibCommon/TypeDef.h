@@ -53,6 +53,9 @@
 #define ALF_HM3_REFACTOR                                  1  ///< Adaptive loop filter (ALF)
 #if ALF_HM3_REFACTOR
 #define COM16_C806_ALF_TEMPPRED_NUM                       6  ///< 0: no temporal prediction
+#if COM16_C806_ALF_TEMPPRED_NUM
+#define FIX_TICKET12                                      1  ///< fixed ticket #12
+#endif
 #endif
 
 #define COM16_C806_VCEG_AZ10_SUB_PU_TMVP                  1  ///< Sub-PU level motion vector prediction

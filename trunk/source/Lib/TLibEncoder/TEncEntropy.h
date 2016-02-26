@@ -298,7 +298,11 @@ public:
 #endif 
 
 #if ALF_HM3_REFACTOR
-  Void encodeAlfParam(ALFParam* pAlfParam, UInt uiMaxTotalCUDepth);
+  Void encodeAlfParam(ALFParam* pAlfParam, UInt uiMaxTotalCUDepth
+#if FIX_TICKET12
+        ,const TComSlice * pSlice
+#endif
+    );
   Void encodeAlfCtrlFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
   Void encodeAlfCtrlParam      ( ALFParam *pAlfParam );
   Bool getAlfCtrl() {return m_pcEntropyCoderIf->getAlfCtrl();}

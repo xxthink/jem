@@ -224,6 +224,13 @@ Void TDecGop::filterPicture(TComPic* pcPic)
   if( pcSlice->getSPS()->getUseALF() )
   {
 #if COM16_C806_ALF_TEMPPRED_NUM
+#if FIX_TICKET12
+    if( m_pcAdaptiveLoopFilter->refreshAlfTempPred( pcSlice->getNalUnitType() , pcSlice->getPOC() ) )
+    {
+      m_iStoredAlfParaNum = 0;
+      assert( m_cAlfParam.temproalPredFlag == false );
+    }
+#endif
     if( m_cAlfParam.temproalPredFlag )
     {
       m_pcAdaptiveLoopFilter->copyALFParam( &m_cAlfParam, &m_acStoredAlfPara[m_cAlfParam.prevIdx] );
