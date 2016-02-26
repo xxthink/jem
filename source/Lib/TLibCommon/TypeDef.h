@@ -146,6 +146,7 @@
 #endif
 
 #define PARALLEL_ENCODING_SAO_FIX                         1  ///< Fix of SAO for parallel encoding proposed in JVET-B0036
+#define PARALLEL_ENCODING_RAS_CABAC_INIT_PRESENT          1  ///< Fix of CABAC initialization for parallel encoding proposed in JVET-B0036
 
 ///////////////////////////////////////////////////////////
 // KTA tools section end
