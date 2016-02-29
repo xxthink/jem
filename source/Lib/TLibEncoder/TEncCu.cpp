@@ -1252,15 +1252,22 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
     }
 
 #if INTER_KLT
-    if (!rpcBestCU->isIntra(0) && rpcBestCU->getQtRootCbf(0) != 0)
+#if USE_KLT
+    if (sps.getUseInterKLT())
     {
-        //Only check from the best modes for speeding up
-        g_bEnableCheck = true;
-        Int iQP = rpcBestCU->getQP(0);
-        PartSize eSize = rpcBestCU->getPartitionSize(0);
-        xCheckRDCostInterKLT(rpcBestCU, rpcTempCU, eSize);
-        rpcTempCU->initEstData(uiDepth, iQP, false);
+#endif
+        if (!rpcBestCU->isIntra(0) && rpcBestCU->getQtRootCbf(0) != 0)
+        {
+            //Only check from the best modes for speeding up
+            g_bEnableCheck = true;
+            Int iQP = rpcBestCU->getQP(0);
+            PartSize eSize = rpcBestCU->getPartitionSize(0);
+            xCheckRDCostInterKLT(rpcBestCU, rpcTempCU, eSize);
+            rpcTempCU->initEstData(uiDepth, iQP, false);
+        }
+#if USE_KLT
     }
+#endif
 #endif
 
     if( rpcBestCU->getTotalCost()!=MAX_DOUBLE )
@@ -2256,15 +2263,15 @@ Void TEncCu::xCheckRDCostInterKLT(TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU
 {
     DEBUG_STRING_NEW(sTest)
 
-        if(getFastDeltaQp())
+    if(getFastDeltaQp())
+    {
+        const TComSPS &sps=*( rpcTempCU->getSlice()->getSPS());
+        const UInt fastDeltaQPCuMaxSize = Clip3(sps.getMaxCUHeight()>>(sps.getLog2DiffMaxMinCodingBlockSize()), sps.getMaxCUHeight(), 32u);
+        if(ePartSize != SIZE_2Nx2N || rpcTempCU->getWidth( 0 ) > fastDeltaQPCuMaxSize)
         {
-            const TComSPS &sps=*( rpcTempCU->getSlice()->getSPS());
-            const UInt fastDeltaQPCuMaxSize = Clip3(sps.getMaxCUHeight()>>(sps.getLog2DiffMaxMinCodingBlockSize()), sps.getMaxCUHeight(), 32u);
-            if(ePartSize != SIZE_2Nx2N || rpcTempCU->getWidth( 0 ) > fastDeltaQPCuMaxSize)
-            {
-                return; // only check necessary 2Nx2N Inter in fast deltaqp mode
-            }
+            return; // only check necessary 2Nx2N Inter in fast deltaqp mode
         }
+    }
 
     // prior to this, rpcTempCU will have just been reset using rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
     UChar uhDepth = rpcTempCU->getDepth(0);

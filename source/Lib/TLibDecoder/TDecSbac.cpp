@@ -1854,29 +1854,51 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
   }
 
 #if KLT_COMMON
-  UInt uiMaxTrWidth = g_uiDepth2Width[USE_MORE_BLOCKSIZE_DEPTH_MAX - 1];
-  UInt uiMinTrWidth = g_uiDepth2Width[USE_MORE_BLOCKSIZE_DEPTH_MIN - 1];
-  Bool bCheckKLTFlag = (toChannelType(compID) == CHANNEL_TYPE_LUMA) && (uiWidth == uiHeight) && (uiWidth <= uiMaxTrWidth) && (uiWidth >= uiMinTrWidth);
-  if (bCheckKLTFlag && pcCU->getSlice()->getPPS()->getUseTransformSkip())
+#if USE_KLT
+  if (pcCU->getSlice()->getSPS()->getUseKLT())
   {
-      UInt useTransformSkip = pcCU->getTransformSkip(uiAbsPartIdx, compID);
-      bCheckKLTFlag &= !useTransformSkip;
-  }
+#endif
+      UInt uiMaxTrWidth = g_uiDepth2Width[USE_MORE_BLOCKSIZE_DEPTH_MAX - 1];
+      UInt uiMinTrWidth = g_uiDepth2Width[USE_MORE_BLOCKSIZE_DEPTH_MIN - 1];
+      Bool bCheckKLTFlag = (toChannelType(compID) == CHANNEL_TYPE_LUMA) && (uiWidth == uiHeight) && (uiWidth <= uiMaxTrWidth) && (uiWidth >= uiMinTrWidth);
+      if (bCheckKLTFlag && pcCU->getSlice()->getPPS()->getUseTransformSkip())
+      {
+          UInt useTransformSkip = pcCU->getTransformSkip(uiAbsPartIdx, compID);
+          bCheckKLTFlag &= !useTransformSkip;
+      }
 
+#if USE_KLT
+      if (pcCU->getSlice()->getSPS()->getUseInterKLT() && !pcCU->getSlice()->getSPS()->getUseIntraKLT()) //only inter
+      {
+          bCheckKLTFlag &= (!pcCU->isIntra(uiAbsPartIdx));
+      }
+      else if(!pcCU->getSlice()->getSPS()->getUseInterKLT() && pcCU->getSlice()->getSPS()->getUseIntraKLT()) //only intra
+      {
+          bCheckKLTFlag &= (pcCU->isIntra(uiAbsPartIdx));
+      }
+      else if ((!pcCU->getSlice()->getSPS()->getUseInterKLT()) && (!pcCU->getSlice()->getSPS()->getUseIntraKLT())) //neither
+      {
+          bCheckKLTFlag = false;
+      }
+#else
 #if INTER_KLT && !INTRA_KLT //only inter
-  bCheckKLTFlag &= (!pcCU->isIntra(uiAbsPartIdx));
+      bCheckKLTFlag &= (!pcCU->isIntra(uiAbsPartIdx));
 #endif
 #if !INTER_KLT && INTRA_KLT //only intra
-  bCheckKLTFlag &= (pcCU->isIntra(uiAbsPartIdx));
+      bCheckKLTFlag &= (pcCU->isIntra(uiAbsPartIdx));
 #endif
 #if !INTER_KLT && !INTRA_KLT //none
-  bCheckKLTFlag = false;
+      bCheckKLTFlag = false;
+#endif
 #endif
 
-  if (bCheckKLTFlag)
-  {
-      parseKLTFlags(rTu, compID); 
+      if (bCheckKLTFlag)
+      {
+          parseKLTFlags(rTu, compID);
+      }
+#if USE_KLT
   }
+#endif
 #endif
 
   Int uiIntraMode = -1;
@@ -2314,16 +2336,6 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
         pcCU->setLumaIntraFilter(uiAbsPartIdx, bChecksum);
       }
   }
-#endif
-#if SHOW_COEFF
-  UInt uiSize = uiWidth* uiHeight;
-  DTRACE_CABAC_T("Coeffs: ");
-  for (UInt ui = 0; ui < uiSize; ui++)
-  {
-      DTRACE_CABAC_V(pcCoef[ui]);
-      DTRACE_CABAC_T(",");
-  }
-  DTRACE_CABAC_T("\n");
 #endif
   return;
 }

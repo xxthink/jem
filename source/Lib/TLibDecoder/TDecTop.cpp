@@ -388,7 +388,11 @@ Void TDecTop::xActivateParameterSets()
     // Recursive structure
     m_cCuDecoder.create ( sps->getMaxTotalCUDepth(), sps->getMaxCUWidth(), sps->getMaxCUHeight(), sps->getChromaFormatIdc() );
     m_cCuDecoder.init   ( &m_cEntropyDecoder, &m_cTrQuant, &m_cPrediction );
-    m_cTrQuant.init     ( sps->getMaxTrSize() );
+    m_cTrQuant.init     ( sps->getMaxTrSize() 
+#if USE_KLT
+        , sps->getUseKLT()
+#endif
+        );
 
     m_cSliceDecoder.create();
   }

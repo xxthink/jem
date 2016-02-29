@@ -409,7 +409,11 @@ protected:
   Int       m_useFastIntraEMT;
   Int       m_useFastInterEMT;
 #endif
-
+#if USE_KLT
+  Int       m_useIntraKLT;
+  Int       m_useInterKLT;
+  Int       m_useKLT;
+#endif
 #if COM16_C806_LARGE_CTU
   Int       m_useFastLCTU;
 #endif
@@ -1059,6 +1063,14 @@ public:
   Int       getUseIntraEMT()                                         { return m_useIntraEMT;  }
   Void      setUseInterEMT(Int n)                                    { m_useInterEMT = n;     }
   Int       getUseInterEMT()                                         { return m_useInterEMT;  }
+#endif
+#if USE_KLT
+  Void      setUseIntraKLT(Int n)                                    { m_useIntraKLT = n; }
+  Int       getUseIntraKLT()                                         { return m_useIntraKLT; }
+  Void      setUseInterKLT(Int n)                                    { m_useInterKLT = n; }
+  Int       getUseInterKLT()                                         { return m_useInterKLT; }
+  Void      setUseKLT(Int n)                                         { m_useKLT = n; }
+  Int       getUseKLT()                                              { return m_useKLT; }
 #endif
 #if COM16_C806_LARGE_CTU
   Void      setUseFastLCTU(Int n)                                    { m_useFastLCTU = n; }

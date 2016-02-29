@@ -97,21 +97,28 @@ Void TComPic::create( const TComSPS &sps, const TComPPS &pps, const Bool bIsVirt
   m_apcPicYuv[PIC_YUV_REC]  = new TComPicYuv;  m_apcPicYuv[PIC_YUV_REC]->create( iWidth, iHeight, chromaFormatIDC, uiMaxCuWidth, uiMaxCuHeight, uiMaxDepth, true );
 
 #if INTER_KLT
-  for (UInt uiRow = 0; uiRow < 4; uiRow++)
+#if USE_KLT
+  if (sps.getUseInterKLT())
   {
-      for (UInt uiCol = 0; uiCol < 4; uiCol++)
+#endif
+      for (UInt uiRow = 0; uiRow < 4; uiRow++)
       {
-          if (uiRow == 0 && uiCol == 0)
+          for (UInt uiCol = 0; uiCol < 4; uiCol++)
           {
-              m_apcQuaPicYuv[uiRow][uiCol] = m_apcPicYuv[PIC_YUV_REC];
-          }
-          else
-          {
-              m_apcQuaPicYuv[uiRow][uiCol] = new TComPicYuv;
-              m_apcQuaPicYuv[uiRow][uiCol]->create(iWidth, iHeight, chromaFormatIDC, uiMaxCuWidth, uiMaxCuHeight, uiMaxDepth, true);
+              if (uiRow == 0 && uiCol == 0)
+              {
+                  m_apcQuaPicYuv[uiRow][uiCol] = m_apcPicYuv[PIC_YUV_REC];
+              }
+              else
+              {
+                  m_apcQuaPicYuv[uiRow][uiCol] = new TComPicYuv;
+                  m_apcQuaPicYuv[uiRow][uiCol]->create(iWidth, iHeight, chromaFormatIDC, uiMaxCuWidth, uiMaxCuHeight, uiMaxDepth, true);
+              }
           }
       }
+#if USE_KLT
   }
+#endif
 #endif 
 
   // there are no SEI messages associated with this picture initially

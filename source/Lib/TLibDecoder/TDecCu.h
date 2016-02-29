@@ -115,7 +115,7 @@ protected:
   Void xReconIntraQT            ( TComDataCU* pcCU, UInt uiDepth );
   Void xIntraRecBlk             ( TComYuv* pcRecoYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv, const ComponentID component, TComTU &rTu );
 #if INTRA_KLT
-  Void xIntraRecBlkTM           ( TComYuv* pcRecoYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv, const ComponentID compID, TComTU &rTu, Int genPred0genPredAndtrainKLT1Ori2 );
+  Void xIntraRecBlkTM           ( TComYuv* pcRecoYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv, const ComponentID compID, TComTU &rTu, Int tmpred0_tmpredklt1_ori2 );
 #endif
   Void xIntraRecQT              ( TComYuv* pcRecoYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv, const ChannelType chType, TComTU &rTu );
 

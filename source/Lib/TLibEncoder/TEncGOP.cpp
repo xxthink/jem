@@ -1804,7 +1804,14 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
 
     pcPic->setReconMark   ( true );
 #if INTER_KLT
-    m_pcSliceEncoder->InterpolatePic(pcPic);
+#if USE_KLT
+    if (pcSlice->getSPS()->getUseInterKLT())
+    {
+#endif
+        m_pcSliceEncoder->InterpolatePic(pcPic);
+#if USE_KLT
+    }
+#endif
 #endif
     m_bFirst = false;
     m_iNumPicCoded++;

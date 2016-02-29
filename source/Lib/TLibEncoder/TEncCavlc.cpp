@@ -606,6 +606,14 @@ Void TEncCavlc::codeSPS( const TComSPS* pcSPS )
   WRITE_FLAG( pcSPS->getUseIntraEMT() != 0 , "use_intra_emt" );
   WRITE_FLAG( pcSPS->getUseInterEMT() != 0 , "use_inter_emt" );
 #endif
+#if USE_KLT
+#if INTRA_KLT
+  WRITE_FLAG(pcSPS->getUseIntraKLT() != 0, "use_intra_klt");
+#endif
+#if INTER_KLT
+  WRITE_FLAG(pcSPS->getUseInterKLT() != 0, "use_inter_klt");
+#endif
+#endif
 #if VCEG_AZ07_INTRA_4TAP_FILTER
   WRITE_FLAG( pcSPS->getUseIntra4TapFilter() ? 1 : 0, "intra_4tap_filter_enabled_flag" );
 #endif

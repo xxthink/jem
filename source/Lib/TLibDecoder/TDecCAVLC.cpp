@@ -810,6 +810,23 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
   READ_FLAG( uiCode, "use_intra_emt" );                           pcSPS->setUseIntraEMT(uiCode);
   READ_FLAG( uiCode, "use_inter_emt" );                           pcSPS->setUseInterEMT(uiCode);
 #endif
+#if USE_KLT
+#if INTRA_KLT && INTER_KLT
+  READ_FLAG(uiCode, "use_intra_klt");                           pcSPS->setUseIntraKLT(uiCode);
+  READ_FLAG(uiCode, "use_inter_klt");                           pcSPS->setUseInterKLT(uiCode);
+  pcSPS->setUseKLT((pcSPS->getUseInterKLT() << 1) || pcSPS->getUseIntraKLT());
+#endif
+#if INTRA_KLT && (!INTER_KLT)
+  READ_FLAG(uiCode, "use_intra_klt");                           pcSPS->setUseIntraKLT(uiCode);
+  pcSPS->setUseInterKLT(0);
+  pcSPS->setUseKLT((pcSPS->getUseInterKLT() << 1) || pcSPS->getUseIntraKLT());
+#endif
+#if (!INTRA_KLT) && INTER_KLT
+  pcSPS->setUseIntraKLT(0);
+  READ_FLAG(uiCode, "use_inter_klt");                           pcSPS->setUseInterKLT(uiCode);
+  pcSPS->setUseKLT((pcSPS->getUseInterKLT() << 1) || pcSPS->getUseIntraKLT());
+#endif
+#endif
 #if VCEG_AZ07_INTRA_4TAP_FILTER
   READ_FLAG( uiCode, "intra_4tap_filter_enabled_flag" );          pcSPS->setUseIntra4TapFilter( uiCode );
 #endif

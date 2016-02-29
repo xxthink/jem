@@ -841,6 +841,11 @@ private:
   Int              m_useIntraEMT;
   Int              m_useInterEMT;
 #endif
+#if USE_KLT
+  Int              m_useIntraKLT;
+  Int              m_useInterKLT;
+  Int              m_useKLT;
+#endif
 #if VCEG_AZ07_INTRA_4TAP_FILTER
   Bool             m_useIntra4TapFilter;
 #endif
@@ -1081,6 +1086,15 @@ public:
   Int                    getUseIntraEMT() const                                                          { return m_useIntraEMT;  }
   Void                   setUseInterEMT(Int n)                                                           { m_useInterEMT = n;     }
   Int                    getUseInterEMT() const                                                          { return m_useInterEMT;  }
+#endif
+
+#if USE_KLT
+  Void                   setUseIntraKLT(Int n)                                                           { m_useIntraKLT = n; }
+  Int                    getUseIntraKLT() const                                                          { return m_useIntraKLT; }
+  Void                   setUseInterKLT(Int n)                                                           { m_useInterKLT = n; }
+  Int                    getUseInterKLT() const                                                          { return m_useInterKLT; }
+  Void                   setUseKLT(Int n)                                                                { m_useKLT = n; }
+  Int                    getUseKLT() const                                                               { return m_useKLT; }
 #endif
 
 #if VCEG_AZ07_INTRA_4TAP_FILTER
