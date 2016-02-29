@@ -55,12 +55,13 @@
 
 #if KLT_COMMON
 short **g_ppsEigenVector[USE_MORE_BLOCKSIZE_DEPTH_MAX];
+#define MAX_KLTAREA (1<<(((USE_MORE_BLOCKSIZE_DEPTH_MAX)<<1) + 2))
 #if INTER_KLT
 Bool g_bEnableCheck = true;
 #endif
 Void reOrderCoeff(TCoeff *pcCoef, const UInt *scan, UInt uiWidth, UInt uiHeight)
 {
-    TCoeff coeff[1024];
+    TCoeff coeff[MAX_KLTAREA];
     UInt uiMaxNumCoeff = uiWidth * uiHeight;
     memcpy(coeff, pcCoef, uiMaxNumCoeff*sizeof(TCoeff));
 
@@ -71,7 +72,7 @@ Void reOrderCoeff(TCoeff *pcCoef, const UInt *scan, UInt uiWidth, UInt uiHeight)
 }
 Void recoverOrderCoeff(TCoeff *pcCoef, const UInt *scan, UInt uiWidth, UInt uiHeight)
 {
-    TCoeff coeff[1024];
+    TCoeff coeff[MAX_KLTAREA];
     UInt uiMaxNumCoeff = uiWidth * uiHeight;
     memcpy(coeff, pcCoef, uiMaxNumCoeff*sizeof(TCoeff));
     for (UInt i = 0; i < uiMaxNumCoeff; i++)

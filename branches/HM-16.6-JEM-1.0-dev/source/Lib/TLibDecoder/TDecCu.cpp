@@ -42,7 +42,7 @@
 //! \ingroup TLibDecoder
 //! \{
 #if INTER_KLT
-extern UInt g_uiDepth2TempSize[5];
+extern UInt g_uiDepth2InterTempSize[5];
 #endif
 #if INTRA_KLT
 extern UInt g_uiDepth2IntraTempSize[5];
@@ -868,7 +868,7 @@ TDecCu::xIntraRecBlkTM( TComYuv*    pcRecoYuv,
                       TComYuv*    pcResiYuv,
                       const ComponentID compID,
                       TComTU     &rTu,
-                      Int genPred0genPredAndtrainKLT1Ori2
+                      Int tmpred0_tmpredklt1_ori2
                       )
 {
     if (!rTu.ProcessComponentSection(compID))
@@ -895,7 +895,7 @@ TDecCu::xIntraRecBlkTM( TComYuv*    pcRecoYuv,
     m_pcTrQuant->candidateSearchIntra(pcCU, uiAbsPartIdx, uiBlkSize, uiTempSize);
     Int foundCandiNum;
     Bool bSuccessful = m_pcTrQuant->generateTMPrediction(piPred, uiStride, uiBlkSize, uiTempSize, foundCandiNum);
-    if (1 == genPred0genPredAndtrainKLT1Ori2 && bSuccessful)
+    if (1 == tmpred0_tmpredklt1_ori2 && bSuccessful)
     {
         useKLT = m_pcTrQuant->calcKLTIntra(piPred, uiStride, uiBlkSize);
     }
@@ -1080,11 +1080,14 @@ TDecCu::xIntraRecQT(TComYuv*    pcRecoYuv,
     if (isLuma(chType))
     {
 #if INTRA_KLT
+#if USE_KLT
+        if (pcCU->getSlice()->getSPS()->getUseIntraKLT() && (Bool)pcCU->getKLTFlag(uiAbsPartIdx, COMPONENT_Y))
+#else
         Bool bTMFlag = (Bool)pcCU->getKLTFlag(uiAbsPartIdx, COMPONENT_Y);
         if (bTMFlag)
+#endif
         {
-            Int genPred0genPredAndtrainKLT1Ori2 = GENPRED0GENPREDANDTRAINKLT1ORI2;
-            xIntraRecBlkTM(pcRecoYuv, pcPredYuv, pcResiYuv, COMPONENT_Y, rTu, genPred0genPredAndtrainKLT1Ori2);
+            xIntraRecBlkTM(pcRecoYuv, pcPredYuv, pcResiYuv, COMPONENT_Y, rTu, TMPRED0_TMPREDKLT1_ORI2);
         }
         else
         {

@@ -328,7 +328,7 @@ protected:
 #if COM16_C806_EMT
                                       , UInt*      puiSigNum
 #endif
-                                      , Int genPred0genPredAndtrainKLT1Ori2
+                                      , Int tmpred0_tmpredklt1_ori2
                                       );
 #endif
 

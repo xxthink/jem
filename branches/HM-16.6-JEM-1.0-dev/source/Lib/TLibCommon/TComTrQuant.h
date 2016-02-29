@@ -56,7 +56,7 @@
 #define MAX_1DTRANS_LEN         (1 << (((USE_MORE_BLOCKSIZE_DEPTH_MAX) + 1) << 1)) ///< 4x4 = 16, 8x8 = 64, 16x16=256, 32x32 = 1024
 extern UInt g_uiDepth2Width[5];
 #if INTER_KLT
-extern UInt g_uiDepth2TempSize[5];
+extern UInt g_uiDepth2InterTempSize[5];
 #endif
 #if INTRA_KLT
 extern UInt g_uiDepth2IntraTempSize[5];
@@ -225,6 +225,9 @@ public:
 
   // initialize class
   Void init                 ( UInt  uiMaxTrSize,
+#if USE_KLT
+                              UInt  uiUseKLT              = 0,
+#endif
                               Bool useRDOQ                = false,
                               Bool useRDOQTS              = false,
 #if T0196_SELECTIVE_RDOQ
@@ -240,6 +243,11 @@ public:
 #if COM16_C806_EMT
   UChar getEmtTrIdx ( TComTU &rTu, const ComponentID compID );
   UChar getEmtMode  ( TComTU &rTu, const ComponentID compID );
+#endif
+#if USE_KLT
+  UInt getUseKLT() { return m_useKLT;}
+  UInt getUseIntraKLT() { return m_useKLT & 1; }
+  UInt getUseInterKLT() { return (m_useKLT >> 1) & 1; }
 #endif
 #if VCEG_AZ05_ROT_TR
 Void InvRotTransform4I(  Int* matrix, UChar index );
@@ -447,6 +455,9 @@ protected:
   Bool     m_bEnc;
   Bool     m_useRDOQ;
   Bool     m_useRDOQTS;
+#if USE_KLT
+  UInt     m_useKLT;
+#endif
 #if T0196_SELECTIVE_RDOQ
   Bool     m_useSelectiveRDOQ;
 #endif
