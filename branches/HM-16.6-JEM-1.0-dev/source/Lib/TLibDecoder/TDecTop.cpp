@@ -357,9 +357,17 @@ Void TDecTop::xActivateParameterSets()
     m_cSAO.create( sps->getPicWidthInLumaSamples(), sps->getPicHeightInLumaSamples(), sps->getChromaFormatIdc(), sps->getMaxCUWidth(), sps->getMaxCUHeight(), sps->getMaxTotalCUDepth(), pps->getPpsRangeExtension().getLog2SaoOffsetScale(CHANNEL_TYPE_LUMA), pps->getPpsRangeExtension().getLog2SaoOffsetScale(CHANNEL_TYPE_CHROMA) );
     m_cLoopFilter.create( sps->getMaxTotalCUDepth() );
 #if COM16_C806_LMCHROMA
-    m_cPrediction.initTempBuff(sps->getChromaFormatIdc(), sps->getBitDepth(CHANNEL_TYPE_LUMA));
+    m_cPrediction.initTempBuff(sps->getChromaFormatIdc(), sps->getBitDepth(CHANNEL_TYPE_LUMA)
+#if INTER_KLT
+      , sps->getUseInterKLT() , sps->getPicWidthInLumaSamples() , sps->getPicHeightInLumaSamples() , sps->getMaxCUWidth() , sps->getMaxCUHeight() , sps->getMaxTotalCUDepth()
+#endif
+      );
 #else
-    m_cPrediction.initTempBuff(sps->getChromaFormatIdc());
+    m_cPrediction.initTempBuff(sps->getChromaFormatIdc()
+#if INTER_KLT
+      , sps->getUseInterKLT() , sps->getPicWidthInLumaSamples() , sps->getPicHeightInLumaSamples() , sps->getMaxCUWidth() , sps->getMaxCUHeight() , sps->getMaxTotalCUDepth()
+#endif
+      );
 #endif
 
     Bool isField = false;

@@ -140,6 +140,10 @@ TComPrediction::TComPrediction()
 #if VCEG_AZ07_FRUC_MERGE
   m_cFRUCRDCost.init();
 #endif
+
+#if INTER_KLT
+  m_tempPicYuv = NULL;
+#endif
 }
 
 TComPrediction::~TComPrediction()
@@ -232,12 +236,29 @@ Void TComPrediction::destroy()
   }
 #endif
 #endif
+
+#if INTER_KLT
+  if( m_tempPicYuv != NULL )
+  {
+    m_tempPicYuv->destroy();
+    delete m_tempPicYuv;
+    m_tempPicYuv = NULL;
+  }
+#endif
 }
 
 #if COM16_C806_LMCHROMA
-Void TComPrediction::initTempBuff(ChromaFormat chromaFormatIDC, Int bitDepthY)
+Void TComPrediction::initTempBuff(ChromaFormat chromaFormatIDC, Int bitDepthY
+#if INTER_KLT
+  , bool interKLT , const Int iPicWidth, const Int iPicHeight, const UInt uiMaxCUWidth, const UInt uiMaxCUHeight, const UInt uiMaxCUDepth
+#endif
+  )
 #else
-Void TComPrediction::initTempBuff(ChromaFormat chromaFormatIDC)
+Void TComPrediction::initTempBuff(ChromaFormat chromaFormatIDC
+#if INTER_KLT
+  , bool interKLT , const Int iPicWidth, const Int iPicHeight, const UInt uiMaxCUWidth, const UInt uiMaxCUHeight, const UInt uiMaxCUDepth
+#endif
+  )
 #endif
 {
   // if it has been initialised before, but the chroma format has changed, release the memory and start again.
@@ -332,6 +353,19 @@ Void TComPrediction::initTempBuff(ChromaFormat chromaFormatIDC)
   for( Int i = 1; i < 64; i++ )
   {
     m_uiaICShift[i] = ( (1 << 15) + i/2 ) / i;
+  }
+#endif
+
+#if INTER_KLT
+  if( interKLT )
+  {
+    if( m_tempPicYuv != NULL )
+    {
+      m_tempPicYuv->destroy();
+      delete m_tempPicYuv;
+    }
+    m_tempPicYuv = new TComPicYuv;
+    m_tempPicYuv->create( iPicWidth , iPicHeight , chromaFormatIDC , uiMaxCUWidth , uiMaxCUHeight , uiMaxCUDepth , true );
   }
 #endif
 }
@@ -5049,13 +5083,9 @@ Void TComPrediction::interpolatePic(TComPic* pcPic)
     //only perform over luma
     TComPicYuv *refPic = pcPic->getPicYuvRec();
 
-    Int filterSize = NTAPS_LUMA;
-    Int halfFilterSize = (filterSize >> 1);
     Pel *srcPtr;
     Pel *dstPtr;
     const ChromaFormat chFmt = pcPic->getChromaFormat();
-    Int nFRUCMode = FRUC_MERGE_OFF;
-    Int nFilterIdx = nFRUCMode ? pcPic->getSlice(0)->getSPS()->getFRUCRefineFilter() : 0;
     Int bitDepth = pcPic->getSlice(0)->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA);
 
     TComPicYuv *refPicArray[4][4];
@@ -5079,48 +5109,38 @@ Void TComPrediction::interpolatePic(TComPic* pcPic)
         UInt uiRefStride = pcPic->getStride(compID);
         UInt uiWidth = refPic->getWidth(compID);
         UInt uiHeight = refPic->getHeight(compID);
+        srcPtr = refPic->getAddr(compID);
 
         //--------------
         //Interpolation over luma
         //yFrac = 0 : (0,1)(0,2)(0,3)
-        srcPtr = refPic->getAddr(compID) - (halfFilterSize - 1)*uiRefStride;
         for (Int xFrac = 1; xFrac <= 3; xFrac++)
         {
-            dstPtr = refPicArray[0][xFrac]->getAddr(compID) - (halfFilterSize - 1)*uiRefStride;
-            m_if.filterHor(compID, srcPtr, uiRefStride, dstPtr, uiDstStride, uiWidth, uiHeight + filterSize - 1, xFrac, true, chFmt, bitDepth
-#if VCEG_AZ07_FRUC_MERGE
-                , nFilterIdx
-#endif
-                );
+            dstPtr = refPicArray[0][xFrac]->getAddr(compID);
+            m_if.filterHor(compID, srcPtr, uiRefStride, dstPtr, uiDstStride, uiWidth, uiHeight, xFrac<<VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE, true, chFmt, bitDepth);
         }
 
         //xFrac = 0: (1,0)(2,0)(3,0)
-        srcPtr = refPic->getAddr(compID);
         for (Int yFrac = 1; yFrac <= 3; yFrac++)
         {
             dstPtr = refPicArray[yFrac][0]->getAddr(compID);
-            m_if.filterVer(compID, srcPtr, uiRefStride, dstPtr, uiDstStride, uiWidth, uiHeight, yFrac, true, true, chFmt, bitDepth
-#if VCEG_AZ07_FRUC_MERGE
-                , nFilterIdx
-#endif
-                );
+            m_if.filterVer(compID, srcPtr, uiRefStride, dstPtr, uiDstStride, uiWidth, uiHeight, yFrac<<VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE, true, true, chFmt, bitDepth);
         }
 
         //other positions
         //(1,1)(2,1)(3,1)
         //(2,1)(2,2)(2,3)
         //(3,1)(3,2)(3,3)
+        Pel* tmpPtr = m_tempPicYuv->getAddr( compID );
+        Int tmpStride = m_tempPicYuv->getStride( compID );
+        Int vFilterSize = isLuma(compID) ? NTAPS_LUMA : NTAPS_CHROMA;
         for (Int xFrac = 1; xFrac <= 3; xFrac++)
         {
-            srcPtr = refPicArray[0][xFrac]->getAddr(compID);
             for (Int yFrac = 1; yFrac <= 3; yFrac++)
             {
                 dstPtr = refPicArray[yFrac][xFrac]->getAddr(compID);
-                m_if.filterVer(compID, srcPtr, uiRefStride, dstPtr, uiDstStride, uiWidth, uiHeight, yFrac, true, true, chFmt, bitDepth
-#if VCEG_AZ07_FRUC_MERGE
-                    , nFilterIdx
-#endif
-                    );
+                m_if.filterHor( compID, srcPtr-((vFilterSize>>1) -1)*uiRefStride  , uiRefStride , tmpPtr , tmpStride , uiWidth , uiHeight + vFilterSize - 1, xFrac<< VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE , false , chFmt , bitDepth );
+                m_if.filterVer( compID, tmpPtr+((vFilterSize>>1) -1)*tmpStride , tmpStride, dstPtr, uiDstStride, uiWidth, uiHeight, yFrac<<VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE, false, true, chFmt, bitDepth);
             }
         }
     }
