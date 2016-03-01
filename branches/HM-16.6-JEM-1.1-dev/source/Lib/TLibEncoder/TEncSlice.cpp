@@ -356,6 +356,13 @@ Void TEncSlice::initEncSlice( TComPic* pcPic, Int pocLast, Int pocCurr, Int iGOP
       dLambda *= 0.95;
     }
 
+#if JVET_B0039_QP_FIX
+    Double lambdaRef = 0.57*pow(2.0, qp_temp/3.0);
+    // qp correction to get HM lambda
+    Double qpOffset = floor((3.0*log(dLambda/lambdaRef)/log(2.0)) +0.5);
+    dQP += qpOffset;
+#endif
+
     iQP = max( -rpcSlice->getSPS()->getQpBDOffset(CHANNEL_TYPE_LUMA), min( MAX_QP, (Int) floor( dQP + 0.5 ) ) );
 
     m_pdRdPicLambda[iDQpIdx] = dLambda;
