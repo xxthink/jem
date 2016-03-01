@@ -121,6 +121,34 @@ static const Double MAX_DOUBLE =                             1.7e+308; ///< max.
 
 static const Int MAX_GOP =                                         64; ///< max. value of hierarchical GOP size
 static const Int MAX_NUM_REF_PICS =                                16; ///< max. number of pictures used for reference
+//intra KLT
+#if VCEG_AZ08_INTRA_KLT
+static const Int TMPRED0_TMPREDKLT1_ORI2 =                          1; ///< (default 1) 0: Template matching prediction; 1: TM prediction + KLT; 2: Original method
+static const Int TMPRED_CANDI_NUM =                                 8; ///< Candidate number for intra prediction (should <= 32)
+static const Int SEARCHRANGEINTRA =                                64; ///< Intra search range (-SEARCHRANGE,+SEARCHRANGE)
+#endif
+//inter KLT
+#if VCEG_AZ08_INTER_KLT
+static const Int SEARCHRANGE =                                     32; ///< (default 32) Search range for inter coding (-SEARCHRANGE,+SEARCHRANGE)
+static const Int SEARCH_SIZE =                                     ((SEARCHRANGE << 1) + 1)*((SEARCHRANGE << 1) + 1);
+#endif
+
+#if VCEG_AZ08_KLT_COMMON
+static const Int USE_MORE_BLOCKSIZE_DEPTH_MIN =                     1; ///< (default 1) To indicate minimum block size for KLT. 1~4 means 4x4, 8x8, 16x16, 32x32 respectively.
+static const Int USE_MORE_BLOCKSIZE_DEPTH_MAX =                     4; ///< (default 4) To indicate maximum block size for KLT. 1~4 means 4x4, 8x8, 16x16, 32x32 respectively.
+static const Int MAX_CANDI_NUM =                                  100; ///< Max allowable candidate number. The candidate number for different size blocks can be set respectively.
+#if VCEG_AZ08_FAST_DERIVE_KLT
+static const Int FAST_KLT_CANDINUM =                    MAX_CANDI_NUM; ///If MAX_CANDI_NUM > blkSize, fast algorithm will be performed.
+#endif
+static const Int KLTBASIS_SHIFTBIT =                               10; ///< KLT scale factor is BLOCK_SIZE*(1<<KLTBASIS_SHIFTBIT); (log2(width)+KLTBASIS_SHIFTBIT <= 15); If 6, then the first base vector is {64,...,64}. We use 10.
+static const Int INIT_THRESHOULD_SHIFTBITS =                        2;  ///< (default 2) Early skip threshold for checking distance.
+static const Int MAX_NUM_REF_IDS =                                 ((MAX_NUM_REF_PICS << 1) + (MAX_CANDI_NUM << 4)); 
+static const Double IGNORE_THRESHOULD_OF_LARGEST =               1e-6;
+#if VCEG_AZ08_FORCE_USE_GIVENNUM_BASIS
+static const Int FORCE_BASIS_NUM =                                 32; /// Forced number of basis utilized (for speeding up).
+#endif
+#endif
+
 static const Int MAX_NUM_REF =                                     16; ///< max. number of entries in picture reference list
 static const Int MAX_QP =                                          51;
 static const Int NOT_VALID =                                       -1;

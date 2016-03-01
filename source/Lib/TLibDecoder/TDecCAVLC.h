@@ -135,6 +135,10 @@ public:
 
   Void parseTransformSkipFlags ( class TComTU &rTu, ComponentID component );
 
+#if VCEG_AZ08_KLT_COMMON
+  Void parseKLTFlags        ( TComTU &rTu, ComponentID component);
+#endif
+
   Void parseIPCMInfo        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth);
 
   Void xParsePredWeightTable ( TComSlice* pcSlice, const TComSPS *sps );

@@ -485,4 +485,50 @@ Void TComYuv::removeHighFreq( const TComYuv* pcYuvSrc,
   }
 }
 
+#if VCEG_AZ08_KLT_COMMON
+Void TComPicYuv::fillPicRecBoundary(const BitDepths bitDepths)
+{
+    const ComponentID compID = COMPONENT_Y;
+    Pel* piTxt = getAddr(compID);
+    Int iStride = getStride(compID);
+    Int iWidth = getWidth(compID);
+    Int iHeight = getHeight(compID);
+    Int iMarginX = getMarginX(compID);
+    Int iMarginY = getMarginY(compID);
+    const Int channelBitDepth = bitDepths.recon[toChannelType(compID)]; 
+    Int   x, y;
+    Pel*  pi;
+    Pel fillValue = 1 << (channelBitDepth - 1); 
+    pi = piTxt;
+    for (y = 0; y < iHeight; y++)
+    {
+        for (x = 0; x < iMarginX; x++)
+        {
+            pi[-iMarginX + x] = fillValue;
+            pi[iWidth + x] = fillValue;
+        }
+        pi += iStride;
+    }
+
+    pi -= iMarginX;
+    for (y = 0; y < iMarginY; y++)
+    {
+        for (x = 0; x < iStride; x++)
+        {
+            pi[x] = fillValue;
+        }
+        pi += iStride;
+    }
+
+    pi = piTxt - (iMarginY*iStride + iMarginX);
+    for (y = 0; y < iMarginY; y++)
+    {
+        for (x = 0; x < iStride; x++)
+        {
+            pi[x] = fillValue;
+        }
+        pi += iStride;
+    }
+}
+#endif
 //! \}

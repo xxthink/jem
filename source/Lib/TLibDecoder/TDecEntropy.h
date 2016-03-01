@@ -143,6 +143,10 @@ public:
 
   virtual Void parseTransformSkipFlags ( class TComTU &rTu, ComponentID component ) = 0;
 
+#if VCEG_AZ08_KLT_COMMON
+  virtual Void parseKLTFlags(TComTU &rTu, ComponentID component) = 0;
+#endif
+
   virtual Void parseExplicitRdpcmMode ( TComTU &rTu, ComponentID compID ) = 0;
 
   virtual ~TDecEntropyIf() {}
@@ -305,4 +309,3 @@ public:
 //! \}
 
 #endif // __TDECENTROPY__
-

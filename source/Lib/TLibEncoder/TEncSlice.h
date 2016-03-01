@@ -149,7 +149,9 @@ public:
   Void xContextWdowSizeUpdateDecision (TEncSbac* pTestEncSbac, UInt &uiCtxStartPos, ContextModel* pSliceCtx, Bool *uiCtxMap, UChar *uiCtxCodeIdx, Bool** pCodedBinStr, Int* pCounter);
 #endif
 #endif
-
+#if VCEG_AZ08_INTER_KLT
+  Void   InterpolatePic(TComPic* pcPic);
+#endif
 private:
   Double  xGetQPValueAccordingToLambda ( Double lambda );
 };

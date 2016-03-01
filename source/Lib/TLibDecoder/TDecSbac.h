@@ -174,6 +174,10 @@ public:
     );
   Void parseTransformSkipFlags ( class TComTU &rTu, ComponentID component );
 
+#if VCEG_AZ08_KLT_COMMON
+  Void parseKLTFlags      ( TComTU &rTu, ComponentID component);
+#endif
+
   Void  parseScalingList ( TComScalingList* /*scalingList*/ ) {}
 
 #if ALF_HM3_REFACTOR
@@ -248,6 +252,9 @@ private:
   ContextModel3DBuffer m_cSaoMergeSCModel;
   ContextModel3DBuffer m_cSaoTypeIdxSCModel;
   ContextModel3DBuffer m_cTransformSkipSCModel;
+#if VCEG_AZ08_KLT_COMMON
+  ContextModel3DBuffer m_cKLTFlagSCModel;
+#endif
   ContextModel3DBuffer m_CUTransquantBypassFlagSCModel;
   ContextModel3DBuffer m_explicitRdpcmFlagSCModel;
   ContextModel3DBuffer m_explicitRdpcmDirSCModel;
