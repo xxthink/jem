@@ -109,7 +109,7 @@ Void TEncTop::create ()
 
   if ( m_RCEnableRateControl )
   {
-    m_cRateCtrl.init( m_framesToBeEncoded, m_RCTargetBitrate, m_iFrameRate, m_iGOPSize, m_iSourceWidth, m_iSourceHeight,
+    m_cRateCtrl.init( m_framesToBeEncoded, m_RCTargetBitrate, (Int)( (Double)m_iFrameRate/m_tempSubsampleRatio + 0.5), m_iGOPSize, m_iSourceWidth, m_iSourceHeight,
         m_maxCUWidth, m_maxCUHeight, m_RCKeepHierarchicalBit, m_RCUseLCUSeparateModel, m_GOPList );
   }
 
@@ -816,7 +816,7 @@ Void TEncTop::xInitHrdParameters()
 
   TimingInfo *timingInfo = vui->getTimingInfo();
   timingInfo->setTimingInfoPresentFlag( true );
-  switch( getFrameRate() )
+  switch( (Int)(getFrameRate()/(Double)getTempSubsampleRatio()+0.5) )
   {
   case 24:
     timingInfo->setNumUnitsInTick( 1125000 );    timingInfo->setTimeScale    ( 27000000 );

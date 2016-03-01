@@ -1865,10 +1865,10 @@ Void TEncGOP::printOutSummary(UInt uiNumAllPicCoded, Bool isField, const Bool pr
 
   //--CFG_KDY
   const Int rateMultiplier=(isField?2:1);
-  m_gcAnalyzeAll.setFrmRate( m_pcCfg->getFrameRate()*rateMultiplier );
-  m_gcAnalyzeI.setFrmRate( m_pcCfg->getFrameRate()*rateMultiplier );
-  m_gcAnalyzeP.setFrmRate( m_pcCfg->getFrameRate()*rateMultiplier );
-  m_gcAnalyzeB.setFrmRate( m_pcCfg->getFrameRate()*rateMultiplier );
+  m_gcAnalyzeAll.setFrmRate( m_pcCfg->getFrameRate()*rateMultiplier / (Double)m_pcCfg->getTempSubsampleRatio());
+  m_gcAnalyzeI.setFrmRate( m_pcCfg->getFrameRate()*rateMultiplier / (Double)m_pcCfg->getTempSubsampleRatio());
+  m_gcAnalyzeP.setFrmRate( m_pcCfg->getFrameRate()*rateMultiplier / (Double)m_pcCfg->getTempSubsampleRatio());
+  m_gcAnalyzeB.setFrmRate( m_pcCfg->getFrameRate()*rateMultiplier / (Double)m_pcCfg->getTempSubsampleRatio());
   const ChromaFormat chFmt = m_pcCfg->getChromaFormatIdc();
 
   //-- all
@@ -1899,7 +1899,7 @@ Void TEncGOP::printOutSummary(UInt uiNumAllPicCoded, Bool isField, const Bool pr
   if(isField)
   {
     //-- interlaced summary
-    m_gcAnalyzeAll_in.setFrmRate( m_pcCfg->getFrameRate());
+    m_gcAnalyzeAll_in.setFrmRate( m_pcCfg->getFrameRate() / (Double)m_pcCfg->getTempSubsampleRatio());
     m_gcAnalyzeAll_in.setBits(m_gcAnalyzeAll.getBits());
     // prior to the above statement, the interlace analyser does not contain the correct total number of bits.
 
