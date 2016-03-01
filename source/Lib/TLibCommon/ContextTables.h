@@ -241,7 +241,11 @@ static const UInt notFirstGroupNeighbourhoodContextOffset[MAX_NUM_CHANNEL_TYPE] 
 #endif
 
 #if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
+#if JVET_B0039_INC_NUM_QP_PROB
+#define NUM_QP_PROB                  JVET_B0039_INC_NUM_QP_PROB                //could be set to N (N>5, depending on the allowed QPs in a coded sequence)
+#else
 #define NUM_QP_PROB                  5                //could be set to N (N>5, depending on the allowed QPs in a coded sequence)
+#endif
 #define NUM_CTX_PBSLICE              MAX_NUM_CTX_MOD //could be set to the exact number of used contexts later
 #endif
 

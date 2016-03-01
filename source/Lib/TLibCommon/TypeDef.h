@@ -115,8 +115,6 @@
 #define COM16_C806_CR_FROM_CB_LAMBDA_ADJUSTMENT           1
 #endif
 
-#define COM16_C806_SIMD_OPT                               1  ///< SIMD optimization, no impact on RD performance
-
 #define VCEG_AZ07_IMV                                     1  ///< Locally adaptive motion vector resolution (AMVR)
 
 #define VCEG_AZ07_FRUC_MERGE                              1  ///< Pattern matched motion vector derivation
@@ -177,6 +175,12 @@
 
 #define PARALLEL_ENCODING_SAO_FIX                         1  ///< Fix of SAO for parallel encoding proposed in JVET-B0036
 #define PARALLEL_ENCODING_RAS_CABAC_INIT_PRESENT          1  ///< Fix of CABAC initialization for parallel encoding proposed in JVET-B0036
+
+// encoder only changes
+#define COM16_C806_SIMD_OPT                               1  ///< SIMD optimization, no impact on RD performance
+
+#define JVET_B0039_QP_FIX                                 1  ///< Recalcualtes QP to align with a HM lambda (same relation as for all intra coding is used)
+#define JVET_B0039_INC_NUM_QP_PROB                        7  ///< Number of context is increased when more QPs are used
 
 ///////////////////////////////////////////////////////////
 // KTA tools section end
