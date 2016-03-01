@@ -158,7 +158,7 @@ public:
     Int nMargin = -1      // use default margin
 #endif
     );
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
   Void          fillPicRecBoundary(const BitDepths bitDepths);
 #endif
   //  Dump picture

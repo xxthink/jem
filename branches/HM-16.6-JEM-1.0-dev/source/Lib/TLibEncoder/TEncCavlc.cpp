@@ -606,11 +606,11 @@ Void TEncCavlc::codeSPS( const TComSPS* pcSPS )
   WRITE_FLAG( pcSPS->getUseIntraEMT() != 0 , "use_intra_emt" );
   WRITE_FLAG( pcSPS->getUseInterEMT() != 0 , "use_inter_emt" );
 #endif
-#if USE_KLT
-#if INTRA_KLT
+#if VCEG_AZ08_USE_KLT
+#if VCEG_AZ08_INTRA_KLT
   WRITE_FLAG(pcSPS->getUseIntraKLT() != 0, "use_intra_klt");
 #endif
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
   WRITE_FLAG(pcSPS->getUseInterKLT() != 0, "use_inter_klt");
 #endif
 #endif
@@ -1398,7 +1398,7 @@ Void TEncCavlc::codeTransformSkipFlags (TComTU& /*rTu*/, ComponentID /*component
 }
 
 
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
 Void TEncCavlc::codeKLTFlags (TComTU& /*rTu*/, ComponentID /*component*/)
 
 {

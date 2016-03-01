@@ -648,7 +648,7 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
   TComSlice* const pcSlice            = pcPic->getSlice(getSliceIdx());
   pcSlice->setSliceSegmentBits(0);
   xDetermineStartAndBoundingCtuTsAddr ( startCtuTsAddr, boundingCtuTsAddr, pcPic );
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
   pcPic->getPicYuvRec()->fillPicRecBoundary(pcSlice->getSPS()->getBitDepths());
 #endif
   if (bCompressEntireSlice)
@@ -1443,7 +1443,7 @@ Void TEncSlice::xGenUpdateMap (UInt uiSliceType, Int iQP,  TComStats* apcStats)
   if(pBitIf)              {delete pBitIf;                   pBitIf              = NULL;      }
 
 }
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
 Void TEncSlice::InterpolatePic(TComPic* pcPic)
 {
     m_pcPredSearch->interpolatePic(pcPic);

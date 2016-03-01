@@ -48,7 +48,7 @@ using namespace std;
 
 //! \ingroup TLibEncoder
 //! \{
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
 extern Bool g_bEnableCheck;
 #endif
 // ====================================================================================================================
@@ -549,7 +549,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #endif
 
   const UInt numberValidComponents = rpcBestCU->getPic()->getNumberValidComponents();
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
   g_bEnableCheck = false;
 #endif
   if( uiDepth <= pps.getMaxCuDQPDepth() )
@@ -1251,8 +1251,8 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
       }
     }
 
-#if INTER_KLT
-#if USE_KLT
+#if VCEG_AZ08_INTER_KLT
+#if VCEG_AZ08_USE_KLT
     if (sps.getUseInterKLT())
     {
 #endif
@@ -1265,7 +1265,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
             xCheckRDCostInterKLT(rpcBestCU, rpcTempCU, eSize);
             rpcTempCU->initEstData(uiDepth, iQP, false);
         }
-#if USE_KLT
+#if VCEG_AZ08_USE_KLT
     }
 #endif
 #endif
@@ -2258,7 +2258,7 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
 #endif
 }
 
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
 Void TEncCu::xCheckRDCostInterKLT(TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, PartSize ePartSize)
 {
     DEBUG_STRING_NEW(sTest)

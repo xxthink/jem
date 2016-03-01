@@ -143,7 +143,7 @@ public:
 
   virtual Void parseTransformSkipFlags ( class TComTU &rTu, ComponentID component ) = 0;
 
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
   virtual Void parseKLTFlags(TComTU &rTu, ComponentID component) = 0;
 #endif
 

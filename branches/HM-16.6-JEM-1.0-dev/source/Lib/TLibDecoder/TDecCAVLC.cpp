@@ -810,18 +810,18 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
   READ_FLAG( uiCode, "use_intra_emt" );                           pcSPS->setUseIntraEMT(uiCode);
   READ_FLAG( uiCode, "use_inter_emt" );                           pcSPS->setUseInterEMT(uiCode);
 #endif
-#if USE_KLT
-#if INTRA_KLT && INTER_KLT
+#if VCEG_AZ08_USE_KLT
+#if VCEG_AZ08_INTRA_KLT && VCEG_AZ08_INTER_KLT
   READ_FLAG(uiCode, "use_intra_klt");                           pcSPS->setUseIntraKLT(uiCode);
   READ_FLAG(uiCode, "use_inter_klt");                           pcSPS->setUseInterKLT(uiCode);
   pcSPS->setUseKLT((pcSPS->getUseInterKLT() << 1) || pcSPS->getUseIntraKLT());
 #endif
-#if INTRA_KLT && (!INTER_KLT)
+#if VCEG_AZ08_INTRA_KLT && (!VCEG_AZ08_INTER_KLT)
   READ_FLAG(uiCode, "use_intra_klt");                           pcSPS->setUseIntraKLT(uiCode);
   pcSPS->setUseInterKLT(0);
   pcSPS->setUseKLT((pcSPS->getUseInterKLT() << 1) || pcSPS->getUseIntraKLT());
 #endif
-#if (!INTRA_KLT) && INTER_KLT
+#if (!VCEG_AZ08_INTRA_KLT) && VCEG_AZ08_INTER_KLT
   pcSPS->setUseIntraKLT(0);
   READ_FLAG(uiCode, "use_inter_klt");                           pcSPS->setUseInterKLT(uiCode);
   pcSPS->setUseKLT((pcSPS->getUseInterKLT() << 1) || pcSPS->getUseIntraKLT());
@@ -1912,7 +1912,7 @@ Void TDecCavlc::parseTransformSkipFlags (TComTU &/*rTu*/, ComponentID /*componen
   assert(0);
 }
 
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
 Void TDecCavlc::parseKLTFlags(TComTU & /*&rTu*/, ComponentID /*component*/)
 {
     assert(0);

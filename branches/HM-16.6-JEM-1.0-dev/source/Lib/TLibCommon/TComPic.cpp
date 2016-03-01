@@ -60,7 +60,7 @@ TComPic::TComPic()
   {
     m_apcPicYuv[i]      = NULL;
   }
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
   m_apcQuaPicYuv[0][0] = NULL; m_apcQuaPicYuv[0][1] = NULL; m_apcQuaPicYuv[0][2] = NULL; m_apcQuaPicYuv[0][3] = NULL;
   m_apcQuaPicYuv[1][0] = NULL; m_apcQuaPicYuv[1][1] = NULL; m_apcQuaPicYuv[1][2] = NULL; m_apcQuaPicYuv[1][3] = NULL;
   m_apcQuaPicYuv[2][0] = NULL; m_apcQuaPicYuv[2][1] = NULL; m_apcQuaPicYuv[2][2] = NULL; m_apcQuaPicYuv[2][3] = NULL;
@@ -96,8 +96,8 @@ Void TComPic::create( const TComSPS &sps, const TComPPS &pps, const Bool bIsVirt
   }
   m_apcPicYuv[PIC_YUV_REC]  = new TComPicYuv;  m_apcPicYuv[PIC_YUV_REC]->create( iWidth, iHeight, chromaFormatIDC, uiMaxCuWidth, uiMaxCuHeight, uiMaxDepth, true );
 
-#if INTER_KLT
-#if USE_KLT
+#if VCEG_AZ08_INTER_KLT
+#if VCEG_AZ08_USE_KLT
   if (sps.getUseInterKLT())
   {
 #endif
@@ -116,7 +116,7 @@ Void TComPic::create( const TComSPS &sps, const TComPPS &pps, const Bool bIsVirt
               }
           }
       }
-#if USE_KLT
+#if VCEG_AZ08_USE_KLT
   }
 #endif
 #endif 
@@ -143,7 +143,7 @@ Void TComPic::destroy()
     }
   }
 
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
   for (UInt uiRow = 0; uiRow < 4; uiRow++)
   {
       for (UInt uiCol = 0; uiCol < 4; uiCol++)

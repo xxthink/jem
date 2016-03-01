@@ -358,13 +358,13 @@ Void TDecTop::xActivateParameterSets()
     m_cLoopFilter.create( sps->getMaxTotalCUDepth() );
 #if COM16_C806_LMCHROMA
     m_cPrediction.initTempBuff(sps->getChromaFormatIdc(), sps->getBitDepth(CHANNEL_TYPE_LUMA)
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
       , sps->getUseInterKLT() , sps->getPicWidthInLumaSamples() , sps->getPicHeightInLumaSamples() , sps->getMaxCUWidth() , sps->getMaxCUHeight() , sps->getMaxTotalCUDepth()
 #endif
       );
 #else
     m_cPrediction.initTempBuff(sps->getChromaFormatIdc()
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
       , sps->getUseInterKLT() , sps->getPicWidthInLumaSamples() , sps->getPicHeightInLumaSamples() , sps->getMaxCUWidth() , sps->getMaxCUHeight() , sps->getMaxTotalCUDepth()
 #endif
       );
@@ -397,7 +397,7 @@ Void TDecTop::xActivateParameterSets()
     m_cCuDecoder.create ( sps->getMaxTotalCUDepth(), sps->getMaxCUWidth(), sps->getMaxCUHeight(), sps->getChromaFormatIdc() );
     m_cCuDecoder.init   ( &m_cEntropyDecoder, &m_cTrQuant, &m_cPrediction );
     m_cTrQuant.init     ( sps->getMaxTrSize() 
-#if USE_KLT
+#if VCEG_AZ08_USE_KLT
         , sps->getUseKLT()
 #endif
         );

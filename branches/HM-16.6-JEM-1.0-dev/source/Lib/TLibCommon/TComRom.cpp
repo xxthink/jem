@@ -53,10 +53,10 @@
 //! \ingroup TLibCommon
 //! \{
 
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
 short **g_ppsEigenVector[USE_MORE_BLOCKSIZE_DEPTH_MAX];
 #define MAX_KLTAREA (1<<(((USE_MORE_BLOCKSIZE_DEPTH_MAX)<<1) + 2))
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
 Bool g_bEnableCheck = true;
 #endif
 Void reOrderCoeff(TCoeff *pcCoef, const UInt *scan, UInt uiWidth, UInt uiHeight)
@@ -81,7 +81,7 @@ Void recoverOrderCoeff(TCoeff *pcCoef, const UInt *scan, UInt uiWidth, UInt uiHe
     }
 }
 #endif
-#if INTRA_KLT
+#if VCEG_AZ08_INTRA_KLT
 Int getZorder(Int iLCUX, Int iLCUY, Int NumInRow)
 {
     //get raster id

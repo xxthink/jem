@@ -42,21 +42,21 @@
 
 #include<stdio.h>
 #include<iostream>
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
 extern short **g_ppsEigenVector[USE_MORE_BLOCKSIZE_DEPTH_MAX];
 #endif
 //! \ingroup TLibCommon
 //! \{
 
-#if KLT_COMMON
-#if INTER_KLT
+#if VCEG_AZ08_KLT_COMMON
+#if VCEG_AZ08_INTER_KLT
 extern Bool g_bEnableCheck;
 #endif
 Void         reOrderCoeff(TCoeff *pcCoef, const UInt *scan, UInt uiWidth, UInt uiHeight);
 Void         recoverOrderCoeff(TCoeff *pcCoef, const UInt *scan, UInt uiWidth, UInt uiHeight);
 #endif
 
-#if INTRA_KLT
+#if VCEG_AZ08_INTRA_KLT
 Int          getZorder(Int iLCUX, Int iLCUY, Int NumInRow);
 #endif
 // ====================================================================================================================

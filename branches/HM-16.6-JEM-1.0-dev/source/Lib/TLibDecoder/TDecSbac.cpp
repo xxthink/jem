@@ -104,7 +104,7 @@ TDecSbac::TDecSbac()
 , m_cSaoMergeSCModel                         ( 1,             1,                      NUM_SAO_MERGE_FLAG_CTX               , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cSaoTypeIdxSCModel                       ( 1,             1,                      NUM_SAO_TYPE_IDX_CTX                 , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cTransformSkipSCModel                    ( 1,             MAX_NUM_CHANNEL_TYPE,   NUM_TRANSFORMSKIP_FLAG_CTX           , m_contextModels + m_numContextModels, m_numContextModels)
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
 , m_cKLTFlagSCModel                          ( 1,             MAX_NUM_CHANNEL_TYPE,   NUM_KLT_FLAG_CTX                     , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
 , m_CUTransquantBypassFlagSCModel            ( 1,             1,                      NUM_CU_TRANSQUANT_BYPASS_FLAG_CTX    , m_contextModels + m_numContextModels, m_numContextModels)
@@ -222,7 +222,7 @@ Void TDecSbac::resetEntropy(TComSlice* pSlice)
   m_cSaoTypeIdxSCModel.initBuffer                 ( sliceType, qp, (UChar*)INIT_SAO_TYPE_IDX );
   m_cCUTransSubdivFlagSCModel.initBuffer          ( sliceType, qp, (UChar*)INIT_TRANS_SUBDIV_FLAG );
   m_cTransformSkipSCModel.initBuffer              ( sliceType, qp, (UChar*)INIT_TRANSFORMSKIP_FLAG );
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
   m_cKLTFlagSCModel.initBuffer                    ( sliceType, qp, (UChar*)INIT_KLT_FLAG );
 #endif
   m_CUTransquantBypassFlagSCModel.initBuffer      ( sliceType, qp, (UChar*)INIT_CU_TRANSQUANT_BYPASS_FLAG );
@@ -1576,7 +1576,7 @@ Void TDecSbac::parseTransformSkipFlags (TComTU &rTu, ComponentID component)
   pcCU->setTransformSkipPartRange( useTransformSkip, component, uiAbsPartIdx, rTu.GetAbsPartIdxNumParts(component));
 }
 
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
 Void TDecSbac::parseKLTFlags(TComTU &rTu, ComponentID component)
 {
     TComDataCU* pcCU = rTu.getCU();
@@ -1853,8 +1853,8 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
     }
   }
 
-#if KLT_COMMON
-#if USE_KLT
+#if VCEG_AZ08_KLT_COMMON
+#if VCEG_AZ08_USE_KLT
   if (pcCU->getSlice()->getSPS()->getUseKLT())
   {
 #endif
@@ -1867,7 +1867,7 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
           bCheckKLTFlag &= !useTransformSkip;
       }
 
-#if USE_KLT
+#if VCEG_AZ08_USE_KLT
       if (pcCU->getSlice()->getSPS()->getUseInterKLT() && !pcCU->getSlice()->getSPS()->getUseIntraKLT()) //only inter
       {
           bCheckKLTFlag &= (!pcCU->isIntra(uiAbsPartIdx));
@@ -1881,13 +1881,13 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
           bCheckKLTFlag = false;
       }
 #else
-#if INTER_KLT && !INTRA_KLT //only inter
+#if VCEG_AZ08_INTER_KLT && !VCEG_AZ08_INTRA_KLT //only inter
       bCheckKLTFlag &= (!pcCU->isIntra(uiAbsPartIdx));
 #endif
-#if !INTER_KLT && INTRA_KLT //only intra
+#if !VCEG_AZ08_INTER_KLT && VCEG_AZ08_INTRA_KLT //only intra
       bCheckKLTFlag &= (pcCU->isIntra(uiAbsPartIdx));
 #endif
-#if !INTER_KLT && !INTRA_KLT //none
+#if !VCEG_AZ08_INTER_KLT && !VCEG_AZ08_INTRA_KLT //none
       bCheckKLTFlag = false;
 #endif
 #endif
@@ -1896,7 +1896,7 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
       {
           parseKLTFlags(rTu, compID);
       }
-#if USE_KLT
+#if VCEG_AZ08_USE_KLT
   }
 #endif
 #endif

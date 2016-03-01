@@ -122,7 +122,7 @@ private:
   UInt           m_codedChromaQpAdj;
   UChar*         m_puhTrIdx;           ///< array of transform indices
   UChar*         m_puhTransformSkip[MAX_NUM_COMPONENT];///< array of transform skipping flags
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
   UChar*         m_puhKLTFlag[MAX_NUM_COMPONENT];      ///< array of KLT flags
 #endif
   UChar*         m_puhCbf[MAX_NUM_COMPONENT];          ///< array of coded block flags (CBF)
@@ -263,7 +263,7 @@ public:
   Void          copySubCU             ( TComDataCU* pcCU, UInt uiPartUnitIdx );
   Void          copyInterPredInfoFrom ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefPicList );
   Void          copyPartFrom          ( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth );
-#if INTER_KLT 
+#if VCEG_AZ08_INTER_KLT 
   Void          copySameSizeCUFrom    ( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth);
 #endif
 
@@ -383,7 +383,7 @@ public:
   Void          setTransformSkipSubParts  ( UInt useTransformSkip, ComponentID compID, UInt uiAbsPartIdx, UInt uiDepth);
   Void          setTransformSkipSubParts  ( const UInt useTransformSkip[MAX_NUM_COMPONENT], UInt uiAbsPartIdx, UInt uiDepth );
 
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
   UChar*        getKLTFlag            ( ComponentID compID )    { return m_puhKLTFlag[compID]; }
   UChar         getKLTFlag            ( UInt uiIdx, ComponentID compID)    { return m_puhKLTFlag[compID][uiIdx]; }
   Void          setKLTFlagSubParts    ( UInt useKLT, ComponentID compID, UInt uiAbsPartIdx, UInt uiDepth);
@@ -617,7 +617,7 @@ public:
   Void          setMVPNumSubParts     ( Int iMVPNum, RefPicList eRefPicList, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth );
 
   Void          clipMv                ( TComMv&     rcMv     );
-#if INTRA_KLT
+#if VCEG_AZ08_INTRA_KLT
   Void          clipMvIntraConstraint ( Int regionId, Int &iHorMin, Int &iHorMax, Int &iVerMin, Int &iVerMax, Int iRange, UInt uiTemplateSize, UInt uiBlkSize, Int iY, Int iCurrX, Int offsetLCUY, Int offsetLCUX);
 #endif
   Void          getMvPredLeft         ( TComMv&     rcMvPred )   { rcMvPred = m_cMvFieldA.getMv(); }
@@ -782,7 +782,7 @@ public:
 
   UInt          getCoefScanIdx(const UInt uiAbsPartIdx, const UInt uiWidth, const UInt uiHeight, const ComponentID compID) const ;
 
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
   Void          interpolatePic                 ( TComPic* pcPic );
 #endif
 };

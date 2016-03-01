@@ -841,7 +841,7 @@ private:
   Int              m_useIntraEMT;
   Int              m_useInterEMT;
 #endif
-#if USE_KLT
+#if VCEG_AZ08_USE_KLT
   Int              m_useIntraKLT;
   Int              m_useInterKLT;
   Int              m_useKLT;
@@ -1088,7 +1088,7 @@ public:
   Int                    getUseInterEMT() const                                                          { return m_useInterEMT;  }
 #endif
 
-#if USE_KLT
+#if VCEG_AZ08_USE_KLT
   Void                   setUseIntraKLT(Int n)                                                           { m_useIntraKLT = n; }
   Int                    getUseIntraKLT() const                                                          { return m_useIntraKLT; }
   Void                   setUseInterKLT(Int n)                                                           { m_useInterKLT = n; }

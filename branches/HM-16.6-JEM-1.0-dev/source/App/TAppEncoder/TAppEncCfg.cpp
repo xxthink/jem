@@ -1114,7 +1114,7 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
                                                                            "\t3:  Enable fast methods for both Intra & Inter EMT\n")
 #endif
 
-#if USE_KLT
+#if VCEG_AZ08_USE_KLT
   ("KLT,-klt",                                        m_useKLT,       3, "KLT\n"
                                                                          "\t0:  Disable KLT\n"
                                                                          "\t1:  Enable only Intra KLT\n"
@@ -1871,14 +1871,14 @@ Void TAppEncCfg::xCheckParameter()
   xConfirmPara(     m_useEMT<0 ||     m_useEMT >3, "EMT must be 0, 1, 2 or 3"  );
   xConfirmPara( m_useFastEMT<0 || m_useFastEMT >3, "FEMT must be 0, 1, 2 or 3" );
 #endif
-#if USE_KLT
-#if INTER_KLT && INTRA_KLT
+#if VCEG_AZ08_USE_KLT
+#if VCEG_AZ08_INTER_KLT && VCEG_AZ08_INTRA_KLT
   xConfirmPara(m_useKLT<0 || m_useKLT >3, "KLT must be 0(disabled), 1(intra KLT), 2(inter KLT) or 3(intra KLT and inter KLT");
 #endif
-#if (!INTER_KLT) && INTRA_KLT
+#if (!VCEG_AZ08_INTER_KLT) && VCEG_AZ08_INTRA_KLT
   xConfirmPara(!(m_useKLT==0 || m_useKLT ==1), "KLT must be 0(disabled), 1(intra KLT)");
 #endif
-#if INTER_KLT && (!INTRA_KLT)
+#if VCEG_AZ08_INTER_KLT && (!VCEG_AZ08_INTRA_KLT)
   xConfirmPara(!(m_useKLT==0 || m_useKLT ==2), "KLT must be 0(disabled), 2(inter KLT)");
 #endif
 #endif
@@ -2639,7 +2639,7 @@ Void TAppEncCfg::xPrintParameter()
     printf( "FEMT: %1d(intra) %1d(inter) " , (m_useFastEMT&m_useEMT&1) , (m_useFastEMT>>1)&(m_useEMT>>1)&1 );
   }
 #endif
-#if USE_KLT
+#if VCEG_AZ08_USE_KLT
   printf(" KLT: %1d(intra) %1d(inter) ", m_useKLT & 1, (m_useKLT >> 1) & 1);
 #endif
 #if VCEG_AZ07_INTRA_4TAP_FILTER

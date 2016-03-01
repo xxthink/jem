@@ -78,7 +78,7 @@ private:
   UChar*          m_puhQTTempCbf[MAX_NUM_COMPONENT];
 
   TComYuv*        m_pcQTTempTComYuv;
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
   TComYuv*        m_pcQTTempTComYuvRec;
 #endif
   TComYuv         m_tmpYuvPred; // To be used in xGetInterPredictionError() to avoid constant memory allocation/deallocation
@@ -87,7 +87,7 @@ private:
   Pel*            m_pSharedPredTransformSkip[MAX_NUM_COMPONENT];
   TCoeff*         m_pcQTTempTUCoeff[MAX_NUM_COMPONENT];
   UChar*          m_puhQTTempTransformSkipFlag[MAX_NUM_COMPONENT];
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
   UChar*          m_puhQTTempKLTFlag[MAX_NUM_COMPONENT];
 #endif
 #if COM16_C806_EMT
@@ -317,7 +317,7 @@ protected:
                                          ,UInt*         puiSigNum = NULL
 #endif
                                    );
-#if INTRA_KLT
+#if VCEG_AZ08_INTRA_KLT
   Bool xIntraCodingTUBlockTM(TComYuv*    pcOrgYuv,
                                       TComYuv*    pcPredYuv,
                                       TComYuv*    pcResiYuv,
@@ -623,7 +623,7 @@ protected:
 
   Void xEncodeInterResidualQT( const ComponentID compID, TComTU &rTu );
   Void xEstimateInterResidualQT( TComYuv* pcResi, Double &rdCost, UInt &ruiBits, Distortion &ruiDist, Distortion *puiZeroDist, TComTU &rTu 
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
       , TComYuv* pcPred
 #endif
       DEBUG_STRING_FN_DECLARE(sDebug) );

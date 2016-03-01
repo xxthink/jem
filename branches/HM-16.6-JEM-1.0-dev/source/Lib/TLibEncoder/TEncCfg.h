@@ -409,7 +409,7 @@ protected:
   Int       m_useFastIntraEMT;
   Int       m_useFastInterEMT;
 #endif
-#if USE_KLT
+#if VCEG_AZ08_USE_KLT
   Int       m_useIntraKLT;
   Int       m_useInterKLT;
   Int       m_useKLT;
@@ -1064,7 +1064,7 @@ public:
   Void      setUseInterEMT(Int n)                                    { m_useInterEMT = n;     }
   Int       getUseInterEMT()                                         { return m_useInterEMT;  }
 #endif
-#if USE_KLT
+#if VCEG_AZ08_USE_KLT
   Void      setUseIntraKLT(Int n)                                    { m_useIntraKLT = n; }
   Int       getUseIntraKLT()                                         { return m_useIntraKLT; }
   Void      setUseInterKLT(Int n)                                    { m_useInterKLT = n; }

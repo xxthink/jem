@@ -41,10 +41,10 @@
 
 //! \ingroup TLibDecoder
 //! \{
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
 extern UInt g_uiDepth2InterTempSize[5];
 #endif
-#if INTRA_KLT
+#if VCEG_AZ08_INTRA_KLT
 extern UInt g_uiDepth2IntraTempSize[5];
 #endif
 // ====================================================================================================================
@@ -861,7 +861,7 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
   }
 }
 
-#if INTRA_KLT
+#if VCEG_AZ08_INTRA_KLT
 Void
 TDecCu::xIntraRecBlkTM( TComYuv*    pcRecoYuv,
                       TComYuv*    pcPredYuv,
@@ -1079,8 +1079,8 @@ TDecCu::xIntraRecQT(TComYuv*    pcRecoYuv,
   {
     if (isLuma(chType))
     {
-#if INTRA_KLT
-#if USE_KLT
+#if VCEG_AZ08_INTRA_KLT
+#if VCEG_AZ08_USE_KLT
         if (pcCU->getSlice()->getSPS()->getUseIntraKLT() && (Bool)pcCU->getKLTFlag(uiAbsPartIdx, COMPONENT_Y))
 #else
         Bool bTMFlag = (Bool)pcCU->getKLTFlag(uiAbsPartIdx, COMPONENT_Y);
@@ -1130,14 +1130,14 @@ Void TDecCu::xDecodeInterTexture ( TComDataCU* pcCU, UInt uiDepth )
 
   TComTURecurse tuRecur(pcCU, 0, uiDepth);
 
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
   TComYuv* pcPred = m_ppcYuvReco[uiDepth];
 #endif
   for(UInt ch=0; ch<pcCU->getPic()->getNumberValidComponents(); ch++)
   {
     const ComponentID compID=ComponentID(ch);
     DEBUG_STRING_OUTPUT(std::cout, debug_reorder_data_inter_token[compID])
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
     m_pcTrQuant->invRecurTransformNxN ( compID, m_ppcYuvResi[uiDepth], tuRecur, pcPred);
 #else
     m_pcTrQuant->invRecurTransformNxN ( compID, m_ppcYuvResi[uiDepth], tuRecur );

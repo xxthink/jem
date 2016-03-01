@@ -129,7 +129,7 @@ protected:
   static const Int m_ICShiftDiff = 12;
 #endif
 
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
   TComPicYuv* m_tempPicYuv;
 #endif
 
@@ -272,13 +272,13 @@ public:
 #endif
 #if COM16_C806_LMCHROMA
   Void    initTempBuff(ChromaFormat chromaFormatIDC, Int bitDepthY
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
     , bool interKLT , const Int iPicWidth, const Int iPicHeight, const UInt uiMaxCUWidth, const UInt uiMaxCUHeight, const UInt uiMaxCUDepth
 #endif
     );
 #else
   Void    initTempBuff(ChromaFormat chromaFormatIDC
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
     , bool interKLT , const Int iPicWidth, const Int iPicHeight, const UInt uiMaxCUWidth, const UInt uiMaxCUHeight, const UInt uiMaxCUDepth
 #endif
     );
@@ -338,7 +338,7 @@ public:
                                             );
 
   static Bool UseDPCMForFirstPassIntraEstimation(TComTU &rTu, const UInt uiDirMode);
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
   Void interpolatePic(TComPic* pcPic);
 #endif
 };
