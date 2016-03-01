@@ -140,6 +140,9 @@
 #define VCEG_AZ07_CTX_RESIDUALCODING                      1  ///< Context modeling for transform coefficient levels
 #define VCEG_AZ07_BAC_ADAPT_WDOW                          1  ///< Multi-hypothesis probability estimation
 #define VCEG_AZ07_INIT_PREVFRAME                          1  ///< Initialization for context models
+#if VCEG_AZ07_INIT_PREVFRAME
+#define VCEG_AZ07_INIT_PREVFRAME_FIX                      1  ///< Fix for GOP16
+#endif
 #endif                                                       
 
 #define VCEG_AZ05_MULTI_PARAM_CABAC                       1  ///< CABAC probability estimation with 2 windows 
@@ -977,7 +980,11 @@ typedef struct _QPFLAG
   Bool      used;      //same QP, same type has appearaed
   Bool      firstUsed; //same QP, same type was firstly signaled
 #if VCEG_AZ07_INIT_PREVFRAME
+#if VCEG_AZ07_INIT_PREVFRAME_FIX
+  Int       resetInit; 
+#else
   UInt      resetInit; //for the first B/P frame after intra slice, no init update
+#endif
 #endif
 } QPFlag;
 #endif

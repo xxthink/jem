@@ -2808,7 +2808,11 @@ Void TDecSbac::loadContextsFromPrev (TComStats* apcStats, SliceType eSliceType, 
 {
   if(bFromGloble)
   {
+#if VCEG_AZ07_INIT_PREVFRAME_FIX
+    if(iQPIdx==-1 || !apcStats->aaQPUsed[eSliceType][iQPIdxRst].resetInit)
+#else
     if(iQPIdx==-1 || (bAfterLastISlice && !apcStats->aaQPUsed[eSliceType][iQPIdxRst].resetInit))
+#endif
     {
       return;
     }
