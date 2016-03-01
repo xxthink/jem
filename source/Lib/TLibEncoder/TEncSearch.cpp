@@ -441,9 +441,17 @@ Void TEncSearch::init(TEncCfg*      pcEncCfg,
   const ChromaFormat cform=pcEncCfg->getChromaFormatIdc();
 #if COM16_C806_LMCHROMA
   const Int bitDepth = pcEncCfg->getBitDepth(CHANNEL_TYPE_LUMA);
-  initTempBuff(cform, bitDepth);
+  initTempBuff(cform, bitDepth
+#if INTER_KLT
+    , pcEncCfg->getUseInterKLT() , pcEncCfg->getSourceWidth() , pcEncCfg->getSourceHeight() , maxCUWidth , maxCUHeight , maxTotalCUDepth 
+#endif
+    );
 #else
-  initTempBuff(cform);
+  initTempBuff(cform
+#if INTER_KLT
+    , pcEncCfg->getUseInterKLT() , pcEncCfg->getSourceWidth() , pcEncCfg->getSourceHeight() , maxCUWidth , maxCUHeight , maxTotalCUDepth 
+#endif
+    );
 #endif
 
   m_pTempPel = new Pel[maxCUWidth*maxCUHeight];
