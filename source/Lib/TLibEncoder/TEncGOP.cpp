@@ -1803,13 +1803,13 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     pcPic->getPicYuvRec()->copyToPic(pcPicYuvRecOut);
 
     pcPic->setReconMark   ( true );
-#if INTER_KLT
-#if USE_KLT
+#if VCEG_AZ08_INTER_KLT
+#if VCEG_AZ08_USE_KLT
     if (pcSlice->getSPS()->getUseInterKLT())
     {
 #endif
         m_pcSliceEncoder->InterpolatePic(pcPic);
-#if USE_KLT
+#if VCEG_AZ08_USE_KLT
     }
 #endif
 #endif

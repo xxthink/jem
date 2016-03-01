@@ -404,7 +404,7 @@ protected:
   Int       m_useEMT;                                         ///< XZ: Enhanced Multiple Transform
   Int       m_useFastEMT;                                     ///< XZ: Fast Methods of Enhanced Multiple Transform
 #endif
-#if USE_KLT
+#if VCEG_AZ08_USE_KLT
   Int       m_useKLT;                                         
 #endif
 

@@ -485,7 +485,7 @@ Void TComYuv::removeHighFreq( const TComYuv* pcYuvSrc,
   }
 }
 
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
 Void TComPicYuv::fillPicRecBoundary(const BitDepths bitDepths)
 {
     const ComponentID compID = COMPONENT_Y;

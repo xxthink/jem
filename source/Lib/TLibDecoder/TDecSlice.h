@@ -81,7 +81,7 @@ public:
     , ALFParam & alfParam
 #endif
     );
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
   Void InterpolatePic    ( TComPic* pcPic );
 #endif
 };

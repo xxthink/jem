@@ -45,11 +45,11 @@
 #include "TComTU.h"
 #include "Debug.h"
 
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
 #include <algorithm>
 #endif
 
-#if USE_SSE_SPEEDUP
+#if VCEG_AZ08_USE_SSE_SPEEDUP
 #include <intrin.h>
 #include <emmintrin.h>
 #include <xmmintrin.h>
@@ -72,17 +72,17 @@ UInt GetSAD16x16_SSE_U16(I16 **pSrc, I16 *pRef, Int iRefStride, Int iYOffset, In
 UInt GetSAD32x32_SSE_U16(I16 **pSrc, I16 *pRef, Int iRefStride, Int iYOffset, Int iXOffset, UInt uiBestSAD);
 #endif
 
-#if KLT_COMMON //only support 4x4-32x32 now
+#if VCEG_AZ08_KLT_COMMON //only support 4x4-32x32 now
 UInt g_uiDepth2MaxCandiNum[5] = { MAX_CANDI_NUM, MAX_CANDI_NUM, MAX_CANDI_NUM, MAX_CANDI_NUM, MAX_CANDI_NUM };
 UInt g_uiDepth2MinCandiNum[5] = { 8, 8, 8, 8, 8 };
 Int g_maxValueThre = MAX_INT;
 
 UInt g_uiDepth2Width[5] = { 4, 8, 16, 32, 64 };
 //template size ===========
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
 UInt g_uiDepth2InterTempSize[5] = { 3, 3, 3, 3, 3 };
 #endif
-#if INTRA_KLT
+#if VCEG_AZ08_INTRA_KLT
 UInt g_uiDepth2IntraTempSize[5] = { 3, 3, 3, 3, 3 };
 #endif
 
@@ -250,22 +250,22 @@ TComTrQuant::~TComTrQuant()
     delete m_pcEstBitsSbac;
   }
   destroyScalingList();
-#if USE_KLT
+#if VCEG_AZ08_USE_KLT
   if (m_useKLT)
   {
-#if INTRA_KLT && INTER_KLT
+#if VCEG_AZ08_INTRA_KLT && VCEG_AZ08_INTER_KLT
       Int useIntraKLT = m_useKLT & 1;
       Int useInterKLT = (m_useKLT >> 1) & 1;
 #endif
 #endif
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
       for (UInt i = 0; i < MAX_CANDI_NUM; i++)
       {
           delete[]m_pData[i];
           m_pData[i] = NULL;
       }
 
-#if USE_TRANSPOSE_CANDDIATEARRAY
+#if VCEG_AZ08_USE_TRANSPOSE_CANDDIATEARRAY
       for (UInt i = 0; i < MAX_1DTRANS_LEN; i++)
       {
           delete[]m_pDataT[i];
@@ -277,9 +277,9 @@ TComTrQuant::~TComTrQuant()
           for (UInt uiDepth = 0; uiDepth < USE_MORE_BLOCKSIZE_DEPTH_MAX; uiDepth++)
           {
               UInt blkSize = g_uiDepth2Width[uiDepth];
-#if USE_KLT
+#if VCEG_AZ08_USE_KLT
               UInt tempSize = 0;
-#if INTRA_KLT && INTER_KLT
+#if VCEG_AZ08_INTRA_KLT && VCEG_AZ08_INTER_KLT
               if(useIntraKLT && useInterKLT)
               {
                   tempSize = max(g_uiDepth2IntraTempSize[uiDepth], g_uiDepth2InterTempSize[uiDepth]);
@@ -293,20 +293,20 @@ TComTrQuant::~TComTrQuant()
                   tempSize = g_uiDepth2InterTempSize[uiDepth];
               }
 #endif
-#if INTRA_KLT && !INTER_KLT
+#if VCEG_AZ08_INTRA_KLT && !VCEG_AZ08_INTER_KLT
               tempSize = g_uiDepth2IntraTempSize[uiDepth];
 #endif
-#if !INTRA_KLT && INTER_KLT
+#if !VCEG_AZ08_INTRA_KLT && VCEG_AZ08_INTER_KLT
               tempSize = g_uiDepth2InterTempSize[uiDepth];
 #endif
 #else
-#if INTRA_KLT && INTER_KLT
+#if VCEG_AZ08_INTRA_KLT && VCEG_AZ08_INTER_KLT
               UInt tempSize = max(g_uiDepth2IntraTempSize[uiDepth], g_uiDepth2InterTempSize[uiDepth]);
 #endif
-#if INTRA_KLT && !INTER_KLT
+#if VCEG_AZ08_INTRA_KLT && !VCEG_AZ08_INTER_KLT
               UInt tempSize = g_uiDepth2IntraTempSize[uiDepth];
 #endif
-#if !INTRA_KLT && INTER_KLT
+#if !VCEG_AZ08_INTRA_KLT && VCEG_AZ08_INTER_KLT
               UInt tempSize = g_uiDepth2InterTempSize[uiDepth];
 #endif
 #endif
@@ -337,7 +337,7 @@ TComTrQuant::~TComTrQuant()
           }
           delete[]m_pCovMatrix; m_pCovMatrix = NULL;
       }
-#if FAST_DERIVE_KLT
+#if VCEG_AZ08_FAST_DERIVE_KLT
       if (m_pppdTmpEigenVector != NULL)
       {
           UInt blkSize = g_uiDepth2Width[USE_MORE_BLOCKSIZE_DEPTH_MAX-1];
@@ -384,7 +384,7 @@ TComTrQuant::~TComTrQuant()
           delete[]m_pppsEigenVector; m_pppsEigenVector = NULL;
       }
 #endif
-#if USE_KLT
+#if VCEG_AZ08_USE_KLT
   }
 #endif
 }
@@ -3062,12 +3062,12 @@ void xTrMxN_EMT(Int bitDepth, TCoeff *block, TCoeff *coeff, Int iWidth, Int iHei
 #endif
 
 Void xTrMxN(Int bitDepth, TCoeff *block, TCoeff *coeff, Int iWidth, Int iHeight, Bool useDST, const Int maxLog2TrDynamicRange
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
     , Bool useKLT
 #endif
     )
 {
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
     if (useKLT == true)
     {
       xKLTr(bitDepth, block, coeff, iWidth);
@@ -3199,12 +3199,12 @@ void xITrMxN_EMT(Int bitDepth, TCoeff *coeff, TCoeff *block, Int iWidth, Int iHe
 #endif
 
 Void xITrMxN(Int bitDepth, TCoeff *coeff, TCoeff *block, Int iWidth, Int iHeight, Bool useDST, const Int maxLog2TrDynamicRange
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
     , Bool useKLT
 #endif
     )
 {
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
     if (useKLT == true)
     {
       assert(iWidth == iHeight);
@@ -3730,7 +3730,7 @@ Void TComTrQuant::xDeQuant(       TComTU        &rTu,
 
 
 Void TComTrQuant::init(   UInt  uiMaxTrSize,
-#if USE_KLT
+#if VCEG_AZ08_USE_KLT
                           UInt  uiUseKLT,
 #endif
                           Bool  bUseRDOQ,
@@ -3757,16 +3757,16 @@ Void TComTrQuant::init(   UInt  uiMaxTrSize,
   m_bUseAdaptQpSelect = bUseAdaptQpSelect;
 #endif
   m_useTransformSkipFast = useTransformSkipFast;
-#if USE_KLT
+#if VCEG_AZ08_USE_KLT
   m_useKLT = uiUseKLT;
   if (uiUseKLT)
   {
-#if INTRA_KLT && INTER_KLT
+#if VCEG_AZ08_INTRA_KLT && VCEG_AZ08_INTER_KLT
       Int useIntraKLT = m_useKLT & 1;
       Int useInterKLT = (m_useKLT >> 1) & 1;
 #endif
 #endif
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
       UInt blkSize;
       UInt uiDim;
       m_tempLibFast.init(MAX_CANDI_NUM);
@@ -3774,7 +3774,7 @@ Void TComTrQuant::init(   UInt  uiMaxTrSize,
       {
           m_pData[i] = new TrainDataType[MAX_1DTRANS_LEN];
       }
-#if USE_TRANSPOSE_CANDDIATEARRAY
+#if VCEG_AZ08_USE_TRANSPOSE_CANDDIATEARRAY
       for (UInt i = 0; i < MAX_1DTRANS_LEN; i++)
       {
           m_pDataT[i] = new TrainDataType[MAX_CANDI_NUM];
@@ -3785,9 +3785,9 @@ Void TComTrQuant::init(   UInt  uiMaxTrSize,
       for (UInt uiDepth = 0; uiDepth < USE_MORE_BLOCKSIZE_DEPTH_MAX; uiDepth++)
       {
           blkSize = g_uiDepth2Width[uiDepth];
-#if USE_KLT
+#if VCEG_AZ08_USE_KLT
           UInt tempSize = 0;
-#if INTRA_KLT && INTER_KLT
+#if VCEG_AZ08_INTRA_KLT && VCEG_AZ08_INTER_KLT
           if(useIntraKLT && useInterKLT)
           {
               tempSize = max(g_uiDepth2IntraTempSize[uiDepth], g_uiDepth2InterTempSize[uiDepth]);
@@ -3801,20 +3801,20 @@ Void TComTrQuant::init(   UInt  uiMaxTrSize,
               tempSize = g_uiDepth2InterTempSize[uiDepth];
           }
 #endif
-#if INTRA_KLT && !INTER_KLT
+#if VCEG_AZ08_INTRA_KLT && !VCEG_AZ08_INTER_KLT
           tempSize = g_uiDepth2IntraTempSize[uiDepth];
 #endif
-#if !INTRA_KLT && INTER_KLT
+#if !VCEG_AZ08_INTRA_KLT && VCEG_AZ08_INTER_KLT
           tempSize = g_uiDepth2InterTempSize[uiDepth];
 #endif
 #else
-#if INTRA_KLT && INTER_KLT
+#if VCEG_AZ08_INTRA_KLT && VCEG_AZ08_INTER_KLT
           UInt tempSize = max(g_uiDepth2IntraTempSize[uiDepth], g_uiDepth2InterTempSize[uiDepth]);
 #endif
-#if INTRA_KLT && !INTER_KLT
+#if VCEG_AZ08_INTRA_KLT && !VCEG_AZ08_INTER_KLT
           UInt tempSize = g_uiDepth2IntraTempSize[uiDepth];
 #endif
-#if !INTRA_KLT && INTER_KLT
+#if !VCEG_AZ08_INTRA_KLT && VCEG_AZ08_INTER_KLT
           UInt tempSize = g_uiDepth2InterTempSize[uiDepth];
 #endif
 #endif
@@ -3834,7 +3834,7 @@ Void TComTrQuant::init(   UInt  uiMaxTrSize,
           UInt uiMatrixDim = uiDim*uiDim;
           m_pCovMatrix[uiDepth] = new covMatrixType[uiMatrixDim];
       }
-#if FAST_DERIVE_KLT
+#if VCEG_AZ08_FAST_DERIVE_KLT
       blkSize = g_uiDepth2Width[USE_MORE_BLOCKSIZE_DEPTH_MAX - 1];
       uiDim = blkSize*blkSize;
       m_pppdTmpEigenVector = new EigenType *[uiDim];
@@ -3866,7 +3866,7 @@ Void TComTrQuant::init(   UInt  uiMaxTrSize,
           }
       }
 #endif
-#if USE_KLT
+#if VCEG_AZ08_USE_KLT
   }
 #endif
 }
@@ -4110,7 +4110,7 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
 #endif
                                       TCoeff        & uiAbsSum,
                                 const QpParam       & cQP 
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
                                 , Bool useKLT
 #endif
                                 )
@@ -4167,7 +4167,7 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
           , getEmtMode ( rTu, compID )
           , getEmtTrIdx( rTu, compID )
 #endif
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
           , useKLT && (compID == 0)
 #endif
           );
@@ -4297,7 +4297,7 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
         }
       }
 #endif
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
       if (useKLT && (compID == 0))
       {
           TUEntropyCodingParameters codingParameters;
@@ -4332,7 +4332,7 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
                                   const UInt           uiStride,
                                         TCoeff       * pcCoeff,
                                   const QpParam       &cQP
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
                                   , Bool useKLT
 #endif
                                         DEBUG_STRING_FN_DECLAREP(psDebug)
@@ -4362,7 +4362,7 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
       TCoeff *subTUCoefficients = pcCoeff     + (lineOffset * subTURecurse.getRect(compID).width);
 
       invTransformNxN(subTURecurse, compID, subTUResidual, uiStride, subTUCoefficients, cQP
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
       , useKLT
 #endif
       DEBUG_STRING_PASS_INTO(psDebug)
@@ -4565,7 +4565,7 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
         , getEmtMode ( rTu, compID )
         , getEmtTrIdx( rTu, compID )
 #endif
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
         , useKLT
 #endif
         );
@@ -4595,7 +4595,7 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
 Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,
                                         TComYuv *pResidual,
                                         TComTU &rTu
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
                                         , TComYuv* pcPred
 #endif
     )
@@ -4610,8 +4610,8 @@ Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,
   UInt uiTrMode=rTu.GetTransformDepthRel();
   if( (pcCU->getCbf(absPartIdxTU, compID, uiTrMode) == 0) && (isLuma(compID) || !pcCU->getSlice()->getPPS()->getPpsRangeExtension().getCrossComponentPredictionEnabledFlag()) )
   {
-#if INTER_KLT
-#if USE_KLT
+#if VCEG_AZ08_INTER_KLT
+#if VCEG_AZ08_USE_KLT
       if (pcCU->getSlice()->getSPS()->getUseInterKLT())
       {
 #endif
@@ -4646,7 +4646,7 @@ Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,
               piPred += uiPredStride;
               piReco += uiRecStride;
           }
-#if USE_KLT
+#if VCEG_AZ08_USE_KLT
       }
 #endif
 #endif
@@ -4670,9 +4670,9 @@ Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,
 #if DEBUG_STRING
             std::string *psDebug=((DebugOptionList::DebugString_InvTran.getInt()&(pcCU->isIntra(absPartIdxTU)?1:(pcCU->isInter(absPartIdxTU)?2:4)))!=0) ? &sTemp : 0;
 #endif
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
         Bool useKLT = false;
-#if USE_KLT
+#if VCEG_AZ08_USE_KLT
         if (pcCU->getSlice()->getSPS()->getUseInterKLT())
         {
 #endif
@@ -4737,7 +4737,7 @@ Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,
                     piReco += uiRecStride;
                 }
             }
-#if USE_KLT
+#if VCEG_AZ08_USE_KLT
         }
         else
         {
@@ -4777,7 +4777,7 @@ Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,
     do
     {
         invRecurTransformNxN(compID, pResidual, tuRecurseChild 
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
             , pcPred
 #endif
             );
@@ -4993,7 +4993,7 @@ Void TComTrQuant::xT( const Int channelBitDepth, Bool useDST, Pel* piBlkResi, UI
                      , UChar ucMode
                      , UChar ucTrIdx
 #endif
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
                      , Bool useKLT
 #endif
                      )
@@ -5024,7 +5024,7 @@ Void TComTrQuant::xT( const Int channelBitDepth, Bool useDST, Pel* piBlkResi, UI
     }
   }
 #if COM16_C806_EMT
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
   if( ucTrIdx!=DCT2_HEVC && useKLT == false)
 #else
   if( ucTrIdx!=DCT2_HEVC )
@@ -5035,7 +5035,7 @@ Void TComTrQuant::xT( const Int channelBitDepth, Bool useDST, Pel* piBlkResi, UI
   else
 #endif
 
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
   xTrMxN( channelBitDepth, block, coeff, iWidth, iHeight, useDST, maxLog2TrDynamicRange, useKLT);
 #else
   xTrMxN( channelBitDepth, block, coeff, iWidth, iHeight, useDST, maxLog2TrDynamicRange );
@@ -5058,7 +5058,7 @@ Void TComTrQuant::xIT( const Int channelBitDepth, Bool useDST, TCoeff* plCoef, P
                       , UChar ucMode
                       , UChar ucTrIdx
 #endif
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
                       , Bool useKLT
 #endif
                       )
@@ -5084,7 +5084,7 @@ Void TComTrQuant::xIT( const Int channelBitDepth, Bool useDST, TCoeff* plCoef, P
   memcpy(coeff, plCoef, (iWidth * iHeight * sizeof(TCoeff)));
 
 #if COM16_C806_EMT
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
   if(ucTrIdx!=DCT2_HEVC && useKLT == false)
 #else
   if(ucTrIdx!=DCT2_HEVC)
@@ -5095,7 +5095,7 @@ Void TComTrQuant::xIT( const Int channelBitDepth, Bool useDST, TCoeff* plCoef, P
   else
 #endif
   xITrMxN( channelBitDepth, coeff, block, iWidth, iHeight, useDST, maxLog2TrDynamicRange
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
   , useKLT
 #endif
   );
@@ -7886,7 +7886,7 @@ Void TComTrQuant::crossComponentPrediction(       TComTU      & rTu,
 
 
 
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
 inline int MY_INT(double x)
 {
     return x < 0 ? (int)(x - 0.5) : (int)(x + 0.5);
@@ -7965,10 +7965,10 @@ Void TempLibFast::init(UInt iSize)
 
 Void TempLibFast::initDiff(UInt uiPatchSize, Int bitDepth, Int iCandiNumber)
 {
-#if USE_SAD_DISTANCE
+#if VCEG_AZ08_USE_SAD_DISTANCE
     DistType maxValue = ((1 << bitDepth) >> (INIT_THRESHOULD_SHIFTBITS))*(uiPatchSize*uiPatchSize);
 #endif
-#if USE_SSD_DISTANCE
+#if VCEG_AZ08_USE_SSD_DISTANCE
     DistType maxValue = ((1 << bitDepth) >> (INIT_THRESHOULD_SHIFTBITS))*((1 << bitDepth) >> (INIT_THRESHOULD_SHIFTBITS))*uiPatchSize*uiPatchSize;
 #endif
     g_maxValueThre = maxValue;
@@ -8088,7 +8088,7 @@ void xIKLTr(Int bitDepth, TCoeff *coeff, TCoeff *block, UInt uiTrSize)  //void x
 Bool TComTrQuant::deriveKLT(UInt uiBlkSize, UInt uiUseCandiNumber)
 {
     Bool bSucceedFlag = true;
-#if FAST_DERIVE_KLT
+#if VCEG_AZ08_FAST_DERIVE_KLT
     Int fast_klt_blksize = 8;
     if (FAST_KLT_CANDINUM > 64)
     {
@@ -8189,7 +8189,7 @@ Bool TComTrQuant::derive1DimKLT(UInt uiBlkSize, UInt uiUseCandiNumber)
         }
     }
     Int scale = uiBlkSize*(1 << KLTBASIS_SHIFTBIT);
-#if USE_SSE_SCLAE
+#if VCEG_AZ08_USE_SSE_SCLAE
     scaleMatrix(pdEigenVector, psEigenVector, scale, uiDim, uiDim);
 #else
     for (UInt uiRow = 0; uiRow < uiDim; uiRow++)
@@ -8247,7 +8247,7 @@ Bool TComTrQuant::derive1DimKLT_Fast(UInt uiBlkSize, UInt uiUseCandiNumber)
     }
 
     UInt uiCalcEigNum = uiSampleNum;
-#if FORCE_USE_GIVENNUM_BASIS
+#if VCEG_AZ08_FORCE_USE_GIVENNUM_BASIS
     uiCalcEigNum = min(uiSampleNum, (UInt)FORCE_BASIS_NUM);
 #endif
 
@@ -8269,7 +8269,7 @@ Bool TComTrQuant::derive1DimKLT_Fast(UInt uiBlkSize, UInt uiUseCandiNumber)
         Double dValueNorm = sqrt(m_pEigenValues[uiRow]);
         for (UInt uiCol = 0; uiCol < uiDim; uiCol++)
         {
-#if USE_FLOATXSHORT_SSE
+#if VCEG_AZ08_USE_FLOATXSHORT_SSE
             dValue = InnerProduct_SSE_FLOATXSHORT(pdEigenVectorRow, m_pDataT[uiCol], uiSampleNum);
 #else
             dValue = 0;
@@ -8284,7 +8284,7 @@ Bool TComTrQuant::derive1DimKLT_Fast(UInt uiBlkSize, UInt uiUseCandiNumber)
 
     UInt uiBasisNum = uiFilledDim;
     Int iScale = uiBlkSize*(1 << KLTBASIS_SHIFTBIT);
-#if USE_SSE_SCLAE
+#if VCEG_AZ08_USE_SSE_SCLAE
     scaleMatrix(pdEigenVectorTarget, psEigenVector, iScale, uiBasisNum, uiDim);
 #else
     for (UInt uiRow = 0; uiRow < uiBasisNum; uiRow++)
@@ -8304,7 +8304,7 @@ Bool TComTrQuant::derive1DimKLT_Fast(UInt uiBlkSize, UInt uiUseCandiNumber)
 }
 
 
-#if FAST_DERIVE_KLT
+#if VCEG_AZ08_FAST_DERIVE_KLT
 //calculate XX' ranther than X'X  X:N * Dim
 Void TComTrQuant::calcCovMatrixXXt(TrainDataType **pData, UInt uiSampleNum, covMatrixType *pCovMatrix, UInt uiDim)
 {
@@ -8319,7 +8319,7 @@ Void TComTrQuant::calcCovMatrixXXt(TrainDataType **pData, UInt uiSampleNum, covM
         {
             pDataRow = pData[uiRow];
             pDataCol = pData[uiCol];
-#if USE_SHORTXSHORT_SSE
+#if VCEG_AZ08_USE_SHORTXSHORT_SSE
             covValue = InnerProduct_SSE_SHORT(pDataRow, pDataCol, uiDim);
 #else
             covValue = 0;
@@ -8347,7 +8347,7 @@ Void TComTrQuant::calcCovMatrix(TrainDataType **pData, UInt uiSampleNum, covMatr
     //Get the covariance matrix
     covMatrixType dCovValue;
     Int covValue;
-#if !(USE_TRANSPOSE_CANDDIATEARRAY && USE_SHORTXSHORT_SSE)
+#if !(VCEG_AZ08_USE_TRANSPOSE_CANDDIATEARRAY && VCEG_AZ08_USE_SHORTXSHORT_SSE)
     UInt i;
     TrainDataType *pSample;
 #endif
@@ -8355,7 +8355,7 @@ Void TComTrQuant::calcCovMatrix(TrainDataType **pData, UInt uiSampleNum, covMatr
     {
         for (UInt uiCol = 0; uiCol <= uiRow; uiCol++)
         {
-#if USE_SHORTXSHORT_SSE
+#if VCEG_AZ08_USE_SHORTXSHORT_SSE
             covValue = InnerProduct_SSE_SHORT(m_pDataT[uiRow], m_pDataT[uiCol], uiSampleNum);
 #else
             covValue = 0;
@@ -8380,7 +8380,7 @@ Void TComTrQuant::calcCovMatrix(TrainDataType **pData, UInt uiSampleNum, covMatr
 }
 #endif
 
-#if INTER_KLT 
+#if VCEG_AZ08_INTER_KLT 
 Void TComTrQuant::getTargetPatch(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt absTUPartIdx, TComYuv* pcPred, UInt uiBlkSize, UInt uiTempSize)
 {
     ComponentID compID = COMPONENT_Y;
@@ -8438,7 +8438,7 @@ Void TComTrQuant::candidateSearch(TComDataCU *pcCU, UInt uiPartAddr, UInt uiBlkS
     UInt uiTarDepth = g_aucConvertToBit[uiBlkSize];
     Pel **tarPatch = m_pppTarPatch[uiTarDepth];
     Int      iRefIdx[2] = { -1, -1 };
-#if !INTER_KLT_MV_BUGFIXED
+#if !VCEG_AZ08_INTER_KLT_MV_BUGFIXED
     TComMv      cMvs[2];
 #endif
     UInt uiTargetCandiNum = g_uiDepth2MaxCandiNum[uiTarDepth];
@@ -8462,7 +8462,7 @@ Void TComTrQuant::candidateSearch(TComDataCU *pcCU, UInt uiPartAddr, UInt uiBlkS
         iRefIdx[eRefPicList] = pcCU->getCUMvField(eRefPicList)->getRefIdx(uiPartAddr);
         if (iRefIdx[eRefPicList] >= 0)
         {
-#if INTER_KLT_MV_BUGFIXED
+#if VCEG_AZ08_INTER_KLT_MV_BUGFIXED
             cMvRefs[filledNum] = pcCU->getCUMvField(eRefPicList)->getMv(uiPartAddr);
 #else
             cMvRefs[filledNum] = cMvs[eRefPicList];
@@ -8670,7 +8670,7 @@ Void TComTrQuant::searchCandidateFraBasedOnInteger(TComDataCU *pcCU, Pel **tarPa
 Void TComTrQuant::xSetSearchRange(TComDataCU* pcCU, TComMv& cMvPred, Int iSrchRng, TComMv& rcMvSrchRngLT, TComMv& rcMvSrchRngRB)
 {
     Int  iMvShift = 2;
-#if INTER_KLT_MV_BUGFIXED
+#if VCEG_AZ08_INTER_KLT_MV_BUGFIXED
 #if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
     iMvShift += VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE;
 #endif
@@ -8806,7 +8806,7 @@ Bool TComTrQuant::prepareKLTSamplesInter(UInt uiBlkSize, UInt uiTempSize)
         }
     }
 
-#if USE_TRANSPOSE_CANDDIATEARRAY
+#if VCEG_AZ08_USE_TRANSPOSE_CANDDIATEARRAY
     Int dim = uiWidth * uiHeight;
     Int d;
     for (k = 0; k < iCandiNum; k++)
@@ -8824,13 +8824,13 @@ Bool TComTrQuant::prepareKLTSamplesInter(UInt uiBlkSize, UInt uiTempSize)
 
 
 
-#if INTRA_KLT
+#if VCEG_AZ08_INTRA_KLT
 Void TempLibFast::initTemplateDiff(UInt uiPatchSize, UInt uiBlkSize, Int bitDepth, Int iCandiNumber)
 {
-#if USE_SAD_DISTANCE
+#if VCEG_AZ08_USE_SAD_DISTANCE
     DistType maxValue = ((1 << bitDepth) >> (INIT_THRESHOULD_SHIFTBITS))*(uiPatchSize*uiPatchSize - uiBlkSize*uiBlkSize);
 #endif
-#if USE_SSD_DISTANCE
+#if VCEG_AZ08_USE_SSD_DISTANCE
     DistType maxValue = ((1 << bitDepth) >> (INIT_THRESHOULD_SHIFTBITS))*((1 << bitDepth) >> (INIT_THRESHOULD_SHIFTBITS))*(uiPatchSize*uiPatchSize - uiBlkSize*uiBlkSize);
 #endif
     m_diffMax = maxValue;
@@ -9195,7 +9195,7 @@ Bool TComTrQuant::prepareKLTSamplesIntra(Pel *piPred, UInt uiStride, UInt uiBlkS
             refTarget += picStride;
         }
     }
-#if USE_TRANSPOSE_CANDDIATEARRAY
+#if VCEG_AZ08_USE_TRANSPOSE_CANDDIATEARRAY
     Int dim = uiWidth * uiHeight;
     Int d;
     for (k = 0; k < m_uiVaildCandiNum; k++)
@@ -9209,7 +9209,7 @@ Bool TComTrQuant::prepareKLTSamplesIntra(Pel *piPred, UInt uiStride, UInt uiBlkS
     return true;
 }
 
-#if USE_SSE_TMP_SAD
+#if VCEG_AZ08_USE_SSE_TMP_SAD
 DistType TComTrQuant::calcTemplateDiff(Pel *ref, UInt uiStride, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, DistType iMax)
 {
     Int iY, iX;
@@ -9221,7 +9221,7 @@ DistType TComTrQuant::calcTemplateDiff(Pel *ref, UInt uiStride, Pel **tarPatch, 
     for (iY = 0; iY < uiTempSize; iY++)
     {
         tarPatchRow = tarPatch[iY];
-#if USE_SSE_TMP_SAD
+#if VCEG_AZ08_USE_SSE_TMP_SAD
         iDiffSum += AbsSumOfVector(refPatchRow, tarPatchRow, uiPatchSize);
 #else
         for (iX = 0; iX < uiPatchSize; iX++)
@@ -9242,7 +9242,7 @@ DistType TComTrQuant::calcTemplateDiff(Pel *ref, UInt uiStride, Pel **tarPatch, 
         for (iY = uiTempSize; iY < uiPatchSize; iY++)
         {
             tarPatchRow = tarPatch[iY];
-#if USE_SSE_TMP_SAD
+#if VCEG_AZ08_USE_SSE_TMP_SAD
             iDiffSum += AbsSumOfVectorLesseqthan8(refPatchRow, tarPatchRow, uiTempSize);
 #else
             for (iX = 0; iX < uiTempSize; iX++)
@@ -9279,7 +9279,7 @@ DistType TComTrQuant::calcTemplateDiff(Pel *ref, UInt uiStride, Pel **tarPatch, 
 DistType TComTrQuant::calcTemplateDiff(Pel *ref, UInt uiStride, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, DistType iMax)
 {
     Int iY, iX;
-#if USE_SSD_DISTANCE
+#if VCEG_AZ08_USE_SSD_DISTANCE
     Int iDiff;
 #endif
     DistType iDiffSum = 0;
@@ -9290,10 +9290,10 @@ DistType TComTrQuant::calcTemplateDiff(Pel *ref, UInt uiStride, Pel **tarPatch, 
         tarPatchRow = tarPatch[iY];
         for (iX = 0; iX < uiPatchSize; iX++)
         {
-#if USE_SAD_DISTANCE
+#if VCEG_AZ08_USE_SAD_DISTANCE
             iDiffSum += abs(refPatchRow[iX] - tarPatchRow[iX]);
 #endif
-#if USE_SSD_DISTANCE
+#if VCEG_AZ08_USE_SSD_DISTANCE
             iDiff = refPatchRow[iX] - tarPatchRow[iX];
             iDiffSum += iDiff * iDiff;
 #endif
@@ -9309,10 +9309,10 @@ DistType TComTrQuant::calcTemplateDiff(Pel *ref, UInt uiStride, Pel **tarPatch, 
         tarPatchRow = tarPatch[iY];
         for (iX = 0; iX < uiTempSize; iX++)
         {
-#if USE_SAD_DISTANCE
+#if VCEG_AZ08_USE_SAD_DISTANCE
             iDiffSum += abs(refPatchRow[iX] - tarPatchRow[iX]);
 #endif
-#if USE_SSD_DISTANCE
+#if VCEG_AZ08_USE_SSD_DISTANCE
             iDiff = refPatchRow[iX] - tarPatchRow[iX];
             iDiffSum += iDiff * iDiff;
 #endif
@@ -9328,10 +9328,10 @@ DistType TComTrQuant::calcTemplateDiff(Pel *ref, UInt uiStride, Pel **tarPatch, 
 #endif
 #endif
 
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
 DistType TComTrQuant::calcPatchDiff(Pel *ref, UInt uiStride, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, DistType iMax)
 {
-#if USE_SSE_BLK_SAD
+#if VCEG_AZ08_USE_SSE_BLK_SAD
     UInt uiBlkSize = uiPatchSize - uiTempSize;
     UInt blkDiffSum = 0;
     switch (uiBlkSize)
@@ -9388,7 +9388,7 @@ DistType TComTrQuant::calcPatchDiff(Pel *ref, UInt uiStride, Pel **tarPatch, UIn
     return blkDiffSum;
 #else
     Int iY, iX;
-#if USE_SSD_DISTANCE
+#if VCEG_AZ08_USE_SSD_DISTANCE
     Int iDiff;
 #endif
     DistType iDiffSum = 0;
@@ -9399,10 +9399,10 @@ DistType TComTrQuant::calcPatchDiff(Pel *ref, UInt uiStride, Pel **tarPatch, UIn
         tarPatchRow = tarPatch[iY];
         for (iX = 0; iX < uiPatchSize; iX++)
         {
-#if USE_SAD_DISTANCE
+#if VCEG_AZ08_USE_SAD_DISTANCE
             iDiffSum += abs(refPatchRow[iX] - tarPatchRow[iX]);
 #endif
-#if USE_SSD_DISTANCE
+#if VCEG_AZ08_USE_SSD_DISTANCE
             iDiff = refPatchRow[iX] - tarPatchRow[iX];
             iDiffSum += iDiff * iDiff;
 #endif
@@ -9423,7 +9423,7 @@ DistType TComTrQuant::calcPatchDiff(Pel *ref, UInt uiStride, Pel **tarPatch, UIn
 
 
 //For SSE speed up
-#if USE_SSE_SPEEDUP
+#if VCEG_AZ08_USE_SSE_SPEEDUP
 #define USE_SUM 1 //If defined, faster
 #if USE_SUM
 inline Int GetSum(__m128i x)

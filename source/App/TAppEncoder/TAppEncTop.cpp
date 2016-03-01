@@ -421,7 +421,7 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setUseInterEMT                                       ( (m_useEMT>>1)&1 );
   m_cTEncTop.setUseFastInterEMT                                   ( (m_useFastEMT>>1) & (m_useEMT>>1) & 1 );
 #endif
-#if USE_KLT
+#if VCEG_AZ08_USE_KLT
   m_cTEncTop.setUseIntraKLT                                       ( m_useKLT & 1 );
   m_cTEncTop.setUseInterKLT                                       ( (m_useKLT >> 1) & 1 );
   m_cTEncTop.setUseKLT                                            ( m_useKLT );

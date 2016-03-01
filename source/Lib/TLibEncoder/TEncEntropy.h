@@ -137,7 +137,7 @@ public:
 #endif
     ) = 0;
   virtual Void codeTransformSkipFlags ( TComTU &rTu, ComponentID component ) = 0;
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
   virtual Void codeKLTFlags      (TComTU &rTu, ComponentID component) = 0;
 #endif
   virtual Void codeSAOBlkParam   (SAOBlkParam& saoBlkParam, const BitDepths &bitDepths, Bool* sliceEnabled, Bool leftMergeAvail, Bool aboveMergeAvail, Bool onlyEstMergeInfo = false)    =0;

@@ -236,7 +236,7 @@ Void TEncTop::init(Bool isFieldCoding)
   m_pcCavlcCoder = getCavlcCoder();
 
   m_cTrQuant.init( 1 << m_uiQuadtreeTULog2MaxSize,
-#if USE_KLT
+#if VCEG_AZ08_USE_KLT
                    m_useKLT,
 #endif
                    m_useRDOQ,
@@ -769,7 +769,7 @@ Void TEncTop::xInitSPS()
   m_cSPS.setUseIntraEMT   ( m_useIntraEMT      );
   m_cSPS.setUseInterEMT   ( m_useInterEMT      );
 #endif
-#if USE_KLT
+#if VCEG_AZ08_USE_KLT
   m_cSPS.setUseIntraKLT   ( m_useIntraKLT);
   m_cSPS.setUseInterKLT   ( m_useInterKLT);
   m_cSPS.setUseKLT        ( m_useKLT);

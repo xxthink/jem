@@ -141,7 +141,7 @@ TComPrediction::TComPrediction()
   m_cFRUCRDCost.init();
 #endif
 
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
   m_tempPicYuv = NULL;
 #endif
 }
@@ -237,7 +237,7 @@ Void TComPrediction::destroy()
 #endif
 #endif
 
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
   if( m_tempPicYuv != NULL )
   {
     m_tempPicYuv->destroy();
@@ -249,13 +249,13 @@ Void TComPrediction::destroy()
 
 #if COM16_C806_LMCHROMA
 Void TComPrediction::initTempBuff(ChromaFormat chromaFormatIDC, Int bitDepthY
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
   , bool interKLT , const Int iPicWidth, const Int iPicHeight, const UInt uiMaxCUWidth, const UInt uiMaxCUHeight, const UInt uiMaxCUDepth
 #endif
   )
 #else
 Void TComPrediction::initTempBuff(ChromaFormat chromaFormatIDC
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
   , bool interKLT , const Int iPicWidth, const Int iPicHeight, const UInt uiMaxCUWidth, const UInt uiMaxCUHeight, const UInt uiMaxCUDepth
 #endif
   )
@@ -356,7 +356,7 @@ Void TComPrediction::initTempBuff(ChromaFormat chromaFormatIDC
   }
 #endif
 
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
   if( interKLT )
   {
     if( m_tempPicYuv != NULL )
@@ -5077,7 +5077,7 @@ void TComPrediction::xReferenceFilter(Int iBlkSize, Int iOrigWeight, Int iFilter
 
 #endif
 
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
 Void TComPrediction::interpolatePic(TComPic* pcPic)
 {
     //only perform over luma

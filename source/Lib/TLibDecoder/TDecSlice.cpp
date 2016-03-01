@@ -101,7 +101,7 @@ Void TDecSlice::decompressSlice(TComInputBitstream** ppcSubstreams, TComPic* pcP
 #if ENC_DEC_TRACE
   g_bJustDoIt = g_bEncDecTraceDisable;
 #endif
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
   pcPic->getPicYuvRec()->fillPicRecBoundary(pcSlice->getSPS()->getBitDepths());
 #endif
   // The first CTU of the slice is the first coded substream, but the global substream number, as calculated by getSubstreamForCtuAddr may be higher.
@@ -290,7 +290,7 @@ Void TDecSlice::decompressSlice(TComInputBitstream** ppcSubstreams, TComPic* pcP
 
 }
 
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
 Void TDecSlice::InterpolatePic(TComPic* pcPic)
 {
     m_pcCuDecoder->getPointerPrediction()->interpolatePic(pcPic);

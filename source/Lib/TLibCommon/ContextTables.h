@@ -120,7 +120,7 @@
 #define NUM_EXPLICIT_RDPCM_FLAG_CTX   1       ///< number of context models for the flag which specifies whether to use RDPCM on inter coded residues
 #define NUM_EXPLICIT_RDPCM_DIR_CTX    1       ///< number of context models for the flag which specifies which RDPCM direction is used on inter coded residues
 
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
 #define NUM_KLT_FLAG_CTX              1       ///< number of context models for KLT 
 #endif
 //--------------------------------------------------------------------------------------------------
@@ -814,7 +814,7 @@ INIT_EMT_CU_FLAG[NUMBER_OF_SLICE_TYPES][NUM_EMT_CU_FLAG_CTX] =
 };
 #endif
 
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
 static const UChar
 INIT_KLT_FLAG[3][2 * NUM_KLT_FLAG_CTX] =
 {

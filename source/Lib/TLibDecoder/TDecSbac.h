@@ -174,7 +174,7 @@ public:
     );
   Void parseTransformSkipFlags ( class TComTU &rTu, ComponentID component );
 
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
   Void parseKLTFlags      ( TComTU &rTu, ComponentID component);
 #endif
 
@@ -252,7 +252,7 @@ private:
   ContextModel3DBuffer m_cSaoMergeSCModel;
   ContextModel3DBuffer m_cSaoTypeIdxSCModel;
   ContextModel3DBuffer m_cTransformSkipSCModel;
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
   ContextModel3DBuffer m_cKLTFlagSCModel;
 #endif
   ContextModel3DBuffer m_CUTransquantBypassFlagSCModel;

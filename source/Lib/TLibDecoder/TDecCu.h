@@ -44,7 +44,7 @@
 
 #include "TLibCommon/TComTrQuant.h"
 #include "TDecEntropy.h"
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
 #include "TLibCommon/TComPrediction.h"
 #endif
 
@@ -99,7 +99,7 @@ public:
   /// reconstruct Ctu information
   Void  decompressCtu           ( TComDataCU* pCtu );
 
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
   TComPrediction* getPointerPrediction() { return m_pcPrediction; }
 #endif
 
@@ -114,7 +114,7 @@ protected:
 
   Void xReconIntraQT            ( TComDataCU* pcCU, UInt uiDepth );
   Void xIntraRecBlk             ( TComYuv* pcRecoYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv, const ComponentID component, TComTU &rTu );
-#if INTRA_KLT
+#if VCEG_AZ08_INTRA_KLT
   Void xIntraRecBlkTM           ( TComYuv* pcRecoYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv, const ComponentID compID, TComTU &rTu, Int tmpred0_tmpredklt1_ori2 );
 #endif
   Void xIntraRecQT              ( TComYuv* pcRecoYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv, const ChannelType chType, TComTU &rTu );

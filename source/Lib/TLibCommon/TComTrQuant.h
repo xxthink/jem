@@ -52,13 +52,13 @@
 // ====================================================================================================================
 
 #define QP_BITS                 15
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
 #define MAX_1DTRANS_LEN         (1 << (((USE_MORE_BLOCKSIZE_DEPTH_MAX) + 1) << 1)) ///< 4x4 = 16, 8x8 = 64, 16x16=256, 32x32 = 1024
 extern UInt g_uiDepth2Width[5];
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
 extern UInt g_uiDepth2InterTempSize[5];
 #endif
-#if INTRA_KLT
+#if VCEG_AZ08_INTRA_KLT
 extern UInt g_uiDepth2IntraTempSize[5];
 #endif
 extern UInt g_uiDepth2MaxCandiNum[5];
@@ -178,7 +178,7 @@ struct QpParam
 
 }; // END STRUCT DEFINITION QpParam
 
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
 class TempLibFast
 {
 public:
@@ -205,7 +205,7 @@ public:
     Short* getId() { return m_pId; }
     Void initDiff(UInt uiPatchSize, Int bitDepth);
     Void initDiff(UInt uiPatchSize, Int bitDepth, Int iCandiNumber);
-#if INTRA_KLT
+#if VCEG_AZ08_INTRA_KLT
     Void initTemplateDiff(UInt uiPatchSize, UInt uiBlkSize, Int bitDepth, Int iCandiNumber);
 #endif
     Int m_diffMax;
@@ -225,7 +225,7 @@ public:
 
   // initialize class
   Void init                 ( UInt  uiMaxTrSize,
-#if USE_KLT
+#if VCEG_AZ08_USE_KLT
                               UInt  uiUseKLT              = 0,
 #endif
                               Bool useRDOQ                = false,
@@ -244,7 +244,7 @@ public:
   UChar getEmtTrIdx ( TComTU &rTu, const ComponentID compID );
   UChar getEmtMode  ( TComTU &rTu, const ComponentID compID );
 #endif
-#if USE_KLT
+#if VCEG_AZ08_USE_KLT
   UInt getUseKLT() { return m_useKLT;}
   UInt getUseIntraKLT() { return m_useKLT & 1; }
   UInt getUseInterKLT() { return (m_useKLT >> 1) & 1; }
@@ -267,7 +267,7 @@ Void InvNsst4x4( Int* src, UInt uiMode, UChar index );
 #endif
                            TCoeff         & uiAbsSum,
                      const QpParam        & cQP 
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
                      , Bool useKLT = false
 #endif
                      );
@@ -279,14 +279,14 @@ Void InvNsst4x4( Int* src, UInt uiMode, UChar index );
                        const UInt           uiStride,
                              TCoeff      *  pcCoeff,
                        const QpParam      & cQP
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
                        , Bool useKLT = false
 #endif
                              DEBUG_STRING_FN_DECLAREP(psDebug) 
                              );
 
   Void invRecurTransformNxN ( const ComponentID compID, TComYuv *pResidual, TComTU &rTu 
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
       , TComYuv *pcPred
 #endif
       );
@@ -400,7 +400,7 @@ Void InvNsst4x4( Int* src, UInt uiMode, UChar index );
   Void transformSkipQuantOneSample(TComTU &rTu, const ComponentID compID, const TCoeff resiDiff, TCoeff* pcCoeff, const UInt uiPos, const QpParam &cQP, const Bool bUseHalfRoundingPoint);
   Void invTrSkipDeQuantOneSample(TComTU &rTu, ComponentID compID, TCoeff pcCoeff, Pel &reconSample, const QpParam &cQP, UInt uiPos );
 
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
   Void calcCovMatrix(TrainDataType **pData, UInt uiSampleNum, covMatrixType *pCovMatrix, UInt uiDim, DistType *pDiff);
   Void calcCovMatrixXXt(TrainDataType **pData, UInt uiSampleNum, covMatrixType *pCovMatrix, UInt uiDim);
   DistType calcTemplateDiff(Pel *ref, UInt uiStride, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, DistType iMax);
@@ -415,7 +415,7 @@ Void InvNsst4x4( Int* src, UInt uiMode, UChar index );
   UInt getStride() { return m_uiPicStride; }
   Void setStride(UInt uiPicStride) { m_uiPicStride = uiPicStride; }
 #endif
-#if INTRA_KLT
+#if VCEG_AZ08_INTRA_KLT
   Void searchCandidateFromOnePicIntra(TComDataCU *pcCU, UInt uiPartAddr, TComPic* refPicSrc, TComPicYuv *refPic, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, UInt setId);
   Void candidateSearchIntra(TComDataCU *pcCU, UInt uiPartAddr, UInt uiBlkSize, UInt uiTempSize);
   Bool generateTMPrediction(Pel *piPred, UInt uiStride, UInt uiBlkSize, UInt uiTempSize, Int &foundCandiNum);
@@ -423,7 +423,7 @@ Void InvNsst4x4( Int* src, UInt uiMode, UChar index );
   Bool calcKLTIntra(Pel *piPred, UInt uiStride, UInt uiBlkSize);
   Bool prepareKLTSamplesIntra(Pel *piPred, UInt uiStride, UInt uiBlkSize);
 #endif
-#if INTER_KLT
+#if VCEG_AZ08_INTER_KLT
   Void getTargetPatch(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt absTUPartIdx, TComYuv* pcPred, UInt uiBlkSize, UInt uiTempSize);
   Void candidateSearch(TComDataCU *pcCU, UInt uiPartAddr, UInt uiBlkSize, UInt uiTempSize);
   Void searchCandidateFromOnePicInteger(TComDataCU *pcCU, UInt uiPartAddr, TComPicYuv *refPic, TComMv  cMv, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, UInt setId);
@@ -455,7 +455,7 @@ protected:
   Bool     m_bEnc;
   Bool     m_useRDOQ;
   Bool     m_useRDOQTS;
-#if USE_KLT
+#if VCEG_AZ08_USE_KLT
   UInt     m_useKLT;
 #endif
 #if T0196_SELECTIVE_RDOQ
@@ -472,14 +472,14 @@ protected:
   Int      *m_dequantCoef          [SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM][SCALING_LIST_REM_NUM]; ///< array of dequantization matrix coefficient 4x4
   Double   *m_errScale             [SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM][SCALING_LIST_REM_NUM]; ///< array of quantization matrix coefficient 4x4
   Double    m_errScaleNoScalingList[SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM][SCALING_LIST_REM_NUM]; ///< array of quantization matrix coefficient 4x4
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
   Int m_uiPartLibSize;
   TempLibFast m_tempLibFast;
   Pel *m_refPicUsed[MAX_NUM_REF_IDS];
   TComPic *m_refPicBuf[MAX_NUM_REF_IDS];
   UInt m_uiPicStride;
   TrainDataType *m_pData[MAX_CANDI_NUM];
-#if USE_TRANSPOSE_CANDDIATEARRAY
+#if VCEG_AZ08_USE_TRANSPOSE_CANDDIATEARRAY
   TrainDataType *m_pDataT[MAX_1DTRANS_LEN];
 #endif
   UInt m_uiVaildCandiNum;
@@ -489,7 +489,7 @@ protected:
   Short ***m_pppsEigenVector;
   covMatrixType **m_pCovMatrix;
   Pel ***m_pppTarPatch;
-#if FAST_DERIVE_KLT
+#if VCEG_AZ08_FAST_DERIVE_KLT
   EigenType **m_pppdTmpEigenVector;
 #endif
 #endif
@@ -501,7 +501,7 @@ private:
     , UChar ucMode
     , UChar ucTrIdx
 #endif
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
     , Bool useKLT = false
 #endif
     );
@@ -592,7 +592,7 @@ __inline UInt              xGetCodedLevel  ( Double&          rd64CodedCost,
     , UChar ucMode
     , UChar ucTrIdx
 #endif
-#if KLT_COMMON
+#if VCEG_AZ08_KLT_COMMON
     , Bool useKLT
 #endif
     );
