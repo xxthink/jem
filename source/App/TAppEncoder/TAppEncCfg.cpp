@@ -1115,7 +1115,7 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 #endif
 
 #if VCEG_AZ08_USE_KLT
-  ("KLT,-klt",                                        m_useKLT,       3, "KLT\n"
+  ("KLT,-klt",                                        m_useKLT,       0, "KLT\n"
                                                                          "\t0:  Disable KLT\n"
                                                                          "\t1:  Enable only Intra KLT\n"
                                                                          "\t2:  Enable only Inter KLT\n"
