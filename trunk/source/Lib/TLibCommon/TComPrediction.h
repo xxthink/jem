@@ -129,6 +129,10 @@ protected:
   static const Int m_ICShiftDiff = 12;
 #endif
 
+#if VCEG_AZ08_INTER_KLT
+  TComPicYuv* m_tempPicYuv;
+#endif
+
   Void xPredIntraAng            ( Int bitDepth, const Pel* pSrc, Int srcStride, Pel* pDst, Int dstStride, UInt width, UInt height, ChannelType channelType, UInt dirMode, const Bool bEnableEdgeFilters 
 #if VCEG_AZ07_INTRA_4TAP_FILTER
     , Bool enable4TapFilter = false
@@ -267,9 +271,17 @@ public:
   Void subBlockOBMC ( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv *pcYuvPred, TComYuv *pcYuvTmpPred1, TComYuv *pcYuvTmpPred2, Bool bOBMC4ME = false );
 #endif
 #if COM16_C806_LMCHROMA
-  Void    initTempBuff(ChromaFormat chromaFormatIDC, Int bitDepthY);
+  Void    initTempBuff(ChromaFormat chromaFormatIDC, Int bitDepthY
+#if VCEG_AZ08_INTER_KLT
+    , bool interKLT , const Int iPicWidth, const Int iPicHeight, const UInt uiMaxCUWidth, const UInt uiMaxCUHeight, const UInt uiMaxCUDepth
+#endif
+    );
 #else
-  Void    initTempBuff(ChromaFormat chromaFormatIDC);
+  Void    initTempBuff(ChromaFormat chromaFormatIDC
+#if VCEG_AZ08_INTER_KLT
+    , bool interKLT , const Int iPicWidth, const Int iPicHeight, const UInt uiMaxCUWidth, const UInt uiMaxCUHeight, const UInt uiMaxCUDepth
+#endif
+    );
 #endif
 
   ChromaFormat getChromaFormat() const { return m_cYuvPredTemp.getChromaFormat(); }
@@ -326,6 +338,9 @@ public:
                                             );
 
   static Bool UseDPCMForFirstPassIntraEstimation(TComTU &rTu, const UInt uiDirMode);
+#if VCEG_AZ08_INTER_KLT
+  Void interpolatePic(TComPic* pcPic);
+#endif
 };
 
 //! \}

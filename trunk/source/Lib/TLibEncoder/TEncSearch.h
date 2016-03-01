@@ -78,12 +78,18 @@ private:
   UChar*          m_puhQTTempCbf[MAX_NUM_COMPONENT];
 
   TComYuv*        m_pcQTTempTComYuv;
+#if VCEG_AZ08_INTER_KLT
+  TComYuv*        m_pcQTTempTComYuvRec;
+#endif
   TComYuv         m_tmpYuvPred; // To be used in xGetInterPredictionError() to avoid constant memory allocation/deallocation
 
   Char*           m_phQTTempCrossComponentPredictionAlpha[MAX_NUM_COMPONENT];
   Pel*            m_pSharedPredTransformSkip[MAX_NUM_COMPONENT];
   TCoeff*         m_pcQTTempTUCoeff[MAX_NUM_COMPONENT];
   UChar*          m_puhQTTempTransformSkipFlag[MAX_NUM_COMPONENT];
+#if VCEG_AZ08_KLT_COMMON
+  UChar*          m_puhQTTempKLTFlag[MAX_NUM_COMPONENT];
+#endif
 #if COM16_C806_EMT
   UChar*          m_puhQTTempExplicitRdpcmMode[MAX_NUM_COMPONENT];
 #endif
@@ -311,6 +317,20 @@ protected:
                                          ,UInt*         puiSigNum = NULL
 #endif
                                    );
+#if VCEG_AZ08_INTRA_KLT
+  Bool xIntraCodingTUBlockTM(TComYuv*    pcOrgYuv,
+                                      TComYuv*    pcPredYuv,
+                                      TComYuv*    pcResiYuv,
+                                      Distortion& ruiDist,
+                                      const ComponentID compID,
+                                      TComTU&     rTu
+                                      DEBUG_STRING_FN_DECLARE(sDebug)
+#if COM16_C806_EMT
+                                      , UInt*      puiSigNum
+#endif
+                                      , Int tmpred0_tmpredklt1_ori2
+                                      );
+#endif
 
   Void  xRecurIntraCodingLumaQT   ( TComYuv*    pcOrgYuv,
                                     TComYuv*    pcPredYuv,
@@ -602,7 +622,11 @@ protected:
 
 
   Void xEncodeInterResidualQT( const ComponentID compID, TComTU &rTu );
-  Void xEstimateInterResidualQT( TComYuv* pcResi, Double &rdCost, UInt &ruiBits, Distortion &ruiDist, Distortion *puiZeroDist, TComTU &rTu DEBUG_STRING_FN_DECLARE(sDebug) );
+  Void xEstimateInterResidualQT( TComYuv* pcResi, Double &rdCost, UInt &ruiBits, Distortion &ruiDist, Distortion *puiZeroDist, TComTU &rTu 
+#if VCEG_AZ08_INTER_KLT
+      , TComYuv* pcPred
+#endif
+      DEBUG_STRING_FN_DECLARE(sDebug) );
   Void xSetInterResidualQTData( TComYuv* pcResi, Bool bSpatial, TComTU &rTu  );
 
   UInt  xModeBitsIntra ( TComDataCU* pcCU, UInt uiMode, UInt uiPartOffset, UInt uiDepth, const ChannelType compID 

@@ -50,6 +50,36 @@
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////
+#define VCEG_AZ08_USE_KLT                                 1  ///< KLT (if defined 1, use cfg option of KLT to control the enablement of intra KLT and inter KLT (INTERA_KLT, VCEG_AZ08_INTER_KLT should be set as 1); if 0, use INTERA_KLT, VCEG_AZ08_INTER_KLT to control the enablement.)
+
+#define VCEG_AZ08_INTER_KLT                               1  ///< (default 1) Enable inter KLT
+#define VCEG_AZ08_INTRA_KLT                               1  ///< (default 1) Enable intra KLT
+#define VCEG_AZ08_KLT_COMMON                              (VCEG_AZ08_INTER_KLT || VCEG_AZ08_INTRA_KLT)
+
+#if VCEG_AZ08_KLT_COMMON
+#define VCEG_AZ08_FORCE_USE_GIVENNUM_BASIS                1  /// (default 1) If defined, force to use up to FORCE_BASIS_NUM basis to reduce complexity.
+#define VCEG_AZ08_USE_SSD_DISTANCE                        0  ///< (default 0) If defined, use SSD distance.
+#define VCEG_AZ08_USE_SAD_DISTANCE                        1  ///< (default 1) If defined, use SAD distance.
+//Speed up
+#define VCEG_AZ08_FAST_DERIVE_KLT                         1  ///< (default 1) If defined, will use fast algorithm to calculate KLT basis
+#define VCEG_AZ08_USE_SSE_SPEEDUP                         0  ///< (default 0) If defined, will use sse for speeding up (Note: should use x64 compile mode)
+#if VCEG_AZ08_USE_SSE_SPEEDUP
+#define VCEG_AZ08_USE_SSE_SCLAE                           1  ///< (default 1) If defined, will use SSE for calculating the scaling of float to get integer KLT basis
+#define VCEG_AZ08_USE_FLOATXSHORT_SSE                     1  ///< (default 1) If defined, will use float*short
+#define VCEG_AZ08_USE_SHORTXSHORT_SSE                     1  ///< (default 1) If defined, will use SSE to calculate short x short multiplication
+#if VCEG_AZ08_USE_SHORTXSHORT_SSE
+#define VCEG_AZ08_USE_TRANSPOSE_CANDDIATEARRAY            1  ///< (default 1) If defined, will use transpose of candidate array to facilitate the vector multiplication
+#endif
+#if VCEG_AZ08_USE_SAD_DISTANCE
+#define VCEG_AZ08_USE_SSE_BLK_SAD                         1  ///< (default 1) If defined, will calculate the block difference use intel SSE 
+#define VCEG_AZ08_USE_SSE_TMP_SAD                         1  ///< (default 1) If defined, will calculate the template difference use intel SSE 
+#endif
+#endif
+
+#define VCEG_AZ08_INTER_KLT_MV_BUGFIXED                   1  /// Fixed the bug related with mv (2016.2.29)
+#endif
+
+
 #define ALF_HM3_REFACTOR                                  1  ///< Adaptive loop filter (ALF)
 #if ALF_HM3_REFACTOR
 #define COM16_C806_ALF_TEMPPRED_NUM                       6  ///< 0: no temporal prediction
@@ -335,6 +365,13 @@ typedef       UInt64          Distortion;        ///< distortion measurement
 typedef       UInt            Distortion;        ///< distortion measurement
 #endif
 
+#if VCEG_AZ08_KLT_COMMON
+#if VCEG_AZ08_USE_SSD_DISTANCE || VCEG_AZ08_USE_SAD_DISTANCE
+typedef       int             DistType;
+#endif
+typedef       Float           covMatrixType;
+typedef       float           EigenType;
+#endif
 // ====================================================================================================================
 // Enumeration
 // ====================================================================================================================

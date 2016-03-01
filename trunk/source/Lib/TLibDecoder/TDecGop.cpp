@@ -298,6 +298,16 @@ Void TDecGop::filterPicture(TComPic* pcPic)
 
   pcPic->setOutputMark(pcPic->getSlice(0)->getPicOutputFlag() ? true : false);
   pcPic->setReconMark(true);
+#if VCEG_AZ08_INTER_KLT
+#if VCEG_AZ08_USE_KLT
+  if (pcSlice->getSPS()->getUseInterKLT())
+  {
+#endif
+      m_pcSliceDecoder->InterpolatePic(pcPic);
+#if VCEG_AZ08_USE_KLT
+  }
+#endif
+#endif
 }
 
 /**

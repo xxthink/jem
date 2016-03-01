@@ -606,6 +606,14 @@ Void TEncCavlc::codeSPS( const TComSPS* pcSPS )
   WRITE_FLAG( pcSPS->getUseIntraEMT() != 0 , "use_intra_emt" );
   WRITE_FLAG( pcSPS->getUseInterEMT() != 0 , "use_inter_emt" );
 #endif
+#if VCEG_AZ08_USE_KLT
+#if VCEG_AZ08_INTRA_KLT
+  WRITE_FLAG(pcSPS->getUseIntraKLT() != 0, "use_intra_klt");
+#endif
+#if VCEG_AZ08_INTER_KLT
+  WRITE_FLAG(pcSPS->getUseInterKLT() != 0, "use_inter_klt");
+#endif
+#endif
 #if VCEG_AZ07_INTRA_4TAP_FILTER
   WRITE_FLAG( pcSPS->getUseIntra4TapFilter() ? 1 : 0, "intra_4tap_filter_enabled_flag" );
 #endif
@@ -1388,6 +1396,16 @@ Void TEncCavlc::codeTransformSkipFlags (TComTU& /*rTu*/, ComponentID /*component
 {
   assert(0);
 }
+
+
+#if VCEG_AZ08_KLT_COMMON
+Void TEncCavlc::codeKLTFlags (TComTU& /*rTu*/, ComponentID /*component*/)
+
+{
+    assert(0);
+}
+#endif
+
 
 /** Code I_PCM information.
  * \param pcCU pointer to CU

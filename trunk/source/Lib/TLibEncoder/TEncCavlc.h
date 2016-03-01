@@ -163,6 +163,10 @@ public:
     );
   Void codeTransformSkipFlags ( TComTU &rTu, ComponentID component );
 
+#if VCEG_AZ08_KLT_COMMON
+  Void codeKLTFlags      (TComTU &rTu, ComponentID component);
+#endif
+
   Void estBit            ( estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, ChannelType chType );
 
   Void xCodePredWeightTable          ( TComSlice* pcSlice );

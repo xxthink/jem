@@ -52,7 +52,18 @@
 // ====================================================================================================================
 
 #define QP_BITS                 15
-
+#if VCEG_AZ08_KLT_COMMON
+#define MAX_1DTRANS_LEN         (1 << (((USE_MORE_BLOCKSIZE_DEPTH_MAX) + 1) << 1)) ///< 4x4 = 16, 8x8 = 64, 16x16=256, 32x32 = 1024
+extern UInt g_uiDepth2Width[5];
+#if VCEG_AZ08_INTER_KLT
+extern UInt g_uiDepth2InterTempSize[5];
+#endif
+#if VCEG_AZ08_INTRA_KLT
+extern UInt g_uiDepth2IntraTempSize[5];
+#endif
+extern UInt g_uiDepth2MaxCandiNum[5];
+extern UInt g_uiDepth2MinCandiNum[5];
+#endif
 // ====================================================================================================================
 // Type definition
 // ====================================================================================================================
@@ -167,6 +178,43 @@ struct QpParam
 
 }; // END STRUCT DEFINITION QpParam
 
+#if VCEG_AZ08_KLT_COMMON
+class TempLibFast
+{
+public:
+    Int *m_pX;    //offset X
+    Int *m_pY;    //offset Y
+    Int *m_pXInteger;    //offset X for integer pixel search
+    Int *m_pYInteger;    //offset Y for integer pixel search
+    DistType *m_pDiffInteger;
+    Int* getXInteger() { return m_pXInteger; }
+    Int* getYInteger() { return m_pYInteger; }
+    DistType* getDiffInteger() { return m_pDiffInteger; }
+    Short *m_pIdInteger; //frame id
+    Short* getIdInteger() { return m_pIdInteger; }
+    DistType *m_pDiff; //mse
+    Short *m_pId; //frame id
+    Int m_iSize;
+
+    TempLibFast();
+    ~TempLibFast();
+    Void init(UInt iSize);
+    Int* getX() { return m_pX; }
+    Int* getY() { return m_pY; }
+    DistType* getDiff() { return m_pDiff; }
+    Short* getId() { return m_pId; }
+    Void initDiff(UInt uiPatchSize, Int bitDepth);
+    Void initDiff(UInt uiPatchSize, Int bitDepth, Int iCandiNumber);
+#if VCEG_AZ08_INTRA_KLT
+    Void initTemplateDiff(UInt uiPatchSize, UInt uiBlkSize, Int bitDepth, Int iCandiNumber);
+#endif
+    Int m_diffMax;
+    Int getDiffMax() { return m_diffMax; }
+};
+
+typedef Short TrainDataType; 
+typedef Double TrainDataTypeD;
+#endif
 
 /// transform and quantization class
 class TComTrQuant
@@ -177,6 +225,9 @@ public:
 
   // initialize class
   Void init                 ( UInt  uiMaxTrSize,
+#if VCEG_AZ08_USE_KLT
+                              UInt  uiUseKLT              = 0,
+#endif
                               Bool useRDOQ                = false,
                               Bool useRDOQTS              = false,
 #if T0196_SELECTIVE_RDOQ
@@ -192,6 +243,11 @@ public:
 #if COM16_C806_EMT
   UChar getEmtTrIdx ( TComTU &rTu, const ComponentID compID );
   UChar getEmtMode  ( TComTU &rTu, const ComponentID compID );
+#endif
+#if VCEG_AZ08_USE_KLT
+  UInt getUseKLT() { return m_useKLT;}
+  UInt getUseIntraKLT() { return m_useKLT & 1; }
+  UInt getUseInterKLT() { return (m_useKLT >> 1) & 1; }
 #endif
 #if VCEG_AZ05_ROT_TR
 Void InvRotTransform4I(  Int* matrix, UChar index );
@@ -211,6 +267,9 @@ Void InvNsst4x4( Int* src, UInt uiMode, UChar index );
 #endif
                            TCoeff         & uiAbsSum,
                      const QpParam        & cQP 
+#if VCEG_AZ08_KLT_COMMON
+                     , Bool useKLT = false
+#endif
                      );
 
 
@@ -220,9 +279,17 @@ Void InvNsst4x4( Int* src, UInt uiMode, UChar index );
                        const UInt           uiStride,
                              TCoeff      *  pcCoeff,
                        const QpParam      & cQP
-                             DEBUG_STRING_FN_DECLAREP(psDebug) );
+#if VCEG_AZ08_KLT_COMMON
+                       , Bool useKLT = false
+#endif
+                             DEBUG_STRING_FN_DECLAREP(psDebug) 
+                             );
 
-  Void invRecurTransformNxN ( const ComponentID compID, TComYuv *pResidual, TComTU &rTu );
+  Void invRecurTransformNxN ( const ComponentID compID, TComYuv *pResidual, TComTU &rTu 
+#if VCEG_AZ08_INTER_KLT
+      , TComYuv *pcPred
+#endif
+      );
 
   Void rdpcmNxN   ( TComTU& rTu, const ComponentID compID, Pel* pcResidual, const UInt uiStride, const QpParam& cQP, TCoeff* pcCoeff, TCoeff &uiAbsSum, RDPCMMode& rdpcmMode );
   Void invRdpcmNxN( TComTU& rTu, const ComponentID compID, Pel* pcResidual, const UInt uiStride );
@@ -333,6 +400,43 @@ Void InvNsst4x4( Int* src, UInt uiMode, UChar index );
   Void transformSkipQuantOneSample(TComTU &rTu, const ComponentID compID, const TCoeff resiDiff, TCoeff* pcCoeff, const UInt uiPos, const QpParam &cQP, const Bool bUseHalfRoundingPoint);
   Void invTrSkipDeQuantOneSample(TComTU &rTu, ComponentID compID, TCoeff pcCoeff, Pel &reconSample, const QpParam &cQP, UInt uiPos );
 
+#if VCEG_AZ08_KLT_COMMON
+  Void calcCovMatrix(TrainDataType **pData, UInt uiSampleNum, covMatrixType *pCovMatrix, UInt uiDim, DistType *pDiff);
+  Void calcCovMatrixXXt(TrainDataType **pData, UInt uiSampleNum, covMatrixType *pCovMatrix, UInt uiDim);
+  DistType calcTemplateDiff(Pel *ref, UInt uiStride, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, DistType iMax);
+  Void calcCovMatrix(TrainDataType **pData, UInt uiSampleNum, covMatrixType *pCovMatrix, UInt uiDim);
+  Bool deriveKLT(UInt uiBlkSize, UInt uiUseCandiNumber);
+  Bool derive1DimKLT_Fast(UInt uiBlkSize, UInt uiUseCandiNumber);
+  Bool derive1DimKLT(UInt uiBlkSize, UInt uiUseCandiNumber);
+  Bool derive2DimKLT(UInt uiBlkSize, DistType *pDiff);
+  Pel  **getTargetPatch(UInt uiDepth) { return m_pppTarPatch[uiDepth]; }
+  Pel* getRefPicUsed(UInt uiId) { return m_refPicUsed[uiId]; }
+  Void setRefPicUsed(UInt uiId, Pel *ref) { m_refPicUsed[uiId] = ref; }
+  UInt getStride() { return m_uiPicStride; }
+  Void setStride(UInt uiPicStride) { m_uiPicStride = uiPicStride; }
+#endif
+#if VCEG_AZ08_INTRA_KLT
+  Void searchCandidateFromOnePicIntra(TComDataCU *pcCU, UInt uiPartAddr, TComPic* refPicSrc, TComPicYuv *refPic, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, UInt setId);
+  Void candidateSearchIntra(TComDataCU *pcCU, UInt uiPartAddr, UInt uiBlkSize, UInt uiTempSize);
+  Bool generateTMPrediction(Pel *piPred, UInt uiStride, UInt uiBlkSize, UInt uiTempSize, Int &foundCandiNum);
+  Void getTargetTemplate(TComDataCU *pcCU, UInt uiAbsPartIdx, UInt uiBlkSize, UInt uiTempSize);
+  Bool calcKLTIntra(Pel *piPred, UInt uiStride, UInt uiBlkSize);
+  Bool prepareKLTSamplesIntra(Pel *piPred, UInt uiStride, UInt uiBlkSize);
+#endif
+#if VCEG_AZ08_INTER_KLT
+  Void getTargetPatch(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt absTUPartIdx, TComYuv* pcPred, UInt uiBlkSize, UInt uiTempSize);
+  Void candidateSearch(TComDataCU *pcCU, UInt uiPartAddr, UInt uiBlkSize, UInt uiTempSize);
+  Void searchCandidateFromOnePicInteger(TComDataCU *pcCU, UInt uiPartAddr, TComPicYuv *refPic, TComMv  cMv, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, UInt setId);
+  Void searchCandidateFraBasedOnInteger(TComDataCU *pcCU, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, UInt uiPartAddr, Short setIdFraStart);
+  Void RecordPosition(UInt uiTargetCandiNum);
+  Bool candidateTrain(UInt uiBlkSize, UInt uiTempSize);
+  Bool prepareKLTSamplesInter(UInt uiBlkSize, UInt uiTempSize);
+  Void setRefPicBuf(UInt uiId, TComPic *refPic) { m_refPicBuf[uiId] = refPic; }
+  TComPic* getRefPicBuf(UInt uiId) { return m_refPicBuf[uiId]; }
+  DistType calcPatchDiff(Pel *ref, UInt uiStride, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, DistType iMax);
+  Void xSetSearchRange(TComDataCU* pcCU, TComMv& cMvPred, Int iSrchRng, TComMv& rcMvSrchRngLT, TComMv& rcMvSrchRngRB);
+#endif
+
 protected:
 #if ADAPTIVE_QP_SELECTION
   Int     m_qpDelta[MAX_QP+1];
@@ -351,6 +455,9 @@ protected:
   Bool     m_bEnc;
   Bool     m_useRDOQ;
   Bool     m_useRDOQTS;
+#if VCEG_AZ08_USE_KLT
+  UInt     m_useKLT;
+#endif
 #if T0196_SELECTIVE_RDOQ
   Bool     m_useSelectiveRDOQ;
 #endif
@@ -365,6 +472,27 @@ protected:
   Int      *m_dequantCoef          [SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM][SCALING_LIST_REM_NUM]; ///< array of dequantization matrix coefficient 4x4
   Double   *m_errScale             [SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM][SCALING_LIST_REM_NUM]; ///< array of quantization matrix coefficient 4x4
   Double    m_errScaleNoScalingList[SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM][SCALING_LIST_REM_NUM]; ///< array of quantization matrix coefficient 4x4
+#if VCEG_AZ08_KLT_COMMON
+  Int m_uiPartLibSize;
+  TempLibFast m_tempLibFast;
+  Pel *m_refPicUsed[MAX_NUM_REF_IDS];
+  TComPic *m_refPicBuf[MAX_NUM_REF_IDS];
+  UInt m_uiPicStride;
+  TrainDataType *m_pData[MAX_CANDI_NUM];
+#if VCEG_AZ08_USE_TRANSPOSE_CANDDIATEARRAY
+  TrainDataType *m_pDataT[MAX_1DTRANS_LEN];
+#endif
+  UInt m_uiVaildCandiNum;
+  Double m_pEigenValues[MAX_1DTRANS_LEN];
+  Int m_pIDTmp[MAX_1DTRANS_LEN];
+  EigenType ***m_pppdEigenVector;
+  Short ***m_pppsEigenVector;
+  covMatrixType **m_pCovMatrix;
+  Pel ***m_pppTarPatch;
+#if VCEG_AZ08_FAST_DERIVE_KLT
+  EigenType **m_pppdTmpEigenVector;
+#endif
+#endif
 
 private:
   // forward Transform
@@ -372,6 +500,9 @@ private:
 #if COM16_C806_EMT
     , UChar ucMode
     , UChar ucTrIdx
+#endif
+#if VCEG_AZ08_KLT_COMMON
+    , Bool useKLT = false
 #endif
     );
 
@@ -460,6 +591,9 @@ __inline UInt              xGetCodedLevel  ( Double&          rd64CodedCost,
 #if COM16_C806_EMT
     , UChar ucMode
     , UChar ucTrIdx
+#endif
+#if VCEG_AZ08_KLT_COMMON
+    , Bool useKLT
 #endif
     );
 

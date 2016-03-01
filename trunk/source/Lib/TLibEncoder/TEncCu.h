@@ -178,6 +178,10 @@ protected:
     );
 #endif
 
+#if VCEG_AZ08_INTER_KLT
+  Void  xCheckRDCostInterKLT(TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, PartSize ePartSize);
+#endif
+
   Void  xCheckRDCostIntra   ( TComDataCU *&rpcBestCU,
                               TComDataCU *&rpcTempCU,
                               Double      &cost,

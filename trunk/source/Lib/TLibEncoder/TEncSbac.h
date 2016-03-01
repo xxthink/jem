@@ -192,6 +192,9 @@ public:
 #endif  
     );
   Void codeTransformSkipFlags ( TComTU &rTu, ComponentID component );
+#if VCEG_AZ08_KLT_COMMON
+  Void codeKLTFlags           ( TComTU &rTu, ComponentID component );
+#endif
 
   // -------------------------------------------------------------------------------------------------------------------
   // for RD-optimizatioon
@@ -279,6 +282,9 @@ private:
   ContextModel3DBuffer m_cSaoMergeSCModel;
   ContextModel3DBuffer m_cSaoTypeIdxSCModel;
   ContextModel3DBuffer m_cTransformSkipSCModel;
+#if VCEG_AZ08_KLT_COMMON
+  ContextModel3DBuffer m_cKLTFlagSCModel;
+#endif
   ContextModel3DBuffer m_CUTransquantBypassFlagSCModel;
   ContextModel3DBuffer m_explicitRdpcmFlagSCModel;
   ContextModel3DBuffer m_explicitRdpcmDirSCModel;
