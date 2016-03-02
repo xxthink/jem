@@ -2179,6 +2179,8 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
 #if COM16_C806_EMT
   UChar   bestTrIdx     = 0;
   UChar   nNumTrCands   = pcCU->getEmtCuFlag(uiAbsPartIdx) ? 4 : 1;
+#endif
+#if COM16_C806_EMT || JVET_B0041_SIMPLIFICATION_1A
   Bool    bAllIntra     = (m_pcEncCfg->getIntraPeriod()==1);
 #endif
   
@@ -2250,6 +2252,13 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
 
       for (Int bFilter=0; bFilter <= iCheckLimit; ++bFilter)
       {
+#if JVET_B0041_SIMPLIFICATION_1A
+          if ( bFilter && !uiSingleCbfLuma )
+          {
+            continue;
+          }
+#endif
+
 #if COM16_C806_EMT
 #if HHI_RQT_INTRA_SPEEDUP
         UChar numTrIdxCands = ( !bCheckInitTrDepth ) ? nNumTrCands : 1;
@@ -2372,8 +2381,14 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
 #if COM16_C806_EMT
           bestTrIdx        = ucTrIdx;
 #endif
-
-          xStoreIntraResultQT( COMPONENT_Y, rTu );
+#if JVET_B0041_SIMPLIFICATION_1A
+          if (uiSingleCbfLuma || !bAllIntra )
+          {
+#endif
+            xStoreIntraResultQT( COMPONENT_Y, rTu );
+#if JVET_B0041_SIMPLIFICATION_1A
+          }
+#endif
           m_pcRDGoOnSbacCoder->store( m_pppcRDSbacCoder[ uiFullDepth ][ CI_TEMP_BEST ] );
 
           bSingleFilter = bFilter;          
@@ -2503,6 +2518,10 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
   }
 
   pcCU->setLumaIntraFilter(uiAbsPartIdx, bSingleFilter);
+
+#if JVET_B0041_SIMPLIFICATION_2
+  if (uiSingleCbfLuma && pcCU->isLumaIntraFilterHidden(uiAbsPartIdx))
+#endif
   if( bCheckSplit )
   {
     //----- store full entropy coding status, load original entropy coding status -----
