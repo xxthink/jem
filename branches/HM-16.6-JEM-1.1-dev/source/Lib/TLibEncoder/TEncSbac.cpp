@@ -1208,7 +1208,7 @@ Void TEncSbac::codeMvd( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList
   }
 
   const TComCUMvField* pcCUMvField = pcCU->getCUMvField( eRefList );
-#if VCEG_AZ07_IMV || VCEG_AZ07_FRUC_MERGE
+#if VCEG_AZ07_IMV || VCEG_AZ07_FRUC_MERGE || VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
   Int iHor = pcCUMvField->getMvd( uiAbsPartIdx ).getHor();
   Int iVer = pcCUMvField->getMvd( uiAbsPartIdx ).getVer();
 #else
