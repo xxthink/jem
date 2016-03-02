@@ -118,8 +118,13 @@
 #define VCEG_AZ07_IMV                                     1  ///< Locally adaptive motion vector resolution (AMVR)
 
 #define VCEG_AZ07_FRUC_MERGE                              1  ///< Pattern matched motion vector derivation
-#if VCEG_AZ07_FRUC_MERGE
-#define VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE          1  ///< additional precision bit for MV storage
+
+#define JVET_B058_HIGH_PRECISION_MOTION_VECTOR_MC         1
+
+#if JVET_B058_HIGH_PRECISION_MOTION_VECTOR_MC
+#define VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE          2   ///< additional precision bit for MV storage
+#elif VCEG_AZ07_FRUC_MERGE 
+#define VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE          1   ///< additional precision bit for MV storage
 #endif
 
 #define VCEG_AZ06_IC                                      1  ///< Local illumination compensation (LIC)
