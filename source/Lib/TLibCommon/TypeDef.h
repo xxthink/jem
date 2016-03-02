@@ -160,6 +160,9 @@
 #endif                                                       
 
 #define COM16_C1016_AFFINE                                1  ///< Affine motion prediction
+#if COM16_C1016_AFFINE
+#define JVET_B0038_AFFINE_HARMONIZATION                   1  ///< Harmonization of affine, OBMC and DBF
+#endif
 
 #define COM16_C983_RSAF                                   1  ///< Adaptive reference sample smoothing
 #if COM16_C983_RSAF                                          
