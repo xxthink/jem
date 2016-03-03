@@ -337,6 +337,44 @@ Void TDecSbac::xReadUnaryMaxSymbol( UInt& ruiSymbol, ContextModel* pcSCModel, In
   ruiSymbol = uiSymbol;
 }
 
+#if JVET_B0051_NON_MPM_MODE
+#if RExt__DECODER_DEBUG_BIT_STATISTICS
+Void TDecSbac::xReadTruncBinCode(UInt& ruiSymbol, UInt uiMaxSymbol, const class TComCodingStatisticsClassType &whichStat)
+#else
+Void TDecSbac::xReadTruncBinCode(UInt& ruiSymbol, UInt uiMaxSymbol)
+#endif
+{
+  UInt uiThresh;
+  if (uiMaxSymbol > 256)
+  {
+    UInt uiThreshVal = 1 << 8;
+    uiThresh = 8;
+    while (uiThreshVal <= uiMaxSymbol)
+    {
+      uiThresh++;
+      uiThreshVal <<= 1;
+    }
+    uiThresh--;
+  }
+  else
+  {
+    uiThresh = g_NonMPM[uiMaxSymbol];
+  }
+
+  UInt uiVal = 1 << uiThresh;
+  UInt b = uiMaxSymbol - uiVal;
+  m_pcTDecBinIf->decodeBinsEP(ruiSymbol, uiThresh RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(whichStat));
+  if (ruiSymbol >= uiVal - b)
+  {
+    UInt uiSymbol;
+    m_pcTDecBinIf->decodeBinEP(uiSymbol RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(whichStat));
+    ruiSymbol <<= 1;
+    ruiSymbol += uiSymbol;
+    ruiSymbol -= (uiVal - b);
+  }
+}
+#endif
+
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
 Void TDecSbac::xReadEpExGolomb( UInt& ruiSymbol, UInt uiCount, const class TComCodingStatisticsClassType &whichStat )
 #else
@@ -1068,6 +1106,45 @@ Void TDecSbac::parseIntraDirLumaAng  ( TComDataCU* pcCU, UInt absPartIdx, UInt d
     }
     else
     {
+#if JVET_B0051_NON_MPM_MODE
+      m_pcTDecBinIf->decodeBin( symbol, m_cCUIntraPredSCModel.get( 0, 0, 9+mode/3) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
+
+      if(!symbol) //Non-selected mode
+      {
+        xReadTruncBinCode(symbol, 45 RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD_EP) );     
+        symbol  += (symbol/3) ;
+        symbol ++;       
+      }
+      else // selected mode
+      {
+        m_pcTDecBinIf->decodeBinsEP( symbol, 4  RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
+        symbol <<=2;
+      }
+
+      intraPredMode = symbol;
+
+      //postponed sorting of MPMs (only in remaining branch)
+#if VCEG_AZ07_INTRA_65ANG_MODES
+      std::sort(preds, preds+6);
+#else
+      if (preds[0] > preds[1])
+      {
+        std::swap(preds[0], preds[1]);
+      }
+      if (preds[0] > preds[2])
+      {
+        std::swap(preds[0], preds[2]);
+      }
+      if (preds[1] > preds[2])
+      {
+        std::swap(preds[1], preds[2]);
+      }
+#endif
+      for ( UInt i = 0; i < NUM_MOST_PROBABLE_MODES; i++ )
+      {
+        intraPredMode += ( intraPredMode >= preds[i] );
+      }
+#else
 #if VCEG_AZ07_INTRA_65ANG_MODES
       m_pcTDecBinIf->decodeBinsEP( symbol, 4 RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
       symbol <<= 2;
@@ -1103,6 +1180,7 @@ Void TDecSbac::parseIntraDirLumaAng  ( TComDataCU* pcCU, UInt absPartIdx, UInt d
       {
         intraPredMode += ( intraPredMode >= preds[i] );
       }
+#endif
     }
     pcCU->setIntraDirSubParts(CHANNEL_TYPE_LUMA, (UChar)intraPredMode, absPartIdx+partOffset*j, depth );
   }

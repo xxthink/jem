@@ -139,6 +139,9 @@
 #endif                                                       
 
 #define VCEG_AZ07_INTRA_65ANG_MODES                       1  ///< 65 intra prediction directions
+#if VCEG_AZ07_INTRA_65ANG_MODES
+#define JVET_B0051_NON_MPM_MODE                           1  // Use two mode sets for non-MPM mode coding
+#endif
 
 #define VCEG_AZ07_ECABAC                                  1  ///< CABAC improvements
 #if VCEG_AZ07_ECABAC                                         

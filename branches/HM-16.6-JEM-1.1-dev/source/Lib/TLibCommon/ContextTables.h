@@ -96,7 +96,11 @@
 #define NUM_PRED_MODE_CTX             1       ///< number of context models for prediction mode
 
 #if VCEG_AZ07_INTRA_65ANG_MODES
+#if JVET_B0051_NON_MPM_MODE
+#define NUM_INTRA_PREDICT_CTX         12       ///< number of context models for intra prediction
+#else
 #define NUM_INTRA_PREDICT_CTX         9       ///< number of context models for intra prediction
+#endif
 #else
 #define NUM_INTRA_PREDICT_CTX         1       ///< number of context models for intra prediction
 #endif
@@ -415,9 +419,15 @@ static const UChar
 INIT_INTRA_PRED_MODE[NUMBER_OF_SLICE_TYPES][NUM_INTRA_PREDICT_CTX] =
 {
 #if VCEG_AZ07_INTRA_65ANG_MODES
+#if JVET_B0051_NON_MPM_MODE
+  { 183, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU,184,184,184 }, 
+  { 154, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU,184,184,184 }, 
+  { 184, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU,184,184,184 },
+#else
   { 183, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU }, 
   { 154, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU }, 
   { 184, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU },
+#endif
 #else
   { 183, },
   { 154, },
