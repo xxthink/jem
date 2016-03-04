@@ -1198,6 +1198,8 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   m_pchReconFile = cfg_ReconFile.empty() ? NULL : strdup(cfg_ReconFile.c_str());
   m_pchdQPFile = cfg_dQPFile.empty() ? NULL : strdup(cfg_dQPFile.c_str());
 
+  m_framesToBeEncoded = ( m_framesToBeEncoded + m_tempSubsampleRatio - 1 ) / m_tempSubsampleRatio;
+
   if(m_isField)
   {
     //Frame height
