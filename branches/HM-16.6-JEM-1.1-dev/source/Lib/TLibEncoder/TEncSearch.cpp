@@ -2441,7 +2441,6 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
           uiSingleCbfLuma = 0;
 #if VCEG_AZ08_INTRA_KLT
           pcCU->setKLTFlagSubParts(1, COMPONENT_Y, uiAbsPartIdx, uiFullDepth);
-          // Int default0Save1Load2 = 0;
 #endif
           xStoreIntraResultQT(COMPONENT_Y, rTu);
           m_pcRDGoOnSbacCoder->store(m_pppcRDSbacCoder[uiFullDepth][CI_TEMP_BEST]);
@@ -3157,7 +3156,6 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
         uiSingleCbfLuma = 0;
 #if VCEG_AZ08_INTRA_KLT
         pcCU->setKLTFlagSubParts(1, COMPONENT_Y, uiAbsPartIdx, uiFullDepth);
-        // Int default0Save1Load2 = 0;
 #endif
         xStoreIntraResultQT(COMPONENT_Y, rTu);
         m_pcRDGoOnSbacCoder->store(m_pppcRDSbacCoder[uiFullDepth][CI_TEMP_BEST]);
