@@ -2242,7 +2242,11 @@ Void TDecCavlc:: parseCtxUpdateInfo (TComSlice*& rpcSlice, TComStats* apcStats )
   if (uiUpdate == 0)
   {
     rpcSlice->setCtxMapQPIdx(-1);
+#if RExt__DECODER_DEBUG_BIT_STATISTICS
+    TComCodingStatistics::IncrementStatisticEP(STATS__BYTE_ALIGNMENT_BITS,m_pcBitstream->readByteAlignment(),0);
+#else
     m_pcBitstream->readByteAlignment();
+#endif
     return;
   }
 
@@ -2277,7 +2281,11 @@ Void TDecCavlc:: parseCtxUpdateInfo (TComSlice*& rpcSlice, TComStats* apcStats )
     xRunDecoding   (apcStats->m_uiCtxMAP[uiSliceType][iQP], apcStats->m_uiNumCtx[uiSliceType][iQP]);
     xLevelDecoding (apcStats->m_uiCtxMAP[uiSliceType][iQP], apcStats->m_uiCtxCodeIdx[uiSliceType][iQP], apcStats->m_uiNumCtx[uiSliceType][iQP]);
   }
+#if RExt__DECODER_DEBUG_BIT_STATISTICS
+  TComCodingStatistics::IncrementStatisticEP(STATS__BYTE_ALIGNMENT_BITS,m_pcBitstream->readByteAlignment(),0);
+#else
   m_pcBitstream->readByteAlignment();
+#endif
   return;
 }
 #endif
