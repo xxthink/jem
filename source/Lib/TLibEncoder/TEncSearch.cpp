@@ -2229,7 +2229,9 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
   if( bCheckFull )
   {
       //----- store original entropy coding status -----
+#if !COM16_C983_RSAF_S_TICKET14
       if(bCheckSplit)
+#endif
       {
         m_pcRDGoOnSbacCoder->store(m_pppcRDSbacCoder[ uiFullDepth ][ CI_QT_TRAFO_ROOT ]);
       }
