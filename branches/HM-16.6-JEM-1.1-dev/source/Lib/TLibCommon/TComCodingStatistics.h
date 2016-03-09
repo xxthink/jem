@@ -180,7 +180,47 @@ static inline const Char* getName(TComCodingStatisticsType name)
     "EXPLICIT_RDPCM_BITS",
     "CABAC_EP_BIT_ALIGNMENT",
     "CABAC_BITS__ALIGNED_SIGN_BIT",
-    "CABAC_BITS__ALIGNED_ESCAPE_BITS"
+    "CABAC_BITS__ALIGNED_ESCAPE_BITS",
+
+#if COM16_C806_OBMC
+    "CABAC_BITS__OBMC_FLAG",
+#endif
+#if VCEG_AZ07_FRUC_MERGE
+    "CABAC_BITS__FRUC_MERGE_IDX",
+#endif
+#if VCEG_AZ07_IMV
+    "CABAC_BITS__IMV_FLAG",
+#endif
+#if VCEG_AZ06_IC
+    "CABAC_BITS__IC_FLAG",
+#endif
+#if ALF_HM3_REFACTOR
+    "CABAC_BITS__ALF_CTRL_DEPTH",
+    "CABAC_BITS__ALF_CTRL_FLAG",
+    "CABAC_BITS__ALF_FLAG",
+    "CABAC_BITS__ALF_FLAGNUM",
+    "CABAC_BITS__ALF_UVLC",
+    "CABAC_BITS__ALF_SVLC",
+#endif
+
+#if COM16_C806_EMT
+    "CABAC_BITS__EMT_CU_FLAG",
+    "CABAC_BITS__EMT_TU_INDX",
+#endif
+
+#if COM16_C1016_AFFINE
+    "CABAC_BITS__AFFINE_FLAG",
+#endif
+
+#if VCEG_AZ05_INTRA_MPI
+    "CABAC_BITS__MPI_FLAG",
+#endif
+#if COM16_C1046_PDPC_INTRA
+    "CABAC_BITS__PDPC_FLAG",
+#endif
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+    "CABAC_BITS__ROT_FLAG",
+#endif
   };
   assert(STATS__NUM_STATS == sizeof(statNames)/sizeof(Char *) && name < STATS__NUM_STATS);
   return statNames[name];
@@ -188,7 +228,7 @@ static inline const Char* getName(TComCodingStatisticsType name)
 
 static inline Bool isAlignedBins(TComCodingStatisticsType statT) { return statT==STATS__CABAC_BITS__ALIGNED_SIGN_BIT || statT==STATS__CABAC_BITS__ALIGNED_ESCAPE_BITS; }
 
-static const UInt CODING_STATS_NUM_WIDTHS=7;
+static const UInt CODING_STATS_NUM_WIDTHS=9;
 static const UInt CODING_STATS_NUM_SUBCLASSES=CODING_STATS_NUM_WIDTHS*(1+MAX_NUM_COMPONENT+MAX_NUM_CHANNEL_TYPE);
 
 class TComCodingStatisticsClassType
