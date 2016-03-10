@@ -62,7 +62,7 @@ protected:
   // source specification
   Int       m_iFrameRate;                                     ///< source frame-rates (Hz)
   UInt      m_FrameSkip;                                      ///< number of skipped frames from the beginning
-  UInt      m_tempSubsampleRatio;                             ///< temproal subsample ratio, 2 means code every two frames
+  UInt      m_temporalSubsampleRatio;                         ///< temporal subsample ratio, 2 means code every two frames
   Int       m_iSourceWidth;                                   ///< source width in pixel
   Int       m_iSourceHeight;                                  ///< source height in pixel (when interlaced = field height)
 
