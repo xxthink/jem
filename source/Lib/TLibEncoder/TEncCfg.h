@@ -102,7 +102,7 @@ protected:
   //==== File I/O ========
   Int       m_iFrameRate;
   Int       m_FrameSkip;
-  UInt      m_tempSubsampleRatio;
+  UInt      m_temporalSubsampleRatio;
   Int       m_iSourceWidth;
   Int       m_iSourceHeight;
   Window    m_conformanceWindow;
@@ -469,7 +469,7 @@ public:
 
   Void      setFrameRate                    ( Int   i )      { m_iFrameRate = i; }
   Void      setFrameSkip                    ( UInt  i )      { m_FrameSkip = i; }
-  Void      setTempSubsampleRatio           ( UInt  i )      { m_tempSubsampleRatio = i; }
+  Void      setTemporalSubsampleRatio       ( UInt  i )      { m_temporalSubsampleRatio = i; }
   Void      setSourceWidth                  ( Int   i )      { m_iSourceWidth = i; }
   Void      setSourceHeight                 ( Int   i )      { m_iSourceHeight = i; }
 
@@ -572,7 +572,7 @@ public:
   //====== Sequence ========
   Int       getFrameRate                    ()      { return  m_iFrameRate; }
   UInt      getFrameSkip                    ()      { return  m_FrameSkip; }
-  UInt      getTempSubsampleRatio           ()      { return  m_tempSubsampleRatio; }
+  UInt      getTemporalSubsampleRatio       ()      { return  m_temporalSubsampleRatio; }
   Int       getSourceWidth                  ()      { return  m_iSourceWidth; }
   Int       getSourceHeight                 ()      { return  m_iSourceHeight; }
   Int       getFramesToBeEncoded            ()      { return  m_framesToBeEncoded; }
