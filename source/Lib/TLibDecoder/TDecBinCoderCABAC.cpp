@@ -117,6 +117,9 @@ Void TDecBinCABAC::decodeBin( UInt& ruiBin, ContextModel &rcCtxModel )
   {
     // MPS path
     ruiBin = 1;
+#if RExt__DECODER_DEBUG_BIT_STATISTICS
+    TComCodingStatistics::UpdateCABACStat(whichStat, m_uiRange+uiLPS, m_uiRange, Int(ruiBin));
+#endif
     rcCtxModel.updateMPS();
     if ( scaledRange >= ( 256 << 7 ) )
     {
@@ -137,6 +140,9 @@ Void TDecBinCABAC::decodeBin( UInt& ruiBin, ContextModel &rcCtxModel )
   {
     // LPS path 
     ruiBin      = 0;
+#if RExt__DECODER_DEBUG_BIT_STATISTICS
+    TComCodingStatistics::UpdateCABACStat(whichStat, m_uiRange+uiLPS, uiLPS, Int(ruiBin));
+#endif
     rcCtxModel.updateLPS();
     UChar numBits = TComCABACTables::sm_aucRenormTable[ uiLPS >> 2 ];
     if (numBits)

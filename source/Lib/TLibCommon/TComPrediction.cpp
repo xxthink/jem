@@ -1609,12 +1609,17 @@ Void TComPrediction::xPredInterBlk(const ComponentID compID, TComDataCU *cu, TCo
     }
 
     ref -=(2+2*refStride);
+#if JVET_B058_HIGH_PRECISION_MOTION_VECTOR_MC
+    xGradFilterY(ref , refStride,pGradY,iWidthG,iWidthG,iHeightG, yFrac>>VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE,  xFrac>>VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE,  bitDepth);
+    xGradFilterX(ref , refStride,pGradX,iWidthG,iWidthG,iHeightG, yFrac>>VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE,  xFrac>>VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE,  bitDepth);
+#else
 #if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE == 1
     xGradFilterY(ref , refStride,pGradY,iWidthG,iWidthG,iHeightG, yFrac>>1,  xFrac>>1,  bitDepth);
     xGradFilterX(ref , refStride,pGradX,iWidthG,iWidthG,iHeightG, yFrac>>1,  xFrac>>1,  bitDepth);
 #else
     xGradFilterY(ref , refStride,pGradY,iWidthG,iWidthG,iHeightG, yFrac,  xFrac,  bitDepth);
     xGradFilterX(ref , refStride,pGradX,iWidthG,iWidthG,iHeightG, yFrac,  xFrac,  bitDepth);
+#endif
 #endif
     xPredInterFrac( ref , pPred, iWidthG, refStride, xFrac, yFrac, iWidthG, iHeightG,bi, chFmt,  bitDepth);
     ref +=(2+2*refStride);
@@ -2740,6 +2745,13 @@ Void TComPrediction::subBlockOBMC( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv
     bSubMotion = true;
   }
 #endif
+#if JVET_B0038_AFFINE_HARMONIZATION
+  if ( pcCU->getAffineFlag( uiAbsPartIdx ) )
+  {
+    bNormal2Nx2N = false;
+    bSubMotion = true;
+  }
+#endif
   Bool bVerticalPU  = ( ePartSize == SIZE_2NxN || ePartSize == SIZE_2NxnU || ePartSize == SIZE_2NxnD );
   Bool bHorizonalPU = ( ePartSize == SIZE_Nx2N || ePartSize == SIZE_nLx2N || ePartSize == SIZE_nRx2N );
   Bool bAtmvpPU = false, bNormalTwoPUs = false;
@@ -2866,6 +2878,9 @@ Void TComPrediction::subBlockOBMC( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv
 #endif
 #if VCEG_AZ07_FRUC_MERGE
         bSubBlockOBMCSimp |= ( bOBMCSimp || ( pcCU->getFRUCMgrMode( uiSubPartIdx ) != FRUC_MERGE_OFF && nFrucRefineSize == 4 ) );
+#endif
+#if JVET_B0038_AFFINE_HARMONIZATION
+        bSubBlockOBMCSimp |= ( bOBMCSimp || pcCU->getAffineFlag( uiSubPartIdx ) );
 #endif
         if( ( bCurSubBkFetched && bDiffMot[iDir] ) || pcCU->getNeigMotion( uiSubPartIdx, cNeigMvField, iNeigPredDir, iDir, cCurMvField, iCurPredDir, uiZeroIdx, bCurrMotStored ) )
         {
@@ -3318,7 +3333,11 @@ UInt TComPrediction::xFrucRefineMv( TComMvField * pBestMvField , RefPicList eCur
     uiMinCost = xFrucRefineMvSearch<FRUC_MERGE_MV_SEARCHPATTERN_CROSS>( pBestMvField , eCurRefPicList , pCU , uiAbsPartIdx , rMvStart , nBlkWidth , nBlkHeight , uiMinCost , bTM , nSearchStepShift );
     if( nSearchStepShift > 0 )
     {
+#if JVET_B058_HIGH_PRECISION_MOTION_VECTOR_MC
+      uiMinCost = xFrucRefineMvSearch<FRUC_MERGE_MV_SEARCHPATTERN_CROSS>( pBestMvField , eCurRefPicList , pCU , uiAbsPartIdx , rMvStart , nBlkWidth , nBlkHeight , uiMinCost , bTM , nSearchStepShift-1 , 1 );
+#else
       uiMinCost = xFrucRefineMvSearch<FRUC_MERGE_MV_SEARCHPATTERN_CROSS>( pBestMvField , eCurRefPicList , pCU , uiAbsPartIdx , rMvStart , nBlkWidth , nBlkHeight , uiMinCost , bTM , 0 , 1 );
+#endif
     }
     break;
   case 1:
@@ -3326,7 +3345,11 @@ UInt TComPrediction::xFrucRefineMv( TComMvField * pBestMvField , RefPicList eCur
     uiMinCost = xFrucRefineMvSearch<FRUC_MERGE_MV_SEARCHPATTERN_SQUARE>( pBestMvField , eCurRefPicList , pCU , uiAbsPartIdx , rMvStart , nBlkWidth , nBlkHeight , uiMinCost , bTM , nSearchStepShift );
     if( nSearchStepShift > 0 )
     {
+#if JVET_B058_HIGH_PRECISION_MOTION_VECTOR_MC
+      uiMinCost = xFrucRefineMvSearch<FRUC_MERGE_MV_SEARCHPATTERN_CROSS>( pBestMvField , eCurRefPicList , pCU , uiAbsPartIdx , rMvStart , nBlkWidth , nBlkHeight , uiMinCost , bTM , nSearchStepShift-1 , 1 );
+#else
       uiMinCost = xFrucRefineMvSearch<FRUC_MERGE_MV_SEARCHPATTERN_CROSS>( pBestMvField , eCurRefPicList , pCU , uiAbsPartIdx , rMvStart , nBlkWidth , nBlkHeight , uiMinCost , bTM , 0 , 1 );
+#endif
     }
     break;
   case 2:
@@ -3335,7 +3358,11 @@ UInt TComPrediction::xFrucRefineMv( TComMvField * pBestMvField , RefPicList eCur
     uiMinCost = xFrucRefineMvSearch<FRUC_MERGE_MV_SEARCHPATTERN_CROSS>( pBestMvField , eCurRefPicList , pCU , uiAbsPartIdx , rMvStart , nBlkWidth , nBlkHeight , uiMinCost , bTM , nSearchStepShift , 1 );
     if( nSearchStepShift > 0 )
     {
+#if JVET_B058_HIGH_PRECISION_MOTION_VECTOR_MC
+      uiMinCost = xFrucRefineMvSearch<FRUC_MERGE_MV_SEARCHPATTERN_CROSS>( pBestMvField , eCurRefPicList , pCU , uiAbsPartIdx , rMvStart , nBlkWidth , nBlkHeight , uiMinCost , bTM , nSearchStepShift-1  , 1 );
+#else
       uiMinCost = xFrucRefineMvSearch<FRUC_MERGE_MV_SEARCHPATTERN_CROSS>( pBestMvField , eCurRefPicList , pCU , uiAbsPartIdx , rMvStart , nBlkWidth , nBlkHeight , uiMinCost , bTM , 0 , 1 );
+#endif
     }
     break;
   case 3:
@@ -3347,7 +3374,11 @@ UInt TComPrediction::xFrucRefineMv( TComMvField * pBestMvField , RefPicList eCur
     uiMinCost = xFrucRefineMvSearch<FRUC_MERGE_MV_SEARCHPATTERN_CROSS>( pBestMvField , eCurRefPicList , pCU , uiAbsPartIdx , rMvStart , nBlkWidth , nBlkHeight , uiMinCost , bTM , nSearchStepShift , 1 );
     if( nSearchStepShift > 0 )
     {
+#if JVET_B058_HIGH_PRECISION_MOTION_VECTOR_MC
+      uiMinCost = xFrucRefineMvSearch<FRUC_MERGE_MV_SEARCHPATTERN_CROSS>( pBestMvField , eCurRefPicList , pCU , uiAbsPartIdx , rMvStart , nBlkWidth , nBlkHeight , uiMinCost , bTM , nSearchStepShift-1  , 1 );
+#else
       uiMinCost = xFrucRefineMvSearch<FRUC_MERGE_MV_SEARCHPATTERN_CROSS>( pBestMvField , eCurRefPicList , pCU , uiAbsPartIdx , rMvStart , nBlkWidth , nBlkHeight , uiMinCost , bTM , 0 , 1 );
+#endif
     }
     break;
   case 5:
@@ -3357,7 +3388,11 @@ UInt TComPrediction::xFrucRefineMv( TComMvField * pBestMvField , RefPicList eCur
       uiMinCost = xFrucRefineMvSearch<FRUC_MERGE_MV_SEARCHPATTERN_CROSS>( pBestMvField , eCurRefPicList , pCU , uiAbsPartIdx , rMvStart , nBlkWidth , nBlkHeight , uiMinCost , bTM , nSearchStepShift );
       if( nSearchStepShift > 0 )
       {
+#if JVET_B058_HIGH_PRECISION_MOTION_VECTOR_MC
+        uiMinCost = xFrucRefineMvSearch<FRUC_MERGE_MV_SEARCHPATTERN_CROSS>( pBestMvField , eCurRefPicList , pCU , uiAbsPartIdx , rMvStart , nBlkWidth , nBlkHeight , uiMinCost , bTM , nSearchStepShift-1 , 1 );
+#else
         uiMinCost = xFrucRefineMvSearch<FRUC_MERGE_MV_SEARCHPATTERN_CROSS>( pBestMvField , eCurRefPicList , pCU , uiAbsPartIdx , rMvStart , nBlkWidth , nBlkHeight , uiMinCost , bTM , 0 , 1 );
+#endif
       }
     }
     break;

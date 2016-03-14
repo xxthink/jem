@@ -115,13 +115,16 @@
 #define COM16_C806_CR_FROM_CB_LAMBDA_ADJUSTMENT           1
 #endif
 
-#define COM16_C806_SIMD_OPT                               1  ///< SIMD optimization, no impact on RD performance
-
 #define VCEG_AZ07_IMV                                     1  ///< Locally adaptive motion vector resolution (AMVR)
 
 #define VCEG_AZ07_FRUC_MERGE                              1  ///< Pattern matched motion vector derivation
-#if VCEG_AZ07_FRUC_MERGE
-#define VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE          1  ///< additional precision bit for MV storage
+
+#define JVET_B058_HIGH_PRECISION_MOTION_VECTOR_MC         1
+
+#if JVET_B058_HIGH_PRECISION_MOTION_VECTOR_MC
+#define VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE          2   ///< additional precision bit for MV storage
+#elif VCEG_AZ07_FRUC_MERGE 
+#define VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE          1   ///< additional precision bit for MV storage
 #endif
 
 #define VCEG_AZ06_IC                                      1  ///< Local illumination compensation (LIC)
@@ -136,12 +139,18 @@
 #endif                                                       
 
 #define VCEG_AZ07_INTRA_65ANG_MODES                       1  ///< 65 intra prediction directions
+#if VCEG_AZ07_INTRA_65ANG_MODES
+#define JVET_B0051_NON_MPM_MODE                           1  // Use two mode sets for non-MPM mode coding
+#endif
 
 #define VCEG_AZ07_ECABAC                                  1  ///< CABAC improvements
 #if VCEG_AZ07_ECABAC                                         
 #define VCEG_AZ07_CTX_RESIDUALCODING                      1  ///< Context modeling for transform coefficient levels
 #define VCEG_AZ07_BAC_ADAPT_WDOW                          1  ///< Multi-hypothesis probability estimation
 #define VCEG_AZ07_INIT_PREVFRAME                          1  ///< Initialization for context models
+#if VCEG_AZ07_INIT_PREVFRAME
+#define VCEG_AZ07_INIT_PREVFRAME_FIX                      1  ///< Fix for GOP16
+#endif
 #endif                                                       
 
 #define VCEG_AZ05_MULTI_PARAM_CABAC                       1  ///< CABAC probability estimation with 2 windows 
@@ -154,11 +163,17 @@
 #endif                                                       
 
 #define COM16_C1016_AFFINE                                1  ///< Affine motion prediction
+#if COM16_C1016_AFFINE
+#define JVET_B0038_AFFINE_HARMONIZATION                   1  ///< Harmonization of affine, OBMC and DBF
+#endif
 
 #define COM16_C983_RSAF                                   1  ///< Adaptive reference sample smoothing
 #if COM16_C983_RSAF                                          
 #define COM16_C983_RSAF_PREVENT_OVERSMOOTHING             1  ///< Harmonization with intra-prediction tools   
 #define COM16_C983_RSAF_ESTIMATION_MODE_FULL              1  ///< Full/fast estimation of the possiblity to hide the RSAF flag
+#define JVET_B0041_SIMPLIFICATION_1A                      1  ///< Simplidication by avoiding RSAF-enabled TU pass if RSAF-disabled pass evaluate to CBF==0 
+#define JVET_B0041_SIMPLIFICATION_2                       1  ///< Simplidication by cancelling TU split check using cbf value and result of hiding procedure for non-split TU.
+#define COM16_C983_RSAF_S_TICKET14                        1
 #endif                                                       
 
 #define COM16_C1044_NSST                                  1  ///< Mode dependent non-separable secondary transforms
@@ -177,6 +192,12 @@
 
 #define PARALLEL_ENCODING_SAO_FIX                         1  ///< Fix of SAO for parallel encoding proposed in JVET-B0036
 #define PARALLEL_ENCODING_RAS_CABAC_INIT_PRESENT          1  ///< Fix of CABAC initialization for parallel encoding proposed in JVET-B0036
+
+// encoder only changes
+#define COM16_C806_SIMD_OPT                               1  ///< SIMD optimization, no impact on RD performance
+
+#define JVET_B0039_QP_FIX                                 1  ///< Recalcualtes QP to align with a HM lambda (same relation as for all intra coding is used)
+#define JVET_B0039_INC_NUM_QP_PROB                        7  ///< Number of context is increased when more QPs are used
 
 ///////////////////////////////////////////////////////////
 // KTA tools section end
@@ -973,7 +994,11 @@ typedef struct _QPFLAG
   Bool      used;      //same QP, same type has appearaed
   Bool      firstUsed; //same QP, same type was firstly signaled
 #if VCEG_AZ07_INIT_PREVFRAME
+#if VCEG_AZ07_INIT_PREVFRAME_FIX
+  Int       resetInit; 
+#else
   UInt      resetInit; //for the first B/P frame after intra slice, no init update
+#endif
 #endif
 } QPFlag;
 #endif

@@ -325,6 +325,18 @@ Void TComLoopFilter::xSetEdgefilterPU( TComDataCU* pcCU, UInt uiAbsZorderIdx )
         }
       }
 #endif
+#if JVET_B0038_AFFINE_HARMONIZATION
+      if ( pcCU->getAffineFlag(uiAbsZorderIdx) )
+      {
+        assert( MIN_PU_SIZE == 4 && AFFINE_MIN_BLOCK_SIZE == 4 );
+        const Int nUnits = AFFINE_MIN_BLOCK_SIZE >> 2;
+        for( UInt nEdgeIdx = nUnits ; nEdgeIdx < uiWidthInBaseUnits ; nEdgeIdx += nUnits )
+        {
+          xSetEdgefilterMultiple( pcCU, uiAbsZorderIdx, uiDepth, EDGE_VER, nEdgeIdx, m_stLFCUParam.bInternalEdge );
+          xSetEdgefilterMultiple( pcCU, uiAbsZorderIdx, uiDepth, EDGE_HOR, nEdgeIdx, m_stLFCUParam.bInternalEdge );
+        }
+      }
+#endif
       break;
     }
     case SIZE_2NxN:

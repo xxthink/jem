@@ -425,6 +425,46 @@ Void TEncSbac::xWriteUnaryMaxSymbol( UInt uiSymbol, ContextModel* pcSCModel, Int
   return;
 }
 
+#if JVET_B0051_NON_MPM_MODE
+Void TEncSbac::xWriteTruncBinCode(UInt uiSymbol, UInt uiMaxSymbol)
+{
+  UInt uiThresh;
+  if (uiMaxSymbol > 256)
+  {
+    UInt uiThreshVal = 1 << 8;
+    uiThresh = 8;
+    while (uiThreshVal <= uiMaxSymbol)
+    {
+      uiThresh++;
+      uiThreshVal <<= 1;
+    }
+    uiThresh--;
+  }
+  else
+  {
+    uiThresh = g_NonMPM[uiMaxSymbol];
+  }
+
+  UInt uiVal = 1 << uiThresh;
+  assert(uiVal <= uiMaxSymbol);
+  assert((uiVal << 1) > uiMaxSymbol);
+  assert(uiSymbol < uiMaxSymbol);
+  UInt b = uiMaxSymbol - uiVal;
+  assert(b < uiVal);
+  if (uiSymbol < uiVal - b)
+  {
+    m_pcBinIf->encodeBinsEP(uiSymbol, uiThresh);
+  }
+  else
+  {
+    uiSymbol += uiVal - b;
+    assert(uiSymbol < (uiVal << 1));
+    assert((uiSymbol >> 1) >= uiVal - b);
+    m_pcBinIf->encodeBinsEP(uiSymbol, uiThresh + 1);
+  }
+}
+#endif
+
 Void TEncSbac::xWriteEpExGolomb( UInt uiSymbol, UInt uiCount )
 {
   UInt bins = 0;
@@ -1083,10 +1123,25 @@ Void TEncSbac::codeIntraDirLumaAng( TComDataCU* pcCU, UInt absPartIdx, Bool isMu
       }
 #if VCEG_AZ07_INTRA_65ANG_MODES
       assert( dir[j]<(NUM_INTRA_MODE-7) );
+
+#if JVET_B0051_NON_MPM_MODE
+      m_pcBinIf->encodeBin(( (dir[j]%4) ==0 ) ? 1 : 0, m_cCUIntraPredSCModel.get( 0, 0, 9+mode/3 ) ); // flag to indicate if it is selected mode or non-selected mode
+      if(dir[j] %4 ==0) 
+      {
+        m_pcBinIf->encodeBinsEP( dir[j]>>2, 4 );  // selected mode is 4-bit FLC coded
+      }
+      else
+      {
+        dir[j] -= dir[j]>>2 ;
+        dir[j] --;     
+        xWriteTruncBinCode(dir[j] , 45);  // Non-selected mode is truncated binary coded
+      }
+#else
       if( dir[j]>=(NUM_INTRA_MODE-8) )
         m_pcBinIf->encodeBinsEP( dir[j]>>2, 4 );
       else
         m_pcBinIf->encodeBinsEP( dir[j], 6 );
+#endif
 #else
       m_pcBinIf->encodeBinsEP( dir[j], 5 );
 #endif
@@ -1208,7 +1263,7 @@ Void TEncSbac::codeMvd( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList
   }
 
   const TComCUMvField* pcCUMvField = pcCU->getCUMvField( eRefList );
-#if VCEG_AZ07_IMV || VCEG_AZ07_FRUC_MERGE
+#if VCEG_AZ07_IMV || VCEG_AZ07_FRUC_MERGE || VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
   Int iHor = pcCUMvField->getMvd( uiAbsPartIdx ).getHor();
   Int iVer = pcCUMvField->getMvd( uiAbsPartIdx ).getVer();
 #else
@@ -2746,7 +2801,11 @@ Void  TEncSbac::loadContextsFromPrev (TComStats* apcStats, SliceType eSliceType,
 {
   if(bFromGloble)
   {
+#if VCEG_AZ07_INIT_PREVFRAME_FIX
+    if(iQPIdx==-1 || !apcStats->aaQPUsed[eSliceType][iQPIdxRst].resetInit)
+#else
     if(iQPIdx==-1 || (bAfterLastISlice && !apcStats->aaQPUsed[eSliceType][iQPIdxRst].resetInit))
+#endif
     {
       return;
     }

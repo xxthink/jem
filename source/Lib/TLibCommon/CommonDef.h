@@ -41,6 +41,7 @@
 #include <algorithm>
 #include <iostream>
 #include <assert.h>
+#include <limits>
 
 #if _MSC_VER > 1000
 // disable "signed and unsigned mismatch"
@@ -63,7 +64,7 @@ inline Int64 abs (Int64 x) { return _abs64(x); };
 // Version information
 // ====================================================================================================================
 
-#define NV_VERSION        "HM-16.6-JEM-1.1"                 ///< Current software version
+#define NV_VERSION        "HM-16.6-JEM-2.0rc1"                 ///< Current software version
 
 // ====================================================================================================================
 // Platform information
