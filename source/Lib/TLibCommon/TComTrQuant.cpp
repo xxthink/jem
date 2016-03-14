@@ -233,6 +233,14 @@ TComTrQuant::TComTrQuant()
   // allocate bit estimation class  (for RDOQ)
   m_pcEstBitsSbac = new estBitsSbacStruct;
   initScalingList();
+#if VCEG_AZ08_KLT_COMMON
+  memset( m_pData , 0 , sizeof( m_pData ) );
+  m_pppTarPatch = NULL;
+  m_pCovMatrix = NULL;
+  m_pppdTmpEigenVector = NULL;
+  m_pppdEigenVector = NULL;
+  m_pppsEigenVector = NULL;
+#endif
 }
 
 TComTrQuant::~TComTrQuant()
@@ -261,8 +269,11 @@ TComTrQuant::~TComTrQuant()
 #if VCEG_AZ08_KLT_COMMON
       for (UInt i = 0; i < MAX_CANDI_NUM; i++)
       {
-          delete[]m_pData[i];
+        if( m_pData[i] != NULL )
+        {
+          delete[] m_pData[i];
           m_pData[i] = NULL;
+        }
       }
 
 #if VCEG_AZ08_USE_TRANSPOSE_CANDDIATEARRAY
@@ -323,6 +334,7 @@ TComTrQuant::~TComTrQuant()
                   delete[]m_pppTarPatch[uiDepth]; m_pppTarPatch[uiDepth] = NULL;
               }
           }
+          delete [] m_pppTarPatch;
           m_pppTarPatch = NULL;
       }
 
@@ -364,6 +376,7 @@ TComTrQuant::~TComTrQuant()
                       delete[]m_pppdEigenVector[uiDepth][k]; m_pppdEigenVector[uiDepth][k] = NULL;
                   }
               }
+              delete [] m_pppdEigenVector[uiDepth];
           }
           delete[]m_pppdEigenVector; m_pppdEigenVector = NULL;
       }
@@ -3772,7 +3785,10 @@ Void TComTrQuant::init(   UInt  uiMaxTrSize,
       m_tempLibFast.init(MAX_CANDI_NUM);
       for (UInt i = 0; i < MAX_CANDI_NUM; i++)
       {
+        if( m_pData[i] == NULL )
+        {
           m_pData[i] = new TrainDataType[MAX_1DTRANS_LEN];
+        }
       }
 #if VCEG_AZ08_USE_TRANSPOSE_CANDDIATEARRAY
       for (UInt i = 0; i < MAX_1DTRANS_LEN; i++)
@@ -3780,25 +3796,26 @@ Void TComTrQuant::init(   UInt  uiMaxTrSize,
           m_pDataT[i] = new TrainDataType[MAX_CANDI_NUM];
       }
 #endif
-
-      m_pppTarPatch = new Pel**[USE_MORE_BLOCKSIZE_DEPTH_MAX];
-      for (UInt uiDepth = 0; uiDepth < USE_MORE_BLOCKSIZE_DEPTH_MAX; uiDepth++)
+      if( m_pppTarPatch == NULL )
       {
+        m_pppTarPatch = new Pel**[USE_MORE_BLOCKSIZE_DEPTH_MAX];
+        for (UInt uiDepth = 0; uiDepth < USE_MORE_BLOCKSIZE_DEPTH_MAX; uiDepth++)
+        {
           blkSize = g_uiDepth2Width[uiDepth];
 #if VCEG_AZ08_USE_KLT
           UInt tempSize = 0;
 #if VCEG_AZ08_INTRA_KLT && VCEG_AZ08_INTER_KLT
           if(useIntraKLT && useInterKLT)
           {
-              tempSize = max(g_uiDepth2IntraTempSize[uiDepth], g_uiDepth2InterTempSize[uiDepth]);
+            tempSize = max(g_uiDepth2IntraTempSize[uiDepth], g_uiDepth2InterTempSize[uiDepth]);
           }
           else if(useIntraKLT && !useInterKLT)
           {
-              tempSize = g_uiDepth2IntraTempSize[uiDepth];
+            tempSize = g_uiDepth2IntraTempSize[uiDepth];
           }
           else if (!useIntraKLT && useInterKLT)
           {
-              tempSize = g_uiDepth2InterTempSize[uiDepth];
+            tempSize = g_uiDepth2InterTempSize[uiDepth];
           }
 #endif
 #if VCEG_AZ08_INTRA_KLT && !VCEG_AZ08_INTER_KLT
@@ -3822,48 +3839,61 @@ Void TComTrQuant::init(   UInt  uiMaxTrSize,
           m_pppTarPatch[uiDepth] = new Pel *[patchSize];
           for (UInt uiRow = 0; uiRow < patchSize; uiRow++)
           {
-              m_pppTarPatch[uiDepth][uiRow] = new Pel[patchSize];
+            m_pppTarPatch[uiDepth][uiRow] = new Pel[patchSize];
           }
+        }
       }
 
-      m_pCovMatrix = new covMatrixType*[USE_MORE_BLOCKSIZE_DEPTH_MAX];
-      for (UInt uiDepth = 0; uiDepth < USE_MORE_BLOCKSIZE_DEPTH_MAX; uiDepth++)
+      if( m_pCovMatrix == NULL )
       {
+        m_pCovMatrix = new covMatrixType*[USE_MORE_BLOCKSIZE_DEPTH_MAX];
+        for (UInt uiDepth = 0; uiDepth < USE_MORE_BLOCKSIZE_DEPTH_MAX; uiDepth++)
+        {
           blkSize = g_uiDepth2Width[uiDepth];
           uiDim = blkSize*blkSize;
           UInt uiMatrixDim = uiDim*uiDim;
           m_pCovMatrix[uiDepth] = new covMatrixType[uiMatrixDim];
+        }
       }
 #if VCEG_AZ08_FAST_DERIVE_KLT
-      blkSize = g_uiDepth2Width[USE_MORE_BLOCKSIZE_DEPTH_MAX - 1];
-      uiDim = blkSize*blkSize;
-      m_pppdTmpEigenVector = new EigenType *[uiDim];
-      for (UInt k = 0; k < uiDim; k++)
+      if( m_pppdTmpEigenVector == NULL )
       {
+        blkSize = g_uiDepth2Width[USE_MORE_BLOCKSIZE_DEPTH_MAX - 1];
+        uiDim = blkSize*blkSize;
+        m_pppdTmpEigenVector = new EigenType *[uiDim];
+        for (UInt k = 0; k < uiDim; k++)
+        {
           m_pppdTmpEigenVector[k] = new EigenType[uiDim];
+        }
       }
 #endif
-      m_pppdEigenVector = new EigenType**[USE_MORE_BLOCKSIZE_DEPTH_MAX];
-      for (UInt uiDepth = 0; uiDepth < USE_MORE_BLOCKSIZE_DEPTH_MAX; uiDepth++)
+      if( m_pppdEigenVector == NULL )
       {
+        m_pppdEigenVector = new EigenType**[USE_MORE_BLOCKSIZE_DEPTH_MAX];
+        for (UInt uiDepth = 0; uiDepth < USE_MORE_BLOCKSIZE_DEPTH_MAX; uiDepth++)
+        {
           blkSize = g_uiDepth2Width[uiDepth];
           uiDim = blkSize*blkSize;
           m_pppdEigenVector[uiDepth] = new EigenType *[uiDim];
           for (UInt k = 0; k < uiDim; k++)
           {
-              m_pppdEigenVector[uiDepth][k] = new EigenType[uiDim];
+            m_pppdEigenVector[uiDepth][k] = new EigenType[uiDim];
           }
+        }
       }
-      m_pppsEigenVector = new Short**[USE_MORE_BLOCKSIZE_DEPTH_MAX];
-      for (UInt uiDepth = 0; uiDepth < USE_MORE_BLOCKSIZE_DEPTH_MAX; uiDepth++)
+      if( m_pppsEigenVector == NULL )
       {
+        m_pppsEigenVector = new Short**[USE_MORE_BLOCKSIZE_DEPTH_MAX];
+        for (UInt uiDepth = 0; uiDepth < USE_MORE_BLOCKSIZE_DEPTH_MAX; uiDepth++)
+        {
           blkSize = g_uiDepth2Width[uiDepth];
           uiDim = blkSize*blkSize;
           m_pppsEigenVector[uiDepth] = new Short *[uiDim];
           for (UInt k = 0; k < uiDim; k++)
           {
-              m_pppsEigenVector[uiDepth][k] = new Short[uiDim];
+            m_pppsEigenVector[uiDepth][k] = new Short[uiDim];
           }
+        }
       }
 #endif
 #if VCEG_AZ08_USE_KLT
@@ -7955,15 +7985,18 @@ TempLibFast::~TempLibFast()
 Void TempLibFast::init(UInt iSize)
 {
     m_iSize = iSize;
-    m_pX = new Int[iSize];
-    m_pY = new Int[iSize];
-    m_pDiff = new DistType[iSize];
-    m_pId = new Short[iSize];
+    if( m_pY == NULL )
+    {
+      m_pX = new Int[iSize];
+      m_pY = new Int[iSize];
+      m_pDiff = new DistType[iSize];
+      m_pId = new Short[iSize];
 
-    m_pXInteger = new Int[iSize];
-    m_pYInteger = new Int[iSize];
-    m_pDiffInteger = new DistType[iSize];
-    m_pIdInteger = new Short[iSize];
+      m_pXInteger = new Int[iSize];
+      m_pYInteger = new Int[iSize];
+      m_pDiffInteger = new DistType[iSize];
+      m_pIdInteger = new Short[iSize];
+    }
 }
 
 Void TempLibFast::initDiff(UInt uiPatchSize, Int bitDepth, Int iCandiNumber)
