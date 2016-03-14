@@ -117,6 +117,9 @@ public:
 #endif
 
 private:
+#if JVET_B0051_NON_MPM_MODE
+  Void  xWriteTruncBinCode      ( UInt uiSymbol, UInt uiMaxSymbol );
+#endif
   Void  xWriteUnarySymbol    ( UInt uiSymbol, ContextModel* pcSCModel, Int iOffset );
   Void  xWriteUnaryMaxSymbol ( UInt uiSymbol, ContextModel* pcSCModel, Int iOffset, UInt uiMaxSymbol );
   Void  xWriteEpExGolomb     ( UInt uiSymbol, UInt uiCount );

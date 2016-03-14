@@ -8,7 +8,7 @@ LIB_DIR			= ../../../../lib
 BIN_DIR			= ../../../../bin
 
 SRC_DIR1		= ../../../../source/Lib/libmd5
-SRC_DIR2		= ../../../../source/Lib/Eigen
+SRC_DIR2		= 
 SRC_DIR3		=
 SRC_DIR4		=
 

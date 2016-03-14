@@ -2416,6 +2416,10 @@ Void TComSlice::initStatsGlobal()
 {
   {
     Int iQP = -1,  k;
+#if VCEG_AZ07_INIT_PREVFRAME_FIX
+    Bool bIRAP = getRapPicFlag();
+    static Bool bClearPrevFlag = false;
+#endif
     Int uiSliceType = getSliceType();
     Int uiSliceQP   = getSliceQp  ();
     TComStats* pcStats = getStatsHandle();
@@ -2442,7 +2446,25 @@ Void TComSlice::initStatsGlobal()
       }
     }
     setCtxMapQPIdxforStore(iQP);
-
+#if VCEG_AZ07_INIT_PREVFRAME_FIX
+    if(bClearPrevFlag== false && getPOC() > pcStats->m_uiLastIPOC)
+    {
+      bClearPrevFlag = true;
+     // pcStats-> aaQPUsed[uiSliceType][k].resetInit ++;
+      for(UInt uitype= 0; uitype < 2; uitype++)
+      {
+        for (k = 0; k < NUM_QP_PROB; k++)
+        {
+          pcStats-> aaQPUsed[uitype][k].resetInit = 0;
+        }
+      }
+    }
+    if( bIRAP )
+    {
+      pcStats->m_uiLastIPOC = this->getPOC();
+      bClearPrevFlag = false;
+    }
+#else
     if( uiSliceType == I_SLICE )
     {
       pcStats->m_uiLastIPOC = this->getPOC();
@@ -2459,8 +2481,26 @@ Void TComSlice::initStatsGlobal()
       pcStats-> aaQPUsed[uiSliceType][k].resetInit ++;
     }
 #endif
+#endif
   }
 }
+#if VCEG_AZ07_INIT_PREVFRAME_FIX
+Void TComSlice::updateStatsGlobal()
+{
+  Int k = -1;
+  TComStats* pcStats = getStatsHandle();
+  Int uiSliceType = getSliceType();
+  Int uiSliceQP   = getSliceQp  ();
+  for (k = 0; k < NUM_QP_PROB; k++)
+  {
+    if (pcStats-> aaQPUsed[uiSliceType][k].QP == uiSliceQP)
+    {
+      pcStats-> aaQPUsed[uiSliceType][k].resetInit = -1;
+      break;
+    }
+  }
+}
+#endif
 #endif
 
 //! \}

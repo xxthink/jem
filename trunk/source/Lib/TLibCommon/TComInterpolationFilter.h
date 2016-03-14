@@ -64,6 +64,10 @@
  */
 class TComInterpolationFilter
 {
+#if JVET_B058_HIGH_PRECISION_MOTION_VECTOR_MC
+  static const TFilterCoeff m_lumaFilter[LUMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE][NTAPS_LUMA];     ///< Luma filter taps
+  static const TFilterCoeff m_chromaFilter[CHROMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE][NTAPS_CHROMA]; ///< Chroma filter taps
+#else
 #if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE == 1
   static const Short m_lumaFilter[8][NTAPS_LUMA];     ///< Luma filter taps
   static const Short m_chromaFilter[16][NTAPS_CHROMA]; ///< Chroma filter taps
@@ -71,11 +75,16 @@ class TComInterpolationFilter
   static const TFilterCoeff m_lumaFilter[LUMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS][NTAPS_LUMA];     ///< Luma filter taps
   static const TFilterCoeff m_chromaFilter[CHROMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS][NTAPS_CHROMA]; ///< Chroma filter taps
 #endif
+#endif
 #if VCEG_AZ07_FRUC_MERGE
+#if JVET_B058_HIGH_PRECISION_MOTION_VECTOR_MC
+  static const Short m_lumaFilterBilinear[LUMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE][NTAPS_LUMA_FRUC];     ///< Luma filter taps
+#else
 #if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE == 1
   static const Short m_lumaFilterBilinear[8][NTAPS_LUMA_FRUC];     ///< Luma filter taps
 #else
   static const Short m_lumaFilterBilinear[4][NTAPS_LUMA_FRUC];     ///< Luma filter taps
+#endif
 #endif
 #endif
 

@@ -58,6 +58,135 @@
 // Tables
 // ====================================================================================================================
 
+#if JVET_B058_HIGH_PRECISION_MOTION_VECTOR_MC
+const TFilterCoeff TComInterpolationFilter::m_lumaFilter[LUMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE][NTAPS_LUMA] =
+{
+  {  0, 0,   0, 64,  0,   0,  0,  0 },
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  {  0, 1,  -3, 63,  4,  -2,  1,  0 },
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 1 
+  { -1, 2,  -5, 62,  8,  -3,  1,  0 },
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  { -1, 3,  -8, 60, 13,  -4,  1,  0 },
+#endif
+  { -1, 4, -10, 58, 17,  -5,  1,  0 },
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  { -1, 4, -11, 52, 26,  -8,  3, -1 }, 
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 1
+  { -1, 3,  -9, 47, 31, -10,  4, -1 },
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  { -1, 4, -11, 45, 34, -10,  4, -1 },
+#endif
+  { -1, 4, -11, 40, 40, -11,  4, -1 }, 
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  { -1, 4, -10, 34, 45, -11,  4, -1 },
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 1 
+  { -1, 4, -10, 31, 47,  -9,  3, -1 },
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  { -1, 3,  -8, 26, 52, -11,  4, -1 }, 
+#endif
+  {  0, 1,  -5, 17, 58, -10,  4, -1 },
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  {  0, 1,  -4, 13, 60,  -8,  3, -1 },
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 1 
+  {  0, 1,  -3,  8, 62,  -5,  2, -1 },
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  {  0, 1,  -2,  4, 63,  -3,  1,  0 }
+#endif
+};
+
+const TFilterCoeff TComInterpolationFilter::m_chromaFilter[CHROMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE][NTAPS_CHROMA] =
+{
+  {  0, 64,  0,  0 },
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  { -1, 63,  2,  0 },
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 1 
+  { -2, 62,  4,  0 },
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  { -2, 60,  7,  -1 },
+#endif
+  { -2, 58, 10, -2 },
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  { -3, 57, 12, -2 },
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 1 
+  { -4, 56, 14, -2 },
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  { -4, 55, 15, -2 },
+#endif
+  { -4, 54, 16, -2 }, 
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  { -5, 53, 18, -2 },
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 1 
+  { -6, 52, 20, -2 }, 
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  { -6, 49, 24, -3 },
+#endif
+  { -6, 46, 28, -4 }, 
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  { -5, 44, 29, -4 },
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 1 
+  { -4, 42, 30, -4 },
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  { -4, 39, 33, -4 },
+#endif
+  { -4, 36, 36, -4 }, 
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  { -4, 33, 39, -4 },
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 1 
+  { -4, 30, 42, -4 }, 
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  { -4, 29, 44, -5 },
+#endif
+  { -4, 28, 46, -6 },
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  { -3, 24, 49, -6 },
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 1 
+  { -2, 20, 52, -6 }, 
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  { -2, 18, 53, -5 },
+#endif
+  { -2, 16, 54, -4 },
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  { -2, 15, 55, -4 },
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 1 
+  { -2, 14, 56, -4 },
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  { -2, 12, 57, -3 },
+#endif
+  { -2, 10, 58, -2 }, 
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  { -1,  7, 60, -2 },
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 1 
+  {  0,  4, 62, -2 },
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  { 0,  2, 63, -1 },
+#endif
+};
+#else
 #if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE == 1
 // from SHVC upsampling filter
 const Short TComInterpolationFilter::m_lumaFilter[8][NTAPS_LUMA] =
@@ -112,8 +241,54 @@ const TFilterCoeff TComInterpolationFilter::m_chromaFilter[CHROMA_INTERPOLATION_
   { -2, 10, 58, -2 }
 };
 #endif
+#endif
 
 #if VCEG_AZ07_FRUC_MERGE
+#if JVET_B058_HIGH_PRECISION_MOTION_VECTOR_MC
+const Short TComInterpolationFilter::m_lumaFilterBilinear[LUMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE][NTAPS_LUMA_FRUC] =
+{
+  { 64,  0, },
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >=2 
+  { 60,  4, },
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >=1 
+  { 56,  8, },
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >=2 
+  { 52, 12, },
+#endif
+  { 48, 16, },
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >=2 
+  { 44, 20, },
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >=1 
+  { 40, 24, },
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >=2 
+  { 36, 28, },
+#endif
+  { 32, 32, },
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >=2 
+  { 28, 36, },
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >=1 
+  { 24, 40, },
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >=2 
+  { 20, 44, },
+#endif
+  { 16, 48, },
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >=2 
+  { 12, 52, },
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >=1 
+  {  8, 56, },
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >=2 
+  {  4, 60, },
+#endif
+};
+#else
 #if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE == 1
 const Short TComInterpolationFilter::m_lumaFilterBilinear[8][NTAPS_LUMA_FRUC] =
 {
@@ -135,7 +310,7 @@ const Short TComInterpolationFilter::m_lumaFilterBilinear[4][NTAPS_LUMA_FRUC] =
   { 16, 48, },
 };
 #endif
-
+#endif
 #endif
 
 #if COM16_C1016_AFFINE
