@@ -3031,7 +3031,7 @@ Void TComPrediction::xSubtractOBMC( TComDataCU* pcCU, Int uiAbsPartIdx, TComYuv*
 
       for( Int i = 0; i < iWidth; i++ )
       {
-        pDst[i] += ( pDst[i] - pDst[i] + 8 ) >> 4;
+        pDst[i] += ( pDst[i] - pSrc[i] + 8 ) >> 4;
       }
 
       pDst += iDstStride;
