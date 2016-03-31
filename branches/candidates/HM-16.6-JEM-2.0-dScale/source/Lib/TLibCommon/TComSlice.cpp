@@ -1700,6 +1700,9 @@ TComPPS::TComPPS()
 , m_SPSId                            (0)
 , m_picInitQPMinus26                 (0)
 , m_useDQP                           (false)
+#if SHARP_LUMA_RES_SCALING
+,m_useDQP_ResScale                   (false)
+#endif
 , m_bConstrainedIntraPred            (false)
 , m_bSliceChromaQpFlag               (false)
 , m_uiMaxCuDQPDepth                  (0)

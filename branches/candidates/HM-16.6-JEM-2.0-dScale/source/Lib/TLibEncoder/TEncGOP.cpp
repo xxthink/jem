@@ -1519,6 +1519,14 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     duData.clear();
     pcSlice = pcPic->getSlice(0);
 
+#if SHARP_LUMA_STORE_DQP   
+    if (pcSlice->getPPS()->getUseDQP_ResScale())
+    {
+        Int updatedSliceQP = m_pcSliceEncoder->getLumaAdaptiveSliceQP();
+        //printf("updatedSliceQP QP for SAO %d\n", updatedSliceQP);
+        m_pcSliceEncoder->updateLambda(pcSlice, updatedSliceQP); 
+    }
+#endif
     // SAO parameter estimation using non-deblocked pixels for CTU bottom and right boundary areas
     if( pcSlice->getSPS()->getUseSAO() && m_pcCfg->getSaoCtuBoundary() )
     {

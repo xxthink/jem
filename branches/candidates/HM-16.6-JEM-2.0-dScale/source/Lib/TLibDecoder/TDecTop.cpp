@@ -770,6 +770,14 @@ Void TDecTop::xDecodePPS(const std::vector<UChar> &naluData)
   TComPPS* pps = new TComPPS();
   m_cEntropyDecoder.decodePPS( pps );
   m_parameterSetManager.storePPS( pps, naluData);
+#if SHARP_LUMA_RES_SCALING
+  if (pps->getUseDQP_ResScale())
+  {
+    // assume only one PPS for now
+    initLumaDeltaQpLUT(pps->getNbrOfUsedDQPChangePoints(), pps->getLumaDQpChangePoints(), pps->getDQpChangePoints());
+    initLumaAcScaleLUT();
+  }
+#endif
 }
 
 Bool TDecTop::decode(InputNALUnit& nalu, Int& iSkipFrame, Int& iPOCLastDisplay

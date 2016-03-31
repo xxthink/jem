@@ -139,6 +139,66 @@ Void TEncSlice::init( TEncTop* pcEncTop )
   m_pcRateCtrl        = pcEncTop->getRateCtrl();
 }
 
+#if SHARP_LUMA_DELTA_QP//  copied from initEncSlice
+Void TEncSlice::updateLambda(TComSlice* rpcSlice, Int dQP) {
+
+ // compute lambda value
+    Int    NumberBFrames = ( m_pcCfg->getGOPSize() - 1 );
+    Int    SHIFT_QP = 12;    
+    Double dLambda_scale = 1.0 - Clip3( 0.0, 0.5, 0.05*(Double)(rpcSlice->getPic()->isField() ? NumberBFrames/2 : NumberBFrames) );
+
+#if FULL_NBIT
+    Int    bitdepth_luma_qp_scale = 6 * (rpcSlice->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA) - 8);
+#else
+    Int    bitdepth_luma_qp_scale = 0;
+#endif
+    Double qp_temp = (Double) dQP + bitdepth_luma_qp_scale - SHIFT_QP;
+#if FULL_NBIT
+    Double qp_temp_orig = (Double) dQP - SHIFT_QP;
+#endif
+ enum SliceType eSliceType = rpcSlice->getSliceType();
+
+    // Case #1: I or P-slices (key-frame)
+    Double dQPFactor = m_pcCfg->getGOPEntry(m_GopID).m_QPFactor;
+   if ( eSliceType==I_SLICE )
+   {
+     dQPFactor=0.57*dLambda_scale;
+   }
+    Double dLambda = dQPFactor*pow( 2.0, qp_temp/3.0 );
+ Int depth = rpcSlice->getDepth();
+
+    if ( depth>0 )
+    {  
+#if FULL_NBIT
+      qp_temp_orig = rpcSlice->getSliceQp() - SHIFT_QP; // avoid lambda  over adjustment,  use slice_qp here
+      dLambda *= Clip3( 2.00, 4.00, (qp_temp_orig / 6.0) ); // (j == B_SLICE && p_cur_frm->layer != 0 )
+#else
+      Int qp_temp_slice = rpcSlice->getSliceQp() + bitdepth_luma_qp_scale - SHIFT_QP; // avoid lambda  over adjustment,  use slice_qp here
+      //dLambda *= Clip3( 2.00, 4.00, (qp_temp / 6.0) ); // (j == B_SLICE && p_cur_frm->layer != 0 )
+      dLambda *= Clip3( 2.00, 4.00, (qp_temp_slice / 6.0) ); // (j == B_SLICE && p_cur_frm->layer != 0 )
+#endif
+    }
+
+    // if hadamard is used in ME process
+    if ( !m_pcCfg->getUseHADME() && rpcSlice->getSliceType( ) != I_SLICE )
+    {
+      dLambda *= 0.95;
+    }
+
+#if JVET_B0039_QP_FIX
+    Double lambdaRef = 0.57*pow(2.0, qp_temp/3.0);
+    // qp correction to get HM lambda
+    Double qpOffset = floor((3.0*log(dLambda/lambdaRef)/log(2.0)) +0.5);
+    dQP += qpOffset;
+#endif
+
+    Int qpBDoffset = rpcSlice->getSPS()->getQpBDOffset(CHANNEL_TYPE_LUMA);
+    Int iQP = max( -qpBDoffset, min( MAX_QP, (Int) floor( dQP + 0.5 ) ) ); 
+
+    // setup lambda
+    setUpLambda(rpcSlice, dLambda, iQP);
+}
+#endif
 
 
 Void
@@ -202,6 +262,10 @@ Void TEncSlice::initEncSlice( TComPic* pcPic, Int pocLast, Int pocCurr, Int iGOP
 #if VCEG_AZ06_IC
   rpcSlice->setApplyIC( false );
 #endif  
+#if SHARP_LUMA_DELTA_QP
+  m_GopID = iGOPid;
+#endif
+
   // depth computation based on GOP size
   Int depth;
   {
@@ -286,7 +350,11 @@ Void TEncSlice::initEncSlice( TComPic* pcPic, Int pocLast, Int pocCurr, Int iGOP
   dQP = m_pcCfg->getQP();
   if(eSliceType!=I_SLICE)
   {
+#if SHARP_LUMA_DELTA_QP
+ if (!(( m_pcCfg->getMaxDeltaQP() == 0) && (m_pcCfg->getUseLumaDeltaQp() == 0) && (dQP == -rpcSlice->getSPS()->getQpBDOffset(CHANNEL_TYPE_LUMA) ) && (rpcSlice->getPPS()->getTransquantBypassEnableFlag())))
+#else
     if (!(( m_pcCfg->getMaxDeltaQP() == 0 ) && (dQP == -rpcSlice->getSPS()->getQpBDOffset(CHANNEL_TYPE_LUMA) ) && (rpcSlice->getPPS()->getTransquantBypassEnableFlag())))
+#endif
     {
       dQP += m_pcCfg->getGOPEntry(iGOPid).m_QPOffset;
     }
@@ -304,6 +372,10 @@ Void TEncSlice::initEncSlice( TComPic* pcPic, Int pocLast, Int pocCurr, Int iGOP
     dQP=LOSSLESS_AND_MIXED_LOSSLESS_RD_COST_TEST_QP;
     m_pcCfg->setDeltaQpRD(0);
   }
+#if SHARP_LUMA_STORE_DQP
+   m_LumaAdaptSliceQP = 0;
+   m_CTUCnt = 0;
+#endif
 
   // ------------------------------------------------------------------------------------------------------------------
   // Lambda computation
@@ -675,6 +747,12 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
   m_pcEntropyCoder->setEntropyCoder   ( m_pppcRDSbacCoder[0][CI_CURR_BEST] );
   m_pcEntropyCoder->resetEntropy      ( pcSlice );
 
+#if 1 // SHARP_JANE_BUG_FIX   fix unintialized memory 
+  for (Int i=CI_CURR_BEST+1; i < CI_NUM; i++)
+  {
+      m_pppcRDSbacCoder[0][i]->load(m_pppcRDSbacCoder[0][CI_CURR_BEST]);
+  }
+#endif
   TEncBinCABAC* pRDSbacCoder = (TEncBinCABAC *) m_pppcRDSbacCoder[0][CI_CURR_BEST]->getEncBinIf();
   pRDSbacCoder->setBinCountingEnableFlag( false );
   pRDSbacCoder->setBinsCoded( 0 );
@@ -757,6 +835,10 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
       }
     }
   }
+
+#if SHARP_LUMA_STORE_DQP
+  g_CUQP_updated_flag=0;
+#endif
 
   // for every CTU in the slice segment (may terminate sooner if there is a byte limit on the slice-segment)
 
@@ -871,6 +953,10 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
     // encode CTU and calculate the true bit counters.
     m_pcCuEncoder->encodeCtu( pCtu );
 
+#if SHARP_LUMA_STORE_DQP
+    if (pcSlice->getPPS()->getUseDQP_ResScale())
+         m_pcCuEncoder->updateCtuQP(pCtu );
+#endif
 
     pRDSbacCoder->setBinCountingEnableFlag( false );
 
@@ -939,6 +1025,11 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
     m_dPicRdCost     += pCtu->getTotalCost();
     m_uiPicDist      += pCtu->getTotalDistortion();
   }
+
+#if SHARP_LUMA_STORE_DQP
+  if (pcSlice->getPPS()->getUseDQP_ResScale())
+      g_CUQP_updated_flag=1;
+#endif
 
   // store context state at the end of this slice-segment, in case the next slice is a dependent slice and continues using the CABAC contexts.
   if( pcSlice->getPPS()->getDependentSliceSegmentsEnabledFlag() )
