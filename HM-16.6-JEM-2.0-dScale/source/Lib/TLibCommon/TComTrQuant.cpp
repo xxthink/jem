@@ -7931,10 +7931,6 @@ TempLibFast::TempLibFast()
     m_pY = NULL;
     m_pDiff = NULL;
     m_pId = NULL;
-    m_pXInteger = NULL;
-    m_pYInteger = NULL;
-    m_pDiffInteger = NULL;
-    m_pIdInteger = NULL;
 }
 
 TempLibFast::~TempLibFast()
