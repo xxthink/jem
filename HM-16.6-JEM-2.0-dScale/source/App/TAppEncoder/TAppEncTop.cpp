@@ -165,6 +165,12 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setExtendedPrecisionProcessingFlag                   ( m_extendedPrecisionProcessingFlag );
   m_cTEncTop.setHighPrecisionOffsetsEnabledFlag                   ( m_highPrecisionOffsetsEnabledFlag );
   //====== Tool list ========
+#if SHARP_LUMA_DELTA_QP
+  m_cTEncTop.setUseLumaDeltaQp                                    (m_useLumaDeltaQP);
+  m_cTEncTop.setNbrOfUsedDQPChangePoints                          (m_uiNbrOfUsedDQPChangePoints);
+  m_cTEncTop.setDQpChangePoints                                   (m_dQPChangePoints);
+  m_cTEncTop.setLumaDQpChangePoints                               (m_dQPLumaChangePoints);
+#endif
   m_cTEncTop.setDeltaQpRD                                         ( m_uiDeltaQpRD  );
   m_cTEncTop.setFastDeltaQp                                       ( m_bFastDeltaQP  );
   m_cTEncTop.setUseASR                                            ( m_bUseASR      );

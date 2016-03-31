@@ -74,6 +74,9 @@ TComDataCU::TComDataCU()
   m_puhWidth           = NULL;
   m_puhHeight          = NULL;
   m_phQP               = NULL;
+#if SHARP_LUMA_STORE_DQP
+  m_phInferDQP         = NULL;
+#endif
   m_ChromaQpAdj        = NULL;
   m_pbMergeFlag        = NULL;
   m_puhMergeIndex      = NULL;
@@ -169,6 +172,9 @@ Void TComDataCU::create( ChromaFormat chromaFormatIDC, UInt uiNumPartition, UInt
   if ( !bDecSubCu )
   {
     m_phQP               = (Char*     )xMalloc(Char,     uiNumPartition);
+#if SHARP_LUMA_STORE_DQP
+    m_phInferDQP         = (Char*     )xMalloc(Char,     uiNumPartition);
+#endif
     m_puhDepth           = (UChar*    )xMalloc(UChar,    uiNumPartition);
 #if COM16_C806_LARGE_CTU
     m_puhWidth           = (UShort*   )xMalloc(UShort,   uiNumPartition);
@@ -323,6 +329,14 @@ Void TComDataCU::destroy()
       xFree(m_phQP);
       m_phQP = NULL;
     }
+#if SHARP_LUMA_STORE_DQP
+    if ( m_phInferDQP )
+    {
+        xFree(m_phInferDQP);
+        m_phInferDQP = NULL;
+    }
+#endif
+
     if ( m_puhDepth )
     {
       xFree(m_puhDepth);
@@ -699,6 +713,9 @@ Void TComDataCU::initCtu( TComPic* pcPic, UInt ctuRsAddr )
     memset( m_apiMVPNum[rpl]  , -1,                         m_uiNumPartition * sizeof( *m_apiMVPNum[rpl] ) );
   }
   memset( m_phQP              , getSlice()->getSliceQp(),   m_uiNumPartition * sizeof( *m_phQP ) );
+#if SHARP_LUMA_STORE_DQP
+  memset( m_phInferDQP        , 0,   m_uiNumPartition * sizeof( *m_phInferDQP ) ); 
+#endif
   memset( m_ChromaQpAdj       , 0,                          m_uiNumPartition * sizeof( *m_ChromaQpAdj ) );
   for(UInt comp=0; comp<MAX_NUM_COMPONENT; comp++)
   {
@@ -868,6 +885,9 @@ Void TComDataCU::initEstData( const UInt uiDepth, const Int qp, const Bool bTran
     m_CUTransquantBypass[ui] = bTransquantBypass;
     m_pbIPCMFlag[ui]    = 0;
     m_phQP[ui]          = qp;
+#if SHARP_LUMA_STORE_DQP
+    m_phInferDQP[ui]    = 0;
+#endif
     m_ChromaQpAdj[ui]   = 0;
     m_pbMergeFlag[ui]   = 0;
     m_puhMergeIndex[ui] = 0;
@@ -963,6 +983,9 @@ Void TComDataCU::initSubCU( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth, 
   Int sizeInChar = sizeof( Char  ) * m_uiNumPartition;
 
   memset( m_phQP,              qp,  sizeInChar );
+#if SHARP_LUMA_STORE_DQP
+  memset( m_phInferDQP,         0,  sizeof(Char)* m_uiNumPartition );
+#endif
   memset( m_pbMergeFlag,        0, iSizeInBool  );
   memset( m_puhMergeIndex,      0, iSizeInUchar );
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
@@ -1144,6 +1167,9 @@ Void TComDataCU::copySubCU( TComDataCU* pcCU, UInt uiAbsPartIdx )
   m_ROTIdx            = pcCU->getROTIdx()           + uiPart;
 #endif
   m_phQP=pcCU->getQP()                    + uiPart;
+#if SHARP_LUMA_STORE_DQP
+  m_phInferDQP=pcCU->getInferDQP()        + uiPart;
+#endif
   m_ChromaQpAdj = pcCU->getChromaQpAdj()  + uiPart;
   m_pePartSize = pcCU->getPartitionSize() + uiPart;
   m_pePredMode=pcCU->getPredictionMode()  + uiPart;
@@ -1348,6 +1374,9 @@ Void TComDataCU::copySameSizeCUFrom(TComDataCU* pcCU, UInt uiPartUnitIdx, UInt u
     memcpy(m_ROTIdx + uiOffset, pcCU->getROTIdx(), sizeof(*m_ROTIdx)   * uiNumPartition);
 #endif
     memcpy(m_phQP + uiOffset, pcCU->getQP(), sizeInChar);
+#if SHARP_LUMA_STORE_DQP
+  memcpy( m_phInferDQP + uiOffset, pcCU->getInferDQP(),             sizeInChar                  );
+#endif
     memcpy(m_pePartSize + uiOffset, pcCU->getPartitionSize(), sizeof(*m_pePartSize) * uiNumPartition);
     memcpy(m_pePredMode + uiOffset, pcCU->getPredictionMode(), sizeof(*m_pePredMode) * uiNumPartition);
     memcpy(m_ChromaQpAdj + uiOffset, pcCU->getChromaQpAdj(), sizeof(*m_ChromaQpAdj) * uiNumPartition);
@@ -1484,6 +1513,9 @@ Void TComDataCU::copyPartFrom( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDept
   memcpy( m_ROTIdx     + uiOffset, pcCU->getROTIdx(),         sizeof( *m_ROTIdx )   * uiNumPartition );
 #endif
   memcpy( m_phQP       + uiOffset, pcCU->getQP(),             sizeInChar                        );
+#if SHARP_LUMA_STORE_DQP
+  memcpy( m_phInferDQP + uiOffset, pcCU->getInferDQP(),             sizeInChar                  );
+#endif
   memcpy( m_pePartSize + uiOffset, pcCU->getPartitionSize(),  sizeof( *m_pePartSize ) * uiNumPartition );
   memcpy( m_pePredMode + uiOffset, pcCU->getPredictionMode(), sizeof( *m_pePredMode ) * uiNumPartition );
   memcpy( m_ChromaQpAdj + uiOffset, pcCU->getChromaQpAdj(),   sizeof( *m_ChromaQpAdj ) * uiNumPartition );
@@ -1618,6 +1650,9 @@ Void TComDataCU::copyToPic( UChar uhDepth )
   memcpy( pCtu->getROTIdx()   + m_absZIdxInCtu, m_ROTIdx, sizeof( *m_ROTIdx ) * m_uiNumPartition );
 #endif
   memcpy( pCtu->getQP() + m_absZIdxInCtu, m_phQP, sizeInChar  );
+#if SHARP_LUMA_STORE_DQP
+  memcpy(  pCtu->getInferDQP() + m_absZIdxInCtu, m_phInferDQP, sizeInChar   );  
+#endif
 
   memcpy( pCtu->getPartitionSize()  + m_absZIdxInCtu, m_pePartSize, sizeof( *m_pePartSize ) * m_uiNumPartition );
   memcpy( pCtu->getPredictionMode() + m_absZIdxInCtu, m_pePredMode, sizeof( *m_pePredMode ) * m_uiNumPartition );
@@ -3158,6 +3193,45 @@ Void TComDataCU::setQPSubParts( Int qp, UInt uiAbsPartIdx, UInt uiDepth )
   const UInt numPart = m_pcPic->getNumPartitionsInCtu() >> (uiDepth << 1);
   memset(m_phQP+uiAbsPartIdx, qp, numPart);
 }
+
+#if SHARP_LUMA_STORE_DQP
+Void TComDataCU::setInferDQPSubParts( Char qp, UInt uiAbsPartIdx, UInt uiDepth )
+{
+  assert( (qp<(SHARP_MAX_LUMA_DQP/2))  && (qp>-(SHARP_MAX_LUMA_DQP/2)) );
+
+  const UInt numPart = m_pcPic->getNumPartitionsInCtu() >> (uiDepth << 1);
+  memset(m_phInferDQP+uiAbsPartIdx, qp, sizeof(Char)*numPart);
+}
+
+Int TComDataCU::getAvgInferDQP( UInt uiAbsPartIdxInCTU, UInt uiDepth )
+{
+  const Int numPart = m_pcPic->getNumPartitionsInCtu() >> (uiDepth << 1);
+
+  Int sum= 0;
+  for (Int i=0; i < numPart; i++)
+  {
+      sum += m_phInferDQP[uiAbsPartIdxInCTU+i];
+  }
+
+  Int rnd = (sum>=0)? numPart>>1 : -(numPart>>1);       // sum can be negative
+  sum = (sum+rnd)/numPart;             // Integer division
+  return sum;
+}
+
+Int TComDataCU::getAvgQP( UInt uiAbsPartIdx, UInt uiDepth )
+{
+  const Int numPart = m_pcPic->getNumPartitionsInCtu() >> (uiDepth << 1); 
+
+  Int sum= 0;
+  for (Int i=0; i < numPart; i++)
+  {
+      sum += m_phQP[uiAbsPartIdx+i];
+  }
+
+  sum = (sum+(numPart>>1))/numPart;             // Integer division
+  return sum;
+}
+#endif
 
 Void TComDataCU::setIntraDirSubParts( const ChannelType channelType, const UInt dir, const UInt absPartIdx, const UInt depth )
 {

@@ -190,6 +190,15 @@ extern        UChar g_NonMPM[257];
 
 extern       Char   g_aucConvertToBit  [ MAX_CU_SIZE+1 ];   // from width to log2(width)-2
 
+#if SHARP_LUMA_DELTA_QP
+extern Int g_lumaQPLUT[SHARP_QP_LUMA_LUT_MAXSIZE];               // LUT for luma and correspionding QP offset
+Void initLumaDeltaQpLUT(Int totalChangePoints, Int *lumaChangePoints, Int* qps);
+#endif
+#if SHARP_LUMA_RES_SCALING
+extern Int *g_LumaResScaleLUT;
+Void initLumaAcScaleLUT();
+extern Int g_CUQP_updated_flag;
+#endif
 
 #if ENC_DEC_TRACE
 extern FILE*  g_hTrace;

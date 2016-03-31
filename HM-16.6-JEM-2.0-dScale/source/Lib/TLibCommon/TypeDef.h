@@ -231,6 +231,27 @@
 #define PRINT_RPS_INFO                                    0 ///< Enable/disable the printing of bits used to send the RPS.
 
 // ====================================================================================================================
+// Sharp luma adaptive QP or Coefficient scaling control
+// ====================================================================================================================
+
+#define SHARP_LUMA_DELTA_QP                1               ///< enable luma adaptive QP
+
+
+#if SHARP_LUMA_DELTA_QP
+#define SHARP_MAX_LUMA_DQP                 20              ///< max allowed positions for delta QP change based on luma
+#define SHARP_QP_LUMA_LUT_MAXSIZE          1024            ///< max LUT size for QP offset based on luma
+
+// scale AC transform coefficient 
+#define SHARP_LUMA_RES_SCALING                1            ///< enable coefficient scaling based on luma predciton and DC 
+#define SHARP_LUMA_STORE_DQP       SHARP_LUMA_RES_SCALING  ///< same marco as above, give it different name for ease of searchingP
+
+#define SHARP_LUMA_RESCALE_PRECISION         6             /// actual scale is   scale>>RESCALE_LUT_PRECISION'
+
+// some debug defines
+#define SHARP_DEBUG_NO_SPLIT                0             ///< force no CU, PU, TU split
+#endif
+
+// ====================================================================================================================
 // Tool Switches - transitory (these macros are likely to be removed in future revisions)
 // ====================================================================================================================
 

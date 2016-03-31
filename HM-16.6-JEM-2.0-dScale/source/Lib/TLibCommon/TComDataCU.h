@@ -118,6 +118,9 @@ private:
   Char*          m_crossComponentPredictionAlpha[MAX_NUM_COMPONENT]; ///< array of cross-component prediction alpha values
   Bool*          m_CUTransquantBypass;   ///< array of cu_transquant_bypass flags
   Char*          m_phQP;               ///< array of QP values
+#if SHARP_LUMA_STORE_DQP
+  Char*         m_phInferDQP;         ///< array of inferred deltaQP values
+#endif
   UChar*         m_ChromaQpAdj;        ///< array of chroma QP adjustments (indexed). when value = 0, cu_chroma_qp_offset_flag=0; when value>0, indicates cu_chroma_qp_offset_flag=1 and cu_chroma_qp_offset_idx=value-1
   UInt           m_codedChromaQpAdj;
   UChar*         m_puhTrIdx;           ///< array of transform indices
@@ -359,6 +362,16 @@ public:
   Char          getQP                 ( UInt uiIdx ) const      { return m_phQP[uiIdx];       }
   Void          setQP                 ( UInt uiIdx, Char value ){ m_phQP[uiIdx] =  value;     }
   Void          setQPSubParts         ( Int qp,   UInt uiAbsPartIdx, UInt uiDepth );
+#if SHARP_LUMA_STORE_DQP
+  Char*         getInferDQP                 ()                        { return m_phInferDQP;              }
+  Char          getInferDQP                 ( UInt uiIdx ) const      { return m_phInferDQP[uiIdx];       }  
+  Int           getAvgQP( UInt uiAbsPartIdx, UInt uiDepth );
+  Int           getAvgInferDQP( UInt uiAbsPartIdx, UInt uiDepth );
+  
+  Void          setInferDQP                 ( UInt uiIdx, Char value ){ m_phInferDQP[uiIdx] =  value;     }
+  Void          setInferDQPSubParts         ( Char qp,   UInt uiAbsPartIdx, UInt uiDepth );  
+#endif
+
   Int           getLastValidPartIdx   ( Int iAbsPartIdx );
   Char          getLastCodedQP        ( UInt uiAbsPartIdx );
   Void          setQPSubCUs           ( Int qp, UInt absPartIdx, UInt depth, Bool &foundNonZeroCbf );
