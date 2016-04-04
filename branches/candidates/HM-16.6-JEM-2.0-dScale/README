@@ -1,8 +1,45 @@
-This software package is the reference software for Rec. ITU-T H.265 | ISO/IEC 23008-2 High efficiency video coding (HEVC). The reference software includes both encoder and decoder functionality.
+In the code, changes are under macros starting with   SHARP_
 
-Reference software is useful in aiding users of a video coding standard to establish and test conformance and interoperability, and to educate users and demonstrate the capabilities of the standard. For these purposes, this software is provided as an aid for the study and implementation of Rec. ITU-T H.265 | ISO/IEC 23008-2 High efficiency video coding.
 
-The software has been jointly developed by the ITU-T Video Coding Experts Group (VCEG, Question 6 of ITU-T Study Group 16) and the ISO/IEC Moving Picture Experts Group (MPEG, Working Group 11 of Subcommittee 29 of ISO/IEC Joint Technical Committee 1).
+(1) Code for luma adaptive QP alone are under
 
-A software manual, which contains usage instructions, can be found in the "doc" subdirectory of this software package.
+#define SHARP_LUMA_DELTA_QP                1            ///< enable luma adaptive QP
+#define SHARP_LUMA_RES_SCALING             0            ///< enable coefficient scaling based on luma predciton and DC 
+
+This is the luma adaptive QP technology used in MPEG-HDR anchor3.2. QP is explicitly signalled by delta QP
+Refer JCTVC-W0054 for details.
+
+
+(2) Code for luma adaptive coefficient scaling are under
+#define SHARP_LUMA_DELTA_QP                1            ///< enable luma adaptive QP
+#define SHARP_LUMA_RES_SCALING             1            ///< enable coefficient scaling based on luma predciton and DC 
+
+Here the target QP for each block is similar to the adaptive QP approach, But the delta QP is not signalled. Luma AC and Chroma coefficients are scaled based on reconstructed pixel. 
+Refer JVET-B0054 for details.
+
+The delta QP flag is set in in TEncTop.cpp around Ln #944  // dQP flag control
+When only SHARP_LUMA_DELTA_QP is enabled, bUseDQP is set true () , so delta QP is sent. 
+When SHARP_LUMA_RES_SCALING is also enabled, bUseDQP is not set, so no deltaQP is sent. ( It can still enable deltaQP signalling, just all the deltaQP signalled would be 0).
+
+
+(3) Below are example config parameters to control the luma adaptive QP and scaling, in the config files:
+
+
+### sample config to enable luma adaptive coefficient scaling
+
+LumaDeltaQP                   : 2           # Luma activity based deltaQP control  -- 0: disabled  1: send dQP, 2: coefficient scaling
+
+
+
+### sample config to enable luma adaptive delta QP at CTU level
+
+LumaDeltaQP                   : 1           # Luma activity based deltaQP control  -- 0: disabled  1: send dQP, 2: coefficient scaling
+
+
+### sample config to enable luma adaptive delta QP at CU level
+
+LumaDeltaQP                   : 1           # Luma activity based deltaQP control  -- 0: disabled  1: send dQP, 2: coefficient scaling
+MaxCuDQPDepth                 : 5           # Max depth of delta QP, should be less than MaxPartitionDepth
+
+
 
