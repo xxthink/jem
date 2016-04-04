@@ -4043,7 +4043,11 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #if COM16_C1044_NSST
         if( pcCU->getPartitionSize(0)==SIZE_2Nx2N )
         {
+#if JVET_B0051_NSST_UNIFIED_BINARIZATION
+          const Int iNumberOfPassesROT = 4;
+#else
           const Int iNumberOfPassesROT = ( uiMode<=DC_IDX ) ? 3 : 4;
+#endif
           if( iNumberOfPassesROT <= pcCU->getROTIdx(0) )
           {
             continue;
@@ -4106,7 +4110,11 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #if COM16_C1044_NSST
             if( pcCU->getPartitionSize(0)==SIZE_2Nx2N )
             {
+#if JVET_B0051_NSST_UNIFIED_BINARIZATION
+              const Int iNumberOfPassesROT = 4;
+#else
               const Int iNumberOfPassesROT = ( uiMode<=DC_IDX ) ? 3 : 4;
+#endif
               if( iNumberOfPassesROT <= pcCU->getROTIdx(0) )
               {
                 continue;
@@ -4161,7 +4169,11 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #if COM16_C1044_NSST
           if( pcCU->getPartitionSize(0)==SIZE_2Nx2N )
           {
+#if JVET_B0051_NSST_UNIFIED_BINARIZATION
+            const Int iNumberOfPassesROT = 4;
+#else
             const Int iNumberOfPassesROT = ( mostProbableMode<=DC_IDX ) ? 3 : 4;
+#endif
             if( iNumberOfPassesROT <= pcCU->getROTIdx(0) )
             {
               continue;

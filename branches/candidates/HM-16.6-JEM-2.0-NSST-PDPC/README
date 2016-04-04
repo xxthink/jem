@@ -1,8 +1,6 @@
-This software package is the reference software for Rec. ITU-T H.265 | ISO/IEC 23008-2 High efficiency video coding (HEVC). The reference software includes both encoder and decoder functionality.
+This software package is for testing EE2.3 on harmonization between NSST and PDPC. The corresponding proposal found in JVETB0051.
+The following two macros include corresponding changes based on JEM2.0
 
-Reference software is useful in aiding users of a video coding standard to establish and test conformance and interoperability, and to educate users and demonstrate the capabilities of the standard. For these purposes, this software is provided as an aid for the study and implementation of Rec. ITU-T H.265 | ISO/IEC 23008-2 High efficiency video coding.
-
-The software has been jointly developed by the ITU-T Video Coding Experts Group (VCEG, Question 6 of ITU-T Study Group 16) and the ISO/IEC Moving Picture Experts Group (MPEG, Working Group 11 of Subcommittee 29 of ISO/IEC Joint Technical Committee 1).
-
-A software manual, which contains usage instructions, can be found in the "doc" subdirectory of this software package.
+#define JVET_B0051_NSST_PDPC_HARMONIZATION   1    // 1: Remove NSST restriction based on PDPC, 0:JEM2.0 default where NSST is enabled when PDPC index is equal to zero
+#define JVET_B0051_NSST_UNIFIED_BINARIZATION 1   // 1: Use unified NSST binarization for all cases   0:JEM2.0 default where NSST index is binarized in two ways based on intra prediction mode and block type
 
