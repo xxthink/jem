@@ -4285,8 +4285,11 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
         }
 
         assert( uiIntraMode<NUM_INTRA_MODE-1 );
+#if JVET_B0051_NSST_UNIFIED_BINARIZATION
+        const Int iNsstCandNum = 4;
+#else
         const Int iNsstCandNum = ( uiIntraMode<=DC_IDX ) ? 3 : 4;
-
+#endif
         if( iNsstCandNum > pcCU->getROTIdx(uiAbsPartIdx) )
         {
           for (Int iSubGroupX = 0; iSubGroupX<iSubGroupXMax; iSubGroupX++)
@@ -4516,8 +4519,11 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
       }
 
       assert( uiIntraMode<NUM_INTRA_MODE-1 );
+#if JVET_B0051_NSST_UNIFIED_BINARIZATION
+      const Int iNsstCandNum = 4;
+#else
       const Int iNsstCandNum = ( uiIntraMode<=DC_IDX ) ? 3 : 4;
-
+#endif
       if( iNsstCandNum > ucNsstIdx )
       {
         for (Int iSubGroupX = 0; iSubGroupX<iSubGroupXMax; iSubGroupX++)

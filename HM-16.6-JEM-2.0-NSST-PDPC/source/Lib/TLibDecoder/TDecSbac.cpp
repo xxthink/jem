@@ -786,11 +786,37 @@ Void TDecSbac::parseROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
     && pcCU->getMPIIdx(uiAbsPartIdx) ==0
 #endif
 #if COM16_C1046_PDPC_INTRA
+#if !JVET_B0051_NSST_PDPC_HARMONIZATION
     && pcCU->getPDPCIdx(uiAbsPartIdx) == 0
+#endif
 #endif
     && !pcCU->getCUTransquantBypass(uiAbsPartIdx)
     )  iNumberOfPassesROT = 4;
 
+#if JVET_B0051_NSST_UNIFIED_BINARIZATION
+  if( iNumberOfPassesROT==4 )
+    {
+ UInt uiSymbol = 0, idx_ROT=0;
+ UInt offset=0;
+ if (pcCU->getPartitionSize(uiAbsPartIdx)==SIZE_2Nx2N &&  pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) <= DC_IDX) offset=1;
+
+    m_pcTDecBinIf->decodeBin( uiSymbol, m_cROTidxSCModel.get(0,0, 0+offset ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG) );
+   idx_ROT +=uiSymbol;
+    if( uiSymbol )
+    {
+      m_pcTDecBinIf->decodeBin( uiSymbol, m_cROTidxSCModel.get(0,0, 2+offset ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG) );
+        idx_ROT +=uiSymbol;
+
+      if(uiSymbol )
+        {
+          m_pcTDecBinIf->decodeBin( uiSymbol, m_cROTidxSCModel.get(0,0, 5 ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG) );
+          idx_ROT +=uiSymbol;
+        }
+    }
+    pcCU->setROTIdxSubParts( idx_ROT, uiAbsPartIdx,  uiDepth ); 
+    }
+  else   pcCU->setROTIdxSubParts( 0, uiAbsPartIdx,  uiDepth ); 
+#else
 #if COM16_C1044_NSST
   if( iNumberOfPassesROT==4 && pcCU->getPartitionSize(uiAbsPartIdx)==SIZE_2Nx2N )
   {
@@ -822,6 +848,7 @@ Void TDecSbac::parseROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
   {
        pcCU->setROTIdxSubParts( 0, uiAbsPartIdx,  uiDepth ); 
   }
+#endif
 }
 #endif
 Void TDecSbac::parseMergeIndex ( TComDataCU* pcCU, UInt& ruiMergeIndex )

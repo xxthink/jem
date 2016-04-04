@@ -861,11 +861,32 @@ Void TEncSbac::codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
     && pcCU->getMPIIdx(uiAbsPartIdx) ==0
 #endif  
 #if COM16_C1046_PDPC_INTRA
+#if !JVET_B0051_NSST_PDPC_HARMONIZATION
     && pcCU->getPDPCIdx(uiAbsPartIdx) == 0
+#endif
 #endif  
     && !pcCU->getCUTransquantBypass(uiAbsPartIdx)
     )  iNumberOfPassesROT = 4;
 
+#if JVET_B0051_NSST_UNIFIED_BINARIZATION
+if ( iNumberOfPassesROT==4 )
+{
+ Int idxROT = pcCU->getROTIdx( uiAbsPartIdx );
+ UInt offset=0;
+ if (pcCU->getPartitionSize(uiAbsPartIdx)==SIZE_2Nx2N &&  pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) <= DC_IDX) offset=1;
+
+    m_pcBinIf->encodeBin(  idxROT ? 1 : 0 , m_cROTidxSCModel.get(0,0, 0+offset ) );
+    if( idxROT )
+    {
+      m_pcBinIf->encodeBin( (idxROT-1) ? 1 : 0 , m_cROTidxSCModel.get(0,0, 2+offset ) );
+
+      if(idxROT >1 )
+        {
+            m_pcBinIf->encodeBin( (idxROT-2) ? 1 : 0, m_cROTidxSCModel.get(0,0, 5 ) );
+        }
+    }
+}
+#else
 #if COM16_C1044_NSST
   if( iNumberOfPassesROT==4 && pcCU->getPartitionSize(uiAbsPartIdx)==SIZE_2Nx2N )
   {
@@ -900,6 +921,7 @@ Void TEncSbac::codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
       m_pcBinIf->encodeBin( uiSymbol0, m_cROTidxSCModel.get(0,0, uiDepth ) );
       m_pcBinIf->encodeBin( uiSymbol1, m_cROTidxSCModel.get(0,0, uiDepth ) );
   }
+#endif
 }
 #endif
 /** code merge flag

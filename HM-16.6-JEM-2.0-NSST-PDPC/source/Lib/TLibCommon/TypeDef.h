@@ -190,6 +190,9 @@
 #error
 #endif
 
+#define JVET_B0051_NSST_PDPC_HARMONIZATION   1    // 1: Remove NSST restriction based on PDPC, 0:JEM2.0 default where NSST is enabled when PDPC index is equal to zero
+#define JVET_B0051_NSST_UNIFIED_BINARIZATION 1   // 1: Use unified NSST binarization for all cases   0:JEM2.0 default where NSST index is binarized in two ways based on intra prediction mode and block type
+
 #define PARALLEL_ENCODING_SAO_FIX                         1  ///< Fix of SAO for parallel encoding proposed in JVET-B0036
 #define PARALLEL_ENCODING_RAS_CABAC_INIT_PRESENT          1  ///< Fix of CABAC initialization for parallel encoding proposed in JVET-B0036
 
