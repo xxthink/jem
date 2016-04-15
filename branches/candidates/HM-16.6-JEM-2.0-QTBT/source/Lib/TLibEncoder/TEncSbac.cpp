@@ -63,6 +63,9 @@ TEncSbac::TEncSbac()
 , m_pcBinIf                            ( NULL )
 , m_numContextModels                   ( 0 )
 , m_cCUSplitFlagSCModel                ( 1,             1,                      NUM_SPLIT_FLAG_CTX                   , m_contextModels + m_numContextModels, m_numContextModels)
+#if QT_BT_STRUCTURE
+, m_cBTSplitFlagSCModel                ( 1,             1,                      NUM_BTSPLIT_MODE_CTX                 , m_contextModels + m_numContextModels, m_numContextModels )
+#endif
 , m_cCUSkipFlagSCModel                 ( 1,             1,                      NUM_SKIP_FLAG_CTX                    , m_contextModels + m_numContextModels, m_numContextModels)
 #if VCEG_AZ05_INTRA_MPI
 , m_cMPIIdxSCModel                     ( 1,             1,                      NUM_MPI_CTX                          , m_contextModels + m_numContextModels, m_numContextModels)
@@ -159,6 +162,9 @@ Void TEncSbac::resetEntropy           (const TComSlice *pSlice)
   }
 
   m_cCUSplitFlagSCModel.initBuffer                ( eSliceType, iQp, (UChar*)INIT_SPLIT_FLAG );
+#if QT_BT_STRUCTURE
+  m_cBTSplitFlagSCModel.initBuffer                ( eSliceType, iQp, (UChar*)INIT_BTSPLIT_MODE );
+#endif
   m_cCUSkipFlagSCModel.initBuffer                 ( eSliceType, iQp, (UChar*)INIT_SKIP_FLAG );
 #if VCEG_AZ05_INTRA_MPI
   m_cMPIIdxSCModel.initBuffer                     ( eSliceType, iQp, (UChar*)INIT_MPIIdx_FLAG );
@@ -262,6 +268,9 @@ SliceType TEncSbac::determineCabacInitIdx(const TComSlice *pSlice)
       SliceType curSliceType  = aSliceTypeChoices[idx];
 
       curCost  = m_cCUSplitFlagSCModel.calcCost                ( curSliceType, qp, (UChar*)INIT_SPLIT_FLAG );
+#if QT_BT_STRUCTURE
+      curCost += m_cBTSplitFlagSCModel.calcCost                ( curSliceType, qp, (UChar*)INIT_BTSPLIT_MODE );
+#endif
       curCost += m_cCUSkipFlagSCModel.calcCost                 ( curSliceType, qp, (UChar*)INIT_SKIP_FLAG );
 #if VCEG_AZ05_INTRA_MPI
       curCost += m_cMPIIdxSCModel.calcCost                     ( curSliceType, qp, (UChar*)INIT_MPIIdx_FLAG );
@@ -603,6 +612,7 @@ Void TEncSbac::codeMVPIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRef
   xWriteUnaryMaxSymbol(iSymbol, m_cMVPIdxSCModel.get(0), 1, iNum-1);
 }
 
+#if !QT_BT_STRUCTURE
 Void TEncSbac::codePartSize( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 {
   PartSize eSize         = pcCU->getPartitionSize( uiAbsPartIdx );
@@ -695,6 +705,7 @@ Void TEncSbac::codePartSize( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
     }
   }
 }
+#endif
 
 
 /** code prediction mode
@@ -867,7 +878,11 @@ Void TEncSbac::codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
     )  iNumberOfPassesROT = 4;
 
 #if COM16_C1044_NSST
+#if QT_BT_STRUCTURE
+  if( iNumberOfPassesROT==4 )
+#else
   if( iNumberOfPassesROT==4 && pcCU->getPartitionSize(uiAbsPartIdx)==SIZE_2Nx2N )
+#endif
   {
     iNumberOfPassesROT = pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) <= DC_IDX ? 3 : 4;
   }
@@ -882,7 +897,11 @@ Void TEncSbac::codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
 
   if( iNumberOfPassesROT==3 )
   {
+#if QT_BT_STRUCTURE
+    Int idxROT = pcCU->getROTIdx( CHANNEL_TYPE_LUMA, uiAbsPartIdx );
+#else
     Int idxROT = pcCU->getROTIdx( uiAbsPartIdx );
+#endif
     assert(idxROT<3);
     m_pcBinIf->encodeBin( idxROT ? 1 : 0, m_cROTidxSCModel.get(0,0, 0 ) );
     if( idxROT )
@@ -894,13 +913,70 @@ Void TEncSbac::codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
 #endif
   if (iNumberOfPassesROT>1) // for only 1 pass no signaling is needed 
   {
+#if QT_BT_STRUCTURE
+      Int idxROT = pcCU->getROTIdx( CHANNEL_TYPE_LUMA, uiAbsPartIdx );
+#else
       Int idxROT = pcCU->getROTIdx( uiAbsPartIdx );
+#endif
       const UInt uiSymbol0 = (idxROT >>1);
       const UInt uiSymbol1 = (idxROT %2 );
       m_pcBinIf->encodeBin( uiSymbol0, m_cROTidxSCModel.get(0,0, uiDepth ) );
       m_pcBinIf->encodeBin( uiSymbol1, m_cROTidxSCModel.get(0,0, uiDepth ) );
   }
 }
+
+#if QT_BT_STRUCTURE
+Void TEncSbac::codeROTIdxChroma ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
+{
+#if COM16_C1044_NSST
+  if (!pcCU->getSlice()->getSPS()->getUseNSST()) return;
+#else
+  if (!pcCU->getSlice()->getSPS()->getUseROT()) return;
+#endif
+  Int iNumberOfPassesROT = 1;
+  if( pcCU->isIntra(uiAbsPartIdx)
+    && !pcCU->getCUTransquantBypass(uiAbsPartIdx)
+    )  iNumberOfPassesROT = 4;
+
+#if COM16_C1044_NSST
+  if( iNumberOfPassesROT==4 )
+  {
+    UInt uiIntraMode = pcCU->getIntraDir( CHANNEL_TYPE_CHROMA, uiAbsPartIdx );
+    if( uiIntraMode == DM_CHROMA_IDX )
+    {
+      uiIntraMode = pcCU->getPic()->getCtu(pcCU->getCtuRsAddr())->getIntraDir(CHANNEL_TYPE_LUMA, pcCU->getZorderIdxInCtu()+uiAbsPartIdx);
+    }
+#if COM16_C806_LMCHROMA
+    else if( uiIntraMode == LM_CHROMA_IDX )
+    {
+      uiIntraMode = PLANAR_IDX;
+    }
+#endif
+    iNumberOfPassesROT = uiIntraMode <= DC_IDX ? 3 : 4;
+  }
+
+  if( iNumberOfPassesROT==3 )
+  {
+    Int idxROT = pcCU->getROTIdx( CHANNEL_TYPE_CHROMA, uiAbsPartIdx );
+    assert(idxROT<3);
+    m_pcBinIf->encodeBin( idxROT ? 1 : 0, m_cROTidxSCModel.get(0,0, 0 ) );
+    if( idxROT )
+    {
+      m_pcBinIf->encodeBin( (idxROT-1) ? 1 : 0, m_cROTidxSCModel.get(0,0, 1 ) );
+    }
+  }
+  else
+#endif
+  if (iNumberOfPassesROT>1) // for only 1 pass no signaling is needed 
+  {
+      Int idxROT = pcCU->getROTIdx( CHANNEL_TYPE_CHROMA, uiAbsPartIdx );
+      const UInt uiSymbol0 = (idxROT >>1);
+      const UInt uiSymbol1 = (idxROT %2 );
+      m_pcBinIf->encodeBin( uiSymbol0, m_cROTidxSCModel.get(0,0, uiDepth ) );
+      m_pcBinIf->encodeBin( uiSymbol1, m_cROTidxSCModel.get(0,0, uiDepth ) );
+  }
+}
+#endif
 #endif
 /** code merge flag
  * \param pcCU
@@ -985,9 +1061,50 @@ Void TEncSbac::codeFRUCMgrMode( TComDataCU* pcCU, UInt uiAbsPartIdx , UInt uiPUI
 }
 #endif
 
+#if QT_BT_STRUCTURE
+Void TEncSbac::codeBTSplitMode ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight)
+{
+  UInt uiBTSplitMode = pcCU->getBTSplitModeForBTDepth(uiAbsPartIdx, pcCU->getBTDepth(uiAbsPartIdx, uiWidth, uiHeight));  //0: no split; 1: hor; 2: ver
+
+  UInt uiCtx = pcCU->getCtxBTSplitFlag(uiAbsPartIdx, uiWidth, uiHeight);
+
+  //signal bits: no split: 0; hor split: 10; ver split: 11.
+  m_pcBinIf->encodeBin(uiBTSplitMode!=0, m_cBTSplitFlagSCModel.get(0, 0, uiCtx));
+  UInt uiMinBTSize = pcCU->getSlice()->isIntra() ? (isLuma(pcCU->getTextType())?MIN_BT_SIZE:MIN_BT_SIZE_C): MIN_BT_SIZE_INTER;
+
+  if (uiWidth==uiMinBTSize || uiHeight==uiMinBTSize)
+  {
+    return;
+  }
+#if BT_RMV_REDUNDANT
+  if ( pcCU->getSplitConstrain() == 1 )
+  {
+    assert( uiBTSplitMode != 1 );
+    return;
+  }
+  if ( pcCU->getSplitConstrain() == 2 )
+  {
+    assert( uiBTSplitMode != 2 );
+    return;
+  }
+#endif
+
+  if (uiBTSplitMode != 0)
+  {
+    UInt uiBTSCtx = uiWidth==uiHeight ? 0: (uiWidth>uiHeight? 1: 2);
+    m_pcBinIf->encodeBin(uiBTSplitMode!=1, m_cBTSplitFlagSCModel.get(0, 0, 3+uiBTSCtx));
+  }
+}
+#endif
+
 Void TEncSbac::codeSplitFlag   ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 {
+#if QT_BT_STRUCTURE
+  if ( uiDepth == g_aucConvertToBit[pcCU->getSlice()->getSPS()->getCTUSize()] 
+  - g_aucConvertToBit[pcCU->getSlice()->getSPS()->getMinQTSize(pcCU->getSlice()->getSliceType(), pcCU->getTextType())])
+#else
   if( uiDepth == pcCU->getSlice()->getSPS()->getLog2DiffMaxMinCodingBlockSize() )
+#endif
   {
     return;
   }
@@ -1032,8 +1149,12 @@ Void TEncSbac::codeIntraDirLumaAng( TComDataCU* pcCU, UInt absPartIdx, Bool isMu
   Int preds[4][NUM_MOST_PROBABLE_MODES] = {{-1, -1, -1},{-1, -1, -1},{-1, -1, -1},{-1, -1, -1}};
 #endif
   Int predIdx[4] ={ -1,-1,-1,-1};
+#if QT_BT_STRUCTURE
+  UInt partNum = 1;
+#else
   PartSize mode = pcCU->getPartitionSize( absPartIdx );
   UInt partNum = isMultiple?(mode==SIZE_NxN?4:1):1;
+#endif
   UInt partOffset = ( pcCU->getPic()->getNumPartitionsInCtu() >> ( pcCU->getDepth(absPartIdx) << 1 ) ) >> 2;
   
 #if VCEG_AZ07_INTRA_65ANG_MODES
@@ -1125,7 +1246,11 @@ Void TEncSbac::codeIntraDirLumaAng( TComDataCU* pcCU, UInt absPartIdx, Bool isMu
       assert( dir[j]<(NUM_INTRA_MODE-7) );
 
 #if JVET_B0051_NON_MPM_MODE
+#if QT_BT_STRUCTURE
+      m_pcBinIf->encodeBin(( (dir[j]%4) ==0 ) ? 1 : 0, m_cCUIntraPredSCModel.get( 0, 0, 9/3 ) ); // flag to indicate if it is selected mode or non-selected mode
+#else
       m_pcBinIf->encodeBin(( (dir[j]%4) ==0 ) ? 1 : 0, m_cCUIntraPredSCModel.get( 0, 0, 9+mode/3 ) ); // flag to indicate if it is selected mode or non-selected mode
+#endif
       if(dir[j] %4 ==0) 
       {
         m_pcBinIf->encodeBinsEP( dir[j]>>2, 4 );  // selected mode is 4-bit FLC coded
@@ -1208,7 +1333,11 @@ Void TEncSbac::codeInterDir( TComDataCU* pcCU, UInt uiAbsPartIdx )
 #endif
 
 #if COM16_C806_HEVC_MOTION_CONSTRAINT_REMOVAL
+#if QT_BT_STRUCTURE
+  if (1 )
+#else
   if (pcCU->getSlice()->getSPS()->getAtmvpEnableFlag() || pcCU->getPartitionSize(uiAbsPartIdx) == SIZE_2Nx2N || pcCU->getHeight(uiAbsPartIdx) != 8 )
+#endif
 #else
   if (pcCU->getPartitionSize(uiAbsPartIdx) == SIZE_2Nx2N || pcCU->getHeight(uiAbsPartIdx) != 8 )
 #endif
@@ -1422,10 +1551,13 @@ Void TEncSbac::codeQtCbf( TComTU &rTu, const ComponentID compID, const Bool lowe
   TComDataCU* pcCU = rTu.getCU();
 
   const UInt absPartIdx   = rTu.GetAbsPartIdxTU(compID);
+#if !QT_BT_STRUCTURE
   const UInt TUDepth      = rTu.GetTransformDepthRel();
+#endif
         UInt uiCtx        = pcCU->getCtxQtCbf( rTu, toChannelType(compID) );
   const UInt contextSet   = toChannelType(compID);
 
+#if !QT_BT_STRUCTURE
   const UInt width        = rTu.getRect(compID).width;
   const UInt height       = rTu.getRect(compID).height;
   const Bool canQuadSplit = (width >= (MIN_TU_SIZE * 2)) && (height >= (MIN_TU_SIZE * 2));
@@ -1474,8 +1606,13 @@ Void TEncSbac::codeQtCbf( TComTU &rTu, const ComponentID compID, const Bool lowe
     }
   }
   else
+#endif
   {
+#if QT_BT_STRUCTURE
+    const UInt uiCbf = pcCU->getCbf( absPartIdx, compID, 0 );
+#else
     const UInt uiCbf = pcCU->getCbf( absPartIdx, compID, lowestTUDepth );
+#endif
     m_pcBinIf->encodeBin( uiCbf , m_cCUQtCbfSCModel.get( 0, contextSet, uiCtx ) );
 
 
@@ -1542,7 +1679,11 @@ Void TEncSbac::codeTransformSkipFlags (TComTU &rTu, ComponentID component )
     return;
   }
 
+#if QT_BT_STRUCTURE
+  if (!TUCompRectHasAssociatedTransformSkipFlag(pcCU->getSlice()->isIntra(), rTu.getRect(component), pcCU->getSlice()->getPPS()->getPpsRangeExtension().getLog2MaxTransformSkipBlockSize()))
+#else
   if (!TUCompRectHasAssociatedTransformSkipFlag(rTu.getRect(component), pcCU->getSlice()->getPPS()->getPpsRangeExtension().getLog2MaxTransformSkipBlockSize()))
+#endif
   {
     return;
   }
@@ -1811,7 +1952,11 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
 
   //--------------------------------------------------------------------------------------------------
 
+#if QT_BT_STRUCTURE
+  if( uiWidth > sps.getCTUSize() )
+#else
   if( uiWidth > sps.getMaxTrSize() )
+#endif
   {
     std::cerr << "ERROR: codeCoeffNxN was passed a TU with dimensions larger than the maximum allowed size" << std::endl;
     assert(false);
@@ -1837,14 +1982,21 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
   //set parameters
 
   const ChannelType  chType            = toChannelType(compID);
+#if QT_BT_STRUCTURE
+  const UInt         uiLog2BlockWidth  = g_aucConvertToBit[ uiWidth  ] + MIN_CU_LOG2;
+  const UInt         uiLog2BlockHeight = g_aucConvertToBit[ uiHeight ] + MIN_CU_LOG2;
+#if VCEG_AZ07_CTX_RESIDUALCODING
+  const UInt         uiLog2BlockSize = (uiLog2BlockWidth + uiLog2BlockHeight)>>1;
+#endif
+#else
   const UInt         uiLog2BlockWidth  = g_aucConvertToBit[ uiWidth  ] + 2;
 #if !VCEG_AZ07_CTX_RESIDUALCODING
   const UInt         uiLog2BlockHeight = g_aucConvertToBit[ uiHeight ] + 2;
 #endif
+#endif
 
   const ChannelType  channelType       = toChannelType(compID);
   const Bool         extendedPrecision = sps.getSpsRangeExtension().getExtendedPrecisionProcessingFlag();
-
 
   const Bool         alignCABACBeforeBypass = sps.getSpsRangeExtension().getCabacBypassAlignmentEnabledFlag();
   const Int          maxLog2TrDynamicRange  = sps.getMaxLog2TrDynamicRange(channelType);
@@ -1859,8 +2011,14 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
     {
       uiIntraMode = pcCU->getIntraDir( toChannelType(compID), uiAbsPartIdx );
 
+#if QT_BT_STRUCTURE
+      uiIntraMode = (uiIntraMode==DM_CHROMA_IDX && !bIsLuma) 
+        ? (pcCU->getSlice()->isIntra()? pcCU->getPic()->getCtu(pcCU->getCtuRsAddr())->getIntraDir(CHANNEL_TYPE_LUMA, pcCU->getZorderIdxInCtu()+uiAbsPartIdx)
+        :pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx)) : uiIntraMode;
+#else
       const UInt partsPerMinCU = 1<<(2*(sps.getMaxTotalCUDepth() - sps.getLog2DiffMaxMinCodingBlockSize()));
       uiIntraMode = (uiIntraMode==DM_CHROMA_IDX && !bIsLuma) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, getChromasCorrespondingPULumaIdx(uiAbsPartIdx, rTu.GetChromaFormat(), partsPerMinCU)) : uiIntraMode;
+#endif
       uiIntraMode = ((rTu.GetChromaFormat() == CHROMA_422) && !bIsLuma) ? g_chroma422IntraAngleMappingTable[uiIntraMode] : uiIntraMode;
     }
 
@@ -1965,6 +2123,10 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
   Int scanPosLast = -1;
   Int posLast;
 
+#if QT_BT_STRUCTURE
+  const UInt uiCGLog2 = (uiWidth==2 || uiHeight==2) ? MLS_CG_LOG2_HEIGHT-1: MLS_CG_LOG2_HEIGHT;
+  const UInt uiCGSizeLog2 = (uiWidth==2 || uiHeight==2) ? MLS_CG_SIZE-2: MLS_CG_SIZE;
+#endif
 
   UInt uiSigCoeffGroupFlag[ MLS_GRP_NUM ];
 
@@ -1979,7 +2141,11 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
       UInt uiPosY   = posLast >> uiLog2BlockWidth;
       UInt uiPosX   = posLast - ( uiPosY << uiLog2BlockWidth );
 
+#if QT_BT_STRUCTURE
+      UInt uiBlkIdx = (codingParameters.widthInGroups * (uiPosY >> uiCGLog2)) + (uiPosX >> uiCGLog2);
+#else
       UInt uiBlkIdx = (codingParameters.widthInGroups * (uiPosY >> MLS_CG_LOG2_HEIGHT)) + (uiPosX >> MLS_CG_LOG2_WIDTH);
+#endif
 #if VCEG_AZ07_CTX_RESIDUALCODING 
       if( bHor8x8 )
       {
@@ -2005,7 +2171,11 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
 #if VCEG_AZ07_CTX_RESIDUALCODING
   UInt uiPrevGRParam = 0; 
   ContextModel * const baseCoeffGroupCtx = m_cCUSigCoeffGroupSCModel.get( 0, chType );
+#if QT_BT_STRUCTURE
+  UInt uiOffsetonTU = uiLog2BlockSize<=2 ? 0: NUM_SIG_FLAG_CTX_LUMA_TU << ( min(1, (Int)(uiLog2BlockSize - 3)) );
+#else
   UInt uiOffsetonTU = uiLog2BlockWidth==2 ? 0: NUM_SIG_FLAG_CTX_LUMA_TU << ( min(1, (Int)(uiLog2BlockWidth - 3)) );
+#endif
   ContextModel * const baseCtx = (chType == CHANNEL_TYPE_LUMA) ? m_cCUSigSCModel.get( 0, 0 ) + uiOffsetonTU : m_cCUSigSCModel.get( 0, 0 ) + NUM_SIG_FLAG_CTX_LUMA;
   ContextModel * const greXCtx = (chType == CHANNEL_TYPE_LUMA) ? m_cCUOneSCModel.get( 0, 0 ) : m_cCUOneSCModel.get( 0, 0 ) + NUM_ONE_FLAG_CTX_LUMA;
 #else
@@ -2013,7 +2183,11 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
   ContextModel * const baseCtx = m_cCUSigSCModel.get( 0, 0 ) + getSignificanceMapContextOffset(compID);
 #endif
 
+#if QT_BT_STRUCTURE
+  const Int  iLastScanSet  = scanPosLast >> uiCGSizeLog2;
+#else
   const Int  iLastScanSet  = scanPosLast >> MLS_CG_SIZE;
+#endif
 
 #if !VCEG_AZ07_CTX_RESIDUALCODING
   UInt c1                  = 1;
@@ -2024,7 +2198,11 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
   for( Int iSubSet = iLastScanSet; iSubSet >= 0; iSubSet-- )
   {
     Int numNonZero = 0;
+#if QT_BT_STRUCTURE
+    Int  iSubPos   = iSubSet << uiCGSizeLog2;
+#else
     Int  iSubPos   = iSubSet << MLS_CG_SIZE;
+#endif
 #if !VCEG_AZ07_CTX_RESIDUALCODING
     uiGoRiceParam  = currentGolombRiceStatistic / RExt__GOLOMB_RICE_INCREMENT_DIVISOR;
 #endif
@@ -2039,7 +2217,11 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
 #endif
 
     Int lastNZPosInCG  = -1;
+#if QT_BT_STRUCTURE
+    Int firstNZPosInCG = 1 << uiCGSizeLog2;
+#else
     Int firstNZPosInCG = 1 << MLS_CG_SIZE;
+#endif
 
     Bool escapeDataPresentInGroup = false;
 
@@ -2051,7 +2233,7 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
 #endif
       coeffSigns    = ( pcCoef[ posLast ] < 0 );
       numNonZero    = 1;
-#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA 
       bCbfCU += abs(pcCoef[posLast]);
 #endif
       lastNZPosInCG  = iScanPosSig;
@@ -2076,7 +2258,7 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
     {
       uiSigCoeffGroupFlag[ iCGBlkPos ] = 1;
     }
-#if COM16_C806_T64
+#if COM16_C806_T64  && !QT_BT_STRUCTURE
     else if( uiWidth>=64 && ( iCGPosY>=(codingParameters.heightInGroups/2) || iCGPosX>=(codingParameters.widthInGroups/2) ) )
     {
       assert( 0 == uiSigCoeffGroupFlag[ iCGBlkPos ] );
@@ -2282,7 +2464,11 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
         }
       }
 #if VCEG_AZ07_CTX_RESIDUALCODING
+#if QT_BT_STRUCTURE
+      if( beValid && signHidden && uiWidth>=4 && uiHeight>=4)
+#else
       if( beValid && signHidden )
+#endif
       {
         m_pcBinIf->encodeBinsEP( (coeffSigns >> 1), numNonZero-1 );
       }
@@ -2317,6 +2503,7 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
     }
   }
 #endif
+
   return;
 }
 
@@ -2613,7 +2800,12 @@ Void TEncSbac::estSignificantMapBit( estBitsSbacStruct* pcEstBitsSbac, Int width
   for (UInt component = firstComponent; component <= lastComponent; component++)
   {
 #if VCEG_AZ07_CTX_RESIDUALCODING
+#if QT_BT_STRUCTURE
+    Int log2Size = ((g_aucConvertToBit[ width ] + g_aucConvertToBit[ height ]) >>1) + MIN_CU_LOG2;
+    Int firstCtx   = !component  ? (log2Size>4? 2: (log2Size<=2 ? 0: log2Size-2)) * NUM_SIG_FLAG_CTX_LUMA_TU : 0;
+#else
     Int firstCtx   = !component  ? (g_aucConvertToBit[ width ] > 2 ? 2 : g_aucConvertToBit[width]) * NUM_SIG_FLAG_CTX_LUMA_TU : 0;
+#endif
     Int numCtx     = !component  ? NUM_SIG_FLAG_CTX_LUMA_TU : NUM_SIG_FLAG_CTX_CHROMA;
     Int iCtxOffset = !component  ? 0 : NUM_SIG_FLAG_CTX_LUMA;
 #else
@@ -2873,6 +3065,7 @@ Void TEncSbac::codeExplicitRdpcmMode( TComTU &rTu, const ComponentID compID )
 }
 
 #if ALF_HM3_REFACTOR
+#if !QT_BT_STRUCTURE
 Void TEncSbac::codeAlfCtrlFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
 {
   if (!m_bAlfCtrl)
@@ -2890,6 +3083,7 @@ Void TEncSbac::codeAlfCtrlFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
   DTRACE_CABAC_VL( g_nSymbolCounter++ )
   DTRACE_CABAC_T( "\tAlfCtrlFlag\n" )
 }
+#endif
 
 Void TEncSbac::codeAlfCtrlDepth( UInt uiMaxTotalCUDepth )
 {
@@ -2995,13 +3189,21 @@ Void TEncSbac::codeAlfSvlc       ( Int iCode )
 #if COM16_C806_EMT
 Void TEncSbac::codeEmtTuIdx( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 {
+#if QT_BT_STRUCTURE
+  if ( pcCU->isIntra( uiAbsPartIdx ) && pcCU->getWidth(uiAbsPartIdx) <= EMT_INTRA_MAX_CU && pcCU->getHeight(uiAbsPartIdx)<= EMT_INTRA_MAX_CU )
+#else
   if ( pcCU->isIntra( uiAbsPartIdx ) && pcCU->getWidth(uiAbsPartIdx) <= EMT_INTRA_MAX_CU )
+#endif
   {
     UChar ucTrIdx = pcCU->getEmtTuIdx( uiAbsPartIdx );
     m_pcBinIf->encodeBin( ( ucTrIdx & 1 ) ? 1 : 0, m_cEmtTuIdxSCModel.get(0, 0, 0));
-    m_pcBinIf->encodeBin( ( ucTrIdx / 2 ) ? 1 : 0, m_cEmtTuIdxSCModel.get(0, 0, 1));
+  m_pcBinIf->encodeBin( ( ucTrIdx / 2 ) ? 1 : 0, m_cEmtTuIdxSCModel.get(0, 0, 1));
   }
+#if QT_BT_STRUCTURE
+  if ( !pcCU->isIntra( uiAbsPartIdx ) && pcCU->getWidth(uiAbsPartIdx) <=EMT_INTER_MAX_CU && pcCU->getHeight(uiAbsPartIdx)<= EMT_INTER_MAX_CU  )
+#else
   if ( !pcCU->isIntra( uiAbsPartIdx ) && pcCU->getWidth(uiAbsPartIdx) <= EMT_INTER_MAX_CU )
+#endif
   {
     UChar ucTrIdx = pcCU->getEmtTuIdx( uiAbsPartIdx );
     m_pcBinIf->encodeBin( ( ucTrIdx & 1 ) ? 1 : 0, m_cEmtTuIdxSCModel.get(0, 0, 2));
@@ -3011,14 +3213,31 @@ Void TEncSbac::codeEmtTuIdx( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 
 Void TEncSbac::codeEmtCuFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bCodeCuFlag )
 {
+#if QT_BT_STRUCTURE
+  if (uiDepth >= NUM_EMT_CU_FLAG_CTX)
+  {
+    uiDepth = NUM_EMT_CU_FLAG_CTX - 1;
+  }
+#else
   assert( uiDepth < NUM_EMT_CU_FLAG_CTX );
-  
+#endif
+
+#if QT_BT_STRUCTURE
+  if ( pcCU->isIntra( uiAbsPartIdx ) && bCodeCuFlag && pcCU->getWidth(uiAbsPartIdx) <= EMT_INTRA_MAX_CU && pcCU->getHeight(uiAbsPartIdx)<= EMT_INTRA_MAX_CU
+      && pcCU->getSlice()->getSPS()->getUseIntraEMT() )
+#else
   if ( pcCU->isIntra( uiAbsPartIdx ) && bCodeCuFlag && pcCU->getWidth(uiAbsPartIdx) <= EMT_INTRA_MAX_CU && pcCU->getSlice()->getSPS()->getUseIntraEMT() )
+#endif
   {
     UChar ucCuFlag = pcCU->getEmtCuFlag( uiAbsPartIdx );
     m_pcBinIf->encodeBin( ucCuFlag, m_cEmtCuFlagSCModel.get(0, 0, uiDepth));
   }
+#if QT_BT_STRUCTURE
+  if( !pcCU->isIntra( uiAbsPartIdx ) && bCodeCuFlag && pcCU->getWidth(uiAbsPartIdx) <= EMT_INTER_MAX_CU && pcCU->getHeight(uiAbsPartIdx)<= EMT_INTER_MAX_CU
+      && pcCU->getSlice()->getSPS()->getUseInterEMT() )
+#else
   if( !pcCU->isIntra( uiAbsPartIdx ) && bCodeCuFlag && pcCU->getWidth(uiAbsPartIdx) <= EMT_INTER_MAX_CU && pcCU->getSlice()->getSPS()->getUseInterEMT() )
+#endif
   {
     UChar ucCuFlag = pcCU->getEmtCuFlag( uiAbsPartIdx );
     m_pcBinIf->encodeBin( ucCuFlag, m_cEmtCuFlagSCModel.get(0, 0, uiDepth));

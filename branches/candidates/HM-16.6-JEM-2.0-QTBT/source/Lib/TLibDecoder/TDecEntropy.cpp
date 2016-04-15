@@ -113,7 +113,20 @@ Void TDecEntropy::decodePDPCIdx(TComDataCU* pcSubCU, UInt uiAbsPartIdx, UInt uiD
 Void TDecEntropy::decodeROTIdx( TComDataCU* pcSubCU, UInt uiAbsPartIdx, UInt uiDepth )
 { 
   m_pcEntropyDecoderIf->parseROTIdx( pcSubCU, uiAbsPartIdx, uiDepth );
+#if QT_BT_STRUCTURE
+  if( !pcSubCU->getSlice()->isIntra() )
+  {
+    pcSubCU->setROTIdxSubParts( CHANNEL_TYPE_CHROMA, pcSubCU->getROTIdx( CHANNEL_TYPE_LUMA, uiAbsPartIdx ), uiAbsPartIdx,  uiDepth ); 
+  }
+#endif
 }
+
+#if QT_BT_STRUCTURE
+Void TDecEntropy::decodeROTIdxChroma( TComDataCU* pcSubCU, UInt uiAbsPartIdx, UInt uiDepth )
+{ 
+  m_pcEntropyDecoderIf->parseROTIdxChroma( pcSubCU, uiAbsPartIdx, uiDepth );
+}
+#endif
 #endif
 /** decode merge flag
  * \param pcSubCU
@@ -150,6 +163,13 @@ Void TDecEntropy::decodeFRUCMgrMode( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt u
 }
 #endif
 
+#if QT_BT_STRUCTURE
+Void TDecEntropy::decodeBTSplitMode   ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight )
+{
+  m_pcEntropyDecoderIf->parseBTSplitMode( pcCU, uiAbsPartIdx, uiWidth, uiHeight );
+}
+#endif
+
 Void TDecEntropy::decodeSplitFlag   ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 {
   m_pcEntropyDecoderIf->parseSplitFlag( pcCU, uiAbsPartIdx, uiDepth );
@@ -160,19 +180,32 @@ Void TDecEntropy::decodePredMode( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDe
   m_pcEntropyDecoderIf->parsePredMode( pcCU, uiAbsPartIdx, uiDepth );
 }
 
+#if !QT_BT_STRUCTURE
 Void TDecEntropy::decodePartSize( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 {
   m_pcEntropyDecoderIf->parsePartSize( pcCU, uiAbsPartIdx, uiDepth );
 }
+#endif
 
 Void TDecEntropy::decodePredInfo    ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, TComDataCU* pcSubCU )
 {
   if( pcCU->isIntra( uiAbsPartIdx ) )                                 // If it is Intra mode, encode intra prediction mode.
   {
-    decodeIntraDirModeLuma  ( pcCU, uiAbsPartIdx, uiDepth );
-    if (pcCU->getPic()->getChromaFormat()!=CHROMA_400)
+#if QT_BT_STRUCTURE
+    if (isLuma(pcCU->getTextType()))
+    {
+#endif
+      decodeIntraDirModeLuma  ( pcCU, uiAbsPartIdx, uiDepth );
+#if QT_BT_STRUCTURE
+    }
+    if (pcCU->getPic()->getChromaFormat()!=CHROMA_400
+      && (isChroma(pcCU->getTextType()) || !pcCU->getSlice()->isIntra()))
+#else
+      if (pcCU->getPic()->getChromaFormat()!=CHROMA_400)
+#endif
     {
       decodeIntraDirModeChroma( pcCU, uiAbsPartIdx, uiDepth );
+#if !QT_BT_STRUCTURE
       if (enable4ChromaPUsInIntraNxNCU(pcCU->getPic()->getChromaFormat()) && pcCU->getPartitionSize( uiAbsPartIdx )==SIZE_NxN)
       {
         UInt uiPartOffset = ( pcCU->getPic()->getNumPartitionsInCtu() >> ( pcCU->getDepth(uiAbsPartIdx) << 1 ) ) >> 2;
@@ -180,6 +213,7 @@ Void TDecEntropy::decodePredInfo    ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt 
         decodeIntraDirModeChroma( pcCU, uiAbsPartIdx + uiPartOffset*2, uiDepth+1 );
         decodeIntraDirModeChroma( pcCU, uiAbsPartIdx + uiPartOffset*3, uiDepth+1 );
       }
+#endif
     }
   }
   else                                                                // if it is Inter mode, encode motion vector and reference index
@@ -237,10 +271,15 @@ Void TDecEntropy::decodeIntraDirModeChroma( TComDataCU* pcCU, UInt uiAbsPartIdx,
  */
 Void TDecEntropy::decodePUWise( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, TComDataCU* pcSubCU )
 {
+#if QT_BT_STRUCTURE
+  PartSize ePartSize = SIZE_2Nx2N;
+  UInt uiNumPU = 1;
+  UInt uiPUOffset = 0;
+#else
   PartSize ePartSize = pcCU->getPartitionSize( uiAbsPartIdx );
   UInt uiNumPU = ( ePartSize == SIZE_2Nx2N ? 1 : ( ePartSize == SIZE_NxN ? 4 : 2 ) );
   UInt uiPUOffset = ( g_auiPUOffset[UInt( ePartSize )] << ( ( pcCU->getSlice()->getSPS()->getMaxTotalCUDepth() - uiDepth ) << 1 ) ) >> 4;
-
+#endif
 #if !VCEG_AZ07_FRUC_MERGE
   TComMvField cMvFieldNeighbours[MRG_MAX_NUM_CANDS << 1]; // double length for mv of both lists
   UChar uhInterDirNeighbours[MRG_MAX_NUM_CANDS];
@@ -335,7 +374,9 @@ Void TDecEntropy::decodePUWise( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDept
       {
         if ( !hasMergedCandList )
         {
+#if !QT_BT_STRUCTURE
           pcSubCU->setPartSizeSubParts( SIZE_2Nx2N, 0, uiDepth ); // temporarily set.
+#endif
           pcSubCU->getInterMergeCandidates( 0, 0, cMvFieldNeighbours, uhInterDirNeighbours, numValidMergeCand 
 #if VCEG_AZ06_IC
           , abICFlag
@@ -348,7 +389,9 @@ Void TDecEntropy::decodePUWise( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDept
           , pcCU
 #endif
             );
+#if !QT_BT_STRUCTURE
           pcSubCU->setPartSizeSubParts( ePartSize, 0, uiDepth ); // restore.
+#endif
           hasMergedCandList = true;
         }
       }
@@ -376,7 +419,9 @@ Void TDecEntropy::decodePUWise( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDept
 #endif
       pcCU->setInterDirSubParts( uhInterDirNeighbours[uiMergeIndex], uiSubPartIdx, uiPartIdx, uiDepth );
 #if VCEG_AZ06_IC
+#if !QT_BT_STRUCTURE
       if( pcCU->getPartitionSize( uiAbsPartIdx ) == SIZE_2Nx2N )
+#endif
       {
         pcCU->setICFlagSubParts( pcCU->getSlice()->getApplyIC() ? abICFlag[uiMergeIndex] : 0, uiSubPartIdx, uiDepth );
       }
@@ -408,7 +453,11 @@ Void TDecEntropy::decodePUWise( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDept
     {
       decodeInterDirPU( pcCU, uiSubPartIdx, uiDepth, uiPartIdx );
 #if COM16_C1016_AFFINE
+#if QT_BT_STRUCTURE
+      if ( pcCU->getWidth(uiSubPartIdx) > 8 && pcCU->getHeight(uiSubPartIdx) > 8 && ePartSize == SIZE_2Nx2N )
+#else
       if ( pcCU->getWidth(uiSubPartIdx) > 8 && ePartSize == SIZE_2Nx2N )
+#endif
       {
         decodeAffineFlag ( pcCU, uiSubPartIdx, uiDepth, uiPartIdx );
       }
@@ -609,8 +658,12 @@ Void TDecEntropy::decodeRefFrmIdxPU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt u
     iRefFrmIdx = 0;
   }
 
+#if QT_BT_STRUCTURE
+  pcCU->getCUMvField( eRefList )->setAllRefIdx( iRefFrmIdx, SIZE_2Nx2N, uiAbsPartIdx, uiDepth, uiPartIdx );
+#else
   PartSize ePartSize = pcCU->getPartitionSize( uiAbsPartIdx );
   pcCU->getCUMvField( eRefList )->setAllRefIdx( iRefFrmIdx, ePartSize, uiAbsPartIdx, uiDepth, uiPartIdx );
+#endif
 }
 
 /** decode motion vector difference for a PU block
@@ -712,9 +765,52 @@ Void TDecEntropy::decodeMVPIdxPU( TComDataCU* pcSubCU, UInt uiPartAddr, UInt uiD
     cMv += pcSubCUMvField->getMvd( uiPartAddr );
   }
 
+#if QT_BT_STRUCTURE
+  pcSubCU->getCUMvField( eRefList )->setAllMv(cMv, SIZE_2Nx2N, uiPartAddr, 0, uiPartIdx);
+#else
   PartSize ePartSize = pcSubCU->getPartitionSize( uiPartAddr );
   pcSubCU->getCUMvField( eRefList )->setAllMv(cMv, ePartSize, uiPartAddr, 0, uiPartIdx);
+#endif
 }
+
+#if QT_BT_STRUCTURE
+Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjCoded, TComTU &rTu, ComponentID compID)
+{
+  TComDataCU *pcCU=rTu.getCU();
+  const UInt uiAbsPartIdx=rTu.GetAbsPartIdxTU();
+  const Bool bChroma = isChromaEnabled(pcCU->getPic()->getChromaFormat());
+  const UInt uiDepth=rTu.GetTransformDepthTotal();
+  assert( 0 == rTu.GetTransformDepthRel());
+
+  if( (!pcCU->isIntra(uiAbsPartIdx)) && isLuma(compID) && ((!bChroma) || (!pcCU->getCbf( uiAbsPartIdx, COMPONENT_Cb, 0 ) && !pcCU->getCbf( uiAbsPartIdx, COMPONENT_Cr, 0 )) ))
+  {
+    pcCU->setCbfSubParts( 1, COMPONENT_Y, uiAbsPartIdx, uiDepth );
+  }
+  else
+  {
+    m_pcEntropyDecoderIf->parseQtCbf( rTu, compID, true );
+  }
+
+  UChar cbf = pcCU->getCbf( uiAbsPartIdx, compID , 0 );
+
+  if (cbf)
+  {
+#if COM16_C806_EMT
+    if (isLuma(compID))
+    {
+      m_pcEntropyDecoderIf->parseEmtCuFlag( pcCU, uiAbsPartIdx, uiDepth, true );
+    }
+#endif
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+    Bool dummyCbf;
+    m_pcEntropyDecoderIf->parseCoeffNxN( rTu, compID, dummyCbf);
+#else
+    m_pcEntropyDecoderIf->parseCoeffNxN( rTu, compID);
+#endif
+  }
+  //need to add qp coding, crosscomponentpred,... JCA
+}
+#else
 
 Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjCoded, TComTU &rTu, const Int quadtreeTULog2MinSizeInCU 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
@@ -973,6 +1069,7 @@ Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjC
   }
 }
 
+#endif //#if !QT_BT_STRUCTURE
 Void TDecEntropy::decodeQP          ( TComDataCU* pcCU, UInt uiAbsPartIdx )
 {
   if ( pcCU->getSlice()->getPPS()->getUseDQP() )
@@ -999,7 +1096,11 @@ Void TDecEntropy::decodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
   else
   {
     UInt uiQtRootCbf = 1;
+#if QT_BT_STRUCTURE
+    if( !pcCU->getMergeFlag( uiAbsPartIdx ) ) 
+#else
     if( !( pcCU->getPartitionSize( uiAbsPartIdx) == SIZE_2Nx2N && pcCU->getMergeFlag( uiAbsPartIdx ) ) )
+#endif
     {
       m_pcEntropyDecoderIf->parseQtRootCbf( uiAbsPartIdx, uiQtRootCbf );
     }
@@ -1007,7 +1108,9 @@ Void TDecEntropy::decodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
     {
       static const UInt cbfZero[MAX_NUM_COMPONENT]={0,0,0};
       pcCU->setCbfSubParts( cbfZero, uiAbsPartIdx, uiDepth );
+#if !QT_BT_STRUCTURE
       pcCU->setTrIdxSubParts( 0 , uiAbsPartIdx, uiDepth );
+#endif
       return;
     }
 
@@ -1022,6 +1125,25 @@ Void TDecEntropy::decodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
   }
 #endif
 
+#if QT_BT_STRUCTURE
+  if (isChroma(pcCU->getTextType()) || !pcCU->getSlice()->isIntra())
+  {
+    const UInt numValidComponent = pcCU->getPic()->getNumberValidComponents();
+    for(UInt ch=COMPONENT_Cb; ch<numValidComponent; ch++)
+    {
+      const ComponentID compID=ComponentID(ch);
+      xDecodeTransform( bCodeDQP, isChromaQpAdjCoded, tuRecurse, compID);
+    }
+  }
+  if (isLuma(pcCU->getTextType()))
+  {
+    xDecodeTransform( bCodeDQP, isChromaQpAdjCoded, tuRecurse, COMPONENT_Y);
+  }
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+  Int bCbfCU = pcCU->getSlice()->isIntra() ? (isLuma(pcCU->getTextType()) ? pcCU->getCbf(uiAbsPartIdx, COMPONENT_Y)
+    : (pcCU->getCbf(uiAbsPartIdx, COMPONENT_Cb) || pcCU->getCbf(uiAbsPartIdx, COMPONENT_Cr) )): pcCU->getQtRootCbf(uiAbsPartIdx);
+#endif
+#else
   Int quadtreeTULog2MinSizeInCU = pcCU->getQuadtreeTULog2MinSizeInCU(uiAbsPartIdx);
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Bool bCbfCU = 0;
@@ -1031,9 +1153,26 @@ Void TDecEntropy::decodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
     ,  bCbfCU
 #endif
     );
+#endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if QT_BT_STRUCTURE
+  if (bCbfCU && isLuma(pcCU->getTextType()))
+  {
+    decodeROTIdx( pcCU, uiAbsPartIdx, uiDepth );
+  }
+  else if(bCbfCU && isChroma(pcCU->getTextType()) && pcCU->getWidth(uiAbsPartIdx) >= 8 && pcCU->getHeight(uiAbsPartIdx) >= 8 )
+  {
+    assert(pcCU->getSlice()->isIntra());
+    decodeROTIdxChroma( pcCU, uiAbsPartIdx, uiDepth );
+  }
+  else if( isLuma(pcCU->getTextType()) )
+  {
+    pcCU->setROTIdxSubParts( CHANNEL_TYPE_LUMA, 0, uiAbsPartIdx, uiDepth );
+  }
+#else
   if (bCbfCU )
     decodeROTIdx( pcCU, uiAbsPartIdx, uiDepth );
+#endif
 #endif
 }
 

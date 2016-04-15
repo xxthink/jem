@@ -47,9 +47,30 @@
 //! \ingroup TLibCommon
 //! \{
 
+#define QT_BT_STRUCTURE                                   1
+
+#if QT_BT_STRUCTURE
+
+#define MIN_CU_LOG2                                       2
+#if MIN_CU_LOG2==1
+#define DF_MODIFY                                         1 //deblocking modifications
+#else
+#define DF_MODIFY                                         0
+#endif
+
+#define BT_RMV_REDUNDANT                                  1  ///< Remove redundant BT structure for B/P slice
+
+// for fast algorithms
+#define AMAX_BT                                           1  ///< slice level adaptive maximum BT size (encoder only)
+#define FAST_MRG                                          1
+#define PBINTRA_FAST                                      1
+#define ITSKIP                                            1  ///< skip zero row/column in inverse transform (decoder speedup)
+
+#endif // end of QT_BT_STRUCTURE
+
 ///////////////////////////////////////////////////////////
 // KTA tools section start
-///////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////// 
 #define VCEG_AZ08_USE_KLT                                 1  ///< KLT (if defined 1, use cfg option of KLT to control the enablement of intra KLT and inter KLT (INTERA_KLT, VCEG_AZ08_INTER_KLT should be set as 1); if 0, use INTERA_KLT, VCEG_AZ08_INTER_KLT to control the enablement.)
 
 #define VCEG_AZ08_INTER_KLT                               1  ///< (default 1) Enable inter KLT
@@ -130,6 +151,11 @@
 #define VCEG_AZ06_IC                                      1  ///< Local illumination compensation (LIC)
 #if VCEG_AZ06_IC
 #define VCEG_AZ06_IC_SPEEDUP                              1  ///< speedup of IC
+#if QT_BT_STRUCTURE
+#undef VCEG_AZ06_IC_SPEEDUP                              
+#define VCEG_AZ06_IC_SPEEDUP                              0  ///< speedup of IC
+#define IC_THRESHOLD                                      0.06
+#endif
 #endif
 
 #define VCEG_AZ07_INTRA_4TAP_FILTER                       1  ///< 4-tap interpolation filter for intra prediction
@@ -138,7 +164,7 @@
 #define VCEG_AZ07_INTRA_BOUNDARY_FILTER_MULTI_LINE        1  ///< 0: Filter one boundary line, 1: Filter 4 boundary lines
 #endif                                                       
 
-#define VCEG_AZ07_INTRA_65ANG_MODES                       1  ///< 65 intra prediction directions
+#define VCEG_AZ07_INTRA_65ANG_MODES                       1  ///< 65 intra prediction directions  
 #if VCEG_AZ07_INTRA_65ANG_MODES
 #define JVET_B0051_NON_MPM_MODE                           1  // Use two mode sets for non-MPM mode coding
 #endif
@@ -146,8 +172,8 @@
 #define VCEG_AZ07_ECABAC                                  1  ///< CABAC improvements
 #if VCEG_AZ07_ECABAC                                         
 #define VCEG_AZ07_CTX_RESIDUALCODING                      1  ///< Context modeling for transform coefficient levels
-#define VCEG_AZ07_BAC_ADAPT_WDOW                          1  ///< Multi-hypothesis probability estimation
-#define VCEG_AZ07_INIT_PREVFRAME                          1  ///< Initialization for context models
+#define VCEG_AZ07_BAC_ADAPT_WDOW                          1  ///< Multi-hypothesis probability estimation 
+#define VCEG_AZ07_INIT_PREVFRAME                          1  ///< Initialization for context models 
 #if VCEG_AZ07_INIT_PREVFRAME
 #define VCEG_AZ07_INIT_PREVFRAME_FIX                      1  ///< Fix for GOP16
 #endif
@@ -475,6 +501,9 @@ enum DeblockEdgeDir
 enum PartSize
 {
   SIZE_2Nx2N           = 0,           ///< symmetric motion partition,  2Nx2N
+#if QT_BT_STRUCTURE
+  NUMBER_OF_PART_SIZES = 1
+#else
   SIZE_2NxN            = 1,           ///< symmetric motion partition,  2Nx N
   SIZE_Nx2N            = 2,           ///< symmetric motion partition,   Nx2N
   SIZE_NxN             = 3,           ///< symmetric motion partition,   Nx N
@@ -483,6 +512,7 @@ enum PartSize
   SIZE_nLx2N           = 6,           ///< asymmetric motion partition, ( N/2)x2N + (3N/2)x2N
   SIZE_nRx2N           = 7,           ///< asymmetric motion partition, (3N/2)x2N + ( N/2)x2N
   NUMBER_OF_PART_SIZES = 8
+#endif
 };
 
 /// supported prediction type
@@ -638,7 +668,12 @@ enum ScalingListMode
 
 enum ScalingListSize
 {
+#if QT_BT_STRUCTURE
+  SCALING_LIST_2x2 = 0,
+  SCALING_LIST_4x4,
+#else
   SCALING_LIST_4x4 = 0,
+#endif
   SCALING_LIST_8x8,
   SCALING_LIST_16x16,
   SCALING_LIST_32x32,

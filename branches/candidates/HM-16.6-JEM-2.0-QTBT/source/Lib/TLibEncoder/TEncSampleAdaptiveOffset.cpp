@@ -301,18 +301,30 @@ Void TEncSampleAdaptiveOffset::getStatistics(SAOStatData*** blkStats, TComPicYuv
 
   for(Int ctuRsAddr= 0; ctuRsAddr < m_numCTUsPic; ctuRsAddr++)
   {
+#if QT_BT_STRUCTURE
+    Int yPos   = (ctuRsAddr / m_numCTUInWidth)*m_CTUSize;
+    Int xPos   = (ctuRsAddr % m_numCTUInWidth)*m_CTUSize;
+    Int height = (yPos + m_CTUSize > m_picHeight)?(m_picHeight- yPos):m_CTUSize;
+    Int width  = (xPos + m_CTUSize  > m_picWidth )?(m_picWidth - xPos):m_CTUSize;
+#else
     Int yPos   = (ctuRsAddr / m_numCTUInWidth)*m_maxCUHeight;
     Int xPos   = (ctuRsAddr % m_numCTUInWidth)*m_maxCUWidth;
     Int height = (yPos + m_maxCUHeight > m_picHeight)?(m_picHeight- yPos):m_maxCUHeight;
     Int width  = (xPos + m_maxCUWidth  > m_picWidth )?(m_picWidth - xPos):m_maxCUWidth;
+#endif
 
     pPic->getPicSym()->deriveLoopFilterBoundaryAvailibility(ctuRsAddr, isLeftAvail,isRightAvail,isAboveAvail,isBelowAvail,isAboveLeftAvail,isAboveRightAvail,isBelowLeftAvail,isBelowRightAvail);
 
     //NOTE: The number of skipped lines during gathering CTU statistics depends on the slice boundary availabilities.
     //For simplicity, here only picture boundaries are considered.
 
+#if QT_BT_STRUCTURE
+    isRightAvail      = (xPos + m_CTUSize  < m_picWidth );
+    isBelowAvail      = (yPos + m_CTUSize  < m_picHeight);
+#else
     isRightAvail      = (xPos + m_maxCUWidth  < m_picWidth );
     isBelowAvail      = (yPos + m_maxCUHeight < m_picHeight);
+#endif
     isBelowRightAvail = (isRightAvail && isBelowAvail);
     isBelowLeftAvail  = ((xPos > 0) && (isBelowAvail));
     isAboveRightAvail = ((yPos > 0) && (isRightAvail));
@@ -929,9 +941,15 @@ Void TEncSampleAdaptiveOffset::getBlkStats(const ComponentID compIdx, const Int 
                         , Bool isCalculatePreDeblockSamples
                         )
 {
+#if QT_BT_STRUCTURE
+  if(m_lineBufWidth != m_CTUSize)
+  {
+    m_lineBufWidth = m_CTUSize;
+#else
   if(m_lineBufWidth != m_maxCUWidth)
   {
     m_lineBufWidth = m_maxCUWidth;
+#endif
 
     if (m_signLineBuf1)
     {

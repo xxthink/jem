@@ -153,11 +153,18 @@ protected:
 
   // coding unit (CU) definition
   // TODO: Remove MaxCUWidth/MaxCUHeight and replace with MaxCUSize.
+#if QT_BT_STRUCTURE
+  UInt      m_uiCTUSize;
+  UInt      m_uiMinQT[3]; //0: I slice luma; 1: I slice chroma; 2: P/B slice
+#else
   UInt      m_uiMaxCUWidth;                                   ///< max. CU width in pixel
   UInt      m_uiMaxCUHeight;                                  ///< max. CU height in pixel
   UInt      m_uiMaxCUDepth;                                   ///< max. CU depth (as specified by command line)
-  UInt      m_uiMaxTotalCUDepth;                              ///< max. total CU depth - includes depth of transform-block structure
+#endif
+  UInt      m_uiMaxTotalCUDepth;                              ///< max. total CU depth - includes depth of transform-block structure, used for assign number of buffers to store mode in CU level
+#if !QT_BT_STRUCTURE
   UInt      m_uiLog2DiffMaxMinCodingBlockSize;                ///< difference between largest and smallest CU depth
+#endif
 
   // transfom unit (TU) definition
   UInt      m_uiQuadtreeTULog2MaxSize;

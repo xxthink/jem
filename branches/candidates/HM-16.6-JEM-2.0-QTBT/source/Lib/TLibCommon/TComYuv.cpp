@@ -277,13 +277,22 @@ Void TComYuv::copyPartToPartComponentMxN  ( const ComponentID compID, TComYuv* p
 
 
 
+#if QT_BT_STRUCTURE
+Void TComYuv::addClip( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const UInt uiTrUnitIdx, const UInt uiWidth, const UInt uiHeight, const BitDepths &clipBitDepths )
+#else
 Void TComYuv::addClip( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const UInt uiTrUnitIdx, const UInt uiPartSize, const BitDepths &clipBitDepths )
+#endif
 {
   for(Int comp=0; comp<getNumberValidComponents(); comp++)
   {
     const ComponentID compID=ComponentID(comp);
+#if QT_BT_STRUCTURE
+    const Int uiPartWidth =uiWidth>>getComponentScaleX(compID);
+    const Int uiPartHeight=uiHeight>>getComponentScaleY(compID);
+#else
     const Int uiPartWidth =uiPartSize>>getComponentScaleX(compID);
     const Int uiPartHeight=uiPartSize>>getComponentScaleY(compID);
+#endif
 
     const Pel* pSrc0 = pcYuvSrc0->getAddr(compID, uiTrUnitIdx, uiPartWidth );
     const Pel* pSrc1 = pcYuvSrc1->getAddr(compID, uiTrUnitIdx, uiPartWidth );
@@ -317,13 +326,22 @@ Void TComYuv::addClip( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const
 
 
 
+#if QT_BT_STRUCTURE
+Void TComYuv::subtract( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const UInt uiTrUnitIdx, const UInt uiWidth, const UInt uiHeight )
+#else
 Void TComYuv::subtract( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const UInt uiTrUnitIdx, const UInt uiPartSize )
+#endif
 {
   for(Int comp=0; comp<getNumberValidComponents(); comp++)
   {
     const ComponentID compID=ComponentID(comp);
+#if QT_BT_STRUCTURE
+    const Int uiPartWidth =uiWidth>>getComponentScaleX(compID);
+    const Int uiPartHeight=uiHeight>>getComponentScaleY(compID);
+#else
     const Int uiPartWidth =uiPartSize>>getComponentScaleX(compID);
     const Int uiPartHeight=uiPartSize>>getComponentScaleY(compID);
+#endif
 
     const Pel* pSrc0 = pcYuvSrc0->getAddr( compID, uiTrUnitIdx, uiPartWidth );
     const Pel* pSrc1 = pcYuvSrc1->getAddr( compID, uiTrUnitIdx, uiPartWidth );
