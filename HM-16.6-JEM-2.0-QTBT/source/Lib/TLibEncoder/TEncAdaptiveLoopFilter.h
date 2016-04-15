@@ -120,8 +120,10 @@ private:
   Void xCopyTmpAlfCtrlFlagsFrom ();
   
   // encoder ALF control flags
+#if !QT_BT_STRUCTURE
   Void xEncodeCUAlfCtrlFlags  ();
   Void xEncodeCUAlfCtrlFlag   ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth);
+#endif
   
   // functions related to correlation computation
   Void xCalcCorrelationFunc   ( Pel* pOrg, Pel* pCmp, Int iTap, Int iWidth, Int iHeight, Int iOrgStride, Int iCmpStride);
@@ -131,7 +133,11 @@ private:
   Void xQuantFilterCoef       ( Double* h, Int* qh, Int tap, int bit_depth );
   Void xClearFilterCoefInt    ( Int* qh, Int N );
   Void xCopyDecToRestCUs      ( TComPicYuv* pcPicDec, TComPicYuv* pcPicRest );
+#if QT_BT_STRUCTURE
+  Void xCopyDecToRestCU       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight, TComPicYuv* pcPicDec, TComPicYuv* pcPicRest );
+#else
   Void xCopyDecToRestCU       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, TComPicYuv* pcPicDec, TComPicYuv* pcPicRest );
+#endif
   Void xFilteringFrameChroma  ( TComPicYuv* pcPicOrg, TComPicYuv* pcPicDec, TComPicYuv* pcPicRest );
   
   // distortion / misc functions
@@ -174,7 +180,11 @@ public:
                                          UInt64& ruiMinDist, Double& rdMinCost, const TComSlice * pSlice );
   Void xSetCUAlfCtrlFlags_qc            (UInt uiAlfCtrlDepth, TComPicYuv* pcPicOrg, TComPicYuv* pcPicDec, TComPicYuv* pcPicRest, 
                                          UInt64& ruiDist, ALFParam *pAlfParam);
+#if QT_BT_STRUCTURE
+  Void xSetCUAlfCtrlFlag_qc             (TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight, UInt uiAlfCtrlDepth, TComPicYuv* pcPicOrg,
+#else
   Void xSetCUAlfCtrlFlag_qc             (TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiAlfCtrlDepth, TComPicYuv* pcPicOrg,
+#endif
                                          TComPicYuv* pcPicDec, TComPicYuv* pcPicRest, UInt64& ruiDist, ALFParam *pAlfParam);
   Void xReDesignFilterCoeff_qc          (TComPicYuv* pcPicOrg, TComPicYuv* pcPicDec,  TComPicYuv* pcPicRest, Bool bReadCorr, const TComSlice * pSlice);
   Void xFilterTapDecision_qc            (TComPicYuv* pcPicOrg, TComPicYuv* pcPicDec, TComPicYuv* pcPicRest, UInt64& ruiMinRate, 

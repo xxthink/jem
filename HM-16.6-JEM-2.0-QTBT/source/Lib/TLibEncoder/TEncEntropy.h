@@ -90,6 +90,9 @@ public:
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
    virtual Void codeROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth ) = 0;
 #endif
+#if QT_BT_STRUCTURE
+   virtual Void codeROTIdxChroma ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth ) = 0;
+#endif
 #if VCEG_AZ07_IMV
   virtual Void codeiMVFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
 #endif
@@ -105,8 +108,11 @@ public:
   virtual Void codeFRUCMgrMode   ( TComDataCU* pcCU, UInt uiAbsPartIdx , UInt uiPUIdx ) = 0;
 #endif
   virtual Void codeSplitFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
-
+#if QT_BT_STRUCTURE
+  virtual Void codeBTSplitMode   ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight) = 0;
+#else
   virtual Void codePartSize      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
+#endif
   virtual Void codePredMode      ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
 
   virtual Void codeIPCMInfo      ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
@@ -161,7 +167,9 @@ public:
   virtual Void setAlfCtrl(Bool bAlfCtrl)                = 0;
   virtual Void setMaxAlfCtrlDepth(UInt uiMaxAlfCtrlDepth)                = 0;
   virtual Void codeAlfCtrlDepth     ( UInt uiMaxTotalCUDepth ) = 0;
+#if !QT_BT_STRUCTURE
   virtual Void codeAlfCtrlFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
+#endif
   virtual Void codeAlfFlag          ( UInt uiCode ) = 0;
   virtual Void codeAlfUvlc          ( UInt uiCode ) = 0;
   virtual Void codeAlfSvlc          ( Int   iCode ) = 0;
@@ -220,6 +228,9 @@ public:
   Void encodeSPS               ( const TComSPS* pcSPS );
   Void encodePPS               ( const TComPPS* pcPPS );
   Void encodeSplitFlag         ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bRD = false );
+#if QT_BT_STRUCTURE
+  Void encodeBTSplitMode       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight, Bool bRD = false );
+#endif
   Void encodeCUTransquantBypassFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
   Void encodeSkipFlag          ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
 #if COM16_C806_OBMC
@@ -246,12 +257,17 @@ public:
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     Void encodeROTIdx    ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth, Bool bRD = false );
+#if QT_BT_STRUCTURE
+    Void encodeROTIdxChroma( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth, Bool bRD = false );
+#endif
 #endif
 #if VCEG_AZ07_FRUC_MERGE
   Void encodeFRUCMgrMode  ( TComDataCU* pcCU, UInt uiAbsPartIdx , UInt uiPUIdx );
 #endif
   Void encodePredMode          ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
+#if !QT_BT_STRUCTURE
   Void encodePartSize          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bRD = false );
+#endif
   Void encodeIPCMInfo          ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
   Void encodePredInfo          ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void encodeIntraDirModeLuma  ( TComDataCU* pcCU, UInt absPartIdx, Bool isMultiplePU = false 
@@ -274,11 +290,15 @@ public:
   Void encodeCrossComponentPrediction( TComTU &rTu, ComponentID compID );
 
 private:
+#if QT_BT_STRUCTURE
+  Void xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComTU &rTu, ComponentID compID);
+#else
   Void xEncodeTransform        ( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComTU &rTu
 #if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
     , Int& bCbfCU
 #endif
     );
+#endif
 
 public:
   Void encodeCoeff             ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool& bCodeDQP, Bool& codeChromaQpAdj
@@ -306,7 +326,9 @@ public:
         ,const TComSlice * pSlice
 #endif
     );
+#if !QT_BT_STRUCTURE
   Void encodeAlfCtrlFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
+#endif
   Void encodeAlfCtrlParam      ( ALFParam *pAlfParam );
   Bool getAlfCtrl() {return m_pcEntropyCoderIf->getAlfCtrl();}
   UInt getMaxAlfCtrlDepth() {return m_pcEntropyCoderIf->getMaxAlfCtrlDepth();}

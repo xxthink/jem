@@ -46,22 +46,30 @@ static     const UInt         partIdxStepShift  [TComTU::NUMBER_OF_SPLIT_MODES] 
 //----------------------------------------------------------------------------------------------------------------------
 
 TComTU::TComTU(TComDataCU *pcCU, const UInt absPartIdxCU, const UInt cuDepth, const UInt initTrDepthRelCU)
-  : mChromaFormat(pcCU->getSlice()->getSPS()->getChromaFormatIdc()),
-    mbProcessLastOfLevel(true), // does not matter. the top level is not 4 quadrants.
-    mCuDepth(cuDepth),
-    mSection(0),
-    mSplitMode(DONT_SPLIT),
-    mAbsPartIdxCU(absPartIdxCU),
-    mAbsPartIdxTURelCU(0),
-    mAbsPartIdxStep(pcCU->getPic()->getNumPartitionsInCtu() >> (pcCU->getDepth(absPartIdxCU)<<1)),
-    mpcCU(pcCU),
-    mLog2TrLumaSize(0),
-    mpParent(NULL)
+: mChromaFormat(pcCU->getSlice()->getSPS()->getChromaFormatIdc()),
+mbProcessLastOfLevel(true), // does not matter. the top level is not 4 quadrants.
+mCuDepth(cuDepth),
+mSection(0),
+mSplitMode(DONT_SPLIT),
+mAbsPartIdxCU(absPartIdxCU),
+mAbsPartIdxTURelCU(0),
+mAbsPartIdxStep(pcCU->getPic()->getNumPartitionsInCtu() >> (pcCU->getDepth(absPartIdxCU)<<1)),
+mpcCU(pcCU),
+#if !QT_BT_STRUCTURE
+mLog2TrLumaSize(0),
+#endif
+mpParent(NULL)
 {
+#if !QT_BT_STRUCTURE
   const TComSPS *pSPS=pcCU->getSlice()->getSPS();
   mLog2TrLumaSize = g_aucConvertToBit[pSPS->getMaxCUWidth() >> (mCuDepth+initTrDepthRelCU)]+2;
+#endif
 
+#if QT_BT_STRUCTURE
+  const UInt baseOffset444= absPartIdxCU==0 ? 0: pcCU->getPic()->getCodedAreaInCTU()-pcCU->getWidth( absPartIdxCU)*pcCU->getHeight(absPartIdxCU);
+#else
   const UInt baseOffset444=pcCU->getPic()->getMinCUWidth()*pcCU->getPic()->getMinCUHeight()*absPartIdxCU;
+#endif
 
   for(UInt i=0; i<MAX_NUM_COMPONENT; i++)
   {
@@ -81,23 +89,25 @@ TComTU::TComTU(TComDataCU *pcCU, const UInt absPartIdxCU, const UInt cuDepth, co
 
 TComTURecurse::TComTURecurse(      TComDataCU *pcCU,
                              const UInt        absPartIdxCU)
-  : TComTU(pcCU, absPartIdxCU, pcCU->getDepth(absPartIdxCU), 0)
+                             : TComTU(pcCU, absPartIdxCU, pcCU->getDepth(absPartIdxCU), 0)
 { }
 
 
 
 TComTU::TComTU(TComTU &parent, const Bool bProcessLastOfLevel, const TU_SPLIT_MODE splitMode, const Bool splitAtCurrentDepth, const ComponentID absPartIdxSourceComponent)
-  : mChromaFormat(parent.mChromaFormat),
-    mbProcessLastOfLevel(bProcessLastOfLevel),
-    mCuDepth(parent.mCuDepth),
-    mSection(0),
-    mSplitMode(splitMode),
-    mAbsPartIdxCU(parent.mAbsPartIdxCU),
-    mAbsPartIdxTURelCU(parent.GetRelPartIdxTU(absPartIdxSourceComponent)),
-    mAbsPartIdxStep(std::max<UInt>(1, (parent.GetAbsPartIdxNumParts(absPartIdxSourceComponent) >> partIdxStepShift[splitMode]))),
-    mpcCU(parent.mpcCU),
-    mLog2TrLumaSize(parent.mLog2TrLumaSize - ((splitMode != QUAD_SPLIT) ? 0 : 1)), //no change in width for vertical split
-    mpParent(&parent)
+: mChromaFormat(parent.mChromaFormat),
+mbProcessLastOfLevel(bProcessLastOfLevel),
+mCuDepth(parent.mCuDepth),
+mSection(0),
+mSplitMode(splitMode),
+mAbsPartIdxCU(parent.mAbsPartIdxCU),
+mAbsPartIdxTURelCU(parent.GetRelPartIdxTU(absPartIdxSourceComponent)),
+mAbsPartIdxStep(std::max<UInt>(1, (parent.GetAbsPartIdxNumParts(absPartIdxSourceComponent) >> partIdxStepShift[splitMode]))),
+mpcCU(parent.mpcCU),
+#if !QT_BT_STRUCTURE
+mLog2TrLumaSize(parent.mLog2TrLumaSize - ((splitMode != QUAD_SPLIT) ? 0 : 1)), //no change in width for vertical split
+#endif
+mpParent(&parent)
 {
   for(UInt i=0; i<MAX_NUM_COMPONENT; i++)
   {
@@ -117,6 +127,9 @@ TComTU::TComTU(TComTU &parent, const Bool bProcessLastOfLevel, const TU_SPLIT_MO
   }
   else if (mSplitMode==VERTICAL_SPLIT)
   {
+#if QT_BT_STRUCTURE
+    assert(0);
+#endif
     for(UInt i=0; i<MAX_NUM_COMPONENT; i++)
     {
       mRect[i].x0 = (parent.mRect[i].x0);
@@ -130,6 +143,9 @@ TComTU::TComTU(TComTU &parent, const Bool bProcessLastOfLevel, const TU_SPLIT_MO
     return;
   }
 
+#if QT_BT_STRUCTURE
+  assert(0);
+#endif
   for(UInt i=0; i<MAX_NUM_COMPONENT; i++)
   {
     mRect[i].width = (parent.mRect[i].width >> 1);
@@ -184,6 +200,9 @@ Bool TComTURecurse::nextSection(const TComTU &parent)
   }
   else
   {
+#if QT_BT_STRUCTURE
+    assert(0);
+#endif
     for(UInt i=0; i<MAX_NUM_COMPONENT; i++)
     {
       mOffsets[i]+=mRect[i].width*mRect[i].height;
@@ -220,13 +239,17 @@ Bool TComTURecurse::nextSection(const TComTU &parent)
 
 UInt TComTU::GetEquivalentLog2TrSize(const ComponentID compID)     const
 {
+#if QT_BT_STRUCTURE
+  return (g_aucConvertToBit[ getRect(compID).height ] + g_aucConvertToBit[ getRect(compID).width ] + (MIN_CU_LOG2<<1))>>1;
+#else
   return g_aucConvertToBit[ getRect(compID).height ] + 2;
+#endif
 }
 
 
 Bool TComTU::useDST(const ComponentID compID)
 {
-        TComDataCU *const pcCU       = getCU();
+  TComDataCU *const pcCU       = getCU();
   const UInt              absPartIdx = GetAbsPartIdxTU(compID);
 
   return isLuma(compID) && pcCU->isIntra(absPartIdx);
@@ -237,14 +260,14 @@ Bool TComTU::isNonTransformedResidualRotated(const ComponentID compID)
 {
   // rotation only for 4x4 intra, and is only used for non-transformed blocks (the latter is not checked here)
   return    getCU()->getSlice()->getSPS()->getSpsRangeExtension().getTransformSkipRotationEnabledFlag()
-         && mRect[compID].width == 4
-         && getCU()->isIntra(GetAbsPartIdxTU());
+    && mRect[compID].width == 4
+    && getCU()->isIntra(GetAbsPartIdxTU());
 }
 
 
 UInt TComTU::getGolombRiceStatisticsIndex(const ComponentID compID)
 {
-        TComDataCU *const pcCU             = getCU();
+  TComDataCU *const pcCU             = getCU();
   const UInt              absPartIdx       = GetAbsPartIdxTU(compID);
   const Bool              transformSkip    = pcCU->getTransformSkip(absPartIdx, compID);
   const Bool              transquantBypass = pcCU->getCUTransquantBypass(absPartIdx);

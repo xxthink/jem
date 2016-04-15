@@ -54,7 +54,7 @@
 // forward declaration
 class TComMv;
 class TComTU; 
-#if VCEG_AZ07_FRUC_MERGE
+#if VCEG_AZ07_FRUC_MERGE || QT_BT_STRUCTURE
 class TComMvField;
 #endif
 
@@ -74,7 +74,11 @@ typedef enum PRED_BUF_E
 } PRED_BUF;
 
 #if COM16_C806_LARGE_CTU
+#if QT_BT_STRUCTURE
+static const UInt MAX_INTRA_FILTER_DEPTHS=MAX_CU_DEPTH;
+#else
 static const UInt MAX_INTRA_FILTER_DEPTHS=MAX_CU_DEPTH-1;
+#endif
 #else
 static const UInt MAX_INTRA_FILTER_DEPTHS=5;
 #endif

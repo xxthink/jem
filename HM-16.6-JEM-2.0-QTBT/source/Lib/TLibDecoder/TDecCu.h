@@ -60,12 +60,22 @@ class TDecCu
 {
 private:
   UInt                m_uiMaxDepth;       ///< max. number of depth
+#if QT_BT_STRUCTURE
+  TComYuv***          m_pppcYuvResi;
+  TComYuv***          m_pppcYuvReco;
+  TComDataCU***       m_pppcCU;
+#if COM16_C806_OBMC
+  TComYuv***           m_pppcTmpYuv1;       ///< array of OBMC prediction buffer
+  TComYuv***           m_pppcTmpYuv2;
+#endif
+#else
   TComYuv**           m_ppcYuvResi;       ///< array of residual buffer
   TComYuv**           m_ppcYuvReco;       ///< array of prediction & reconstruction buffer
   TComDataCU**        m_ppcCU;            ///< CU data array
 #if COM16_C806_OBMC
   TComYuv**           m_ppcTmpYuv1;       ///< array of OBMC prediction buffer
   TComYuv**           m_ppcTmpYuv2;
+#endif
 #endif
   // access channel
   TComTrQuant*        m_pcTrQuant;
@@ -105,10 +115,18 @@ public:
 
 protected:
 
+#if QT_BT_STRUCTURE
+  Void xDecodeCU                ( TComDataCU* const pcCU, const UInt uiAbsPartIdx, const UInt uiDepth, const UInt uiWidth, const UInt uiHeight, Bool &isLastCtuOfSliceSegment, UInt uiSplitConstrain=0);
+#else
   Void xDecodeCU                ( TComDataCU* const pcCU, const UInt uiAbsPartIdx, const UInt uiDepth, Bool &isLastCtuOfSliceSegment);
+#endif
   Void xFinishDecodeCU          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool &isLastCtuOfSliceSegment);
   Bool xDecodeSliceEnd          ( TComDataCU* pcCU, UInt uiAbsPartIdx );
+#if QT_BT_STRUCTURE
+  Void xDecompressCU            ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight );
+#else
   Void xDecompressCU            ( TComDataCU* pCtu, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
 
   Void xReconInter              ( TComDataCU* pcCU, UInt uiDepth );
 
@@ -124,7 +142,9 @@ protected:
   Void xDecodeInterTexture      ( TComDataCU* pcCU, UInt uiDepth );
   Void xDecodePCMTexture        ( TComDataCU* pcCU, const UInt uiPartIdx, const Pel *piPCM, Pel* piReco, const UInt uiStride, const UInt uiWidth, const UInt uiHeight, const ComponentID compID);
 
+#if !QT_BT_STRUCTURE
   Void xCopyToPic               ( TComDataCU* pcCU, TComPic* pcPic, UInt uiZorderIdx, UInt uiDepth );
+#endif
 
   Bool getdQPFlag               ()                        { return m_bDecodeDQP;        }
   Void setdQPFlag               ( Bool b )                { m_bDecodeDQP = b;           }

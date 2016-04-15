@@ -792,8 +792,13 @@ private:
 
   Int              m_log2MinCodingBlockSize;
   Int              m_log2DiffMaxMinCodingBlockSize;
+#if QT_BT_STRUCTURE
+  UInt             m_uiCTUSize; 
+  UInt             m_uiMinQT[3]; //0: I slice luma; 1: I slice chroma; 2: P/B slice
+#else
   UInt             m_uiMaxCUWidth;
   UInt             m_uiMaxCUHeight;
+#endif
   UInt             m_uiMaxTotalCUDepth; ///< Total CU depth, relative to the smallest possible transform block size.
 
   Window           m_conformanceWindow;
@@ -804,7 +809,7 @@ private:
   Int              m_numReorderPics[MAX_TLAYER];
 
   // Tool list
-  UInt             m_uiQuadtreeTULog2MaxSize;
+  UInt             m_uiQuadtreeTULog2MaxSize; //need to clear the TU HLP ,JCA
   UInt             m_uiQuadtreeTULog2MinSize;
   UInt             m_uiQuadtreeTUMaxDepthInter;
   UInt             m_uiQuadtreeTUMaxDepthIntra;
@@ -949,15 +954,24 @@ public:
   Bool                   getUsedByCurrPicLtSPSFlag(Int i) const                                          { assert( i < MAX_NUM_LONG_TERM_REF_PICS ); return m_usedByCurrPicLtSPSFlag[i];    }
   Void                   setUsedByCurrPicLtSPSFlag(Int i, Bool x)                                        { assert( i < MAX_NUM_LONG_TERM_REF_PICS ); m_usedByCurrPicLtSPSFlag[i] = x;       }
 
+#if !QT_BT_STRUCTURE
   Int                    getLog2MinCodingBlockSize() const                                               { return m_log2MinCodingBlockSize;                                     }
   Void                   setLog2MinCodingBlockSize(Int val)                                              { m_log2MinCodingBlockSize = val;                                      }
   Int                    getLog2DiffMaxMinCodingBlockSize() const                                        { return m_log2DiffMaxMinCodingBlockSize;                              }
   Void                   setLog2DiffMaxMinCodingBlockSize(Int val)                                       { m_log2DiffMaxMinCodingBlockSize = val;                               }
+#endif
 
+#if QT_BT_STRUCTURE
+  Void                   setCTUSize( UInt u )                                                            { m_uiCTUSize = u;                                                  }
+  UInt                   getCTUSize() const                                                              { return  m_uiCTUSize;                                              }
+  Void                   setMinQTSizes( UInt* minQT)                                                     { m_uiMinQT[0] = minQT[0]; m_uiMinQT[1] = minQT[1]; m_uiMinQT[2] = minQT[2]; }
+  UInt                   getMinQTSize(SliceType slicetype, ChannelType chtype)  const                    { return (isChroma(chtype) ? m_uiMinQT[1]: (slicetype==I_SLICE ? m_uiMinQT[0]: m_uiMinQT[2]));}
+#else
   Void                   setMaxCUWidth( UInt u )                                                         { m_uiMaxCUWidth = u;                                                  }
   UInt                   getMaxCUWidth() const                                                           { return  m_uiMaxCUWidth;                                              }
   Void                   setMaxCUHeight( UInt u )                                                        { m_uiMaxCUHeight = u;                                                 }
   UInt                   getMaxCUHeight() const                                                          { return  m_uiMaxCUHeight;                                             }
+#endif
   Void                   setMaxTotalCUDepth( UInt u )                                                    { m_uiMaxTotalCUDepth = u;                                             }
   UInt                   getMaxTotalCUDepth() const                                                      { return  m_uiMaxTotalCUDepth;                                         }
   Void                   setUsePCM( Bool b )                                                             { m_usePCM = b;                                                        }
@@ -1543,7 +1557,9 @@ private:
 
   UInt                       m_colRefIdx;
   UInt                       m_maxNumMergeCand;
-
+#if QT_BT_STRUCTURE
+  UInt                       m_uiMaxBTSize;
+#endif
   Double                     m_lambdas[MAX_NUM_COMPONENT];
 
   Bool                       m_abEqualRef  [NUM_REF_PIC_LIST_01][MAX_NUM_REF][MAX_NUM_REF];
@@ -1587,6 +1603,9 @@ private:
 #if VCEG_AZ06_IC
   Bool                       m_bApplyIC;
 #endif
+#if QT_BT_STRUCTURE
+  ChannelType                m_eType;             ///< The channelType current CTB is coding
+#endif
 
 public:
                               TComSlice();
@@ -1603,7 +1622,7 @@ public:
 #if VCEG_AZ06_IC
   Void                        setApplyIC( Bool b )                                   { m_bApplyIC = b;                                               }
   Bool                        getApplyIC()                                           { return m_bApplyIC;                                            }
-#if VCEG_AZ06_IC_SPEEDUP
+#if VCEG_AZ06_IC_SPEEDUP || QT_BT_STRUCTURE
   Void                        xSetApplyIC();
 #endif
 #endif
@@ -1740,7 +1759,10 @@ public:
   Void                        createExplicitReferencePictureSetFromReference( TComList<TComPic*>& rcListPic, const TComReferencePictureSet *pReferencePictureSet, Bool isRAP, Int pocRandomAccess, Bool bUseRecoveryPoint, const Bool bEfficientFieldIRAPEnabled);
   Void                        setMaxNumMergeCand(UInt val )                          { m_maxNumMergeCand = val;                                      }
   UInt                        getMaxNumMergeCand() const                             { return m_maxNumMergeCand;                                     }
-
+#if QT_BT_STRUCTURE
+  Void                        setMaxBTSize                     (Int i)             { m_uiMaxBTSize = i; }
+  UInt                        getMaxBTSize                     ()                  { return m_uiMaxBTSize; }
+#endif
   Void                        setNoOutputPriorPicsFlag( Bool val )                   { m_noOutputPriorPicsFlag = val;                                }
   Bool                        getNoOutputPriorPicsFlag() const                       { return m_noOutputPriorPicsFlag;                               }
 
@@ -1833,7 +1855,10 @@ public:
 #endif
 #endif
 
-
+#if QT_BT_STRUCTURE
+  ChannelType   getTextType() const {return m_eType;}
+  Void          setTextType(ChannelType eCType) { m_eType = eCType;}
+#endif
 protected:
   TComPic*                    xGetRefPic        (TComList<TComPic*>& rcListPic, Int poc);
   TComPic*                    xGetLongTermRefPic(TComList<TComPic*>& rcListPic, Int poc, Bool pocHasMsb);
