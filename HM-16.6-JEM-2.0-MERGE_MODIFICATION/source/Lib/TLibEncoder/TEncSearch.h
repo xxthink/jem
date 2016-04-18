@@ -103,8 +103,13 @@ private:
   TCoeff*         m_ppcQTTempTUArlCoeff[MAX_NUM_COMPONENT];
 #endif
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+#if QC_SUB_PU_CLEANUP
+  TComMvField   * m_pMvFieldSP[NUM_MGR_TYPE];
+  UChar         * m_phInterDirSP[NUM_MGR_TYPE];
+#else
   TComMvField   * m_pMvFieldSP[2];
   UChar         * m_phInterDirSP[2];
+#endif
 #endif
 #if VCEG_AZ07_FRUC_MERGE
   TComMvField   * m_pMvFieldFRUC;
@@ -465,8 +470,13 @@ protected:
                                     Int&         numValidMergeCand
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
                                   , UChar*      pMergeTypeNeighbor 
+#if QC_SUB_PU_CLEANUP
+                                  , TComMvField*    pcMvFieldSP[NUM_MGR_TYPE]
+                                  , UChar*          puhInterDirSP[NUM_MGR_TYPE]
+#else
                                   , TComMvField*    pcMvFieldSP[2]
                                   , UChar*          puhInterDirSP[2]
+#endif
 #endif
                                    );
 

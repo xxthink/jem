@@ -47,6 +47,33 @@
 //! \ingroup TLibCommon
 //! \{
 
+#define QC_JVET_B058_EE                                   1  // 
+
+#if QC_JVET_B058_EE
+// Separable sub-macros for the changes introduced in JVET-B0058
+#define QC_SUB_PU_CLEANUP                                 1  // Cleanup sub-PU (change the initial mv for ATMVP, ATMVP cleanup, change merge type)
+#define QC_PRUNE_MERGE_CANDIDATES                         1  // Introduce a prunning function and enable it to spatial/temporal merge candidates as well as sub-PU/combi/zero mv candidates.
+#endif
+
+#if 1 // 0 - JEM2.0 // 1 - HM16.6 + ATMVP + HPMV // 
+
+#define COM16_C806_VCEG_AZ10_SUB_PU_TMVP                  1  ///< Sub-PU level motion vector prediction
+
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP                     
+#define COM16_C806_HEVC_MOTION_CONSTRAINT_REMOVAL         1
+#define COM16_C806_DISABLE_4X4_PU                         1
+#define COM16_C806_GEN_MRG_IMPROVEMENT                    1
+#endif
+
+#define JVET_B058_HIGH_PRECISION_MOTION_VECTOR_MC         1
+#if JVET_B058_HIGH_PRECISION_MOTION_VECTOR_MC
+#define VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE          2   ///< additional precision bit for MV storage
+#elif VCEG_AZ07_FRUC_MERGE 
+#define VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE          1   ///< additional precision bit for MV storage
+#endif
+
+#else
+
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////
@@ -89,6 +116,7 @@
 #endif
 
 #define COM16_C806_VCEG_AZ10_SUB_PU_TMVP                  1  ///< Sub-PU level motion vector prediction
+
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP                     
 #define COM16_C806_HEVC_MOTION_CONSTRAINT_REMOVAL         1
 #define COM16_C806_DISABLE_4X4_PU                         1
@@ -193,15 +221,21 @@
 #define PARALLEL_ENCODING_SAO_FIX                         1  ///< Fix of SAO for parallel encoding proposed in JVET-B0036
 #define PARALLEL_ENCODING_RAS_CABAC_INIT_PRESENT          1  ///< Fix of CABAC initialization for parallel encoding proposed in JVET-B0036
 
+#endif
+
 // encoder only changes
 #define COM16_C806_SIMD_OPT                               1  ///< SIMD optimization, no impact on RD performance
 
 #define JVET_B0039_QP_FIX                                 1  ///< Recalcualtes QP to align with a HM lambda (same relation as for all intra coding is used)
 #define JVET_B0039_INC_NUM_QP_PROB                        7  ///< Number of context is increased when more QPs are used
 
+
+
 ///////////////////////////////////////////////////////////
 // KTA tools section end
 ///////////////////////////////////////////////////////////
+
+
 
 // ====================================================================================================================
 // Debugging
@@ -400,9 +434,17 @@ typedef       float           EigenType;
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
 enum MergeType
 {
+#if QC_SUB_PU_CLEANUP
+  MGR_TYPE_DEFAULT_N  = 0, // 0
+  MGR_TYPE_SUBPU_ATMVP = 1, // 1
+  MGR_TYPE_SUBPU_ATMVP_EXT =2, // 2
+  NUM_MGR_TYPE =3,              // 3
+#else
   MGR_TYPE_DEFAULT_N  = 0, // 0
   MGR_TYPE_SUBPU_TMVP = 1, // 1
   MGR_TYPE_SUBPU_TMVP_EXT =2, // 2
+  NUM_MGR_TYPE =3, 
+#endif
 };
 #endif
 

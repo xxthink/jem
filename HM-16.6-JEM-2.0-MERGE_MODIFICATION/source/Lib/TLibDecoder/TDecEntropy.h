@@ -182,8 +182,13 @@ private:
   //UInt    m_bakAbsPartIdxCU;
 
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+#if QC_SUB_PU_CLEANUP
+  TComMvField*        m_pMvFieldSP[NUM_MGR_TYPE];
+  UChar*              m_phInterDirSP[NUM_MGR_TYPE];
+#else
   TComMvField*        m_pMvFieldSP[2];
   UChar*              m_phInterDirSP[2];
+#endif
 #endif
 
 public:
