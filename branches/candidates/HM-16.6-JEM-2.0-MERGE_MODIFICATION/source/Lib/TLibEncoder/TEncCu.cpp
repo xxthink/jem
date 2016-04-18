@@ -141,12 +141,21 @@ m_ppcPredYuvBest = new TComYuv*[m_uhTotalDepth-1];
   }
 
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+#if QC_SUB_PU_CLEANUP
+  for (Int ii=0; ii< NUM_MGR_TYPE; ii++)
+  {
+    m_pMvFieldSP[ii] = new TComMvField[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH*2];
+    m_phInterDirSP[ii] = new UChar[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
+    assert( m_pMvFieldSP[ii] != NULL && m_phInterDirSP[ii] != NULL );
+  }
+#else
   m_pMvFieldSP[0] = new TComMvField[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH*2];
   m_pMvFieldSP[1] = new TComMvField[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH*2];
   m_phInterDirSP[0] = new UChar[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
   m_phInterDirSP[1] = new UChar[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
   assert( m_pMvFieldSP[0] != NULL && m_phInterDirSP[0] != NULL );
   assert( m_pMvFieldSP[1] != NULL && m_phInterDirSP[1] != NULL );
+#endif
 #endif
 
   m_bEncodeDQP                     = false;
@@ -287,7 +296,11 @@ Void TEncCu::destroy()
     m_ppcOrigYuv = NULL;
   }
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+#if QC_SUB_PU_CLEANUP
+  for (UInt ui=0;ui<NUM_MGR_TYPE;ui++) 
+#else
   for (UInt ui=0;ui<2;ui++)
+#endif
   {
     if( m_pMvFieldSP[ui] != NULL )
     {
@@ -1844,9 +1857,18 @@ Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTem
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
   for (Int i=0 , i2 = 0 ; i< rpcTempCU->getTotalNumPart(); i++ , i2 += 2)
   {
+#if QC_SUB_PU_CLEANUP
+    for (Int j=0; j < NUM_MGR_TYPE ; j++)
+    {
+      m_phInterDirSP[j][i] = 0;
+      m_pMvFieldSP[j][i2].setRefIdx(-1);
+      m_pMvFieldSP[j][i2+1].setRefIdx(-1);
+    }
+#else
     m_phInterDirSP[1][i] = 0;
     m_pMvFieldSP[1][i2].setRefIdx(-1);
     m_pMvFieldSP[1][i2+1].setRefIdx(-1);
+#endif
   }
 #endif
 
@@ -1911,7 +1933,11 @@ Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTem
             Int iHeight = rpcTempCU->getHeight(0);
 
             Int iNumSPInOneLine, iNumSP, iSPWidth, iSPHeight;
+#if QC_SUB_PU_CLEANUP
+            UInt uiSPListIndex = eMergeCandTypeNieghors[uiMergeCand];
+#else
             UInt uiSPListIndex = eMergeCandTypeNieghors[uiMergeCand] == MGR_TYPE_SUBPU_TMVP?0:1;
+#endif
             rpcTempCU->getSPPara(iWidth, iHeight, iNumSP, iNumSPInOneLine, iSPWidth, iSPHeight);
 
             for (Int iPartitionIdx = 0; iPartitionIdx < iNumSP; iPartitionIdx++)

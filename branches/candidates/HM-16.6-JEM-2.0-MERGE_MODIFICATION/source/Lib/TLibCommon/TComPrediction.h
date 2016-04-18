@@ -150,8 +150,13 @@ protected:
   Bool                    m_bFrucTemplateAvailabe[2];
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
   UChar                   m_eMergeCandTypeNieghors[MRG_MAX_NUM_CANDS];
+#if QC_SUB_PU_CLEANUP
+  TComMvField *           m_cMvFieldSP[NUM_MGR_TYPE];
+  UChar *                 m_uhInterDirSP[NUM_MGR_TYPE];
+#else
   TComMvField *           m_cMvFieldSP[2];
   UChar *                 m_uhInterDirSP[2];
+#endif
 #endif
 #endif
 
