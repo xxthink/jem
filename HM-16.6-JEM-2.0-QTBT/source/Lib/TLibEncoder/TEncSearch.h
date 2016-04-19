@@ -83,7 +83,7 @@ private:
   TCoeff*         m_pcQTTempArlCoeff[MAX_NUM_COMPONENT];
 #endif
 #if !QT_BT_STRUCTURE
-  UChar*          m_puhQTTempTrIdx; 
+  UChar*          m_puhQTTempTrIdx;
 #endif
   UChar*          m_puhQTTempCbf[MAX_NUM_COMPONENT];
 
@@ -660,7 +660,7 @@ protected:
 #if VCEG_AZ08_INTER_KLT
       , TComYuv* pcPred
 #endif
-      DEBUG_STRING_FN_DECLARE(sDebug) );  
+      DEBUG_STRING_FN_DECLARE(sDebug) );
   Void xSetInterResidualQTData( TComYuv* pcResi, Bool bSpatial, TComTU &rTu  );
 
   UInt  xModeBitsIntra ( TComDataCU* pcCU, UInt uiMode, UInt uiPartOffset, UInt uiDepth, const ChannelType compID 

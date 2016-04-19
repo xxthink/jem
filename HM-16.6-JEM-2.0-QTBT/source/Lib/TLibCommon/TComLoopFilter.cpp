@@ -326,21 +326,21 @@ Void TComLoopFilter::xDeblockCU( TComDataCU* pcCU, UInt uiAbsZorderIdx, UInt uiD
     if (isLuma(pcCU->getTextType()))
     {
 #endif
-      xEdgeFilterLuma     ( pcCU, uiAbsZorderIdx, uiDepth, edgeDir, iEdge );
+    xEdgeFilterLuma     ( pcCU, uiAbsZorderIdx, uiDepth, edgeDir, iEdge );
 #if QT_BT_STRUCTURE
     }
     if ((isChroma(pcCU->getTextType()) || !pcCU->getSlice()->isIntra()) && pcPic->getChromaFormat()!=CHROMA_400)
     {
 #else
-      if ( chFmt!=CHROMA_400 && (bAlwaysDoChroma ||
-        (uiPelsInPart>DEBLOCK_SMALLEST_BLOCK) ||
-        (iEdge % ( (DEBLOCK_SMALLEST_BLOCK<<shiftFactor)/uiPelsInPart ) ) == 0
-        )
-        )
+    if ( chFmt!=CHROMA_400 && (bAlwaysDoChroma ||
+                               (uiPelsInPart>DEBLOCK_SMALLEST_BLOCK) ||
+                               (iEdge % ( (DEBLOCK_SMALLEST_BLOCK<<shiftFactor)/uiPelsInPart ) ) == 0
+                              )
+       )
 #endif
-      {
-        xEdgeFilterChroma   ( pcCU, uiAbsZorderIdx, uiDepth, edgeDir, iEdge );
-      }
+    {
+      xEdgeFilterChroma   ( pcCU, uiAbsZorderIdx, uiDepth, edgeDir, iEdge );
+    }
 #if QT_BT_STRUCTURE
     }
 #endif
@@ -872,10 +872,11 @@ Void TComLoopFilter::xEdgeFilterLuma( TComDataCU* const pcCU, const UInt uiAbsZo
       Int iSideThreshold = (iBeta+(iBeta>>1))>>3;
       Int iThrCut = iTc*10;
 
+
 #if DF_MODIFY
       UInt  uiBlocksInPart = 1;
 #else
-      UInt  uiBlocksInPart = uiPelsInPart / 4 ? uiPelsInPart / 4 : 1; 
+      UInt  uiBlocksInPart = uiPelsInPart / 4 ? uiPelsInPart / 4 : 1;
 #endif
       for (UInt iBlkIdx = 0; iBlkIdx<uiBlocksInPart; iBlkIdx ++)
       {

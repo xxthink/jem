@@ -48,6 +48,7 @@
 #include "TComSlice.h"
 #include "TComRdCost.h"
 #include "TComPattern.h"
+
 //! \ingroup TLibCommon
 //! \{
 
@@ -58,9 +59,9 @@ class TComPrediction;
 
 static const UInt NUM_MOST_PROBABLE_MODES=
 #if VCEG_AZ07_INTRA_65ANG_MODES
-6;
+  6;
 #else
-3;
+  3;
 #endif
 
 // ====================================================================================================================
@@ -144,7 +145,7 @@ private:
   UChar*         m_ChromaQpAdj;        ///< array of chroma QP adjustments (indexed). when value = 0, cu_chroma_qp_offset_flag=0; when value>0, indicates cu_chroma_qp_offset_flag=1 and cu_chroma_qp_offset_idx=value-1
   UInt           m_codedChromaQpAdj;
 #if !QT_BT_STRUCTURE
-  UChar*         m_puhTrIdx;           ///< array of transform indices  
+  UChar*         m_puhTrIdx;           ///< array of transform indices
 #endif
   UChar*         m_puhTransformSkip[MAX_NUM_COMPONENT];///< array of transform skipping flags
 #if VCEG_AZ08_KLT_COMMON
@@ -312,12 +313,13 @@ public:
   Void          copyToPic             ( UChar uiDepth, UInt uiWidth, UInt uiHeight );
 #else
   Void          copyPartFrom          ( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth );
-  Void          copyToPic             ( UChar uiDepth );
 #endif
 #if VCEG_AZ08_INTER_KLT 
   Void          copySameSizeCUFrom    ( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth);
 #endif
-
+#if !QT_BT_STRUCTURE
+  Void          copyToPic             ( UChar uiDepth );
+#endif
   // -------------------------------------------------------------------------------------------------------------------
   // member functions for CU description
   // -------------------------------------------------------------------------------------------------------------------
@@ -589,9 +591,9 @@ public:
   UChar         getIntraDir         ( const ChannelType channelType, const UInt uiIdx ) const { return m_puhIntraDir[channelType][uiIdx];  }
 
   Void          setIntraDirSubParts ( const ChannelType channelType,
-    const UInt uiDir,
-    const UInt uiAbsPartIdx,
-    const UInt uiDepth );
+                                      const UInt uiDir,
+                                      const UInt uiAbsPartIdx,
+                                      const UInt uiDepth );
 
   UChar*        getInterDir           ()                        { return m_puhInterDir;               }
   UChar         getInterDir           ( UInt uiIdx )            { return m_puhInterDir[uiIdx];        }
@@ -647,16 +649,16 @@ public:
 
 #if VCEG_AZ07_INTRA_65ANG_MODES
   TComDataCU*   getPULeftOffset             ( UInt& uiPartUnitIdx, 
-    UInt uiCurrPartUnitIdx, 
-    UInt uiPartOffset=0,
-    Bool bEnforceSliceRestriction=true, 
-    Bool bEnforceTileRestriction=true );
+                                              UInt uiCurrPartUnitIdx, 
+                                              UInt uiPartOffset=0,
+                                              Bool bEnforceSliceRestriction=true, 
+                                              Bool bEnforceTileRestriction=true );
   TComDataCU*   getPUAboveOffset            ( UInt& uiPartUnitIdx, 
-    UInt uiCurrPartUnitIdx, 
-    UInt uiPartOffset=0,
-    Bool bEnforceSliceRestriction=true, 
-    Bool planarAtLCUBoundary = true,
-    Bool bEnforceTileRestriction=true );
+                                              UInt uiCurrPartUnitIdx, 
+                                              UInt uiPartOffset=0,
+                                              Bool bEnforceSliceRestriction=true, 
+                                              Bool planarAtLCUBoundary = true,
+                                              Bool bEnforceTileRestriction=true );
 #endif
 
 #if COM16_C1016_AFFINE
@@ -745,14 +747,14 @@ public:
 
 
   TComDataCU*   getPULeft                   ( UInt&  uiLPartUnitIdx,
-    UInt uiCurrPartUnitIdx,
-    Bool bEnforceSliceRestriction=true,
-    Bool bEnforceTileRestriction=true );
+                                              UInt uiCurrPartUnitIdx,
+                                              Bool bEnforceSliceRestriction=true,
+                                              Bool bEnforceTileRestriction=true );
   TComDataCU*   getPUAbove                  ( UInt&  uiAPartUnitIdx,
-    UInt uiCurrPartUnitIdx,
-    Bool bEnforceSliceRestriction=true,
-    Bool planarAtCTUBoundary = false,
-    Bool bEnforceTileRestriction=true );
+                                              UInt uiCurrPartUnitIdx,
+                                              Bool bEnforceSliceRestriction=true,
+                                              Bool planarAtCTUBoundary = false,
+                                              Bool bEnforceTileRestriction=true );
   TComDataCU*   getPUAboveLeft              ( UInt&  uiALPartUnitIdx, UInt uiCurrPartUnitIdx, Bool bEnforceSliceRestriction=true );
 
   TComDataCU*   getQpMinCuLeft              ( UInt&  uiLPartUnitIdx , UInt uiCurrAbsIdxInCtu );
@@ -773,11 +775,11 @@ public:
     , Bool*         pbICFlag
 #endif
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
-    , UChar*          peMergeTypeNeighbors
-    , TComMvField*    pcMvFieldSP[2]
+  , UChar*          peMergeTypeNeighbors
+  , TComMvField*    pcMvFieldSP[2]
   , UChar*          puhInterDirSP[2]
   , UInt            uiDecCurrAbsPartIdx = 0
-    , TComDataCU*     pDecCurrCU = NULL
+  , TComDataCU*     pDecCurrCU = NULL
 #endif
     , Int mrgCandIdx = -1 );
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
@@ -800,7 +802,7 @@ public:
   Void getNeighboringMvField(TComDataCU *pcCU, UInt uiPartIdx, TComMvField *cMvField,UChar *pucInterDir);
   Void generateMvField(TComMvField *cMvField,UChar* pucInterDir, UInt uiMvNum,TComMvField* cMvFieldMedian,UChar &ucInterDirMedian);  
   Bool getInterMergeSubPURecursiveCandidate( UInt uiAbsPartIdx, UInt uiPUIdx, TComMvField* pcMvFieldNeighbours, UChar* puhInterDirNeighbours, Int& numValidMergeCand
-    , UChar*          peMergeTypeNeighbors  , TComMvField*    pcMvFieldSP[2] , UChar*          puhInterDirSP[2] , Int iCount );
+  , UChar*          peMergeTypeNeighbors  , TComMvField*    pcMvFieldSP[2] , UChar*          puhInterDirSP[2] , Int iCount );
 #endif
 #if VCEG_AZ07_IMV
 #if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE

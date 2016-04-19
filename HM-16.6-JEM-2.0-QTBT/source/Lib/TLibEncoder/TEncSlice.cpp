@@ -790,7 +790,7 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
   {
     const UInt ctuRsAddr = pcPic->getPicSym()->getCtuTsToRsAddrMap(ctuTsAddr);
     // initialize CTU encoder
-    TComDataCU* pCtu = pcPic->getCtu( ctuRsAddr ); 
+    TComDataCU* pCtu = pcPic->getCtu( ctuRsAddr );
     pCtu->initCtu( pcPic, ctuRsAddr );
 
     // update CABAC state

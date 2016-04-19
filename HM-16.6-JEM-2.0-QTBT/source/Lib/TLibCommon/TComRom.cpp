@@ -234,7 +234,7 @@ Void initROM()
   for ( i=4; i<=MAX_CU_SIZE; i*=2 )
 #endif
   {
-    g_aucConvertToBit[ i ] = c;   
+    g_aucConvertToBit[ i ] = c;
     c++;
   }
 #if QT_BT_STRUCTURE
@@ -259,7 +259,7 @@ Void initROM()
 #if QT_BT_STRUCTURE
   for ( i=0; i<7; i++ ) 
 #else
-  for ( i=0; i<5; i++ ) 
+  for ( i=0; i<5; i++ )
 #endif
   {
     TMatrixCoeff *iT = NULL;
@@ -278,7 +278,7 @@ Void initROM()
       case 6: iT = g_aiTr128[0][0]; break;
       case 7: exit(0); break;
 #else
-    case 0: iT = g_aiTr4 [0][0]; break; 
+    case 0: iT = g_aiTr4 [0][0]; break;
     case 1: iT = g_aiTr8 [0][0]; break;
     case 2: iT = g_aiTr16[0][0]; break;
     case 3: iT = g_aiTr32[0][0]; break;
@@ -1636,7 +1636,7 @@ const UInt ctxIndMap4x4[4*4] =
   7, 7, 8, 8
 };
 
-#if COM16_C806_T64  
+#if COM16_C806_T64
 #if QT_BT_STRUCTURE
 const UInt g_uiMinInGroup[  LAST_SIGNIFICANT_GROUPS ] = {0,1,2,3,4,6,8,12,16,24,32,48,64,96};
 const UInt g_uiGroupIdx  [  MAX_TU_SIZE ] = {0,1,2,3,4,4,5,5,6,6,6,6,7,7,7,7,8,8,8,8,8,8,8,8,9,9,9,9,9,9,9,9, 10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11
@@ -1752,7 +1752,6 @@ const UInt g_scalingListSize   [SCALING_LIST_SIZE_NUM] = {16,64,256,1024
   , 4096
 #endif
 };
-
 const UInt g_scalingListSizeX  [SCALING_LIST_SIZE_NUM] = { 4, 8, 16,  32
 #if COM16_C806_T64
   , 64

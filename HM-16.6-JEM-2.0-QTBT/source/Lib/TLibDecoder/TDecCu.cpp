@@ -419,7 +419,7 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
 #if QT_BT_STRUCTURE
   if( ( uiDepth < pcCU->getDepth( uiAbsPartIdx ) ) || bBoundary ) 
 #else
-  if( ( ( uiDepth < pcCU->getDepth( uiAbsPartIdx ) ) && ( uiDepth < sps.getLog2DiffMaxMinCodingBlockSize() ) ) || bBoundary ) 
+  if( ( ( uiDepth < pcCU->getDepth( uiAbsPartIdx ) ) && ( uiDepth < sps.getLog2DiffMaxMinCodingBlockSize() ) ) || bBoundary )
 #endif
   {
     UInt uiIdx = uiAbsPartIdx;
@@ -433,7 +433,6 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
     {
       setIsChromaQpAdjCoded(true);
     }
-
 
     for ( UInt uiPartUnitIdx = 0; uiPartUnitIdx < 4; uiPartUnitIdx++ )
     {
@@ -729,7 +728,7 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
   {
 #endif
 #if VCEG_AZ05_INTRA_MPI
-    m_pcEntropyDecoder->decodeMPIIdx(pcCU, uiAbsPartIdx, uiDepth);
+  m_pcEntropyDecoder->decodeMPIIdx(pcCU, uiAbsPartIdx, uiDepth);
 #endif
 #if COM16_C1046_PDPC_INTRA
   m_pcEntropyDecoder->decodePDPCIdx(pcCU, uiAbsPartIdx, uiDepth);
@@ -863,7 +862,7 @@ Void TDecCu::xDecompressCU( TComDataCU* pCtu, UInt uiAbsPartIdx,  UInt uiDepth )
 #if QT_BT_STRUCTURE  
   if( uiDepth < pCtu->getDepth( uiAbsPartIdx ) )  
 #else
-  if( ( ( uiDepth < pCtu->getDepth( uiAbsPartIdx ) ) && ( uiDepth < sps.getLog2DiffMaxMinCodingBlockSize() ) ) || bBoundary ) 
+  if( ( ( uiDepth < pCtu->getDepth( uiAbsPartIdx ) ) && ( uiDepth < sps.getLog2DiffMaxMinCodingBlockSize() ) ) || bBoundary )
 #endif
   {
     UInt uiNextDepth = uiDepth + 1;
@@ -1201,6 +1200,7 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
   TCoeff*   pcCoeff           = pcCU->getCoeff(compID) + rTu.getCoefficientOffset(compID);//( uiNumCoeffInc * uiAbsPartIdx );
 
   const QpParam cQP(*pcCU, compID);
+
 
   DEBUG_STRING_NEW(sDebug);
 #if DEBUG_STRING
@@ -1558,7 +1558,6 @@ TDecCu::xIntraRecQT(TComYuv*    pcRecoYuv,
   TComDataCU *pcCU  = rTu.getCU();
   UInt uiAbsPartIdx = rTu.GetAbsPartIdxTU();
   UInt uiTrMode     = pcCU->getTransformIdx( uiAbsPartIdx );
-
   if( uiTrMode == uiTrDepth )
   {
 #endif
@@ -1872,9 +1871,9 @@ Void TDecCu::xDeriveCUMV( TComDataCU * pcCU , UInt uiAbsPartIdx , UInt uiDepth )
             , abICFlag
 #endif
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
-            , eMergeCandTypeNieghors , m_pMvFieldSP , m_phInterDirSP
+            , eMergeCandTypeNieghors , m_pMvFieldSP , m_phInterDirSP  
 #endif
-            , uiMergeIndex );
+            );
         }
         pcCU->setInterDirSubParts( uhInterDirNeighbours[uiMergeIndex], uiSubPartIdx, uiPartIdx, uiDepth );
 #if VCEG_AZ06_IC

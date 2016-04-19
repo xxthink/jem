@@ -856,7 +856,7 @@ Void TDecSbac::parseROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 #if QT_BT_STRUCTURE
     pcCU->setROTIdxSubParts( CHANNEL_TYPE_LUMA, 0, uiAbsPartIdx,  uiDepth ); 
 #else
-    pcCU->setROTIdxSubParts( 0, uiAbsPartIdx,  uiDepth ); 
+       pcCU->setROTIdxSubParts( 0, uiAbsPartIdx,  uiDepth ); 
 #endif
   }
 }
@@ -1044,7 +1044,7 @@ Void TDecSbac::parseSplitFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt ui
   if ( uiDepth == g_aucConvertToBit[pcCU->getSlice()->getSPS()->getCTUSize()] 
   - g_aucConvertToBit[pcCU->getSlice()->getSPS()->getMinQTSize(pcCU->getSlice()->getSliceType(), pcCU->getTextType())])
 #else
-  if( uiDepth == pcCU->getSlice()->getSPS()->getLog2DiffMaxMinCodingBlockSize() ) 
+  if( uiDepth == pcCU->getSlice()->getSPS()->getLog2DiffMaxMinCodingBlockSize() )
 #endif
   {
     pcCU->setDepthSubParts( uiDepth, uiAbsPartIdx );
@@ -2397,7 +2397,7 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
     if( numNonZero > 0 )
     {
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
-      bCbfCU = true;
+  bCbfCU = true;
 #endif
      Bool signHidden = ( lastNZPosInCG - firstNZPosInCG >= SBH_THRESHOLD );
 #if COM16_C983_RSAF

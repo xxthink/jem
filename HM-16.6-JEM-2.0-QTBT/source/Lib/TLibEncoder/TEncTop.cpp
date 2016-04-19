@@ -128,7 +128,7 @@ Void TEncTop::create ()
     m_cRateCtrl.init( m_framesToBeEncoded, m_RCTargetBitrate, (Int)( (Double)m_iFrameRate/m_temporalSubsampleRatio + 0.5), m_iGOPSize, m_iSourceWidth, m_iSourceHeight,
         m_CTUSize, m_CTUSize, m_RCKeepHierarchicalBit, m_RCUseLCUSeparateModel, m_GOPList );
 #else
-    m_cRateCtrl.init( m_framesToBeEncoded, m_RCTargetBitrate, m_iFrameRate, m_iGOPSize, m_iSourceWidth, m_iSourceHeight,
+    m_cRateCtrl.init( m_framesToBeEncoded, m_RCTargetBitrate, (Int)( (Double)m_iFrameRate/m_temporalSubsampleRatio + 0.5), m_iGOPSize, m_iSourceWidth, m_iSourceHeight,
         m_maxCUWidth, m_maxCUHeight, m_RCKeepHierarchicalBit, m_RCUseLCUSeparateModel, m_GOPList );
 #endif
   }
@@ -187,7 +187,7 @@ Void TEncTop::create ()
 #endif
 
 #if ALF_HM3_REFACTOR
-  if( m_useALF )  
+  if( m_useALF )
   {
     assert( m_bitDepth[CHANNEL_TYPE_LUMA] == m_bitDepth[CHANNEL_TYPE_CHROMA] );
 #if QT_BT_STRUCTURE
@@ -314,6 +314,7 @@ Void TEncTop::init(Bool isFieldCoding)
 #if VCEG_AZ08_USE_KLT
                    m_useKLT,
 #endif
+                   m_useRDOQ,
                    m_useRDOQTS,
 #if T0196_SELECTIVE_RDOQ
                    m_useSelectiveRDOQ,

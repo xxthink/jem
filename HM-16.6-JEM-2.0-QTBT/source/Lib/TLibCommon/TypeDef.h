@@ -70,7 +70,7 @@
 
 ///////////////////////////////////////////////////////////
 // KTA tools section start
-/////////////////////////////////////////////////////////// 
+///////////////////////////////////////////////////////////
 #define VCEG_AZ08_USE_KLT                                 1  ///< KLT (if defined 1, use cfg option of KLT to control the enablement of intra KLT and inter KLT (INTERA_KLT, VCEG_AZ08_INTER_KLT should be set as 1); if 0, use INTERA_KLT, VCEG_AZ08_INTER_KLT to control the enablement.)
 
 #define VCEG_AZ08_INTER_KLT                               1  ///< (default 1) Enable inter KLT
@@ -164,7 +164,7 @@
 #define VCEG_AZ07_INTRA_BOUNDARY_FILTER_MULTI_LINE        1  ///< 0: Filter one boundary line, 1: Filter 4 boundary lines
 #endif                                                       
 
-#define VCEG_AZ07_INTRA_65ANG_MODES                       1  ///< 65 intra prediction directions  
+#define VCEG_AZ07_INTRA_65ANG_MODES                       1  ///< 65 intra prediction directions
 #if VCEG_AZ07_INTRA_65ANG_MODES
 #define JVET_B0051_NON_MPM_MODE                           1  // Use two mode sets for non-MPM mode coding
 #endif
@@ -172,8 +172,8 @@
 #define VCEG_AZ07_ECABAC                                  1  ///< CABAC improvements
 #if VCEG_AZ07_ECABAC                                         
 #define VCEG_AZ07_CTX_RESIDUALCODING                      1  ///< Context modeling for transform coefficient levels
-#define VCEG_AZ07_BAC_ADAPT_WDOW                          1  ///< Multi-hypothesis probability estimation 
-#define VCEG_AZ07_INIT_PREVFRAME                          1  ///< Initialization for context models 
+#define VCEG_AZ07_BAC_ADAPT_WDOW                          1  ///< Multi-hypothesis probability estimation
+#define VCEG_AZ07_INIT_PREVFRAME                          1  ///< Initialization for context models
 #if VCEG_AZ07_INIT_PREVFRAME
 #define VCEG_AZ07_INIT_PREVFRAME_FIX                      1  ///< Fix for GOP16
 #endif

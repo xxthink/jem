@@ -1643,7 +1643,6 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
 #endif
 #endif
         );
-
 #if COM16_C806_ALF_TEMPPRED_NUM
       if( cAlfParam.alf_flag && !cAlfParam.temproalPredFlag && cAlfParam.filtNo >= 0 )
       {
