@@ -893,7 +893,6 @@ Void TComAdaptiveLoopFilter::ALFProcess(TComPic* pcPic, ALFParam* pcAlfParam)
   pcPicYuvExtRec->setBorderExtension ( false );
   pcPicYuvExtRec->extendPicBorder    (m_FILTER_LENGTH >> 1);
 
-
   if(pcAlfParam->cu_control_flag)
   {
     UInt idx = 0;
@@ -1510,11 +1509,7 @@ Void TComAdaptiveLoopFilter::xSubCUAdaptive_qc(TComDataCU* pcCU, ALFParam* pcAlf
   
   // go to sub-CU?
 #if QT_BT_STRUCTURE
-#if QT_BT_STRUCTURE
   if ( uiDepth < pcCU->getDepth( uiAbsPartIdx ) && uiDepth < pcAlfParam->alf_max_depth  )
-#else
-  if ( ( uiDepth < pcCU->getDepth( uiAbsPartIdx ) && uiDepth < pcAlfParam->alf_max_depth ) || bBoundary )
-#endif
 #else
   if ( ( ( uiDepth < pcCU->getDepth( uiAbsPartIdx ) ) && ( uiDepth < pcCU->getSlice()->getSPS()->getLog2DiffMaxMinCodingBlockSize() ) && uiDepth < pcAlfParam->alf_max_depth ) || bBoundary )
 #endif
@@ -1950,11 +1945,7 @@ Void TComAdaptiveLoopFilter::setAlfCtrlFlags(ALFParam *pAlfParam, TComDataCU *pc
 #endif
   
 #if QT_BT_STRUCTURE
-#if QT_BT_STRUCTURE
   if( uiDepth < pcCU->getDepth( uiAbsPartIdx )  && uiDepth < pAlfParam->alf_max_depth  )
-#else
-  if( ( ( uiDepth < pcCU->getDepth( uiAbsPartIdx ) ) ) || bBoundary )
-#endif
 #else
   if( ( ( uiDepth < pcCU->getDepth( uiAbsPartIdx ) ) && ( uiDepth < pcCU->getSlice()->getSPS()->getLog2DiffMaxMinCodingBlockSize() ) ) || bBoundary )
 #endif

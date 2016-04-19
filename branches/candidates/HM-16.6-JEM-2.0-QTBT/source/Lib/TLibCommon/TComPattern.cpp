@@ -424,7 +424,6 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
 #endif
     }
   }
-
   DEBUG_STRING_APPEND(sDebug, ss.str())
 }
 

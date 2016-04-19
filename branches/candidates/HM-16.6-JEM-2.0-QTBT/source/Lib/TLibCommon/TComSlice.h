@@ -809,7 +809,7 @@ private:
   Int              m_numReorderPics[MAX_TLAYER];
 
   // Tool list
-  UInt             m_uiQuadtreeTULog2MaxSize; //need to clear the TU HLP ,JCA
+  UInt             m_uiQuadtreeTULog2MaxSize;
   UInt             m_uiQuadtreeTULog2MinSize;
   UInt             m_uiQuadtreeTUMaxDepthInter;
   UInt             m_uiQuadtreeTUMaxDepthIntra;
@@ -1557,6 +1557,7 @@ private:
 
   UInt                       m_colRefIdx;
   UInt                       m_maxNumMergeCand;
+
 #if QT_BT_STRUCTURE
   UInt                       m_uiMaxBTSize;
 #endif
@@ -1759,6 +1760,7 @@ public:
   Void                        createExplicitReferencePictureSetFromReference( TComList<TComPic*>& rcListPic, const TComReferencePictureSet *pReferencePictureSet, Bool isRAP, Int pocRandomAccess, Bool bUseRecoveryPoint, const Bool bEfficientFieldIRAPEnabled);
   Void                        setMaxNumMergeCand(UInt val )                          { m_maxNumMergeCand = val;                                      }
   UInt                        getMaxNumMergeCand() const                             { return m_maxNumMergeCand;                                     }
+
 #if QT_BT_STRUCTURE
   Void                        setMaxBTSize                     (Int i)             { m_uiMaxBTSize = i; }
   UInt                        getMaxBTSize                     ()                  { return m_uiMaxBTSize; }
@@ -1854,6 +1856,7 @@ public:
 #endif
 #endif
 #endif
+
 
 #if QT_BT_STRUCTURE
   ChannelType   getTextType() const {return m_eType;}

@@ -335,8 +335,8 @@ static const Int MIN_TU_SIZE =                                      4;
 static const Int MAX_TU_SIZE =                                     128; 
 static const Int MAX_LOG2_TU_SIZE_PLUS_ONE =                        8; ///< log2(MAX_TU_SIZE) + 1 
 #else
-static const Int MAX_TU_SIZE =                                     64; 
-static const Int MAX_LOG2_TU_SIZE_PLUS_ONE =                        7; ///< log2(MAX_TU_SIZE) + 1 
+static const Int MAX_TU_SIZE =                                     64;
+static const Int MAX_LOG2_TU_SIZE_PLUS_ONE =                        7; ///< log2(MAX_TU_SIZE) + 1
 #endif
 #else
 static const Int MAX_TU_SIZE =                                     32;

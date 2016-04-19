@@ -423,7 +423,7 @@ Void TDecTop::xActivateParameterSets()
 #if VCEG_AZ08_USE_KLT
         , sps->getUseKLT()
 #endif
-);
+        );
 #endif
 
     m_cSliceDecoder.create();

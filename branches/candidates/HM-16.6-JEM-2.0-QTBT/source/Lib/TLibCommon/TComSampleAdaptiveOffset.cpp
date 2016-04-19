@@ -697,7 +697,7 @@ Void TComSampleAdaptiveOffset::xPCMRestoration(TComPic* pcPic)
 Void TComSampleAdaptiveOffset::xPCMCURestoration ( TComDataCU* pcCU, UInt uiAbsZorderIdx, UInt uiDepth )
 {
   TComPic* pcPic     = pcCU->getPic();
-  UInt uiCurNumParts = pcPic->getNumPartitionsInCtu() >> (uiDepth<<1);  
+  UInt uiCurNumParts = pcPic->getNumPartitionsInCtu() >> (uiDepth<<1);
   UInt uiQNumParts   = uiCurNumParts>>2;
 
   // go to sub-CU

@@ -551,6 +551,7 @@ protected:
   EigenType **m_pppdTmpEigenVector;
 #endif
 #endif
+
 private:
   // forward Transform
   Void xT   ( const Int channelBitDepth, Bool useDST, Pel* piBlkResi, UInt uiStride, TCoeff* psCoeff, Int iWidth, Int iHeight, const Int maxLog2TrDynamicRange 
@@ -655,7 +656,7 @@ __inline UInt              xGetCodedLevel  ( Double&          rd64CodedCost,
 #endif
 #if VCEG_AZ08_KLT_COMMON
     , Bool useKLT
-#endif    
+#endif
     );
 
   // inverse skipping transform

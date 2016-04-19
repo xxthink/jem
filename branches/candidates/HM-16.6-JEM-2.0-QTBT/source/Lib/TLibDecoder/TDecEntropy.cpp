@@ -195,13 +195,13 @@ Void TDecEntropy::decodePredInfo    ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt 
     if (isLuma(pcCU->getTextType()))
     {
 #endif
-      decodeIntraDirModeLuma  ( pcCU, uiAbsPartIdx, uiDepth );
+    decodeIntraDirModeLuma  ( pcCU, uiAbsPartIdx, uiDepth );
 #if QT_BT_STRUCTURE
     }
     if (pcCU->getPic()->getChromaFormat()!=CHROMA_400
       && (isChroma(pcCU->getTextType()) || !pcCU->getSlice()->isIntra()))
 #else
-      if (pcCU->getPic()->getChromaFormat()!=CHROMA_400)
+    if (pcCU->getPic()->getChromaFormat()!=CHROMA_400)
 #endif
     {
       decodeIntraDirModeChroma( pcCU, uiAbsPartIdx, uiDepth );

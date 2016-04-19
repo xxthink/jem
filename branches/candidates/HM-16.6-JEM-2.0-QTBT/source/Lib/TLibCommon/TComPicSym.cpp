@@ -531,7 +531,7 @@ Void TComPicSym::initFRUCMVP()
       Int nCurRefIdx = nRefIdx; 
       Int nCurRefPOC = pCurSlice->getRefPOC( eRefPicList , nCurRefIdx );
       Int nColPOC = pCurSlice->getRefPOC( eRefPicList , nRefIdx );
-      TComPic * pColPic = pCurSlice->getRefPic( eRefPicList , nRefIdx );      
+      TComPic * pColPic = pCurSlice->getRefPic( eRefPicList , nRefIdx );
       assert( getNumberOfCtusInFrame() == pColPic->getNumberOfCtusInFrame() );
       for( UInt uiColPicCUAddr = 0 ; uiColPicCUAddr < pColPic->getNumberOfCtusInFrame() ; uiColPicCUAddr++ )
       {
@@ -568,11 +568,11 @@ Void TComPicSym::initFRUCMVP()
                 TComMv mv2TargetPic = nCurRefIdx == nTargetRefIdx ? mv2CurRefPic : pColPicCU->scaleMV( mvColPic , nCurPOC , nTargetRefPOC , nColPOC , nColRefPOC );
                 pCurPicFRUCCUMVField->setMv( mv2TargetPic , uiAbsPartIdxCurPicCU );
                 pCurPicFRUCCUMVField->setRefIdx( nTargetRefIdx , uiAbsPartIdxCurPicCU );
-              }    
+              }            
             }
-          }  
+          }
         }
-      }      
+      }
     }
   }
 }

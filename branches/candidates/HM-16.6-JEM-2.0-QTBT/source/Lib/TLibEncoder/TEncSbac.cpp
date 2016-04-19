@@ -1998,6 +1998,7 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
   const ChannelType  channelType       = toChannelType(compID);
   const Bool         extendedPrecision = sps.getSpsRangeExtension().getExtendedPrecisionProcessingFlag();
 
+
   const Bool         alignCABACBeforeBypass = sps.getSpsRangeExtension().getCabacBypassAlignmentEnabledFlag();
   const Int          maxLog2TrDynamicRange  = sps.getMaxLog2TrDynamicRange(channelType);
 
@@ -2233,7 +2234,7 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
 #endif
       coeffSigns    = ( pcCoef[ posLast ] < 0 );
       numNonZero    = 1;
-#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA 
+#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
       bCbfCU += abs(pcCoef[posLast]);
 #endif
       lastNZPosInCG  = iScanPosSig;
@@ -2503,7 +2504,6 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
     }
   }
 #endif
-
   return;
 }
 
@@ -3197,7 +3197,7 @@ Void TEncSbac::codeEmtTuIdx( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
   {
     UChar ucTrIdx = pcCU->getEmtTuIdx( uiAbsPartIdx );
     m_pcBinIf->encodeBin( ( ucTrIdx & 1 ) ? 1 : 0, m_cEmtTuIdxSCModel.get(0, 0, 0));
-  m_pcBinIf->encodeBin( ( ucTrIdx / 2 ) ? 1 : 0, m_cEmtTuIdxSCModel.get(0, 0, 1));
+    m_pcBinIf->encodeBin( ( ucTrIdx / 2 ) ? 1 : 0, m_cEmtTuIdxSCModel.get(0, 0, 1));
   }
 #if QT_BT_STRUCTURE
   if ( !pcCU->isIntra( uiAbsPartIdx ) && pcCU->getWidth(uiAbsPartIdx) <=EMT_INTER_MAX_CU && pcCU->getHeight(uiAbsPartIdx)<= EMT_INTER_MAX_CU  )

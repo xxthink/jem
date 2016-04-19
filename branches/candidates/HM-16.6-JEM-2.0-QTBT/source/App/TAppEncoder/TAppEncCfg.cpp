@@ -1110,7 +1110,7 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 #if VCEG_AZ06_IC
   ("IlluCompEnable",                                  m_useIC, true, "Enable illumination compensation")
 #endif
-#if ALF_HM3_REFACTOR  
+#if ALF_HM3_REFACTOR
   ("ALF",                                             m_useALF, true, "Adaptive Loop Filter")
 #endif
 #if COM16_C806_EMT
@@ -1897,6 +1897,7 @@ Void TAppEncCfg::xCheckParameter()
   xConfirmPara( m_uiMaxCUHeight < 16,                                                       "Maximum partition height size should be larger than or equal to 16");
   xConfirmPara( (m_iSourceWidth  % (m_uiMaxCUWidth  >> (m_uiMaxCUDepth-1)))!=0,             "Resulting coded frame width must be a multiple of the minimum CU size");
   xConfirmPara( (m_iSourceHeight % (m_uiMaxCUHeight >> (m_uiMaxCUDepth-1)))!=0,             "Resulting coded frame height must be a multiple of the minimum CU size");
+
   xConfirmPara( m_uiQuadtreeTULog2MinSize < 2,                                        "QuadtreeTULog2MinSize must be 2 or greater.");
 #if COM16_C806_T64
   xConfirmPara( m_uiQuadtreeTULog2MaxSize > 6,                                        "QuadtreeTULog2MaxSize must be 6 or smaller.");

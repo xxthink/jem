@@ -221,6 +221,7 @@ Void TDecGop::filterPicture(TComPic* pcPic)
     m_pcSAO->SAOProcess(pcPic);
     m_pcSAO->PCMLFDisableProcess(pcPic);
   }
+
 #if ALF_HM3_REFACTOR
   // adaptive loop filter
   if( pcSlice->getSPS()->getUseALF() )

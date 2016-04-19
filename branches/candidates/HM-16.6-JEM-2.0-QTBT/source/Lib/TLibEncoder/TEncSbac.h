@@ -202,7 +202,6 @@ public:
     , Int& bCbfCU
 #endif  
     );
-
   Void codeTransformSkipFlags ( TComTU &rTu, ComponentID component );
 #if VCEG_AZ08_KLT_COMMON
   Void codeKLTFlags           ( TComTU &rTu, ComponentID component );

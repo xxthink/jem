@@ -677,7 +677,7 @@ Void TEncEntropy::encodePredInfo( TComDataCU* pcCU, UInt uiAbsPartIdx )
     if (isLuma(pcCU->getTextType()))
     {
 #endif
-      encodeIntraDirModeLuma  ( pcCU, uiAbsPartIdx,true );
+    encodeIntraDirModeLuma  ( pcCU, uiAbsPartIdx,true );
 #if QT_BT_STRUCTURE
     }
     if (pcCU->getPic()->getChromaFormat()!=CHROMA_400

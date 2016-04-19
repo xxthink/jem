@@ -703,6 +703,7 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
   {
     assert(log2MinCUSize + pcSPS->getLog2DiffMaxMinCodingBlockSize() >= 5);
   }
+  
   Int maxCUDepthDelta = uiCode;
 #endif
 #if QT_BT_STRUCTURE
@@ -2401,7 +2402,6 @@ Void TDecCavlc::parseAlfCtrlFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDe
     pcCU->setAlfCtrlFlagSubParts( uiSymbol, uiAbsPartIdx, uiDepth );
   }
 }
-
 #endif
 
 Void TDecCavlc::parseAlfFlag (UInt& ruiVal)
