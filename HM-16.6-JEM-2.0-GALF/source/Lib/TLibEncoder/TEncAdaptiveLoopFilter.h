@@ -58,7 +58,7 @@ private:
   static const Int m_aiSymmetricArray7x7[49];     ///< scan index for 7x7 filter
   static const Int m_aiSymmetricArray5x5[25];     ///< scan index for 5x5 filter
   static const Int m_aiSymmetricArray9x7[63];     ///< scan index for 9x7 filter
-  
+
   Double** m_ppdAlfCorr;
   Double* m_pdDoubleAlfCoeff;
   
@@ -73,6 +73,7 @@ private:
   TComPic* m_pcPic;
   ALFParam* m_pcBestAlfParam;
   ALFParam* m_pcTempAlfParam;
+
   
   TComPicYuv* m_pcPicYuvBest;
   TComPicYuv* m_pcPicYuvTmp;
@@ -80,6 +81,15 @@ private:
   UInt m_uiNumSCUInCU;
   
   Int m_varIndTab[m_NO_VAR_BINS];
+#if QC_ALF_IMPROVEMENT
+  Int m_predIdxTab[m_NO_VAR_BINS];
+  Int m_codedVarBins[m_NO_VAR_BINS];
+  Int m_focedCoeff0;
+  Bool bFindBestFixedFilter;
+  Bool bTapDecision;
+  Bool bUpdateMatrix; //for filter tap decision
+  imgpel **m_maskBestpImg;
+#endif
   double ***m_yGlobalSym;
   double ****m_EGlobalSym;
   double *m_pixAcc;
@@ -102,7 +112,9 @@ private:
   Int *m_filterCoeffQuant;
   Int **m_diffFilterCoeffQuant;
   Int **m_FilterCoeffQuantTemp;
-  
+#if QC_ALF_IMPROVEMENT
+  Int **m_imgY_preFilter;
+#endif
   static Int  m_aiTapPos9x9_In9x9Sym[21];
   static Int  m_aiTapPos7x7_In9x9Sym[14];
   static Int  m_aiTapPos5x5_In9x9Sym[8];
@@ -119,13 +131,18 @@ private:
   Void xCopyTmpAlfCtrlFlagsTo   ();
   Void xCopyTmpAlfCtrlFlagsFrom ();
   
+#if !QC_ALF_IMPROVEMENT 
   // encoder ALF control flags
   Void xEncodeCUAlfCtrlFlags  ();
   Void xEncodeCUAlfCtrlFlag   ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth);
-  
-  // functions related to correlation computation
-  Void xCalcCorrelationFunc   ( Pel* pOrg, Pel* pCmp, Int iTap, Int iWidth, Int iHeight, Int iOrgStride, Int iCmpStride);
+#endif
 
+  // functions related to correlation computation
+#if QC_ALF_IMPROVEMENT && !EE_USE_HM3_CHROMA
+  Void xCalcCorrelationFunc   ( Pel* pOrg, Pel* pCmp, Int iTap, Int iWidth, Int iHeight, Int iOrgStride, Int iCmpStride, Int iNumCoeff);
+#else
+  Void xCalcCorrelationFunc   ( Pel* pOrg, Pel* pCmp, Int iTap, Int iWidth, Int iHeight, Int iOrgStride, Int iCmpStride);
+#endif
   // functions related to filtering
   Void xFilterCoefQuickSort   ( Double *coef_data, Int *coef_num, Int upper, Int lower );
   Void xQuantFilterCoef       ( Double* h, Int* qh, Int tap, int bit_depth );
@@ -133,7 +150,7 @@ private:
   Void xCopyDecToRestCUs      ( TComPicYuv* pcPicDec, TComPicYuv* pcPicRest );
   Void xCopyDecToRestCU       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, TComPicYuv* pcPicDec, TComPicYuv* pcPicRest );
   Void xFilteringFrameChroma  ( TComPicYuv* pcPicOrg, TComPicYuv* pcPicDec, TComPicYuv* pcPicRest );
-  
+
   // distortion / misc functions
   UInt64 xCalcSSD             ( Pel* pOrg, Pel* pCmp, Int iWidth, Int iHeight, Int iStride );
   Void   xCalcRDCost          ( TComPicYuv* pcPicOrg, TComPicYuv* pcPicCmp, ALFParam* pAlfParam, UInt64& ruiRate, UInt64& ruiDist, Double& rdCost, const TComSlice * pSlice);
@@ -141,8 +158,11 @@ private:
   Void   xCalcRDCost          ( ALFParam* pAlfParam, UInt64& ruiRate, UInt64 uiDist, Double& rdCost, const TComSlice * pSlice);
   Int    xGauss               ( Double **a, Int N );
   
-  Void  xretriveBlockMatrix    (Int iNumTaps, Int* piTapPosInMaxFilter, Double*** pppdEBase, Double*** pppdETarget, Double** ppdyBase, Double** ppdyTarget );
+#if QC_ALF_IMPROVEMENT
+  Void  setInitialMask(TComPicYuv* pcPicOrg, TComPicYuv* pcPicDec, ALFParam* pcAlfParam);
+#else
   Void  setInitialMask(TComPicYuv* pcPicOrg, TComPicYuv* pcPicDec);
+#endif
 
 protected:
   /// do ALF for chroma
@@ -169,7 +189,11 @@ public:
 #endif
   /// test ALF for luma
   Void xEncALFLuma_qc                  ( TComPicYuv* pcPicOrg, TComPicYuv* pcPicDec, TComPicYuv* pcPicRest, UInt64& ruiMinRate, 
-                                         UInt64& ruiMinDist, Double& rdMinCost, const TComSlice * pSlice);
+                                         UInt64& ruiMinDist, Double& rdMinCost, const TComSlice * pSlice
+#if QC_ALF_IMPROVEMENT
+                                         ,Int log2UnitSize
+#endif
+                                         );
   Void xCUAdaptiveControl_qc           ( TComPicYuv* pcPicOrg, TComPicYuv* pcPicDec, TComPicYuv* pcPicRest, UInt64& ruiMinRate, 
                                          UInt64& ruiMinDist, Double& rdMinCost, const TComSlice * pSlice );
   Void xSetCUAlfCtrlFlags_qc            (UInt uiAlfCtrlDepth, TComPicYuv* pcPicOrg, TComPicYuv* pcPicDec, TComPicYuv* pcPicRest, 
@@ -180,6 +204,34 @@ public:
   Void xFilterTapDecision_qc            (TComPicYuv* pcPicOrg, TComPicYuv* pcPicDec, TComPicYuv* pcPicRest, UInt64& ruiMinRate, 
                                          UInt64& ruiMinDist, Double& rdMinCost, const TComSlice * pSlice);
   Void xFirstFilteringFrameLuma         (imgpel* ImgOrg, imgpel* ImgDec, imgpel* ImgRest, ALFParam* ALFp, Int tap,  Int Stride, const TComSlice * pSlice);
+#if QC_ALF_IMPROVEMENT  
+  Void preFilterFr(Int** imgY_preFilter, imgpel* imgY_rec, imgpel * imgY_org, imgpel* imgY_append, imgpel **varImg,  
+                 Int **filterCoeffSym, Int usePrevFilt[], Int img_height, Int img_width, Int Stride, Int filtNo);
+  Void calcMatrixE(Int *ELocal, imgpel *ImgDec, Int *p_pattern, Int i, Int j, Int flV, Int fl, Int transpose, Int Stride);
+  Void xstoreInBlockMatrix(imgpel* ImgOrg, imgpel* ImgDec, Int tap, Int Stride, Int log2UnitSize );
+  Void xstoreInBlockMatrixForChroma(TComPicYuv* pcPicOrg, TComPicYuv* pcPicDec, Int tap, Int chroma_idc);
+  Void xFilteringFrameLuma_qc(imgpel* ImgOrg, imgpel* imgY_pad, imgpel* ImgFilt, ALFParam* ALFp, Int tap, Int Stride, const TComSlice * pSlice);
+  Void xfilterFrame_en(imgpel* ImgDec, imgpel* ImgRest,Int filtNo, Int Stride, Int log2UnitSize);
+#if ENABLE_FIXEDFILTER_INTERSLICE
+  Void xcalcPredFilterCoeff(Int filtNo);
+#else
+  Void xcalcPredFilterCoeff(Int filtNo, const TComSlice *pSlice);
+#endif
+  Void xfindBestFilterPredictor(Double ***E_temp, Double**y_temp, Double *pixAcc_temp, Int filtNo, imgpel **varImg, const TComSlice * pSlice
+                                     ,imgpel* ImgOrg, imgpel* ImgDec, Int Stride, Int **filterCoeffFinal, Int* forceCoeff0, Bool* bUpdateFixedFilter, Double errorForce0CoeffTab[m_NO_VAR_BINS][2], Int* usePrevFiltBest, Int*  codedVarBins, Int sqrFiltLength, Int fl );
+  Void xfindBestFilterVarPred(Double **ySym, Double ***ESym, Double *pixAcc, Int **filterCoeffSym, Int **filterCoeffSymQuant,
+                              Int filtNo, Int *filters_per_fr_best, Int varIndTab[], imgpel *imgY_rec, imgpel **varImg, 
+                              imgpel **maskImg, imgpel *imgY_pad, Double lambda_val, const TComSlice * pSlice, Int predIdxTabBest[], imgpel* ImgOrg, Int Stride, Int **filterCoeffFinal, Int* forceCoeff0Best, Int codedVarBinsBest[], Bool* bUpdateFixedFilter, Double **y_temp);
+  Int  filterPixel(imgpel *imgY_rec, Int* varIndBeforeMapping,  Int **filterCoeffSym, Int *pattern, Int i, Int j, Int fl, Int Stride, Int filtNo);
+  UInt xcodeFiltCoeff(Int **filterCoeffSymQuant, Int filtNo, Int varIndTab[], Int filters_per_fr_best, Int frNo, ALFParam* ALFp, const TComSlice * pSlice, Int PrevFiltIdx[], Int forcedCoeff0, Int codedVarBins[]);
+  Double testFixedFilterFast(Double ***A, Double **b, Double *pixAcc, Double *filterCoeffSym, Double *filterCoeffDefault, Int varInd);
+  Double testFixedFilter(imgpel *imgY_rec, imgpel *imgY_org, imgpel *imgY_append, imgpel **varImg, Int **filterCoeffSym, 
+                        Int usePrevFilt[], Int img_height, Int img_width, Int noVarBins, Int Stride, Int filtNo);
+  Double xfindBestCoeffCodMethod(Int codedVarBins[m_NO_VAR_BINS], Int *forceCoeff0, 
+                                 Int **filterCoeffSymQuant, Int fl, Int sqrFiltLength, 
+                                 Int filters_per_fr, Double errorForce0CoeffTab[m_NO_VAR_BINS][2], 
+                                 Double *errorQuant, Double lambda, const TComSlice * pSlice);
+#else
   Void xstoreInBlockMatrix(imgpel* ImgOrg, imgpel* ImgDec, Int tap, Int Stride);
   Void xFilteringFrameLuma_qc(imgpel* ImgOrg, imgpel* imgY_pad, imgpel* ImgFilt, ALFParam* ALFp, Int tap, Int Stride, const TComSlice * pSlice);
   Void xfilterFrame_en(imgpel* ImgDec, imgpel* ImgRest,int filtNo, int Stride);
@@ -192,6 +244,7 @@ public:
                                  int **filterCoeffSymQuant, int fl, int sqrFiltLength, 
                                  int filters_per_fr, double errorForce0CoeffTab[m_NO_VAR_BINS][2], 
                                  double *errorQuant, double lambda, const TComSlice * pSlice);
+#endif
   Void xcollectStatCodeFilterCoeffForce0(int **pDiffQFilterCoeffIntPP, int fl, int sqrFiltLength, int filters_per_group, 
                                          int bitsVarBin[]);
   Void xdecideCoeffForce0(int codedVarBins[m_NO_VAR_BINS], double errorForce0Coeff[], double errorForce0CoeffTab[m_NO_VAR_BINS][2], 
@@ -200,7 +253,12 @@ public:
                                   int codedVarBins[m_NO_VAR_BINS], int createBistream, ALFParam* ALFp, const TComSlice * pSlice);
   Int xsendAllFiltersPPPred(int **FilterCoeffQuant, int fl, int sqrFiltLength, 
                             int filters_per_group, int createBistream, ALFParam* ALFp, const TComSlice * pSlice);
+#if QC_ALF_IMPROVEMENT
+  Int xcodeFilterCoeffForce0(Int **pDiffQFilterCoeffIntPP, Int fl, Int sqrFiltLength, Int filters_per_group, Int codedVarBins[], Int createBitstream);
+  Int xcodeAuxInfo(Int filtNo, Int noFilters, Int varIndTab[m_NO_VAR_BINS], Int createBitstream, ALFParam* ALFp, const TComSlice * pSlice, Int usePrevFiltBest[m_NO_VAR_BINS], Int availableFilters, Int noVarBins, Int forceCoeff0);
+#else
   Int xcodeAuxInfo(int filtNo, int noFilters, int varIndTab[m_NO_VAR_BINS], int frNo, int createBitstream,int realfiltNo, ALFParam* ALFp, const TComSlice * pSlice);
+#endif
   Int xcodeFilterCoeff(int **pDiffQFilterCoeffIntPP, int fl, int sqrFiltLength, int filters_per_group, int createBitstream);
   Int lengthGolomb(int coeffVal, int k);
   Int lengthPredFlags(int force0, int predMethod, int codedVarBins[m_NO_VAR_BINS], 
@@ -208,20 +266,42 @@ public:
   Int lengthFilterCoeffs(int sqrFiltLength, int filters_per_group, const int pDepthInt[], 
                          int **FilterCoeff, int kMinTab[], int createBitstream);
   //cholesky related
+#if QC_ALF_IMPROVEMENT
+  Double findFilterCoeff(Double ***EGlobalSeq, Double **yGlobalSeq, Double *pixAccGlobalSeq, Int **filterCoeffSeq, Int **filterCoeffQuantSeq, 
+                       Int varIndTab[m_NO_VAR_BINS], Int noVarBins, Int sqrFiltLength, Int filters_per_fr, Int *weights, Int bit_depth
+                      , Double errorTabForce0Coeff[m_NO_VAR_BINS][2]);
+#else
   Double findFilterCoeff(double ***EGlobalSeq, double **yGlobalSeq, double *pixAccGlobalSeq, int **filterCoeffSeq,
                          int **filterCoeffQuantSeq, int intervalBest[m_NO_VAR_BINS][2], int varIndTab[m_NO_VAR_BINS], int sqrFiltLength, 
                          int filters_per_fr, int *weights, int bit_depth, double errorTabForce0Coeff[m_NO_VAR_BINS][2]);
+#endif
   Double QuantizeIntegerFilterPP(double *filterCoeff, int *filterCoeffQuant, double **E, double *y, 
-                                 int sqrFiltLength, int *weights, int bit_depth);
+                                 int sqrFiltLength, int *weights, int bit_depth
+#if QC_ALF_IMPROVEMENT
+                                ,Bool bChroma = false
+#endif
+                                 );
   Void roundFiltCoeff(int *FilterCoeffQuan, double *FilterCoeff, int sqrFiltLength, int factor);
+#if QC_ALF_IMPROVEMENT
+  Void   findFilterGroupingError(Double ***EGlobalSeq, Double **yGlobalSeq, Double *pixAccGlobalSeq, Int intervalBest[m_NO_VAR_BINS][m_NO_VAR_BINS], Int sqrFiltLength, Int filters_per_fr, Int noVarBins);  
+  Void   mergeFiltersGreedy(Double **yGlobalSeq, Double ***EGlobalSeq, Double *pixAccGlobalSeq, Int indexListBest[m_NO_VAR_BINS][m_NO_VAR_BINS], Int sqrFiltLength, Int noVarBins, Int maxNoIntervals);
+#else
   double findFilterGroupingError(double ***EGlobalSeq, double **yGlobalSeq, double *pixAccGlobalSeq, 
                                  int intervalBest[m_NO_VAR_BINS][2], int sqrFiltLength, int filters_per_fr);
   double mergeFiltersGreedy(double **yGlobalSeq, double ***EGlobalSeq, double *pixAccGlobalSeq, 
                             int intervalBest[m_NO_VAR_BINS][2], int sqrFiltLength, int noIntervals);
+#endif
   double calculateErrorAbs(double **A, double *b, double y, int size);
   double calculateErrorCoeffProvided(double **A, double *b, double *c, int size);
+#if QC_ALF_IMPROVEMENT
+  Void xDeriveGlobalEyFromLgrTapFilter( Double **E0, Double *y0, Double **E1, Double *y1, Int *pattern0, Int *pattern1 );
+  Void xDeriveLocalEyFromLgrTapFilter ( Double *y0,  Double *y1, Int *pattern0, Int *pattern1 );
+  Void add_A(Double **Amerged, Double ***A, Int varIndTab[], Int filtNo, Int noVarBins, Int size);
+  Void add_b(Double  *bmerged, Double  **b, Int varIndTab[], Int filtNo, Int noVarBins, Int size);
+#else
   Void add_b(double *bmerged, double **b, int start, int stop, int size);
   Void add_A(double **Amerged, double ***A, int start, int stop, int size);
+#endif
   Int gnsSolveByChol(double **LHS, double *rhs, double *x, int noEq);
   Void  gnsBacksubstitution(double R[m_MAX_SQR_FILT_LENGTH][m_MAX_SQR_FILT_LENGTH], double z[m_MAX_SQR_FILT_LENGTH], 
                             int R_size, double A[m_MAX_SQR_FILT_LENGTH]);

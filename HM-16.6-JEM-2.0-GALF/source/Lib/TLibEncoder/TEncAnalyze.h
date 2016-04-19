@@ -140,7 +140,6 @@ public:
   {
     Double dFps     =   m_dFrmRate; //--CFG_KDY
     Double dScale   = dFps / 1000 / (Double)m_uiNumPic;
-
     Double MSEBasedSNR[MAX_NUM_COMPONENT];
     if (printMSEBasedSNR)
     {
@@ -193,7 +192,6 @@ public:
           {
             printf("\n");
           }
-
           printf( "From MSE:\t %8d    %c "          "%12.4lf  "    "%8.4lf\n",
                  getNumPic(), cDelim,
                  getBits() * dScale,
@@ -271,7 +269,6 @@ public:
             {
               printf("\n");
             }
-
             printf( "From MSE:\t %8d    %c "          "%12.4lf  "    "%8.4lf  "   "%8.4lf  "    "%8.4lf  "   "%8.4lf\n",
                    getNumPic(), cDelim,
                    getBits() * dScale,

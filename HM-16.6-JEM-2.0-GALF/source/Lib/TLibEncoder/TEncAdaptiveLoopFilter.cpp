@@ -75,7 +75,16 @@ const Int TEncAdaptiveLoopFilter::m_aiSymmetricArray7x7[49] =
   13, 12, 11, 10,  9,  8,  7,
   6,  5,  4,  3,  2,  1,  0,
 };
-
+#if QC_ALF_IMPROVEMENT && !EE_USE_HM3_CHROMA
+const Int TEncAdaptiveLoopFilter::m_aiSymmetricArray5x5[25] =
+{
+  0,  0,  1,  0,  0,
+  0,  2,  3,  4,  0,
+  5,  6,  7,  6,  5,
+  0,  4,  3,  2,  0,
+  0,  0,  1,  0,  0,
+};
+#else
 const Int TEncAdaptiveLoopFilter::m_aiSymmetricArray5x5[25] =
 {
   0,  1,  2,  3,  4,
@@ -84,7 +93,7 @@ const Int TEncAdaptiveLoopFilter::m_aiSymmetricArray5x5[25] =
   9,  8,  7,  6,  5,
   4,  3,  2,  1,  0,
 };
-
+#endif
 const Int TEncAdaptiveLoopFilter::m_aiSymmetricArray9x7[63] =
 {
    0,  1,  2,  3,  4,  5,  6,  7,  8,
@@ -158,7 +167,7 @@ Void TEncAdaptiveLoopFilter::startALFEnc( TComPic* pcPic, TEncEntropy* pcEntropy
   m_iPicNalReferenceIdc = (pcPic->getSlice(0)->isReferenced() ? 1 :0);
   
   m_uiNumSCUInCU = m_pcPic->getNumPartitionsInCtu();
-  
+ 
   xInitParam();
   xCreateTmpAlfCtrlFlags();
   
@@ -173,6 +182,7 @@ Void TEncAdaptiveLoopFilter::startALFEnc( TComPic* pcPic, TEncEntropy* pcEntropy
   m_pcTempAlfParam = new ALFParam;
   allocALFParam(m_pcBestAlfParam);
   allocALFParam(m_pcTempAlfParam);
+
   m_im_width = iWidth;
   m_im_height = iHeight;
   
@@ -183,7 +193,10 @@ Void TEncAdaptiveLoopFilter::startALFEnc( TComPic* pcPic, TEncEntropy* pcEntropy
   
   m_pixAcc = (double *) calloc(m_NO_VAR_BINS, sizeof(double));
   get_mem2Dpel(&m_maskImg, m_im_height, m_im_width);
-  
+#if QC_ALF_IMPROVEMENT 
+  get_mem2Dpel(&m_maskBestpImg, m_im_height, m_im_width);
+#endif
+
   initMatrix_double(&m_E_temp, m_MAX_SQR_FILT_LENGTH, m_MAX_SQR_FILT_LENGTH);//
   m_y_temp = (double *) calloc(m_MAX_SQR_FILT_LENGTH, sizeof(double));//
   initMatrix3D_double(&m_E_merged, m_NO_VAR_BINS, m_MAX_SQR_FILT_LENGTH, m_MAX_SQR_FILT_LENGTH);//
@@ -199,6 +212,9 @@ Void TEncAdaptiveLoopFilter::startALFEnc( TComPic* pcPic, TEncEntropy* pcEntropy
   m_tempALFp = new ALFParam;
   allocALFParam(m_tempALFp);
   m_pcDummyEntropyCoder = m_pcEntropyCoder;
+#if QC_ALF_IMPROVEMENT
+  initMatrix_int(&m_imgY_preFilter, iHeight, iWidth);
+#endif
 }
 
 Void TEncAdaptiveLoopFilter::endALFEnc()
@@ -216,6 +232,7 @@ Void TEncAdaptiveLoopFilter::endALFEnc()
   freeALFParam(m_pcTempAlfParam);
   delete m_pcBestAlfParam;
   delete m_pcTempAlfParam;
+
   // delete qc filters
   destroyMatrix4D_double(m_EGlobalSym, m_NO_TEST_FILT,  m_NO_VAR_BINS);
   destroyMatrix3D_double(m_yGlobalSym, m_NO_TEST_FILT);
@@ -223,7 +240,9 @@ Void TEncAdaptiveLoopFilter::endALFEnc()
   
   free(m_pixAcc);
   free_mem2Dpel(m_maskImg);
-  
+#if QC_ALF_IMPROVEMENT
+  free_mem2Dpel(m_maskBestpImg);
+#endif 
   destroyMatrix3D_double(m_E_merged, m_NO_VAR_BINS);
   destroyMatrix_double(m_y_merged);
   destroyMatrix_double(m_E_temp);
@@ -236,7 +255,10 @@ Void TEncAdaptiveLoopFilter::endALFEnc()
   free(m_filterCoeffQuant);
   destroyMatrix_int(m_diffFilterCoeffQuant);
   destroyMatrix_int(m_FilterCoeffQuantTemp);
-  
+#if QC_ALF_IMPROVEMENT
+  destroyMatrix_int(m_imgY_preFilter);
+#endif
+
   freeALFParam(m_tempALFp);
   delete m_tempALFp;
 }
@@ -255,15 +277,21 @@ Void TEncAdaptiveLoopFilter::ALFProcess( ALFParam* pcAlfParam, Double dLambdaLum
   )
 {
   Int tap, num_coef;
-  
+
   // set global variables
   tap         = m_ALF_MAX_NUM_TAP;
   Int tapV = TComAdaptiveLoopFilter::ALFTapHToTapV(tap);
   num_coef = (tap * tapV + 1) >> 1;
+#if !QC_ALF_IMPROVEMENT
   num_coef    = num_coef + 1; // DC offset
-  
+#endif
+
   resetALFParam( m_pcBestAlfParam );
   resetALFParam( m_pcTempAlfParam );
+
+#if QC_ALF_IMPROVEMENT  
+  initFixedFilters();
+#endif
   // set lambda
   m_dLambdaLuma   = dLambdaLuma;
   m_dLambdaChroma = dLambdaChroma;
@@ -276,22 +304,30 @@ Void TEncAdaptiveLoopFilter::ALFProcess( ALFParam* pcAlfParam, Double dLambdaLum
   
   pcPicYuvRec->copyToPic(pcPicYuvExtRec);
   pcPicYuvExtRec->setBorderExtension( false );
+#if QC_ALF_IMPROVEMENT
+  pcPicYuvExtRec->extendPicBorder   (m_PADDING_W_ALF);
+  pcPicYuvRec->copyToPic(m_pcPicYuvTmp, COMPONENT_Y);
+#else
   pcPicYuvExtRec->extendPicBorder   (m_FILTER_LENGTH >> 1);
- 
+#endif 
   // set min cost
   UInt64 uiMinRate = MAX_INT;
   UInt64 uiMinDist = MAX_INT;
   Double dMinCost  = MAX_DOUBLE;
-  
+
   UInt64  uiOrigRate;
   UInt64  uiOrigDist;
   Double  dOrigCost;
-  
+ 
   // calc original cost
   xCalcRDCost( pcPicOrg, pcPicYuvRec, NULL, uiOrigRate, uiOrigDist, dOrigCost , m_pcPic->getSlice(0));
   m_pcBestAlfParam->alf_flag = 0;
   m_pcBestAlfParam->cu_control_flag = 0;
-  
+
+#if QC_ALF_IMPROVEMENT  
+  TComAdaptiveLoopFilter::m_max_NO_VAR_BINS = m_NO_VAR_BINS;
+  TComAdaptiveLoopFilter::m_max_NO_FILTERS  = m_NO_FILTERS ;    
+#endif
   // initialize temp_alfps
   m_pcTempAlfParam->alf_flag        = 1;
   m_pcTempAlfParam->tap             = tap;
@@ -301,17 +337,26 @@ Void TEncAdaptiveLoopFilter::ALFProcess( ALFParam* pcAlfParam, Double dLambdaLum
   m_pcTempAlfParam->cu_control_flag = 0;
   
   // adaptive in-loop wiener filtering
+#if QC_ALF_IMPROVEMENT  
+  m_pcTempAlfParam->log2UnitSize    = 0;
+  xEncALFLuma_qc( pcPicOrg, pcPicYuvExtRec, pcPicYuvRec, uiMinRate, uiMinDist, dMinCost , m_pcPic->getSlice(0), m_pcTempAlfParam->log2UnitSize);
+#else
   xEncALFLuma_qc( pcPicOrg, pcPicYuvExtRec, pcPicYuvRec, uiMinRate, uiMinDist, dMinCost , m_pcPic->getSlice(0) );
+#endif
   
   // cu-based filter on/off control
-  xCUAdaptiveControl_qc( pcPicOrg, pcPicYuvExtRec, pcPicYuvRec, uiMinRate, uiMinDist, dMinCost , m_pcPic->getSlice(0) );
-  
+#if QC_ALF_IMPROVEMENT
+  if(!m_pcPic->getSlice(0)->isIntra())
+#endif
+  xCUAdaptiveControl_qc( pcPicOrg, pcPicYuvExtRec, pcPicYuvRec, uiMinRate, uiMinDist, dMinCost , m_pcPic->getSlice(0) ); 
+
+
   // adaptive tap-length
   xFilterTapDecision_qc( pcPicOrg, pcPicYuvExtRec, pcPicYuvRec, uiMinRate, uiMinDist, dMinCost, m_pcPic->getSlice(0));
   
   // compute RD cost
   xCalcRDCost( pcPicOrg, pcPicYuvRec, m_pcBestAlfParam, uiMinRate, uiMinDist, dMinCost, m_pcPic->getSlice(0) );
-  
+
   // compare RD cost to non-ALF case
   if( dMinCost < dOrigCost )
   {
@@ -319,7 +364,7 @@ Void TEncAdaptiveLoopFilter::ALFProcess( ALFParam* pcAlfParam, Double dLambdaLum
     
     ruiBits = uiMinRate;
     ruiDist = uiMinDist;
-  }
+  } 
   else
   {
     m_pcBestAlfParam->alf_flag        = 0;
@@ -338,8 +383,10 @@ Void TEncAdaptiveLoopFilter::ALFProcess( ALFParam* pcAlfParam, Double dLambdaLum
   // if ALF works
   if( m_pcBestAlfParam->alf_flag )
   {
+#if !QC_ALF_IMPROVEMENT
     // predict ALF coefficients
     predictALFCoeff( m_pcBestAlfParam );
+#endif
     // do additional ALF process for chroma
     xEncALFChroma( uiMinRate, pcPicOrg, pcPicYuvExtRec, pcPicYuvRec, ruiDist, ruiBits , m_pcPic->getSlice(0));
   }
@@ -349,7 +396,7 @@ Void TEncAdaptiveLoopFilter::ALFProcess( ALFParam* pcAlfParam, Double dLambdaLum
   
   // store best depth
   ruiMaxAlfCtrlDepth = m_pcEntropyCoder->getMaxAlfCtrlDepth();
-
+  
 #if COM16_C806_ALF_TEMPPRED_NUM
   if( pcStoredAlfPara != NULL && iStoredAlfParaNum > 0 )
   {
@@ -393,14 +440,18 @@ Void TEncAdaptiveLoopFilter::xEncALFChroma( UInt64 uiLumaRate, TComPicYuv* pcPic
   
   // set global variables
   tap         = m_ALF_MAX_NUM_TAP_C;
+#if QC_ALF_IMPROVEMENT && !EE_USE_HM3_CHROMA
+  num_coef    = TComAdaptiveLoopFilter::ALFTapHToNumCoeff(tap);
+#else
   num_coef    = (tap*tap+1)>>1;
   num_coef    = num_coef + 1; // DC offset
-  
+#endif
+
   // set min cost
   UInt64 uiMinRate = uiLumaRate;
   UInt64 uiMinDist = MAX_INT;
   Double dMinCost  = MAX_DOUBLE;
-  
+
   // calc original cost
   copyALFParam(m_pcTempAlfParam, m_pcBestAlfParam);
   xCalcRDCostChroma(pcPicOrg, pcPicRest, m_pcTempAlfParam, uiMinRate, uiMinDist, dMinCost, pSlice);
@@ -443,8 +494,9 @@ Void TEncAdaptiveLoopFilter::xEncALFChroma( UInt64 uiLumaRate, TComPicYuv* pcPic
     if( dCost < dMinCost )
     {
       copyALFParam(m_pcBestAlfParam, m_pcTempAlfParam);
+#if !QC_ALF_IMPROVEMENT
       predictALFCoeffChroma(m_pcBestAlfParam);
-      
+#endif
       ruiBits += uiRate;
       ruiDist += uiDist;
     }
@@ -578,7 +630,7 @@ Void TEncAdaptiveLoopFilter::xCopyTmpAlfCtrlFlagsFrom()
     pcCU->copyAlfCtrlFlagToTmp();
   }
 }
-
+#if !QC_ALF_IMPROVEMENT 
 Void TEncAdaptiveLoopFilter::xEncodeCUAlfCtrlFlags()
 {
   for( UInt uiCUAddr = 0; uiCUAddr < m_pcPic->getNumberOfCtusInFrame() ; uiCUAddr++ )
@@ -617,14 +669,23 @@ Void TEncAdaptiveLoopFilter::xEncodeCUAlfCtrlFlag(TComDataCU* pcCU, UInt uiAbsPa
   
   m_pcEntropyCoder->encodeAlfCtrlFlag(pcCU, uiAbsPartIdx);
 }
-
+#endif
+#if QC_ALF_IMPROVEMENT && !EE_USE_HM3_CHROMA
+Void TEncAdaptiveLoopFilter::xCalcCorrelationFunc(Pel* pOrg, Pel* pCmp, Int iTap, Int iWidth, Int iHeight, Int iOrgStride, Int iCmpStride, Int N)
+#else
 Void TEncAdaptiveLoopFilter::xCalcCorrelationFunc(Pel* pOrg, Pel* pCmp, Int iTap, Int iWidth, Int iHeight, Int iOrgStride, Int iCmpStride)
+#endif
 { 
   Int iTapV   = TComAdaptiveLoopFilter::ALFTapHToTapV(iTap);
+#if !QC_ALF_IMPROVEMENT || EE_USE_HM3_CHROMA
   Int N       = (iTap * iTapV + 1) >> 1;
+#endif
   Int offsetV = iTapV >> 1;
   Int offset = iTap>>1;
-  
+
+#if QC_ALF_IMPROVEMENT && !EE_USE_HM3_CHROMA
+  const Int* pFiltPos = iTap==5 ? m_aiSymmetricArray5x5 : (iTap==7 ? m_aiSymmetricArray7x7:m_aiSymmetricArray9x9);  
+#else
   const Int* pFiltPos;
   
   switch(iTap)
@@ -643,7 +704,8 @@ Void TEncAdaptiveLoopFilter::xCalcCorrelationFunc(Pel* pOrg, Pel* pCmp, Int iTap
       assert(0);
       break;
   }
-  
+#endif
+
   Pel* pTerm = new Pel[N];
   
   Int i, j;
@@ -657,26 +719,40 @@ Void TEncAdaptiveLoopFilter::xCalcCorrelationFunc(Pel* pOrg, Pel* pCmp, Int iTap
       {
         for(Int xx=x-offset; xx<=x+offset; xx++)
         {
+#if QC_ALF_IMPROVEMENT && !EE_USE_HM3_CHROMA
+          if(pFiltPos[i])
+          {
+            pTerm[pFiltPos[i]-1] += pCmp[xx + yy*iCmpStride];
+          }
+#else
           pTerm[pFiltPos[i]] += pCmp[xx + yy*iCmpStride];
+#endif
           i++;
         }
       }
       
       for(j=0; j<N; j++)
       {
-        m_ppdAlfCorr[j][j] += pTerm[j]*pTerm[j];
+        m_ppdAlfCorr[j][j] += pTerm[j]*pTerm[j];   //auto  m_EGlobalSym
         for(i=j+1; i<N; i++)
-          m_ppdAlfCorr[j][i] += pTerm[j]*pTerm[i];
-        
+          m_ppdAlfCorr[j][i] += pTerm[j]*pTerm[i]; //cross corr
+  
+#if QC_ALF_IMPROVEMENT && !EE_USE_HM3_CHROMA
+        m_ppdAlfCorr[j][N] += pOrg[x+y*iOrgStride]*pTerm[j]; //m_yGlobalSym
+#else
         // DC offset
-        m_ppdAlfCorr[j][N]   += pTerm[j];
-        m_ppdAlfCorr[j][N+1] += pOrg[x+y*iOrgStride]*pTerm[j];
+        m_ppdAlfCorr[j][N]   += pTerm[j]; //ELocal[p_pattern[k++]]
+        m_ppdAlfCorr[j][N+1] += pOrg[x+y*iOrgStride]*pTerm[j]; //m_yGlobalSym
+#endif
       }
+
+#if !QC_ALF_IMPROVEMENT || EE_USE_HM3_CHROMA
       // DC offset
       for(i=0; i<N; i++)
         m_ppdAlfCorr[N][i] += pTerm[i];
       m_ppdAlfCorr[N][N]   += 1;
       m_ppdAlfCorr[N][N+1] += pOrg[x+y*iOrgStride];
+#endif
     }
   }
   for(j=0; j<N-1; j++)
@@ -780,8 +856,14 @@ Void TEncAdaptiveLoopFilter::xQuantFilterCoef(Double* h, Int* qh, Int tap, int b
   Int upper, lower;
   Double *dh;
   Int    *nc;
+
+#if QC_ALF_IMPROVEMENT && !EE_USE_HM3_CHROMA
+  Int factor     = (1 << m_ALF_NUM_BIT_SHIFT); 
+  Int filtNo     = (tap==9) ? 0 : (tap==7 ? 1: 2);
+  Int * pFiltMag = m_weightsTab[filtNo]; 
+#else
   const Int    *pFiltMag;
-  
+
   switch(tap)
   {
     case 5:
@@ -798,10 +880,14 @@ Void TEncAdaptiveLoopFilter::xQuantFilterCoef(Double* h, Int* qh, Int tap, int b
       assert(0);
       break;
   }
-  
+#endif  
+#if QC_ALF_IMPROVEMENT && !EE_USE_HM3_CHROMA
+  N = TComAdaptiveLoopFilter::ALFTapHToNumCoeff(tap);
+#else
   Int tapV = TComAdaptiveLoopFilter::ALFTapHToTapV(tap);
   N = (tap * tapV + 1) >> 1;
-  
+#endif
+
   dh = new Double[N];
   nc = new Int[N];
   
@@ -810,13 +896,28 @@ Void TEncAdaptiveLoopFilter::xQuantFilterCoef(Double* h, Int* qh, Int tap, int b
   
   dbl_total_gain=0.0;
   q_total_gain=0;
+#if QC_ALF_IMPROVEMENT && !EE_USE_HM3_CHROMA
+  Int quantCoeffSum=0;
+#endif
+
   for(i=0; i<N; i++)
   {
+#if QC_ALF_IMPROVEMENT && !EE_USE_HM3_CHROMA
+    if(i == (N-1))
+    {
+      qh[i]=factor-quantCoeffSum;
+    }
+    else
+    {
+#endif
     if(h[i]>=0.0)
       qh[i] =  (Int)( h[i]*(1<<m_ALF_NUM_BIT_SHIFT)+0.5);
     else
       qh[i] = -(Int)(-h[i]*(1<<m_ALF_NUM_BIT_SHIFT)+0.5);
-    
+#if QC_ALF_IMPROVEMENT && !EE_USE_HM3_CHROMA
+      quantCoeffSum += pFiltMag[i]*qh[i];
+    }
+#endif
     dh[i] = (Double)qh[i]/(Double)(1<<m_ALF_NUM_BIT_SHIFT) - h[i];
     dh[i]*=pFiltMag[i];
     dbl_total_gain += h[i]*pFiltMag[i];
@@ -877,20 +978,30 @@ Void TEncAdaptiveLoopFilter::xQuantFilterCoef(Double* h, Int* qh, Int tap, int b
   }
   
   // set of filter coefficients
+#if QC_ALF_IMPROVEMENT && !EE_USE_HM3_CHROMA
+  quantCoeffSum=0;
+  for (i=0; i< N-1; i++)
+  {
+    quantCoeffSum += pFiltMag[i]*qh[i];
+  }
+  qh[N-1]= factor - quantCoeffSum;
+#endif
+
   for(i=0; i<N; i++)
   {
     qh[i] = std::max(min_value,std::min(max_value, qh[i]));
   }
-  
+#if !QC_ALF_IMPROVEMENT ||  EE_USE_HM3_CHROMA  
   // DC offset
   //  max_value = Min(  (1<<(3+Max(img_bitdepth_luma,img_bitdepth_chroma)))-1, (1<<14)-1);
   //  min_value = Max( -(1<<(3+Max(img_bitdepth_luma,img_bitdepth_chroma))),  -(1<<14)  );
   max_value = std::min(  (1<<(3+m_nInputBitDepth + m_nBitIncrement))-1, (1<<14)-1);
   min_value = std::max( -(1<<(3+m_nInputBitDepth + m_nBitIncrement)),  -(1<<14)  );
-  
+
   qh[N] =  (h[N]>=0.0)? (Int)( h[N]*(1<<(m_ALF_NUM_BIT_SHIFT-bit_depth+8)) + 0.5) : -(Int)(-h[N]*(1<<(m_ALF_NUM_BIT_SHIFT-bit_depth+8)) + 0.5);
   qh[N] = std::max(min_value,std::min(max_value, qh[N]));
-  
+#endif
+
   delete[] dh;
   dh = NULL;
   
@@ -904,13 +1015,18 @@ Void TEncAdaptiveLoopFilter::xClearFilterCoefInt(Int* qh, Int N)
   memset( qh, 0, sizeof( Int ) * N );
   
   // center pos
+#if QC_ALF_IMPROVEMENT
+  qh[N-1]  = 1<<m_ALF_NUM_BIT_SHIFT;
+#else
   qh[N-2]  = 1<<m_ALF_NUM_BIT_SHIFT;
+#endif
 }
 
 Void TEncAdaptiveLoopFilter::xCalcRDCost(ALFParam* pAlfParam, UInt64& ruiRate, UInt64 uiDist, Double& rdCost, const TComSlice * pSlice)
 {
   if(pAlfParam != NULL)
   {
+#if !QC_ALF_IMPROVEMENT
     Int* piTmpCoef;
     piTmpCoef = new Int[m_ALF_MAX_NUM_COEF];
     
@@ -919,9 +1035,11 @@ Void TEncAdaptiveLoopFilter::xCalcRDCost(ALFParam* pAlfParam, UInt64& ruiRate, U
     if( !pAlfParam->temproalPredFlag )
 #endif
     predictALFCoeff(pAlfParam);
-    
+#endif
+
     m_pcEntropyCoder->resetEntropy(pSlice);
     m_pcEntropyCoder->resetBits();
+
     m_pcEntropyCoder->encodeAlfParam(pAlfParam, pSlice->getSPS()->getMaxTotalCUDepth()
 #if FIX_TICKET12
         , pSlice
@@ -932,10 +1050,14 @@ Void TEncAdaptiveLoopFilter::xCalcRDCost(ALFParam* pAlfParam, UInt64& ruiRate, U
     {
       m_pcEntropyCoder->encodeAlfCtrlParam(pAlfParam);
     }
+
     ruiRate = m_pcEntropyCoder->getNumberOfWrittenBits();
+
+#if !QC_ALF_IMPROVEMENT
     memcpy(pAlfParam->coeff, piTmpCoef, sizeof(int)*pAlfParam->num_coeff);
     delete[] piTmpCoef;
     piTmpCoef = NULL;
+#endif
   }
   else
   {
@@ -949,6 +1071,7 @@ Void TEncAdaptiveLoopFilter::xCalcRDCost(TComPicYuv* pcPicOrg, TComPicYuv* pcPic
 {
   if(pAlfParam != NULL)
   {
+#if !QC_ALF_IMPROVEMENT
     Int* piTmpCoef;
     piTmpCoef = new Int[m_ALF_MAX_NUM_COEF];
     
@@ -957,9 +1080,11 @@ Void TEncAdaptiveLoopFilter::xCalcRDCost(TComPicYuv* pcPicOrg, TComPicYuv* pcPic
     if( !pAlfParam->temproalPredFlag )
 #endif
     predictALFCoeff(pAlfParam);
-    
+#endif
+
     m_pcEntropyCoder->resetEntropy(pSlice);
     m_pcEntropyCoder->resetBits();
+
     m_pcEntropyCoder->encodeAlfParam(pAlfParam, pSlice->getSPS()->getMaxTotalCUDepth()
 #if FIX_TICKET12
         , pSlice
@@ -970,10 +1095,14 @@ Void TEncAdaptiveLoopFilter::xCalcRDCost(TComPicYuv* pcPicOrg, TComPicYuv* pcPic
     {
       m_pcEntropyCoder->encodeAlfCtrlParam(pAlfParam);
     }
+
     ruiRate = m_pcEntropyCoder->getNumberOfWrittenBits();
+
+#if !QC_ALF_IMPROVEMENT
     memcpy(pAlfParam->coeff, piTmpCoef, sizeof(int)*pAlfParam->num_coeff);
     delete[] piTmpCoef;
     piTmpCoef = NULL;
+#endif
   }
   else
   {
@@ -988,15 +1117,17 @@ Void TEncAdaptiveLoopFilter::xCalcRDCostChroma(TComPicYuv* pcPicOrg, TComPicYuv*
 {
   if(pAlfParam->chroma_idc)
   {
+#if !QC_ALF_IMPROVEMENT
     Int* piTmpCoef;
     piTmpCoef = new Int[m_ALF_MAX_NUM_COEF_C];
     
     memcpy(piTmpCoef, pAlfParam->coeff_chroma, sizeof(Int)*pAlfParam->num_coeff_chroma);
     
     predictALFCoeffChroma(pAlfParam);
-    
+#endif
     m_pcEntropyCoder->resetEntropy(pSlice);
     m_pcEntropyCoder->resetBits();
+
     m_pcEntropyCoder->encodeAlfParam(pAlfParam, pSlice->getSPS()->getMaxTotalCUDepth()
 #if FIX_TICKET12
         , pSlice
@@ -1007,10 +1138,14 @@ Void TEncAdaptiveLoopFilter::xCalcRDCostChroma(TComPicYuv* pcPicOrg, TComPicYuv*
     {
       m_pcEntropyCoder->encodeAlfCtrlParam(pAlfParam);
     }
+
     ruiRate = m_pcEntropyCoder->getNumberOfWrittenBits();
+
+#if !QC_ALF_IMPROVEMENT
     memcpy(pAlfParam->coeff_chroma, piTmpCoef, sizeof(int)*pAlfParam->num_coeff_chroma);
     delete[] piTmpCoef;
     piTmpCoef = NULL;
+#endif
   }
   ruiDist = 0;
   ruiDist += xCalcSSD(pcPicOrg->getAddr(COMPONENT_Cb), pcPicCmp->getAddr(COMPONENT_Cb), pcPicOrg->getWidth(COMPONENT_Cb), pcPicOrg->getHeight(COMPONENT_Cb), pcPicOrg->getStride(COMPONENT_Cb));
@@ -1020,13 +1155,42 @@ Void TEncAdaptiveLoopFilter::xCalcRDCostChroma(TComPicYuv* pcPicOrg, TComPicYuv*
 
 Void TEncAdaptiveLoopFilter::xFilteringFrameChroma(TComPicYuv* pcPicOrg, TComPicYuv* pcPicDec, TComPicYuv* pcPicRest)
 {
+#if QC_ALF_IMPROVEMENT && !EE_USE_HM3_CHROMA
+  Int tap;
+#else
   Int    i, tap, N, err_code;
+#endif
   Int* qh;
   
   tap  = m_pcTempAlfParam->tap_chroma;
+#if !QC_ALF_IMPROVEMENT || EE_USE_HM3_CHROMA
   N    = m_pcTempAlfParam->num_coeff_chroma;
+#endif
   qh   = m_pcTempAlfParam->coeff_chroma;
-  
+
+#if QC_ALF_IMPROVEMENT && !EE_USE_HM3_CHROMA
+  if(m_pcTempAlfParam->chroma_idc)
+  {
+    Int filtNo = 2;
+    if (tap==9)
+      filtNo =0;
+    else if (tap==7)
+      filtNo =1;
+
+    xstoreInBlockMatrixForChroma(pcPicOrg, pcPicDec, tap, m_pcTempAlfParam->chroma_idc);
+    {
+      //static double pixAcc_temp;
+      Int sqrFiltLength = m_sqrFiltLengthTab[filtNo];   
+      Int* weights      = m_weightsTab      [filtNo];  
+      Int  bit_depth    = m_NUM_BITS;
+      // Find coeffcients
+      QuantizeIntegerFilterPP(m_filterCoeff, qh, m_EGlobalSym[filtNo][0], m_yGlobalSym[filtNo][0], sqrFiltLength, weights, bit_depth, true); 
+#if COM16_C806_ALF_TEMPPRED_NUM
+      memcpy( m_pcTempAlfParam->alfCoeffChroma, qh, sizeof(Int)*sqrFiltLength );
+#endif
+    }
+  }
+#else
   // initialize correlation
   for(i=0; i<N; i++)
     memset(m_ppdAlfCorr[i], 0, sizeof(Double)*(N+1));
@@ -1058,10 +1222,25 @@ Void TEncAdaptiveLoopFilter::xFilteringFrameChroma(TComPicYuv* pcPicOrg, TComPic
     xQuantFilterCoef(m_pdDoubleAlfCoeff, qh, tap, m_nInputBitDepth + m_nBitIncrement);
   }
 
-#if COM16_C806_ALF_TEMPPRED_NUM
+#if COM16_C806_ALF_TEMPPRED_NUM 
   memcpy( m_pcTempAlfParam->alfCoeffChroma, qh, sizeof(Int)*m_ALF_MAX_NUM_COEF_C );
 #endif
-  
+#endif
+
+#if QC_ALF_IMPROVEMENT && !EE_USE_HM3_CHROMA
+  if(m_pcTempAlfParam->chroma_idc)
+  {
+    initVarForChroma(m_pcTempAlfParam);
+  }
+  if ((m_pcTempAlfParam->chroma_idc>>1)&0x01)
+  {
+    xFrameChroma( m_pcTempAlfParam, pcPicDec, pcPicRest, 0 );
+  }
+  if ((m_pcTempAlfParam->chroma_idc)&0x01)
+  {
+    xFrameChroma( m_pcTempAlfParam, pcPicDec, pcPicRest, 1 );
+  }
+#else
   if ((m_pcTempAlfParam->chroma_idc>>1)&0x01)
   {
     xFrameChroma(pcPicDec, pcPicRest, qh, tap, 0);
@@ -1070,7 +1249,7 @@ Void TEncAdaptiveLoopFilter::xFilteringFrameChroma(TComPicYuv* pcPicOrg, TComPic
   {
     xFrameChroma(pcPicDec, pcPicRest, qh, tap, 1);
   }
-  
+#endif 
   if(m_pcTempAlfParam->chroma_idc<3)
   {
     if(m_pcTempAlfParam->chroma_idc==1)
@@ -1154,7 +1333,11 @@ Void TEncAdaptiveLoopFilter::xcollectStatCodeFilterCoeffForce0(int **pDiffQFilte
     minKStart, minBitsKStart, bitsKStart;
   
   const Int * pDepthInt=TComAdaptiveLoopFilter::m_pDepthIntTab[fl-2];
-  
+
+#if QC_ALF_IMPROVEMENT
+  sqrFiltLength=sqrFiltLength-1;
+#endif
+
   maxScanVal=0;
   for (i=0; i<sqrFiltLength; i++)
   {
@@ -1166,7 +1349,7 @@ Void TEncAdaptiveLoopFilter::xcollectStatCodeFilterCoeffForce0(int **pDiffQFilte
   for(ind=0; ind<filters_per_group; ++ind)
   {
     for(i = 0; i < sqrFiltLength; i++)
-    {     
+    {
       scanPos=pDepthInt[i]-1;
       coeffVal=abs(pDiffQFilterCoeffIntPP[ind][i]);
       for (k=1; k<15; k++)
@@ -1230,20 +1413,83 @@ Void TEncAdaptiveLoopFilter::xdecideCoeffForce0(int codedVarBins[m_NO_VAR_BINS],
   int filtNo;
   
   int ind;
-  
+#if QC_ALF_IMPROVEMENT  
+  errorForce0Coeff[0] = 0;
+  for (ind=0; ind< m_NO_VAR_BINS; ind++) codedVarBins[ind]=0;
+#else
   errorForce0Coeff[0]=errorForce0Coeff[1]=0;
   for (ind=0; ind<16; ind++) codedVarBins[ind]=0;
+#endif
   
   for(filtNo=0; filtNo<filters_per_fr; filtNo++)
   {
+#if QC_ALF_IMPROVEMENT
+    Double lagrangianDiff=errorForce0CoeffTab[filtNo][0]-(errorForce0CoeffTab[filtNo][1]+lambda*bitsVarBin[filtNo]);
+    codedVarBins[filtNo] = (lagrangianDiff>0) ? 1 : 0;
+    errorForce0Coeff[0] += errorForce0CoeffTab[filtNo][codedVarBins[filtNo]];
+#else
     // No coeffcient prediction bits used
     //lagrangianDiff=errorForce0CoeffTab[filtNo][0]-(errorForce0CoeffTab[filtNo][1]+lambda*bitsVarBin[filtNo]);
     codedVarBins[filtNo]= 1;
     errorForce0Coeff[0]+=errorForce0CoeffTab[filtNo][codedVarBins[filtNo]];
     errorForce0Coeff[1]+=errorForce0CoeffTab[filtNo][1];
+#endif
   }   
 }
+#if QC_ALF_IMPROVEMENT
+double TEncAdaptiveLoopFilter::xfindBestCoeffCodMethod(Int codedVarBins[m_NO_VAR_BINS], Int *forceCoeff0, 
+                                                       Int **filterCoeffSymQuant, Int fl, Int sqrFiltLength, 
+                                                       Int filters_per_fr, Double errorForce0CoeffTab[m_NO_VAR_BINS][2], 
+                                                       Double *errorQuant, Double lambda, const TComSlice * pSlice)
+{
+  Int bitsVarBin[m_NO_VAR_BINS], createBistream, coeffBits, coeffBitsForce0;
+  Double errorForce0Coeff[2], lagrangianForce0, lagrangian;
 
+#if EE_DISABLE_PRED_FIXEDFILTER
+  if( 0 )
+#else
+#if !ENABLE_FIXEDFILTER_INTERSLICE
+  if( pSlice->isIntra() )
+#endif
+#endif
+  {
+    xcollectStatCodeFilterCoeffForce0(filterCoeffSymQuant, fl, sqrFiltLength,  
+      filters_per_fr, bitsVarBin);
+
+    xdecideCoeffForce0(codedVarBins, errorForce0Coeff, errorForce0CoeffTab, bitsVarBin, lambda, filters_per_fr);
+
+    coeffBitsForce0 = xsendAllFiltersPPPredForce0(filterCoeffSymQuant, fl, sqrFiltLength, 
+      filters_per_fr, codedVarBins, createBistream=0, m_tempALFp, pSlice);
+  }
+#if !ENABLE_FIXEDFILTER_INTERSLICE || EE_DISABLE_PRED_FIXEDFILTER
+  else
+  {
+    errorForce0Coeff[0] = MAX_DOUBLE;
+    coeffBitsForce0 = MAX_INT;
+  }
+#endif
+  coeffBits = xsendAllFiltersPPPred(filterCoeffSymQuant, fl, sqrFiltLength, filters_per_fr, 
+                                    createBistream=0, m_tempALFp, pSlice);
+
+#if ENABLE_FIXEDFILTER_INTERSLICE
+  lagrangianForce0 = (errorForce0Coeff[0]+lambda*coeffBitsForce0);
+#else
+  lagrangianForce0 = pSlice->isIntra() ? (errorForce0Coeff[0]+lambda*coeffBitsForce0) : MAX_DOUBLE;
+#endif
+
+  lagrangian= (*errorQuant) + lambda * coeffBits;
+  if (lagrangianForce0<lagrangian)
+  {
+    *forceCoeff0=1;
+    return(lagrangianForce0);
+  }
+  else
+  {
+    *forceCoeff0=0;
+    return(lagrangian);
+  }
+}
+#else
 double TEncAdaptiveLoopFilter::xfindBestCoeffCodMethod(int codedVarBins[m_NO_VAR_BINS], int *forceCoeff0, 
                                                        int **filterCoeffSymQuant, int fl, int sqrFiltLength, 
                                                        int filters_per_fr, double errorForce0CoeffTab[m_NO_VAR_BINS][2], 
@@ -1279,7 +1525,7 @@ double TEncAdaptiveLoopFilter::xfindBestCoeffCodMethod(int codedVarBins[m_NO_VAR
     return(lagrangian);
   }
 }
-
+#endif
 Int TEncAdaptiveLoopFilter::xsendAllFiltersPPPred(int **FilterCoeffQuant, int fl, int sqrFiltLength, 
                                                   int filters_per_group, int createBistream, ALFParam* ALFp, const TComSlice * pSlice)
 {
@@ -1318,7 +1564,7 @@ Int TEncAdaptiveLoopFilter::xsendAllFiltersPPPred(int **FilterCoeffQuant, int fl
       bit_ct += lengthPredFlags(force0, predMethod, NULL, 0, createBistream);
     bit_ct += xcodeFilterCoeff(m_diffFilterCoeffQuant, fl, sqrFiltLength, filters_per_group, createBistream);
   }
-  
+ 
   ALFp->forceCoeff0 = 0;
   ALFp->filters_per_group_diff = filters_per_group;
   ALFp->filters_per_group = filters_per_group;
@@ -1339,6 +1585,26 @@ Int TEncAdaptiveLoopFilter::xsendAllFiltersPPPred(int **FilterCoeffQuant, int fl
       else ALFp->coeffmulti[ind][i] = FilterCoeffQuant[ind][i];
     }
   }
+#if QC_ALF_IMPROVEMENT
+  for(ind = 0; ind < ALF_NO_VAR_BIN; ind++)
+  {
+    ALFp->codedVarBins[ind] = 1;
+  }
+  if(createBistream==0) //Li: use estimated bits
+  {
+#if EE_DISABLE_PRED_FIXEDFILTER
+    Newbit_ct = 0;
+#else
+#if ENABLE_FIXEDFILTER_INTERSLICE
+    Newbit_ct = 1;
+#else
+    Newbit_ct = pSlice->isIntra() ? 1 : 0;
+#endif
+#endif
+    Newbit_ct += (Int64)xcodeFilterCoeff(ALFp->coeffmulti, fl, sqrFiltLength, filters_per_group, createBistream);    
+  }
+  else  
+#endif
   m_pcDummyEntropyCoder->codeFiltCountBit(ALFp, &Newbit_ct, pSlice);
   
   
@@ -1350,22 +1616,79 @@ Int TEncAdaptiveLoopFilter::xsendAllFiltersPPPred(int **FilterCoeffQuant, int fl
 Int TEncAdaptiveLoopFilter::xsendAllFiltersPPPredForce0(int **FilterCoeffQuant, int fl, int sqrFiltLength, int filters_per_group, 
                                                         int codedVarBins[m_NO_VAR_BINS], int createBistream, ALFParam* ALFp, const TComSlice * pSlice)
 {
+#if QC_ALF_IMPROVEMENT
+  int ind, i, j, len = 0 ;
+#else
   int ind, bit_ct=0, bit_ct0, i, j;
   int filters_per_group_temp, filters_per_group_diff;
   int chosenPred = 0;
   int force0 = 1;
   Int64 Newbit_ct;
-  
+#endif
   i = 0;
   for(ind = 0; ind < filters_per_group; ind++)
   {
     if(codedVarBins[ind] == 1)
     {
       for(j = 0; j < sqrFiltLength; j++)
+#if QC_ALF_IMPROVEMENT
+        m_FilterCoeffQuantTemp[ind][j]=FilterCoeffQuant[ind][j];
+#else
         m_FilterCoeffQuantTemp[i][j]=FilterCoeffQuant[ind][j];
+#endif
       i++;
     }
+#if QC_ALF_IMPROVEMENT
+    else
+    {
+      for(j = 0; j < sqrFiltLength; j++)
+      {
+        m_FilterCoeffQuantTemp[ind][j] = 0;
+      }
+    }
+#endif
   }
+#if QC_ALF_IMPROVEMENT
+  if(createBistream==0) //Li: use estimated bits
+  {
+#if !EE_DISABLE_PRED_FIXEDFILTER
+#if ENABLE_FIXEDFILTER_INTERSLICE
+    len = 1;
+#else
+    len = pSlice->isIntra() ? 1 : 0;
+#endif
+#endif
+    len += xcodeFilterCoeffForce0(m_FilterCoeffQuantTemp, fl, sqrFiltLength, filters_per_group, codedVarBins, createBistream);
+    return (len);
+  }
+  else
+  {
+    Int64 Newbit_ct = 0;
+    ALFp->forceCoeff0 = 1;
+
+    ALFp->filters_per_group_diff = filters_per_group;
+    ALFp->filters_per_group = filters_per_group;
+    ALFp->predMethod = 0;
+    ALFp->num_coeff = sqrFiltLength;
+    if (ALFp->num_coeff == m_SQR_FILT_LENGTH_5SYM)
+      ALFp->realfiltNo=2;
+    else if (ALFp->num_coeff == m_SQR_FILT_LENGTH_7SYM)
+      ALFp->realfiltNo=1;
+    else
+      ALFp->realfiltNo=0;
+
+    for(ind = 0; ind < filters_per_group; ++ind)
+    {
+      for(i = 0; i < sqrFiltLength; i++)
+      {
+        ALFp->coeffmulti[ind][i] = FilterCoeffQuant[ind][i];
+      }
+    }
+    memcpy ( ALFp->codedVarBins, codedVarBins, sizeof(Int)*ALF_NO_VAR_BIN );
+    m_pcDummyEntropyCoder->codeFiltCountBit(ALFp, &Newbit_ct, pSlice);
+    return ((Int)Newbit_ct);
+  } 
+#else
   filters_per_group_diff = filters_per_group_temp = i;
   
   for(ind = 0; ind < filters_per_group; ++ind)
@@ -1426,11 +1749,33 @@ Int TEncAdaptiveLoopFilter::xsendAllFiltersPPPredForce0(int **FilterCoeffQuant, 
   m_pcDummyEntropyCoder->codeFiltCountBit(ALFp, &Newbit_ct, pSlice);
   
   return ((Int)Newbit_ct);
+#endif
 }
 
 //filtNo==-1/realfiltNo, noFilters=filters_per_frames, realfiltNo=filtNo
+//Li's note: variable frNo is useless
+#if QC_ALF_IMPROVEMENT
+Int TEncAdaptiveLoopFilter::xcodeAuxInfo(Int filtNo, Int noFilters, Int varIndTab[m_NO_VAR_BINS], Int createBitstream, ALFParam* ALFp, const TComSlice * pSlice, Int usePrevFiltBest[m_NO_VAR_BINS], Int availableFilters, Int noVarBins, Int forceCoeff0)
+#else
 Int TEncAdaptiveLoopFilter::xcodeAuxInfo(int filtNo, int noFilters, int varIndTab[m_NO_VAR_BINS], int frNo, int createBitstream,int realfiltNo, ALFParam* ALFp, const TComSlice * pSlice)
+#endif
 {
+#if QC_ALF_IMPROVEMENT
+  Int64 NewbitCt;
+  ALFp->realfiltNo = filtNo;
+  ALFp->filtNo     = filtNo;
+  ALFp->noFilters  = noFilters;
+  assert(filtNo >= 0);
+
+  ALFp->forceCoeff0 = forceCoeff0;
+  
+  memcpy (ALFp->filterPattern, varIndTab, m_max_NO_VAR_BINS * sizeof(Int));     
+  memcpy (ALFp->PrevFiltIdx, usePrevFiltBest, m_max_NO_VAR_BINS * sizeof(Int));
+  
+  m_pcDummyEntropyCoder->codeAuxCountBit(ALFp, &NewbitCt, pSlice);
+
+  return((Int)NewbitCt);
+#else
   int i, filterPattern[m_NO_VAR_BINS], startSecondFilter=0, bitCt=0;
   Int64 NewbitCt;
   
@@ -1469,8 +1814,104 @@ Int TEncAdaptiveLoopFilter::xcodeAuxInfo(int filtNo, int noFilters, int varIndTa
   m_pcDummyEntropyCoder->codeAuxCountBit(ALFp, &NewbitCt, pSlice);
   bitCt = (int) NewbitCt;
   return(bitCt);
+#endif
 }
+#if QC_ALF_IMPROVEMENT
+Int   TEncAdaptiveLoopFilter::xcodeFilterCoeffForce0(int **pDiffQFilterCoeffIntPP, int fl, int sqrFiltLength, int filters_per_group, int codedVarBins[], int createBitstream)
+{
+  int i, k, kMin, kStart, minBits, ind, scanPos, maxScanVal, coeffVal, len = 0,
+    kMinTab[m_MAX_SQR_FILT_LENGTH], bitsCoeffScan[m_MAX_SCAN_VAL][m_MAX_EXP_GOLOMB],
+    minKStart, minBitsKStart, bitsKStart;
+  
+  const Int * pDepthInt = TComAdaptiveLoopFilter::m_pDepthIntTab[fl-2];
+  sqrFiltLength=sqrFiltLength-1;
+  maxScanVal = 0;
+  for(i = 0; i < sqrFiltLength; i++)
+  {
+    maxScanVal = max(maxScanVal, pDepthInt[i]);
+  }
+  
+  // vlc for all
+  memset(bitsCoeffScan, 0, m_MAX_SCAN_VAL * m_MAX_EXP_GOLOMB * sizeof(int));
+  for(ind=0; ind<filters_per_group; ++ind)
+  {
+    if(!codedVarBins[ind])
+    {
+      continue;
+    }
+    for(i = 0; i < sqrFiltLength; i++)
+    {
+      scanPos=pDepthInt[i]-1;
+      coeffVal=abs(pDiffQFilterCoeffIntPP[ind][i]);
+      for (k=1; k<15; k++)
+      {
+        bitsCoeffScan[scanPos][k]+=lengthGolomb(coeffVal, k);
+      }
+    }
+  }
+  
+  minBitsKStart = 0;
+  minKStart = -1;
+  for(k = 1; k < 8; k++)
+  { 
+    bitsKStart = 0; 
+    kStart = k;
+    for(scanPos = 0; scanPos < maxScanVal; scanPos++)
+    {
+      kMin = kStart; 
+      minBits = bitsCoeffScan[scanPos][kMin];
+      
+      if(bitsCoeffScan[scanPos][kStart+1] < minBits)
+      {
+        kMin = kStart + 1; 
+        minBits = bitsCoeffScan[scanPos][kMin];
+      }
+      kStart = kMin;
+      bitsKStart += minBits;
+    }
+    if((bitsKStart < minBitsKStart) || (k == 1))
+    {
+      minBitsKStart = bitsKStart;
+      minKStart = k;
+    }
+  }
+  
+  kStart = minKStart; 
+  for(scanPos = 0; scanPos < maxScanVal; scanPos++)
+  {
+    kMin = kStart; 
+    minBits = bitsCoeffScan[scanPos][kMin];
+    
+    if(bitsCoeffScan[scanPos][kStart+1] < minBits)
+    {
+      kMin = kStart + 1; 
+      minBits = bitsCoeffScan[scanPos][kMin];
+    }
+    
+    kMinTab[scanPos] = kMin;
+    kStart = kMin;
+  }
+  
+  // Coding parameters
+  assert(createBitstream == 0);
+  len += (3 + maxScanVal);
+  len += filters_per_group;
+  // Filter coefficients
+  for(ind=0; ind<filters_per_group; ++ind)
+  {
+    if (codedVarBins[ind]==1)
+    {
+      for(i = 0; i < sqrFiltLength; i++)
+      {
+        scanPos=pDepthInt[i]-1;
+        len += lengthGolomb(abs(pDiffQFilterCoeffIntPP[ind][i]), kMinTab[scanPos]);
+      }
+    }
+  }
 
+  return len;
+}
+#endif
 Int   TEncAdaptiveLoopFilter::xcodeFilterCoeff(int **pDiffQFilterCoeffIntPP, int fl, int sqrFiltLength, 
                                                int filters_per_group, int createBitstream)
 {
@@ -1479,7 +1920,10 @@ Int   TEncAdaptiveLoopFilter::xcodeFilterCoeff(int **pDiffQFilterCoeffIntPP, int
     minKStart, minBitsKStart, bitsKStart;
   
   const Int * pDepthInt = TComAdaptiveLoopFilter::m_pDepthIntTab[fl-2];
-  
+#if QC_ALF_IMPROVEMENT
+  sqrFiltLength=sqrFiltLength-1;
+#endif
+
   maxScanVal = 0;
   for(i = 0; i < sqrFiltLength; i++)
   {
@@ -1491,7 +1935,7 @@ Int   TEncAdaptiveLoopFilter::xcodeFilterCoeff(int **pDiffQFilterCoeffIntPP, int
   for(ind=0; ind<filters_per_group; ++ind)
   {
     for(i = 0; i < sqrFiltLength; i++)
-    {     
+    {
       scanPos=pDepthInt[i]-1;
       coeffVal=abs(pDiffQFilterCoeffIntPP[ind][i]);
       for (k=1; k<15; k++)
@@ -1594,7 +2038,11 @@ Int TEncAdaptiveLoopFilter::lengthFilterCoeffs(int sqrFiltLength, int filters_pe
   return bit_cnt;
 }
 
-Void   TEncAdaptiveLoopFilter::xEncALFLuma_qc ( TComPicYuv* pcPicOrg, TComPicYuv* pcPicDec, TComPicYuv* pcPicRest, UInt64& ruiMinRate, UInt64& ruiMinDist, Double& rdMinCost, const TComSlice * pSlice)
+Void   TEncAdaptiveLoopFilter::xEncALFLuma_qc ( TComPicYuv* pcPicOrg, TComPicYuv* pcPicDec, TComPicYuv* pcPicRest, UInt64& ruiMinRate, UInt64& ruiMinDist, Double& rdMinCost, const TComSlice * pSlice
+#if QC_ALF_IMPROVEMENT
+                                         ,Int log2UnitSize
+#endif
+  )
 {
   //pcPicDec: extended decoded
   //pcPicRest: original decoded: filtered signal will be stored
@@ -1606,7 +2054,23 @@ Void   TEncAdaptiveLoopFilter::xEncALFLuma_qc ( TComPicYuv* pcPicOrg, TComPicYuv
   imgpel* pOrg = (imgpel*) pcPicOrg->getAddr(COMPONENT_Y);
   imgpel* pDec = (imgpel*) pcPicDec->getAddr(COMPONENT_Y);
 
+#if QC_ALF_IMPROVEMENT
+#if ENABLE_FIXEDFILTER_INTERSLICE
+  Int tap               = m_ALF_MAX_NUM_TAP;
+  bTapDecision          = true; 
+  bUpdateMatrix         = true;
+  bFindBestFixedFilter  = false; //for initilization of selecting best fixed filter
+#else
+  Bool bIntraSlice      = pSlice->isIntra();
+  Int tap               = bIntraSlice ? m_ALF_MAX_NUM_TAP : m_ALF_MIN_NUM_TAP;
+  bTapDecision          = bIntraSlice ? true  : false; 
+  bUpdateMatrix         = true;
+  bFindBestFixedFilter  = bIntraSlice ? false : true; //for initilization of selecting best fixed filter#endif
+#endif
+#else
   Int tap               = m_ALF_MIN_NUM_TAP;
+#endif
+
   m_pcTempAlfParam->tap = tap;
   m_pcTempAlfParam->tapV = TComAdaptiveLoopFilter::ALFTapHToTapV(m_pcTempAlfParam->tap);
   m_pcTempAlfParam->num_coeff = TComAdaptiveLoopFilter::ALFTapHToNumCoeff(m_pcTempAlfParam->tap);
@@ -1634,7 +2098,13 @@ Void   TEncAdaptiveLoopFilter::xEncALFLuma_qc ( TComPicYuv* pcPicOrg, TComPicYuv
 
   pcAlfParam       = &(cFrmAlfParam);
   m_varImg         = m_varImgMethods;
+
+#if QC_ALF_IMPROVEMENT
+  pcAlfParam->log2UnitSize = log2UnitSize; //seperate control or restricted to be the same as luma?? to be checked
+  setInitialMask(pcPicOrg, pcPicDec,pcAlfParam);
+#else
   setInitialMask(pcPicOrg, pcPicDec);
+#endif
 
   xFirstFilteringFrameLuma(pOrg, pDec, (imgpel*)m_pcPicYuvTmp->getAddr(COMPONENT_Y), pcAlfParam, pcAlfParam->tap, LumaStride, pSlice); 
   xCalcRDCost(pcPicOrg, m_pcPicYuvTmp, pcAlfParam, uiRate, uiDist, dCost, pSlice); 
@@ -1667,18 +2137,921 @@ Void   TEncAdaptiveLoopFilter::xEncALFLuma_qc ( TComPicYuv* pcPicOrg, TComPicYuv
 
 Void   TEncAdaptiveLoopFilter::xFirstFilteringFrameLuma(imgpel* ImgOrg, imgpel* ImgDec, imgpel* ImgRest, ALFParam* ALFp, Int tap, Int Stride, const TComSlice * pSlice)
 {
+#if QC_ALF_IMPROVEMENT
+  xstoreInBlockMatrix(ImgOrg, ImgDec, tap, Stride, ALFp->log2UnitSize);
+#else
   xstoreInBlockMatrix(ImgOrg, ImgDec, tap, Stride);
-
+#endif
   xFilteringFrameLuma_qc(ImgOrg, ImgDec, ImgRest, ALFp, tap, Stride, pSlice);
 }
 
 
-Void   TEncAdaptiveLoopFilter::xstoreInBlockMatrix(imgpel* ImgOrg, imgpel* ImgDec, Int tap, Int Stride)
+#if QC_ALF_IMPROVEMENT
+Void   TEncAdaptiveLoopFilter::xstoreInBlockMatrixForChroma(TComPicYuv* pcPicOrg, TComPicYuv* pcPicDec, Int tap, Int chroma_idc)
 {
+  imgpel* ImgOrg;
+  imgpel* ImgDec;
+  Int i,j,k,l,varInd,ii,jj;
+  Int x, y;
+  Int fl =tap/2;
+  Int flV = TComAdaptiveLoopFilter::ALFFlHToFlV(fl);
+  Int sqrFiltLength = TComAdaptiveLoopFilter::ALFTapHToNumCoeff(tap);
+  Int fl2=9/2; //extended size at each side of the frame
+  Int ELocal[m_MAX_SQR_FILT_LENGTH];
+  Int yLocal;
+  Int *p_pattern;
+  Int filtNo =2; 
+  Int iImgHeight = pcPicDec->getHeight(COMPONENT_Cb);
+  Int iImgWidth  = pcPicDec->getWidth (COMPONENT_Cb);
+  double **E,*yy;
+ 
+  if (tap==9)
+    filtNo =0;
+  else if (tap==7)
+    filtNo =1;
+  
+  p_pattern= m_patternTab[filtNo];
+  
+  memset( m_pixAcc, 0,sizeof(double)*m_NO_VAR_BINS);
+  for (varInd=0; varInd<1; varInd++)
+  {
+    memset(m_yGlobalSym[filtNo][varInd], 0, sizeof(double)*m_MAX_SQR_FILT_LENGTH);
+    for (k=0; k<sqrFiltLength; k++)
+    {
+      memset(m_EGlobalSym[filtNo][varInd][k], 0, sizeof(double)*m_MAX_SQR_FILT_LENGTH);
+    }
+  }
+  for(Int iColorIdx = 0; iColorIdx < 2; iColorIdx ++)
+  {
+    if( (iColorIdx==0 && chroma_idc < 2) || (iColorIdx==1 && (chroma_idc & 0x01) == 0))
+    {
+      continue;
+    }
+    ImgOrg = (imgpel*) pcPicOrg->getAddr(ComponentID(iColorIdx+1));
+    ImgDec = (imgpel*) pcPicDec->getAddr(ComponentID(iColorIdx+1));
+    Int Stride = pcPicDec->getStride(ComponentID(iColorIdx+1));
+
+    for (i=0,y=fl2; i<iImgHeight; i++,y++)
+    {
+      for (j=0,x=fl2; j<iImgWidth; j++,x++)
+      {
+        {
+          varInd = 0;
+          k=0; 
+          memset(ELocal, 0, sqrFiltLength*sizeof(int));
+          for (ii = -flV; ii < 0; ii++)
+          {
+            for (jj=-fl-ii; jj<=fl+ii; jj++)
+            {  
+              ELocal[p_pattern[k++]]+=(ImgDec[(i+ii)*Stride + (j+jj)]+ImgDec[(i-ii)*Stride + (j-jj)]);
+            }
+          }
+          for (jj=-fl; jj<0; jj++)
+            ELocal[p_pattern[k++]]+=(ImgDec[(i)*Stride + (j+jj)]+ImgDec[(i)*Stride + (j-jj)]);
+          ELocal[p_pattern[k++]]+=ImgDec[(i)*Stride + (j)];
+          
+          yLocal=ImgOrg[(i)*Stride + (j)];
+
+          m_pixAcc[varInd]+=(yLocal*yLocal);
+          E= m_EGlobalSym[filtNo][varInd];
+          yy= m_yGlobalSym[filtNo][varInd];
+
+          for (k=0; k<sqrFiltLength; k++)
+          {
+            for (l=k; l<sqrFiltLength; l++)
+            {
+              E[k][l]+=(double)(ELocal[k]*ELocal[l]);
+            }
+            yy[k]+=(double)(ELocal[k]*yLocal);
+          }
+        }
+      }
+    }
+  }
+
+  // Matrix EGlobalSeq is symmetric, only part of it is calculated
+  for (varInd=0; varInd<1; varInd++)
+  {
+    double **pE = m_EGlobalSym[filtNo][varInd];
+    for (k=1; k<sqrFiltLength; k++)
+    {
+      for (l=0; l<k; l++)
+      {
+        pE[k][l]=pE[l][k];
+      }
+    }
+  }
+}
+#endif
+
+#if QC_ALF_IMPROVEMENT
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////        Prediction from Fixed Filter     ///////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+Double TEncAdaptiveLoopFilter::testFixedFilterFast(Double ***A, Double **b, Double *pixAcc, Double *filterCoeffSym, Double *filterCoeffDefault, int varInd)
+{
+
+  Int j;
+  Double seFilt=0, seOrig=0, error, filterCoeffTemp[m_MAX_SQR_FILT_LENGTH];
+  Int sqrFiltLength= (m_MAX_SQR_FILT_LENGTH/2+1);
+
+  for (j = 0; j < sqrFiltLength; j ++)
+  {
+    filterCoeffTemp[j] = filterCoeffSym[j] - filterCoeffDefault[j];
+  }
+  
+  seOrig = pixAcc[varInd];
+  seFilt = pixAcc[varInd] + calculateErrorCoeffProvided(A[varInd], b[varInd], filterCoeffTemp, sqrFiltLength);
+
+  error = 0;
+  if (seFilt < seOrig)
+  {
+    error += seFilt;
+  }
+  else
+  {
+    error += seOrig;
+  } 
+  return(error);
+}
+                                            
+Double TEncAdaptiveLoopFilter::testFixedFilter(imgpel *imgY_Rec, imgpel *imgY_org, imgpel* imgY_append, imgpel **varImg, Int **filterCoeffSym, 
+  Int usePrevFilt[], Int img_height, Int img_width, Int noVarBins, Int Stride, Int filtNo)
+{
+
+  Int i, j, varInd, pixelInt, temp;
+  Double seFilt[m_NO_VAR_BINS]={0}, seOrig[m_NO_VAR_BINS]={0}, error;
+  Int fl = m_FILTER_LENGTH/2; 
+  Int offset = (1<<(m_NUM_BITS - 2));
+  Int log2UnitSize = 0;
+  Int var_step_size_w = (1 << log2UnitSize);
+  Int var_step_size_h = (1 << log2UnitSize); 
+
+  for (i = fl; i < img_height + fl; i++)
+  {
+    for (j = fl; j < img_width + fl; j++)
+    {
+      if(m_maskImg[i-fl][j-fl])
+      {
+        varInd = m_varImg[(i-fl)/var_step_size_h][(j-fl)/var_step_size_w];
+        pixelInt = filterPixel (imgY_append, &varInd,  filterCoeffSym, NULL, i, j, fl, Stride, filtNo);
+        pixelInt= ((pixelInt+offset) >> (m_NUM_BITS - 1));
+        pixelInt = Clip3(0, m_nIBDIMax, pixelInt);
+
+        Int iOffset     = (i-fl)*Stride + (j-fl);
+        temp            = pixelInt-imgY_org[iOffset];
+        seFilt[varInd] += temp*temp;
+
+        temp            = imgY_Rec[iOffset]-imgY_org[iOffset];
+        seOrig[varInd] += temp*temp;
+      }
+    }
+  }
+
+  error=0;
+  for (i = 0; i< noVarBins; i ++)
+  {
+    if (seFilt[i] < seOrig[i])
+    {
+      usePrevFilt[i] = 1;
+      error += seFilt[i];
+    }
+    else
+    {
+      usePrevFilt[i] = 0;
+      error += seOrig[i];
+    } 
+  }
+  return(error);
+}
+
+void TEncAdaptiveLoopFilter::preFilterFr(Int** imgY_preFilter, imgpel* imgY_rec, imgpel * imgY_org, imgpel* imgY_append, imgpel **varImg,  
+                 Int **filterCoeffSym, Int usePrevFilt[], Int img_height, Int img_width, Int Stride, Int filtNo)
+{
+
+  Int i, j;
+  Int fl = m_FILTER_LENGTH/2;
+ 
+  Int log2UnitSize = 0;
+  Int var_step_size_w = (1 << log2UnitSize);
+  Int var_step_size_h = (1 << log2UnitSize);
+  Int temp = 0, pixelInt = 0, offset = (1<<(m_NUM_BITS - 2));
+
+  for (i = fl; i < img_height+fl; i++)
+  {
+    for (j = fl; j < img_width+fl; j++)
+    {      
+      Int varInd = m_varImg[(i-fl)/var_step_size_h][(j-fl)/var_step_size_w];
+      Int varIndAfterMapping = selectTransposeVarInd(varInd, &temp);
+      if (m_maskImg[i-fl][j-fl] && usePrevFilt[varIndAfterMapping] > 0)
+      {
+        pixelInt =filterPixel(imgY_append, &varInd, filterCoeffSym, NULL, i, j, fl, Stride, filtNo);
+        pixelInt= ((pixelInt+offset) >> (m_NUM_BITS - 1));        
+        imgY_preFilter[(i-fl)][(j-fl)] = Clip3(0, m_nIBDIMax, pixelInt) ;
+      }
+      else
+      {
+        imgY_preFilter[(i-fl)][(j-fl)]=imgY_rec[(i-fl)*Stride+ (j-fl)];
+      }
+    }
+  }
+}
+Void TEncAdaptiveLoopFilter::calcMatrixE(int *ELocal, imgpel *ImgDec, int *p_pattern, int i, int j, int flV, int fl, int transpose, int Stride)
+{
+  int ii, jj, k=0;
+
+  if (transpose==0)
+  {
+    for (ii = -flV; ii < 0; ii++)
+    {
+      for (jj=-fl-ii; jj<=fl+ii; jj++)
+      {  
+        ELocal[p_pattern[k++]]+=(ImgDec[(i+ii)*Stride + (j+jj)]+ImgDec[(i-ii)*Stride + (j-jj)]);
+      }
+    }
+    for (jj=-fl; jj<0; jj++)
+    {
+      ELocal[p_pattern[k++]]+=(ImgDec[(i)*Stride + (j+jj)]+ImgDec[(i)*Stride + (j-jj)]);
+    }
+    ELocal[p_pattern[k++]]+=ImgDec[(i)*Stride + (j)];
+  }
+  else if (transpose==1)
+  {
+    for (jj = -flV; jj < 0; jj++)
+    {
+      for (ii=-fl-jj; ii<=fl+jj; ii++)
+      {  
+        ELocal[p_pattern[k++]]+=(ImgDec[(i+ii)*Stride + (j+jj)]+ImgDec[(i-ii)*Stride + (j-jj)]);
+      }
+    }
+    for (ii=-fl; ii<0; ii++)
+    {
+      ELocal[p_pattern[k++]]+=(ImgDec[(i+ii)*Stride + j]+ImgDec[(i-ii)*Stride + j]);
+    }
+    ELocal[p_pattern[k++]]+=ImgDec[(i)*Stride + (j)];
+  }
+  else if (transpose==2)
+  {
+    for (ii = -flV; ii < 0; ii++)
+    {
+      for (jj=fl+ii; jj>=-fl-ii; jj--)
+      {  
+        ELocal[p_pattern[k++]]+=(ImgDec[(i+ii)*Stride + (j+jj)]+ImgDec[(i-ii)*Stride + (j-jj)]);
+      }
+    }
+    for (jj=-fl; jj<0; jj++)
+    {
+      ELocal[p_pattern[k++]]+=(ImgDec[(i)*Stride + (j+jj)]+ImgDec[(i)*Stride + (j-jj)]);
+    }
+    ELocal[p_pattern[k++]]+=ImgDec[(i)*Stride + (j)];
+  }
+  else
+  {
+    for (jj = -flV; jj < 0; jj++)
+    {
+      for (ii=fl+jj; ii>=-fl-jj; ii--)
+      {  
+        ELocal[p_pattern[k++]]+=(ImgDec[(i+ii)*Stride + (j+jj)]+ImgDec[(i-ii)*Stride + (j-jj)]);
+      }
+    }
+    for (ii=-fl; ii<0; ii++)
+    {
+      ELocal[p_pattern[k++]]+=(ImgDec[(i+ii)*Stride + j]+ImgDec[(i-ii)*Stride + j]);
+    }
+    ELocal[p_pattern[k++]]+=ImgDec[(i)*Stride + (j)];
+  }
+}
+Int TEncAdaptiveLoopFilter::filterPixel(imgpel *ImgDec, Int* varIndBeforeMapping,  Int **filterCoeffSym, Int *pattern, Int i, Int j, Int fl, Int Stride, Int filtNo)
+{
+  Int varInd;  
+  Int transpose;
+  imgpel *imgY_rec = ImgDec;
+  imgpel *p_imgY_pad, *p_imgY_pad0;
+
+  varInd = selectTransposeVarInd((*varIndBeforeMapping), &transpose);
+  (*varIndBeforeMapping) = varInd;
+  Int *coef = filterCoeffSym == NULL? m_filterCoeffPrevSelected[varInd]: filterCoeffSym[varInd];  
+  Int pixelInt= 0;
+
+  if(filterCoeffSym == NULL)
+  {
+    if(transpose==1)
+    {
+      if (filtNo == 2) //5x5
+      {
+        pixelInt += coef[38]* (imgY_rec[(i-fl+2)*Stride + j-fl]+imgY_rec[(i-fl-2)*Stride + j-fl]);
+
+        pixelInt += coef[30]* (imgY_rec[(i-fl+1)*Stride + j-fl+1]+imgY_rec[(i-fl-1)*Stride + j-fl-1]);
+        pixelInt += coef[39]* (imgY_rec[(i-fl+1)*Stride + j-fl]  +imgY_rec[(i-fl-1)*Stride + j-fl]);
+        pixelInt += coef[32]* (imgY_rec[(i-fl+1)*Stride + j-fl-1]+imgY_rec[(i-fl-1)*Stride + j-fl+1]);
+
+        pixelInt += coef[22]* (imgY_rec[(i-fl)*Stride + j-fl-2]+imgY_rec[(i-fl)*Stride + j-fl+2]);
+        pixelInt += coef[31]* (imgY_rec[(i-fl)*Stride + j-fl-1]+imgY_rec[(i-fl)*Stride + j-fl+1]);
+        pixelInt += coef[40]* (imgY_rec[(i-fl)*Stride + j-fl]);
+      }
+      else if (filtNo == 1) //7x7
+      {
+        pixelInt += coef[37]* (imgY_rec[(i-fl+3)*Stride + j-fl]+imgY_rec[(i-fl-3)*Stride + j-fl]);
+
+        p_imgY_pad = imgY_rec + (i-fl+2)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-2)*Stride;
+        pixelInt += coef[29]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[38]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[33]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+
+        p_imgY_pad = imgY_rec + (i-fl+1)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-1)*Stride;
+        pixelInt += coef[21]* (p_imgY_pad[j-fl+2]+p_imgY_pad0[j-fl-2]);
+        pixelInt += coef[30]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[39]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[32]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+        pixelInt += coef[23]* (p_imgY_pad[j-fl-2]+p_imgY_pad0[j-fl+2]);
+
+        p_imgY_pad = imgY_rec + (i-fl)*Stride;
+        pixelInt += coef[13]* (p_imgY_pad[j-fl+3]+p_imgY_pad[j-fl-3]);
+        pixelInt += coef[22]* (p_imgY_pad[j-fl+2]+p_imgY_pad[j-fl-2]);
+        pixelInt += coef[31]* (p_imgY_pad[j-fl+1]+p_imgY_pad[j-fl-1]);
+        pixelInt += coef[40]* (p_imgY_pad[j-fl]);
+      }
+      else
+      {
+        pixelInt += coef[36]* (imgY_rec[(i-fl+4)*Stride + j-fl]+imgY_rec[(i-fl-4)*Stride + j-fl]);
+        p_imgY_pad = imgY_rec + (i-fl+3)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-3)*Stride;
+        pixelInt += coef[28]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[37]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[34]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+
+        p_imgY_pad = imgY_rec + (i-fl+2)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-2)*Stride;
+        pixelInt += coef[20]* (p_imgY_pad[j-fl+2]+p_imgY_pad0[j-fl-2]);
+        pixelInt += coef[29]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[38]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[33]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+        pixelInt += coef[24]* (p_imgY_pad[j-fl-2]+p_imgY_pad0[j-fl+2]);
+
+        p_imgY_pad = imgY_rec + (i-fl+1)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-1)*Stride;
+        pixelInt += coef[12]* (p_imgY_pad[j-fl+3]+p_imgY_pad0[j-fl-3]);
+        pixelInt += coef[21]* (p_imgY_pad[j-fl+2]+p_imgY_pad0[j-fl-2]);
+        pixelInt += coef[30]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[39]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[32]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+        pixelInt += coef[23]* (p_imgY_pad[j-fl-2]+p_imgY_pad0[j-fl+2]);
+        pixelInt += coef[14]* (p_imgY_pad[j-fl-3]+p_imgY_pad0[j-fl+3]);
+
+        p_imgY_pad = imgY_rec + (i-fl)*Stride;
+        pixelInt += coef[4 ]* (p_imgY_pad[j-fl+4]+p_imgY_pad[j-fl-4]);
+        pixelInt += coef[13]* (p_imgY_pad[j-fl+3]+p_imgY_pad[j-fl-3]);
+        pixelInt += coef[22]* (p_imgY_pad[j-fl+2]+p_imgY_pad[j-fl-2]);
+        pixelInt += coef[31]* (p_imgY_pad[j-fl+1]+p_imgY_pad[j-fl-1]);
+        pixelInt += coef[40]* (p_imgY_pad[j-fl]);
+      }
+    }
+    else if(transpose==3)
+    {
+      if (filtNo == 2) //5x5
+      {
+        pixelInt += coef[38]* (imgY_rec[(i-fl+2)*Stride + j-fl]+imgY_rec[(i-fl-2)*Stride + j-fl]);
+
+        pixelInt += coef[32]* (imgY_rec[(i-fl+1)*Stride + j-fl+1]+imgY_rec[(i-fl-1)*Stride + j-fl-1]);
+        pixelInt += coef[39]* (imgY_rec[(i-fl+1)*Stride + j-fl]  +imgY_rec[(i-fl-1)*Stride + j-fl]);
+        pixelInt += coef[30]* (imgY_rec[(i-fl+1)*Stride + j-fl-1]+imgY_rec[(i-fl-1)*Stride + j-fl+1]);
+
+        pixelInt += coef[22]* (imgY_rec[(i-fl)*Stride + j-fl-2]+imgY_rec[(i-fl)*Stride + j-fl+2]);
+        pixelInt += coef[31]* (imgY_rec[(i-fl)*Stride + j-fl-1]+imgY_rec[(i-fl)*Stride + j-fl+1]);
+        pixelInt += coef[40]* (imgY_rec[(i-fl)*Stride + j-fl]);
+      }
+      else if (filtNo == 1) //7x7
+      {
+        pixelInt += coef[37]* (imgY_rec[(i-fl+3)*Stride + j-fl]+imgY_rec[(i-fl-3)*Stride + j-fl]);
+
+        p_imgY_pad = imgY_rec + (i-fl+2)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-2)*Stride;
+        pixelInt += coef[33]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[38]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[29]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+
+        p_imgY_pad = imgY_rec + (i-fl+1)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-1)*Stride;
+        pixelInt += coef[23]* (p_imgY_pad[j-fl+2]+p_imgY_pad0[j-fl-2]);
+        pixelInt += coef[32]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[39]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[30]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+        pixelInt += coef[21]* (p_imgY_pad[j-fl-2]+p_imgY_pad0[j-fl+2]);
+
+        p_imgY_pad = imgY_rec + (i-fl)*Stride;
+        pixelInt += coef[13]* (p_imgY_pad[j-fl+3]+p_imgY_pad[j-fl-3]);
+        pixelInt += coef[22]* (p_imgY_pad[j-fl+2]+p_imgY_pad[j-fl-2]);
+        pixelInt += coef[31]* (p_imgY_pad[j-fl+1]+p_imgY_pad[j-fl-1]);
+        pixelInt += coef[40]* (p_imgY_pad[j-fl]);
+
+      }
+      else
+      {
+        pixelInt += coef[36]* (imgY_rec[(i-fl+4)*Stride + j-fl]+imgY_rec[(i-fl-4)*Stride + j-fl]);
+        p_imgY_pad = imgY_rec + (i-fl+3)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-3)*Stride;
+        pixelInt += coef[34]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[37]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[28]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+
+        p_imgY_pad = imgY_rec + (i-fl+2)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-2)*Stride;
+        pixelInt += coef[24]* (p_imgY_pad[j-fl+2]+p_imgY_pad0[j-fl-2]);
+        pixelInt += coef[33]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[38]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[29]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+        pixelInt += coef[20]* (p_imgY_pad[j-fl-2]+p_imgY_pad0[j-fl+2]);
+
+        p_imgY_pad = imgY_rec + (i-fl+1)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-1)*Stride;
+        pixelInt += coef[14]* (p_imgY_pad[j-fl+3]+p_imgY_pad0[j-fl-3]);
+        pixelInt += coef[23]* (p_imgY_pad[j-fl+2]+p_imgY_pad0[j-fl-2]);
+        pixelInt += coef[32]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[39]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[30]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+        pixelInt += coef[21]* (p_imgY_pad[j-fl-2]+p_imgY_pad0[j-fl+2]);
+        pixelInt += coef[12]* (p_imgY_pad[j-fl-3]+p_imgY_pad0[j-fl+3]);
+
+        p_imgY_pad = imgY_rec + (i-fl)*Stride;
+        pixelInt += coef[4]* (p_imgY_pad[j-fl+4]+p_imgY_pad[j-fl-4]);
+        pixelInt += coef[13]* (p_imgY_pad[j-fl+3]+p_imgY_pad[j-fl-3]);
+        pixelInt += coef[22]* (p_imgY_pad[j-fl+2]+p_imgY_pad[j-fl-2]);
+        pixelInt += coef[31]* (p_imgY_pad[j-fl+1]+p_imgY_pad[j-fl-1]);
+        pixelInt += coef[40]* (p_imgY_pad[j-fl]);
+
+      }
+    }
+    else if(transpose==2)
+    {
+      if (filtNo == 2) //5x5
+      {
+        pixelInt += coef[22]* (imgY_rec[(i-fl+2)*Stride + j-fl]+imgY_rec[(i-fl-2)*Stride + j-fl]);
+
+        pixelInt += coef[32]* (imgY_rec[(i-fl+1)*Stride + j-fl+1]+imgY_rec[(i-fl-1)*Stride + j-fl-1]);
+        pixelInt += coef[31]* (imgY_rec[(i-fl+1)*Stride + j-fl]  +imgY_rec[(i-fl-1)*Stride + j-fl]);
+        pixelInt += coef[30]* (imgY_rec[(i-fl+1)*Stride + j-fl-1]+imgY_rec[(i-fl-1)*Stride + j-fl+1]);
+
+        pixelInt += coef[38]* (imgY_rec[(i-fl)*Stride + j-fl-2]+imgY_rec[(i-fl)*Stride + j-fl+2]);
+        pixelInt += coef[39]* (imgY_rec[(i-fl)*Stride + j-fl-1]+imgY_rec[(i-fl)*Stride + j-fl+1]);
+        pixelInt += coef[40]* (imgY_rec[(i-fl)*Stride + j-fl]);
+      }
+      else if (filtNo == 1) //7x7
+      {
+        pixelInt += coef[13]* (imgY_rec[(i-fl+3)*Stride + j-fl]+imgY_rec[(i-fl-3)*Stride + j-fl]);
+
+        p_imgY_pad = imgY_rec + (i-fl+2)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-2)*Stride;
+        pixelInt += coef[23]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[22]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[21]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+
+        p_imgY_pad = imgY_rec + (i-fl+1)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-1)*Stride;
+        pixelInt += coef[33]* (p_imgY_pad[j-fl+2]+p_imgY_pad0[j-fl-2]);
+        pixelInt += coef[32]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[31]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[30]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+        pixelInt += coef[29]* (p_imgY_pad[j-fl-2]+p_imgY_pad0[j-fl+2]);
+
+        p_imgY_pad = imgY_rec + (i-fl)*Stride;
+        pixelInt += coef[37]* (p_imgY_pad[j-fl+3]+p_imgY_pad[j-fl-3]);
+        pixelInt += coef[38]* (p_imgY_pad[j-fl+2]+p_imgY_pad[j-fl-2]);
+        pixelInt += coef[39]* (p_imgY_pad[j-fl+1]+p_imgY_pad[j-fl-1]);
+        pixelInt += coef[40]* (p_imgY_pad[j-fl]);
+
+      }
+      else
+      {
+        pixelInt += coef[4]* (imgY_rec[(i-fl+4)*Stride + j-fl]+imgY_rec[(i-fl-4)*Stride + j-fl]);
+        p_imgY_pad = imgY_rec + (i-fl+3)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-3)*Stride;
+        pixelInt += coef[14]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[13]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[12]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+
+        p_imgY_pad = imgY_rec + (i-fl+2)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-2)*Stride;
+        pixelInt += coef[24]* (p_imgY_pad[j-fl+2]+p_imgY_pad0[j-fl-2]);
+        pixelInt += coef[23]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[22]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[21]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+        pixelInt += coef[20]* (p_imgY_pad[j-fl-2]+p_imgY_pad0[j-fl+2]);
+
+        p_imgY_pad = imgY_rec + (i-fl+1)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-1)*Stride;
+        pixelInt += coef[34]* (p_imgY_pad[j-fl+3]+p_imgY_pad0[j-fl-3]);
+        pixelInt += coef[33]* (p_imgY_pad[j-fl+2]+p_imgY_pad0[j-fl-2]);
+        pixelInt += coef[32]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[31]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[30]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+        pixelInt += coef[29]* (p_imgY_pad[j-fl-2]+p_imgY_pad0[j-fl+2]);
+        pixelInt += coef[28]* (p_imgY_pad[j-fl-3]+p_imgY_pad0[j-fl+3]);
+
+        p_imgY_pad = imgY_rec + (i-fl)*Stride;
+        pixelInt += coef[36]* (p_imgY_pad[j-fl+4]+p_imgY_pad[j-fl-4]);
+        pixelInt += coef[37]* (p_imgY_pad[j-fl+3]+p_imgY_pad[j-fl-3]);
+        pixelInt += coef[38]* (p_imgY_pad[j-fl+2]+p_imgY_pad[j-fl-2]);
+        pixelInt += coef[39]* (p_imgY_pad[j-fl+1]+p_imgY_pad[j-fl-1]);
+        pixelInt += coef[40]* (p_imgY_pad[j-fl]);
+      }
+    }
+    else
+    {
+      if (filtNo == 2) //5x5
+      {
+        pixelInt += coef[22]* (imgY_rec[(i-fl+2)*Stride + j-fl]+imgY_rec[(i-fl-2)*Stride + j-fl]);
+
+        pixelInt += coef[30]* (imgY_rec[(i-fl+1)*Stride + j-fl+1]+imgY_rec[(i-fl-1)*Stride + j-fl-1]);
+        pixelInt += coef[31]* (imgY_rec[(i-fl+1)*Stride + j-fl]  +imgY_rec[(i-fl-1)*Stride + j-fl]);
+        pixelInt += coef[32]* (imgY_rec[(i-fl+1)*Stride + j-fl-1]+imgY_rec[(i-fl-1)*Stride + j-fl+1]);
+
+        pixelInt += coef[38]* (imgY_rec[(i-fl)*Stride + j-fl-2]+imgY_rec[(i-fl)*Stride + j-fl+2]);
+        pixelInt += coef[39]* (imgY_rec[(i-fl)*Stride + j-fl-1]+imgY_rec[(i-fl)*Stride + j-fl+1]);
+        pixelInt += coef[40]* (imgY_rec[(i-fl)*Stride + j-fl]);
+      }
+      else if (filtNo == 1) //7x7
+      {
+        pixelInt += coef[13]* (imgY_rec[(i-fl+3)*Stride + j-fl]+imgY_rec[(i-fl-3)*Stride + j-fl]);
+
+        p_imgY_pad = imgY_rec + (i-fl+2)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-2)*Stride;
+        pixelInt += coef[21]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[22]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[23]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+
+        p_imgY_pad = imgY_rec + (i-fl+1)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-1)*Stride;
+        pixelInt += coef[29]* (p_imgY_pad[j-fl+2]+p_imgY_pad0[j-fl-2]);
+        pixelInt += coef[30]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[31]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[32]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+        pixelInt += coef[33]* (p_imgY_pad[j-fl-2]+p_imgY_pad0[j-fl+2]);
+
+        p_imgY_pad = imgY_rec + (i-fl)*Stride;
+        pixelInt += coef[37]* (p_imgY_pad[j-fl+3]+p_imgY_pad[j-fl-3]);
+        pixelInt += coef[38]* (p_imgY_pad[j-fl+2]+p_imgY_pad[j-fl-2]);
+        pixelInt += coef[39]* (p_imgY_pad[j-fl+1]+p_imgY_pad[j-fl-1]);
+        pixelInt += coef[40]* (p_imgY_pad[j-fl]);
+
+      }
+      else
+      {
+        pixelInt += coef[4]* (imgY_rec[(i-fl+4)*Stride + j-fl]+imgY_rec[(i-fl-4)*Stride + j-fl]);
+        p_imgY_pad = imgY_rec + (i-fl+3)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-3)*Stride;
+        pixelInt += coef[12]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[13]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[14]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+
+        p_imgY_pad = imgY_rec + (i-fl+2)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-2)*Stride;
+        pixelInt += coef[20]* (p_imgY_pad[j-fl+2]+p_imgY_pad0[j-fl-2]);
+        pixelInt += coef[21]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[22]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[23]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+        pixelInt += coef[24]* (p_imgY_pad[j-fl-2]+p_imgY_pad0[j-fl+2]);
+
+        p_imgY_pad = imgY_rec + (i-fl+1)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-1)*Stride;
+        pixelInt += coef[28]* (p_imgY_pad[j-fl+3]+p_imgY_pad0[j-fl-3]);
+        pixelInt += coef[29]* (p_imgY_pad[j-fl+2]+p_imgY_pad0[j-fl-2]);
+        pixelInt += coef[30]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[31]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[32]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+        pixelInt += coef[33]* (p_imgY_pad[j-fl-2]+p_imgY_pad0[j-fl+2]);
+        pixelInt += coef[34]* (p_imgY_pad[j-fl-3]+p_imgY_pad0[j-fl+3]);
+
+        p_imgY_pad = imgY_rec + (i-fl)*Stride;
+        pixelInt += coef[36]* (p_imgY_pad[j-fl+4]+p_imgY_pad[j-fl-4]);
+        pixelInt += coef[37]* (p_imgY_pad[j-fl+3]+p_imgY_pad[j-fl-3]);
+        pixelInt += coef[38]* (p_imgY_pad[j-fl+2]+p_imgY_pad[j-fl-2]);
+        pixelInt += coef[39]* (p_imgY_pad[j-fl+1]+p_imgY_pad[j-fl-1]);
+        pixelInt += coef[40]* (p_imgY_pad[j-fl]);
+
+      }
+    }
+  }
+  else
+  {
+    //test prev filter
+    if(transpose==1)
+    {
+      if (filtNo == 2) //5x5
+      {
+        pixelInt += coef[4 ]* (imgY_rec[(i-fl+2)*Stride + j-fl]+imgY_rec[(i-fl-2)*Stride + j-fl]);
+
+        pixelInt += coef[1 ]* (imgY_rec[(i-fl+1)*Stride + j-fl+1]+imgY_rec[(i-fl-1)*Stride + j-fl-1]);
+        pixelInt += coef[5 ]* (imgY_rec[(i-fl+1)*Stride + j-fl]  +imgY_rec[(i-fl-1)*Stride + j-fl]);
+        pixelInt += coef[3 ]* (imgY_rec[(i-fl+1)*Stride + j-fl-1]+imgY_rec[(i-fl-1)*Stride + j-fl+1]);
+
+        pixelInt += coef[0 ]* (imgY_rec[(i-fl)*Stride + j-fl-2]+imgY_rec[(i-fl)*Stride + j-fl+2]);
+        pixelInt += coef[2 ]* (imgY_rec[(i-fl)*Stride + j-fl-1]+imgY_rec[(i-fl)*Stride + j-fl+1]);
+        pixelInt += coef[6 ]* (imgY_rec[(i-fl)*Stride + j-fl]);
+      }
+      else if (filtNo == 1) //7x7
+      {
+        pixelInt += coef[9 ]* (imgY_rec[(i-fl+3)*Stride + j-fl]+imgY_rec[(i-fl-3)*Stride + j-fl]);
+
+        p_imgY_pad = imgY_rec + (i-fl+2)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-2)*Stride;
+        pixelInt += coef[4 ]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[10]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[8 ]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+
+        p_imgY_pad = imgY_rec + (i-fl+1)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-1)*Stride;
+        pixelInt += coef[1 ]* (p_imgY_pad[j-fl+2]+p_imgY_pad0[j-fl-2]);
+        pixelInt += coef[5 ]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[11]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[7 ]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+        pixelInt += coef[3 ]* (p_imgY_pad[j-fl-2]+p_imgY_pad0[j-fl+2]);
+
+        p_imgY_pad = imgY_rec + (i-fl)*Stride;
+        pixelInt += coef[0 ]* (p_imgY_pad[j-fl+3]+p_imgY_pad[j-fl-3]);
+        pixelInt += coef[2 ]* (p_imgY_pad[j-fl+2]+p_imgY_pad[j-fl-2]);
+        pixelInt += coef[6 ]* (p_imgY_pad[j-fl+1]+p_imgY_pad[j-fl-1]);
+        pixelInt += coef[12]* (p_imgY_pad[j-fl]);
+
+      }
+      else
+      {
+        pixelInt += coef[16]* (imgY_rec[(i-fl+4)*Stride + j-fl]+imgY_rec[(i-fl-4)*Stride + j-fl]);
+        p_imgY_pad = imgY_rec + (i-fl+3)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-3)*Stride;
+        pixelInt += coef[9 ]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[17]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[15]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+
+        p_imgY_pad = imgY_rec + (i-fl+2)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-2)*Stride;
+        pixelInt += coef[4 ]* (p_imgY_pad[j-fl+2]+p_imgY_pad0[j-fl-2]);
+        pixelInt += coef[10]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[18]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[14]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+        pixelInt += coef[8 ]* (p_imgY_pad[j-fl-2]+p_imgY_pad0[j-fl+2]);
+
+        p_imgY_pad = imgY_rec + (i-fl+1)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-1)*Stride;
+        pixelInt += coef[1 ]* (p_imgY_pad[j-fl+3]+p_imgY_pad0[j-fl-3]);
+        pixelInt += coef[5 ]* (p_imgY_pad[j-fl+2]+p_imgY_pad0[j-fl-2]);
+        pixelInt += coef[11]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[19]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[13]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+        pixelInt += coef[7 ]* (p_imgY_pad[j-fl-2]+p_imgY_pad0[j-fl+2]);
+        pixelInt += coef[3 ]* (p_imgY_pad[j-fl-3]+p_imgY_pad0[j-fl+3]);
+
+        p_imgY_pad = imgY_rec + (i-fl)*Stride;
+        pixelInt += coef[0 ]* (p_imgY_pad[j-fl+4]+p_imgY_pad[j-fl-4]);
+        pixelInt += coef[2 ]* (p_imgY_pad[j-fl+3]+p_imgY_pad[j-fl-3]);
+        pixelInt += coef[6 ]* (p_imgY_pad[j-fl+2]+p_imgY_pad[j-fl-2]);
+        pixelInt += coef[12]* (p_imgY_pad[j-fl+1]+p_imgY_pad[j-fl-1]);
+        pixelInt += coef[20]* (p_imgY_pad[j-fl]);
+      }
+    }
+    else if(transpose==3)
+    {
+      if (filtNo == 2) //5x5
+      {
+        pixelInt += coef[4 ]* (imgY_rec[(i-fl+2)*Stride + j-fl]+imgY_rec[(i-fl-2)*Stride + j-fl]);
+
+        pixelInt += coef[3 ]* (imgY_rec[(i-fl+1)*Stride + j-fl+1]+imgY_rec[(i-fl-1)*Stride + j-fl-1]);
+        pixelInt += coef[5 ]* (imgY_rec[(i-fl+1)*Stride + j-fl]  +imgY_rec[(i-fl-1)*Stride + j-fl]);
+        pixelInt += coef[1 ]* (imgY_rec[(i-fl+1)*Stride + j-fl-1]+imgY_rec[(i-fl-1)*Stride + j-fl+1]);
+
+        pixelInt += coef[0 ]* (imgY_rec[(i-fl)*Stride + j-fl-2]+imgY_rec[(i-fl)*Stride + j-fl+2]);
+        pixelInt += coef[2 ]* (imgY_rec[(i-fl)*Stride + j-fl-1]+imgY_rec[(i-fl)*Stride + j-fl+1]);
+        pixelInt += coef[6 ]* (imgY_rec[(i-fl)*Stride + j-fl]);
+      }
+      else if (filtNo == 1) //7x7
+      {
+        pixelInt += coef[9 ]* (imgY_rec[(i-fl+3)*Stride + j-fl]+imgY_rec[(i-fl-3)*Stride + j-fl]);
+
+        p_imgY_pad = imgY_rec + (i-fl+2)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-2)*Stride;
+        pixelInt += coef[8 ]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[10]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[4 ]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+
+        p_imgY_pad = imgY_rec + (i-fl+1)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-1)*Stride;
+        pixelInt += coef[3 ]* (p_imgY_pad[j-fl+2]+p_imgY_pad0[j-fl-2]);
+        pixelInt += coef[7 ]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[11]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[5 ]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+        pixelInt += coef[1 ]* (p_imgY_pad[j-fl-2]+p_imgY_pad0[j-fl+2]);
+
+        p_imgY_pad = imgY_rec + (i-fl)*Stride;
+        pixelInt += coef[0 ]* (p_imgY_pad[j-fl+3]+p_imgY_pad[j-fl-3]);
+        pixelInt += coef[2 ]* (p_imgY_pad[j-fl+2]+p_imgY_pad[j-fl-2]);
+        pixelInt += coef[6 ]* (p_imgY_pad[j-fl+1]+p_imgY_pad[j-fl-1]);
+        pixelInt += coef[12]* (p_imgY_pad[j-fl]);
+      }
+      else
+      {
+        pixelInt += coef[16]* (imgY_rec[(i-fl+4)*Stride + j-fl]+imgY_rec[(i-fl-4)*Stride + j-fl]);
+        p_imgY_pad = imgY_rec + (i-fl+3)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-3)*Stride;
+        pixelInt += coef[15]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[17]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[9 ]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+
+        p_imgY_pad = imgY_rec + (i-fl+2)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-2)*Stride;
+        pixelInt += coef[8 ]* (p_imgY_pad[j-fl+2]+p_imgY_pad0[j-fl-2]);
+        pixelInt += coef[14]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[18]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[10]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+        pixelInt += coef[4 ]* (p_imgY_pad[j-fl-2]+p_imgY_pad0[j-fl+2]);
+
+        p_imgY_pad = imgY_rec + (i-fl+1)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-1)*Stride;
+        pixelInt += coef[3 ]* (p_imgY_pad[j-fl+3]+p_imgY_pad0[j-fl-3]);
+        pixelInt += coef[7 ]* (p_imgY_pad[j-fl+2]+p_imgY_pad0[j-fl-2]);
+        pixelInt += coef[13]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[19]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[11]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+        pixelInt += coef[5 ]* (p_imgY_pad[j-fl-2]+p_imgY_pad0[j-fl+2]);
+        pixelInt += coef[1 ]* (p_imgY_pad[j-fl-3]+p_imgY_pad0[j-fl+3]);
+
+        p_imgY_pad = imgY_rec + (i-fl)*Stride;
+        pixelInt += coef[0 ]* (p_imgY_pad[j-fl+4]+p_imgY_pad[j-fl-4]);
+        pixelInt += coef[2 ]* (p_imgY_pad[j-fl+3]+p_imgY_pad[j-fl-3]);
+        pixelInt += coef[6 ]* (p_imgY_pad[j-fl+2]+p_imgY_pad[j-fl-2]);
+        pixelInt += coef[12]* (p_imgY_pad[j-fl+1]+p_imgY_pad[j-fl-1]);
+        pixelInt += coef[20]* (p_imgY_pad[j-fl]);
+      }
+    }
+    else if(transpose==2)
+    {
+      if (filtNo == 2) //5x5
+      {
+        pixelInt += coef[0 ]* (imgY_rec[(i-fl+2)*Stride + j-fl]+imgY_rec[(i-fl-2)*Stride + j-fl]);
+
+        pixelInt += coef[3 ]* (imgY_rec[(i-fl+1)*Stride + j-fl+1]+imgY_rec[(i-fl-1)*Stride + j-fl-1]);
+        pixelInt += coef[2 ]* (imgY_rec[(i-fl+1)*Stride + j-fl]  +imgY_rec[(i-fl-1)*Stride + j-fl]);
+        pixelInt += coef[1 ]* (imgY_rec[(i-fl+1)*Stride + j-fl-1]+imgY_rec[(i-fl-1)*Stride + j-fl+1]);
+
+        pixelInt += coef[4 ]* (imgY_rec[(i-fl)*Stride + j-fl-2]+imgY_rec[(i-fl)*Stride + j-fl+2]);
+        pixelInt += coef[5 ]* (imgY_rec[(i-fl)*Stride + j-fl-1]+imgY_rec[(i-fl)*Stride + j-fl+1]);
+        pixelInt += coef[6 ]* (imgY_rec[(i-fl)*Stride + j-fl]);
+      }
+      else if (filtNo == 1) //7x7
+      {
+        pixelInt += coef[0 ]* (imgY_rec[(i-fl+3)*Stride + j-fl]+imgY_rec[(i-fl-3)*Stride + j-fl]);
+
+        p_imgY_pad = imgY_rec + (i-fl+2)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-2)*Stride;
+        pixelInt += coef[ 3]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[ 2]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[ 1]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+
+        p_imgY_pad = imgY_rec + (i-fl+1)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-1)*Stride;
+        pixelInt += coef[8 ]* (p_imgY_pad[j-fl+2]+p_imgY_pad0[j-fl-2]);
+        pixelInt += coef[7 ]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[6 ]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[5 ]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+        pixelInt += coef[4 ]* (p_imgY_pad[j-fl-2]+p_imgY_pad0[j-fl+2]);
+
+        p_imgY_pad = imgY_rec + (i-fl)*Stride;
+        pixelInt += coef[9 ]* (p_imgY_pad[j-fl+3]+p_imgY_pad[j-fl-3]);
+        pixelInt += coef[10]* (p_imgY_pad[j-fl+2]+p_imgY_pad[j-fl-2]);
+        pixelInt += coef[11]* (p_imgY_pad[j-fl+1]+p_imgY_pad[j-fl-1]);
+        pixelInt += coef[12]* (p_imgY_pad[j-fl]);
+
+      }
+      else
+      {
+        pixelInt += coef[0 ]* (imgY_rec[(i-fl+4)*Stride + j-fl]+imgY_rec[(i-fl-4)*Stride + j-fl]);
+        p_imgY_pad = imgY_rec + (i-fl+3)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-3)*Stride;
+        pixelInt += coef[3 ]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[2 ]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[1 ]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+
+        p_imgY_pad = imgY_rec + (i-fl+2)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-2)*Stride;
+        pixelInt += coef[8 ]* (p_imgY_pad[j-fl+2]+p_imgY_pad0[j-fl-2]);
+        pixelInt += coef[7 ]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[6 ]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[5 ]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+        pixelInt += coef[4 ]* (p_imgY_pad[j-fl-2]+p_imgY_pad0[j-fl+2]);
+
+        p_imgY_pad = imgY_rec + (i-fl+1)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-1)*Stride;
+        pixelInt += coef[15]* (p_imgY_pad[j-fl+3]+p_imgY_pad0[j-fl-3]);
+        pixelInt += coef[14]* (p_imgY_pad[j-fl+2]+p_imgY_pad0[j-fl-2]);
+        pixelInt += coef[13]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[12]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[11]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+        pixelInt += coef[10]* (p_imgY_pad[j-fl-2]+p_imgY_pad0[j-fl+2]);
+        pixelInt += coef[9 ]* (p_imgY_pad[j-fl-3]+p_imgY_pad0[j-fl+3]);
+
+        p_imgY_pad = imgY_rec + (i-fl)*Stride;
+        pixelInt += coef[16]* (p_imgY_pad[j-fl+4]+p_imgY_pad[j-fl-4]);
+        pixelInt += coef[17]* (p_imgY_pad[j-fl+3]+p_imgY_pad[j-fl-3]);
+        pixelInt += coef[18]* (p_imgY_pad[j-fl+2]+p_imgY_pad[j-fl-2]);
+        pixelInt += coef[19]* (p_imgY_pad[j-fl+1]+p_imgY_pad[j-fl-1]);
+        pixelInt += coef[20]* (p_imgY_pad[j-fl]);
+      }
+    }
+    else
+    {
+      if (filtNo == 2) //5x5
+      {
+        pixelInt += coef[0]* (imgY_rec[(i-fl+2)*Stride + j-fl]+imgY_rec[(i-fl-2)*Stride + j-fl]);
+
+        pixelInt += coef[1]* (imgY_rec[(i-fl+1)*Stride + j-fl+1]+imgY_rec[(i-fl-1)*Stride + j-fl-1]);
+        pixelInt += coef[2]* (imgY_rec[(i-fl+1)*Stride + j-fl]  +imgY_rec[(i-fl-1)*Stride + j-fl]);
+        pixelInt += coef[3]* (imgY_rec[(i-fl+1)*Stride + j-fl-1]+imgY_rec[(i-fl-1)*Stride + j-fl+1]);
+
+        pixelInt += coef[4]* (imgY_rec[(i-fl)*Stride + j-fl-2]+imgY_rec[(i-fl)*Stride + j-fl+2]);
+        pixelInt += coef[5]* (imgY_rec[(i-fl)*Stride + j-fl-1]+imgY_rec[(i-fl)*Stride + j-fl+1]);
+        pixelInt += coef[6]* (imgY_rec[(i-fl)*Stride + j-fl]);
+      }
+      else if (filtNo == 1) //7x7
+      {
+        pixelInt += coef[0]* (imgY_rec[(i-fl+3)*Stride + j-fl]+imgY_rec[(i-fl-3)*Stride + j-fl]);
+
+        p_imgY_pad = imgY_rec + (i-fl+2)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-2)*Stride;
+        pixelInt += coef[1]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[2]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[3]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+
+        p_imgY_pad = imgY_rec + (i-fl+1)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-1)*Stride;
+        pixelInt += coef[4 ]* (p_imgY_pad[j-fl+2]+p_imgY_pad0[j-fl-2]);
+        pixelInt += coef[5 ]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[6 ]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[7 ]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+        pixelInt += coef[8 ]* (p_imgY_pad[j-fl-2]+p_imgY_pad0[j-fl+2]);
+
+        p_imgY_pad = imgY_rec + (i-fl)*Stride;
+        pixelInt += coef[9 ]* (p_imgY_pad[j-fl+3]+p_imgY_pad[j-fl-3]);
+        pixelInt += coef[10]* (p_imgY_pad[j-fl+2]+p_imgY_pad[j-fl-2]);
+        pixelInt += coef[11]* (p_imgY_pad[j-fl+1]+p_imgY_pad[j-fl-1]);
+        pixelInt += coef[12]* (p_imgY_pad[j-fl]);
+      }
+      else
+      {
+        pixelInt += coef[0 ]* (imgY_rec[(i-fl+4)*Stride + j-fl]+imgY_rec[(i-fl-4)*Stride + j-fl]);
+        p_imgY_pad = imgY_rec + (i-fl+3)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-3)*Stride;
+        pixelInt += coef[1 ]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[2 ]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[3 ]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+
+        p_imgY_pad = imgY_rec + (i-fl+2)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-2)*Stride;
+        pixelInt += coef[4 ]* (p_imgY_pad[j-fl+2]+p_imgY_pad0[j-fl-2]);
+        pixelInt += coef[5 ]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[6 ]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[7 ]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+        pixelInt += coef[8 ]* (p_imgY_pad[j-fl-2]+p_imgY_pad0[j-fl+2]);
+
+        p_imgY_pad = imgY_rec + (i-fl+1)*Stride;
+        p_imgY_pad0 = imgY_rec + (i-fl-1)*Stride;
+        pixelInt += coef[9 ]* (p_imgY_pad[j-fl+3]+p_imgY_pad0[j-fl-3]);
+        pixelInt += coef[10]* (p_imgY_pad[j-fl+2]+p_imgY_pad0[j-fl-2]);
+        pixelInt += coef[11]* (p_imgY_pad[j-fl+1]+p_imgY_pad0[j-fl-1]);
+        pixelInt += coef[12]* (p_imgY_pad[j-fl]+p_imgY_pad0[j-fl]);
+        pixelInt += coef[13]* (p_imgY_pad[j-fl-1]+p_imgY_pad0[j-fl+1]);
+        pixelInt += coef[14]* (p_imgY_pad[j-fl-2]+p_imgY_pad0[j-fl+2]);
+        pixelInt += coef[15]* (p_imgY_pad[j-fl-3]+p_imgY_pad0[j-fl+3]);
+
+        p_imgY_pad = imgY_rec + (i-fl)*Stride;
+        pixelInt += coef[16]* (p_imgY_pad[j-fl+4]+p_imgY_pad[j-fl-4]);
+        pixelInt += coef[17]* (p_imgY_pad[j-fl+3]+p_imgY_pad[j-fl-3]);
+        pixelInt += coef[18]* (p_imgY_pad[j-fl+2]+p_imgY_pad[j-fl-2]);
+        pixelInt += coef[19]* (p_imgY_pad[j-fl+1]+p_imgY_pad[j-fl-1]);
+        pixelInt += coef[20]* (p_imgY_pad[j-fl]);
+      }
+    }
+  }
+  return(pixelInt);
+}
+#endif
+
+#if QC_ALF_IMPROVEMENT
+Void   TEncAdaptiveLoopFilter::xstoreInBlockMatrix(imgpel* ImgOrg, imgpel* ImgDec, Int tap, Int Stride, Int log2UnitSize)
+#else
+Void   TEncAdaptiveLoopFilter::xstoreInBlockMatrix(imgpel* ImgOrg, imgpel* ImgDec, Int tap, Int Stride)
+#endif
+{
+#if QC_ALF_IMPROVEMENT
+  if(bUpdateMatrix)
+  {
+    Int var_step_size_w = (1 << log2UnitSize);
+    Int var_step_size_h = (1 << log2UnitSize);
+    Int i,j,k,l,varInd;
+#else
   Int var_step_size_w = m_ALF_VAR_SIZE_W;
   Int var_step_size_h = m_ALF_VAR_SIZE_H;
-
   Int i,j,k,l,varInd,ii,jj;
+#endif
   Int x, y;
   Int fl =tap/2;
   Int flV = TComAdaptiveLoopFilter::ALFFlHToFlV(fl);
@@ -1698,12 +3071,16 @@ Void   TEncAdaptiveLoopFilter::xstoreInBlockMatrix(imgpel* ImgOrg, imgpel* ImgDe
   p_pattern= m_patternTab[filtNo];
   
   memset( m_pixAcc, 0,sizeof(double)*m_NO_VAR_BINS);
+#if QC_ALF_IMPROVEMENT
+  for (varInd=0; varInd<m_max_NO_VAR_BINS; varInd++)
+#else
   for (varInd=0; varInd<m_NO_VAR_BINS; varInd++)
+#endif
   {
-    memset(m_yGlobalSym[filtNo][varInd],0,sizeof(double)*m_MAX_SQR_FILT_LENGTH);
+    memset(m_yGlobalSym[filtNo][varInd], 0, sizeof(double)*m_MAX_SQR_FILT_LENGTH);
     for (k=0; k<sqrFiltLength; k++)
     {
-      memset(m_EGlobalSym[filtNo][varInd][k],0,sizeof(double)*m_MAX_SQR_FILT_LENGTH);
+      memset(m_EGlobalSym[filtNo][varInd][k], 0, sizeof(double)*m_MAX_SQR_FILT_LENGTH);
     }
   }
   for (i = fl2; i < m_im_height+fl2; i++)
@@ -1728,6 +3105,24 @@ Void   TEncAdaptiveLoopFilter::xstoreInBlockMatrix(imgpel* ImgOrg, imgpel* ImgDe
           varInd = m_varImg[i/var_step_size_h][j/var_step_size_w];
           k=0; 
           memset(ELocal, 0, sqrFiltLength*sizeof(int));
+#if QC_ALF_IMPROVEMENT
+          Int transpose = 0;
+          Int varIndMod = selectTransposeVarInd(varInd, &transpose);
+          yLocal=ImgOrg[(i)*Stride + (j)]- ImgDec[(i)*Stride + (j)];
+          calcMatrixE(ELocal, ImgDec, p_pattern, i, j, flV, fl, transpose, Stride);
+          E= m_EGlobalSym[filtNo][varIndMod];
+          yy= m_yGlobalSym[filtNo][varIndMod];
+
+          for (k=0; k<sqrFiltLength; k++)
+          {
+            for (l=k; l<sqrFiltLength; l++)
+            {
+              E[k][l]+=(double)(ELocal[k]*ELocal[l]);
+            }
+            yy[k]+=(double)(ELocal[k]*yLocal);
+          }
+          m_pixAcc[varIndMod]+=(yLocal*yLocal);
+#else
           for (ii = -flV; ii < 0; ii++)
           {
             for (jj=-fl-ii; jj<=fl+ii; jj++)
@@ -1736,7 +3131,9 @@ Void   TEncAdaptiveLoopFilter::xstoreInBlockMatrix(imgpel* ImgOrg, imgpel* ImgDe
             }
           }
           for (jj=-fl; jj<0; jj++)
+          {
             ELocal[p_pattern[k++]]+=(ImgDec[(i)*Stride + (j+jj)]+ImgDec[(i)*Stride + (j-jj)]);
+          }
           ELocal[p_pattern[k++]]+=ImgDec[(i)*Stride + (j)];
           ELocal[sqrFiltLength-1]=1;
           yLocal=ImgOrg[(i)*Stride + (j)];
@@ -1751,6 +3148,7 @@ Void   TEncAdaptiveLoopFilter::xstoreInBlockMatrix(imgpel* ImgOrg, imgpel* ImgDe
               E[k][l]+=(double)(ELocal[k]*ELocal[l]);
             yy[k]+=(double)(ELocal[k]*yLocal);
           }
+#endif
         }
       }
     }
@@ -1768,10 +3166,28 @@ Void   TEncAdaptiveLoopFilter::xstoreInBlockMatrix(imgpel* ImgOrg, imgpel* ImgDe
       }
     }
   }
+#if QC_ALF_IMPROVEMENT 
+  }
+  else
+  {
+    assert(tap != 9);
+    Int filtNo = (tap == 7 ? 1: 2);
+    for (Int varInd=0; varInd < m_max_NO_VAR_BINS; varInd ++)
+    {
+      xDeriveGlobalEyFromLgrTapFilter(m_EGlobalSym[0][varInd], m_yGlobalSym[0][varInd], m_EGlobalSym[filtNo][varInd], m_yGlobalSym[filtNo][varInd], m_patternMapTab[0], m_patternMapTab[filtNo]);
+    }
+  }
+#endif
 }
 
 Void   TEncAdaptiveLoopFilter::xFilteringFrameLuma_qc(imgpel* ImgOrg, imgpel* imgY_pad, imgpel* ImgFilt, ALFParam* ALFp, Int tap, Int Stride, const TComSlice * pSlice)
 {
+#if QC_ALF_IMPROVEMENT
+  static double **y_temp;  
+  static int first=0;
+  static double **y_temp9x9;
+#endif
+
   int  filtNo,filters_per_fr;
   static double **ySym, ***ESym;
   int lambda_val = (Int) m_dLambdaLuma;
@@ -1785,13 +3201,62 @@ Void   TEncAdaptiveLoopFilter::xFilteringFrameLuma_qc(imgpel* ImgOrg, imgpel* im
   
   ESym=m_EGlobalSym[filtNo];  
   ySym=m_yGlobalSym[filtNo];
-  
+
+#if QC_ALF_IMPROVEMENT
+  if (first==0)
+  {
+    initMatrix_double  (&y_temp,    m_NO_VAR_BINS, m_MAX_SQR_FILT_LENGTH);
+    initMatrix_double  (&y_temp9x9, m_NO_VAR_BINS, m_MAX_SQR_FILT_LENGTH);     
+    first=1;
+  }
+  else if( !bUpdateMatrix )
+  {    
+    for(Int varInd = 0; varInd < m_NO_VAR_BINS; varInd ++)
+    {
+      xDeriveLocalEyFromLgrTapFilter(y_temp9x9[varInd], y_temp[varInd], m_patternMapTab[0], m_patternMapTab[filtNo]);
+    }
+  }
+  xfindBestFilterVarPred(ySym, ESym, m_pixAcc, m_filterCoeffSym, m_filterCoeffSymQuant, filtNo, &filters_per_fr,
+                         m_varIndTab, ImgFilt, m_varImg, m_maskImg, imgY_pad, lambda_val, pSlice, m_predIdxTab, ImgOrg, Stride, m_filterCoeffFinal, &m_focedCoeff0, m_codedVarBins, &bFindBestFixedFilter, y_temp);
+
+#else
   xfindBestFilterVarPred(ySym, ESym, m_pixAcc, m_filterCoeffSym, m_filterCoeffSymQuant, filtNo, &filters_per_fr,
                          m_varIndTab, NULL, m_varImg, m_maskImg, NULL, lambda_val, pSlice);
+#endif
   
+#if QC_ALF_IMPROVEMENT
+  if( bUpdateMatrix )
+  {
+    for(Int i = 0; i< m_NO_VAR_BINS; i ++)
+    {
+      for(Int j = 0; j< m_MAX_SQR_FILT_LENGTH; j++)
+      {
+        y_temp9x9[i][j] = y_temp[i][j];
+      }
+    }
+  }
+#if ENABLE_FIXEDFILTER_INTERSLICE
+  xcalcPredFilterCoeff(filtNo);
+#else
+  xcalcPredFilterCoeff(filtNo, pSlice);
+#endif
+#else
   // g_filterCoeffPrevSelected = g_filterCoeffSym
   xcalcPredFilterCoeff(filtNo);
-#if COM16_C806_ALF_TEMPPRED_NUM
+#endif
+
+#if QC_ALF_IMPROVEMENT
+  Int iActualFiltNo = filtNo;
+#if ENABLE_FIXEDFILTER_INTERSLICE
+  filtNo = 0; 
+#else
+  if(pSlice->isIntra())
+  {
+    filtNo = 0;
+  }
+#endif
+#endif
+#if COM16_C806_ALF_TEMPPRED_NUM || QC_ALF_IMPROVEMENT
   Int* patternMap=m_patternMapTab[filtNo];
   for(Int varInd=0; varInd<m_NO_VAR_BINS; ++varInd)
   {
@@ -1804,39 +3269,55 @@ Void   TEncAdaptiveLoopFilter::xFilteringFrameLuma_qc(imgpel* ImgOrg, imgpel* im
         k++;
       }
     }
-  }
+  }        
 #endif
   //filter the frame with g_filterCoeffPrevSelected
+#if QC_ALF_IMPROVEMENT
+  xfilterFrame_en(imgY_pad, ImgFilt, filtNo, Stride, ALFp->log2UnitSize);
+  filtNo = iActualFiltNo;
+  xcodeFiltCoeff(m_filterCoeffSymQuant, filtNo, m_varIndTab, filters_per_fr, 0,  ALFp, pSlice, m_predIdxTab, m_focedCoeff0, m_codedVarBins);
+#else
   xfilterFrame_en(imgY_pad, ImgFilt, filtNo, Stride);
-
   xcodeFiltCoeff(m_filterCoeffSymQuant, filtNo, m_varIndTab, filters_per_fr,0, ALFp, pSlice);
+#endif
 }
 
+#if QC_ALF_IMPROVEMENT
+Void TEncAdaptiveLoopFilter::xfilterFrame_en(imgpel* ImgDec, imgpel* ImgRest,int filtNo, int Stride, Int log2UnitSize)
+#else
 Void TEncAdaptiveLoopFilter::xfilterFrame_en(imgpel* ImgDec, imgpel* ImgRest,int filtNo, int Stride)
+#endif
 {
   imgpel *imgY_rec = ImgDec;
+#if QC_ALF_IMPROVEMENT
+  int var_step_size_w = 1 << log2UnitSize;
+  int var_step_size_h = 1 << log2UnitSize;
+#else
   imgpel *p_imgY_pad, *p_imgY_pad0;
   int var_step_size_w = m_ALF_VAR_SIZE_W;
   int var_step_size_h = m_ALF_VAR_SIZE_H;
+#endif
+
   int i,j,y,x;
-   
-  int fl, sqrFiltLength;
+  int fl;
   int pixelInt;
   int offset = (1<<(m_NUM_BITS - 2));
-  
-  //pattern=m_patternTab_filt[filtNo];
-  
-  sqrFiltLength=m_MAX_SQR_FILT_LENGTH;  fl=m_FILTER_LENGTH/2;
+#if !QC_ALF_IMPROVEMENT
+  int sqrFiltLength;
+  sqrFiltLength=m_MAX_SQR_FILT_LENGTH;  
+#endif
+  fl=m_FILTER_LENGTH/2;
   
   for (y=0, i = fl; i < m_im_height+fl; i++, y++)
   {
     for (x=0, j = fl; j < m_im_width+fl; j++, x++)
     {
       int varInd=m_varImg[y/var_step_size_h][x/var_step_size_w];
+#if QC_ALF_IMPROVEMENT
+      pixelInt = filterPixel(imgY_rec, &varInd,  NULL, NULL, i, j, fl, Stride, filtNo);
+#else
       int *coef = m_filterCoeffPrevSelected[varInd];
-      //pattern=m_patternTab_filt[filtNo];
       pixelInt= m_filterCoeffPrevSelected[varInd][sqrFiltLength-1]; 
-
       if (filtNo == 2) //5x5
       {
         pixelInt += coef[22]* (imgY_rec[(i-fl+2)*Stride + j-fl]+imgY_rec[(i-fl-2)*Stride + j-fl]);
@@ -1908,13 +3389,269 @@ Void TEncAdaptiveLoopFilter::xfilterFrame_en(imgpel* ImgDec, imgpel* ImgRest,int
         pixelInt += coef[40]* (p_imgY_pad[j-fl]);
 
       }
-
+#endif
       pixelInt=(int)((pixelInt+offset) >> (m_NUM_BITS - 1));
       ImgRest[y*Stride + x] = Clip3(0, m_nIBDIMax, pixelInt);
     }
   }
 }
+#if QC_ALF_IMPROVEMENT
+Void TEncAdaptiveLoopFilter::xfindBestFilterPredictor(Double ***E_temp, Double**y_temp, Double *pixAcc_temp, Int filtNo, imgpel **varImg, const TComSlice * pSlice
+                                     ,imgpel* ImgOrg, imgpel* ImgDec, Int Stride, Int **filterCoeffFinal, Int* forceCoeff0, Bool* bUpdateFixedFilter, Double errorForce0CoeffTab[m_NO_VAR_BINS][2], Int* usePrevFiltBest, Int*  codedVarBins, Int sqrFiltLength, Int fl )
+{
+  Int    varInd, i, j, k, yLocal, filterNo;
+  Int    ELocal[m_MAX_SQR_FILT_LENGTH];
+  Int    usePrevFilt[m_NO_VAR_BINS];  
+  
+  Double errorMin, error;
 
+  Int noVarBins = m_max_NO_VAR_BINS;
+  Int factor = (1<<(TComAdaptiveLoopFilter::m_NUM_BITS-1));
+  Int iFixedFilters = m_tempALFp->iAvailableFilters;
+
+  memset(ELocal, 0, sqrFiltLength*sizeof(Int));
+
+#if EE_DISABLE_PRED_FIXEDFILTER 
+  if(1)
+#else
+  if(bTapDecision == false)
+#endif
+  {
+    memset(usePrevFiltBest, 0, m_NO_VAR_BINS*sizeof(Int));
+    for(varInd=0; varInd<noVarBins; ++varInd)
+    {
+      for(i = 0; i < (m_MAX_SQR_FILT_LENGTH/2+1); i++)
+      {
+        filterCoeffFinal[varInd][i] = (Int)(m_filterCoeffDefault[i]*factor);
+      }
+    }
+  }
+  else
+  {
+    if((*bUpdateFixedFilter) == false || bUpdateMatrix) 
+    {
+#if !ENABLE_FIXEDFILTER_INTERSLICE
+      if(pSlice->isIntra())
+#endif
+      {
+        for(varInd=0; varInd<noVarBins; ++varInd)
+        {
+          errorMin=0;
+          for (i=0; i<iFixedFilters; i++)
+          {
+            filterNo=varInd*iFixedFilters + i;
+            error = testFixedFilterFast(E_temp, y_temp, pixAcc_temp, TComAdaptiveLoopFilter::m_filterCoeffPrev[filterNo], TComAdaptiveLoopFilter::m_filterCoeffDefault, varInd);
+
+            if (error<errorMin || i==0)
+            {
+              errorMin=error;
+              usePrevFiltBest[varInd]=i;
+            }
+          }
+        }
+
+        for(varInd=0; varInd<noVarBins; ++varInd)
+        {
+          for(i = 0; i < (m_MAX_SQR_FILT_LENGTH/2+1); i++)
+          {
+            filterNo=varInd*iFixedFilters+usePrevFiltBest[varInd];
+            filterCoeffFinal[varInd][i] = (Int) (m_filterCoeffPrev[filterNo][i]* factor);
+          } 
+        }
+
+        error=testFixedFilter(ImgDec, ImgOrg, ImgDec, varImg, filterCoeffFinal, usePrevFilt, 
+          m_im_height, m_im_width, noVarBins, Stride, filtNo);
+
+        preFilterFr(m_imgY_preFilter, ImgDec, ImgOrg, ImgDec, varImg, filterCoeffFinal, 
+          usePrevFilt, m_im_height, m_im_width, Stride, filtNo);
+        for(varInd=0; varInd<noVarBins; ++varInd)
+        {
+          if (usePrevFilt[varInd]==1)
+          {
+            usePrevFiltBest[varInd]++;
+          }
+          else
+          {
+            usePrevFiltBest[varInd]=0;
+            for(i = 0; i < TComAdaptiveLoopFilter::m_MAX_SQT_FILT_SYM_LENGTH; i++)
+            {
+              filterCoeffFinal[varInd][i] = (Int)(m_filterCoeffDefault[i]*factor);
+            }
+          }
+        }
+      }
+#if !ENABLE_FIXEDFILTER_INTERSLICE
+      else
+      {
+        memset(usePrevFiltBest, 0, sizeof(usePrevFiltBest));
+        for(varInd=0; varInd<noVarBins; ++varInd)
+        {
+          for(i = 0; i < TComAdaptiveLoopFilter::m_MAX_SQT_FILT_SYM_LENGTH; i++)
+          {
+            filterCoeffFinal[varInd][i] = (Int)(m_filterCoeffDefault[i]*factor);
+          }
+        }
+      }
+#endif
+      (*bUpdateFixedFilter) = true;
+    }
+  }
+  
+  // If frNo>0 pixAcc and yGlobalSym have to be calculated again
+  if(bTapDecision == true && m_tempALFp->iAvailableFilters)
+  {
+    if( bUpdateMatrix )
+    {
+      for (varInd=0; varInd<noVarBins; varInd++)
+      {
+        pixAcc_temp[varInd]=0;
+        for (k=0; k<sqrFiltLength; k++)
+        {
+          y_temp[varInd][k]=0;
+        }
+      }
+      Int transpose;
+      Int flV = TComAdaptiveLoopFilter::ALFFlHToFlV(fl);
+      for (i = fl; i < m_im_height+fl; i++)
+      {
+        for (j = fl; j < m_im_width+fl; j++)
+        {
+          if(m_maskImg[i-fl][j-fl])
+          {
+            memset(ELocal, 0, sqrFiltLength*sizeof(Int));
+            varInd  = selectTransposeVarInd(varImg[i-fl][j-fl], &transpose);
+            Int pos = (i-fl)*Stride + (j-fl);
+            yLocal=ImgOrg[pos]- m_imgY_preFilter[i-fl][j-fl];
+            calcMatrixE (ELocal, ImgDec, m_patternTab[filtNo], i-fl, j-fl, flV, fl, transpose, Stride);
+
+            for (k=0; k<sqrFiltLength; k++)
+            {
+              y_temp[varInd][k]+=(Double)(ELocal[k]*yLocal);
+            }
+            pixAcc_temp[varInd]+=(yLocal*yLocal);
+          }
+        }
+      }
+    }
+  }
+}
+
+Void TEncAdaptiveLoopFilter::xfindBestFilterVarPred(Double **ySym, Double ***ESym, Double *pixAcc, Int **filterCoeffSym, Int **filterCoeffSymQuant,
+                              Int filtNo, Int *filters_per_fr_best, Int varIndTabBest[], imgpel *imgY_rec, imgpel **varImg, 
+                              imgpel **maskImg, imgpel *ImgDec, Double lambda_val, const TComSlice * pSlice, Int predIdxTabBest[], imgpel* ImgOrg, Int Stride, Int **filterCoeffFinal, Int* forceCoeff0Best, Int codedVarBinsBest[], Bool* bUpdateFixedFilter, Double **y_temp)
+{
+  Int filters_per_fr, firstFilt, varIndTab[m_NO_VAR_BINS][m_NO_VAR_BINS], sqrFiltLength, numBits, coeffBits, createBistream;
+  Int i, k, varInd;
+  Int *weights;
+
+  Double  error, lambda, lagrangian, lagrangianMin; 
+    
+  static Int first=0;
+  static Double ***E_temp, *pixAcc_temp;
+  static Int **FilterCoeffQuantTemp;
+ 
+  lambda = lambda_val;
+  sqrFiltLength=m_MAX_SQR_FILT_LENGTH;
+  
+  if (first == 0)
+  {
+    initMatrix3D_double(&E_temp, m_NO_VAR_BINS, m_MAX_SQR_FILT_LENGTH, m_MAX_SQR_FILT_LENGTH);
+    pixAcc_temp = (Double *) calloc(m_NO_VAR_BINS, sizeof(Double));
+    initMatrix_int(&FilterCoeffQuantTemp, m_NO_VAR_BINS, m_MAX_SQR_FILT_LENGTH);
+    first=1;
+  }
+  
+  sqrFiltLength = m_sqrFiltLengthTab[filtNo];   
+  Int fl  = m_flTab[filtNo];
+
+  weights = m_weightsTab[filtNo];                 
+  memcpy(pixAcc_temp, pixAcc, sizeof(Double)*m_NO_VAR_BINS);
+
+  for (varInd=0; varInd<m_max_NO_VAR_BINS; varInd++)
+  {
+    if(bUpdateMatrix)    
+    {
+      memcpy(y_temp[varInd],ySym[varInd],sizeof(Double)*sqrFiltLength);
+    }
+    for (k=0; k<sqrFiltLength; k++)
+    {
+      memcpy(E_temp[varInd][k],ESym[varInd][k],sizeof(Double)*sqrFiltLength);
+    }
+  }
+ 
+  // zero all variables 
+  memset(varIndTab, 0, sizeof(Int)*m_NO_VAR_BINS);
+
+  Int forceCoeff0, codedVarBins[m_NO_VAR_BINS];
+  Int iFixedFilters = m_tempALFp->iAvailableFilters;
+  static Int usePrevFiltBest[m_NO_VAR_BINS];
+  Double errorForce0CoeffTab[m_NO_VAR_BINS][2];
+
+  xfindBestFilterPredictor(E_temp, y_temp, pixAcc_temp, filtNo, varImg, pSlice, ImgOrg, ImgDec, Stride, filterCoeffFinal, &forceCoeff0,
+                           bUpdateFixedFilter, errorForce0CoeffTab, usePrevFiltBest, codedVarBins, sqrFiltLength, fl);
+
+  for(i = 0; i < m_max_NO_VAR_BINS; i++)
+  {
+    memset(filterCoeffSym[i], 0, sizeof(Int)*m_MAX_SQR_FILT_LENGTH);
+    memset(filterCoeffSymQuant[i], 0, sizeof(Int)*m_MAX_SQR_FILT_LENGTH);
+  }
+  
+  firstFilt=1;  lagrangianMin=0;
+  filters_per_fr = m_max_NO_FILTERS;
+
+  findFilterGroupingError(E_temp, y_temp, pixAcc_temp, varIndTab, sqrFiltLength, m_max_NO_VAR_BINS, m_max_NO_VAR_BINS);
+
+  while(filters_per_fr>=1)
+  {
+    error = findFilterCoeff(E_temp, y_temp, pixAcc_temp, filterCoeffSym, filterCoeffSymQuant, 
+                    varIndTab[filters_per_fr-1], m_max_NO_VAR_BINS, sqrFiltLength, filters_per_fr, weights, numBits=m_NUM_BITS,errorForce0CoeffTab);
+    lagrangian=xfindBestCoeffCodMethod(codedVarBins, &forceCoeff0, filterCoeffSymQuant, fl, sqrFiltLength, filters_per_fr, errorForce0CoeffTab, &error, lambda, pSlice);
+
+    if (lagrangian<lagrangianMin || firstFilt==1)
+    {
+      firstFilt=0;
+      lagrangianMin=lagrangian;
+      (*filters_per_fr_best)=filters_per_fr;
+      memcpy(varIndTabBest, varIndTab[filters_per_fr - 1], m_NO_VAR_BINS*sizeof(Int));
+      (*forceCoeff0Best) = forceCoeff0;
+      memcpy(codedVarBinsBest, codedVarBins, m_NO_VAR_BINS*sizeof(Int));
+    }
+
+    filters_per_fr--;
+
+  }
+
+
+  error = findFilterCoeff(E_temp, y_temp, pixAcc_temp, filterCoeffSym, filterCoeffSymQuant, varIndTabBest,
+                  m_max_NO_VAR_BINS, sqrFiltLength, (*filters_per_fr_best), weights, numBits=m_NUM_BITS
+                   ,errorForce0CoeffTab );  
+
+  xfindBestCoeffCodMethod(codedVarBinsBest, &forceCoeff0, filterCoeffSymQuant, fl, sqrFiltLength, 
+    (*filters_per_fr_best), errorForce0CoeffTab, &error, lambda, pSlice);
+
+  coeffBits = xcodeAuxInfo(filtNo, (*filters_per_fr_best), varIndTabBest, createBistream = 0,  m_tempALFp, pSlice, usePrevFiltBest, iFixedFilters - 1, m_max_NO_VAR_BINS, forceCoeff0);
+
+  if (forceCoeff0==0)
+  {
+    coeffBits += xsendAllFiltersPPPred(filterCoeffSymQuant, fl, sqrFiltLength, (*filters_per_fr_best), createBistream = 0, m_tempALFp, pSlice);
+  }
+  else
+  {
+    coeffBits += xsendAllFiltersPPPredForce0(filterCoeffSymQuant, fl, sqrFiltLength, 
+      (*filters_per_fr_best), codedVarBinsBest, createBistream=0, m_tempALFp, pSlice);
+    for(varInd=0; varInd < (*filters_per_fr_best); varInd++)
+    {
+      if (codedVarBinsBest[varInd]==0)
+      {
+        memset(filterCoeffSym[varInd], 0, sizeof(Int)*m_MAX_SQR_FILT_LENGTH);
+        memset(filterCoeffSymQuant[varInd], 0, sizeof(Int)*m_MAX_SQR_FILT_LENGTH);
+      }
+    }
+  }
+  (*forceCoeff0Best) = forceCoeff0;
+  memcpy( predIdxTabBest, usePrevFiltBest, sizeof(Int)*m_NO_VAR_BINS);  
+}
+#else
 Void TEncAdaptiveLoopFilter::xfindBestFilterVarPred(double **ySym, double ***ESym, double *pixAcc, int **filterCoeffSym, int **filterCoeffSymQuant, int filtNo, int *filters_per_fr_best, int varIndTab[], imgpel **imgY_rec, imgpel **varImg, imgpel **maskImg, imgpel **imgY_pad, double lambda_val, const TComSlice * pSlice)
 {
   int filters_per_fr, firstFilt, forceCoeff0,
@@ -1953,6 +3690,7 @@ Void TEncAdaptiveLoopFilter::xfindBestFilterVarPred(double **ySym, double ***ESy
   //pattern=m_patternTab[filtNo];
   
   memcpy(pixAcc_temp,pixAcc,sizeof(double)*m_NO_VAR_BINS);
+
   for (varInd=0; varInd<m_NO_VAR_BINS; varInd++)
   {
     memcpy(y_temp[varInd],ySym[varInd],sizeof(double)*sqrFiltLength);
@@ -1971,7 +3709,7 @@ Void TEncAdaptiveLoopFilter::xfindBestFilterVarPred(double **ySym, double ***ESy
   
   firstFilt=1;  lagrangianMin=0;
   filters_per_fr=m_NO_FILTERS;
-  
+
   while(filters_per_fr>=1)
   {
     findFilterGroupingError(E_temp, y_temp, pixAcc_temp, interval, sqrFiltLength, filters_per_fr);
@@ -1979,7 +3717,7 @@ Void TEncAdaptiveLoopFilter::xfindBestFilterVarPred(double **ySym, double ***ESy
                     varIndTab, sqrFiltLength, filters_per_fr, weights, numBits=m_NUM_BITS,  errorForce0CoeffTab);
     lagrangian=xfindBestCoeffCodMethod(codedVarBins, &forceCoeff0, filterCoeffSymQuant, fl, 
                                        sqrFiltLength, filters_per_fr, errorForce0CoeffTab, &error, lambda, pSlice);
-    
+
     if (lagrangian<lagrangianMin || firstFilt==1)
     {
       firstFilt=0;
@@ -1990,12 +3728,14 @@ Void TEncAdaptiveLoopFilter::xfindBestFilterVarPred(double **ySym, double ***ESy
     }
     filters_per_fr--;
   }
-  
+
+
   findFilterCoeff(E_temp, y_temp, pixAcc_temp, filterCoeffSym, filterCoeffSymQuant, intervalBest,
                   varIndTab, sqrFiltLength, (*filters_per_fr_best), weights, numBits=m_NUM_BITS, errorForce0CoeffTab);
   
   xfindBestCoeffCodMethod(codedVarBins, &forceCoeff0, filterCoeffSymQuant, fl, sqrFiltLength, 
                           (*filters_per_fr_best), errorForce0CoeffTab, &error, lambda, pSlice);
+
   
   //coded=1;
   if (forceCoeff0==1 && (*filters_per_fr_best)==1)
@@ -2039,18 +3779,66 @@ Void TEncAdaptiveLoopFilter::xfindBestFilterVarPred(double **ySym, double ***ESy
     }
   }
 }
-
-
+#endif
+#if QC_ALF_IMPROVEMENT && !ENABLE_FIXEDFILTER_INTERSLICE
+Void TEncAdaptiveLoopFilter::xcalcPredFilterCoeff(int filtNo, const TComSlice *pSlice)
+#else
 Void TEncAdaptiveLoopFilter::xcalcPredFilterCoeff(int filtNo)
+#endif
 {
   int *patternMap, varInd, i, k;
-  
+
   patternMap=m_patternMapTab[filtNo];
+
+#if QC_ALF_IMPROVEMENT
+#if !ENABLE_FIXEDFILTER_INTERSLICE
+  Bool bIntraSlice = pSlice->isIntra();
+#endif
+  Int quantCoeffSum = 0;
+  Int * weights=TComAdaptiveLoopFilter::m_weightsTab[0]; 
+  Int factor = (1<<(TComAdaptiveLoopFilter::m_NUM_BITS-1)); 
+  for(varInd=0; varInd<m_max_NO_VAR_BINS; ++varInd)
+#else
   for(varInd=0; varInd<m_NO_VAR_BINS; ++varInd)
+#endif
   {
     k=0;
+#if QC_ALF_IMPROVEMENT
+    quantCoeffSum = 0;
+#endif
     for(i = 0; i < m_MAX_SQR_FILT_LENGTH; i++)
     {
+#if QC_ALF_IMPROVEMENT
+     if (m_pattern9x9Sym_Quart[i]>0 && patternMap[i]>0)
+     {
+       m_filterCoeffPrevSelected[varInd][i] = (m_filterCoeffFinal[varInd][m_pattern9x9Sym_Quart[i]-1]+m_filterCoeffSym[m_varIndTab[varInd]][patternMap[i]-1]);
+#if ENABLE_FIXEDFILTER_INTERSLICE
+       if(i!= (m_MAX_SQR_FILT_LENGTH-1))
+#else
+       if(bIntraSlice && i!= (m_MAX_SQR_FILT_LENGTH-1))
+#endif
+       {
+         quantCoeffSum += (weights[m_pattern9x9Sym_Quart[i]-1]* m_filterCoeffPrevSelected[varInd][i]);
+       }
+       k++;
+     }
+#if ENABLE_FIXEDFILTER_INTERSLICE
+     else if( m_pattern9x9Sym_Quart[i] > 0 )
+#else
+     else if(bIntraSlice && m_pattern9x9Sym_Quart[i]>0)
+#endif
+     {
+       m_filterCoeffPrevSelected[varInd][i] = m_filterCoeffFinal[varInd][m_pattern9x9Sym_Quart[i]-1];
+       if(i!= (m_MAX_SQR_FILT_LENGTH-1))
+       {
+         quantCoeffSum += (weights[m_pattern9x9Sym_Quart[i]-1]* m_filterCoeffPrevSelected[varInd][i]);
+       }
+     }
+     else
+     {
+       m_filterCoeffPrevSelected[varInd][i]= 0;
+     }
+#else
       if (patternMap[i]>0)
       {
         m_filterCoeffPrevSelected[varInd][i]=m_filterCoeffSym[m_varIndTab[varInd]][k];
@@ -2060,7 +3848,16 @@ Void TEncAdaptiveLoopFilter::xcalcPredFilterCoeff(int filtNo)
       {
         m_filterCoeffPrevSelected[varInd][i]=0;
       }
+#endif
     }
+#if QC_ALF_IMPROVEMENT
+#if !ENABLE_FIXEDFILTER_INTERSLICE
+    if(bIntraSlice)
+#endif
+    {
+      m_filterCoeffPrevSelected[varInd][m_MAX_SQR_FILT_LENGTH - 1] = factor-quantCoeffSum;
+    }
+#endif
   }
 }
 
@@ -2089,8 +3886,52 @@ Void TEncAdaptiveLoopFilter::xcopyFilterCoeff(int filtNo, int **filterCoeff)
 }
 #endif
 
-UInt TEncAdaptiveLoopFilter::xcodeFiltCoeff(int **filterCoeffSymQuant, int filtNo, int varIndTab[], int filters_per_fr_best, int frNo, ALFParam* ALFp, const TComSlice * pSlice)
+UInt TEncAdaptiveLoopFilter::xcodeFiltCoeff(int **filterCoeffSymQuant, int filtNo, int varIndTab[], int filters_per_fr_best, int frNo, ALFParam* ALFp, const TComSlice * pSlice
+#if QC_ALF_IMPROVEMENT
+  , Int PrevFiltIdx[]
+  , Int forcedCoeff0
+  , Int codedVarBins[]
+#endif
+  )
 {
+#if QC_ALF_IMPROVEMENT 
+  Int coeffBits, createBistream;
+  Int sqrFiltLength = m_sqrFiltLengthTab[filtNo], fl=m_flTab[filtNo];
+  
+  ALFp->filters_per_group_diff = filters_per_fr_best;
+  ALFp->filters_per_group = filters_per_fr_best;  
+
+  ALFp->forceCoeff0 = forcedCoeff0;
+  if(forcedCoeff0)
+  {
+    memcpy(ALFp->codedVarBins, codedVarBins, sizeof(Int)*ALF_NO_VAR_BIN);
+  }
+  else
+  {
+    for(Int ind = 0; ind < ALF_NO_VAR_BIN; ind++)
+    {
+      ALFp->codedVarBins[ind] = 1;
+    }
+  }
+  coeffBits = xcodeAuxInfo(filtNo, filters_per_fr_best, varIndTab, createBistream=1, ALFp, pSlice, PrevFiltIdx, ALFp->iAvailableFilters - 1, m_max_NO_VAR_BINS, forcedCoeff0);
+  ALFp->predMethod = 0;
+  ALFp->num_coeff = sqrFiltLength;
+  ALFp->realfiltNo=filtNo;
+  if (filters_per_fr_best <= 1)
+  {
+    ALFp->predMethod = 0;
+  } 
+
+  if ( !forcedCoeff0 )
+  {
+    coeffBits += xsendAllFiltersPPPred(filterCoeffSymQuant, fl, sqrFiltLength, filters_per_fr_best, createBistream=1, ALFp, pSlice);
+  }
+  else
+  {
+    coeffBits += xsendAllFiltersPPPredForce0(filterCoeffSymQuant, fl, sqrFiltLength, filters_per_fr_best, codedVarBins, createBistream = 1, ALFp, pSlice);
+  }
+  return (UInt)coeffBits;
+#else
   int varInd, forceCoeff0, codedVarBins[m_NO_VAR_BINS], coeffBits, createBistream,   sqrFiltLength=m_sqrFiltLengthTab[filtNo], 
   fl=m_flTab[filtNo];
   
@@ -2122,7 +3963,6 @@ UInt TEncAdaptiveLoopFilter::xcodeFiltCoeff(int **filterCoeffSymQuant, int filtN
   {
     coeffBits = xcodeAuxInfo(filtNo, filters_per_fr_best, varIndTab, frNo, createBistream=1,filtNo, ALFp, pSlice);
   }
-  
   ALFp->forceCoeff0 = forceCoeff0;
   ALFp->predMethod = 0;
   ALFp->num_coeff = sqrFiltLength;
@@ -2132,7 +3972,6 @@ UInt TEncAdaptiveLoopFilter::xcodeFiltCoeff(int **filterCoeffSymQuant, int filtN
     ALFp->forceCoeff0 = 0;
     ALFp->predMethod = 0;
   }
-  
   if (forceCoeff0==0) 
   {
     coeffBits += xsendAllFiltersPPPred(filterCoeffSymQuant, fl, sqrFiltLength, 
@@ -2143,8 +3982,8 @@ UInt TEncAdaptiveLoopFilter::xcodeFiltCoeff(int **filterCoeffSymQuant, int filtN
     coeffBits += xsendAllFiltersPPPredForce0(filterCoeffSymQuant, fl, sqrFiltLength, 
                                              filters_per_fr_best, codedVarBins, createBistream=1, ALFp, pSlice);
   }
-
   return (UInt)coeffBits;
+#endif
 }
 
 
@@ -2153,7 +3992,6 @@ Void TEncAdaptiveLoopFilter::xSetCUAlfCtrlFlags_qc(UInt uiAlfCtrlDepth, TComPicY
 {
   ruiDist = 0;
   pAlfParam->num_alf_cu_flag = 0;
-  
   for( UInt uiCUAddr = 0; uiCUAddr < m_pcPic->getNumberOfCtusInFrame() ; uiCUAddr++ )
   {
     TComDataCU* pcCU = m_pcPic->getCtu( uiCUAddr );
@@ -2284,7 +4122,11 @@ Void TEncAdaptiveLoopFilter::xCUAdaptiveControl_qc(TComPicYuv* pcPicOrg, TComPic
   ALFParam cFrmAlfParam;
   allocALFParam(&cFrmAlfParam);
   copyALFParam(&cFrmAlfParam, m_pcBestAlfParam);
-  
+#if QC_ALF_IMPROVEMENT
+  Int    Height = pcPicOrg->getHeight(COMPONENT_Y);
+  Int    Width = pcPicOrg->getWidth(COMPONENT_Y);
+#endif  
+
   for (UInt uiDepth = 0; uiDepth < pSlice->getSPS()->getMaxTotalCUDepth(); uiDepth++)
   {
     Int nBlkSize = ( pSlice->getSPS()->getMaxCUHeight() * pSlice->getSPS()->getMaxCUWidth() ) >> ( uiDepth << 1 );
@@ -2295,8 +4137,7 @@ Void TEncAdaptiveLoopFilter::xCUAdaptiveControl_qc(TComPicYuv* pcPicOrg, TComPic
     m_pcEntropyCoder->setMaxAlfCtrlDepth(uiDepth);
     pcPicRest->copyToPic(m_pcPicYuvTmp, COMPONENT_Y);
     copyALFParam(m_pcTempAlfParam, &cFrmAlfParam);
-    m_pcTempAlfParam->cu_control_flag = 1;
-    
+    m_pcTempAlfParam->cu_control_flag = 1;   
     for (UInt uiRD = 0; uiRD <= ALF_NUM_OF_REDESIGN; uiRD++)
     {
       if (uiRD)
@@ -2322,6 +4163,15 @@ Void TEncAdaptiveLoopFilter::xCUAdaptiveControl_qc(TComPicYuv* pcPicOrg, TComPic
         copyALFParam(m_pcBestAlfParam, m_pcTempAlfParam);
         //save maskImg
         xCopyTmpAlfCtrlFlagsFrom();
+#if QC_ALF_IMPROVEMENT
+        for (Int i=0; i<Height; i++)
+        {
+          for (Int j=0; j<Width; j++)
+          {
+            m_maskBestpImg[i][j] = m_maskImg[i][j];
+          }
+        }
+#endif    
       }
     }
   }
@@ -2333,6 +4183,15 @@ Void TEncAdaptiveLoopFilter::xCUAdaptiveControl_qc(TComPicYuv* pcPicOrg, TComPic
     xCopyTmpAlfCtrlFlagsTo();
     m_pcPicYuvBest->copyToPic(pcPicRest, COMPONENT_Y);//copy m_pcPicYuvBest to pcPicRest
     xCopyDecToRestCUs(pcPicDec, pcPicRest); //pcPicRest = pcPicDec
+#if QC_ALF_IMPROVEMENT    
+    for (Int i=0; i<Height; i++)
+    {
+      for (Int j=0; j<Width; j++)
+      {
+        m_maskImg[i][j] = m_maskBestpImg[i][j];
+      }
+    }    
+#endif 
   }
   else
   {
@@ -2360,8 +4219,21 @@ Void TEncAdaptiveLoopFilter::xFilterTapDecision_qc(TComPicYuv* pcPicOrg, TComPic
   }
   
   Bool bChanged = false;
+#if QC_ALF_IMPROVEMENT
+  for (Int iTap = m_ALF_MAX_NUM_TAP; iTap >= m_ALF_MIN_NUM_TAP; iTap -= 2)
+  {
+    if(m_eSliceType==I_SLICE && iTap == m_ALF_MAX_NUM_TAP)
+    {
+      continue;
+    }
+    if(iTap != m_ALF_MAX_NUM_TAP && !m_pcTempAlfParam->cu_control_flag)
+    {
+      bUpdateMatrix = false;
+    }
+#else
   for (Int iTap = m_ALF_MIN_NUM_TAP; iTap <= m_ALF_MAX_NUM_TAP; iTap += 2)
   {
+#endif
     copyALFParam(m_pcTempAlfParam, m_pcBestAlfParam);
     m_pcTempAlfParam->tap = iTap;
     m_pcTempAlfParam->tapV = TComAdaptiveLoopFilter::ALFTapHToTapV(m_pcTempAlfParam->tap);
@@ -2378,6 +4250,7 @@ Void TEncAdaptiveLoopFilter::xFilterTapDecision_qc(TComPicYuv* pcPicOrg, TComPic
     {
       Int    Height = pcPicOrg->getHeight(COMPONENT_Y);
       Int    Width = pcPicOrg->getWidth(COMPONENT_Y);
+
       for (Int i=0; i<Height; i++)
       {
         for (Int j=0; j<Width; j++)
@@ -2554,7 +4427,44 @@ Int TEncAdaptiveLoopFilter::gnsSolveByChol(double **LHS, double *rhs, double *x,
 
 //////////////////////////////////////////////////////////////////////////////////////////
 
+#if QC_ALF_IMPROVEMENT
+Void TEncAdaptiveLoopFilter::add_A(Double **Amerged, Double ***A, Int varIndTab[], Int filtNo, Int noVarBins, Int size)
+{ 
+  Int i, j, ind;          
 
+  for (i = 0; i < size; i ++)
+  {
+    for (j = 0; j < size; j ++)
+    {
+      Amerged[i][j] = 0;
+      for (ind = 0; ind < noVarBins; ind ++)
+      {
+        if (varIndTab[ind] == filtNo)
+        {
+          Amerged[i][j] += A[ind][i][j];
+        }
+      }
+    }
+  }
+}
+
+Void TEncAdaptiveLoopFilter::add_b(Double *bmerged, Double **b, Int varIndTab[], Int filtNo, Int noVarBins, Int size)
+{ 
+  Int i, ind;        
+
+  for (i = 0; i < size; i ++)
+  {
+    bmerged[i] = 0;
+    for (ind = 0; ind < noVarBins; ind ++)
+    {
+      if (varIndTab[ind] == filtNo)
+      {
+        bmerged[i] += b[ind][i];
+      }
+    }
+  }
+}
+#else
 Void TEncAdaptiveLoopFilter::add_A(double **Amerged, double ***A, int start, int stop, int size)
 { 
   int
@@ -2587,6 +4497,7 @@ Void TEncAdaptiveLoopFilter::add_b(double *bmerged, double **b, int start, int s
     }
   }
 }
+#endif
 
 double TEncAdaptiveLoopFilter::calculateErrorCoeffProvided(double **A, double *b, double *c, int size)
 {
@@ -2622,7 +4533,136 @@ double TEncAdaptiveLoopFilter::calculateErrorAbs(double **A, double *b, double y
   
   return(error);
 }
+#if QC_ALF_IMPROVEMENT
+Void TEncAdaptiveLoopFilter::mergeFiltersGreedy(Double **yGlobalSeq, Double ***EGlobalSeq, Double *pixAccGlobalSeq, Int indexListBest[m_NO_VAR_BINS][m_NO_VAR_BINS], Int sqrFiltLength, Int noVarBins, Int maxNoIntervals)
+{
+  Int first, ind, ind1, ind2, noRemaining, i, j, exist, indexList[m_NO_VAR_BINS], indexListTemp[m_NO_VAR_BINS], available[m_NO_VAR_BINS], bestToMerge[2];
+  Double error, error1, error2, errorMin;
+  static Double *y_temp, **E_temp, pixAcc_temp;
+  static Int init = 0;
+  if (init == 0)
+  {
+    initMatrix_double(&E_temp, m_MAX_SQR_FILT_LENGTH, m_MAX_SQR_FILT_LENGTH);
+    y_temp = new Double[m_MAX_SQR_FILT_LENGTH];
+    init = 1;
+  }
 
+  noRemaining = noVarBins;  
+  for (ind=0; ind<m_max_NO_VAR_BINS; ind++)
+  {
+    indexListBest[noRemaining-1][ind] = ind;
+    indexList[ind]                    = ind; 
+    available[ind]                    = 1;
+    m_pixAcc_merged[ind] = pixAccGlobalSeq[ind];
+
+    memcpy(m_y_merged[ind], yGlobalSeq[ind], sizeof(Double)*sqrFiltLength);
+    for (i = 0; i < sqrFiltLength; i ++)
+    {
+      memcpy(m_E_merged[ind][i], EGlobalSeq[ind][i], sizeof(Double)*sqrFiltLength);
+    }
+  }
+  for (ind=0; ind<m_max_NO_VAR_BINS; ind++)
+  {
+    indexListBest[0][ind] = 0;
+  }
+
+  // Try merging different matrices
+
+  while (noRemaining > 2)
+  {
+    errorMin = 0; first = 1; bestToMerge[0] = 0; bestToMerge[1] = 1;
+    for (ind1=0; ind1<noVarBins-1; ind1++)
+    {
+      if (available[ind1])
+      {
+        for (ind2=ind1+1; ind2<noVarBins; ind2++)
+        {
+          if (available[ind2])
+          {
+            error1=calculateErrorAbs(m_E_merged[ind1], m_y_merged[ind1], m_pixAcc_merged[ind1], sqrFiltLength);
+            error2=calculateErrorAbs(m_E_merged[ind2], m_y_merged[ind2], m_pixAcc_merged[ind2], sqrFiltLength);
+
+            pixAcc_temp=m_pixAcc_merged[ind1]+m_pixAcc_merged[ind2];
+            for (i=0; i<sqrFiltLength; i++){
+              y_temp[i]=m_y_merged[ind1][i]+m_y_merged[ind2][i];
+              for (j=0; j<sqrFiltLength; j++){
+                E_temp[i][j]=m_E_merged[ind1][i][j]+m_E_merged[ind2][i][j];
+              }
+            }
+            error = calculateErrorAbs(E_temp, y_temp, pixAcc_temp, sqrFiltLength)-error1-error2;
+
+            if (error<errorMin || first==1)
+            {
+              errorMin=error;
+              bestToMerge[0]=ind1;
+              bestToMerge[1]=ind2;
+              first=0;
+            }
+          }
+        }
+      }
+    }
+
+    ind1 = bestToMerge[0];
+    ind2 = bestToMerge[1];
+
+    m_pixAcc_merged[ind1] += m_pixAcc_merged[ind2];
+    for (i=0; i<sqrFiltLength; i++)
+    {
+      m_y_merged[ind1][i]+=m_y_merged[ind2][i];
+      for (j=0; j<sqrFiltLength; j++)
+      {
+        m_E_merged[ind1][i][j]+=m_E_merged[ind2][i][j];
+      }
+    }
+
+    available[ind2]=0;
+
+    for (i=0; i<noVarBins; i++)
+    {
+      if (indexList[i]==ind2)
+      {
+        indexList[i]=ind1;
+      }
+    }
+    noRemaining--;
+    if (noRemaining<=maxNoIntervals)
+    {
+      for (i=0; i<noVarBins; i++)
+      {
+        indexListTemp[i]=indexList[i];
+      }
+
+      exist=0; ind=0;
+      for (j=0; j<noVarBins; j++)
+      {
+        exist=0;
+        for (i=0; i<noVarBins; i++)
+        {
+          if (indexListTemp[i]==j)
+          {
+            exist=1;
+            break;
+          }
+        }
+
+        if (exist)
+        {
+          for (i=0; i<noVarBins; i++)
+          {
+            if (indexListTemp[i]==j)
+            {
+              indexListBest[noRemaining-1][i]=ind;
+              indexListTemp[i]=-1;
+            }
+          }
+          ind++;
+        }
+      }
+    }
+  }
+}
+#else
 double TEncAdaptiveLoopFilter::mergeFiltersGreedy(double **yGlobalSeq, double ***EGlobalSeq, double *pixAccGlobalSeq, int intervalBest[m_NO_VAR_BINS][2], int sqrFiltLength, int noIntervals)
 {
   int first, ind, ind1, ind2, i, j, bestToMerge ;
@@ -2761,12 +4801,18 @@ double TEncAdaptiveLoopFilter::mergeFiltersGreedy(double **yGlobalSeq, double **
   
   intervalBest[noIntervals-1][0]=indexList[noIntervals-1]; 
   intervalBest[noIntervals-1][1]=m_NO_VAR_BINS-1;
+
   
   return(errorMin);
 }
+#endif
 
-
-
+#if QC_ALF_IMPROVEMENT
+Void TEncAdaptiveLoopFilter::findFilterGroupingError(Double ***EGlobalSeq, Double **yGlobalSeq, Double *pixAccGlobalSeq, Int intervalBest[m_NO_VAR_BINS][m_NO_VAR_BINS], Int sqrFiltLength, Int filters_per_fr, Int noVarBins)
+{
+  return (mergeFiltersGreedy(yGlobalSeq, EGlobalSeq, pixAccGlobalSeq, intervalBest, sqrFiltLength, noVarBins, filters_per_fr));
+}
+#else
 double TEncAdaptiveLoopFilter::findFilterGroupingError(double ***EGlobalSeq, double **yGlobalSeq, double *pixAccGlobalSeq, int intervalBest[m_NO_VAR_BINS][2], int sqrFiltLength, int filters_per_fr)
 {
   double error;
@@ -2777,6 +4823,7 @@ double TEncAdaptiveLoopFilter::findFilterGroupingError(double ***EGlobalSeq, dou
   
   return(error);
 }
+#endif
 
 
 Void TEncAdaptiveLoopFilter::roundFiltCoeff(int *FilterCoeffQuan, double *FilterCoeff, int sqrFiltLength, int factor)
@@ -2794,15 +4841,33 @@ Void TEncAdaptiveLoopFilter::roundFiltCoeff(int *FilterCoeffQuan, double *Filter
   }
 }
 
-Double TEncAdaptiveLoopFilter::QuantizeIntegerFilterPP(double *filterCoeff, int *filterCoeffQuant, double **E, double *y, int sqrFiltLength, int *weights, int bit_depth)
+Double TEncAdaptiveLoopFilter::QuantizeIntegerFilterPP(double *filterCoeff, int *filterCoeffQuant, double **E, double *y, int sqrFiltLength, int *weights, int bit_depth
+#if QC_ALF_IMPROVEMENT
+  ,Bool bChroma 
+#endif
+  )
 {
   double error;
   
   int factor = (1<<(bit_depth-1)), i; 
   int quantCoeffSum, minInd, targetCoeffSumInt, k, diff;
+#if !QC_ALF_IMPROVEMENT
   double targetCoeffSum, errMin;
+#else
+  double errMin;
+#endif
   
   gnsSolveByChol(E, y, filterCoeff, sqrFiltLength);
+
+#if QC_ALF_IMPROVEMENT
+   roundFiltCoeff(filterCoeffQuant, filterCoeff, sqrFiltLength, factor);
+   if(bChroma)
+   {
+     targetCoeffSumInt = factor;
+   }
+   else
+   targetCoeffSumInt=0;
+#else
   targetCoeffSum=0;
   for (i=0; i<sqrFiltLength; i++)
   {
@@ -2810,6 +4875,7 @@ Double TEncAdaptiveLoopFilter::QuantizeIntegerFilterPP(double *filterCoeff, int 
   }
   targetCoeffSumInt=ROUND(targetCoeffSum);
   roundFiltCoeff(filterCoeffQuant, filterCoeff, sqrFiltLength, factor);
+#endif
   quantCoeffSum=0;
   for (i=0; i<sqrFiltLength; i++)
   {
@@ -2887,7 +4953,23 @@ Double TEncAdaptiveLoopFilter::QuantizeIntegerFilterPP(double *filterCoeff, int 
       filterCoeffQuant[i] = 0;
     }
   }
-  
+ 
+#if QC_ALF_IMPROVEMENT
+  quantCoeffSum=0;
+  for (i=0; i<sqrFiltLength-1; i++){
+    quantCoeffSum+=weights[i]*filterCoeffQuant[i];
+  }
+  if(bChroma)
+  {
+    filterCoeffQuant[sqrFiltLength-1]=factor-quantCoeffSum;
+  }
+  else
+  {
+    filterCoeffQuant[sqrFiltLength-1]=-quantCoeffSum;
+  }
+#endif
+
+
   Int max_value = std::min(  (1<<(3+m_nInputBitDepth + m_nBitIncrement))-1, (1<<14)-1);
   Int min_value = std::max( -(1<<(3+m_nInputBitDepth + m_nBitIncrement)),  -(1<<14)  );
   for (i=0; i<sqrFiltLength; i++)
@@ -2895,7 +4977,8 @@ Double TEncAdaptiveLoopFilter::QuantizeIntegerFilterPP(double *filterCoeff, int 
     filterCoeffQuant[i] = min( max_value , max( min_value , filterCoeffQuant[i] ) );
     filterCoeff[i]=(double)filterCoeffQuant[i]/(double)factor;
   }
-  
+ 
+#if !QC_ALF_IMPROVEMENT 
   // Encoder-side restriction on the ALF coefficients for limiting the Clipping LUT size
   Int sumCoef[2] = {0, 0};
   Int maxPxlVal = m_nIBDIMax;
@@ -2913,7 +4996,6 @@ Double TEncAdaptiveLoopFilter::QuantizeIntegerFilterPP(double *filterCoeff, int 
     sumCoef[coef[i]>0?0:1] += (coef[i]<<1);
   }
   sumCoef[ coef[centerCoef] > 0 ? 0 : 1 ] += coef[centerCoef];
-
   maxSampleValue = ( maxPxlVal * sumCoef[0] + coef[lastCoef] + offset ) >> numBitsMinus1;
   minSampleValue = ( maxPxlVal * sumCoef[1] + coef[lastCoef] + offset ) >> numBitsMinus1;
 
@@ -2927,12 +5009,15 @@ Double TEncAdaptiveLoopFilter::QuantizeIntegerFilterPP(double *filterCoeff, int 
       filterCoeff[j]=(double)filterCoeffQuant[j]/(double)factor;
     }
   }
-
+#endif
   error=calculateErrorCoeffProvided(E, y, filterCoeff, sqrFiltLength);
   return(error);
 }
-
+#if QC_ALF_IMPROVEMENT
+Double TEncAdaptiveLoopFilter::findFilterCoeff(Double ***EGlobalSeq, Double **yGlobalSeq, Double *pixAccGlobalSeq, Int **filterCoeffSeq, Int **filterCoeffQuantSeq, Int varIndTab[m_NO_VAR_BINS], Int noVarBins, Int sqrFiltLength, Int filters_per_fr, Int *weights, Int bit_depth, Double errorTabForce0Coeff[m_NO_VAR_BINS][2])
+#else
 Double TEncAdaptiveLoopFilter::findFilterCoeff(double ***EGlobalSeq, double **yGlobalSeq, double *pixAccGlobalSeq, int **filterCoeffSeq, int **filterCoeffQuantSeq, int intervalBest[m_NO_VAR_BINS][2], int varIndTab[m_NO_VAR_BINS], int sqrFiltLength, int filters_per_fr, int *weights, int bit_depth, double errorTabForce0Coeff[m_NO_VAR_BINS][2])
+#endif
 {
   static double pixAcc_temp;
   double error;
@@ -2941,42 +5026,65 @@ Double TEncAdaptiveLoopFilter::findFilterCoeff(double ***EGlobalSeq, double **yG
   error = 0;
   for(filtNo = 0; filtNo < filters_per_fr; filtNo++)
   {
+#if QC_ALF_IMPROVEMENT
+    add_A(m_E_temp, EGlobalSeq, varIndTab, filtNo, noVarBins, sqrFiltLength);
+    add_b(m_y_temp, yGlobalSeq, varIndTab, filtNo, noVarBins, sqrFiltLength);
+
+    pixAcc_temp=0;    
+    for (k=0; k<noVarBins; k++)
+    {
+      if (varIndTab[k]==filtNo)
+      {
+        pixAcc_temp+=pixAccGlobalSeq[k];
+      }
+    }
+#else
     add_A(m_E_temp, EGlobalSeq, intervalBest[filtNo][0], intervalBest[filtNo][1], sqrFiltLength);
     add_b(m_y_temp, yGlobalSeq, intervalBest[filtNo][0], intervalBest[filtNo][1], sqrFiltLength);
     
     pixAcc_temp = 0;    
     for(k = intervalBest[filtNo][0]; k <= intervalBest[filtNo][1]; k++)
       pixAcc_temp += pixAccGlobalSeq[k];
-    
+#endif  
     // Find coeffcients
     errorTabForce0Coeff[filtNo][1] = pixAcc_temp + QuantizeIntegerFilterPP(m_filterCoeff, m_filterCoeffQuant, m_E_temp, m_y_temp, sqrFiltLength, weights, bit_depth);
     errorTabForce0Coeff[filtNo][0] = pixAcc_temp;
     error += errorTabForce0Coeff[filtNo][1];
-    
     for(k = 0; k < sqrFiltLength; k++)
     {
       filterCoeffSeq[filtNo][k] = m_filterCoeffQuant[k];
       filterCoeffQuantSeq[filtNo][k] = m_filterCoeffQuant[k];
     }
   }
-  
+#if !QC_ALF_IMPROVEMENT 
   for(filtNo = 0; filtNo < filters_per_fr; filtNo++)
   {
     for(k = intervalBest[filtNo][0]; k <= intervalBest[filtNo][1]; k++)
       varIndTab[k] = filtNo;
   }
-  
+#endif
   return(error);
 }
 
+#if QC_ALF_IMPROVEMENT
+Void TEncAdaptiveLoopFilter::setInitialMask(TComPicYuv* pcPicOrg, TComPicYuv* pcPicDec, ALFParam* pcAlfParam )
+#else
 Void TEncAdaptiveLoopFilter::setInitialMask(TComPicYuv* pcPicOrg, TComPicYuv* pcPicDec)
+#endif
 {
   Int Height = pcPicOrg->getHeight(COMPONENT_Y);
   Int Width = pcPicOrg->getWidth(COMPONENT_Y);
   Int LumaStride = pcPicOrg->getStride(COMPONENT_Y);
   imgpel* pDec = (imgpel*)pcPicDec->getAddr(COMPONENT_Y);
 
+
+
+#if QC_ALF_IMPROVEMENT
+  calcVar(m_varImg, pDec, 9/2, SHIFT_VAL_HALFW, Height, Width, LumaStride, 0, 0, pcAlfParam->log2UnitSize);
+#else
   calcVar(m_varImg, pDec, 9/2, m_VAR_SIZE, Height, Width, LumaStride);
+#endif
+
 
   for(Int y=0; y<Height; y++)
   {
@@ -2985,54 +5093,9 @@ Void TEncAdaptiveLoopFilter::setInitialMask(TComPicYuv* pcPicOrg, TComPicYuv* pc
       m_maskImg[y][x] = 1;
     }
   }
-}
-
-Void TEncAdaptiveLoopFilter::xretriveBlockMatrix(Int iNumTaps, 
-                                                 Int* piTapPosInMaxFilter, 
-                                                 Double*** pppdEBase, Double*** pppdETarget, 
-                                                 Double**  ppdyBase,  Double** ppdyTarget )
-{
-  Int varInd;
-  Int i, j, r, c;
-
-  Double** ppdSrcE;
-  Double** ppdDstE;
-  Double*  pdSrcy;
-  Double*  pdDsty;
-
-  for (varInd=0; varInd< m_NO_VAR_BINS; varInd++)
-  {
-    ppdSrcE = pppdEBase  [varInd];
-    ppdDstE = pppdETarget[varInd];
-    pdSrcy  = ppdyBase   [varInd];
-    pdDsty  = ppdyTarget [varInd];
-
-    for(j=0; j< iNumTaps; j++)
-    {
-      r = piTapPosInMaxFilter[j];
-
-      for(i=j; i< iNumTaps; i++)
-      {
-        c = piTapPosInMaxFilter[i];
-
-        //auto-correlation retrieval
-        ppdDstE[j][i] = ppdSrcE[r][c];
-
-      }
-
-      //cross-correlation retrieval
-      pdDsty[j] = pdSrcy[r];
-
-    }
-
-    //symmetric copy
-    for(j=1; j< iNumTaps; j++)
-      for(i=0; i< j; i++)
-        ppdDstE[j][i] = ppdDstE[i][j];
-
-  }
 
 }
+
 
 #if COM16_C806_ALF_TEMPPRED_NUM
 Bool TEncAdaptiveLoopFilter::xFilteringLumaChroma( ALFParam *pAlfParam, TComPicYuv* pcPicOrg, TComPicYuv* pcPicDec, TComPicYuv* pcPicRest, UInt64& ruiMinRate, UInt64& ruiMinDist, Double& rdMinCost, Int uiIndex, const TComSlice * pSlice )
@@ -3045,7 +5108,6 @@ Bool TEncAdaptiveLoopFilter::xFilteringLumaChroma( ALFParam *pAlfParam, TComPicY
   Int    LumaStride = pcPicOrg->getStride(COMPONENT_Y);
   UInt   uiTmpMaxDepth = m_pcEntropyCoder->getMaxAlfCtrlDepth();
   UInt   uiTmpAlfCtrlFlag = m_pcEntropyCoder->getAlfCtrl();
-
   m_pcTempAlfParam->temproalPredFlag = true;
   copyALFParam(m_pcTempAlfParam, pAlfParam);
   xcopyFilterCoeff( m_pcTempAlfParam->filtNo, m_pcTempAlfParam->alfCoeffLuma );
@@ -3056,7 +5118,11 @@ Bool TEncAdaptiveLoopFilter::xFilteringLumaChroma( ALFParam *pAlfParam, TComPicY
   m_pcBestAlfParam->temproalPredFlag = false;
   m_varImg = m_varImgMethods;
 
+#if QC_ALF_IMPROVEMENT
+  xfilterFrame_en(pDec, pRest, m_pcTempAlfParam->filtNo, LumaStride, m_pcTempAlfParam->log2UnitSize );
+#else
   xfilterFrame_en(pDec, pRest, m_pcTempAlfParam->filtNo, LumaStride );
+#endif
   uiDist     = xCalcSSD(pcPicOrg->getAddr(COMPONENT_Y), pcPicRest->getAddr(COMPONENT_Y), pcPicOrg->getWidth(COMPONENT_Y), pcPicOrg->getHeight(COMPONENT_Y), pcPicOrg->getStride(COMPONENT_Y));
   xCalcRDCost(m_pcTempAlfParam, uiRate, uiDist, dCost, pSlice);
 
@@ -3083,6 +5149,7 @@ Bool TEncAdaptiveLoopFilter::xFilteringLumaChroma( ALFParam *pAlfParam, TComPicY
   m_pcTempAlfParam->cu_control_flag = 1;
   UInt uiBestDepth = 0;
   Bool bChanged = false;
+
   for (UInt uiDepth = 0; uiDepth < pSlice->getSPS()->getMaxTotalCUDepth(); uiDepth++)
   {
     m_pcEntropyCoder->setMaxAlfCtrlDepth(uiDepth);
@@ -3138,6 +5205,12 @@ Bool TEncAdaptiveLoopFilter::xFilteringLumaChroma( ALFParam *pAlfParam, TComPicY
 
   if( pAlfParam->chroma_idc != 0 )
   {
+#if QC_ALF_IMPROVEMENT && !EE_USE_HM3_CHROMA
+    memcpy( pAlfParam->coeff_chroma, pAlfParam->alfCoeffChroma, sizeof(Int)*m_ALF_MAX_NUM_COEF_C );
+    initVarForChroma(pAlfParam);
+    xFrameChroma(pAlfParam, pcPicDec, pcPicRest, 0);
+    xFrameChroma(pAlfParam, pcPicDec, pcPicRest, 1);
+#else
     Int *qh = new Int[m_ALF_MAX_NUM_COEF_C];
 
     memcpy( qh, m_pcTempAlfParam->alfCoeffChroma, sizeof(Int)*m_ALF_MAX_NUM_COEF_C );
@@ -3145,7 +5218,7 @@ Bool TEncAdaptiveLoopFilter::xFilteringLumaChroma( ALFParam *pAlfParam, TComPicY
     //filter chroma
     xFrameChroma(pcPicDec, pcPicRest, qh, m_pcTempAlfParam->tap_chroma, 0);
     xFrameChroma(pcPicDec, pcPicRest, qh, m_pcTempAlfParam->tap_chroma, 1);
-
+#endif
     UInt64 uiDistOrg;
 
     uiDist    = xCalcSSD(pcPicOrg->getAddr(COMPONENT_Cb), pcPicRest->getAddr(COMPONENT_Cb), pcPicOrg->getWidth(COMPONENT_Cb), pcPicOrg->getHeight(COMPONENT_Cb), pcPicOrg->getStride(COMPONENT_Cb));
@@ -3173,8 +5246,9 @@ Bool TEncAdaptiveLoopFilter::xFilteringLumaChroma( ALFParam *pAlfParam, TComPicY
     {
       pcPicDec->copyToPic(m_pcPicYuvBest, COMPONENT_Cr);
     }
-
+#if !QC_ALF_IMPROVEMENT || EE_USE_HM3_CHROMA
     delete [] qh;
+#endif
   }
   else
   {
@@ -3184,6 +5258,51 @@ Bool TEncAdaptiveLoopFilter::xFilteringLumaChroma( ALFParam *pAlfParam, TComPicY
 
   return true;
 }
+#endif
+#if QC_ALF_IMPROVEMENT
+Void TEncAdaptiveLoopFilter::xDeriveGlobalEyFromLgrTapFilter( Double **E0, Double *y0, Double **E1, Double *y1, Int *pattern0, Int *pattern1 )
+{
+  Int i, j, l, k = 0;
+  for (i = 0; i < m_MAX_SQR_FILT_LENGTH; i ++)
+  {
+    if ( pattern0[i] > 0 )
+    {
+      if ( pattern1[i] > 0 )
+      {
+        l = 0;
+        y1[pattern1[i]-1] = y0[k]; 
+        for (j = 0; j < m_MAX_SQR_FILT_LENGTH; j ++)
+        {
+          if (pattern0[j] > 0)
+          {
+            if (pattern1[j] > 0)
+            {
+              E1[pattern1[i]-1][pattern1[j]-1] = E0[k][l];
+            }
+            l++;
+          }
+        }
+      }
+      k++;
+    }
+  }
+}
+Void TEncAdaptiveLoopFilter::xDeriveLocalEyFromLgrTapFilter ( Double *y0,  Double *y1, Int *pattern0, Int *pattern1 )
+{
+  Int i, k = 0;
+  for (i = 0; i < m_MAX_SQR_FILT_LENGTH; i ++)
+  {
+    if (pattern0[i] > 0)
+    {
+      if (pattern1[i] > 0)
+      {
+        y1[pattern1[i]-1] = y0[k]; 
+      }
+      k++;
+    }
+  }
+}
+
 #endif
 
 #endif

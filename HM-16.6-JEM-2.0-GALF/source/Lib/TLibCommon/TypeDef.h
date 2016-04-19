@@ -50,6 +50,9 @@
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////
+#define TEST_JEM                                          1
+
+#if TEST_JEM
 #define VCEG_AZ08_USE_KLT                                 1  ///< KLT (if defined 1, use cfg option of KLT to control the enablement of intra KLT and inter KLT (INTERA_KLT, VCEG_AZ08_INTER_KLT should be set as 1); if 0, use INTERA_KLT, VCEG_AZ08_INTER_KLT to control the enablement.)
 
 #define VCEG_AZ08_INTER_KLT                               1  ///< (default 1) Enable inter KLT
@@ -78,7 +81,7 @@
 
 #define VCEG_AZ08_INTER_KLT_MV_BUGFIXED                   1  /// Fixed the bug related with mv (2016.2.29)
 #endif
-
+#endif
 
 #define ALF_HM3_REFACTOR                                  1  ///< Adaptive loop filter (ALF)
 #if ALF_HM3_REFACTOR
@@ -86,8 +89,27 @@
 #if COM16_C806_ALF_TEMPPRED_NUM
 #define FIX_TICKET12                                      1  ///< fixed ticket #12
 #endif
+
+#define QC_ALF_IMPROVEMENT                                1 ///<JVET-B0060
+#if QC_ALF_IMPROVEMENT
+#define ENABLE_FIXEDFILTER_INTERSLICE                     1
+
+#define NUM_VAR_UNITSIZE                                  1  ///<number of possible blokc sizes, all pixels in one block share same filter 
+#define SHIFT_VAL_HALFW                                   1  ///<clean up
+#define NO_PREV_FILTERS                                   16 ///<number of fixed filters per class
+///////////////////////////////////////////////////////////
+// START FOR EE TEST
+//////////////////////////////////////////////////////////
+#define EE_USE_HM3_CHROMA                                 0 
+#define EE_DISABLE_PRED_FIXEDFILTER                       0
+///////////////////////////////////////////////////////////
+// END FOR EE TEST
+//////////////////////////////////////////////////////////
 #endif
 
+#endif
+
+#if TEST_JEM
 #define COM16_C806_VCEG_AZ10_SUB_PU_TMVP                  1  ///< Sub-PU level motion vector prediction
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP                     
 #define COM16_C806_HEVC_MOTION_CONSTRAINT_REMOVAL         1
@@ -190,6 +212,7 @@
 #error
 #endif
 
+
 #define PARALLEL_ENCODING_SAO_FIX                         1  ///< Fix of SAO for parallel encoding proposed in JVET-B0036
 #define PARALLEL_ENCODING_RAS_CABAC_INIT_PRESENT          1  ///< Fix of CABAC initialization for parallel encoding proposed in JVET-B0036
 
@@ -198,7 +221,13 @@
 
 #define JVET_B0039_QP_FIX                                 1  ///< Recalcualtes QP to align with a HM lambda (same relation as for all intra coding is used)
 #define JVET_B0039_INC_NUM_QP_PROB                        7  ///< Number of context is increased when more QPs are used
-
+#else
+#define PARALLEL_ENCODING_SAO_FIX                         1  ///< Fix of SAO for parallel encoding proposed in JVET-B0036
+#define PARALLEL_ENCODING_RAS_CABAC_INIT_PRESENT          1  ///< Fix of CABAC initialization for parallel encoding proposed in JVET-B0036
+#define JVET_B0039_QP_FIX                                 1  ///< Recalcualtes QP to align with a HM lambda (same relation as for all intra coding is used)
+#define JVET_B0039_INC_NUM_QP_PROB                        7  ///< Number of context is increased when more QPs are used
+#define COM16_C806_SIMD_OPT                               1  ///< SIMD optimization, no impact on RD performance
+#endif
 ///////////////////////////////////////////////////////////
 // KTA tools section end
 ///////////////////////////////////////////////////////////
