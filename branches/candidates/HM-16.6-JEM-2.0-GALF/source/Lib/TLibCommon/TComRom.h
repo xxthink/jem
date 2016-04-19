@@ -181,7 +181,7 @@ extern Int g_aiIntraCubicFilter[32][4];
 extern Int g_aiIntraGaussFilter[32][4];
 #endif
 
-#if JVET_B0051_NON_MPM_MODE
+#if JVET_B0051_NON_MPM_MODE || QC_ALF_IMPROVEMENT
 extern        UChar g_NonMPM[257];
 #endif
 // ====================================================================================================================
@@ -237,6 +237,14 @@ extern const UInt g_scalingListSizeX[SCALING_LIST_SIZE_NUM];
 #if COM16_C1046_PDPC_INTRA
 extern const Int g_pdpc_pred_param[5][2][35][7];
 #endif
+
+#if QC_ALF_IMPROVEMENT
+// ====================================================================================================================
+// ALF.
+// ====================================================================================================================
+extern       Int m_ALFfilterCoeffFixed[25*NO_PREV_FILTERS][21];
+#endif
+
 //! \}
 
 #endif  //__TCOMROM__

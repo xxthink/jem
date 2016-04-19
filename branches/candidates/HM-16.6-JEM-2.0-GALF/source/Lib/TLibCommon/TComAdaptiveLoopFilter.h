@@ -42,32 +42,47 @@
 #include "TComPic.h"
 
 #if ALF_HM3_REFACTOR
-
+#if QC_ALF_IMPROVEMENT
+const static Int ALF_NO_VAR_BIN = 25;
+#else
 const static Int ALF_NO_VAR_BIN = 16;
+#endif
+
 
 typedef struct _AlfParam
 {
   Int alf_flag;                           ///< indicates use of ALF
   Int cu_control_flag;                    ///< coding unit based control flag
   Int chroma_idc;                         ///< indicates use of ALF for chroma
+#if QC_ALF_IMPROVEMENT
+  Int log2UnitSize;                       ///< unit size of block for variance calculation
+#endif
   Int tap;                                ///< number of filter taps - horizontal
   Int tapV;                               ///< number of filter taps - vertical
   Int num_coeff;                          ///< number of filter coefficients
+#if !QC_ALF_IMPROVEMENT
   Int *coeff;                             ///< filter coefficient array
+#endif
   Int tap_chroma;                         ///< number of filter taps (chroma)
   Int num_coeff_chroma;                   ///< number of filter coefficients (chroma)
   Int *coeff_chroma;                      ///< filter coefficient array (chroma)
+
   //CodeAux related
   Int realfiltNo;
   Int filtNo;
   Int filterPattern[ALF_NO_VAR_BIN];
+#if QC_ALF_IMPROVEMENT
+  Int PrevFiltIdx  [ALF_NO_VAR_BIN];
+  Int iAvailableFilters;
+  Int iPredPattern; //whether predicted from fixed filters
+#endif
   Int startSecondFilter;
   Int noFilters;
   Int varIndTab[ALF_NO_VAR_BIN];
 #if COM16_C806_ALF_TEMPPRED_NUM
   Bool temproalPredFlag; //indicate whether reuse previous ALF coefficients
   Int  prevIdx;          //index of the reused ALF coefficients
-  Int  **alfCoeffLuma;    
+  Int  **alfCoeffLuma;   
   Int  *alfCoeffChroma;
 #endif
   //Coeff send related
@@ -76,7 +91,7 @@ typedef struct _AlfParam
   Int codedVarBins[ALF_NO_VAR_BIN]; 
   Int forceCoeff0;
   Int predMethod;
-  Int **coeffmulti;
+  Int **coeffmulti; //to be written in bitstream, after prediction from fixed filter or previous calss
   Int minKStart;
   Int maxScanVal;
   Int kMinTab[42];
@@ -84,7 +99,6 @@ typedef struct _AlfParam
   UInt num_cus_in_frame;
   UInt alf_max_depth;
   UInt *alf_cu_flag;
-
 }ALFParam;
 
 typedef unsigned short imgpel;
@@ -99,9 +113,18 @@ void initMatrix_int(int ***m2D, int d1, int d2);
 /// adaptive loop filter class
 class TComAdaptiveLoopFilter
 {
+#if QC_ALF_IMPROVEMENT
+public:
+  Int m_max_NO_VAR_BINS; 
+  Int m_max_NO_FILTERS;
+  Double m_filterCoeffPrev[25*NO_PREV_FILTERS][21];
+  Double m_filterCoeffDefault[21];
+#endif
 protected:
+#if !QC_ALF_IMPROVEMENT
   static const Int m_ALF_VAR_SIZE_H        = 4;
   static const Int m_ALF_VAR_SIZE_W        = 4;
+#endif
   static const Int m_ALF_WIN_VERSIZE       = 32;
   static const Int m_ALF_WIN_HORSIZE       = 32;
 
@@ -117,20 +140,39 @@ protected:
   static const Int m_VAR_SIZE              = 1;                                     ///< JCTVC-E323+E046
 
   static const Int m_FILTER_LENGTH         = 9;
-
+#if QC_ALF_IMPROVEMENT
+  static const Int m_NUM_ALF_SETS_PERDIR   = 5;
+  static const Int m_PADDING_W_ALF         = ( m_FILTER_LENGTH/2 > SHIFT_VAL_HALFW ? m_FILTER_LENGTH/2 : SHIFT_VAL_HALFW);
+#endif
   static const Int m_ALF_HM3_QC_CLIP_RANGE = 1024;
   static const Int m_ALF_HM3_QC_CLIP_OFFSET= 384;
 
 public:
+#if QC_ALF_IMPROVEMENT 
+  static const Int m_NUM_BITS              =  10;
+#else
   static const Int m_NUM_BITS              =  9;
+#endif
   static const Int m_NO_TEST_FILT          =  3;                                    ///< Filter supports (5/7/9)
+#if QC_ALF_IMPROVEMENT
+  #define DIR_TH                           2.0
+  #define NO_VALS_LAGR                     5
+  #define NO_VALS_LAGR_SHIFT               3
+  static const Int m_NO_VAR_BINS           = 25;
+  static const Int m_NO_FILTERS            = 25; 
+  static const Int m_MAX_SQR_FILT_LENGTH   = ((m_FILTER_LENGTH*m_FILTER_LENGTH) / 2 + 1);
+  static const Int m_MAX_SQT_FILT_SYM_LENGTH = ((m_FILTER_LENGTH*m_FILTER_LENGTH) / 4 + 1);
+  static const Int m_SQR_FILT_LENGTH_9SYM  = ((9*9) / 4 + 1); 
+  static const Int m_SQR_FILT_LENGTH_7SYM  = ((7*7) / 4 + 1); 
+  static const Int m_SQR_FILT_LENGTH_5SYM  = ((5*5) / 4 + 1); 
+#else
   static const Int m_NO_VAR_BINS           = 16; 
-  static const Int m_NO_FILTERS            = 16;
-
+  static const Int m_NO_FILTERS            = 16; 
   static const Int m_MAX_SQR_FILT_LENGTH   = ((m_FILTER_LENGTH*m_FILTER_LENGTH) / 2 + 2);
   static const Int m_SQR_FILT_LENGTH_9SYM  = ((9*9) / 4 + 2 - 1); 
   static const Int m_SQR_FILT_LENGTH_7SYM  = ((7*7) / 4 + 2); 
   static const Int m_SQR_FILT_LENGTH_5SYM  = ((5*5) / 4 + 2); 
+#endif
   static const Int m_MAX_SCAN_VAL          = 11;
   static const Int m_MAX_EXP_GOLOMB        = 16;
 
@@ -139,7 +181,8 @@ public:
   static const Int m_aiSymmetricMag7x7[25];                                         ///< quantization scaling factor for 7x7 filter
   static const Int m_aiSymmetricMag5x5[13];                                         ///< quantization scaling factor for 5x5 filter
   static const Int m_aiSymmetricMag9x7[32];                                         ///< quantization scaling factor for 9x7 filter
-  
+
+
   // temporary picture buffer
   TComPicYuv*   m_pcTempPicYuv;                                                     ///< temporary picture buffer for ALF processing
 
@@ -147,15 +190,25 @@ public:
   static const Int* m_pDepthIntTab[m_NO_TEST_FILT];
 
 protected:
+#if QC_ALF_IMPROVEMENT
+  static const Int depthInt9x9Cut[21];
+  static const Int depthInt7x7Cut[14];
+  static const Int depthInt5x5Cut[8];
+#else
   static const Int  m_depthInt9x9Sym[21];
   static const Int  m_depthInt7x7Sym[14];
   static const Int  m_depthInt5x5Sym[8];
-
+#endif
   // ------------------------------------------------------------------------------------------------------------------
   // For luma component
   // ------------------------------------------------------------------------------------------------------------------
+#if QC_ALF_IMPROVEMENT 
+  static Int m_pattern9x9Sym[41];
+  static Int m_weights9x9Sym[22];
+#else
   static Int m_pattern9x9Sym[39];
   static Int m_weights9x9Sym[21];
+#endif
   static Int m_pattern9x9Sym_Quart[42];
   static Int m_pattern7x7Sym[25];
   static Int m_weights7x7Sym[14];
@@ -186,9 +239,15 @@ protected:
   
   Int**     m_imgY_ver;
   Int**     m_imgY_hor;
+#if QC_ALF_IMPROVEMENT
+  Int**     m_imgY_dig0 ;
+  Int**     m_imgY_dig1 ;
+#endif
   imgpel**  m_varImgMethods;
-
   Int **    m_filterCoeffSym;
+#if QC_ALF_IMPROVEMENT
+  Int **    m_filterCoeffFinal;
+#endif
   Int **    m_filterCoeffPrevSelected;
   Short **  m_filterCoeffShort;
   imgpel *  m_alfClipTable;
@@ -196,12 +255,15 @@ protected:
   Int **    m_filterCoeffTmp;
   Int **    m_filterCoeffSymTmp;
   UInt      m_uiNumCUsInFrame;
-  
   /// ALF for luma component
   Void xALFLuma_qc( TComPic* pcPic, ALFParam* pcAlfParam, TComPicYuv* pcPicDec, TComPicYuv* pcPicRest);
   
   Void reconstructFilterCoeffs(ALFParam* pcAlfParam,int **pfilterCoeffSym, int bit_depth);
+#if QC_ALF_IMPROVEMENT && !ENABLE_FIXEDFILTER_INTERSLICE  
+  Void getCurrentFilter(int **filterCoeffSym,ALFParam* pcAlfParam, TComSlice *pSlice);
+#else
   Void getCurrentFilter(int **filterCoeffSym,ALFParam* pcAlfParam);
+#endif
   // memory allocation
   Void destroyMatrix_short(short **m2D);
   Void initMatrix_short(short ***m2D, int d1, int d2);
@@ -219,15 +281,39 @@ protected:
   Void get_mem2Dpel(imgpel ***array2D, int rows, int columns);
   Void no_mem_exit(const char *where);
   Void xError(const char *text, int code);
+#if QC_ALF_IMPROVEMENT
+  Void xCalcVarPerPixel(imgpel **imgY_var, imgpel *imgY_pad, int pad_size, int fl, int img_height, int img_width, int img_stride, int start_width , int start_height, int log2UnitSize );
+  Void calcVar (imgpel **imgY_var, imgpel *imgY_pad, int pad_size, int fl, int img_height, int img_width, int img_stride, int start_width = 0 , int start_height = 0, int log2UnitSize = 0 );
+  Void xCalcVar(imgpel **imgY_var, imgpel *imgY_pad, int pad_size, int fl, int img_height, int img_width, int img_stride, int start_width , int start_height, int log2UnitSize = 0 );
+#else
   Void calcVar(imgpel **imgY_var, imgpel *imgY_pad, int pad_size, int fl, int img_height, int img_width, int img_stride, int start_width = 0 , int start_height = 0 );
   Void xCalcVar(imgpel **imgY_var, imgpel *imgY_pad, int pad_size, int fl, int img_height, int img_width, int img_stride, int start_width , int start_height );
+#endif
+#if ENABLE_FIXEDFILTER_INTERSLICE
   Void DecFilter_qc(imgpel* imgY_rec,ALFParam* pcAlfParam, int Stride);
+#else
+  Void DecFilter_qc(imgpel* imgY_rec,ALFParam* pcAlfParam, int Stride, TComSlice *pSlice);
+#endif
   Void xSubCUAdaptive_qc(TComDataCU* pcCU, ALFParam* pcAlfParam, imgpel *imgY_rec_post, imgpel *imgY_rec, UInt uiAbsPartIdx, UInt uiDepth, Int Stride);
   Void xCUAdaptive_qc(TComPic* pcPic, ALFParam* pcAlfParam, imgpel *imgY_rec_post, imgpel *imgY_rec, Int Stride);
+#if QC_ALF_IMPROVEMENT
+#if ENABLE_FIXEDFILTER_INTERSLICE
+  Void subfilterFrame(imgpel *imgY_rec_post, imgpel *imgY_rec, ALFParam* pcAlfPara, int start_height, int end_height, int start_width, int end_width, int Stride, Bool bChroma = false);
+  Void filterFrame(imgpel *imgY_rec_post, imgpel *imgY_rec, ALFParam* pcAlfPara, int Stride);
+#else
+  Void subfilterFrame(imgpel *imgY_rec_post, imgpel *imgY_rec, ALFParam* pcAlfPara, int start_height, int end_height, int start_width, int end_width, int Stride, Bool bIntraSlice, Bool bChroma = false);    
+  Void filterFrame(imgpel *imgY_rec_post, imgpel *imgY_rec, ALFParam* pcAlfPara, int Stride, Bool bIntraSlice);
+#endif
+#else
   Void subfilterFrame(imgpel *imgY_rec_post, imgpel *imgY_rec, int filtNo, int start_height, int end_height, int start_width, int end_width, int Stride);
   Void filterFrame(imgpel *imgY_rec_post, imgpel *imgY_rec, int filtNo, int Stride);
+#endif
   Void setAlfCtrlFlags (ALFParam *pAlfParam, TComDataCU *pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt &idx);
-  
+
+#if QC_ALF_IMPROVEMENT
+  Int selectTransposeVarInd(Int varInd, Int *transpose);
+  Void initFixedFilters();
+#endif
   // ------------------------------------------------------------------------------------------------------------------
   // For chroma component
   // ------------------------------------------------------------------------------------------------------------------
@@ -236,7 +322,11 @@ protected:
   Void xALFChroma   ( ALFParam* pcAlfParam, TComPicYuv* pcPicDec, TComPicYuv* pcPicRest );
   
   /// sub function: non-adaptive ALF process for chroma
+#if QC_ALF_IMPROVEMENT && !EE_USE_HM3_CHROMA
+  Void xFrameChroma ( ALFParam* pcAlfParam, TComPicYuv* pcPicDec, TComPicYuv* pcPicRest, Int iColor );
+#else
   Void xFrameChroma ( TComPicYuv* pcPicDec, TComPicYuv* pcPicRest, Int *qh, Int iTap, Int iColor );
+#endif
 
 public:
   TComAdaptiveLoopFilter();
@@ -254,16 +344,25 @@ public:
 #if COM16_C806_ALF_TEMPPRED_NUM
   Void setNumCUsInFrame        (UInt uiNumCUsInFrame);
 #endif
+#if QC_ALF_IMPROVEMENT  
+  Void resetALFPredParam(ALFParam *pAlfParam, Bool bIntra);
+#else
   Void printALFParam  ( ALFParam* pAlfParam , Bool bDecoder = false );
+#endif
   Void resetALFParam  ( ALFParam* pDesAlfParam);
 
   // predict filter coefficients
+#if QC_ALF_IMPROVEMENT 
+#if !EE_USE_HM3_CHROMA
+  Void initVarForChroma       ( ALFParam* pcAlfParam, Bool bUpdatedDCCoef = true);
+#endif
+#else
   Void predictALFCoeff        ( ALFParam* pAlfParam );                  ///< prediction of luma ALF coefficients
   Void predictALFCoeffChroma  ( ALFParam* pAlfParam );                  ///< prediction of chroma ALF coefficients
-  
+#endif
   // interface function
   Void ALFProcess             ( TComPic* pcPic, ALFParam* pcAlfParam); ///< interface function for ALF process
-
+  
 #if FIX_TICKET12
   Bool refreshAlfTempPred( NalUnitType nalu , Int poc );
 #endif

@@ -159,10 +159,17 @@ public:
 #if ALF_HM3_REFACTOR
   Void  xReadUnaryMaxSymbol ( UInt& ruiSymbol, UInt uiMaxSymbol );
   Void  parseAlfFlag        ( UInt& ruiVal );
+#if QC_ALF_IMPROVEMENT  
+  Void parseALFTruncBinVal  (UInt& ruiSymbol, UInt uiMaxSymbol);
+  Void parseALFPrevFiltType ( UInt& uiCode );
+  Void parseALFPrevFiltFlag ( UInt& uiCode );
+#endif
   Void  parseAlfUvlc        ( UInt& ruiVal );
   Void  parseAlfSvlc        ( Int&  riVal  );
   Void  parseAlfCtrlDepth   ( UInt& ruiAlfCtrlDepth , UInt uiMaxTotalCUDepth ); 
+#if !QC_ALF_IMPROVEMENT 
   Void  parseAlfCtrlFlag    ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth , UInt uiMaxAlfCtrlDepth );
+#endif
   Void  parseAlfFlagNum     ( UInt& ruiVal, UInt minValue, UInt depth );
   Void  parseAlfCtrlFlag    ( UInt &ruiAlfCtrlFlag );
 #endif

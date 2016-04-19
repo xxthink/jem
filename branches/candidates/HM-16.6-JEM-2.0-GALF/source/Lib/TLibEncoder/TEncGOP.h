@@ -167,8 +167,9 @@ public:
   TComList<TComPic*>*   getListPic()      { return m_pcListPic; }
 
   Void  printOutSummary      ( UInt uiNumAllPicCoded, Bool isField, const Bool printMSEBasedSNR, const Bool printSequenceMSE, const BitDepths &bitDepths );
+#if !QC_ALF_IMPROVEMENT
   Void  preLoopFilterPicAll  ( TComPic* pcPic, UInt64& ruiDist );
-
+#endif
   TEncSlice*  getSliceEncoder()   { return m_pcSliceEncoder; }
   NalUnitType getNalUnitType( Int pocCurr, Int lastIdr, Bool isField );
   Void arrangeLongtermPicturesInRPS(TComSlice *, TComList<TComPic*>& );

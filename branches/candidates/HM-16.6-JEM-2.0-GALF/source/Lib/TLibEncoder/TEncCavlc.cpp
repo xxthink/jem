@@ -1662,7 +1662,21 @@ Void TEncCavlc::codeAlfFlag( UInt uiCode )
   //xWriteFlag( uiCode );
   WRITE_FLAG( uiCode , "alf_flag" );
 }
-
+#if QC_ALF_IMPROVEMENT  
+Void TEncCavlc::xWriteTruncBinCode(UInt uiSymbol, UInt uiMaxSymbol)
+{
+  assert(0);
+}
+//0: no pred; 1: all same index; 2: diff index for each variance index
+Void TEncCavlc::codeALFPrevFiltType( UInt uiCode)
+{
+  assert(0);
+}
+Void TEncCavlc::codeALFPrevFiltFlag( Int uiCode)
+{
+  assert(0);
+}
+#endif
 Void TEncCavlc::codeAlfFlagNum( UInt uiCode, UInt minValue )
 {
   UInt uiLength = 0;
@@ -1701,7 +1715,7 @@ Void TEncCavlc::codeAlfSvlc( Int iCode )
   //xWriteSvlc( iCode );
   WRITE_SVLC( iCode , "alf_svlc" );
 }
-
+#if !QC_ALF_IMPROVEMENT 
 Void TEncCavlc::codeAlfCtrlFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
 {  
   if (!m_bAlfCtrl)
@@ -1718,11 +1732,10 @@ Void TEncCavlc::codeAlfCtrlFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
   //xWriteFlag( uiSymbol );
   WRITE_FLAG( uiSymbol , "alf_ctrl_flag" );
 }
-
+#endif
 Void TEncCavlc::codeAlfCtrlDepth( UInt uiMaxTotalCUDepth )
 {  
   UInt uiDepth = m_uiMaxAlfCtrlDepth;
-
   xWriteUnaryMaxSymbol(uiDepth, uiMaxTotalCUDepth-1);
 }
 

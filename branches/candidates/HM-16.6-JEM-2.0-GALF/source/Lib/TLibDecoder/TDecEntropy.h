@@ -153,10 +153,17 @@ public:
 
 #if ALF_HM3_REFACTOR
   virtual Void parseAlfFlag       ( UInt& ruiVal           ) = 0;
+#if QC_ALF_IMPROVEMENT  
+  virtual Void parseALFTruncBinVal  ( UInt& ruiSymbol, UInt uiMaxSymbol ) = 0;
+  virtual Void parseALFPrevFiltType ( UInt& uiCode ) = 0;
+  virtual Void parseALFPrevFiltFlag ( UInt& uiCode ) = 0;
+#endif
   virtual Void parseAlfUvlc       ( UInt& ruiVal           ) = 0;
   virtual Void parseAlfSvlc       ( Int&  riVal            ) = 0;
   virtual Void parseAlfCtrlDepth   ( UInt& ruiAlfCtrlDepth , UInt uiMaxTotalCUDepth ) = 0; 
+#if !QC_ALF_IMPROVEMENT 
   virtual Void parseAlfCtrlFlag    ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth , UInt uiMaxAlfCtrlDepth ) = 0;
+#endif
   virtual Void parseAlfFlagNum    ( UInt& ruiVal, UInt minValue, UInt depth ) = 0;
   virtual Void parseAlfCtrlFlag   ( UInt &ruiAlfCtrlFlag ) = 0;
 #endif
@@ -291,11 +298,25 @@ public:
         , TComSlice * pSlice
 #endif
     );
-  Void decodeAux(ALFParam* pAlfParam);
-  Void decodeFilt(ALFParam* pAlfParam);
+  Void decodeAux(ALFParam* pAlfParam
+#if QC_ALF_IMPROVEMENT && !ENABLE_FIXEDFILTER_INTERSLICE
+    , TComSlice * pSlice
+#endif
+    );
+   Void decodeFilt(ALFParam* pAlfParam
+#if QC_ALF_IMPROVEMENT && !ENABLE_FIXEDFILTER_INTERSLICE
+    , TComSlice * pSlice
+#endif
+    );
+#if QC_ALF_IMPROVEMENT
+  Void readFilterCodingParams(ALFParam* pAlfParam, Bool bChroma = false);
+  Void readFilterCoeffs(ALFParam* pAlfParam, Bool bChroma = false);
+  Void decodeFilterCoeff (ALFParam* pAlfParam, Bool bChroma = false);
+#else
   Void readFilterCodingParams(ALFParam* pAlfParam);
   Void readFilterCoeffs(ALFParam* pAlfParam);
   Void decodeFilterCoeff (ALFParam* pAlfParam);
+#endif
   Int  golombDecode(Int k);
   Void decodeAlfCtrlParam      ( ALFParam *pAlfParam );
 #endif
@@ -303,6 +324,7 @@ public:
 #if COM16_C1016_AFFINE
   Void decodeAffineFlag        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPuIdx );
 #endif
+
 
 };// END CLASS DEFINITION TDecEntropy
 

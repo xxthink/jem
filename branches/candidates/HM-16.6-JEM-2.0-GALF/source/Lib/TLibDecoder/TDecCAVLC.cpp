@@ -2330,7 +2330,7 @@ Void TDecCavlc::parseAlfCtrlDepth( UInt& ruiAlfCtrlDepth , UInt uiMaxTotalCUDept
   xReadUnaryMaxSymbol(uiSymbol, uiMaxTotalCUDepth-1);
   ruiAlfCtrlDepth = uiSymbol;
 }
-
+#if !QC_ALF_IMPROVEMENT 
 Void TDecCavlc::parseAlfCtrlFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth  , UInt uiMaxAlfCtrlDepth )
 {
   if( uiDepth > uiMaxAlfCtrlDepth && !pcCU->isFirstAbsZorderIdxInDepth(uiAbsPartIdx, uiMaxAlfCtrlDepth))
@@ -2350,12 +2350,26 @@ Void TDecCavlc::parseAlfCtrlFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDe
     pcCU->setAlfCtrlFlagSubParts( uiSymbol, uiAbsPartIdx, uiDepth );
   }
 }
+#endif
 
 Void TDecCavlc::parseAlfFlag (UInt& ruiVal)
 {
   READ_FLAG( ruiVal , "alf_flag" );
 }
-
+#if QC_ALF_IMPROVEMENT  
+Void TDecCavlc::parseALFTruncBinVal(UInt& ruiSymbol, UInt uiMaxSymbol)
+{
+  assert(0);
+}
+Void TDecCavlc::parseALFPrevFiltType ( UInt& uiCode )
+{
+  assert(0);
+}
+Void TDecCavlc::parseALFPrevFiltFlag ( UInt& uiCode )
+{
+  assert(0);
+}
+#endif
 Void TDecCavlc::parseAlfFlagNum( UInt& ruiVal, UInt minValue, UInt depth )
 {
   UInt uiLength = 0;

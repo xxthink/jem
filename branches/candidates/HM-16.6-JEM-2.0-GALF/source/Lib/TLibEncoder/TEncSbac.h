@@ -117,7 +117,7 @@ public:
 #endif
 
 private:
-#if JVET_B0051_NON_MPM_MODE
+#if JVET_B0051_NON_MPM_MODE || QC_ALF_IMPROVEMENT
   Void  xWriteTruncBinCode      ( UInt uiSymbol, UInt uiMaxSymbol );
 #endif
   Void  xWriteUnarySymbol    ( UInt uiSymbol, ContextModel* pcSCModel, Int iOffset );
@@ -221,12 +221,20 @@ public:
   Void  setAlfCtrl             ( Bool bAlfCtrl          ) { m_bAlfCtrl          = bAlfCtrl;          }
   Void  setMaxAlfCtrlDepth     ( UInt uiMaxAlfCtrlDepth ) { m_uiMaxAlfCtrlDepth = uiMaxAlfCtrlDepth; }
   Void  codeAlfFlag       ( UInt uiCode );
+#if QC_ALF_IMPROVEMENT  
+  Void codeALFPrevFiltType( UInt uiCode);
+  Void codeALFPrevFiltFlag( Int uiCode);
+#endif
   Void  codeAlfUvlc       ( UInt uiCode );
   Void  codeAlfSvlc       ( Int  uiCode );
   Void  codeAlfCtrlDepth  ( UInt uiMaxTotalCUDepth );
   Void  codeAlfFlagNum    ( UInt uiCode, UInt minValue );
+
   Void  codeAlfCtrlFlag   ( UInt uiSymbol );
+
+#if !QC_ALF_IMPROVEMENT 
   Void  codeAlfCtrlFlag   ( TComDataCU* pcCU, UInt uiAbsPartIdx );
+#endif
 #endif
 
 #if COM16_C806_EMT
@@ -308,9 +316,13 @@ private:
   Bool          m_bAlfCtrl;
   UInt          m_uiMaxAlfCtrlDepth;
   ContextModel3DBuffer m_cCUAlfCtrlFlagSCModel;
+#if !QC_ALF_IMPROVEMENT
   ContextModel3DBuffer m_cALFFlagSCModel;
+#endif
   ContextModel3DBuffer m_cALFUvlcSCModel;
+#if !QC_ALF_IMPROVEMENT
   ContextModel3DBuffer m_cALFSvlcSCModel;
+#endif
 #endif
 
 #if COM16_C806_EMT

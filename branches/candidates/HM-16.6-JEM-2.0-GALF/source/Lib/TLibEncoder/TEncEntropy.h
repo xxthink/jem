@@ -161,11 +161,19 @@ public:
   virtual Void setAlfCtrl(Bool bAlfCtrl)                = 0;
   virtual Void setMaxAlfCtrlDepth(UInt uiMaxAlfCtrlDepth)                = 0;
   virtual Void codeAlfCtrlDepth     ( UInt uiMaxTotalCUDepth ) = 0;
+#if !QC_ALF_IMPROVEMENT
   virtual Void codeAlfCtrlFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
+#endif
   virtual Void codeAlfFlag          ( UInt uiCode ) = 0;
+#if QC_ALF_IMPROVEMENT  
+  virtual Void xWriteTruncBinCode   (UInt iSymbol, UInt iMaxSymbol) = 0;
+  virtual Void codeALFPrevFiltType( UInt uiCode) = 0;
+  virtual Void codeALFPrevFiltFlag( Int uiCode)  = 0;
+#endif
   virtual Void codeAlfUvlc          ( UInt uiCode ) = 0;
   virtual Void codeAlfSvlc          ( Int   iCode ) = 0;
   virtual Void codeAlfFlagNum       ( UInt uiCode, UInt minValue ) = 0;
+
   virtual Void codeAlfCtrlFlag      ( UInt uiSymbol ) = 0;
 #endif
 
@@ -306,7 +314,10 @@ public:
         ,const TComSlice * pSlice
 #endif
     );
+#if !QC_ALF_IMPROVEMENT
   Void encodeAlfCtrlFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
+#endif
+
   Void encodeAlfCtrlParam      ( ALFParam *pAlfParam );
   Bool getAlfCtrl() {return m_pcEntropyCoderIf->getAlfCtrl();}
   UInt getMaxAlfCtrlDepth() {return m_pcEntropyCoderIf->getMaxAlfCtrlDepth();}
@@ -314,12 +325,34 @@ public:
   Void setMaxAlfCtrlDepth(UInt uiMaxAlfCtrlDepth) {m_pcEntropyCoderIf->setMaxAlfCtrlDepth(uiMaxAlfCtrlDepth);}
   Void codeAuxCountBit(ALFParam* pAlfParam, Int64* ruiRate, const TComSlice * pSlice);
   Void codeFiltCountBit(ALFParam* pAlfParam, Int64* ruiRate, const TComSlice * pSlice);
-  Void codeAux (ALFParam* pAlfParam);
-  Void codeFilt (ALFParam* pAlfParam);
-  Int codeFilterCoeff(ALFParam* ALFp);
+  Void codeAux (ALFParam* pAlfParam
+#if QC_ALF_IMPROVEMENT
+    , const TComSlice * pSlice
+#endif
+    );
+  Void codeFilt (ALFParam* pAlfParam
+#if QC_ALF_IMPROVEMENT && !ENABLE_FIXEDFILTER_INTERSLICE
+    , const TComSlice * pSlice
+#endif
+    );
+  Int codeFilterCoeff(ALFParam* ALFp
+#if QC_ALF_IMPROVEMENT
+    , Bool bChroma = false
+#endif
+    );
+#if QC_ALF_IMPROVEMENT
+  Void codeFilterCoeffForce0(ALFParam* ALFp);
+  Int writeFilterCodingParams(Int minKStart, Int maxScanVal, Int kMinTab[], Int forceCoeff0, Int filters_per_group, Int codedVarBins[]);
+  Int writeFilterCoeffs(Int sqrFiltLength, Int filters_per_group, const Int pDepthInt[], 
+    Int **FilterCoeff, Int kMinTab[], Int codedVarBins[]);
+#else
   Int writeFilterCodingParams(int minKStart, int maxScanVal, int kMinTab[]);
   Int writeFilterCoeffs(int sqrFiltLength, int filters_per_group, const int pDepthInt[], 
     int **FilterCoeff, int kMinTab[]);
+#endif
+#if QC_ALF_IMPROVEMENT
+  Int writeFilterCoeffsForChroma(Int sqrFiltLength, const Int pDepthInt[], Int *FilterCoeff, Int kMinTab[]);
+#endif
   Int golombEncode(int coeff, int k);
   Int lengthGolomb(int coeffVal, int k);
 #endif

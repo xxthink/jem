@@ -126,8 +126,9 @@ public:
 #if VCEG_AZ07_FRUC_MERGE
   Void codeFRUCMgrMode   ( TComDataCU* pcCU, UInt uiAbsPartIdx , UInt uiPUIdx );
 #endif
-
+#if !QC_ALF_IMPROVEMENT
   Void codeAlfCtrlFlag   ( ComponentID /*component*/, UInt /*code*/ ) {printf("Not supported\n"); assert(0);}
+#endif
   Void codeInterModeFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiEncMode );
   Void codeSplitFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 
@@ -188,10 +189,17 @@ public:
   Void setAlfCtrl(Bool bAlfCtrl) {m_bAlfCtrl = bAlfCtrl;}
   Void setMaxAlfCtrlDepth(UInt uiMaxAlfCtrlDepth) {m_uiMaxAlfCtrlDepth = uiMaxAlfCtrlDepth;}
   Void codeAlfFlag       ( UInt uiCode );
+#if QC_ALF_IMPROVEMENT  
+  Void xWriteTruncBinCode(UInt uiSymbol, UInt uiMaxSymbol);
+  Void codeALFPrevFiltType( UInt uiCode);
+  Void codeALFPrevFiltFlag( Int uiCode);
+#endif
   Void codeAlfUvlc       ( UInt uiCode );
   Void codeAlfSvlc       ( Int   iCode );
   Void codeAlfCtrlDepth  ( UInt uiMaxTotalCUDepth );
+#if !QC_ALF_IMPROVEMENT 
   Void codeAlfCtrlFlag   ( TComDataCU* pcCU, UInt uiAbsPartIdx );
+#endif
   Void codeAlfFlagNum    ( UInt uiCode, UInt minValue );
   Void codeAlfCtrlFlag   ( UInt uiSymbol );
 #endif
