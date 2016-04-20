@@ -136,7 +136,7 @@ public:
   virtual Void parseIPCMInfo     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth) = 0;
 
   virtual Void parseCoeffNxN( class TComTU &rTu, ComponentID compID  
-#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if VCEG_AZ05_ROT_TR || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST )
     , Bool& bCbfCU
 #endif
     ) = 0;
@@ -275,7 +275,7 @@ public:
 private:
 
   Void xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjCoded, TComTU &rTu, const Int quadtreeTULog2MinSizeInCU 
-#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if VCEG_AZ05_ROT_TR || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST )
     , Bool& bCbfCU
 #endif
     );

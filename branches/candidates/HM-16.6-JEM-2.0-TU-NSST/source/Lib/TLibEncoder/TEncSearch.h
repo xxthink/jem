@@ -164,6 +164,10 @@ protected:
   UChar*          m_puhQTTempEmtCuFlag;
 #endif
 
+#if JVET_B0059_TU_NSST
+  UChar*          m_puhQTTempNsstTuIdx;
+#endif
+
 public:
   TEncSearch();
   virtual ~TEncSearch();
@@ -299,6 +303,27 @@ protected:
                                    ComponentID compID,
                                    Bool          bRealCoeff );
 
+#if JVET_B0059_USE_TRANS_DIST
+  Void  xReconIntraTUBlock       (        TComYuv*      pcOrgYuv,
+                                          TComYuv*      pcPredYuv,
+                                          TComYuv*      pcResiYuv,
+#if COM16_C806_LARGE_CTU
+                                          Pel*          resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES],
+#else
+                                          Pel           resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE],
+#endif
+                                    const Bool          checkCrossCPrediction,
+                                          Distortion&   ruiDist,
+                                    const ComponentID   compID,
+                                          TComTU        &rTu
+                                    DEBUG_STRING_FN_DECLARE(sTest)
+                                         ,Int           default0Save1Load2 = 0
+#if JVET_B0059_TU_NSST
+                                         ,Int           default0Save1Load2nsst = 0
+#endif
+                                   );
+#endif
+
   Void  xIntraCodingTUBlock       (       TComYuv*      pcOrgYuv,
                                           TComYuv*      pcPredYuv,
                                           TComYuv*      pcResiYuv,
@@ -313,7 +338,10 @@ protected:
                                           TComTU        &rTu
                                     DEBUG_STRING_FN_DECLARE(sTest)
                                          ,Int           default0Save1Load2 = 0
-#if COM16_C806_EMT
+#if JVET_B0059_TU_NSST
+                                         ,Int          default0Save1Load2nsst = 0
+#endif
+#if COM16_C806_EMT || JVET_B0059_TU_NSST_ADAP_SIG
                                          ,UInt*         puiSigNum = NULL
 #endif
                                    );
@@ -325,7 +353,7 @@ protected:
                                       const ComponentID compID,
                                       TComTU&     rTu
                                       DEBUG_STRING_FN_DECLARE(sDebug)
-#if COM16_C806_EMT
+#if COM16_C806_EMT || JVET_B0059_TU_NSST_ADAP_SIG
                                       , UInt*      puiSigNum
 #endif
                                       , Int tmpred0_tmpredklt1_ori2

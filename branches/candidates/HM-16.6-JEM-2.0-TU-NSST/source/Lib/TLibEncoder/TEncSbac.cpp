@@ -860,13 +860,14 @@ Void TEncSbac::codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
 #if VCEG_AZ05_INTRA_MPI
     && pcCU->getMPIIdx(uiAbsPartIdx) ==0
 #endif  
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_B0059_TU_NSST
     && pcCU->getPDPCIdx(uiAbsPartIdx) == 0
 #endif  
     && !pcCU->getCUTransquantBypass(uiAbsPartIdx)
-    )  iNumberOfPassesROT = 4;
+    )  
+    iNumberOfPassesROT = 4;
 
-#if COM16_C1044_NSST
+#if COM16_C1044_NSST && !JVET_B0059_TU_NSST
   if( iNumberOfPassesROT==4 && pcCU->getPartitionSize(uiAbsPartIdx)==SIZE_2Nx2N )
   {
     iNumberOfPassesROT = pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) <= DC_IDX ? 3 : 4;
@@ -1769,7 +1770,7 @@ Void TEncSbac::codeLastSignificantXY( UInt uiPosX, UInt uiPosY, Int width, Int h
 }
 
 Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID 
-#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST ) || COM16_C1046_PDPC_INTRA
   , Int& bCbfCU
 #endif
   )
@@ -1821,7 +1822,7 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
   // compute number of significant coefficients
   UInt uiNumSig = TEncEntropy::countNonZeroCoeffs(pcCoef, uiWidth * uiHeight);
 
-#if COM16_C806_EMT
+#if COM16_C806_EMT || JVET_B0059_TU_NSST_ADAP_SIG
   UInt uiTuNumSig = uiNumSig;
 #endif
 
@@ -2051,7 +2052,7 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
 #endif
       coeffSigns    = ( pcCoef[ posLast ] < 0 );
       numNonZero    = 1;
-#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST ) || COM16_C1046_PDPC_INTRA
       bCbfCU += abs(pcCoef[posLast]);
 #endif
       lastNZPosInCG  = iScanPosSig;
@@ -2121,7 +2122,7 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
 #endif
           absCoeff[ numNonZero ] = Int(abs( pcCoef[ uiBlkPos ] ));
           coeffSigns = 2 * coeffSigns + ( pcCoef[ uiBlkPos ] < 0 );
-#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST ) || COM16_C1046_PDPC_INTRA
           bCbfCU += absCoeff[numNonZero];
 #endif
           numNonZero++;
@@ -2314,6 +2315,26 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
     if( pcCU->getEmtCuFlag( uiAbsPartIdx ) && !pcCU->isIntra( uiAbsPartIdx ) )
     {
       codeEmtTuIdx( pcCU, uiAbsPartIdx, rTu.GetTransformDepthTotal() ); 
+    }
+  }
+#endif
+#if JVET_B0059_TU_NSST
+  if ( !pcCU->getTransformSkip( uiAbsPartIdx, compID) && compID == COMPONENT_Y )
+  {
+    if( pcCU->isIntra( uiAbsPartIdx ) )
+    {
+#if JVET_B0059_TU_NSST_ADAP_SIG
+      if( uiTuNumSig>QC_NSST_ADAP_SIG_NZ_NUM )
+      {
+#endif
+        codeROTIdx( pcCU, uiAbsPartIdx, rTu.GetTransformDepthTotal() );
+#if JVET_B0059_TU_NSST_ADAP_SIG
+      }
+      else
+      {
+        assert( pcCU->getROTIdx( uiAbsPartIdx )==0 );
+      }
+#endif
     }
   }
 #endif

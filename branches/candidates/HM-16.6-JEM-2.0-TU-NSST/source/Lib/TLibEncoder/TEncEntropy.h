@@ -132,7 +132,7 @@ public:
   virtual Void codeDeltaQP       ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
   virtual Void codeChromaQpAdjustment( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
   virtual Void codeCoeffNxN      ( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID 
-#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST ) || COM16_C1046_PDPC_INTRA
     , int& bCbfCU
 #endif
     ) = 0;
@@ -275,14 +275,14 @@ public:
 
 private:
   Void xEncodeTransform        ( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComTU &rTu
-#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST ) || COM16_C1046_PDPC_INTRA
     , Int& bCbfCU
 #endif
     );
 
 public:
   Void encodeCoeff             ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool& bCodeDQP, Bool& codeChromaQpAdj
-#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST ) || COM16_C1046_PDPC_INTRA
     , Int& bNonZeroCoeff
 #endif
     );

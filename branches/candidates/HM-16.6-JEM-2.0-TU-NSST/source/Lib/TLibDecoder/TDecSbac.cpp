@@ -785,13 +785,13 @@ Void TDecSbac::parseROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 #if VCEG_AZ05_INTRA_MPI
     && pcCU->getMPIIdx(uiAbsPartIdx) ==0
 #endif
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_B0059_TU_NSST
     && pcCU->getPDPCIdx(uiAbsPartIdx) == 0
 #endif
     && !pcCU->getCUTransquantBypass(uiAbsPartIdx)
     )  iNumberOfPassesROT = 4;
 
-#if COM16_C1044_NSST
+#if COM16_C1044_NSST && !JVET_B0059_TU_NSST
   if( iNumberOfPassesROT==4 && pcCU->getPartitionSize(uiAbsPartIdx)==SIZE_2Nx2N )
   {
     iNumberOfPassesROT = pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) <= DC_IDX ? 3 : 4;
@@ -1818,7 +1818,7 @@ Void TDecSbac::parseLastSignificantXY( UInt& uiPosLastX, UInt& uiPosLastY, Int w
 }
 
 Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID 
-#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if VCEG_AZ05_ROT_TR || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST )
     , Bool& bCbfCU
 #endif
     )
@@ -1830,7 +1830,7 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
   const UInt uiHeight=rRect.height;
   TCoeff* pcCoef=(pcCU->getCoeff(compID)+rTu.getCoefficientOffset(compID));
   const TComSPS &sps=*(pcCU->getSlice()->getSPS());
-#if COM16_C806_EMT
+#if COM16_C806_EMT || JVET_B0059_TU_NSST_ADAP_SIG
   UInt uiNumSig=0;
 #endif
 
@@ -2156,8 +2156,8 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
 
     if( numNonZero > 0 )
     {
-#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
-  bCbfCU = true;
+#if VCEG_AZ05_ROT_TR || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST )
+      bCbfCU = true;
 #endif
      Bool signHidden = ( lastNZPosInCG - firstNZPosInCG >= SBH_THRESHOLD );
 #if COM16_C983_RSAF
@@ -2369,7 +2369,7 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
         }
       }
     }
-#if COM16_C806_EMT
+#if COM16_C806_EMT || JVET_B0059_TU_NSST_ADAP_SIG
     uiNumSig += numNonZero;
 #endif
   }
@@ -2395,6 +2395,26 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
     if ( pcCU->getEmtCuFlag( uiAbsPartIdx ) && !pcCU->isIntra( uiAbsPartIdx ) )
     {
       parseEmtTuIdx( pcCU, uiAbsPartIdx, rTu.GetTransformDepthTotal() ); 
+    }
+  }
+#endif
+#if JVET_B0059_TU_NSST
+  if (!pcCU->getTransformSkip( uiAbsPartIdx, compID) && compID == COMPONENT_Y )
+  {
+    if ( pcCU->isIntra( uiAbsPartIdx ) )
+    {
+#if JVET_B0059_TU_NSST_ADAP_SIG
+      if( uiNumSig>QC_NSST_ADAP_SIG_NZ_NUM )
+      {
+#endif
+        parseROTIdx( pcCU, uiAbsPartIdx, rTu.GetTransformDepthTotal() );
+#if JVET_B0059_TU_NSST_ADAP_SIG
+      }
+      else
+      {
+        pcCU->setROTIdxSubParts( 0, uiAbsPartIdx, rTu.GetTransformDepthTotal() );
+      }
+#endif
     }
   }
 #endif

@@ -1884,7 +1884,7 @@ Void TDecCavlc::parseChromaQpAdjustment( TComDataCU* /*pcCU*/, UInt /*uiAbsPartI
 }
 
 Void TDecCavlc::parseCoeffNxN( TComTU &/*rTu*/, ComponentID /*compID*/ 
-#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if VCEG_AZ05_ROT_TR || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST )
     , Bool& /*g_bCbfCU*/
 #endif
     )
