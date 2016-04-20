@@ -42,15 +42,17 @@ class TComTU; // forward declaration
 
 class TComDataCU; // forward declaration
 
+#if INTRA_NSP
+#define MAX_NUM_PARTS              4
+#endif 
 //----------------------------------------------------------------------------------------------------------------------
 
 
 class TComTU
 {
   public:
-    typedef enum TU_SPLIT_MODE { DONT_SPLIT=0, VERTICAL_SPLIT=1, QUAD_SPLIT=2, NUMBER_OF_SPLIT_MODES=3 } SPLIT_MODE;
-
-    static const UInt NUMBER_OF_SECTIONS[NUMBER_OF_SPLIT_MODES];
+   typedef enum TU_SPLIT_MODE { DONT_SPLIT=0, VERTICAL_SPLIT=1, QUAD_SPLIT=2, NUMBER_OF_SPLIT_MODES=3 } SPLIT_MODE;
+   static const UInt NUMBER_OF_SECTIONS[NUMBER_OF_SPLIT_MODES];
 
   protected:
     ChromaFormat  mChromaFormat;
@@ -65,7 +67,15 @@ class TComTU
     UInt          mOffsets[MAX_NUM_COMPONENT];
     UInt          mAbsPartIdxCU;
     UInt          mAbsPartIdxTURelCU;
+#if INTRA_NSP
+    UInt          mAbsPartIdxStep[5];
+    UInt          mAbsStartPartIdxTURelCU[4];        
+    UInt          mPUIdx;
+    Bool          mbLoopFilterModeSet;
+#else
     UInt          mAbsPartIdxStep;
+#endif 
+
     TComDataCU   *mpcCU;
     UInt          mLog2TrLumaSize;
     TComTU       *mpParent;
@@ -118,15 +128,34 @@ class TComTU
     UInt GetRelPartIdxTU(const ComponentID compID)             const { return ProcessingAllQuadrants(compID) ? mAbsPartIdxTURelCU : (mAbsPartIdxTURelCU & (~0x3)); }
     UInt GetAbsPartIdxTU()                                     const { return GetAbsPartIdxCU() + GetRelPartIdxTU(); }
     UInt GetAbsPartIdxTU(const ComponentID compID)             const { return GetAbsPartIdxCU() + GetRelPartIdxTU(compID); }
+#if INTRA_NSP
+    UInt GetAbsPartIdxNumParts(UInt uiSection)                                 const { return mAbsPartIdxStep[uiSection]; }
+    UInt GetAbsPartIdxNumParts(const ComponentID compID, UInt uiSection)       const { return ProcessingAllQuadrants(compID) ? mAbsPartIdxStep[uiSection] : (mAbsPartIdxStep[uiSection] * NUMBER_OF_SECTIONS[mSplitMode]); }
+    UInt GetAbsPartIdxNumParts()                               const { return mAbsPartIdxStep[4]; }
+    UInt GetAbsPartIdxNumParts(const ComponentID compID)       const { return ProcessingAllQuadrants(compID) ? mAbsPartIdxStep[4] : (mAbsPartIdxStep[4] * NUMBER_OF_SECTIONS[mSplitMode]); }    
+    UInt GetAbsStartPartIdxRelNumParts(UInt uiSection)         const { return mAbsStartPartIdxTURelCU[uiSection]; }
+    UInt GetAbsStartPartIdxRelNumParts(const ComponentID compID, UInt uiSection)       const { return ProcessingAllQuadrants(compID) ? mAbsStartPartIdxTURelCU[uiSection] : (mAbsStartPartIdxTURelCU[uiSection] * NUMBER_OF_SECTIONS[mSplitMode]); }
+    Void deriveQPartInfo( const ComponentID    absPartIdxSourceComponent = COMPONENT_Y );        
+    UInt GetPUIdx()                                                   { return mPUIdx; }    
+    Void SetPUIdx(UInt uiPUIdx)                                       { mPUIdx = uiPUIdx; }    
+#else
     UInt GetAbsPartIdxNumParts()                               const { return mAbsPartIdxStep; }
     UInt GetAbsPartIdxNumParts(const ComponentID compID)       const { return ProcessingAllQuadrants(compID) ? mAbsPartIdxStep : (mAbsPartIdxStep * NUMBER_OF_SECTIONS[mSplitMode]); }
+#endif 
+
+#if INTER_NSP
+    Bool tryInterNst(TComDataCU *pcCU, UInt uiAbsPartIdx);
+#endif
 
     ChromaFormat GetChromaFormat()                             const { return mChromaFormat; }
 
     TComDataCU *getCU()                                              { return mpcCU; }
     const TComDataCU *getCU()                                  const { return mpcCU; }
+#if INTRA_NSP
+    Bool IsLastSection() const { return mSection+1>=(NUMBER_OF_SECTIONS[mSplitMode]); }
+#else
     Bool IsLastSection() const { return mSection+1>=((1<<mSplitMode)); }
-
+#endif 
     UInt GetLog2LumaTrSize()                                   const { return mLog2TrLumaSize; }
     UInt GetEquivalentLog2TrSize(const ComponentID compID)     const;
     TU_SPLIT_MODE GetSplitMode()                               const { return mSplitMode; }
@@ -150,9 +179,19 @@ class TComTURecurse : public TComTU
 
     TComTURecurse(      TComDataCU *pcCU,
                   const UInt        absPartIdxCU); // CU's depth is taken from CU->getDepth(idx)
+#if INTRA_NSP
+    TComTURecurse(      TComDataCU *pcCU,
+                  const UInt        absPartIdxCU,
+                  const UInt        forcedDepthOfCU,
+                  const UInt        initTrDepthRelCU);      
+#endif 
 
     TComTURecurse(      TComTU        &parentLevel,                            //Parent TU from which recursion children are derived
+#if INTRA_NSP
+                  Bool           bProcessLastOfLevel,                    //If true (and the split results in a "step-up" for chroma), the chroma TU is colocated with the last luma TU instead of the first
+#else
                   const Bool           bProcessLastOfLevel,                    //If true (and the split results in a "step-up" for chroma), the chroma TU is colocated with the last luma TU instead of the first
+#endif 
                   const TU_SPLIT_MODE  splitMode                 = QUAD_SPLIT, //DONT_SPLIT = create one new TU as a copy of its parent, VERTICAL_SPLIT = split the TU into top and bottom halves, QUAD_SPLIT = split the TU into four equal quadrants
                   const Bool           splitAtCurrentDepth       = false,      //Set true to keep the current depth when applying a vertical or quad split
                   const ComponentID    absPartIdxSourceComponent = COMPONENT_Y //Specifies which component of the parent TU should be used to initialise the absPartIdx of the first child and the absPartIdx step (this is needed when splitting a "stepped-up" chroma TU)
@@ -160,6 +199,9 @@ class TComTURecurse : public TComTU
                   : TComTU(parentLevel, bProcessLastOfLevel, splitMode, splitAtCurrentDepth, absPartIdxSourceComponent) { }
 
     Bool nextSection(const TComTU &parent); // returns true if there is another section to process, and prepares internal structures, else returns false
+#if INTRA_NSP
+    Void nextSectionWithPU(const TComTU &parent,UInt uiPUIdx, UInt uiLastPU,const ChannelType chType=CHANNEL_TYPE_LUMA); // returns true if there is another section to process, and prepares internal structures, else returns false
+#endif 
 };
 
 //----------------------------------------------------------------------------------------------------------------------

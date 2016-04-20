@@ -482,12 +482,11 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
         Pel* piPred            = pcPredYuv->getAddr( compID, uiAbsPartIdx );
   const ChromaFormat chFmt     = rTu.GetChromaFormat();
 
+#if INTRA_NSP==0
   if (uiWidth != uiHeight)
   {
     //------------------------------------------------
-
     //split at current level if dividing into square sub-TUs
-
     TComTURecurse subTURecurse(rTu, false, TComTU::VERTICAL_SPLIT, true, compID);
 
     //recurse further
@@ -500,7 +499,7 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
 
     return;
   }
-
+#endif 
   const UInt uiChPredMode  = pcCU->getIntraDir( toChannelType(compID), uiAbsPartIdx );
   const UInt partsPerMinCU = 1<<(2*(sps.getMaxTotalCUDepth() - sps.getLog2DiffMaxMinCodingBlockSize()));
   const UInt uiChCodedMode = (uiChPredMode==DM_CHROMA_IDX && !bIsLuma) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, getChromasCorrespondingPULumaIdx(uiAbsPartIdx, chFmt, partsPerMinCU)) : uiChPredMode;
@@ -665,16 +664,37 @@ TDecCu::xReconIntraQT( TComDataCU* pcCU, UInt uiDepth )
   for (UInt chType=CHANNEL_TYPE_LUMA; chType<numChType; chType++)
   {
     const ChannelType chanType=ChannelType(chType);
+
+#if INTRA_NSP==0
     const Bool NxNPUHas4Parts = ::isChroma(chanType) ? enable4ChromaPUsInIntraNxNCU(pcCU->getPic()->getChromaFormat()) : true;
     const UInt uiInitTrDepth = ( pcCU->getPartitionSize(0) != SIZE_2Nx2N && NxNPUHas4Parts ? 1 : 0 );
+#endif 
 
+#if INTRA_NSP
+    UInt  uiNumPU  = pcCU->getNumPartitions(0);
+    if(chType != CHANNEL_TYPE_LUMA && ((pcCU->getPartitionSize(0) != SIZE_2Nx2N) && pcCU->getWidth(0) == 8) )
+    {
+       uiNumPU  = 1;
+    }
+    TComTURecurse tuRecurseCU(pcCU, 0,uiDepth,pcCU->getPartitionSize(0)!=SIZE_2Nx2N);
+    TComTURecurse tuRecurseWithPU(tuRecurseCU, false, TComTU::DONT_SPLIT);
+    for( UInt uiPUIdx = 0; uiPUIdx < uiNumPU; uiPUIdx++)
+    {
+      tuRecurseWithPU.SetPUIdx(uiPUIdx);
+#else
     TComTURecurse tuRecurseCU(pcCU, 0);
     TComTURecurse tuRecurseWithPU(tuRecurseCU, false, (uiInitTrDepth==0)?TComTU::DONT_SPLIT : TComTU::QUAD_SPLIT);
-
+#endif 
     do
     {
       xIntraRecQT( m_ppcYuvReco[uiDepth], m_ppcYuvReco[uiDepth], m_ppcYuvResi[uiDepth], chanType, tuRecurseWithPU );
     } while (tuRecurseWithPU.nextSection(tuRecurseCU));
+
+#if INTRA_NSP 
+    UInt uiLastPU = (uiPUIdx==(uiNumPU-2));
+    tuRecurseWithPU.nextSectionWithPU(tuRecurseCU, uiPUIdx+((pcCU->getPartitionSize(0) == SIZE_2NxN) ? 2:1),uiLastPU,(ChannelType)chType);
+  }
+#endif  
   }
 }
 
@@ -701,6 +721,7 @@ TDecCu::xIntraRecQT(TComYuv*    pcRecoYuv,
   TComDataCU *pcCU  = rTu.getCU();
   UInt uiAbsPartIdx = rTu.GetAbsPartIdxTU();
   UInt uiTrMode     = pcCU->getTransformIdx( uiAbsPartIdx );
+
   if( uiTrMode == uiTrDepth )
   {
     if (isLuma(chType))
@@ -740,6 +761,41 @@ Void TDecCu::xDecodeInterTexture ( TComDataCU* pcCU, UInt uiDepth )
 
   TComTURecurse tuRecur(pcCU, 0, uiDepth);
 
+#if INTER_NSP
+  if (pcCU->getInterNstFlag (0))
+  {
+    assert (pcCU->getTransformIdx( 0 ) == 0);
+    assert (pcCU->getDepth(0) == uiDepth);
+
+    TComTURecurse tuRecurseCU(pcCU, 0, pcCU->getDepth(0), 0);
+    TComTURecurse tuRecurseWithPU(tuRecurseCU, false, TComTU::DONT_SPLIT);  
+
+    for( UInt uiPUIdx = 0; uiPUIdx < 2; uiPUIdx++)
+    {
+      tuRecurseWithPU.SetPUIdx(uiPUIdx);
+
+      for(UInt ch=0; ch<pcCU->getPic()->getNumberValidComponents(); ch++)
+      {
+        const ComponentID compID=ComponentID(ch);
+        DEBUG_STRING_OUTPUT(std::cout, debug_reorder_data_inter_token[compID])
+
+          m_pcTrQuant->invRecurTransformNxN ( compID, m_ppcYuvResi[uiDepth], tuRecurseWithPU );
+      }
+
+      tuRecurseWithPU.nextSectionWithPU(tuRecurseCU,uiPUIdx+((pcCU->getPartitionSize(0) == SIZE_2NxN) ? 2:1), 1);        
+    }
+  }
+  else
+  {
+    for(UInt ch=0; ch<pcCU->getPic()->getNumberValidComponents(); ch++)
+    {
+      const ComponentID compID=ComponentID(ch);
+      DEBUG_STRING_OUTPUT(std::cout, debug_reorder_data_inter_token[compID])
+
+        m_pcTrQuant->invRecurTransformNxN ( compID, m_ppcYuvResi[uiDepth], tuRecur );
+    }
+}
+#else
   for(UInt ch=0; ch<pcCU->getPic()->getNumberValidComponents(); ch++)
   {
     const ComponentID compID=ComponentID(ch);
@@ -747,6 +803,7 @@ Void TDecCu::xDecodeInterTexture ( TComDataCU* pcCU, UInt uiDepth )
 
     m_pcTrQuant->invRecurTransformNxN ( compID, m_ppcYuvResi[uiDepth], tuRecur );
   }
+#endif
 
   DEBUG_STRING_OUTPUT(std::cout, debug_reorder_data_inter_token[MAX_NUM_COMPONENT])
 }

@@ -69,7 +69,9 @@
 #define NUM_TRANS_SUBDIV_FLAG_CTX     3       ///< number of context models for transform subdivision flags
 #define NUM_QT_ROOT_CBF_CTX           1       ///< number of context models for QT ROOT CBF
 #define NUM_DELTA_QP_CTX              3       ///< number of context models for dQP
-
+#if  INTER_NSP
+#define NUM_INTER_NST_FLAG_CTX        1       ///< number of context models for inter nst flag
+#endif
 #define NUM_SIG_CG_FLAG_CTX           2       ///< number of context models for MULTI_LEVEL_SIGNIFICANCE
 #define NUM_EXPLICIT_RDPCM_FLAG_CTX   1       ///< number of context models for the flag which specifies whether to use RDPCM on inter coded residues
 #define NUM_EXPLICIT_RDPCM_DIR_CTX    1       ///< number of context models for the flag which specifies which RDPCM direction is used on inter coded residues
@@ -464,6 +466,17 @@ INIT_TRANS_SUBDIV_FLAG[NUMBER_OF_SLICE_TYPES][NUM_TRANS_SUBDIV_FLAG_CTX] =
   { 124,  138,   94, },
   { 153,  138,  138, },
 };
+
+#if  INTER_NSP
+static const UChar
+INIT_INTER_NST_FLAG[NUMBER_OF_SLICE_TYPES][NUM_INTER_NST_FLAG_CTX] =
+{
+  { CNU },
+  { 154 },
+  { 154 },
+};
+#endif
+
 
 static const UChar
 INIT_TRANSFORMSKIP_FLAG[NUMBER_OF_SLICE_TYPES][2*NUM_TRANSFORMSKIP_FLAG_CTX] =

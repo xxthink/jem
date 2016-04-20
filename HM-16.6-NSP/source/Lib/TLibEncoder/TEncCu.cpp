@@ -115,7 +115,7 @@ Void TEncCu::destroy()
   Int i;
 
   for( i=0 ; i<m_uhTotalDepth-1 ; i++)
-  {
+  { 
     if(m_ppcBestCU[i])
     {
       m_ppcBestCU[i]->destroy();      delete m_ppcBestCU[i];      m_ppcBestCU[i] = NULL;
@@ -246,7 +246,7 @@ Void TEncCu::compressCtu( TComDataCU* pCtu )
       xCtuCollectARLStats( pCtu );
     }
   }
-#endif
+#endif 
 }
 /** \param  pCtu  pointer of CU data class
  */
@@ -635,6 +635,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         // do normal intra modes
         // speedup for inter frames
         Double intraCost = 0.0;
+#if INTRA_NSP  
+        Double tmpIntraCost=0.0;
+#endif 
 
         if((rpcBestCU->getSlice()->getSliceType() == I_SLICE)                                        ||
             ((!m_pcEncCfg->getDisableIntraPUsInInterSlices()) && (
@@ -643,13 +646,28 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
              ((rpcBestCU->getCbf( 0, COMPONENT_Cr ) != 0) && (numberValidComponents > COMPONENT_Cr))  // avoid very complex intra if it is unlikely
             )))
         {
-          xCheckRDCostIntra( rpcBestCU, rpcTempCU, intraCost, SIZE_2Nx2N DEBUG_STRING_PASS_INTO(sDebug) );
-          rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
+            xCheckRDCostIntra( rpcBestCU, rpcTempCU, intraCost, SIZE_2Nx2N DEBUG_STRING_PASS_INTO(sDebug) );
+            rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
+#if INTRA_NSP           
+            tmpIntraCost=0.0;
+            rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );           
+            xCheckRDCostIntra( rpcBestCU, rpcTempCU, tmpIntraCost, SIZE_2NxN DEBUG_STRING_PASS_INTO(sDebug) );
+            intraCost = std::min(intraCost, tmpIntraCost);
+            tmpIntraCost=0.0;
+            rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
+            xCheckRDCostIntra( rpcBestCU, rpcTempCU, tmpIntraCost, SIZE_Nx2N DEBUG_STRING_PASS_INTO(sDebug) );
+            intraCost = std::min(intraCost, tmpIntraCost);
+            rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
+#endif 
           if( uiDepth == sps.getLog2DiffMaxMinCodingBlockSize() )
           {
             if( rpcTempCU->getWidth(0) > ( 1 << sps.getQuadtreeTULog2MinSize() ) )
             {
+#if INTRA_NSP
+              tmpIntraCost=0.0;
+#else
               Double tmpIntraCost;
+#endif 
               xCheckRDCostIntra( rpcBestCU, rpcTempCU, tmpIntraCost, SIZE_NxN DEBUG_STRING_PASS_INTO(sDebug)   );
               intraCost = std::min(intraCost, tmpIntraCost);
               rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
@@ -1380,15 +1398,15 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
     m_pcEntropyCoder->encodeCUTransquantBypassFlag( rpcTempCU, 0,          true );
   }
 
-  m_pcEntropyCoder->encodeSkipFlag ( rpcTempCU, 0,          true );
-  m_pcEntropyCoder->encodePredMode( rpcTempCU, 0,          true );
-  m_pcEntropyCoder->encodePartSize( rpcTempCU, 0, uiDepth, true );
-  m_pcEntropyCoder->encodePredInfo( rpcTempCU, 0 );
-  m_pcEntropyCoder->encodeIPCMInfo(rpcTempCU, 0, true );
+  m_pcEntropyCoder->encodeSkipFlag ( rpcTempCU, 0,          true );  
+  m_pcEntropyCoder->encodePredMode( rpcTempCU, 0,          true );  
+  m_pcEntropyCoder->encodePartSize( rpcTempCU, 0, uiDepth, true );  
+  m_pcEntropyCoder->encodePredInfo( rpcTempCU, 0 );  
+  m_pcEntropyCoder->encodeIPCMInfo(rpcTempCU, 0, true );  
 
   // Encode Coefficients
   Bool bCodeDQP = getdQPFlag();
-  Bool codeChromaQpAdjFlag = getCodeChromaQpAdjFlag();
+  Bool codeChromaQpAdjFlag = getCodeChromaQpAdjFlag();  
   m_pcEntropyCoder->encodeCoeff( rpcTempCU, 0, uiDepth, bCodeDQP, codeChromaQpAdjFlag );
   setCodeChromaQpAdjFlag( codeChromaQpAdjFlag );
   setdQPFlag( bCodeDQP );
@@ -1472,7 +1490,7 @@ Void TEncCu::xCheckIntraPCM( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU )
  */
 Void TEncCu::xCheckBestMode( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, UInt uiDepth DEBUG_STRING_FN_DECLARE(sParent) DEBUG_STRING_FN_DECLARE(sTest) DEBUG_STRING_PASS_INTO(Bool bAddSizeInfo) )
 {
-  if( rpcTempCU->getTotalCost() < rpcBestCU->getTotalCost() )
+  if( rpcTempCU->getTotalCost() < rpcBestCU->getTotalCost())
   {
     TComYuv* pcYuv;
     // Change Information data

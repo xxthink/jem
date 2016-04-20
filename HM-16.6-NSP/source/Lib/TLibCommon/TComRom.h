@@ -171,5 +171,6 @@ extern const UInt g_scalingListSize [SCALING_LIST_SIZE_NUM];
 extern const UInt g_scalingListSizeX[SCALING_LIST_SIZE_NUM];
 //! \}
 
-#endif  //__TCOMROM__
+#endif
+//__TCOMROM__
 

@@ -1706,13 +1706,20 @@ Void TDecCavlc::parseIPCMInfo( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt
 {
   assert(0);
 }
-
+#if INTRA_NSP
+Void TDecCavlc::parseIntraDirLumaAng  ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/, UInt /*uiPUIdx*/  )
+#else
 Void TDecCavlc::parseIntraDirLumaAng  ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/ )
+#endif 
 {
   assert(0);
 }
 
+#if INTRA_NSP
+Void TDecCavlc::parseIntraDirChroma( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/, UInt /*uiPUIdx*/ )
+#else
 Void TDecCavlc::parseIntraDirChroma( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/ )
+#endif 
 {
   assert(0);
 }
@@ -1783,6 +1790,12 @@ Void TDecCavlc::parseQtRootCbf( UInt /*uiAbsPartIdx*/, UInt& /*uiQtRootCbf*/ )
 {
   assert(0);
 }
+#if  INTER_NSP
+Void TDecCavlc::parseInterNstFlag        ( TComDataCU* pcCU, UInt absPartIdx )
+{
+  assert(0);
+}
+#endif
 
 Void TDecCavlc::parseTransformSkipFlags (TComTU &/*rTu*/, ComponentID /*component*/)
 {

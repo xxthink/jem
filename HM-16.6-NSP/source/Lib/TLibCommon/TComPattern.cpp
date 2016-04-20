@@ -68,9 +68,13 @@ Void fillReferenceSamples( const Int bitDepth,
 Bool  isAboveLeftAvailable  ( TComDataCU* pcCU, UInt uiPartIdxLT );
 Int   isAboveAvailable      ( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxRT, Bool* bValidFlags );
 Int   isLeftAvailable       ( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxLB, Bool* bValidFlags );
+#if INTRA_NSP
+Int   isAboveRightAvailable ( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxRT, Bool* bValidFlags, UInt uiNumUnitsInPU, UInt uiTrDepth  );
+Int   isBelowLeftAvailable  ( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxLB, Bool* bValidFlags, UInt uiNumUnitsInPU, UInt uiTrDepth  );
+#else
 Int   isAboveRightAvailable ( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxRT, Bool* bValidFlags );
 Int   isBelowLeftAvailable  ( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxLB, Bool* bValidFlags );
-
+#endif 
 
 // ====================================================================================================================
 // Public member functions (TComPatternParam)
@@ -121,16 +125,26 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
   const UInt uiZorderIdxInPart=rTu.GetAbsPartIdxTU();
   const UInt uiTuWidth        = rTu.getRect(compID).width;
   const UInt uiTuHeight       = rTu.getRect(compID).height;
+#if INTRA_NSP
+  const UInt uiTuWidth2       = uiTuWidth + uiTuHeight;
+  const UInt uiTuHeight2      = uiTuWidth + uiTuHeight;
+#else
   const UInt uiTuWidth2       = uiTuWidth  << 1;
   const UInt uiTuHeight2      = uiTuHeight << 1;
+#endif 
 
   const Int  iBaseUnitSize    = sps.getMaxCUWidth() >> sps.getMaxTotalCUDepth();
   const Int  iUnitWidth       = iBaseUnitSize  >> pcCU->getPic()->getPicYuvRec()->getComponentScaleX(compID);
   const Int  iUnitHeight      = iBaseUnitSize  >> pcCU->getPic()->getPicYuvRec()->getComponentScaleY(compID);
   const Int  iTUWidthInUnits  = uiTuWidth  / iUnitWidth;
   const Int  iTUHeightInUnits = uiTuHeight / iUnitHeight;
+#if INTRA_NSP
+  const Int  iAboveUnits      = iTUWidthInUnits  + iTUHeightInUnits;
+  const Int  iLeftUnits       = iTUWidthInUnits  + iTUHeightInUnits;
+#else
   const Int  iAboveUnits      = iTUWidthInUnits  << 1;
   const Int  iLeftUnits       = iTUHeightInUnits << 1;
+#endif 
   const Int  bitDepthForChannel = sps.getBitDepth(chType);
 
   assert(iTUHeightInUnits > 0 && iTUWidthInUnits > 0);
@@ -147,9 +161,17 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
   bNeighborFlags[iLeftUnits] = isAboveLeftAvailable( pcCU, uiPartIdxLT );
   iNumIntraNeighbor += bNeighborFlags[iLeftUnits] ? 1 : 0;
   iNumIntraNeighbor  += isAboveAvailable     ( pcCU, uiPartIdxLT, uiPartIdxRT, (bNeighborFlags + iLeftUnits + 1)                    );
+#if INTRA_NSP
+  iNumIntraNeighbor  += isAboveRightAvailable( pcCU, uiPartIdxLT, uiPartIdxRT, (bNeighborFlags + iLeftUnits + 1 + iTUWidthInUnits ), iTUHeightInUnits, rTu.GetTransformDepthRel() );
+#else
   iNumIntraNeighbor  += isAboveRightAvailable( pcCU, uiPartIdxLT, uiPartIdxRT, (bNeighborFlags + iLeftUnits + 1 + iTUWidthInUnits ) );
+#endif 
   iNumIntraNeighbor  += isLeftAvailable      ( pcCU, uiPartIdxLT, uiPartIdxLB, (bNeighborFlags + iLeftUnits - 1)                    );
+#if INTRA_NSP
+  iNumIntraNeighbor  += isBelowLeftAvailable ( pcCU, uiPartIdxLT, uiPartIdxLB, (bNeighborFlags + iLeftUnits - 1 - iTUHeightInUnits), iTUWidthInUnits, rTu.GetTransformDepthRel()  );
+#else
   iNumIntraNeighbor  += isBelowLeftAvailable ( pcCU, uiPartIdxLT, uiPartIdxLB, (bNeighborFlags + iLeftUnits - 1 - iTUHeightInUnits) );
+#endif 
 
   const UInt         uiROIWidth  = uiTuWidth2+1;
   const UInt         uiROIHeight = uiTuHeight2+1;
@@ -203,7 +225,11 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
 
       //------------------------------------------------
 
+#if INTRA_NSP
+      Bool useStrongIntraSmoothing = isLuma(chType) && sps.getUseStrongIntraSmoothing() && (uiTuWidth == uiTuHeight); //
+#else
       Bool useStrongIntraSmoothing = isLuma(chType) && sps.getUseStrongIntraSmoothing();
+#endif 
 
       const Pel bottomLeft = piIntraTemp[stride * uiTuHeight2];
       const Pel topLeft    = piIntraTemp[0];
@@ -664,16 +690,26 @@ Int isLeftAvailable( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxLB, Bool 
   return iNumIntra;
 }
 
+#if INTRA_NSP
+Int isAboveRightAvailable( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxRT, Bool *bValidFlags, UInt uiNumUnitsInPU, UInt uiTrDepth )
+#else
 Int isAboveRightAvailable( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxRT, Bool *bValidFlags )
+#endif 
 {
+#if INTRA_NSP==0
   const UInt uiNumUnitsInPU = g_auiZscanToRaster[uiPartIdxRT] - g_auiZscanToRaster[uiPartIdxLT] + 1;
+#endif 
   Bool *pbValidFlags = bValidFlags;
   Int iNumIntra = 0;
 
   for ( UInt uiOffset = 1; uiOffset <= uiNumUnitsInPU; uiOffset++ )
   {
     UInt uiPartAboveRight;
+#if INTRA_NSP
+    TComDataCU* pcCUAboveRight = pcCU->getPUAboveRightIntra( uiPartAboveRight, uiPartIdxRT, uiTrDepth, uiOffset );
+#else
     TComDataCU* pcCUAboveRight = pcCU->getPUAboveRight( uiPartAboveRight, uiPartIdxRT, uiOffset );
+#endif 
     if(pcCU->getSlice()->getPPS()->getConstrainedIntraPred())
     {
       if ( pcCUAboveRight && pcCUAboveRight->isIntra( uiPartAboveRight ) )
@@ -703,17 +739,27 @@ Int isAboveRightAvailable( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxRT,
 
   return iNumIntra;
 }
-
+#if INTRA_NSP
+Int isBelowLeftAvailable( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxLB, Bool *bValidFlags, UInt uiNumUnitsInPU, UInt uiTrDepth )
+#else
 Int isBelowLeftAvailable( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxLB, Bool *bValidFlags )
+#endif 
 {
+#if INTRA_NSP==0
   const UInt uiNumUnitsInPU = (g_auiZscanToRaster[uiPartIdxLB] - g_auiZscanToRaster[uiPartIdxLT]) / pcCU->getPic()->getNumPartInCtuWidth() + 1;
+#endif 
   Bool *pbValidFlags = bValidFlags;
   Int iNumIntra = 0;
 
   for ( UInt uiOffset = 1; uiOffset <= uiNumUnitsInPU; uiOffset++ )
   {
     UInt uiPartBelowLeft;
+#if INTRA_NSP    
+    TComDataCU* pcCUBelowLeft = pcCU->getPUBelowLeftIntra( uiPartBelowLeft, uiPartIdxLB, uiTrDepth, uiOffset );
+#else
     TComDataCU* pcCUBelowLeft = pcCU->getPUBelowLeft( uiPartBelowLeft, uiPartIdxLB, uiOffset );
+#endif 
+
     if(pcCU->getSlice()->getPPS()->getConstrainedIntraPred())
     {
       if ( pcCUBelowLeft && pcCUBelowLeft->isIntra( uiPartBelowLeft ) )

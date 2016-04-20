@@ -74,6 +74,9 @@ TEncSbac::TEncSbac()
 , m_cCUQtCbfSCModel                    ( 1,             NUM_QT_CBF_CTX_SETS,    NUM_QT_CBF_CTX_PER_SET               , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUTransSubdivFlagSCModel          ( 1,             1,                      NUM_TRANS_SUBDIV_FLAG_CTX            , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUQtRootCbfSCModel                ( 1,             1,                      NUM_QT_ROOT_CBF_CTX                  , m_contextModels + m_numContextModels, m_numContextModels)
+#if  INTER_NSP
+, m_cInterNstFlagSCModel                     ( 1,             1,                      NUM_INTER_NST_FLAG_CTX               , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 , m_cCUSigCoeffGroupSCModel            ( 1,             2,                      NUM_SIG_CG_FLAG_CTX                  , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUSigSCModel                      ( 1,             1,                      NUM_SIG_FLAG_CTX                     , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCuCtxLastX                        ( 1,             NUM_CTX_LAST_FLAG_SETS, NUM_CTX_LAST_FLAG_XY                 , m_contextModels + m_numContextModels, m_numContextModels)
@@ -135,6 +138,9 @@ Void TEncSbac::resetEntropy           (const TComSlice *pSlice)
   m_cCUAbsSCModel.initBuffer                      ( eSliceType, iQp, (UChar*)INIT_ABS_FLAG );
   m_cMVPIdxSCModel.initBuffer                     ( eSliceType, iQp, (UChar*)INIT_MVP_IDX );
   m_cCUTransSubdivFlagSCModel.initBuffer          ( eSliceType, iQp, (UChar*)INIT_TRANS_SUBDIV_FLAG );
+#if  INTER_NSP
+  m_cInterNstFlagSCModel.initBuffer               ( eSliceType, iQp, (UChar*)INIT_INTER_NST_FLAG );
+#endif
   m_cSaoMergeSCModel.initBuffer                   ( eSliceType, iQp, (UChar*)INIT_SAO_MERGE_FLAG );
   m_cSaoTypeIdxSCModel.initBuffer                 ( eSliceType, iQp, (UChar*)INIT_SAO_TYPE_IDX );
   m_cTransformSkipSCModel.initBuffer              ( eSliceType, iQp, (UChar*)INIT_TRANSFORMSKIP_FLAG );
@@ -196,7 +202,10 @@ SliceType TEncSbac::determineCabacInitIdx(const TComSlice *pSlice)
       curCost += m_cCUAbsSCModel.calcCost                      ( curSliceType, qp, (UChar*)INIT_ABS_FLAG );
       curCost += m_cMVPIdxSCModel.calcCost                     ( curSliceType, qp, (UChar*)INIT_MVP_IDX );
       curCost += m_cCUTransSubdivFlagSCModel.calcCost          ( curSliceType, qp, (UChar*)INIT_TRANS_SUBDIV_FLAG );
-      curCost += m_cSaoMergeSCModel.calcCost                   ( curSliceType, qp, (UChar*)INIT_SAO_MERGE_FLAG );
+#if  INTER_NSP
+      curCost += m_cInterNstFlagSCModel.calcCost               ( curSliceType, qp, (UChar*)INIT_INTER_NST_FLAG );
+#endif
+  curCost += m_cSaoMergeSCModel.calcCost                   ( curSliceType, qp, (UChar*)INIT_SAO_MERGE_FLAG );
       curCost += m_cSaoTypeIdxSCModel.calcCost                 ( curSliceType, qp, (UChar*)INIT_SAO_TYPE_IDX );
       curCost += m_cTransformSkipSCModel.calcCost              ( curSliceType, qp, (UChar*)INIT_TRANSFORMSKIP_FLAG );
       curCost += m_CUTransquantBypassFlagSCModel.calcCost      ( curSliceType, qp, (UChar*)INIT_CU_TRANSQUANT_BYPASS_FLAG );
@@ -437,6 +446,56 @@ Void TEncSbac::codePartSize( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
   PartSize eSize         = pcCU->getPartitionSize( uiAbsPartIdx );
   const UInt log2DiffMaxMinCodingBlockSize = pcCU->getSlice()->getSPS()->getLog2DiffMaxMinCodingBlockSize();
 
+#if INTRA_NSP 
+    if ( pcCU->isIntra( uiAbsPartIdx ) )
+    {
+      switch(eSize)
+      {
+      case SIZE_2Nx2N:
+        {
+          m_pcBinIf->encodeBin( 1, m_cCUPartSizeSCModel.get( 0, 0, 0) );
+          break;
+        }
+      case SIZE_2NxN:
+        {
+          m_pcBinIf->encodeBin( 0, m_cCUPartSizeSCModel.get( 0, 0, 0) );
+          m_pcBinIf->encodeBin( 1, m_cCUPartSizeSCModel.get( 0, 0, 1) );           
+          break;
+        }
+      case SIZE_Nx2N:
+        {
+          m_pcBinIf->encodeBin( 0, m_cCUPartSizeSCModel.get( 0, 0, 0) );
+          m_pcBinIf->encodeBin( 0, m_cCUPartSizeSCModel.get( 0, 0, 1) );
+
+          if( uiDepth == log2DiffMaxMinCodingBlockSize)
+          {
+            m_pcBinIf->encodeBin( 1, m_cCUPartSizeSCModel.get( 0, 0, 2) );
+          }
+          break;
+        }
+      case SIZE_NxN:
+        {
+          if( uiDepth == log2DiffMaxMinCodingBlockSize )
+          {
+            m_pcBinIf->encodeBin( 0, m_cCUPartSizeSCModel.get( 0, 0, 0) );
+            m_pcBinIf->encodeBin( 0, m_cCUPartSizeSCModel.get( 0, 0, 1) );
+            m_pcBinIf->encodeBin( 0, m_cCUPartSizeSCModel.get( 0, 0, 2) );
+          }
+          else
+          {
+            assert(0);
+          }
+          break;
+        }
+      default:
+        {
+          assert(0);
+          break;
+        }
+      }
+      return;
+    }
+#else
   if ( pcCU->isIntra( uiAbsPartIdx ) )
   {
     if( uiDepth == log2DiffMaxMinCodingBlockSize )
@@ -445,7 +504,7 @@ Void TEncSbac::codePartSize( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
     }
     return;
   }
-
+#endif 
   switch(eSize)
   {
     case SIZE_2Nx2N:
@@ -639,17 +698,41 @@ Void TEncSbac::codeTransformSubdivFlag( UInt uiSymbol, UInt uiCtx )
   DTRACE_CABAC_T( "\n" )
 }
 
+#if  INTER_NSP
+Void TEncSbac::codeInterNstFlag  ( TComDataCU* pcCU, UInt absPartIdx )
+{
+  Int uiSymbol = pcCU->getInterNstFlag (absPartIdx);
+  m_pcBinIf->encodeBin( uiSymbol, m_cInterNstFlagSCModel.get( 0, 0, 0 ) );
+  DTRACE_CABAC_VL( g_nSymbolCounter++ )
+  DTRACE_CABAC_T( "\tparseInterNstFlag()" )
+  DTRACE_CABAC_T( "\tsymbol=" )
+  DTRACE_CABAC_V( uiSymbol )
+  DTRACE_CABAC_T( "\tctx=" )
+  DTRACE_CABAC_V( uiCtx )
+  DTRACE_CABAC_T( "\n" )
+}
+#endif
 
 Void TEncSbac::codeIntraDirLumaAng( TComDataCU* pcCU, UInt absPartIdx, Bool isMultiple)
 {
   UInt dir[4],j;
   Int preds[4][NUM_MOST_PROBABLE_MODES] = {{-1, -1, -1},{-1, -1, -1},{-1, -1, -1},{-1, -1, -1}};
-  Int predIdx[4] ={ -1,-1,-1,-1};
+  Int predIdx[4] ={ -1,-1,-1,-1};  
+#if INTRA_NSP
+  PartSize mode = pcCU->getPartitionSize( absPartIdx );
+  UInt uiDepth = pcCU->getDepth( absPartIdx );
+  UInt partNum = isMultiple?pcCU->getNumPartitions(absPartIdx):1;
+  UInt partOffset = ( g_auiPUOffset[UInt( mode )] << ( ( pcCU->getSlice()->getSPS()->getMaxTotalCUDepth() - uiDepth ) << 1 ) ) >> 4;
+#else
   PartSize mode = pcCU->getPartitionSize( absPartIdx );
   UInt partNum = isMultiple?(mode==SIZE_NxN?4:1):1;
   UInt partOffset = ( pcCU->getPic()->getNumPartitionsInCtu() >> ( pcCU->getDepth(absPartIdx) << 1 ) ) >> 2;
+#endif 
+  
   for (j=0;j<partNum;j++)
   {
+    if(partNum==2)
+      partOffset = ( pcCU->getPic()->getNumPartitionsInCtu() >> ( pcCU->getDepth(absPartIdx) << 1 ) ) >> 1;
     dir[j] = pcCU->getIntraDir( CHANNEL_TYPE_LUMA, absPartIdx+partOffset*j );
     pcCU->getIntraDirPredictor(absPartIdx+partOffset*j, preds[j], COMPONENT_Y);
     for(UInt i = 0; i < NUM_MOST_PROBABLE_MODES; i++)
@@ -923,12 +1006,14 @@ Void TEncSbac::codeQtCbf( TComTU &rTu, const ComponentID compID, const Bool lowe
 
   const UInt absPartIdx   = rTu.GetAbsPartIdxTU(compID);
   const UInt TUDepth      = rTu.GetTransformDepthRel();
+
         UInt uiCtx        = pcCU->getCtxQtCbf( rTu, toChannelType(compID) );
   const UInt contextSet   = toChannelType(compID);
-
+#if INTRA_NSP==0
   const UInt width        = rTu.getRect(compID).width;
   const UInt height       = rTu.getRect(compID).height;
   const Bool canQuadSplit = (width >= (MIN_TU_SIZE * 2)) && (height >= (MIN_TU_SIZE * 2));
+#endif 
 
   //             Since the CBF for chroma is coded at the highest level possible, if sub-TUs are
   //             to be coded for a 4x8 chroma TU, their CBFs must be coded at the highest 4x8 level
@@ -944,10 +1029,16 @@ Void TEncSbac::codeQtCbf( TComTU &rTu, const ComponentID compID, const Bool lowe
   //                  |_|_|    no chroma CBF is coded - instead the parent CBF is inherited
   //                  <-8->    if sub-TUs are present, their CBFs had to be coded at the parent level
 
-  const UInt lowestTUDepth = TUDepth + ((!lowestLevel && !canQuadSplit) ? 1 : 0); //unsplittable TUs inherit their parent's CBF
 
-  if ((width != height) && (lowestLevel || !canQuadSplit)) //if sub-TUs are present
-  {
+#if INTRA_NSP
+  const UInt lowestTUDepth = TUDepth;// + ((!lowestLevel && !canQuadSplit) ? 1 : 0); //unsplittable TUs inherit their parent's CBF
+#else
+  const UInt lowestTUDepth = TUDepth + ((!lowestLevel && !canQuadSplit) ? 1 : 0); //unsplittable TUs inherit their parent's CBF
+#endif 
+
+#if INTRA_NSP==0
+  if ((width != height)  && (lowestLevel || !canQuadSplit)) //if sub-TUs are present
+  {    
     const UInt subTUDepth        = lowestTUDepth + 1;                      //if this is the lowest level of the TU-tree, the sub-TUs are directly below. Otherwise, this must be the level above the lowest level (as specified above)
     const UInt partIdxesPerSubTU = rTu.GetAbsPartIdxNumParts(compID) >> 1;
 
@@ -957,7 +1048,6 @@ Void TEncSbac::codeQtCbf( TComTU &rTu, const ComponentID compID, const Bool lowe
       const UInt uiCbf           = pcCU->getCbf(subTUAbsPartIdx, compID, subTUDepth);
 
       m_pcBinIf->encodeBin(uiCbf, m_cCUQtCbfSCModel.get(0, contextSet, uiCtx));
-
       DTRACE_CABAC_VL( g_nSymbolCounter++ )
       DTRACE_CABAC_T( "\tparseQtCbf()" )
       DTRACE_CABAC_T( "\tsub-TU=" )
@@ -974,10 +1064,10 @@ Void TEncSbac::codeQtCbf( TComTU &rTu, const ComponentID compID, const Bool lowe
     }
   }
   else
+#endif 
   {
     const UInt uiCbf = pcCU->getCbf( absPartIdx, compID, lowestTUDepth );
     m_pcBinIf->encodeBin( uiCbf , m_cCUQtCbfSCModel.get( 0, contextSet, uiCtx ) );
-
 
     DTRACE_CABAC_VL( g_nSymbolCounter++ )
     DTRACE_CABAC_T( "\tparseQtCbf()" )

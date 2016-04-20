@@ -108,6 +108,10 @@ private:
   Bool           m_ArlCoeffIsAliasedAllocation;  ///< ARL coefficient buffer is an alias of the global buffer and must not be free()'d
 #endif
 
+#if INTER_NSP 
+  Bool*          m_interNstFlag;
+#endif
+
   Pel*           m_pcIPCMSample[MAX_NUM_COMPONENT];    ///< PCM sample buffer (0->Y, 1->Cb, 2->Cr)
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -231,6 +235,13 @@ public:
   Void          setPredictionMode     ( UInt uiIdx, PredMode uh){ m_pePredMode[uiIdx] = uh;   }
   Void          setPredModeSubParts   ( PredMode eMode, UInt uiAbsPartIdx, UInt uiDepth );
 
+#if INTER_NSP 
+  Bool*         getInterNstFlag()                        { return m_interNstFlag;        }
+  Bool          getInterNstFlag     ( UInt uiIdx )       { return m_interNstFlag[uiIdx]; }
+  Void          setInterNstFlag     ( UInt uiIdx, Bool flag){ m_interNstFlag[uiIdx] = flag;   }
+  Void          setInterNstFlagSubParts   ( Bool flag, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
+
   Char*         getCrossComponentPredictionAlpha( ComponentID compID )             { return m_crossComponentPredictionAlpha[compID];         }
   Char          getCrossComponentPredictionAlpha( UInt uiIdx, ComponentID compID ) { return m_crossComponentPredictionAlpha[compID][uiIdx];  }
 
@@ -274,6 +285,14 @@ public:
   UChar         getTransformSkip      ( UInt uiIdx, ComponentID compID)    { return m_puhTransformSkip[compID][uiIdx];}
   Void          setTransformSkipSubParts  ( UInt useTransformSkip, ComponentID compID, UInt uiAbsPartIdx, UInt uiDepth);
   Void          setTransformSkipSubParts  ( const UInt useTransformSkip[MAX_NUM_COMPONENT], UInt uiAbsPartIdx, UInt uiDepth );
+
+#if INTRA_NSP
+  Void          setCrossComponentPredictionSubParts ( UInt useCrossComponentPredictionAlpha, ComponentID component, UInt uiAbsPartIdx, UInt uiCUDepth, UInt uiTUDepth, UInt uiPUIdx );  
+  Void          setTrIdxSubParts          ( UInt uiTrIdx , UInt uiAbsPartIdx, UInt uiCUDepth, UInt uiTUDepth, UInt uiPUIdx );
+  Void          setTransformSkipSubParts  ( UInt useTransformSkip, ComponentID component, UInt uiAbsPartIdx, UInt uiCUDepth, UInt uiTUDepth, UInt uiPUIdx );
+  Void          setCbfSubParts            ( UInt uiCbf, ComponentID component, UInt uiAbsPartIdx, UInt uiCUDepth, UInt uiTUDepth, UInt uiPUIdx );
+  Void          UpdateCbfSubParts         ( UInt uiUCbf, ComponentID component, UInt uiAbsPartIdx, UInt uiCUDepth, UInt uiTrDepth, UInt uiPUIdx );  
+#endif 
 
   UChar*        getExplicitRdpcmMode      ( ComponentID component ) { return m_explicitRdpcmMode[component]; }
   UChar         getExplicitRdpcmMode      ( ComponentID component, UInt partIdx ) {return m_explicitRdpcmMode[component][partIdx]; }
@@ -324,6 +343,11 @@ public:
   Void          setMergeIndexSubParts ( UInt uiMergeIndex, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth );
   template <typename T>
   Void          setSubPart            ( T bParameter, T* pbBaseCtu, UInt uiCUAddr, UInt uiCUDepth, UInt uiPUIdx );
+#if INTRA_NSP  
+  template<typename T>
+   Void          setSubPart            ( T uiParameter, T* puhBaseCU, UInt uiTUAddr, UInt uiCUDepth, UInt uiTUDepth, UInt uiPUIdx );  
+   Void          copySubPart( UChar* puhDstLCU, UChar* puhSrcCU, UInt uiCUAddr, UInt uiCUDepth, UInt uiPUIdx );
+#endif 
 
 #if AMP_MRG
   Void          setMergeAMP( Bool b )      { m_bIsMergeAMP = b; }
@@ -333,6 +357,13 @@ public:
   UChar*        getIntraDir         ( const ChannelType channelType )                   const { return m_puhIntraDir[channelType];         }
   UChar         getIntraDir         ( const ChannelType channelType, const UInt uiIdx ) const { return m_puhIntraDir[channelType][uiIdx];  }
 
+#if INTRA_NSP
+  Void          setIntraDirSubParts ( const ChannelType channelType,
+                                      const UInt uiDir,
+                                      const UInt uiAbsPartIdx,
+                                      const UInt uiDepth,
+                                      UInt uiPartIdx);
+#endif 
   Void          setIntraDirSubParts ( const ChannelType channelType,
                                       const UInt uiDir,
                                       const UInt uiAbsPartIdx,
@@ -418,7 +449,11 @@ public:
   TComDataCU*   getPUAboveRight             ( UInt&  uiARPartUnitIdx, UInt uiCurrPartUnitIdx, UInt uiPartUnitOffset = 1, Bool bEnforceSliceRestriction=true );
   /// returns CU and part index of the PU left of the lefthand column of the current uiCurrPartUnitIdx of the CU, at a vertical offset (below) of uiPartUnitOffset (in parts)
   TComDataCU*   getPUBelowLeft              ( UInt&  uiBLPartUnitIdx, UInt uiCurrPartUnitIdx, UInt uiPartUnitOffset = 1, Bool bEnforceSliceRestriction=true );
-
+#if INTRA_NSP
+  TComDataCU*   getPUAboveRightIntra        ( UInt&  uiARPartUnitIdx, UInt uiCurrPartUnitIdx, UInt uiTrDepth, UInt uiPartUnitOffset = 1, Bool bEnforceSliceRestriction=true );
+  TComDataCU*   getPUBelowLeftIntra         ( UInt&  uiBLPartUnitIdx, UInt uiCurrPartUnitIdx, UInt uiTrDepth, UInt uiPartUnitOffset = 1, Bool bEnforceSliceRestriction=true );  
+  Void          getPartSize                 ( UInt uiAbsPartIdx, UInt uiPartIdx, UInt& riWidth, UInt& riHeight, UInt uiTrDepth );
+#endif 
   Void          deriveLeftRightTopIdx       ( UInt uiPartIdx, UInt& ruiPartIdxLT, UInt& ruiPartIdxRT );
   Void          deriveLeftBottomIdx         ( UInt uiPartIdx, UInt& ruiPartIdxLB );
 
@@ -467,6 +502,11 @@ public:
   UInt&         getTotalNumPart()               { return m_uiNumPartition;    }
 
   UInt          getCoefScanIdx(const UInt uiAbsPartIdx, const UInt uiWidth, const UInt uiHeight, const ComponentID compID) const ;
+
+#if INTRA_NSP
+  Void          getSize( UInt uiAbsPartIdx, Int& riWidth, Int& riHeight, UInt& uiRoiNumPartition, Bool bLoopFilterModeSet );
+  Void          xGetCoeffOffsetInCU( UInt uiTrDepth, UInt uiAbsPartIdx, UInt uiPartIdx, UInt& uiCoeffOffset, Bool bChroma); 
+#endif 
 
 };
 

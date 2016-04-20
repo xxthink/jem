@@ -193,7 +193,11 @@ Void TComLoopFilter::xDeblockCU( TComDataCU* pcCU, UInt uiAbsZorderIdx, UInt uiD
   }
 
   xSetLoopfilterParam( pcCU, uiAbsZorderIdx );
+#if INTRA_NSP  
+  TComTURecurse tuRecurse(pcCU, uiAbsZorderIdx,uiDepth,2);
+#else
   TComTURecurse tuRecurse(pcCU, uiAbsZorderIdx);
+#endif 
   xSetEdgefilterTU   ( tuRecurse );
   xSetEdgefilterPU   ( pcCU, uiAbsZorderIdx );
 

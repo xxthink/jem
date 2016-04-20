@@ -79,6 +79,9 @@ TDecSbac::TDecSbac()
 , m_cCUQtCbfSCModel                          ( 1,             NUM_QT_CBF_CTX_SETS,    NUM_QT_CBF_CTX_PER_SET               , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUTransSubdivFlagSCModel                ( 1,             1,                      NUM_TRANS_SUBDIV_FLAG_CTX            , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUQtRootCbfSCModel                      ( 1,             1,                      NUM_QT_ROOT_CBF_CTX                  , m_contextModels + m_numContextModels, m_numContextModels)
+#if  INTER_NSP
+, m_cInterNstFlagSCModel                     ( 1,             1,                      NUM_INTER_NST_FLAG_CTX               , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 , m_cCUSigCoeffGroupSCModel                  ( 1,             2,                      NUM_SIG_CG_FLAG_CTX                  , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUSigSCModel                            ( 1,             1,                      NUM_SIG_FLAG_CTX                     , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCuCtxLastX                              ( 1,             NUM_CTX_LAST_FLAG_SETS, NUM_CTX_LAST_FLAG_XY                 , m_contextModels + m_numContextModels, m_numContextModels)
@@ -152,6 +155,9 @@ Void TDecSbac::resetEntropy(TComSlice* pSlice)
   m_cSaoMergeSCModel.initBuffer                   ( sliceType, qp, (UChar*)INIT_SAO_MERGE_FLAG );
   m_cSaoTypeIdxSCModel.initBuffer                 ( sliceType, qp, (UChar*)INIT_SAO_TYPE_IDX );
   m_cCUTransSubdivFlagSCModel.initBuffer          ( sliceType, qp, (UChar*)INIT_TRANS_SUBDIV_FLAG );
+#if  INTER_NSP
+  m_cInterNstFlagSCModel.initBuffer               ( sliceType, qp, (UChar*)INIT_INTER_NST_FLAG );
+#endif
   m_cTransformSkipSCModel.initBuffer              ( sliceType, qp, (UChar*)INIT_TRANSFORMSKIP_FLAG );
   m_CUTransquantBypassFlagSCModel.initBuffer      ( sliceType, qp, (UChar*)INIT_CU_TRANSQUANT_BYPASS_FLAG );
   m_explicitRdpcmFlagSCModel.initBuffer           ( sliceType, qp, (UChar*)INIT_EXPLICIT_RDPCM_FLAG);
@@ -546,6 +552,40 @@ Void TDecSbac::parsePartSize( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth 
 #endif
 
   assert ( pcCU->getSlice()->getSPS()->getLog2DiffMaxMinCodingBlockSize() == log2DiffMaxMinCodingBlockSize);
+#if INTRA_NSP
+   if ( pcCU->isIntra( uiAbsPartIdx ) )
+   {
+     UInt uiMaxNumBits = 2;
+
+     if( uiDepth == log2DiffMaxMinCodingBlockSize)
+     {
+       uiMaxNumBits ++;
+     }
+     for ( UInt ui = 0; ui < uiMaxNumBits; ui++ )
+     {
+       m_pcTDecBinIf->decodeBin( uiSymbol, m_cCUPartSizeSCModel.get( 0, 0, ui) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
+       if ( uiSymbol )
+       {
+         break;
+       }
+       uiMode++;
+     }
+     eMode = (PartSize) uiMode;
+     UInt uiTrLevel = 0;
+     UInt uiWidthInBit  = g_aucConvertToBit[pcCU->getWidth(uiAbsPartIdx)]+2;
+     UInt uiTrSizeInBit = g_aucConvertToBit[pcCU->getSlice()->getSPS()->getMaxTrSize()]+2;
+     uiTrLevel          = uiWidthInBit >= uiTrSizeInBit ? uiWidthInBit - uiTrSizeInBit : 0;
+     if( eMode != SIZE_2Nx2N )
+     {
+       pcCU->setTrIdxSubParts( 1+uiTrLevel, uiAbsPartIdx, uiDepth );
+     }
+     else
+     {
+       pcCU->setTrIdxSubParts( uiTrLevel, uiAbsPartIdx, uiDepth );
+     }
+   }
+   else
+#else
   if ( pcCU->isIntra( uiAbsPartIdx ) )
   {
     uiSymbol = 1;
@@ -568,6 +608,7 @@ Void TDecSbac::parsePartSize( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth 
     }
   }
   else
+#endif 
   {
     UInt uiMaxNumBits = 2;
 
@@ -634,18 +675,27 @@ Void TDecSbac::parsePredMode( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth 
   pcCU->setPredModeSubParts( (PredMode)iPredMode, uiAbsPartIdx, uiDepth );
 }
 
-
+#if INTRA_NSP
+Void TDecSbac::parseIntraDirLumaAng  ( TComDataCU* pcCU, UInt absPartIdx, UInt depth, UInt uiPUIdx )
+#else
 Void TDecSbac::parseIntraDirLumaAng  ( TComDataCU* pcCU, UInt absPartIdx, UInt depth )
+#endif 
 {
+#if INTRA_NSP
+  UInt partNum = 1;
+#else
   PartSize mode = pcCU->getPartitionSize( absPartIdx );
   UInt partNum = mode==SIZE_NxN?4:1;
+#endif 
   UInt partOffset = ( pcCU->getPic()->getNumPartitionsInCtu() >> ( pcCU->getDepth(absPartIdx) << 1 ) ) >> 2;
   UInt mpmPred[4],symbol;
   Int j,intraPredMode;
+#if INTRA_NSP==0
   if (mode==SIZE_NxN)
   {
     depth++;
   }
+#endif 
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
   const TComCodingStatisticsClassType ctype(STATS__CABAC_BITS__INTRA_DIR_ANG, g_aucConvertToBit[pcCU->getSlice()->getSPS()->getMaxCUWidth()>>depth]+2, CHANNEL_TYPE_LUMA);
 #endif
@@ -691,12 +741,19 @@ Void TDecSbac::parseIntraDirLumaAng  ( TComDataCU* pcCU, UInt absPartIdx, UInt d
         intraPredMode += ( intraPredMode >= preds[i] );
       }
     }
+#if INTRA_NSP
+     pcCU->setIntraDirSubParts(CHANNEL_TYPE_LUMA, (UChar)intraPredMode, absPartIdx+partOffset*j, depth,uiPUIdx );
+#else    
     pcCU->setIntraDirSubParts(CHANNEL_TYPE_LUMA, (UChar)intraPredMode, absPartIdx+partOffset*j, depth );
+#endif
   }
 }
 
-
+#if INTRA_NSP
+Void TDecSbac::parseIntraDirChroma( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx )
+#else
 Void TDecSbac::parseIntraDirChroma( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
+#endif 
 {
   UInt uiSymbol;
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
@@ -716,8 +773,11 @@ Void TDecSbac::parseIntraDirChroma( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt ui
     pcCU->getAllowedChromaDir( uiAbsPartIdx, uiAllowedChromaDir );
     uiSymbol = uiAllowedChromaDir[ uiIPredMode ];
   }
-
-  pcCU->setIntraDirSubParts( CHANNEL_TYPE_CHROMA, uiSymbol, uiAbsPartIdx, uiDepth );
+#if INTRA_NSP
+   pcCU->setIntraDirSubParts( CHANNEL_TYPE_CHROMA, uiSymbol, uiAbsPartIdx, uiDepth, uiPUIdx );
+#else
+  pcCU->setIntraDirSubParts( CHANNEL_TYPE_CHROMA, uiSymbol, uiAbsPartIdx, uiDepth);
+#endif 
 }
 
 
@@ -894,8 +954,11 @@ Void TDecSbac::parseCrossComponentPrediction( TComTU &rTu, ComponentID compID )
     DTRACE_CABAC_T( "\tAlpha=" )
     DTRACE_CABAC_V( alpha )
     DTRACE_CABAC_T( "\n" )
-
+#if INTRA_NSP
+    pcCU ->setCrossComponentPredictionSubParts( alpha, compID, uiAbsPartIdx, pcCU->getDepth( uiAbsPartIdx ), rTu.GetTransformDepthRel(), rTu.GetPUIdx());
+#else
     pcCU->setCrossComponentPredictionAlphaPartRange( alpha, compID, uiAbsPartIdx, rTu.GetAbsPartIdxNumParts( compID ) );
+#endif 
   }
 }
 
@@ -912,6 +975,24 @@ Void TDecSbac::parseTransformSubdivFlag( UInt& ruiSubdivFlag, UInt uiLog2Transfo
   DTRACE_CABAC_V( uiLog2TransformBlockSize )
   DTRACE_CABAC_T( "\n" )
 }
+
+#if  INTER_NSP
+Void TDecSbac::parseInterNstFlag        ( TComDataCU* pcCU, UInt absPartIdx )
+{
+  UInt uiSymbol;
+  m_pcTDecBinIf->decodeBin( uiSymbol, m_cInterNstFlagSCModel.get( 0, 0, 0 ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__QT_ROOT_CBF) );
+
+  DTRACE_CABAC_VL( g_nSymbolCounter++ )
+  DTRACE_CABAC_T( "\tparseInterNstFlag()" )
+  DTRACE_CABAC_T( "\tsymbol=" )
+  DTRACE_CABAC_V( ruiSubdivFlag )
+  DTRACE_CABAC_T( "\tctx=" )
+  DTRACE_CABAC_V( uiLog2TransformBlockSize )
+  DTRACE_CABAC_T( "\n" )
+
+  pcCU->setInterNstFlagSubParts( uiSymbol? 1: 0, absPartIdx, pcCU->getDepth(absPartIdx) );
+}
+#endif
 
 Void TDecSbac::parseQtRootCbf( UInt uiAbsPartIdx, UInt& uiQtRootCbf )
 {
@@ -1005,9 +1086,11 @@ Void TDecSbac::parseQtCbf( TComTU &rTu, const ComponentID compID, const Bool low
   const UInt uiCtx            = pcCU->getCtxQtCbf( rTu, toChannelType(compID) );
   const UInt contextSet       = toChannelType(compID);
 
+#if INTRA_NSP==0
   const UInt width            = rTu.getRect(compID).width;
   const UInt height           = rTu.getRect(compID).height;
   const Bool canQuadSplit     = (width >= (MIN_TU_SIZE * 2)) && (height >= (MIN_TU_SIZE * 2));
+#endif 
   const UInt coveredPartIdxes = rTu.GetAbsPartIdxNumParts(compID);
 
   //             Since the CBF for chroma is coded at the highest level possible, if sub-TUs are
@@ -1024,11 +1107,16 @@ Void TDecSbac::parseQtCbf( TComTU &rTu, const ComponentID compID, const Bool low
   //                  |_|_|    no chroma CBF is coded - instead the parent CBF is inherited
   //                  <-8->    if sub-TUs are present, their CBFs had to be coded at the parent level
 
+#if INTRA_NSP
+  const UInt lowestTUDepth = TUDepth;
+#else
   const UInt lowestTUDepth = TUDepth + ((!lowestLevel && !canQuadSplit) ? 1 : 0); //unsplittable TUs inherit their parent's CBF
+#endif 
         UInt lowestTUCBF   = 0;
 
+#if INTRA_NSP==0
   if ((width != height) && (lowestLevel || !canQuadSplit)) //if sub-TUs are present
-  {
+  {    
     const UInt subTUDepth        = lowestTUDepth + 1;
     const UInt partIdxesPerSubTU = rTu.GetAbsPartIdxNumParts(compID) >> 1;
 
@@ -1038,7 +1126,6 @@ Void TDecSbac::parseQtCbf( TComTU &rTu, const ComponentID compID, const Bool low
     {
       UInt uiCbf = MAX_UINT;
       m_pcTDecBinIf->decodeBin(uiCbf, m_cCUQtCbfSCModel.get(0, contextSet, uiCtx) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(TComCodingStatisticsClassType(STATS__CABAC_BITS__QT_CBF, g_aucConvertToBit[rTu.getRect(compID).width]+2, compID)));
-
       const UInt subTUAbsPartIdx = absPartIdx + (subTU * partIdxesPerSubTU);
       pcCU->setCbfPartRange((uiCbf << subTUDepth), compID, subTUAbsPartIdx, partIdxesPerSubTU);
       combinedSubTUCBF |= uiCbf;
@@ -1057,7 +1144,6 @@ Void TDecSbac::parseQtCbf( TComTU &rTu, const ComponentID compID, const Bool low
       DTRACE_CABAC_V( subTUAbsPartIdx )
       DTRACE_CABAC_T( "\n" )
     }
-
     //propagate the sub-TU CBF up to the lowest TU level
     if (combinedSubTUCBF != 0)
     {
@@ -1066,11 +1152,15 @@ Void TDecSbac::parseQtCbf( TComTU &rTu, const ComponentID compID, const Bool low
     }
   }
   else
+#endif 
   {
     UInt uiCbf = MAX_UINT;
     m_pcTDecBinIf->decodeBin(uiCbf, m_cCUQtCbfSCModel.get(0, contextSet, uiCtx) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(TComCodingStatisticsClassType(STATS__CABAC_BITS__QT_CBF, g_aucConvertToBit[rTu.getRect(compID).width]+2, compID)));
-
+#if INTRA_NSP
+    pcCU->setCbfSubParts((uiCbf << lowestTUDepth), compID, absPartIdx, pcCU->getDepth( absPartIdx ), TUDepth, rTu.GetPUIdx());      
+#else
     pcCU->setCbfSubParts((uiCbf << lowestTUDepth), compID, absPartIdx, rTu.GetTransformDepthTotalAdj(compID));
+#endif 
 
     DTRACE_CABAC_VL( g_nSymbolCounter++ )
     DTRACE_CABAC_T( "\tparseQtCbf()" )
@@ -1131,7 +1221,11 @@ Void TDecSbac::parseTransformSkipFlags (TComTU &rTu, ComponentID component)
   DTRACE_CABAC_V( rTu.GetAbsPartIdxTU() )
   DTRACE_CABAC_T( "\n" )
 
+#if INTRA_NSP
+  pcCU ->setTransformSkipSubParts ( useTransformSkip, component, uiAbsPartIdx, pcCU->getDepth( uiAbsPartIdx ), rTu.GetTransformDepthRel(), rTu.GetPUIdx());
+#else
   pcCU->setTransformSkipPartRange( useTransformSkip, component, uiAbsPartIdx, rTu.GetAbsPartIdxNumParts(component));
+#endif 
 }
 
 
