@@ -717,7 +717,7 @@ Void TDecEntropy::decodeMVPIdxPU( TComDataCU* pcSubCU, UInt uiPartAddr, UInt uiD
 }
 
 Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjCoded, TComTU &rTu, const Int quadtreeTULog2MinSizeInCU 
-#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if VCEG_AZ05_ROT_TR || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST )
     , Bool& bCbfCU
 #endif
     )
@@ -808,7 +808,7 @@ Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjC
     do
     {
       xDecodeTransform( bCodeDQP, isChromaQpAdjCoded, tuRecurseChild, quadtreeTULog2MinSizeInCU 
-#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if VCEG_AZ05_ROT_TR || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST )
     ,  bCbfCU
 #endif
     );
@@ -943,10 +943,10 @@ Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjC
                 }
 #endif
                 m_pcEntropyDecoderIf->parseCoeffNxN( subTUIterator, compID 
-#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
-    ,  bCbfCU
+#if VCEG_AZ05_ROT_TR || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST )
+                  ,  bCbfCU
 #endif
-    );
+                  );
               }
             } while (subTUIterator.nextSection(rTu));
           }
@@ -960,10 +960,10 @@ Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjC
             if(cbf[compID] != 0)
             {
               m_pcEntropyDecoderIf->parseCoeffNxN( rTu, compID 
-#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
-    ,  bCbfCU
+#if VCEG_AZ05_ROT_TR || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST )
+                ,  bCbfCU
 #endif
-    );
+                );
             }
           }
         }
@@ -1023,15 +1023,15 @@ Void TDecEntropy::decodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
 #endif
 
   Int quadtreeTULog2MinSizeInCU = pcCU->getQuadtreeTULog2MinSizeInCU(uiAbsPartIdx);
-#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if VCEG_AZ05_ROT_TR || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST )
   Bool bCbfCU = 0;
 #endif  
   xDecodeTransform( bCodeDQP, isChromaQpAdjCoded, tuRecurse, quadtreeTULog2MinSizeInCU 
-#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if VCEG_AZ05_ROT_TR || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST )
     ,  bCbfCU
 #endif
     );
-#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if VCEG_AZ05_ROT_TR || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST )
   if (bCbfCU )
     decodeROTIdx( pcCU, uiAbsPartIdx, uiDepth );
 #endif

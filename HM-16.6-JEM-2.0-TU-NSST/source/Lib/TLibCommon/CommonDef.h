@@ -196,6 +196,9 @@ static const Int MAX_NUM_VPS =                                     16;
 static const Int MAX_NUM_SPS =                                     16;
 static const Int MAX_NUM_PPS =                                     64;
 
+#if JVET_B0059_TU_NSST_ADAP_SIG
+static const Int QC_NSST_ADAP_SIG_NZ_NUM =                          1;
+#endif
 
 #if COM16_C806_T64
 static const Int MLS_GRP_NUM =                                    256; ///< Max number of coefficient groups, max(16, 256)

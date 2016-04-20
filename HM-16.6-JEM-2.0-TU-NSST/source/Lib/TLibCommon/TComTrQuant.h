@@ -267,6 +267,12 @@ Void InvNsst4x4( Int* src, UInt uiMode, UChar index );
 #endif
                            TCoeff         & uiAbsSum,
                      const QpParam        & cQP 
+#if JVET_B0059_TU_NSST
+                     , Int              default0Save1Load2nsst = 0
+#endif
+#if JVET_B0059_USE_TRANS_DIST
+                     , UInt          *  puiDist = NULL
+#endif
 #if VCEG_AZ08_KLT_COMMON
                      , Bool useKLT = false
 #endif
@@ -444,6 +450,9 @@ protected:
   Double  m_sliceSumC[LEVEL_RANGE+1] ;
 #endif
   TCoeff* m_plTempCoeff;
+#if JVET_B0059_TU_NSST
+  TCoeff  m_plSharedTempCoeff[MAX_NUM_COMPONENT][4096];
+#endif
 
 //  QpParam  m_cQP; - removed - placed on the stack.
 #if RDOQ_CHROMA_LAMBDA

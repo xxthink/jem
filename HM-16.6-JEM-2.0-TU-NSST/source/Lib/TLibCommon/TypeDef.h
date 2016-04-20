@@ -181,6 +181,16 @@
 #error                                                       
 #endif                                                       
 
+#if COM16_C1044_NSST
+#define JVET_B0059_TU_NSST                                1 ///< JVET-B0059: TU-level non-separable secondary transform 
+#define JVET_B0059_USE_TRANS_DIST                         1 ///< Encoder speedup using transform-domain distortion for RD optimization
+#if JVET_B0059_TU_NSST
+#define JVET_B0059_TU_NSST_USE_HYGT                       1 ///< 1: Enable HyGT, 0: Disable HyGT
+#define JVET_B0059_TU_NSST_TL_8x8                         1 ///< 1: Apply NSST for top-left 8x8 coefficients, 0: Apply NSST for all TU coefficients
+#define JVET_B0059_TU_NSST_ADAP_SIG                       1 ///< 1: Skip NSST signaling for TU with very few non-zero coefficients, 0: Always signal NSST for TU with non-zero CBF
+#endif
+#endif
+
 #define COM16_C1046_PDPC_INTRA                            1  ///< Position dependent intra prediction combination
 #if COM16_C1046_PDPC_INTRA && COM16_C983_RSAF                
 #define COM16_C1046_PDPC_RSAF_HARMONIZATION               1  ///< Harmonization between PDPC and RSAF

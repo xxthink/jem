@@ -1014,7 +1014,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
              ((rpcBestCU->getCbf( 0, COMPONENT_Cr ) != 0) && (numberValidComponents > COMPONENT_Cr))  // avoid very complex intra if it is unlikely
             )))
         {
-#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+#if ( ( VCEG_AZ05_ROT_TR || COM16_C1044_NSST ) && !JVET_B0059_TU_NSST )  || VCEG_AZ05_INTRA_MPI  || COM16_C1046_PDPC_INTRA
           Int bNonZeroCoeff = 0;
 #endif
 #if VCEG_AZ05_INTRA_MPI
@@ -1030,7 +1030,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #endif
 
 
-#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if ( VCEG_AZ05_ROT_TR || COM16_C1044_NSST ) && !JVET_B0059_TU_NSST
    Char iROTidx = 0; Char iNumberOfPassesROT = 4;  
 #if COM16_C1044_NSST
    if (!rpcTempCU->getSlice()->getSPS()->getUseNSST()) iNumberOfPassesROT = 1;
@@ -1041,7 +1041,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
    {
 #endif
 #if VCEG_AZ05_INTRA_MPI
-#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if ( VCEG_AZ05_ROT_TR || COM16_C1044_NSST ) && !JVET_B0059_TU_NSST
      if (iROTidx) iNumberOfPassesMPI = 1;
 #endif
      for (iMPIidx = 0; iMPIidx<iNumberOfPassesMPI; iMPIidx++)
@@ -1049,7 +1049,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #endif
 
 #if COM16_C1046_PDPC_INTRA
-#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if ( VCEG_AZ05_ROT_TR || COM16_C1044_NSST ) && !JVET_B0059_TU_NSST
        if (iROTidx) iNumberOfPassesPDPC = 1;
 #endif
        for (iPDPCidx = 0; iPDPCidx < iNumberOfPassesPDPC; iPDPCidx++)
@@ -1071,11 +1071,11 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
            rpcTempCU->setPDPCIdxSubParts(iPDPCidx, 0, uiDepth);
 #endif
 
-#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if ( VCEG_AZ05_ROT_TR || COM16_C1044_NSST ) && !JVET_B0059_TU_NSST
            rpcTempCU->setROTIdxSubParts(iROTidx, 0, uiDepth);
 #endif
            xCheckRDCostIntra(rpcBestCU, rpcTempCU, intraCost, SIZE_2Nx2N DEBUG_STRING_PASS_INTO(sDebug)
-#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST ) || COM16_C1046_PDPC_INTRA
              , bNonZeroCoeff
 #endif
              );
@@ -1100,11 +1100,11 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #if COM16_C1046_PDPC_INTRA
          rpcTempCU->setPDPCIdxSubParts(iPDPCidx, 0,  uiDepth ); 
 #endif
-#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if VCEG_AZ05_ROT_TR || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST )
          rpcTempCU->setROTIdxSubParts(iROTidx, 0,  uiDepth ); 
 #endif
          xCheckRDCostIntra( rpcBestCU, rpcTempCU, intraCost, SIZE_2Nx2N DEBUG_STRING_PASS_INTO(sDebug)
-#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST ) || COM16_C1046_PDPC_INTRA
            , bNonZeroCoeff
 #endif
            );
@@ -1118,7 +1118,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
        if (rpcBestCU->isIntra(0) && !bNonZeroCoeff) break;
      }
 #endif
-#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if VCEG_AZ05_ROT_TR || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST )
      if (rpcBestCU->isIntra(0) && !bNonZeroCoeff) break;
      //if (bNonZeroCoeff>rpcTempCU->getWidth(0)*rpcTempCU->getHeight(0) && rpcTempCU->getSlice()->getSliceType() == I_SLICE) break;
    }
@@ -1129,10 +1129,10 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #endif
             )
           {
-#if COM16_C806_EMT && (VCEG_AZ05_ROT_TR ||VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST|| COM16_C1046_PDPC_INTRA)
+#if COM16_C806_EMT && (VCEG_AZ05_ROT_TR ||VCEG_AZ05_INTRA_MPI || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST ) || COM16_C1046_PDPC_INTRA)
             UChar ucEmtUsage = ((rpcTempCU->getWidth(0) > EMT_INTRA_MAX_CU) || (rpcTempCU->getSlice()->getSPS()->getUseIntraEMT() == 0)) ? 1 : 2;
 #endif
-#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if VCEG_AZ05_ROT_TR || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST )
             for (iROTidx = 0; iROTidx < iNumberOfPassesROT; iROTidx++)
             {
 #endif
@@ -1148,7 +1148,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #endif 
 
 #if COM16_C1046_PDPC_INTRA
-#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if VCEG_AZ05_ROT_TR || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST )
                 iPDPCidx = 0;   iNumberOfPassesPDPC = 2;
                 if (rpcTempCU->getSlice()->getSliceType() != I_SLICE)  iNumberOfPassesPDPC = 2;
                 if (!rpcTempCU->getSlice()->getSPS()->getUsePDPC()) iNumberOfPassesPDPC = 1;
@@ -1180,11 +1180,11 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
                       rpcTempCU->setPDPCIdxSubParts(iPDPCidx, 0, uiDepth);
 #endif
 
-#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if VCEG_AZ05_ROT_TR || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST )
                       rpcTempCU->setROTIdxSubParts(iROTidx, 0, uiDepth);
 #endif
                       xCheckRDCostIntra(rpcBestCU, rpcTempCU, tmpIntraCost, SIZE_NxN DEBUG_STRING_PASS_INTO(sDebug)
-#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST ) || COM16_C1046_PDPC_INTRA
                         , bNonZeroCoeff
 #endif
                         );
@@ -1203,11 +1203,11 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
                     rpcTempCU->setPDPCIdxSubParts(iPDPCidx, 0,  uiDepth ); 
 #endif
 
-#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if VCEG_AZ05_ROT_TR || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST )
                     rpcTempCU->setROTIdxSubParts(iROTidx, 0,  uiDepth ); 
 #endif
                     xCheckRDCostIntra( rpcBestCU, rpcTempCU, tmpIntraCost, SIZE_NxN DEBUG_STRING_PASS_INTO(sDebug)
-#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST ) || COM16_C1046_PDPC_INTRA
                       ,  bNonZeroCoeff 
 #endif
                       );
@@ -1223,7 +1223,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
                 if (rpcBestCU->isIntra(0) && !bNonZeroCoeff) break;
               }
 #endif
-#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST 
+#if VCEG_AZ05_ROT_TR || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST ) 
               if (rpcBestCU->isIntra(0) && !bNonZeroCoeff) break;
             }
 #endif
@@ -1670,11 +1670,11 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
   // Encode Coefficients
   Bool bCodeDQP = getdQPFlag();
   Bool codeChromaQpAdj = getCodeChromaQpAdjFlag();
-#if  VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+#if  VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST ) || COM16_C1046_PDPC_INTRA
   Int bNonZeroCoeff = false;
 #endif
   m_pcEntropyCoder->encodeCoeff( pcCU, uiAbsPartIdx, uiDepth, bCodeDQP, codeChromaQpAdj
-#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST ) || COM16_C1046_PDPC_INTRA
     , bNonZeroCoeff
 #endif
     );
@@ -2339,7 +2339,7 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
                                 Double      &cost,
                                 PartSize     eSize
                                 DEBUG_STRING_FN_DECLARE(sDebug)
-#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+#if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST ) || COM16_C1046_PDPC_INTRA
                                 , Int& bNonZeroCoeff
 #endif
                                 )
@@ -2427,14 +2427,14 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
   m_pcEntropyCoder->encodeIPCMInfo(rpcTempCU, 0, true );
 
   // Encode Coefficients
-#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST ) || COM16_C1046_PDPC_INTRA
   bNonZeroCoeff = false;
 #endif
 
   Bool bCodeDQP = getdQPFlag();
   Bool codeChromaQpAdjFlag = getCodeChromaQpAdjFlag();
   m_pcEntropyCoder->encodeCoeff( rpcTempCU, 0, uiDepth, bCodeDQP, codeChromaQpAdjFlag
-#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST ) || COM16_C1046_PDPC_INTRA
     , bNonZeroCoeff
 #endif
     );
