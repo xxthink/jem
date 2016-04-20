@@ -88,6 +88,10 @@ public:
   virtual Void codeIPCMInfo      ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
 
   virtual Void codeTransformSubdivFlag( UInt uiSymbol, UInt uiCtx ) = 0;
+#if  INTER_NSP
+  virtual Void codeInterNstFlag  ( TComDataCU* pcCU, UInt absPartIdx ) = 0;
+#endif
+
   virtual Void codeQtCbf         ( TComTU &rTu, const ComponentID compID, const Bool lowestLevel ) = 0;
   virtual Void codeQtRootCbf     ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
   virtual Void codeQtCbfZero     ( TComTU &rTu, const ChannelType chType ) = 0;
@@ -156,6 +160,10 @@ public:
   Void encodeTransformSubdivFlag( UInt uiSymbol, UInt uiCtx );
   Void encodeQtCbf             ( TComTU &rTu, const ComponentID compID, const Bool lowestLevel );
 
+#if INTER_NSP
+  Void encodeInterNstFlag         ( TComDataCU* pcCU, UInt uiAbsPartIdx );
+#endif
+
   Void encodeQtCbfZero         ( TComTU &rTu, const ChannelType chType );
   Void encodeQtRootCbfZero     ( );
   Void encodeQtRootCbf         ( TComDataCU* pcCU, UInt uiAbsPartIdx );
@@ -165,7 +173,11 @@ public:
   Void encodeCrossComponentPrediction( TComTU &rTu, ComponentID compID );
 
 private:
+#if INTER_NSP  
+  Void xEncodeTransform        ( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComTU &rTu, Int iFirstIteration = 0 );
+#else
   Void xEncodeTransform        ( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComTU &rTu );
+#endif
 
 public:
   Void encodeCoeff             ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool& bCodeDQP, Bool& codeChromaQpAdj );

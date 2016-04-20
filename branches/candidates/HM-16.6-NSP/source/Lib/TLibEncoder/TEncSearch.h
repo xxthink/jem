@@ -299,7 +299,10 @@ protected:
   Void  xStoreIntraResultQT       ( const ComponentID compID, TComTU &rTu);
   Void  xLoadIntraResultQT        ( const ComponentID compID, TComTU &rTu);
 
-
+#if INTER_NSP
+  Void xLoadInterResultQT(TComTU &rTu);
+  Void xStoreIntraResultQT(TComTU &rTu );
+#endif
   // -------------------------------------------------------------------------------------------------------------------
   // Inter search (AMP)
   // -------------------------------------------------------------------------------------------------------------------

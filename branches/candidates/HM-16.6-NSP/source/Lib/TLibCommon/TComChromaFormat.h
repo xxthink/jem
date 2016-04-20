@@ -160,7 +160,11 @@ static inline Bool filterIntraReferenceSamples (const ChannelType chType, const 
 
 static inline Bool TUCompRectHasAssociatedTransformSkipFlag(const TComRectangle &rectSamples, const UInt transformSkipLog2MaxSize)
 {
+#if INTRA_NSP
+  return (rectSamples.width <= (1<<transformSkipLog2MaxSize) && rectSamples.height<= (1<<transformSkipLog2MaxSize));
+#else
   return (rectSamples.width <= (1<<transformSkipLog2MaxSize));
+#endif
 }
 
 

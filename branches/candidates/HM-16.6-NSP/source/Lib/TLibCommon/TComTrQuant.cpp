@@ -1180,11 +1180,18 @@ Void TComTrQuant::xQuant(       TComTU       &rTu,
 
     TCoeff deltaU[MAX_TU_SIZE * MAX_TU_SIZE];
 
+#if INTRA_NSP
+    const UInt uiLog2MaxTrSize  = g_aucConvertToBit[ max(uiWidth,uiHeight) ] + 2;
+#endif
     const UInt uiLog2TrSize = rTu.GetEquivalentLog2TrSize(compID);
 
     Int scalingListType = getScalingListType(pcCU->getPredictionMode(uiAbsPartIdx), compID);
     assert(scalingListType < SCALING_LIST_NUM);
+#if INTRA_NSP
+    Int *piQuantCoeff = getQuantCoeff(scalingListType, cQP.rem, uiLog2MaxTrSize-2);
+#else
     Int *piQuantCoeff = getQuantCoeff(scalingListType, cQP.rem, uiLog2TrSize-2);
+#endif 
 
     const Bool enableScalingLists             = getUseScalingList(uiWidth, uiHeight, (pcCU->getTransformSkip(uiAbsPartIdx, compID) != 0));
     const Int  defaultQuantisationCoefficient = g_quantScales[cQP.rem];
@@ -1326,6 +1333,9 @@ Void TComTrQuant::xDeQuant(       TComTU        &rTu,
   const UInt                 uiHeight           = rect.height;
   const TCoeff        *const piQCoef            = pSrc;
         TCoeff        *const piCoef             = pDes;
+#if INTRA_NSP
+  const UInt                 uiLog2MaxTrSize  = g_aucConvertToBit[ max(uiWidth,uiHeight) ] + 2;
+#endif
   const UInt                 uiLog2TrSize       = rTu.GetEquivalentLog2TrSize(compID);
   const UInt                 numSamplesInBlock  = uiWidth*uiHeight;
   const Int                  maxLog2TrDynamicRange  = pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID));
@@ -1362,8 +1372,11 @@ Void TComTrQuant::xDeQuant(       TComTU        &rTu,
 
     const Intermediate_Int inputMinimum        = -(1 << (targetInputBitDepth - 1));
     const Intermediate_Int inputMaximum        =  (1 << (targetInputBitDepth - 1)) - 1;
-
+#if INTRA_NSP
+    Int *piDequantCoef = getDequantCoeff(scalingListType,QP_rem,uiLog2MaxTrSize-2);
+#else
     Int *piDequantCoef = getDequantCoeff(scalingListType,QP_rem,uiLog2TrSize-2);
+#endif 
 
     if(rightShift > 0)
     {
@@ -1394,6 +1407,9 @@ Void TComTrQuant::xDeQuant(       TComTU        &rTu,
   {
     const Int scale     =  g_invQuantScales[QP_rem];
     const Int scaleBits =     (IQUANT_SHIFT + 1)   ;
+#if INTRA_NSP
+    Double dShift = (uiWidth != uiHeight ) ? sqrt((Double)2) : 1.0; 
+#endif
 
     //from the dequantisation equation:
     //iCoeffQ                         = Intermediate_Int((Int64(clipQCoef) * scale + iAdd) >> rightShift);
@@ -1409,8 +1425,11 @@ Void TComTrQuant::xDeQuant(       TComTU        &rTu,
       for( Int n = 0; n < numSamplesInBlock; n++ )
       {
         const TCoeff           clipQCoef = TCoeff(Clip3<Intermediate_Int>(inputMinimum, inputMaximum, piQCoef[n]));
+#if INTRA_NSP
+        const Intermediate_Int iCoeffQ   = (Intermediate_Int)(((Double)((Intermediate_Int(clipQCoef) * scale + iAdd) >> rightShift))/dShift);
+#else
         const Intermediate_Int iCoeffQ   = (Intermediate_Int(clipQCoef) * scale + iAdd) >> rightShift;
-
+#endif
         piCoef[n] = TCoeff(Clip3<Intermediate_Int>(transformMinimum,transformMaximum,iCoeffQ));
       }
     }
@@ -1421,8 +1440,11 @@ Void TComTrQuant::xDeQuant(       TComTU        &rTu,
       for( Int n = 0; n < numSamplesInBlock; n++ )
       {
         const TCoeff           clipQCoef = TCoeff(Clip3<Intermediate_Int>(inputMinimum, inputMaximum, piQCoef[n]));
+#if INTRA_NSP
+        const Intermediate_Int iCoeffQ   = (Intermediate_Int)(((Double)((Intermediate_Int(clipQCoef) * scale) << leftShift))/dShift);
+#else
         const Intermediate_Int iCoeffQ   = (Intermediate_Int(clipQCoef) * scale) << leftShift;
-
+#endif
         piCoef[n] = TCoeff(Clip3<Intermediate_Int>(transformMinimum,transformMaximum,iCoeffQ));
       }
     }
@@ -1540,7 +1562,11 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
   }
 
     //set the CBF
+#if INTRA_NSP
+  pcCU->setCbfSubParts ((((uiAbsSum > 0) ? 1 : 0) << uiOrgTrDepth), compID, uiAbsPartIdx, pcCU->getDepth( uiAbsPartIdx ),  uiOrgTrDepth, rTu.GetPUIdx());      
+#else
   pcCU->setCbfPartRange((((uiAbsSum > 0) ? 1 : 0) << uiOrgTrDepth), compID, uiAbsPartIdx, rTu.GetAbsPartIdxNumParts(compID));
+#endif 
 }
 
 
@@ -1558,6 +1584,7 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
   const UInt uiWidth = rect.width;
   const UInt uiHeight = rect.height;
 
+#if INTRA_NSP==0
   if (uiWidth != uiHeight) //for intra, the TU will have been split above this level, so this condition won't be true, hence this only affects inter
   {
     //------------------------------------------------
@@ -1585,7 +1612,7 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
 
     return;
   }
-
+#endif
 #if DEBUG_STRING
   if (psDebug)
   {
@@ -1972,7 +1999,18 @@ Void TComTrQuant::xT( const Int channelBitDepth, Bool useDST, Pel* piBlkResi, UI
 
   xTrMxN( channelBitDepth, block, coeff, iWidth, iHeight, useDST, maxLog2TrDynamicRange );
 
+#if INTRA_NSP
+  UInt uiWidthBit    = g_aucConvertToBit[ iWidth ] + 2;
+  UInt uiHeightBit   = g_aucConvertToBit[ iHeight ] + 2;
+  Double dShift = ( (uiWidthBit + uiHeightBit) % 2 ) ? sqrt((Double)2) : 1.0; 
+
+  for (Int j = 0; j < iHeight * iWidth; j++ )
+  {    
+    psCoeff[ j ] = (Int)( (Double)coeff[ j ] * dShift);
+  } 
+#else
   memcpy(psCoeff, coeff, (iWidth * iHeight * sizeof(TCoeff)));
+#endif 
 }
 
 /** Wrapper function between HM interface and core NxN inverse transform (2D)
@@ -2142,12 +2180,17 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
         TComDataCU    *  pcCU             = rTu.getCU();
   const UInt             uiAbsPartIdx     = rTu.GetAbsPartIdxTU();
   const ChannelType      channelType      = toChannelType(compID);
+#if INTRA_NSP
+  const UInt             uiLog2MaxTrSize  = g_aucConvertToBit[ max(uiWidth,uiHeight) ] + 2;
+#endif
   const UInt             uiLog2TrSize     = rTu.GetEquivalentLog2TrSize(compID);
 
   const Bool             extendedPrecision = pcCU->getSlice()->getSPS()->getSpsRangeExtension().getExtendedPrecisionProcessingFlag();
   const Int              maxLog2TrDynamicRange = pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID));
   const Int              channelBitDepth = rTu.getCU()->getSlice()->getSPS()->getBitDepth(channelType);
-
+#if INTRA_NSP
+  Double uiScalFactor = (uiWidth != uiHeight) ? (pow(2.0, Double(-1))) : 1;
+#endif
   /* for 422 chroma blocks, the effective scaling applied during transformation is not a power of 2, hence it cannot be
    * implemented as a bit-shift (the quantised result will be sqrt(2) * larger than required). Alternatively, adjust the
    * uiLog2TrSize applied in iTransformShift, such that the result is 1/sqrt(2) the required result (i.e. smaller)
@@ -2192,12 +2235,20 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
   memset( deltaU,       0, sizeof(TCoeff) *  uiMaxNumCoeff );
 
   const Int iQBits = QUANT_SHIFT + cQP.per + iTransformShift;                   // Right shift of non-RDOQ quantizer;  level = (coeff*uiQ + offset)>>q_bits
+#if INTRA_NSP  
+  const Double *const pdErrScale = getErrScaleCoeff(scalingListType, (uiLog2MaxTrSize-2), cQP.rem);
+  const Int    *const piQCoef    = getQuantCoeff(scalingListType, cQP.rem, (uiLog2MaxTrSize-2));
+#else
   const Double *const pdErrScale = getErrScaleCoeff(scalingListType, (uiLog2TrSize-2), cQP.rem);
   const Int    *const piQCoef    = getQuantCoeff(scalingListType, cQP.rem, (uiLog2TrSize-2));
-
+#endif 
   const Bool   enableScalingLists             = getUseScalingList(uiWidth, uiHeight, (pcCU->getTransformSkip(uiAbsPartIdx, compID) != 0));
   const Int    defaultQuantisationCoefficient = g_quantScales[cQP.rem];
+#if INTRA_NSP  
+  const Double defaultErrorScale              = getErrScaleCoeffNoScalingList(scalingListType, (uiLog2MaxTrSize-2), cQP.rem);
+#else
   const Double defaultErrorScale              = getErrScaleCoeffNoScalingList(scalingListType, (uiLog2TrSize-2), cQP.rem);
+#endif 
 
   const TCoeff entropyCodingMinimum = -(1 << maxLog2TrDynamicRange);
   const TCoeff entropyCodingMaximum =  (1 << maxLog2TrDynamicRange) - 1;
@@ -2267,7 +2318,11 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
       const UInt uiMaxAbsLevel  = std::min<UInt>(UInt(entropyCodingMaximum), UInt((lLevelDouble + (Intermediate_Int(1) << (iQBits - 1))) >> iQBits));
 
       const Double dErr         = Double( lLevelDouble );
+#if INTRA_NSP    
+      pdCostCoeff0[ iScanPos ]  = dErr * dErr * errorScale * uiScalFactor;
+#else
       pdCostCoeff0[ iScanPos ]  = dErr * dErr * errorScale;
+#endif
       d64BlockUncodedCost      += pdCostCoeff0[ iScanPos ];
       piDstCoeff[ uiBlkPos ]    = uiMaxAbsLevel;
 

@@ -194,8 +194,11 @@ Pel TComPrediction::predIntraGetPredValDC( const Pel* pSrc, Int iSrcStride, UInt
   {
     iSum += pSrc[iInd*iSrcStride-1];
   }
-
+#if INTRA_NSP
+  pDcVal = (iSum + ((iWidth + iHeight)>>1)) / (iWidth + iHeight);
+#else
   pDcVal = (iSum + iWidth) / (iWidth + iHeight);
+#endif 
 
   return pDcVal;
 }
@@ -278,18 +281,32 @@ Void TComPrediction::xPredIntraAng(       Int bitDepth,
     if (intraPredAngle < 0)
     {
       const Int refMainOffsetPreScale = (bIsModeVer ? height : width ) - 1;
+#if INTRA_NSP==0
       const Int refMainOffset         = height - 1;
+#endif 
       for (Int x=0;x<width+1;x++)
       {
+#if INTRA_NSP
+        refAbove[x+height - 1] = pSrc[x-srcStride-1];
+#else
         refAbove[x+refMainOffset] = pSrc[x-srcStride-1];
+#endif 
       }
       for (Int y=0;y<height+1;y++)
       {
+#if INTRA_NSP
+        refLeft[y+width - 1] = pSrc[(y-1)*srcStride-1];
+#else
         refLeft[y+refMainOffset] = pSrc[(y-1)*srcStride-1];
+#endif 
       }
+#if INTRA_NSP
+      refMain = (bIsModeVer ? refAbove + height : refLeft + width) -1;
+      refSide = (bIsModeVer ? refLeft + width : refAbove + height) -1;
+#else
       refMain = (bIsModeVer ? refAbove : refLeft)  + refMainOffset;
       refSide = (bIsModeVer ? refLeft  : refAbove) + refMainOffset;
-
+#endif 
       // Extend the Main reference to the left.
       Int invAngleSum    = 128;       // rounding for (shift by 8)
       for (Int k=-1; k>(refMainOffsetPreScale+1)*intraPredAngle>>5; k--)
@@ -300,11 +317,19 @@ Void TComPrediction::xPredIntraAng(       Int bitDepth,
     }
     else
     {
+#if INTRA_NSP
+      for (Int x=0;x<width+height+1;x++)
+#else
       for (Int x=0;x<2*width+1;x++)
+#endif 
       {
         refAbove[x] = pSrc[x-srcStride-1];
       }
+#if INTRA_NSP
+      for (Int y=0;y<width+height+1;y++)
+#else
       for (Int y=0;y<2*height+1;y++)
+#endif 
       {
         refLeft[y] = pSrc[(y-1)*srcStride-1];
       }
@@ -401,8 +426,11 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
         Pel *pDst = piPred;
 
   // get starting pixel in block
+#if INTRA_NSP
+  const Int sw = (iWidth + iHeight + 1);
+#else
   const Int sw = (2 * iWidth + 1);
-
+#endif 
   if ( bUseLosslessDPCM )
   {
     const Pel *ptrSrc = getPredictorPtr( compID, false );
@@ -731,6 +759,53 @@ Void TComPrediction::getMvPredAMVP( TComDataCU* pcCU, UInt uiPartIdx, UInt uiPar
  * This function derives the prediction samples for planar mode (intra coding).
  */
 //NOTE: Bit-Limit - 24-bit source
+#if INTRA_NSP
+Void TComPrediction::xPredIntraPlanar( const Pel* pSrc, Int srcStride, Pel* rpDst, Int dstStride, UInt width, UInt height )
+{
+  Int k, l, bottomLeft, topRight;
+  Int horPred, verPred;
+  Int leftColumn[MAX_CU_SIZE+1], topRow[MAX_CU_SIZE+1], bottomRow[MAX_CU_SIZE], rightColumn[MAX_CU_SIZE];
+
+  UInt shift1DW = g_aucConvertToBit[ width ] + 2;
+  UInt shift1DH = g_aucConvertToBit[ height ] + 2;
+
+  // Get left and above reference column and row
+  for(l=0;l<width+1;l++)
+  {
+    topRow[l] = pSrc[l-srcStride];
+  }
+
+  for(k=0;k<height+1;k++)
+  {
+    leftColumn[k] = pSrc[k*srcStride-1];
+  }
+
+  // Prepare intermediate variables used in interpolation
+  bottomLeft = leftColumn[height];
+  topRight   = topRow[width];
+
+  for(l=0;l<width;l++)
+  {
+    bottomRow[l]   = bottomLeft;
+  }
+
+  for(k=0;k<height;k++)
+  {
+    rightColumn[k] = topRight;
+  }
+
+  // Generate prediction signal
+  for (k=0;k<height;k++)
+  {
+    for (l=0;l<width;l++)
+    {
+      horPred = ((width - 1 - l) * leftColumn[k] + (l + 1) *rightColumn[k] + (width>>1)) >> shift1DW;
+      verPred = ((height - 1 - k) * topRow[l] + (k + 1) *bottomRow[l] + (height>>1)) >> shift1DH;
+      rpDst[k*dstStride+l] = (horPred + verPred) >> 1; //Todo try rounding
+    }
+  }
+}
+#else
 Void TComPrediction::xPredIntraPlanar( const Pel* pSrc, Int srcStride, Pel* rpDst, Int dstStride, UInt width, UInt height )
 {
   assert(width <= height);
@@ -782,7 +857,7 @@ Void TComPrediction::xPredIntraPlanar( const Pel* pSrc, Int srcStride, Pel* rpDs
     }
   }
 }
-
+#endif 
 /** Function for filtering intra DC predictor.
  * \param pSrc pointer to reconstructed sample array
  * \param iSrcStride the stride of the reconstructed sample array

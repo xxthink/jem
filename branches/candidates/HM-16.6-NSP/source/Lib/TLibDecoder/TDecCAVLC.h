@@ -71,6 +71,9 @@ public:
   Void  parseTransformSubdivFlag( UInt& ruiSubdivFlag, UInt uiLog2TransformBlockSize );
   Void  parseQtCbf          ( class TComTU &rTu, const ComponentID compID, const Bool lowestLevel );
   Void  parseQtRootCbf      ( UInt uiAbsPartIdx, UInt& uiQtRootCbf );
+#if  INTER_NSP
+  Void  parseInterNstFlag    ( TComDataCU* pcCU, UInt absPartIdx );
+#endif
   Void  parseVPS            ( TComVPS* pcVPS );
   Void  parseSPS            ( TComSPS* pcSPS );
   Void  parsePPS            ( TComPPS* pcPPS );
@@ -93,9 +96,13 @@ public:
   Void parsePartSize        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   Void parsePredMode        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 
+#if INTRA_NSP
+  Void parseIntraDirLumaAng ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx );
+  Void parseIntraDirChroma  ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx );
+#else
   Void parseIntraDirLumaAng ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
-  Void parseIntraDirChroma  ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
-
+  Void parseIntraDirChroma  ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth);
+#endif 
   Void parseInterDir        ( TComDataCU* pcCU, UInt& ruiInterDir, UInt uiAbsPartIdx );
   Void parseRefFrmIdx       ( TComDataCU* pcCU, Int& riRefFrmIdx, RefPicList eRefList );
   Void parseMvd             ( TComDataCU* pcCU, UInt uiAbsPartAddr,UInt uiPartIdx,    UInt uiDepth, RefPicList eRefList );

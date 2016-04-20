@@ -105,6 +105,9 @@ public:
   Void codeIPCMInfo      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
 
   Void codeTransformSubdivFlag( UInt uiSymbol, UInt uiCtx );
+#if  INTER_NSP
+  Void codeInterNstFlag  ( TComDataCU* pcCU, UInt absPartIdx );
+#endif
   Void codeQtCbf         ( TComTU &rTu, const ComponentID compID, const Bool lowestLevel );
   Void codeQtRootCbf     ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeQtCbfZero     ( TComTU &rTu, const ChannelType chType );

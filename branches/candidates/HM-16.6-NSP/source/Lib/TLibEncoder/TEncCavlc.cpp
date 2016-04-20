@@ -1232,6 +1232,12 @@ Void TEncCavlc::codeTransformSubdivFlag( UInt /*uiSymbol*/, UInt /*uiCtx*/ )
 {
   assert(0);
 }
+#if  INTER_NSP
+Void TEncCavlc::codeInterNstFlag        ( TComDataCU* pcCU, UInt absPartIdx )
+{
+  assert(0);
+}
+#endif
 
 Void TEncCavlc::codeQtCbf( TComTU& /*rTu*/, const ComponentID /*compID*/, const Bool /*lowestLevel*/ )
 {

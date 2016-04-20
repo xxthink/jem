@@ -139,6 +139,10 @@ public:
   Void codeQtRootCbfZero       ( );
   Void codeIntraDirLumaAng     ( TComDataCU* pcCU, UInt absPartIdx, Bool isMultiple);
 
+#if  INTER_NSP
+  Void codeInterNstFlag        ( TComDataCU* pcCU, UInt absPartIdx );
+#endif
+
   Void codeIntraDirChroma      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeInterDir            ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeRefFrmIdx           ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList );
@@ -186,6 +190,10 @@ private:
   ContextModel3DBuffer m_cCUQtCbfSCModel;
   ContextModel3DBuffer m_cCUTransSubdivFlagSCModel;
   ContextModel3DBuffer m_cCUQtRootCbfSCModel;
+
+#if  INTER_NSP
+  ContextModel3DBuffer m_cInterNstFlagSCModel;
+#endif
 
   ContextModel3DBuffer m_cCUSigCoeffGroupSCModel;
   ContextModel3DBuffer m_cCUSigSCModel;
