@@ -2708,6 +2708,10 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
 #if JVET_B0059_TU_NSST && !COM16_C806_EMT
           Bool   bSaveEmtResults    = true; 
 #endif
+          if( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx )<=DC_IDX && ucNsstIdx>=3 )
+          {
+            continue;
+          }
           // Skip checking other transform candidates if zero CBF is encountered
           if ( ucNsstIdx && !uiSingleCbfLuma && bAllIntra )
           {
@@ -3406,6 +3410,10 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
 #endif
         for (UChar ucNsstIdx = 0; ucNsstIdx < numNsstIdxCands; ucNsstIdx++)
         {
+          if( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx )<=DC_IDX && ucNsstIdx>=3 )
+          {
+            continue;
+          }
           // Skip checking other transform candidates if zero CBF is encountered
           if( ucNsstIdx && !uiSingleCbfLuma && bAllIntra )
           {
@@ -3640,6 +3648,10 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
 #else
         Bool   bSaveEmtResults    = ucNsstIdx<(numNsstIdxCands-1);
 #endif
+        if( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx )<=DC_IDX && ucNsstIdx>=3 )
+        {
+          continue;
+        }
         if ( ucNsstIdx && !uiSingleCbfLuma && bAllIntra )
         {
           continue;
@@ -4805,7 +4817,7 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         UInt       uiMode = modeIdx;
         Distortion uiSad  = 0;
 
-#if COM16_C1044_NSST
+#if COM16_C1044_NSST && !JVET_B0059_TU_NSST
         if( pcCU->getPartitionSize(0)==SIZE_2Nx2N )
         {
           const Int iNumberOfPassesROT = ( uiMode<=DC_IDX ) ? 3 : 4;
@@ -4868,7 +4880,7 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
           {
             UInt uiMode = uiParentMode + subModeIdx;
             
-#if COM16_C1044_NSST
+#if COM16_C1044_NSST && !JVET_B0059_TU_NSST
             if( pcCU->getPartitionSize(0)==SIZE_2Nx2N )
             {
               const Int iNumberOfPassesROT = ( uiMode<=DC_IDX ) ? 3 : 4;
@@ -4923,7 +4935,7 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
           Bool mostProbableModeIncluded = false;
           Int mostProbableMode = uiPreds[j];
         
-#if COM16_C1044_NSST
+#if COM16_C1044_NSST && !JVET_B0059_TU_NSST
           if( pcCU->getPartitionSize(0)==SIZE_2Nx2N )
           {
             const Int iNumberOfPassesROT = ( mostProbableMode<=DC_IDX ) ? 3 : 4;

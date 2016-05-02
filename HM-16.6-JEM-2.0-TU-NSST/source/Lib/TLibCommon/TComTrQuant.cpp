@@ -4402,14 +4402,13 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
 
         assert( uiIntraMode<NUM_INTRA_MODE-1 );
 
-#if !JVET_B0059_TU_NSST
         const Int iNsstCandNum = ( uiIntraMode<=DC_IDX ) ? 3 : 4;
 
-        if( iNsstCandNum > pcCU->getROTIdx(uiAbsPartIdx) )
-#endif
+        if( iNsstCandNum > pcCU->getROTIdx(uiAbsPartIdx) 
 #if JVET_B0059_TU_NSST && COM16_C806_LMCHROMA
-        if( pcCU->getIntraDir( toChannelType(compID), uiAbsPartIdx) != LM_CHROMA_IDX )
+          && pcCU->getIntraDir( toChannelType(compID), uiAbsPartIdx) != LM_CHROMA_IDX
 #endif
+          )
         {
 #if JVET_B0059_TU_NSST_USE_HYGT
           const UChar * permut = g_NsstSrt[g_NsstLut[uiIntraMode]][ucNsstIdx-1];
@@ -4712,14 +4711,13 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
 
       assert( uiIntraMode<NUM_INTRA_MODE-1 );
 
-#if !JVET_B0059_TU_NSST
       const Int iNsstCandNum = ( uiIntraMode<=DC_IDX ) ? 3 : 4;
 
-      if( iNsstCandNum > ucNsstIdx )
-#endif
+      if( iNsstCandNum > ucNsstIdx 
 #if JVET_B0059_TU_NSST && COM16_C806_LMCHROMA
-      if( pcCU->getIntraDir( toChannelType(compID), uiAbsPartIdx) != LM_CHROMA_IDX )
+          && pcCU->getIntraDir( toChannelType(compID), uiAbsPartIdx) != LM_CHROMA_IDX
 #endif
+        )
       {
 #if JVET_B0059_TU_NSST_USE_HYGT
         const UChar * permut = g_NsstSrt[g_NsstLut[uiIntraMode]][ucNsstIdx-1];
