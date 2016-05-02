@@ -867,8 +867,12 @@ Void TEncSbac::codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
     )  
     iNumberOfPassesROT = 4;
 
-#if COM16_C1044_NSST && !JVET_B0059_TU_NSST
-  if( iNumberOfPassesROT==4 && pcCU->getPartitionSize(uiAbsPartIdx)==SIZE_2Nx2N )
+#if COM16_C1044_NSST
+  if( iNumberOfPassesROT==4
+#if !JVET_B0059_TU_NSST
+    && pcCU->getPartitionSize(uiAbsPartIdx)==SIZE_2Nx2N 
+#endif
+    )
   {
     iNumberOfPassesROT = pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) <= DC_IDX ? 3 : 4;
   }
