@@ -150,6 +150,16 @@ protected:
 #if QT_BT_STRUCTURE
   UInt      m_CTUSize;
   UInt      m_uiMinQT[3]; //0: I slice luma; 1: I slice chroma; 2: P/B slice
+#if SPS_MAX_BT_DEPTH
+  UInt      m_uiMaxBTDepth;
+  UInt      m_uiMaxBTDepthISliceL;
+  UInt      m_uiMaxBTDepthISliceC;
+#endif
+#if SPS_MAX_BT_SIZE
+  UInt      m_uiMaxBTSize;
+  UInt      m_uiMaxBTSizeISliceL;
+  UInt      m_uiMaxBTSizeISliceC;
+#endif
 #else
   UInt      m_maxCUWidth;
   UInt      m_maxCUHeight;
@@ -520,6 +530,12 @@ public:
 #if QT_BT_STRUCTURE
   Void      setCTUSize                      ( UInt  u )      { m_CTUSize  = u; }
   Void      setMinQTSizes                   ( UInt* minQT)   { m_uiMinQT[0] = minQT[0]; m_uiMinQT[1] = minQT[1]; m_uiMinQT[2] = minQT[2]; }
+#if SPS_MAX_BT_DEPTH
+  Void      setMaxBTDepth                   ( UInt uiMaxBTDepth, UInt uiMaxBTDepthISliceL, UInt uiMaxBTDepthISliceC ) { m_uiMaxBTDepth = uiMaxBTDepth; m_uiMaxBTDepthISliceL = uiMaxBTDepthISliceL; m_uiMaxBTDepthISliceC = uiMaxBTDepthISliceC; }
+#endif
+#if SPS_MAX_BT_SIZE
+  Void      setMaxBTSize                    ( UInt uiMaxBTSize, UInt uiMaxBTSizeISliceL, UInt uiMaxBTSizeISliceC ) { m_uiMaxBTSize = uiMaxBTSize; m_uiMaxBTSizeISliceL = uiMaxBTSizeISliceL; m_uiMaxBTSizeISliceC = uiMaxBTSizeISliceC; }
+#endif
 #else
   Void      setMaxCUWidth                   ( UInt  u )      { m_maxCUWidth  = u; }
   Void      setMaxCUHeight                  ( UInt  u )      { m_maxCUHeight = u; }

@@ -178,7 +178,13 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setRDpenalty                                         ( m_rdPenalty );
 #if QT_BT_STRUCTURE
   m_cTEncTop.setCTUSize                                           ( m_uiCTUSize );
-  m_cTEncTop.setMinQTSizes                                         ( m_uiMinQT);
+  m_cTEncTop.setMinQTSizes                                        ( m_uiMinQT );
+#if SPS_MAX_BT_DEPTH
+  m_cTEncTop.setMaxBTDepth                                        ( m_uiMaxBTDepth, m_uiMaxBTDepthISliceL, m_uiMaxBTDepthISliceC );
+#endif
+#if SPS_MAX_BT_SIZE
+  m_cTEncTop.setMaxBTSize                                         ( m_uiMaxBTSize, m_uiMaxBTSizeISliceL, m_uiMaxBTSizeISliceC );
+#endif
 #else
   m_cTEncTop.setMaxCUWidth                                        ( m_uiMaxCUWidth );
   m_cTEncTop.setMaxCUHeight                                       ( m_uiMaxCUHeight );

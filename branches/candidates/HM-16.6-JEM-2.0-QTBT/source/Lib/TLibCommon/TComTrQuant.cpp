@@ -6299,7 +6299,8 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
 #endif
 #if VCEG_AZ05_ROT_TR
 #if QT_BT_STRUCTURE
-  if (pcCU->getROTIdx(uiAbsPartIdx) && (isLuma(compID) || !pcCU->getSlice()->isIntra()))
+  Char ucROTIdx = pcCU->getROTIdx(toChannelType(compID), uiAbsPartIdx) ;
+  if (ucROTIdx && uiWidth>=4 && uiHeight>=4)
 #else
   if (pcCU->getROTIdx(uiAbsPartIdx) )
 #endif
@@ -6327,7 +6328,11 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
                        piROTTemp +=4;
              piCoeffTemp +=uiWidth;
             }
+#if QT_BT_STRUCTURE
+           RotTransform4I( ROT_MATRIX, ucROTIdx-1 );
+#else
            RotTransform4I( ROT_MATRIX, pcCU->getROTIdx(uiAbsPartIdx)-1 );
+#endif
           piROTTemp = ROT_MATRIX;
           piCoeffTemp = m_plTempCoeff+iOffSetX+iOffSetY;
           for(  y = 0; y < 4; y++ )
@@ -6579,12 +6584,15 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
     xDeQuant(rTu, pcCoeff, m_plTempCoeff, compID, cQP);
 #if VCEG_AZ05_ROT_TR
 #if QT_BT_STRUCTURE
-  if (pcCU->getROTIdx(uiAbsPartIdx) && (isLuma(compID) || !pcCU->getSlice()->isIntra()))
+  Char ucROTIdx = pcCU->getROTIdx(toChannelType(compID), uiAbsPartIdx) ;
+  if (ucROTIdx && uiWidth>=4 && uiHeight>=4)
 #else
   if (pcCU->getROTIdx(uiAbsPartIdx))
 #endif
   {    
+#if !QT_BT_STRUCTURE
     Char ucROTIdx = pcCU->getROTIdx(uiAbsPartIdx) ;
+#endif
        static Int ROT_MATRIX[16];
       Int iSubGroupXMax = Clip3 (1,16,(Int)( (uiWidth>>2)));
       Int iSubGroupYMax = Clip3 (1,16,(Int)( (uiHeight>>2)));
@@ -8100,7 +8108,11 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
     if (uiWidth <= 32 && uiWidth > 4 && pcCU->getSlice()->getSPS()->getUseRSAF() && pcCU->getPDPCIdx(uiAbsPartIdx) == 0)
 #endif
 #else
+#if QT_BT_STRUCTURE
+    if (uiWidth * uiHeight <= 1024 && uiWidth * uiHeight>= 64 && pcCU->getSlice()->getSPS()->getUseRSAF())
+#else
     if (uiWidth <= 32 && uiWidth > 4 && pcCU->getSlice()->getSPS()->getUseRSAF())
+#endif
 #endif
     {
       vector<BitHidingInCGInfo> l_cgbh;

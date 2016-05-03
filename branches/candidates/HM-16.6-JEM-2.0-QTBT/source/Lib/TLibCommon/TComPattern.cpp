@@ -660,7 +660,7 @@ Bool TComPrediction::filteringIntraReferenceSamples(const ComponentID compID, UI
   }
   else
   {
-#if COM16_C806_LARGE_CTU
+#if COM16_C806_LARGE_CTU || QT_BT_STRUCTURE
     assert(uiTuChWidth>=MIN_PU_SIZE && uiTuChHeight>=MIN_PU_SIZE && uiTuChWidth<=MAX_CU_SIZE && uiTuChHeight<=MAX_CU_SIZE);
 #else
     assert(uiTuChWidth>=4 && uiTuChHeight>=4 && uiTuChWidth<128 && uiTuChHeight<128);

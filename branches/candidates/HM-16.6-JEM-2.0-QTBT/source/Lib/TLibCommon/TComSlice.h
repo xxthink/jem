@@ -795,6 +795,16 @@ private:
 #if QT_BT_STRUCTURE
   UInt             m_uiCTUSize; 
   UInt             m_uiMinQT[3]; //0: I slice luma; 1: I slice chroma; 2: P/B slice
+#if SPS_MAX_BT_DEPTH
+  UInt             m_uiMaxBTDepth;
+  UInt             m_uiMaxBTDepthISliceL;
+  UInt             m_uiMaxBTDepthISliceC;
+#endif
+#if SPS_MAX_BT_SIZE
+  UInt             m_uiMaxBTSize;
+  UInt             m_uiMaxBTSizeISliceL;
+  UInt             m_uiMaxBTSizeISliceC;
+#endif
 #else
   UInt             m_uiMaxCUWidth;
   UInt             m_uiMaxCUHeight;
@@ -966,6 +976,18 @@ public:
   UInt                   getCTUSize() const                                                              { return  m_uiCTUSize;                                              }
   Void                   setMinQTSizes( UInt* minQT)                                                     { m_uiMinQT[0] = minQT[0]; m_uiMinQT[1] = minQT[1]; m_uiMinQT[2] = minQT[2]; }
   UInt                   getMinQTSize(SliceType slicetype, ChannelType chtype)  const                    { return (isChroma(chtype) ? m_uiMinQT[1]: (slicetype==I_SLICE ? m_uiMinQT[0]: m_uiMinQT[2]));}
+#if SPS_MAX_BT_DEPTH
+  Void                   setMaxBTDepth( UInt uiMaxBTDepth, UInt uiMaxBTDepthISliceL, UInt uiMaxBTDepthISliceC ) { m_uiMaxBTDepth = uiMaxBTDepth; m_uiMaxBTDepthISliceL = uiMaxBTDepthISliceL; m_uiMaxBTDepthISliceC = uiMaxBTDepthISliceC; }
+  UInt                   getMaxBTDepth() const                                                           { return m_uiMaxBTDepth; }
+  UInt                   getMaxBTDepthISliceL() const                                                    { return m_uiMaxBTDepthISliceL; }
+  UInt                   getMaxBTDepthISliceC() const                                                    { return m_uiMaxBTDepthISliceC; }
+#endif
+#if SPS_MAX_BT_SIZE
+  Void                   setMaxBTSize( UInt uiMaxBTSize, UInt uiMaxBTSizeISliceL, UInt uiMaxBTSizeISliceC ) { m_uiMaxBTSize = uiMaxBTSize; m_uiMaxBTSizeISliceL = uiMaxBTSizeISliceL; m_uiMaxBTSizeISliceC = uiMaxBTSizeISliceC; }
+  UInt                   getMaxBTSize() const                                                           { return m_uiMaxBTSize; }
+  UInt                   getMaxBTSizeISliceL() const                                                    { return m_uiMaxBTSizeISliceL; }
+  UInt                   getMaxBTSizeISliceC() const                                                    { return m_uiMaxBTSizeISliceC; }
+#endif
 #else
   Void                   setMaxCUWidth( UInt u )                                                         { m_uiMaxCUWidth = u;                                                  }
   UInt                   getMaxCUWidth() const                                                           { return  m_uiMaxCUWidth;                                              }

@@ -515,8 +515,18 @@ Void TEncCavlc::codeSPS( const TComSPS* pcSPS )
 #if QT_BT_STRUCTURE
   WRITE_UVLC( g_aucConvertToBit[pcSPS->getCTUSize()],                                "log2_CTU_size_minus2" );
   WRITE_UVLC( g_aucConvertToBit[pcSPS->getMinQTSize(I_SLICE, CHANNEL_TYPE_LUMA)],    "log2_minQT_ISliceLuma_minus2" );
-  WRITE_UVLC( g_aucConvertToBit[pcSPS->getMinQTSize(I_SLICE, CHANNEL_TYPE_CHROMA)],    "log2_minQT_ISliceChroma_minus2" );
+  WRITE_UVLC( g_aucConvertToBit[pcSPS->getMinQTSize(I_SLICE, CHANNEL_TYPE_CHROMA)],  "log2_minQT_ISliceChroma_minus2" );
   WRITE_UVLC( g_aucConvertToBit[pcSPS->getMinQTSize(B_SLICE, CHANNEL_TYPE_LUMA)],    "log2_minQT_PBSlice_minus2" );
+#if SPS_MAX_BT_SIZE
+  WRITE_UVLC( g_aucConvertToBit[pcSPS->getMaxBTSize()],                              "log2_max_bt_size_minus2" );
+  WRITE_UVLC( g_aucConvertToBit[pcSPS->getMaxBTSizeISliceL()],                       "log2_max_bt_size_i_slice_luma_minus2" );
+  WRITE_UVLC( g_aucConvertToBit[pcSPS->getMaxBTSizeISliceC()],                       "log2_max_bt_size_i_slice_chroma_minus2" );
+#endif
+#if SPS_MAX_BT_DEPTH
+  WRITE_UVLC( pcSPS->getMaxBTDepth(),                                                "max_bt_depth" );
+  WRITE_UVLC( pcSPS->getMaxBTDepthISliceL(),                                         "max_bt_depth_i_slice_luma" );
+  WRITE_UVLC( pcSPS->getMaxBTDepthISliceC(),                                         "max_bt_depth_i_slice_chroma" );
+#endif
 #else
   assert( pcSPS->getMaxCUWidth() == pcSPS->getMaxCUHeight() );
   WRITE_UVLC( pcSPS->getLog2MinCodingBlockSize() - 3,                                "log2_min_luma_coding_block_size_minus3" );
@@ -1090,7 +1100,10 @@ Void TEncCavlc::codeSliceHeader         ( TComSlice* pcSlice )
 #if QT_BT_STRUCTURE
     if (!pcSlice->isIntra())
     {
-      WRITE_UVLC(g_aucConvertToBit[pcSlice->getSPS()->getCTUSize()] - g_aucConvertToBit[pcSlice->getMaxBTSize()], "max_binary_tree_unit_size");
+      if( pcSlice->getSPS()->getCTUSize() > pcSlice->getMaxBTSize() )
+        WRITE_UVLC(g_aucConvertToBit[pcSlice->getSPS()->getCTUSize()] - g_aucConvertToBit[pcSlice->getMaxBTSize()], "max_binary_tree_unit_size");
+      else
+        WRITE_UVLC(0, "max_binary_tree_unit_size");
     }
 #endif
     if (!pcSlice->isIntra())

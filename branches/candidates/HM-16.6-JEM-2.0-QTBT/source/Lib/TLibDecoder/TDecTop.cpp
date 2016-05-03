@@ -377,7 +377,11 @@ Void TDecTop::xActivateParameterSets()
 #else
     m_cPrediction.initTempBuff(sps->getChromaFormatIdc()
 #if VCEG_AZ08_INTER_KLT
+#if QT_BT_STRUCTURE
+      , sps->getUseInterKLT() , sps->getPicWidthInLumaSamples() , sps->getPicHeightInLumaSamples() , sps->getCTUSize() , sps->getCTUSize() , sps->getMaxTotalCUDepth()
+#else
       , sps->getUseInterKLT() , sps->getPicWidthInLumaSamples() , sps->getPicHeightInLumaSamples() , sps->getMaxCUWidth() , sps->getMaxCUHeight() , sps->getMaxTotalCUDepth()
+#endif
 #endif
       );
 #endif

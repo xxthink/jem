@@ -1527,11 +1527,12 @@ Void TEncSlice::xGenUpdateMap (UInt uiSliceType, Int iQP,  TComStats* apcStats)
   if(pBitIf)              {delete pBitIf;                   pBitIf              = NULL;      }
 
 }
+#endif
+
 #if VCEG_AZ08_INTER_KLT
 Void TEncSlice::InterpolatePic(TComPic* pcPic)
 {
     m_pcPredSearch->interpolatePic(pcPic);
 }
-#endif
 #endif
 //! \}

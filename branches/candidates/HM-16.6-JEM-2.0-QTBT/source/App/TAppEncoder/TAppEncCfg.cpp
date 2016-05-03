@@ -787,10 +787,20 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 
   // Unit definition parameters
 #if QT_BT_STRUCTURE
-  ("CTUSize",                                         m_uiCTUSize,                                        128u)
-  ("MinQTLumaISlice",                                 m_uiMinQT[0],                                         16u, "MinQTSizeLuma")
-  ("MinQTChromaISlice",                               m_uiMinQT[1],                                         4u, "MinQTSizeChroma")
-  ("MinQTNonISlice",                                  m_uiMinQT[2],                                         16u, "MinQTSize")
+  ("CTUSize",                                         m_uiCTUSize,                                       128u, "CTUSize")
+  ("MinQTLumaISlice",                                 m_uiMinQT[0],                                       16u, "MinQTSizeLuma")
+  ("MinQTChromaISlice",                               m_uiMinQT[1],                                        4u, "MinQTSizeChroma")
+  ("MinQTNonISlice",                                  m_uiMinQT[2],                                       16u, "MinQTSize")
+#if SPS_MAX_BT_SIZE
+  ("MaxBTSize",                                       m_uiMaxBTSize,                                     128u, "MaxBTSize")
+  ("MaxBTSizeISliceL",                                m_uiMaxBTSizeISliceL,                               32u, "MaxBTSizeISliceL")
+  ("MaxBTSizeISliceC",                                m_uiMaxBTSizeISliceC,                               16u, "MaxBTSizeISliceC")
+#endif
+#if SPS_MAX_BT_DEPTH
+  ("MaxBTDepth",                                      m_uiMaxBTDepth,                                      4u, "MaxBTDepth")
+  ("MaxBTDepthISliceL",                               m_uiMaxBTDepthISliceL,                               4u, "MaxBTDepthISliceL")
+  ("MaxBTDepthISliceC",                               m_uiMaxBTDepthISliceC,                               0u, "MaxBTDepthISliceC")
+#endif
 #else
   ("MaxCUWidth",                                      m_uiMaxCUWidth,                                     64u)
   ("MaxCUHeight",                                     m_uiMaxCUHeight,                                    64u)
@@ -1853,7 +1863,6 @@ Void TAppEncCfg::xCheckParameter()
   {
     xConfirmPara( m_iIntraPeriod > 0 && m_iIntraPeriod <= m_iGOPSize ,                      "Intra period must be larger than GOP size for periodic IDR pictures");
   }
-#if COM16_C806_LARGE_CTU
 #if QT_BT_STRUCTURE
   if( m_uiCTUSize * 2 > m_iSourceWidth && m_uiCTUSize * 2 > m_iSourceHeight )
   {
@@ -1865,6 +1874,7 @@ Void TAppEncCfg::xCheckParameter()
     printf( "\nWarning: CTU size is reduced to (%dx%d) to better fit picture size (%dx%d)\n" , m_uiCTUSize , m_uiCTUSize , m_iSourceWidth , m_iSourceHeight );
   }
 #else
+#if COM16_C806_LARGE_CTU
   if( m_uiMaxCUWidth * 2 > m_iSourceWidth && m_uiMaxCUHeight * 2 > m_iSourceHeight )
   {
     while( m_uiMaxCUWidth * 2 > m_iSourceWidth && m_uiMaxCUHeight * 2 > m_iSourceHeight )
@@ -2601,6 +2611,12 @@ Void TAppEncCfg::xPrintParameter()
   printf("CTU size / minQTL / minQTC / minQT          : %d / %d / %d /%d\n", m_uiCTUSize, m_uiMinQT[0], m_uiMinQT[1], m_uiMinQT[2] );
   printf("I slice: MaxBTSize: %d, %d; MaxBTDepth: %d, %d; MinBTSize: %d, %d\n", MAX_BT_SIZE, MAX_BT_SIZE_C, MAX_BT_DEPTH, MAX_BT_DEPTH_C, MIN_BT_SIZE, MIN_BT_SIZE_C );
   printf("P/B slice: MaxBTSize: %d; MaxBTDepth: %d; MinBTSize: %d\n", MAX_BT_SIZE_INTER, MAX_BT_DEPTH_INTER, MIN_BT_SIZE_INTER );
+#if SPS_MAX_BT_DEPTH
+  printf("SPS MaxBTDepth: %d; MaxBTDepthISliceL: %d; MaxBTDepthISliceC: %d\n", m_uiMaxBTDepth, m_uiMaxBTDepthISliceL, m_uiMaxBTDepthISliceC );
+#endif
+#if SPS_MAX_BT_SIZE
+  printf("SPS MaxBTSize: %d; MaxBTSizeISliceL: %d; MaxBTSizeISliceC: %d\n", m_uiMaxBTSize, m_uiMaxBTSizeISliceL, m_uiMaxBTSizeISliceC );
+#endif
 #else
   printf("CU size / depth / total-depth          : %d / %d / %d\n", m_uiMaxCUWidth, m_uiMaxCUDepth, m_uiMaxTotalCUDepth );
 #endif

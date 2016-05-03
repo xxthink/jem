@@ -698,19 +698,16 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 
 #if QT_BT_STRUCTURE
   assert( g_aucConvertToBit[ iWidth ] >= -1 );  //2x2
-#else
-  assert( g_aucConvertToBit[ iWidth ] >= 0 ); //   4x  4
-#endif
-#if COM16_C806_LARGE_CTU
-#if QT_BT_STRUCTURE
   assert( g_aucConvertToBit[ iWidth ] <= MAX_CU_DEPTH - MIN_CU_LOG2 ); 
 #else
+  assert( g_aucConvertToBit[ iWidth ] >= 0 ); //   4x  4
+#if COM16_C806_LARGE_CTU
   assert( g_aucConvertToBit[ iWidth ] <= MAX_CU_DEPTH - 2 ); 
-#endif
 #else
   assert( g_aucConvertToBit[ iWidth ] <= 5 ); // 128x128
 #endif
   //assert( iWidth == iHeight  );
+#endif
 
         Pel *pDst = piPred;
 
