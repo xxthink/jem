@@ -704,6 +704,12 @@ Void TEncTop::xInitSPS()
 #if QT_BT_STRUCTURE
   m_cSPS.setCTUSize                ( m_CTUSize           );
   m_cSPS.setMinQTSizes             ( m_uiMinQT           );
+#if SPS_MAX_BT_DEPTH
+  m_cSPS.setMaxBTDepth             ( m_uiMaxBTDepth, m_uiMaxBTDepthISliceL, m_uiMaxBTDepthISliceC );
+#endif
+#if SPS_MAX_BT_SIZE
+  m_cSPS.setMaxBTSize              ( m_uiMaxBTSize, m_uiMaxBTSizeISliceL, m_uiMaxBTSizeISliceC );
+#endif
 #else
   m_cSPS.setMaxCUWidth             ( m_maxCUWidth        );
   m_cSPS.setMaxCUHeight            ( m_maxCUHeight       );

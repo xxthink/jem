@@ -2347,7 +2347,7 @@ Void calculateParameterSetChangedFlag(Bool &bChanged, const std::vector<UChar> *
   }
 }
 
-#if VCEG_AZ06_IC_SPEEDUP || QT_BT_STRUCTURE
+#if VCEG_AZ06_IC_SPEEDUP || (QT_BT_STRUCTURE && VCEG_AZ06_IC)
 Void TComSlice::xSetApplyIC()
 {
   m_bApplyIC = false;

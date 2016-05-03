@@ -301,7 +301,7 @@ Void TEncSearch::destroy()
 #endif
         }
         delete[] m_ppcQTTempTComYuv[uiWIdx];
-#if QT_BT_STRUCTURE
+#if QT_BT_STRUCTURE && VCEG_AZ08_INTER_KLT
         if (m_pcTrQuant->getUseInterKLT())
         {
           delete[] m_ppcQTTempTComYuvRec[uiWIdx];
@@ -309,7 +309,7 @@ Void TEncSearch::destroy()
 #endif
     }
     delete[] m_ppcQTTempTComYuv;
-#if QT_BT_STRUCTURE
+#if QT_BT_STRUCTURE && VCEG_AZ08_INTER_KLT
     if (m_pcTrQuant->getUseInterKLT())
     {
       delete[] m_ppcQTTempTComYuvRec;
@@ -2587,7 +2587,11 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
       Bool iDefaultMode = bExceptionalCase || (uiLog2TrSize <= 2) || (pcCU->getPartitionSize(uiAbsPartIdx) != SIZE_2Nx2N) || pcCU->getPDPCIdx(uiAbsPartIdx) == 1;
 #endif
 #else
+#if QT_BT_STRUCTURE
+      Int iDefaultMode =  bExceptionalCase || (uiWidth*uiHeight < 64);
+#else
       Int iDefaultMode =  bExceptionalCase || (uiLog2TrSize <= 2) || (pcCU->getPartitionSize(uiAbsPartIdx) != SIZE_2Nx2N);
+#endif
 #endif
 
       Int iCheckLimit = (Int)(!iDefaultMode);
@@ -2780,7 +2784,11 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
         }
         } //  for (UChar ucTrIdx = 0; ucTrIdx < numTrIdxCands; ucTrIdx++)
 #else
+#if QT_BT_STRUCTURE
+        m_pcRDGoOnSbacCoder->load ( m_ppppcRDSbacCoder[ uiWIdx][uiHIdx ][ CI_QT_TRAFO_ROOT ] );
+#else
         m_pcRDGoOnSbacCoder->load ( m_pppcRDSbacCoder[ uiFullDepth ][ CI_QT_TRAFO_ROOT ] );
+#endif
 #endif
 
       } // end bFilter loop
@@ -2854,12 +2862,23 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
 #else
           dSingleCost = 0.0;
 
+#if QT_BT_STRUCTURE
+          pcCU->setTransformSkipSubParts(0, COMPONENT_Y, uiAbsPartIdx, 0);
+#else
           pcCU->setTransformSkipSubParts(0, COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan);
+#endif
+#if QT_BT_STRUCTURE
+          bSuccessful = 
+#endif
           xIntraCodingTUBlockTM(pcOrgYuv, pcPredYuv, pcResiYuv,
               uiSingleDistLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sDebug)
+#if QT_BT_STRUCTURE
+              , TMPRED0_TMPREDKLT1_ORI2
+#else
 #if COM16_C983_RSAF
               , false
               , bStub
+#endif
 #endif
               );
 #endif
@@ -2913,7 +2932,9 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
               bestTMKLT = 1;
               bestModeId[COMPONENT_Y] = 0;
 #endif
+#if QT_BT_STRUCTURE && COM16_C806_EMT
               bestTrIdx = 0;
+#endif
 #if COM16_C806_EMT
               pcCU->setEmtTuIdxSubParts(0, uiAbsPartIdx, uiFullDepth);
 #endif
@@ -3110,9 +3131,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
 {
   TComDataCU   *pcCU          = rTu.getCU();
   const UInt    uiAbsPartIdx  = rTu.GetAbsPartIdxTU();
-#if COM16_C806_EMT
   const UInt    uiFullDepth   = rTu.GetTransformDepthTotal();
-#endif
   const UInt    uiTrDepth     = rTu.GetTransformDepthRel();
 #if QT_BT_STRUCTURE
   Bool bCheckFull = true;
@@ -3708,12 +3727,23 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
             uiSingleDistLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sDebug), &uiSigNum, TMPRED0_TMPREDKLT1_ORI2);
 #else
         dSingleCost = 0.0;
+#if QT_BT_STRUCTURE
+        pcCU->setTransformSkipSubParts(0, COMPONENT_Y, uiAbsPartIdx, 0);
+#else
         pcCU->setTransformSkipSubParts(0, COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan);
+#endif
+#if QT_BT_STRUCTURE
+        bSuccessful = 
+#endif
         xIntraCodingTUBlockTM(pcOrgYuv, pcPredYuv, pcResiYuv,
             uiSingleDistLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sDebug)
+#if QT_BT_STRUCTURE
+            , TMPRED0_TMPREDKLT1_ORI2
+#else
 #if COM16_C983_RSAF
             , false
             , bStub
+#endif
 #endif
             );
 #endif
@@ -3766,7 +3796,9 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
             bestTMKLT = 1;
 #endif
             bestModeId[COMPONENT_Y] = 0;
+#if QT_BT_STRUCTURE && COM16_C806_EMT
             bestTrIdx = 0;
+#endif
 #if COM16_C806_EMT
             pcCU->setEmtTuIdxSubParts(0, uiAbsPartIdx, uiFullDepth);
 #endif
@@ -5059,7 +5091,11 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
     Double     dBestPUCost   = MAX_DOUBLE;
 
 #if PBINTRA_FAST
-    if( pcCU->getSlice()->getSliceType()!=I_SLICE && ucEmtUsageFlag!=2) 
+    if( pcCU->getSlice()->getSliceType()!=I_SLICE 
+#if COM16_C806_EMT
+      && ucEmtUsageFlag!=2
+#endif
+      ) 
     {                            
       if(CandHadList[2] > (Double)pcCU->getInterHAD()*PBINTRA_RATIO) 
       {
@@ -5678,7 +5714,7 @@ TEncSearch::estIntraPredChromaQT(TComDataCU* pcCU,
           }
 #endif
 
-#if QT_BT_STRUCTURE
+#if QT_BT_STRUCTURE && COM16_C1044_NSST
           if( pcCU->getSlice()->isIntra() )
           {
             UInt uiIntraMode = uiModeList[uiMode];
@@ -8377,9 +8413,7 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
 {
   TComDataCU *pcCU        = rTu.getCU();
   const UInt uiAbsPartIdx = rTu.GetAbsPartIdxTU();
-#if COM16_C806_EMT
   const UInt uiDepth      = rTu.GetTransformDepthTotal();
-#endif
   const UInt uiTrMode     = rTu.GetTransformDepthRel();
 #if QT_BT_STRUCTURE
   assert(uiAbsPartIdx==0 && uiTrMode==0);

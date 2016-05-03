@@ -998,13 +998,25 @@ Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
   {
     xEncodeTransform( bCodeDQP, codeChromaQpAdj, tuRecurse, COMPONENT_Y);
   }
-#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST || QT_BT_STRUCTURE
-#if QT_BT_STRUCTURE && !(VCEG_AZ05_ROT_TR || COM16_C1044_NSST)
-  bNonZeroCoeff = pcCU->getSlice()->isIntra() ? (isLuma(pcCU->getTextType()) ? pcCU->getCbf(uiAbsPartIdx, COMPONENT_Y)
-#else
-  Int bCbfCU = bNonZeroCoeff = pcCU->getSlice()->isIntra() ? (isLuma(pcCU->getTextType()) ? pcCU->getCbf(uiAbsPartIdx, COMPONENT_Y)
-#endif
+#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+#if !QTBT_NSST
+  Int  bCbfCU = bNonZeroCoeff = pcCU->getSlice()->isIntra() ? (isLuma(pcCU->getTextType()) ? pcCU->getCbf(uiAbsPartIdx, COMPONENT_Y)
     : (pcCU->getCbf(uiAbsPartIdx, COMPONENT_Cb) || pcCU->getCbf(uiAbsPartIdx, COMPONENT_Cr) )): pcCU->getQtRootCbf(uiAbsPartIdx);
+#else
+  bNonZeroCoeff = 0;
+  const UInt uiFirstComp = isLuma(pcCU->getTextType()) ? COMPONENT_Y : COMPONENT_Cb;
+  const UInt uiLastComp  = isLuma(pcCU->getTextType()) && pcCU->getSlice()->isIntra() ? COMPONENT_Y : pcCU->getPic()->getNumberValidComponents()-1;
+  const Int iNonZeroCoeffThr = isLuma(pcCU->getTextType()) ? NSST_SIG_NZ_LUMA + (pcCU->getSlice()->isIntra() ? 0 : NSST_SIG_NZ_CHROMA) : NSST_SIG_NZ_CHROMA;
+  for(UInt ch= uiFirstComp; ch<=uiLastComp; ch++)
+  {
+    const ComponentID compID   = ComponentID(ch);
+    TCoeff *pcCoef             = pcCU->getCoeff(compID) + tuRecurse.getCoefficientOffset(compID);
+    const TComRectangle &rRect = tuRecurse.getRect(compID);
+    const UInt uiWidth         = rRect.width;
+    const UInt uiHeight        = rRect.height;
+    bNonZeroCoeff += countNonZeroCoeffs(pcCoef, uiWidth * uiHeight);
+  }
+#endif
 #endif
 #else
 #if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
@@ -1023,19 +1035,37 @@ Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   /// put conditions if sometimes flag is not encoded
 #if QT_BT_STRUCTURE
-  if (bCbfCU && isLuma(pcCU->getTextType()))
+  if (
+#if QTBT_NSST
+    bNonZeroCoeff > iNonZeroCoeffThr
+#else
+    bCbfCU 
+#endif
+    && isLuma(pcCU->getTextType()))
   {
     encodeROTIdx( pcCU, uiAbsPartIdx, uiDepth );
   }
-  else if(bCbfCU && isChroma(pcCU->getTextType()) && pcCU->getWidth(uiAbsPartIdx) >= 8 && pcCU->getHeight(uiAbsPartIdx) >= 8 )
+  else if(
+#if QTBT_NSST
+    bNonZeroCoeff > iNonZeroCoeffThr
+#else
+    bCbfCU 
+#endif
+     && isChroma(pcCU->getTextType()) && pcCU->getWidth(uiAbsPartIdx) >= 8 && pcCU->getHeight(uiAbsPartIdx) >= 8 )
   {
     assert( pcCU->getSlice()->isIntra() );
     encodeROTIdxChroma( pcCU, uiAbsPartIdx, uiDepth );
   }
-  else if( isLuma(pcCU->getTextType()) )
-  {
-    pcCU->setROTIdxSubParts( CHANNEL_TYPE_LUMA, 0, uiAbsPartIdx, uiDepth );
-  }
+//  else if( isLuma(pcCU->getTextType()) )
+//  {
+//    pcCU->setROTIdxSubParts( CHANNEL_TYPE_LUMA, 0, uiAbsPartIdx, uiDepth );
+//  }
+//#if QTBT_NSST
+//  else if( isChroma(pcCU->getTextType()) )
+//  {
+//    pcCU->setROTIdxSubParts( CHANNEL_TYPE_CHROMA, 0, uiAbsPartIdx, uiDepth );
+//  }
+//#endif
 #else
   if (bCbfCU  )
     encodeROTIdx( pcCU, uiAbsPartIdx, uiDepth );

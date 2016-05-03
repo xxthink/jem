@@ -305,6 +305,10 @@ public:
 
   Void decodeCoeff             ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool& bCodeDQP, Bool& isChromaQpAdjCoded );
 
+#if QTBT_NSST
+  Int countNonZeroCoeffs       ( TCoeff* pcCoef, UInt uiSize );
+#endif
+
 #if ALF_HM3_REFACTOR
   // Adaptive Loop filter
   Void decodeAlfParam(ALFParam* pAlfParam, UInt uiMaxTotalCUDepth

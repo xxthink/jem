@@ -153,7 +153,7 @@ protected:
 
   Void xFillPCMBuffer           (TComDataCU* pCU, UInt depth);
 
-#if VCEG_AZ07_FRUC_MERGE
+#if VCEG_AZ07_FRUC_MERGE || QT_BT_STRUCTURE
   Void xDeriveCUMV              ( TComDataCU * pcCU , UInt uiAbsPartIdx , UInt uiDepth );
 #endif
 };

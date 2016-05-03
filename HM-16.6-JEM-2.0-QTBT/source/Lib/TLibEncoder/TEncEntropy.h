@@ -89,9 +89,9 @@ public:
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
    virtual Void codeROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth ) = 0;
-#endif
 #if QT_BT_STRUCTURE
    virtual Void codeROTIdxChroma ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth ) = 0;
+#endif
 #endif
 #if VCEG_AZ07_IMV
   virtual Void codeiMVFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;

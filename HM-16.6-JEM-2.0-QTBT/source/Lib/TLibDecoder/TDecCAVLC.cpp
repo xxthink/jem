@@ -719,6 +719,26 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
   uiMinQT[2] = 1<<(uiCode + MIN_CU_LOG2);
   pcSPS->setMinQTSizes(uiMinQT);
   pcSPS->setMaxTotalCUDepth(uiMax);
+#if SPS_MAX_BT_SIZE
+  UInt uiMaxBTSize, uiMaxBTSizeISliceL, uiMaxBTSizeISliceC;
+  READ_UVLC( uiCode, "log2_max_bt_size_minus2" );
+  uiMaxBTSize = 1<<(uiCode + MIN_CU_LOG2);
+  READ_UVLC( uiCode, "log2_max_bt_size_i_slice_luma_minus2" );
+  uiMaxBTSizeISliceL = 1<<(uiCode + MIN_CU_LOG2);
+  READ_UVLC( uiCode, "log2_max_bt_size_i_slice_chroma_minus2" );
+  uiMaxBTSizeISliceC = 1<<(uiCode + MIN_CU_LOG2);
+  pcSPS->setMaxBTSize( uiMaxBTSize, uiMaxBTSizeISliceL, uiMaxBTSizeISliceC ); 
+#endif
+#if SPS_MAX_BT_DEPTH
+  UInt uiMaxBTDepth, uiMaxBTDepthISliceL, uiMaxBTDepthISliceC;
+  READ_UVLC( uiCode, "max_bt_depth_minus2" );
+  uiMaxBTDepth = uiCode;
+  READ_UVLC( uiCode, "max_bt_depth_i_slice_luma_minus2" );
+  uiMaxBTDepthISliceL = uiCode;
+  READ_UVLC( uiCode, "max_bt_depth_i_slice_chroma_minus2" );
+  uiMaxBTDepthISliceC = uiCode;
+  pcSPS->setMaxBTDepth( uiMaxBTDepth, uiMaxBTDepthISliceL, uiMaxBTDepthISliceC ); 
+#endif
 #else
   pcSPS->setMaxCUWidth  ( 1<<(log2MinCUSize + maxCUDepthDelta) );
   pcSPS->setMaxCUHeight ( 1<<(log2MinCUSize + maxCUDepthDelta) );

@@ -392,12 +392,24 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
 #endif
 
 #if QT_BT_STRUCTURE
+  Bool bForceQT = uiWidth > MAX_TU_SIZE;
+  if( bForceQT )
+  {
+    assert(uiWidth == uiHeight);
+  }
   UInt uiCTUSize = pcCU->getSlice()->getSPS()->getCTUSize();
   if (uiCTUSize>>uiDepth == uiWidth && uiWidth==uiHeight)
   {
 #endif
   if( ( uiRPelX < sps.getPicWidthInLumaSamples() ) && ( uiBPelY < sps.getPicHeightInLumaSamples() ) )
   {
+#if QT_BT_STRUCTURE
+    if( bForceQT )
+    {
+      pcCU->setDepthSubParts( uiDepth + 1, uiAbsPartIdx );
+    }
+    else
+#endif
     m_pcEntropyDecoder->decodeSplitFlag( pcCU, uiAbsPartIdx, uiDepth );
   }
   else
@@ -479,8 +491,16 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
   }
 #endif
 
+#if SPS_MAX_BT_DEPTH
+  UInt uiMaxBTD = pcCU->getSlice()->isIntra() ? (isLuma(pcCU->getTextType())?sps.getMaxBTDepthISliceL():sps.getMaxBTDepthISliceC()): sps.getMaxBTDepth();
+#else
   UInt uiMaxBTD = pcCU->getSlice()->isIntra() ? (isLuma(pcCU->getTextType())?MAX_BT_DEPTH:MAX_BT_DEPTH_C): MAX_BT_DEPTH_INTER;
+#endif
+#if SPS_MAX_BT_SIZE
+  UInt uiMaxBTSize = pcCU->getSlice()->isIntra() ? (isLuma(pcCU->getTextType())?sps.getMaxBTSizeISliceL():sps.getMaxBTSizeISliceC()): sps.getMaxBTSize();
+#else
   UInt uiMaxBTSize = isLuma(pcCU->getTextType()) ? pcCU->getSlice()->getMaxBTSize(): MAX_BT_SIZE_C;
+#endif
   UInt uiMinBTSize = pcCU->getSlice()->isIntra() ? (isLuma(pcCU->getTextType())?MIN_BT_SIZE:MIN_BT_SIZE_C): MIN_BT_SIZE_INTER;
   UInt uiBTDepth = pcCU->getBTDepth(uiAbsPartIdx, uiWidth, uiHeight);
 
@@ -587,7 +607,7 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
     if( !pcCU->getFRUCMgrMode( uiAbsPartIdx ) )
     {
 #endif
-#if !VCEG_AZ07_FRUC_MERGE
+#if !VCEG_AZ07_FRUC_MERGE && !QT_BT_STRUCTURE
     TComMvField cMvFieldNeighbours[MRG_MAX_NUM_CANDS << 1]; // double length for mv of both lists
 #if COM16_C1016_AFFINE
     TComMvField cAffineMvField[2][3]; // double length for mv of both lists, 3 mv for affine
@@ -626,7 +646,7 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
     m_pcEntropyDecoder->decodeMergeIndex( pcCU, 0, uiAbsPartIdx, uiDepth );
 #endif
 
-#if !VCEG_AZ07_FRUC_MERGE
+#if !VCEG_AZ07_FRUC_MERGE && !QT_BT_STRUCTURE
     UInt uiMergeIndex = pcCU->getMergeIndex(uiAbsPartIdx);
 
 #if COM16_C1016_AFFINE
@@ -934,7 +954,7 @@ Void TDecCu::xDecompressCU( TComDataCU* pCtu, UInt uiAbsPartIdx,  UInt uiDepth )
   switch( m_pppcCU[uiWidthIdx][uiHeightIdx]->getPredictionMode(0) )
   {
     case MODE_INTER:
-#if VCEG_AZ07_FRUC_MERGE
+#if VCEG_AZ07_FRUC_MERGE || QT_BT_STRUCTURE
       xDeriveCUMV( pCtu , uiAbsPartIdx , uiDepth );
 #endif
       xReconInter( m_pppcCU[uiWidthIdx][uiHeightIdx], uiDepth );
@@ -1769,7 +1789,7 @@ Void TDecCu::xFillPCMBuffer(TComDataCU* pCU, UInt depth)
   }
 }
 
-#if VCEG_AZ07_FRUC_MERGE
+#if VCEG_AZ07_FRUC_MERGE || QT_BT_STRUCTURE
 Void TDecCu::xDeriveCUMV( TComDataCU * pcCU , UInt uiAbsPartIdx , UInt uiDepth )
 {
 #if QT_BT_STRUCTURE
@@ -1804,12 +1824,14 @@ Void TDecCu::xDeriveCUMV( TComDataCU * pcCU , UInt uiAbsPartIdx , UInt uiDepth )
   {
     if ( pcCU->getMergeFlag( uiSubPartIdx ) )
     {
+#if VCEG_AZ07_FRUC_MERGE
       if( pcCU->getFRUCMgrMode( uiSubPartIdx ) )
       {
         Bool bAvailable = m_pcPrediction->deriveFRUCMV( pcSubCU , uiDepth , uiSubPartIdx - pcSubCU->getZorderIdxInCtu() , uiPartIdx );
         assert( bAvailable );
       }
       else
+#endif
       {
 #if COM16_C1016_AFFINE
         if ( pcCU->isAffine( uiSubPartIdx ) )
@@ -1978,7 +2000,11 @@ Void TDecCu::xDeriveCUMV( TComDataCU * pcCU , UInt uiAbsPartIdx , UInt uiDepth )
           pcCU->getCUMvField( RefPicList( uiRefListIdx ) )->setAllMvd( cMv, ePartSize, uiSubPartIdx, uiDepth, uiPartIdx );
 
           AMVPInfo* pAMVPInfo = pcSubCU->getCUMvField( eRefList )->getAMVPInfo();
+#if QT_BT_STRUCTURE && !VCEG_AZ07_FRUC_MERGE
+          pcSubCU->fillMvpCand(uiPartIdx, uiSubPartIdx - uiAbsPartIdx, eRefList, pcSubCU->getCUMvField( eRefList )->getRefIdx( uiSubPartIdx - uiAbsPartIdx ), pAMVPInfo );
+#else
           pcSubCU->fillMvpCand(uiPartIdx, uiSubPartIdx - uiAbsPartIdx, eRefList, pcSubCU->getCUMvField( eRefList )->getRefIdx( uiSubPartIdx - uiAbsPartIdx ), pAMVPInfo, m_pcPrediction );
+#endif
           m_pcPrediction->getMvPredAMVP( pcSubCU, uiPartIdx, uiSubPartIdx - uiAbsPartIdx, RefPicList( uiRefListIdx ), cMv );
           cMv += TComMv( iMvdHor, iMvdVer );
           pcSubCU->getCUMvField( RefPicList( uiRefListIdx ) )->setAllMv( cMv, ePartSize, uiSubPartIdx - uiAbsPartIdx, 0, uiPartIdx);
@@ -1989,7 +2015,11 @@ Void TDecCu::xDeriveCUMV( TComDataCU * pcCU , UInt uiAbsPartIdx , UInt uiDepth )
       }
     }
 
+#if QT_BT_STRUCTURE && !VCEG_AZ07_FRUC_MERGE
+    if ( (pcCU->getInterDir(uiSubPartIdx) == 3) && pcSubCU->isBipredRestriction(uiPartIdx) ) 
+#else
     if ( (pcCU->getInterDir(uiSubPartIdx) == 3) && pcSubCU->isBipredRestriction(uiPartIdx) && !pcCU->getFRUCMgrMode( uiSubPartIdx ) ) 
+#endif
     {
       pcCU->getCUMvField( REF_PIC_LIST_1 )->setAllMv( TComMv(0,0), ePartSize, uiSubPartIdx, uiDepth, uiPartIdx);
       pcCU->getCUMvField( REF_PIC_LIST_1 )->setAllRefIdx( -1, ePartSize, uiSubPartIdx, uiDepth, uiPartIdx);

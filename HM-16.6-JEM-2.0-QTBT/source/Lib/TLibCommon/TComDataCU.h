@@ -89,17 +89,17 @@ private:
   UInt          m_uiCUPelX;           ///< CU position in a pixel (X)
   UInt          m_uiCUPelY;           ///< CU position in a pixel (Y)
   UInt          m_uiNumPartition;     ///< total number of minimum partitions in a CU
-#if COM16_C806_LARGE_CTU 
 #if QT_BT_STRUCTURE
   UChar*        m_puhWidth[MAX_NUM_CHANNEL_TYPE];           ///< array of widths, for both luma and chroma
   UChar*        m_puhHeight[MAX_NUM_CHANNEL_TYPE];          ///< array of heights, for both luma and chroma
 #else
+#if COM16_C806_LARGE_CTU 
   UShort*       m_puhWidth;           ///< array of widths
   UShort*       m_puhHeight;          ///< array of heights
-#endif
 #else
   UChar*        m_puhWidth;           ///< array of widths
   UChar*        m_puhHeight;          ///< array of heights
+#endif
 #endif
 #if QT_BT_STRUCTURE  
   UChar*        m_puhDepth[MAX_NUM_CHANNEL_TYPE];           ///< array of QT depths, for both luma and chroma
@@ -220,8 +220,8 @@ private:
 
 #if ALF_HM3_REFACTOR
 #if QT_BT_STRUCTURE
-  UChar*         m_puhAlfCtrlFlag;     ///< array of ALF flags
-  UChar*         m_puhTmpAlfCtrlFlag;  ///< temporal array of ALF flags
+  UChar*        m_puhAlfCtrlFlag;     ///< array of ALF flags
+  UChar*        m_puhTmpAlfCtrlFlag;  ///< temporal array of ALF flags
 #else
   UInt*         m_puiAlfCtrlFlag;     ///< array of ALF flags
   UInt*         m_puiTmpAlfCtrlFlag;  ///< temporal array of ALF flags
@@ -411,14 +411,22 @@ public:
   Bool*         getCUTransquantBypass ()                        { return m_CUTransquantBypass;        }
   Bool          getCUTransquantBypass( UInt uiIdx )             { return m_CUTransquantBypass[uiIdx]; }
 
-#if COM16_C806_LARGE_CTU
 #if QT_BT_STRUCTURE  
+#if QT_BT_CTU_256
+  UChar*        getWidth              ()                        { return m_puhWidth[getTextType()];          }
+  UShort        getWidth              ( UInt uiIdx )            { return (UShort)m_puhWidth[getTextType()][uiIdx] << MIN_CU_LOG2;   }
+
+  UChar*        getHeight             ()                        { return m_puhHeight[getTextType()];         }
+  UShort        getHeight             ( UInt uiIdx )            { return (UShort)m_puhHeight[getTextType()][uiIdx] << MIN_CU_LOG2;  }
+#else
   UChar*        getWidth              ()                        { return m_puhWidth[getTextType()];          }
   UChar         getWidth              ( UInt uiIdx )            { return m_puhWidth[getTextType()][uiIdx];   }
 
   UChar*        getHeight             ()                        { return m_puhHeight[getTextType()];         }
   UChar         getHeight             ( UInt uiIdx )            { return m_puhHeight[getTextType()][uiIdx];  }
+#endif
 #else
+#if COM16_C806_LARGE_CTU
   UShort*       getWidth              ()                        { return m_puhWidth;          }
   UShort        getWidth              ( UInt uiIdx )            { return m_puhWidth[uiIdx];   }
   Void          setWidth              ( UInt uiIdx, UShort uh ) { m_puhWidth[uiIdx] = uh;     }
@@ -426,7 +434,6 @@ public:
   UShort*       getHeight             ()                        { return m_puhHeight;         }
   UShort        getHeight             ( UInt uiIdx )            { return m_puhHeight[uiIdx];  }
   Void          setHeight             ( UInt uiIdx, UShort uh ) { m_puhHeight[uiIdx] = uh;    }
-#endif
 #else
   UChar*        getWidth              ()                        { return m_puhWidth;          }
   UChar         getWidth              ( UInt uiIdx )            { return m_puhWidth[uiIdx];   }
@@ -435,6 +442,7 @@ public:
   UChar*        getHeight             ()                        { return m_puhHeight;         }
   UChar         getHeight             ( UInt uiIdx )            { return m_puhHeight[uiIdx];  }
   Void          setHeight             ( UInt uiIdx, UChar  uh ) { m_puhHeight[uiIdx] = uh;    }
+#endif
 #endif
 
   Void          setSizeSubParts       ( UInt uiWidth, UInt uiHeight, UInt uiAbsPartIdx, UInt uiDepth );

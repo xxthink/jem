@@ -196,6 +196,10 @@ static const Int MAX_NUM_VPS =                                     16;
 static const Int MAX_NUM_SPS =                                     16;
 static const Int MAX_NUM_PPS =                                     64;
 
+#if QTBT_NSST
+static const Int NSST_SIG_NZ_LUMA =                              1;
+static const Int NSST_SIG_NZ_CHROMA =                            1;
+#endif
 
 #if COM16_C806_T64
 #if QT_BT_STRUCTURE
@@ -267,7 +271,6 @@ static const UChar INTER_MODE_IDX =                               255; ///< inde
 #if QT_BT_STRUCTURE
 static const UInt  EMT_INTRA_MAX_CU =                              64; ///< Max Intra CU size applying EMT, supported values: 8, 16, 32, 64, 128
 static const UInt  EMT_INTER_MAX_CU =                              64; ///< Max Inter CU size applying EMT, supported values: 8, 16, 32, 64, 128
-static const UInt  EMT_FLAG_SIG_MIN_AREA =                         64; ///< Min CU area size for signlaing EMT flag
 #else
 static const UInt  EMT_INTRA_MAX_CU =                              32; ///< Max Intra CU size applying EMT, supported values: 8, 16, 32
 static const UInt  EMT_INTER_MAX_CU =                              32; ///< Max Inter CU size applying EMT, supported values: 8, 16, 32
@@ -312,7 +315,7 @@ static const Int RExt__PREDICTION_WEIGHTING_ANALYSIS_DC_PRECISION = 0; ///< Addi
 static const Int MAX_TIMECODE_SEI_SETS =                            3; ///< Maximum number of time sets
 
 #if COM16_C806_LARGE_CTU
-#if QT_BT_STRUCTURE
+#if QT_BT_STRUCTURE && !QT_BT_CTU_256
 static const Int MAX_CU_DEPTH =                                     7; ///< log2(CTUSize)
 static const Int MAX_CU_SIZE =                                    128; ///< = 1<<(MAX_CU_DEPTH)
 #else
@@ -332,7 +335,7 @@ static const Int MIN_TU_SIZE =                                      4;
 #endif
 #if COM16_C806_T64
 #if QT_BT_STRUCTURE
-static const Int MAX_TU_SIZE =                                     128; 
+static const Int MAX_TU_SIZE =                                      128; 
 static const Int MAX_LOG2_TU_SIZE_PLUS_ONE =                        8; ///< log2(MAX_TU_SIZE) + 1 
 #else
 static const Int MAX_TU_SIZE =                                     64;
@@ -429,7 +432,7 @@ static const Int    MIN_BT_SIZE_C  =                                4;      ///<
 
 //for P/B slice CTU config. para.
 static const Int    MAX_BT_DEPTH_INTER =                            4;      ///< <=7
-static const Int    MAX_BT_SIZE_INTER  =                            128;    ///< for initialization, [1<<MIN_BT_SIZE_INTER, 1<<CTU_LOG2]
+static const Int    MAX_BT_SIZE_INTER  =                          128;      ///< for initialization, [1<<MIN_BT_SIZE_INTER, 1<<CTU_LOG2]
 static const Int    MIN_BT_SIZE_INTER  =                            4;      ///<
 
 #endif

@@ -156,6 +156,16 @@ protected:
 #if QT_BT_STRUCTURE
   UInt      m_uiCTUSize;
   UInt      m_uiMinQT[3]; //0: I slice luma; 1: I slice chroma; 2: P/B slice
+#if SPS_MAX_BT_DEPTH
+  UInt      m_uiMaxBTDepth;
+  UInt      m_uiMaxBTDepthISliceL;
+  UInt      m_uiMaxBTDepthISliceC;
+#endif
+#if SPS_MAX_BT_SIZE
+  UInt      m_uiMaxBTSize;
+  UInt      m_uiMaxBTSizeISliceL;
+  UInt      m_uiMaxBTSizeISliceC;
+#endif
 #else
   UInt      m_uiMaxCUWidth;                                   ///< max. CU width in pixel
   UInt      m_uiMaxCUHeight;                                  ///< max. CU height in pixel

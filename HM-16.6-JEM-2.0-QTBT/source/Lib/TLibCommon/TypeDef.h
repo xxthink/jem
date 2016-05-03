@@ -60,6 +60,11 @@
 
 #define BT_RMV_REDUNDANT                                  1  ///< Remove redundant BT structure for B/P slice
 
+#define SPS_MAX_BT_SIZE                                   0  ///< signal max BT size in SPS
+#define SPS_MAX_BT_DEPTH                                  1  ///< signal max BT depth in SPS 
+
+#define QT_BT_CTU_256                                     0  ///< support CTU 256 for QTBT, force QT split for CU 256x256 
+
 // for fast algorithms
 #define AMAX_BT                                           1  ///< slice level adaptive maximum BT size (encoder only)
 #define FAST_MRG                                          1
@@ -206,6 +211,10 @@
 #if COM16_C1044_NSST && VCEG_AZ05_ROT_TR                     
 #error                                                       
 #endif                                                       
+
+#if COM16_C1044_NSST && QT_BT_STRUCTURE
+#define QTBT_NSST                                         1
+#endif
 
 #define COM16_C1046_PDPC_INTRA                            1  ///< Position dependent intra prediction combination
 #if COM16_C1046_PDPC_INTRA && COM16_C983_RSAF                

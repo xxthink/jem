@@ -1094,11 +1094,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
   Bool bICEnabled = rpcTempCU->getSlice()->getApplyIC();
 #if QT_BT_STRUCTURE
 #if VCEG_AZ06_IC_SPEEDUP
-#if QT_BT_STRUCTURE 
  if (uiWidth * uiHeight <= 32 )
-#else
-  if ((uiWidth != uiHeight) || (uiWidth * uiHeight <=64 ) || uiBTSplitMode!=0)
-#endif
   {
     bICEnabled = false;
   }
@@ -1127,10 +1123,20 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #else
   const Bool bBoundary = !( uiRPelX < sps.getPicWidthInLumaSamples() && uiBPelY < sps.getPicHeightInLumaSamples() );
 #endif
+#if QT_BT_STRUCTURE
+  Bool bForceQT = uiWidth > MAX_TU_SIZE;
+  if( bForceQT )
+  {
+    assert(uiWidth == uiHeight);
+  }
+#endif
 
   if ( !bBoundary 
 #if COM16_C806_LARGE_CTU
     && ucMinDepth <= uiDepth 
+#endif
+#if QT_BT_STRUCTURE
+    && !bForceQT
 #endif
     )
   {
@@ -1721,9 +1727,14 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 #if QT_BT_STRUCTURE
-         if( isLuma(rpcTempCU->getTextType()) )
-#endif
+         rpcTempCU->setROTIdxSubParts(rpcTempCU->getTextType(), iROTidx, 0, uiDepth);
+         if( !rpcTempCU->getSlice()->isIntra() )
+         {
+           rpcTempCU->setROTIdxSubParts(CHANNEL_TYPE_CHROMA, iROTidx, 0, uiDepth);
+         }
+#else
          rpcTempCU->setROTIdxSubParts(iROTidx, 0,  uiDepth ); 
+#endif
 #endif
          xCheckRDCostIntra( rpcBestCU, rpcTempCU, intraCost, SIZE_2Nx2N DEBUG_STRING_PASS_INTO(sDebug)
 #if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
@@ -1917,8 +1928,16 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
       m_pcEntropyCoder->encodeSplitFlag( rpcBestCU, 0, uiDepth, true );
 #if QT_BT_STRUCTURE
       }
+#if SPS_MAX_BT_DEPTH
+      UInt uiMaxBTD = pcSlice->isIntra() ? (isLuma(rpcTempCU->getTextType())?sps.getMaxBTDepthISliceL():sps.getMaxBTDepthISliceC()): sps.getMaxBTDepth();
+#else
       UInt uiMaxBTD = pcSlice->isIntra() ? (isLuma(rpcTempCU->getTextType())?MAX_BT_DEPTH:MAX_BT_DEPTH_C): MAX_BT_DEPTH_INTER;
+#endif
+#if SPS_MAX_BT_SIZE
+      UInt uiMaxBTSize = pcSlice->isIntra() ? (isLuma(rpcTempCU->getTextType())?sps.getMaxBTSizeISliceL():sps.getMaxBTSizeISliceC()): sps.getMaxBTSize();
+#else
       UInt uiMaxBTSize = isLuma(rpcTempCU->getTextType()) ? pcSlice->getMaxBTSize(): MAX_BT_SIZE_C;
+#endif
       UInt uiMinBTSize = pcSlice->isIntra() ? (isLuma(rpcTempCU->getTextType())?MIN_BT_SIZE:MIN_BT_SIZE_C): MIN_BT_SIZE_INTER;
 
       if (rpcBestCU->getWidth(0)<=uiMaxBTSize && rpcBestCU->getHeight(0)<=uiMaxBTSize 
@@ -1939,7 +1958,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
     }
   }
 
-#if QT_BT_STRUCTURE
+#if QT_BT_STRUCTURE && COM16_C806_LARGE_CTU
   if (ucMinDepth > uiDepth)
   {
       bBoundary = true; //to force not to try BT split. JCA
@@ -2033,16 +2052,30 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
   UInt uiQTHeight = sps.getCTUSize()>>uiDepth;
   UInt uiBTDepth = g_aucConvertToBit[uiQTWidth]-g_aucConvertToBit[uiWidth] + g_aucConvertToBit[uiQTHeight]-g_aucConvertToBit[uiHeight];
 
+#if SPS_MAX_BT_DEPTH
+  UInt uiMaxBTD = pcSlice->isIntra() ? (isLuma(rpcTempCU->getTextType())?sps.getMaxBTDepthISliceL():sps.getMaxBTDepthISliceC()): sps.getMaxBTDepth();
+#else
   UInt uiMaxBTD = pcSlice->isIntra() ? (isLuma(rpcTempCU->getTextType())?MAX_BT_DEPTH:MAX_BT_DEPTH_C): MAX_BT_DEPTH_INTER;
+#endif
+#if SPS_MAX_BT_SIZE
+  UInt uiMaxBTSize = pcSlice->isIntra() ? (isLuma(rpcTempCU->getTextType())?sps.getMaxBTSizeISliceL():sps.getMaxBTSizeISliceC()): sps.getMaxBTSize();
+#else
   UInt uiMaxBTSize = isLuma(rpcTempCU->getTextType()) ? pcSlice->getMaxBTSize(): MAX_BT_SIZE_C;
+#endif
   UInt uiMinBTSize = pcSlice->isIntra() ? (isLuma(rpcTempCU->getTextType())?MIN_BT_SIZE:MIN_BT_SIZE_C): MIN_BT_SIZE_INTER;
 
   Bool bTestHorSplit = (!bBoundary && uiHeight>uiMinBTSize 
     && uiWidth<=uiMaxBTSize && uiHeight<=uiMaxBTSize && uiBTDepth<uiMaxBTD
+#if QT_BT_STRUCTURE
+    && !bForceQT
+#endif
     );
 
   Bool bTestVerSplit = (!bBoundary && uiWidth>uiMinBTSize 
     && uiWidth<=uiMaxBTSize && uiHeight<=uiMaxBTSize && uiBTDepth<uiMaxBTD
+#if QT_BT_STRUCTURE
+    && !bForceQT
+#endif
     );
 
   //for encoder speedup
@@ -2409,6 +2442,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
       if( !bBoundary )
       {
         m_pcEntropyCoder->resetBits();
+#if QT_BT_STRUCTURE
+        if( !bForceQT )
+#endif
         m_pcEntropyCoder->encodeSplitFlag( rpcTempCU, 0, uiDepth, true );
 
         rpcTempCU->getTotalBits() += m_pcEntropyCoder->getNumberOfWrittenBits(); // split bits
@@ -2614,12 +2650,24 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 
 
 #if QT_BT_STRUCTURE
+  Bool bForceQT = uiWidth > MAX_TU_SIZE;
+  if( bForceQT )
+  {
+    assert(uiWidth == uiHeight);
+  }
   UInt uiCTUSize = pcCU->getSlice()->getSPS()->getCTUSize();
   if (uiCTUSize>>uiDepth == uiWidth && uiWidth==uiHeight)
   {
 #endif
   if( ( uiRPelX < sps.getPicWidthInLumaSamples() ) && ( uiBPelY < sps.getPicHeightInLumaSamples() ) )
   {
+#if QT_BT_STRUCTURE
+    if( bForceQT )
+    {
+      assert(uiDepth < pcCU->getDepth( uiAbsPartIdx ) ); 
+    }
+    else
+#endif
     m_pcEntropyCoder->encodeSplitFlag( pcCU, uiAbsPartIdx, uiDepth );
   }
   else
@@ -2690,8 +2738,16 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
     bBTVerRmvEnable = bQTreeValid;
   }
 #endif
+#if SPS_MAX_BT_DEPTH
+  UInt uiMaxBTD = pcSlice->isIntra() ? (isLuma(pcCU->getTextType())?sps.getMaxBTDepthISliceL():sps.getMaxBTDepthISliceC()): sps.getMaxBTDepth();
+#else
   UInt uiMaxBTD = pcCU->getSlice()->isIntra() ? (isLuma(pcCU->getTextType())?MAX_BT_DEPTH:MAX_BT_DEPTH_C): MAX_BT_DEPTH_INTER;
+#endif
+#if SPS_MAX_BT_SIZE
+  UInt uiMaxBTSize = pcSlice->isIntra() ? (isLuma(pcCU->getTextType())?sps.getMaxBTSizeISliceL():sps.getMaxBTSizeISliceC()): sps.getMaxBTSize();
+#else
   UInt uiMaxBTSize = isLuma(pcCU->getTextType()) ? pcCU->getSlice()->getMaxBTSize(): MAX_BT_SIZE_C;
+#endif
   UInt uiMinBTSize = pcCU->getSlice()->isIntra() ? (isLuma(pcCU->getTextType())?MIN_BT_SIZE:MIN_BT_SIZE_C): MIN_BT_SIZE_INTER;
   UInt uiBTDepth = pcCU->getBTDepth(uiAbsPartIdx, uiWidth, uiHeight);
 
@@ -3951,6 +4007,10 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
 #endif
 #endif
 
+#if QTBT_NSST
+  UChar ucNsstIdx = rpcTempCU->getROTIdx( rpcTempCU->getTextType(), 0 );
+#endif
+
   Bool bCodeDQP = getdQPFlag();
   Bool codeChromaQpAdjFlag = getCodeChromaQpAdjFlag();
   m_pcEntropyCoder->encodeCoeff( rpcTempCU, 0, uiDepth, bCodeDQP, codeChromaQpAdjFlag
@@ -3970,6 +4030,15 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
   rpcTempCU->getTotalBits() = m_pcEntropyCoder->getNumberOfWrittenBits();
   rpcTempCU->getTotalBins() = ((TEncBinCABAC *)((TEncSbac*)m_pcEntropyCoder->m_pcEntropyCoderIf)->getEncBinIf())->getBinsCoded();
   rpcTempCU->getTotalCost() = m_pcRdCost->calcRdCost( rpcTempCU->getTotalBits(), rpcTempCU->getTotalDistortion() );
+
+#if QTBT_NSST
+  const Int iNonZeroCoeffThr = isLuma(rpcTempCU->getTextType()) ? NSST_SIG_NZ_LUMA + (rpcTempCU->getSlice()->isIntra() ? 0 : NSST_SIG_NZ_CHROMA) : NSST_SIG_NZ_CHROMA;
+
+  if ( ucNsstIdx && bNonZeroCoeff <= iNonZeroCoeffThr && bNonZeroCoeff>0 )
+  {
+    rpcTempCU->getTotalCost() = MAX_DOUBLE;
+  }
+#endif
 
   xCheckDQP( rpcTempCU );
 
