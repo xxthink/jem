@@ -146,6 +146,9 @@ public:
 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Void codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  );
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+  Void codeTuROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  );
+#endif
 #endif
 #if COM16_C806_OBMC
   Void codeOBMCFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
@@ -189,12 +192,22 @@ public:
   Void codeChromaQpAdjustment  ( TComDataCU* cu, UInt absPartIdx );
 
   Void codeLastSignificantXY ( UInt uiPosX, UInt uiPosY, Int width, Int height, ComponentID component, UInt uiScanIdx );
+
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+  Int codeCoeffNxN            ( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID
+#if VCEG_AZ05_ROT_TR   || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+    , Int& bCbfCU
+#endif  
+    );
+  #else
   Void codeCoeffNxN            ( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID
 #if VCEG_AZ05_ROT_TR   || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
     , Int& bCbfCU
 #endif  
     );
-  Void codeTransformSkipFlags ( TComTU &rTu, ComponentID component );
+#endif
+
+ Void codeTransformSkipFlags ( TComTU &rTu, ComponentID component );
 #if VCEG_AZ08_KLT_COMMON
   Void codeKLTFlags           ( TComTU &rTu, ComponentID component );
 #endif
@@ -252,6 +265,9 @@ private:
 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   ContextModel3DBuffer m_cROTidxSCModel;
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+  ContextModel3DBuffer m_cTuROTidxSCModel;
+#endif
 #endif
   ContextModel3DBuffer m_cCUMergeFlagExtSCModel;
   ContextModel3DBuffer m_cCUMergeIdxExtSCModel;

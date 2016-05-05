@@ -145,6 +145,9 @@ public:
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Void parseROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+  Void parseTuROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
 #endif
   Void parseMergeFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx );
   Void parseMergeIndex    ( TComDataCU* pcCU, UInt& ruiMergeIndex );
@@ -173,11 +176,21 @@ public:
   Void parseIPCMInfo      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth);
 
   Void parseLastSignificantXY( UInt& uiPosLastX, UInt& uiPosLastY, Int width, Int height, ComponentID component, UInt uiScanIdx );
+
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+  Int parseCoeffNxN      ( class TComTU &rTu, ComponentID compID  
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+    , Bool& bCbfCU
+#endif
+    );
+#else
   Void parseCoeffNxN      ( class TComTU &rTu, ComponentID compID  
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& bCbfCU
 #endif
     );
+#endif
+
   Void parseTransformSkipFlags ( class TComTU &rTu, ComponentID component );
 
 #if VCEG_AZ08_KLT_COMMON
@@ -225,6 +238,9 @@ private:
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   ContextModel3DBuffer m_cROTidxSCModel;
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+  ContextModel3DBuffer m_cTuROTidxSCModel;
+#endif
 #endif
   ContextModel3DBuffer m_cCUMergeFlagExtSCModel;
   ContextModel3DBuffer m_cCUMergeIdxExtSCModel;

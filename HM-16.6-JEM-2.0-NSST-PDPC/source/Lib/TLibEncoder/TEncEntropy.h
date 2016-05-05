@@ -89,6 +89,9 @@ public:
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
    virtual Void codeROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth ) = 0;
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+   virtual Void codeTuROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth ) = 0;
+#endif
 #endif
 #if VCEG_AZ07_IMV
   virtual Void codeiMVFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
@@ -131,11 +134,19 @@ public:
 
   virtual Void codeDeltaQP       ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
   virtual Void codeChromaQpAdjustment( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
+  #if JVET_B0051_NSST_PDPC_HARMONIZATION
+  virtual Int codeCoeffNxN      ( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID 
+#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+    , int& bCbfCU
+#endif
+) = 0;
+  #else
   virtual Void codeCoeffNxN      ( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID 
 #if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
     , int& bCbfCU
 #endif
     ) = 0;
+#endif
   virtual Void codeTransformSkipFlags ( TComTU &rTu, ComponentID component ) = 0;
 #if VCEG_AZ08_KLT_COMMON
   virtual Void codeKLTFlags      (TComTU &rTu, ComponentID component) = 0;
@@ -247,6 +258,9 @@ public:
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     Void encodeROTIdx    ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth, Bool bRD = false );
 #endif
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+   Void encodeTuROTIdx    ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth, Bool bRD = false );
+#endif
 #if VCEG_AZ07_FRUC_MERGE
   Void encodeFRUCMgrMode  ( TComDataCU* pcCU, UInt uiAbsPartIdx , UInt uiPUIdx );
 #endif
@@ -274,16 +288,30 @@ public:
   Void encodeCrossComponentPrediction( TComTU &rTu, ComponentID compID );
 
 private:
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+  Int xEncodeTransform        ( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComTU &rTu
+#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+    , Int& bCbfCU
+#endif
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+, Int& TuCmap
+, UInt& uiAbsTu
+#endif
+    );
+
+#else
   Void xEncodeTransform        ( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComTU &rTu
 #if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
     , Int& bCbfCU
 #endif
     );
-
+#endif
 public:
   Void encodeCoeff             ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool& bCodeDQP, Bool& codeChromaQpAdj
 #if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
     , Int& bNonZeroCoeff
+#endif
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
 #endif
     );
 

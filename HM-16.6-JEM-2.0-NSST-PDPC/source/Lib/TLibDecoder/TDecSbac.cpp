@@ -74,6 +74,9 @@ TDecSbac::TDecSbac()
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 , m_cROTidxSCModel                           ( 1,             1,                      NUM_ROT_TR_CTX               , m_contextModels + m_numContextModels, m_numContextModels)
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+, m_cTuROTidxSCModel                           ( 1,             1,                      NUM_TuROT_TR_CTX               , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 #endif
 , m_cCUMergeFlagExtSCModel                   ( 1,             1,                      NUM_MERGE_FLAG_EXT_CTX               , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUMergeIdxExtSCModel                    ( 1,             1,                      NUM_MERGE_IDX_EXT_CTX                , m_contextModels + m_numContextModels, m_numContextModels)
@@ -192,6 +195,9 @@ Void TDecSbac::resetEntropy(TComSlice* pSlice)
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   m_cROTidxSCModel.initBuffer        ( sliceType, qp, (UChar*)INIT_ROT_TR_IDX );
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+  m_cTuROTidxSCModel.initBuffer        ( sliceType, qp, (UChar*)INIT_TuROT_TR_IDX );
+#endif
 #endif
   m_cCUMergeFlagExtSCModel.initBuffer             ( sliceType, qp, (UChar*)INIT_MERGE_FLAG_EXT );
   m_cCUMergeIdxExtSCModel.initBuffer              ( sliceType, qp, (UChar*)INIT_MERGE_IDX_EXT );
@@ -793,30 +799,50 @@ Void TDecSbac::parseROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
     && !pcCU->getCUTransquantBypass(uiAbsPartIdx)
     )  iNumberOfPassesROT = 4;
 
-#if JVET_B0051_NSST_UNIFIED_BINARIZATION
-  if( iNumberOfPassesROT==4 )
+
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+
+#if SLA_FAST
+if (iNumberOfPassesROT==4 && pcCU->getPDPCIdx(uiAbsPartIdx) ==1 && pcCU->getWidth(uiAbsPartIdx) < 16 ) iNumberOfPassesROT =2;
+#endif
+
+
+  if(iNumberOfPassesROT==2)
     {
- UInt uiSymbol = 0, idx_ROT=0;
+      UInt uiNSST = 0;
+      m_pcTDecBinIf->decodeBin( uiNSST, m_cROTidxSCModel.get(0,0, 6 ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG));
+      pcCU->setROTIdxSubParts( uiNSST, uiAbsPartIdx,  uiDepth ); 
+    }   
+   else if (iNumberOfPassesROT==4)
+    {
+         UInt uiNSST = 0, idx_ROT=0;
  UInt offset=0;
  if (pcCU->getPartitionSize(uiAbsPartIdx)==SIZE_2Nx2N &&  pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) <= DC_IDX) offset=1;
 
-    m_pcTDecBinIf->decodeBin( uiSymbol, m_cROTidxSCModel.get(0,0, 0+offset ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG) );
-   idx_ROT +=uiSymbol;
-    if( uiSymbol )
+    m_pcTDecBinIf->decodeBin( uiNSST, m_cROTidxSCModel.get(0,0, 0+offset) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG) );
+   idx_ROT +=uiNSST;
+    if( uiNSST )
     {
-      m_pcTDecBinIf->decodeBin( uiSymbol, m_cROTidxSCModel.get(0,0, 2+offset ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG) );
-        idx_ROT +=uiSymbol;
+      m_pcTDecBinIf->decodeBin( uiNSST, m_cROTidxSCModel.get(0,0, 2+offset) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG) );
+        idx_ROT +=uiNSST;
 
-      if(uiSymbol )
+      if(uiNSST )
         {
-          m_pcTDecBinIf->decodeBin( uiSymbol, m_cROTidxSCModel.get(0,0, 5 ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG) );
-          idx_ROT +=uiSymbol;
+          m_pcTDecBinIf->decodeBin( uiNSST, m_cROTidxSCModel.get(0,0, 4+offset) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG) );
+          idx_ROT +=uiNSST;
         }
     }
     pcCU->setROTIdxSubParts( idx_ROT, uiAbsPartIdx,  uiDepth ); 
     }
-  else   pcCU->setROTIdxSubParts( 0, uiAbsPartIdx,  uiDepth ); 
-#else
+  else
+  {
+       pcCU->setROTIdxSubParts( 0, uiAbsPartIdx,  uiDepth ); 
+  }
+  
+return;
+#endif
+
+
 #if COM16_C1044_NSST
   if( iNumberOfPassesROT==4 && pcCU->getPartitionSize(uiAbsPartIdx)==SIZE_2Nx2N )
   {
@@ -834,9 +860,7 @@ Void TDecSbac::parseROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
     }
     pcCU->setROTIdxSubParts( uiSymbol, uiAbsPartIdx,  uiDepth ); 
   }
-  else
-#endif
-  if (iNumberOfPassesROT>1) // for only 1 pass no signaling is needed 
+  else  if (iNumberOfPassesROT>1) // for only 1 pass no signaling is needed 
   {
       UInt uiSymbol0 = 0;
       UInt uiSymbol1 = 0;
@@ -849,6 +873,31 @@ Void TDecSbac::parseROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
        pcCU->setROTIdxSubParts( 0, uiAbsPartIdx,  uiDepth ); 
   }
 #endif
+}
+#endif
+
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+Void TDecSbac::parseTuROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
+{ 
+#if COM16_C1044_NSST
+  if (!pcCU->getSlice()->getSPS()->getUseNSST())   
+#else
+  if (!pcCU->getSlice()->getSPS()->getUseROT()) 
+#endif
+  {
+    pcCU->setTuROTIdxSubParts(0, uiAbsPartIdx, uiDepth);
+    return;
+  }
+  Int iNumberOfPassesROT = 1;
+  if(pcCU->isIntra(uiAbsPartIdx) && !pcCU->getCUTransquantBypass(uiAbsPartIdx))  iNumberOfPassesROT = 2;
+
+if(iNumberOfPassesROT ==2)
+{
+    UInt uiSymbol = 0;
+    m_pcTDecBinIf->decodeBin( uiSymbol, m_cTuROTidxSCModel.get(0,0, 0 ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG) );
+    pcCU->setTuROTIdxSubParts( uiSymbol, uiAbsPartIdx,  uiDepth ); 
+}
+
 }
 #endif
 Void TDecSbac::parseMergeIndex ( TComDataCU* pcCU, UInt& ruiMergeIndex )
@@ -1844,11 +1893,19 @@ Void TDecSbac::parseLastSignificantXY( UInt& uiPosLastX, UInt& uiPosLastY, Int w
   }
 }
 
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+Int TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID 
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+    , Bool& bCbfCU
+#endif
+    )
+#else
 Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& bCbfCU
 #endif
     )
+#endif
 {
   TComDataCU* pcCU=rTu.getCU();
   const UInt uiAbsPartIdx=rTu.GetAbsPartIdxTU(compID);
@@ -2037,7 +2094,6 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
   parseLastSignificantXY( uiPosLastX, uiPosLastY, uiWidth, uiHeight, compID, codingParameters.scanType );
   UInt uiBlkPosLast      = uiPosLastX + (uiPosLastY<<uiLog2BlockWidth);
   pcCoef[ uiBlkPosLast ] = 1;
-
   //===== decode significance flags =====
   UInt uiScanPosLast;
   for( uiScanPosLast = 0; uiScanPosLast < uiMaxNumCoeffM1; uiScanPosLast++ )
@@ -2425,6 +2481,15 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
     }
   }
 #endif
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+Int TU_NSST=0;
+  if ((!pcCU->getTransformSkip( uiAbsPartIdx, compID) && compID == COMPONENT_Y) && pcCU->isIntra( uiAbsPartIdx ) )
+  {
+      if( uiNumSig>SLA_NSST_ADAP_SIG_NZ_NUM && pcCU->getPartitionSize(uiAbsPartIdx)==SIZE_NxN  )   TU_NSST =1;
+      else   pcCU->setTuROTIdxSubParts( 0, uiAbsPartIdx, rTu.GetTransformDepthTotal() );
+     
+  }
+#endif
 #if COM16_C983_RSAF
   if (compID==COMPONENT_Y)
   {
@@ -2442,7 +2507,13 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
       }
   }
 #endif
+
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+return TU_NSST;
+#else
   return;
+#endif
+
 }
 
 Void TDecSbac::parseSaoMaxUvlc ( UInt& val, UInt maxSymbol )

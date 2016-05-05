@@ -105,6 +105,9 @@ public:
 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Void parseROTIdx       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+  Void parseTuROTIdx       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
 #endif
   Void parseMergeFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx );
   Void parseMergeIndex      ( TComDataCU* pcCU, UInt& ruiMergeIndex );
@@ -127,11 +130,19 @@ public:
   Void parseDeltaQP         ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   Void parseChromaQpAdjustment( TComDataCU* cu, UInt absPartIdx, UInt depth);
 
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+  Int parseCoeffNxN        ( class TComTU &rTu, ComponentID compID 
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+    , Bool& bCbfCU
+#endif
+    );
+#else
   Void parseCoeffNxN        ( class TComTU &rTu, ComponentID compID 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& bCbfCU
 #endif
     );
+#endif
 
   Void parseTransformSkipFlags ( class TComTU &rTu, ComponentID component );
 

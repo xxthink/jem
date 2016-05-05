@@ -72,6 +72,9 @@ TEncSbac::TEncSbac()
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 , m_cROTidxSCModel           ( 1,             1,               NUM_ROT_TR_CTX             , m_contextModels + m_numContextModels, m_numContextModels)
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+, m_cTuROTidxSCModel           ( 1,             1,               NUM_TuROT_TR_CTX             , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 #endif
 , m_cCUMergeFlagExtSCModel             ( 1,             1,                      NUM_MERGE_FLAG_EXT_CTX               , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUMergeIdxExtSCModel              ( 1,             1,                      NUM_MERGE_IDX_EXT_CTX                , m_contextModels + m_numContextModels, m_numContextModels)
@@ -168,6 +171,9 @@ Void TEncSbac::resetEntropy           (const TComSlice *pSlice)
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   m_cROTidxSCModel.initBuffer        ( eSliceType, iQp, (UChar*)INIT_ROT_TR_IDX );
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+  m_cTuROTidxSCModel.initBuffer        ( eSliceType, iQp, (UChar*)INIT_TuROT_TR_IDX );
+#endif
 #endif
   m_cCUMergeFlagExtSCModel.initBuffer             ( eSliceType, iQp, (UChar*)INIT_MERGE_FLAG_EXT);
   m_cCUMergeIdxExtSCModel.initBuffer              ( eSliceType, iQp, (UChar*)INIT_MERGE_IDX_EXT);
@@ -271,6 +277,9 @@ SliceType TEncSbac::determineCabacInitIdx(const TComSlice *pSlice)
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
       curCost += m_cROTidxSCModel.calcCost        ( curSliceType, qp, (UChar*)INIT_ROT_TR_IDX );
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+      curCost += m_cTuROTidxSCModel.calcCost        ( curSliceType, qp, (UChar*)INIT_TuROT_TR_IDX );
+#endif
 #endif
       curCost += m_cCUMergeFlagExtSCModel.calcCost             ( curSliceType, qp, (UChar*)INIT_MERGE_FLAG_EXT);
       curCost += m_cCUMergeIdxExtSCModel.calcCost              ( curSliceType, qp, (UChar*)INIT_MERGE_IDX_EXT);
@@ -868,25 +877,41 @@ Void TEncSbac::codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
     && !pcCU->getCUTransquantBypass(uiAbsPartIdx)
     )  iNumberOfPassesROT = 4;
 
-#if JVET_B0051_NSST_UNIFIED_BINARIZATION
-if ( iNumberOfPassesROT==4 )
-{
- Int idxROT = pcCU->getROTIdx( uiAbsPartIdx );
- UInt offset=0;
- if (pcCU->getPartitionSize(uiAbsPartIdx)==SIZE_2Nx2N &&  pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) <= DC_IDX) offset=1;
 
-    m_pcBinIf->encodeBin(  idxROT ? 1 : 0 , m_cROTidxSCModel.get(0,0, 0+offset ) );
-    if( idxROT )
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if SLA_FAST
+if (iNumberOfPassesROT==4 && pcCU->getPDPCIdx(uiAbsPartIdx) ==1 && pcCU->getWidth(uiAbsPartIdx) < 16 ) iNumberOfPassesROT =2;
+#endif
+
+
+  if(iNumberOfPassesROT==2)
     {
-      m_pcBinIf->encodeBin( (idxROT-1) ? 1 : 0 , m_cROTidxSCModel.get(0,0, 2+offset ) );
+       Int idxNSST = pcCU->getROTIdx( uiAbsPartIdx );
+       assert(idxNSST<2);
+       m_pcBinIf->encodeBin(  idxNSST ? 1 : 0 , m_cROTidxSCModel.get(0,0, 6 ) );
+    }   
+  else if (iNumberOfPassesROT==4)
+    {
+         Int idxROT = pcCU->getROTIdx( uiAbsPartIdx );
+           assert(idxROT<4);
+       
+         UInt offset=0;
+         if (pcCU->getPartitionSize(uiAbsPartIdx)==SIZE_2Nx2N &&  pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) <= DC_IDX) offset=1;
 
-      if(idxROT >1 )
-        {
-            m_pcBinIf->encodeBin( (idxROT-2) ? 1 : 0, m_cROTidxSCModel.get(0,0, 5 ) );
-        }
-    }
-}
-#else
+            m_pcBinIf->encodeBin(  idxROT ? 1 : 0 , m_cROTidxSCModel.get(0,0, 0+offset) );
+            if( idxROT )
+            {
+              m_pcBinIf->encodeBin( (idxROT-1) ? 1 : 0 , m_cROTidxSCModel.get(0,0, 2+offset) );
+
+              if(idxROT >1 )
+                {
+                    m_pcBinIf->encodeBin( (idxROT-2) ? 1 : 0, m_cROTidxSCModel.get(0,0, 4+offset) );
+                }
+            }
+    } 
+return;
+#endif
+
 #if COM16_C1044_NSST
   if( iNumberOfPassesROT==4 && pcCU->getPartitionSize(uiAbsPartIdx)==SIZE_2Nx2N )
   {
@@ -900,7 +925,8 @@ if ( iNumberOfPassesROT==4 )
      // printf("come here\n");
   //}
   //printf("id = %d\n", id);
-
+ 
+  
   if( iNumberOfPassesROT==3 )
   {
     Int idxROT = pcCU->getROTIdx( uiAbsPartIdx );
@@ -921,7 +947,31 @@ if ( iNumberOfPassesROT==4 )
       m_pcBinIf->encodeBin( uiSymbol0, m_cROTidxSCModel.get(0,0, uiDepth ) );
       m_pcBinIf->encodeBin( uiSymbol1, m_cROTidxSCModel.get(0,0, uiDepth ) );
   }
+}
 #endif
+
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+Void TEncSbac::codeTuROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
+{
+#if COM16_C1044_NSST
+  if (!pcCU->getSlice()->getSPS()->getUseNSST()) return;
+#else
+  if (!pcCU->getSlice()->getSPS()->getUseROT()) return;
+#endif
+  Int iNumberOfPassesROT = 1;
+  if( pcCU->isIntra(uiAbsPartIdx)
+#if VCEG_AZ05_INTRA_MPI
+    && pcCU->getMPIIdx(uiAbsPartIdx) ==0
+#endif  
+    && !pcCU->getCUTransquantBypass(uiAbsPartIdx)
+      )  iNumberOfPassesROT = 2;
+
+ if(iNumberOfPassesROT==2)
+  {
+    Int idxTuROT = pcCU->getTuROTIdx( uiAbsPartIdx );
+     assert(idxTuROT<MAX_TU_NSST);
+    m_pcBinIf->encodeBin( idxTuROT ? 1 : 0, m_cTuROTidxSCModel.get(0,0, 0) );
+  }
 }
 #endif
 /** code merge flag
@@ -1790,11 +1840,19 @@ Void TEncSbac::codeLastSignificantXY( UInt uiPosX, UInt uiPosY, Int width, Int h
   }
 }
 
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+Int TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID 
+#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+  , Int& bCbfCU
+#endif
+  )
+#else
 Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID 
 #if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
   , Int& bCbfCU
 #endif
   )
+#endif
 {
   TComDataCU* pcCU=rTu.getCU();
   const UInt uiAbsPartIdx=rTu.GetAbsPartIdxTU(compID);
@@ -2339,7 +2397,22 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
     }
   }
 #endif
+
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+  if ( (!pcCU->getTransformSkip( uiAbsPartIdx, compID) && compID == COMPONENT_Y ) && pcCU->isIntra( uiAbsPartIdx )  )
+  {
+      if( uiTuNumSig>SLA_NSST_ADAP_SIG_NZ_NUM && pcCU->getPartitionSize(uiAbsPartIdx)==SIZE_NxN ) return 1;
+       else
+      {
+        assert( pcCU->getTuROTIdx( uiAbsPartIdx )==0 );
+        return 0;
+      }
+  }
+  else return 0;
+#endif
+#if !JVET_B0051_NSST_PDPC_HARMONIZATION
   return;
+#endif
 }
 
 /** code SAO offset sign

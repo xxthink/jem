@@ -150,7 +150,9 @@ public:
 
   Double  getLambda() { return m_dLambda; }
   Double  getChromaWeight () { return ((m_distortionWeight[COMPONENT_Cb] + m_distortionWeight[COMPONENT_Cr]) / 2.0); }
-
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+  Double  getCompDistWeight ( const ComponentID compID ) { return m_distortionWeight[compID]; }
+#endif
   Void    setCostMode(CostMode   m )    { m_costMode = m; }
 
   // Distortion Functions

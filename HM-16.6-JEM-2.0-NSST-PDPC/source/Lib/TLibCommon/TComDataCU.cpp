@@ -67,7 +67,11 @@ TComDataCU::TComDataCU()
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   m_ROTIdx           = NULL;
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+  m_TuROTIdx           = NULL;
 #endif
+#endif
+
   m_pePartSize         = NULL;
   m_pePredMode         = NULL;
   m_CUTransquantBypass = NULL;
@@ -188,7 +192,11 @@ Void TComDataCU::create( ChromaFormat chromaFormatIDC, UInt uiNumPartition, UInt
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     m_ROTIdx           = new Char[ uiNumPartition ];
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+   m_TuROTIdx           = new Char[ uiNumPartition ];
 #endif
+#endif
+
     m_pePartSize         = new Char[ uiNumPartition ];
     memset( m_pePartSize, NUMBER_OF_PART_SIZES,uiNumPartition * sizeof( *m_pePartSize ) );
 
@@ -364,6 +372,13 @@ Void TComDataCU::destroy()
       delete[] m_ROTIdx;          
       m_ROTIdx          = NULL; 
     }
+ #if JVET_B0051_NSST_PDPC_HARMONIZATION
+    if ( m_TuROTIdx           ) 
+    { 
+      delete[] m_TuROTIdx;          
+      m_TuROTIdx          = NULL; 
+    }
+ #endif
 #endif
 #if COM16_C983_RSAF
     if ( m_puhIntraFiltFlag )
@@ -671,6 +686,9 @@ Void TComDataCU::initCtu( TComPic* pcPic, UInt ctuRsAddr )
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   memset( m_ROTIdx            , 0,                      m_uiNumPartition * sizeof( *m_ROTIdx ) );
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+  memset( m_TuROTIdx            , 0,                      m_uiNumPartition * sizeof( *m_TuROTIdx ) );
+#endif
 #endif
 #if COM16_C983_RSAF
   memset(m_puhIntraFiltFlag   , 0,                      m_uiNumPartition * sizeof(*m_puhIntraFiltFlag));
@@ -862,6 +880,9 @@ Void TComDataCU::initEstData( const UInt uiDepth, const Int qp, const Bool bTran
 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     m_ROTIdx[ui] = 0;
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+    m_TuROTIdx[ui] = 0;
+#endif
 #endif
     m_pePartSize[ui]    = NUMBER_OF_PART_SIZES;
     m_pePredMode[ui]    = NUMBER_OF_PREDICTION_MODES;
@@ -1045,6 +1066,9 @@ Void TComDataCU::initSubCU( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth, 
 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     m_ROTIdx[ui] = 0;
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+    m_TuROTIdx[ui] = 0;
+#endif
 #endif
 #if COM16_C1016_AFFINE
     m_affineFlag[ui] = false;
@@ -1142,6 +1166,9 @@ Void TComDataCU::copySubCU( TComDataCU* pcCU, UInt uiAbsPartIdx )
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   m_ROTIdx            = pcCU->getROTIdx()           + uiPart;
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+  m_TuROTIdx            = pcCU->getTuROTIdx()           + uiPart;
+#endif
 #endif
   m_phQP=pcCU->getQP()                    + uiPart;
   m_ChromaQpAdj = pcCU->getChromaQpAdj()  + uiPart;
@@ -1273,6 +1300,9 @@ Void TComDataCU::copyInterPredInfoFrom    ( TComDataCU* pcCU, UInt uiAbsPartIdx,
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   m_ROTIdx             = pcCU->getROTIdx ()               + uiAbsPartIdx;
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+ m_TuROTIdx             = pcCU->getTuROTIdx ()               + uiAbsPartIdx;
+#endif
 #endif
   m_pePartSize         = pcCU->getPartitionSize ()        + uiAbsPartIdx;
   m_pePredMode         = pcCU->getPredictionMode()        + uiAbsPartIdx;
@@ -1346,6 +1376,9 @@ Void TComDataCU::copySameSizeCUFrom(TComDataCU* pcCU, UInt uiPartUnitIdx, UInt u
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     memcpy(m_ROTIdx + uiOffset, pcCU->getROTIdx(), sizeof(*m_ROTIdx)   * uiNumPartition);
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+   memcpy(m_TuROTIdx + uiOffset, pcCU->getTuROTIdx(), sizeof(*m_TuROTIdx)   * uiNumPartition);
+#endif
 #endif
     memcpy(m_phQP + uiOffset, pcCU->getQP(), sizeInChar);
     memcpy(m_pePartSize + uiOffset, pcCU->getPartitionSize(), sizeof(*m_pePartSize) * uiNumPartition);
@@ -1482,6 +1515,9 @@ Void TComDataCU::copyPartFrom( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDept
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   memcpy( m_ROTIdx     + uiOffset, pcCU->getROTIdx(),         sizeof( *m_ROTIdx )   * uiNumPartition );
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+ memcpy( m_TuROTIdx     + uiOffset, pcCU->getTuROTIdx(),         sizeof( *m_TuROTIdx )   * uiNumPartition );
+#endif
 #endif
   memcpy( m_phQP       + uiOffset, pcCU->getQP(),             sizeInChar                        );
   memcpy( m_pePartSize + uiOffset, pcCU->getPartitionSize(),  sizeof( *m_pePartSize ) * uiNumPartition );
@@ -1616,6 +1652,9 @@ Void TComDataCU::copyToPic( UChar uhDepth )
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   memcpy( pCtu->getROTIdx()   + m_absZIdxInCtu, m_ROTIdx, sizeof( *m_ROTIdx ) * m_uiNumPartition );
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+  memcpy( pCtu->getTuROTIdx()   + m_absZIdxInCtu, m_TuROTIdx, sizeof( *m_TuROTIdx ) * m_uiNumPartition );
+#endif
 #endif
   memcpy( pCtu->getQP() + m_absZIdxInCtu, m_phQP, sizeInChar  );
 
@@ -3111,6 +3150,14 @@ Void TComDataCU::setROTIdxSubParts( Char ROTIdx, UInt absPartIdx, UInt depth  )
   UInt uiCurrPartNumb = m_pcPic->getNumPartitionsInCtu() >> (depth << 1);
   memset(  m_ROTIdx + absPartIdx, ROTIdx, sizeof(Char)*uiCurrPartNumb );
 }
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+Void TComDataCU::setTuROTIdxSubParts( Char TuROTIdx, UInt absPartIdx, UInt depth  )
+{
+  assert( sizeof( *m_TuROTIdx) == 1 );
+  UInt uiCurrPartNumb = m_pcPic->getNumPartitionsInCtu() >> (depth << 1);
+  memset(  m_TuROTIdx + absPartIdx, TuROTIdx, sizeof(Char)*uiCurrPartNumb );
+}
+#endif
 #endif
 Void TComDataCU::setPredModeSubParts( PredMode eMode, UInt uiAbsPartIdx, UInt uiDepth )
 {

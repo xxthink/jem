@@ -65,7 +65,14 @@
 #define NUM_PDPC_CTX                  2      /// < number of context models for MPI Idx coding
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if SLA_FAST
+ #define NUM_ROT_TR_CTX               9       /// < number of context models for ROT Idx coding
+#else
  #define NUM_ROT_TR_CTX               7       /// < number of context models for ROT Idx coding
+ #endif
+ #if JVET_B0051_NSST_PDPC_HARMONIZATION
+ #define NUM_TuROT_TR_CTX               7       /// < number of context models for ROT Idx coding
+ #endif
 #endif
 #define NUM_MERGE_FLAG_EXT_CTX        1       ///< number of context models for merge flag of merge extended
 #if COM16_C806_GEN_MRG_IMPROVEMENT
@@ -311,6 +318,15 @@ INIT_PDPCIdx_FLAG[NUMBER_OF_SLICE_TYPES][NUM_PDPC_CTX] =
 };
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if SLA_FAST
+static const UChar 
+INIT_ROT_TR_IDX[3][NUM_ROT_TR_CTX] =  
+{
+  { 107,107,107,107,107,107,107,107,107}, 
+  { 107,107,107,107,107,107,107,107,107}, 
+  { 139,139,139,139,139,139,139,139,139}, 
+};
+#else
 static const UChar 
 INIT_ROT_TR_IDX[3][NUM_ROT_TR_CTX] =  
 {
@@ -318,6 +334,16 @@ INIT_ROT_TR_IDX[3][NUM_ROT_TR_CTX] =
   { 107,107,107,107,107,107,107 }, 
   { 139,139,139,139,139,139,139 }, 
 };
+#endif
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+static const UChar 
+INIT_TuROT_TR_IDX[3][NUM_TuROT_TR_CTX] =  
+{
+  { 107,107,107,107,107,107,107 }, 
+  { 107,107,107,107,107,107,107 }, 
+  { 139,139,139,139,139,139,139 }, 
+};
+#endif
 #endif
 static const UChar
 INIT_MERGE_FLAG_EXT[NUMBER_OF_SLICE_TYPES][NUM_MERGE_FLAG_EXT_CTX] =
