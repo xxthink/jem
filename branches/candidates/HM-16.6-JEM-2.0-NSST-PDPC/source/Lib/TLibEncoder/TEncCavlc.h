@@ -111,6 +111,9 @@ public:
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Void codeROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth );
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+  Void codeTuROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth );
+#endif
 #endif
 #if VCEG_AZ07_IMV
   Void codeiMVFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx );
@@ -156,11 +159,19 @@ public:
   Void codeDeltaQP       ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeChromaQpAdjustment( TComDataCU* pcCU, UInt uiAbsPartIdx );
 
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+  Int codeCoeffNxN      ( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID 
+#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+    , Int& bCbfCU
+#endif
+);
+#else
   Void codeCoeffNxN      ( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID 
 #if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
     , Int& bCbfCU
 #endif
     );
+#endif
   Void codeTransformSkipFlags ( TComTU &rTu, ComponentID component );
 
 #if VCEG_AZ08_KLT_COMMON

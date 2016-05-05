@@ -112,6 +112,9 @@ private:
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Char*          m_ROTIdx;          ///< array of ROTIdxs; When NSST is enabled, the same member varaible of ROT is re-used
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+   Char*          m_TuROTIdx;          ///< array of ROTIdxs; When NSST is enabled, the same member varaible of ROT is re-used
+#endif
 #endif
   Char*          m_pePartSize;         ///< array of partition sizes
   Char*          m_pePredMode;         ///< array of prediction modes
@@ -323,6 +326,12 @@ public:
   Char          getROTIdx               ( UInt idx)               { return m_ROTIdx[idx];     }
   Void          setROTIdx               ( UInt idx, Char ROTIdx)  { m_ROTIdx[idx] = ROTIdx;   }
   Void          setROTIdxSubParts       ( Char ROTIdx, UInt absPartIdx, UInt depth );
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+  Char*         getTuROTIdx               ()                        { return m_TuROTIdx;          } // When NSST is enabled, the same interface functions of ROT is re-used
+  Char          getTuROTIdx               ( UInt idx)               { return m_TuROTIdx[idx];     }
+  Void          setTuROTIdx               ( UInt idx, Char TuROTIdx)  { m_TuROTIdx[idx] = TuROTIdx;   }
+  Void          setTuROTIdxSubParts       ( Char TuROTIdx, UInt absPartIdx, UInt depth );
+#endif
 #endif
   Char*         getPredictionMode     ()                        { return m_pePredMode;        }
   PredMode      getPredictionMode     ( UInt uiIdx )            { return static_cast<PredMode>( m_pePredMode[uiIdx] ); }

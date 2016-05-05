@@ -1031,12 +1031,15 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 
 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
-   Char iROTidx = 0; Char iNumberOfPassesROT = 4;  
+   Char iROTidx = 0; Char iNumberOfPassesROT = 4; 
+
 #if COM16_C1044_NSST
    if (!rpcTempCU->getSlice()->getSPS()->getUseNSST()) iNumberOfPassesROT = 1;
 #else
    if (!rpcTempCU->getSlice()->getSPS()->getUseROT()) iNumberOfPassesROT = 1;
 #endif
+
+
    for (iROTidx = 0; iROTidx < iNumberOfPassesROT; iROTidx++)
    {
 #endif
@@ -1052,6 +1055,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 #if !JVET_B0051_NSST_PDPC_HARMONIZATION
        if (iROTidx) iNumberOfPassesPDPC = 1;
+#endif
+#if SLA_FAST
+  if (iROTidx>1 && rpcBestCU->getWidth(0)<16 ) iNumberOfPassesPDPC = 1;
 #endif
 #endif
        for (iPDPCidx = 0; iPDPCidx < iNumberOfPassesPDPC; iPDPCidx++)
@@ -1088,6 +1094,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
              {
                bEarlySkipIntra = true;
              }
+
            }
            if (!ucCuFlag && m_pcEncCfg->getUseFastIntraEMT())
            {
@@ -1095,7 +1102,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
            }
            rpcTempCU->initEstData(uiDepth, iQP, bIsLosslessMode);
          }
+                 
 #else
+
 #if VCEG_AZ05_INTRA_MPI
          rpcTempCU->setMPIIdxSubParts(iMPIidx, 0,  uiDepth ); 
 #endif
@@ -1112,19 +1121,23 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
            );
          rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
 #endif
+
 #if VCEG_AZ05_INTRA_MPI
-         if (rpcBestCU->isIntra(0) && !bNonZeroCoeff) break;
+         if (rpcBestCU->isIntra(0) && iPDPCidx) break;
        }
 #endif
+
 #if COM16_C1046_PDPC_INTRA
        if (rpcBestCU->isIntra(0) && !bNonZeroCoeff) break;
      }
 #endif
+
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
      if (rpcBestCU->isIntra(0) && !bNonZeroCoeff) break;
-     //if (bNonZeroCoeff>rpcTempCU->getWidth(0)*rpcTempCU->getHeight(0) && rpcTempCU->getSlice()->getSliceType() == I_SLICE) break;
+  //   if (bNonZeroCoeff>rpcTempCU->getWidth(0)*rpcTempCU->getHeight(0) && rpcBestCU->isIntra(0)) break;
    }
 #endif
+
           if( uiDepth == sps.getLog2DiffMaxMinCodingBlockSize() 
 #if COM16_C806_EMT
             && !bEarlySkipIntra 
@@ -1134,6 +1147,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #if COM16_C806_EMT && (VCEG_AZ05_ROT_TR ||VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST|| COM16_C1046_PDPC_INTRA)
             UChar ucEmtUsage = ((rpcTempCU->getWidth(0) > EMT_INTRA_MAX_CU) || (rpcTempCU->getSlice()->getSPS()->getUseIntraEMT() == 0)) ? 1 : 2;
 #endif
+
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
             for (iROTidx = 0; iROTidx < iNumberOfPassesROT; iROTidx++)
             {
@@ -1156,6 +1170,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
                 if (!rpcTempCU->getSlice()->getSPS()->getUsePDPC()) iNumberOfPassesPDPC = 1;
 #if !JVET_B0051_NSST_PDPC_HARMONIZATION
                 if (iROTidx) iNumberOfPassesPDPC = 1;
+#endif
+#if SLA_FAST
+ if (iROTidx>1 && rpcBestCU->getWidth(0)<16 ) iNumberOfPassesPDPC = 1;
 #endif
 #endif
                 for (iPDPCidx = 0; iPDPCidx<iNumberOfPassesPDPC; iPDPCidx++)
@@ -1199,7 +1216,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
                       intraCost = std::min(intraCost, tmpIntraCost);
                       rpcTempCU->initEstData(uiDepth, iQP, bIsLosslessMode);
                     }
+                                       
 #else
+
 #if VCEG_AZ05_INTRA_MPI
                     rpcTempCU->setMPIIdxSubParts(iMPIidx, 0,  uiDepth ); 
 #endif
@@ -1228,11 +1247,12 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
               }
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST 
-              if (rpcBestCU->isIntra(0) && !bNonZeroCoeff) break;
+             if (rpcBestCU->isIntra(0) && !bNonZeroCoeff) break;
             }
 #endif
           }
         }
+
 
         // test PCM
         if(sps.getUsePCM()

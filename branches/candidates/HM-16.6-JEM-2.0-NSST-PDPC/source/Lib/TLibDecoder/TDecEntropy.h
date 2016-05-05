@@ -109,6 +109,9 @@ public:
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   virtual Void parseROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+  virtual Void parseTuROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
+#endif
 #endif
   virtual Void parseMergeIndex    ( TComDataCU* pcCU, UInt& ruiMergeIndex ) = 0;
 #if VCEG_AZ07_FRUC_MERGE
@@ -135,12 +138,19 @@ public:
 
   virtual Void parseIPCMInfo     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth) = 0;
 
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+  virtual Int parseCoeffNxN( class TComTU &rTu, ComponentID compID  
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+    , Bool& bCbfCU
+#endif
+    ) = 0;
+#else
   virtual Void parseCoeffNxN( class TComTU &rTu, ComponentID compID  
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& bCbfCU
 #endif
     ) = 0;
-
+#endif
   virtual Void parseTransformSkipFlags ( class TComTU &rTu, ComponentID component ) = 0;
 
 #if VCEG_AZ08_KLT_COMMON
@@ -244,6 +254,9 @@ public:
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Void decodeROTIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+ Void decodeTuROTIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
 #if COM16_C806_OBMC
   Void decodeOBMCFlag          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
@@ -274,12 +287,27 @@ public:
 
 private:
 
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+  Int xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjCoded, TComTU &rTu, const Int quadtreeTULog2MinSizeInCU 
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+    , Bool& bCbfCU
+#endif
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+, Int& TuCmap
+, UInt&  uiAbsTu
+#endif
+    );
+#else
   Void xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjCoded, TComTU &rTu, const Int quadtreeTULog2MinSizeInCU 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& bCbfCU
 #endif
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+, Int& TuCmap
+, UInt&  uiAbsTu
+#endif
     );
-
+#endif
 public:
 
   Void decodeCoeff             ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool& bCodeDQP, Bool& isChromaQpAdjCoded );

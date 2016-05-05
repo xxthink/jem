@@ -163,7 +163,9 @@ protected:
   UChar*          m_puhQTTempEmtTuIdx;
   UChar*          m_puhQTTempEmtCuFlag;
 #endif
-
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+  UChar*          m_puhQTTempTuNsstIdx;
+#endif
 public:
   TEncSearch();
   virtual ~TEncSearch();
@@ -298,6 +300,26 @@ protected:
   UInt  xGetIntraBitsQTChroma    ( TComTU &rTu,
                                    ComponentID compID,
                                    Bool          bRealCoeff );
+ #if JVET_B0051_NSST_PDPC_HARMONIZATION
+  Void  xReconIntraTUBlock       (        TComYuv*      pcOrgYuv,
+                                          TComYuv*      pcPredYuv,
+                                          TComYuv*      pcResiYuv,
+#if COM16_C806_LARGE_CTU
+                                          Pel*          resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES],
+#else
+                                          Pel           resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE],
+#endif
+                                    const Bool          checkCrossCPrediction,
+                                          Distortion&   ruiDist,
+                                    const ComponentID   compID,
+                                          TComTU        &rTu
+                                    DEBUG_STRING_FN_DECLARE(sTest)
+                                         ,Int           default0Save1Load2 = 0
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+                                         ,Int           default0Save1Load2nsst = 0
+#endif
+                                   );
+#endif
 
   Void  xIntraCodingTUBlock       (       TComYuv*      pcOrgYuv,
                                           TComYuv*      pcPredYuv,
@@ -313,6 +335,9 @@ protected:
                                           TComTU        &rTu
                                     DEBUG_STRING_FN_DECLARE(sTest)
                                          ,Int           default0Save1Load2 = 0
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+                                         , Int          default0Save1Load2nsst = 0
+#endif                                         
 #if COM16_C806_EMT
                                          ,UInt*         puiSigNum = NULL
 #endif

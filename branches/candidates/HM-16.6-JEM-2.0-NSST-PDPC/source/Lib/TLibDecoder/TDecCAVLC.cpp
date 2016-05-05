@@ -1883,6 +1883,16 @@ Void TDecCavlc::parseChromaQpAdjustment( TComDataCU* /*pcCU*/, UInt /*uiAbsPartI
   assert(0);
 }
 
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+Int TDecCavlc::parseCoeffNxN( TComTU &/*rTu*/, ComponentID /*compID*/ 
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+    , Bool& /*g_bCbfCU*/
+#endif
+    )
+{
+  return (0);
+}
+#else
 Void TDecCavlc::parseCoeffNxN( TComTU &/*rTu*/, ComponentID /*compID*/ 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& /*g_bCbfCU*/
@@ -1891,6 +1901,7 @@ Void TDecCavlc::parseCoeffNxN( TComTU &/*rTu*/, ComponentID /*compID*/
 {
   assert(0);
 }
+#endif
 
 Void TDecCavlc::parseTransformSubdivFlag( UInt& /*ruiSubdivFlag*/, UInt /*uiLog2TransformBlockSize*/ )
 {
@@ -1942,6 +1953,12 @@ Void TDecCavlc::parseROTIdx ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt 
 {
   assert(0);
 }
+#if JVET_B0051_NSST_PDPC_HARMONIZATION
+Void TDecCavlc::parseTuROTIdx ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/ )
+{
+  assert(0);
+}
+#endif
 #endif
 Void TDecCavlc::parseMergeIndex ( TComDataCU* /*pcCU*/, UInt& /*ruiMergeIndex*/ )
 {
