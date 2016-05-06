@@ -1903,7 +1903,7 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
   }
 
 #if JVET_B0059_TU_NSST
-  UChar ucNsstIdx = pcCU->getROTIdx( uiAbsPartIdx );
+  UChar ucNsstIdx = bIsLuma ? pcCU->getROTIdx( uiAbsPartIdx ) : 0;
 #endif
 
   //===== transform and quantization =====
