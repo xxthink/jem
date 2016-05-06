@@ -246,6 +246,22 @@ extern const UInt g_scalingListSizeX[SCALING_LIST_SIZE_NUM];
 #if COM16_C1046_PDPC_INTRA
 extern const Int g_pdpc_pred_param[5][2][35][7];
 #endif
+
+#if SHARP_DQP_BIT_STAT
+struct BITStat
+{
+    Int frame_start_bit;
+    Int frame_end_bit;
+    Int64 total_bit;
+
+    Int dQP_bit;
+    Int dQP_bit_accu;
+    Int64 prev_dQP_bit; // save the CABAC Bit count
+};
+
+extern struct BITStat frameStat, totalStat;
+#endif
+
 //! \}
 
 #endif  //__TCOMROM__

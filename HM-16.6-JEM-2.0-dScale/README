@@ -9,6 +9,9 @@ In the code, changes are under macros starting with   SHARP_
 This is the luma adaptive QP technology used in MPEG-HDR anchor3.2. QP is explicitly signalled by delta QP
 Refer JCTVC-W0054 for details.
 
+For deltaQP overhead esimate, enable macro #SHARP_DQP_BIT_STAT  and run TAppDecoderAnalyserStatic 
+this make decoder to output total bit usage and deltaQP bits per frame, and average % used by deltaQP bits.
+
 
 (2) Code for luma adaptive coefficient scaling are under
 #define SHARP_LUMA_DELTA_QP                1            ///< enable luma adaptive QP
