@@ -43,6 +43,10 @@
 #include "libmd5/MD5.h"
 #include "TLibCommon/SEI.h"
 
+#if SHARP_DQP_BIT_STAT && RExt__DECODER_DEBUG_BIT_STATISTICS
+#include "TLibCommon/TComCodingStatistics.h"
+#endif
+
 #include <time.h>
 
 //! \ingroup TLibDecoder
@@ -108,7 +112,30 @@ Void TDecGop::init( TDecEntropy*            pcEntropyDecoder,
 #endif
 }
 
+#if SHARP_DQP_BIT_STAT 
+Void TDecGop::updateFrameBitStat(TComInputBitstream* bs, Bool frame_flag) {
+    // get frame total bit
+    frameStat.frame_end_bit = bs->getNumBitsLeft();
+    frameStat.total_bit += frameStat.frame_start_bit-frameStat.frame_end_bit;    
+        
+    if (frame_flag)
+    {
+      totalStat.total_bit += frameStat.total_bit;
 
+      // get dqp bits. run TAppDecoderAnalyserStatic to turn on RExt__DECODER_DEBUG_BIT_STATISTICS
+#if RExt__DECODER_DEBUG_BIT_STATISTICS
+      const Double es=Double(TCOMCODINGSTATISTICS_ENTROPYSCALE);
+      Int64 curr_dQP_bit = TComCodingStatistics::getStatBits(STATS__CABAC_BITS__DELTA_QP_EP); // CABAC bits
+      frameStat.dQP_bit = (Int)((Double)(curr_dQP_bit - frameStat.prev_dQP_bit + es/2)/es);
+      frameStat.prev_dQP_bit = curr_dQP_bit;
+
+      totalStat.dQP_bit_accu  += frameStat.dQP_bit ; //  accumulated  dQP_bit
+      totalStat.dQP_bit  = (Int)((Double)(curr_dQP_bit+es/2)/es);  // this is the count from TComCodingStatistics, which may be more accurate than the accumulated
+#endif
+    }
+
+}
+#endif
 // ====================================================================================================================
 // Private member functions
 // ====================================================================================================================
@@ -272,6 +299,14 @@ Void TDecGop::filterPicture(TComPic* pcPic)
                                                   pcSlice->getTLayer(),
                                                   c,
                                                   pcSlice->getSliceQp() );
+
+#if SHARP_DQP_BIT_STAT 
+#if RExt__DECODER_DEBUG_BIT_STATISTICS
+    printf("%7d bits, dQP bits %5d bits", (Int)(frameStat.total_bit), frameStat.dQP_bit);
+#else
+    printf("%7d bits", (Int)(frameStat.total_bit));
+#endif
+#endif
 
   m_dDecTime += (Double)(clock()-iBeforeTime) / CLOCKS_PER_SEC;
   printf ("[DT %6.3f] ", m_dDecTime );

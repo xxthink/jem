@@ -249,6 +249,9 @@
 
 // some debug defines
 #define SHARP_DEBUG_NO_SPLIT                0             ///< force no CU, PU, TU split
+
+#define SHARP_DQP_BIT_STAT                  1            ///< for decoder output frame bits and deltaQP bits count
+
 #endif
 
 // ====================================================================================================================
