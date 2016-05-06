@@ -877,6 +877,29 @@ Void TEncSbac::codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
     iNumberOfPassesROT = pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) <= DC_IDX ? 3 : 4;
   }
 
+#if NSST_TU_BINARIZATION
+  UInt maxVal = iNumberOfPassesROT - 1;
+  Int val = pcCU->getROTIdx( uiAbsPartIdx );
+
+  static UInt ctxLUT[2][3] = { { 0, 1, 2 }, { 0, 2, 3 } };
+  UInt *ctx = ctxLUT[Int(maxVal == 3)];
+  
+  // TU binarization
+  if( maxVal > 0 )
+  {
+    for( Int i = 0; i < maxVal; i++ )
+    {
+      m_pcBinIf->encodeBin( val ? 1 : 0, m_cROTidxSCModel.get( 0, 0, ctx[i] ) );
+
+      if( !val )
+      {
+        break;
+      }
+
+      val--;
+    }
+  }
+#else
   //static int id = 0;
   //id++;
   //if (id == 4)
@@ -897,6 +920,8 @@ Void TEncSbac::codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
   }
   else
 #endif
+#endif
+#if !NSST_TU_BINARIZATION
   if (iNumberOfPassesROT>1) // for only 1 pass no signaling is needed 
   {
       Int idxROT = pcCU->getROTIdx( uiAbsPartIdx );
@@ -905,6 +930,7 @@ Void TEncSbac::codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
       m_pcBinIf->encodeBin( uiSymbol0, m_cROTidxSCModel.get(0,0, uiDepth ) );
       m_pcBinIf->encodeBin( uiSymbol1, m_cROTidxSCModel.get(0,0, uiDepth ) );
   }
+#endif
 }
 #endif
 /** code merge flag

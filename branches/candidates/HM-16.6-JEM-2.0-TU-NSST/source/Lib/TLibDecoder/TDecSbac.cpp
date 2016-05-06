@@ -801,6 +801,32 @@ Void TDecSbac::parseROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
     iNumberOfPassesROT = pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) <= DC_IDX ? 3 : 4;
   }
 
+#if NSST_TU_BINARIZATION
+  UInt maxVal = iNumberOfPassesROT - 1;
+  UInt uiSymbol = 0;
+  Int val = 0;
+
+  static UInt ctxLUT[2][3] = { { 0, 1, 2 }, { 0, 2, 3 } };
+  UInt *ctx = ctxLUT[Int(maxVal == 3)];
+
+  // TU binarization
+  if( maxVal > 0 )
+  {
+    for( Int i = 0; i < maxVal; i++ )
+    {
+      m_pcTDecBinIf->decodeBin( uiSymbol, m_cROTidxSCModel.get( 0, 0, ctx[i] ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG));
+
+      if( !uiSymbol )
+      {
+        break;
+      }
+
+      val += uiSymbol;
+    }
+  }
+
+  pcCU->setROTIdxSubParts( val, uiAbsPartIdx, uiDepth ); 
+#else
   if( iNumberOfPassesROT==3 )
   {
     UInt uiSymbol = 0;
@@ -814,6 +840,9 @@ Void TDecSbac::parseROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
   }
   else
 #endif
+#endif
+
+#if !NSST_TU_BINARIZATION
   if (iNumberOfPassesROT>1) // for only 1 pass no signaling is needed 
   {
       UInt uiSymbol0 = 0;
@@ -826,6 +855,7 @@ Void TDecSbac::parseROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
   {
        pcCU->setROTIdxSubParts( 0, uiAbsPartIdx,  uiDepth ); 
   }
+#endif
 }
 #endif
 Void TDecSbac::parseMergeIndex ( TComDataCU* pcCU, UInt& ruiMergeIndex )

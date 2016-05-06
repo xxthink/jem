@@ -189,6 +189,7 @@
 #define JVET_B0059_TU_NSST_TL_8x8                         1 ///< 1: Apply NSST for top-left 8x8 coefficients, 0: Apply NSST for all TU coefficients
 #define JVET_B0059_TU_NSST_ADAP_SIG                       1 ///< 1: Skip NSST signaling for TU with very few non-zero coefficients, 0: Always signal NSST for TU with non-zero CBF
 #endif
+#define NSST_TU_BINARIZATION                              0 ///< 1: Use truncated unary NSST binarization from B0051
 #endif
 
 #define COM16_C1046_PDPC_INTRA                            1  ///< Position dependent intra prediction combination
