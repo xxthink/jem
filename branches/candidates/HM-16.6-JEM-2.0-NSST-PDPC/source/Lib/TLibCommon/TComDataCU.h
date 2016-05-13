@@ -112,7 +112,7 @@ private:
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Char*          m_ROTIdx;          ///< array of ROTIdxs; When NSST is enabled, the same member varaible of ROT is re-used
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
    Char*          m_TuROTIdx;          ///< array of ROTIdxs; When NSST is enabled, the same member varaible of ROT is re-used
 #endif
 #endif
@@ -326,7 +326,7 @@ public:
   Char          getROTIdx               ( UInt idx)               { return m_ROTIdx[idx];     }
   Void          setROTIdx               ( UInt idx, Char ROTIdx)  { m_ROTIdx[idx] = ROTIdx;   }
   Void          setROTIdxSubParts       ( Char ROTIdx, UInt absPartIdx, UInt depth );
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
   Char*         getTuROTIdx               ()                        { return m_TuROTIdx;          } // When NSST is enabled, the same interface functions of ROT is re-used
   Char          getTuROTIdx               ( UInt idx)               { return m_TuROTIdx[idx];     }
   Void          setTuROTIdx               ( UInt idx, Char TuROTIdx)  { m_TuROTIdx[idx] = TuROTIdx;   }

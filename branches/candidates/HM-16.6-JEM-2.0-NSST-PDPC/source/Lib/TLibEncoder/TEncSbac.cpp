@@ -72,7 +72,7 @@ TEncSbac::TEncSbac()
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 , m_cROTidxSCModel           ( 1,             1,               NUM_ROT_TR_CTX             , m_contextModels + m_numContextModels, m_numContextModels)
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 , m_cTuROTidxSCModel           ( 1,             1,               NUM_TuROT_TR_CTX             , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
 #endif
@@ -171,7 +171,7 @@ Void TEncSbac::resetEntropy           (const TComSlice *pSlice)
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   m_cROTidxSCModel.initBuffer        ( eSliceType, iQp, (UChar*)INIT_ROT_TR_IDX );
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
   m_cTuROTidxSCModel.initBuffer        ( eSliceType, iQp, (UChar*)INIT_TuROT_TR_IDX );
 #endif
 #endif
@@ -277,7 +277,7 @@ SliceType TEncSbac::determineCabacInitIdx(const TComSlice *pSlice)
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
       curCost += m_cROTidxSCModel.calcCost        ( curSliceType, qp, (UChar*)INIT_ROT_TR_IDX );
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
       curCost += m_cTuROTidxSCModel.calcCost        ( curSliceType, qp, (UChar*)INIT_TuROT_TR_IDX );
 #endif
 #endif
@@ -870,7 +870,7 @@ Void TEncSbac::codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
     && pcCU->getMPIIdx(uiAbsPartIdx) ==0
 #endif  
 #if COM16_C1046_PDPC_INTRA
-#if !JVET_B0051_NSST_PDPC_HARMONIZATION
+#if !JVET_B0051_REMOVE_PDPC_RESTRICTION
     && pcCU->getPDPCIdx(uiAbsPartIdx) == 0
 #endif
 #endif  
@@ -878,7 +878,7 @@ Void TEncSbac::codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
     )  iNumberOfPassesROT = 4;
 
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if JVET_B0051_NSST_UNIFIED_BINARIZATION
 #if SLA_FAST
 if (iNumberOfPassesROT==4 && pcCU->getPDPCIdx(uiAbsPartIdx) ==1 && pcCU->getWidth(uiAbsPartIdx) < 16 ) iNumberOfPassesROT =2;
 #endif
@@ -890,23 +890,42 @@ if (iNumberOfPassesROT==4 && pcCU->getPDPCIdx(uiAbsPartIdx) ==1 && pcCU->getWidt
        assert(idxNSST<2);
        m_pcBinIf->encodeBin(  idxNSST ? 1 : 0 , m_cROTidxSCModel.get(0,0, 6 ) );
     }   
-  else if (iNumberOfPassesROT==4)
+  else if (iNumberOfPassesROT==4 )
     {
          Int idxROT = pcCU->getROTIdx( uiAbsPartIdx );
            assert(idxROT<4);
-       
+#if JVET_B0051_NSST_UNIFIED_BINARIZATION2
+        if(  pcCU->getPartitionSize(uiAbsPartIdx)==SIZE_2Nx2N && pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx )<= DC_IDX ) assert(idxROT<3);
+ #endif 
          UInt offset=0;
          if (pcCU->getPartitionSize(uiAbsPartIdx)==SIZE_2Nx2N &&  pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) <= DC_IDX) offset=1;
 
             m_pcBinIf->encodeBin(  idxROT ? 1 : 0 , m_cROTidxSCModel.get(0,0, 0+offset) );
             if( idxROT )
             {
-              m_pcBinIf->encodeBin( (idxROT-1) ? 1 : 0 , m_cROTidxSCModel.get(0,0, 2+offset) );
 
-              if(idxROT >1 )
+            #if JVET_B0051_NSST_UNIFIED_BINARIZATION2
+               if  ( pcCU->getPartitionSize(uiAbsPartIdx)==SIZE_2Nx2N && pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx )<= DC_IDX ) 
                 {
-                    m_pcBinIf->encodeBin( (idxROT-2) ? 1 : 0, m_cROTidxSCModel.get(0,0, 4+offset) );
+                   if(idxROT ==1) m_pcBinIf->encodeBin( 0 , m_cROTidxSCModel.get(0,0, 3) );
+                   else m_pcBinIf->encodeBin( 1 , m_cROTidxSCModel.get(0,0, 3) );
                 }
+               else 
+                {
+                     m_pcBinIf->encodeBin( (idxROT-1) ? 1 : 0 , m_cROTidxSCModel.get(0,0, 2) );
+
+                    if(idxROT >1 )
+                    {
+                        m_pcBinIf->encodeBin( (idxROT-2) ? 1 : 0, m_cROTidxSCModel.get(0,0, 4+offset) );
+                    }
+                }
+               #else
+                   m_pcBinIf->encodeBin( (idxROT-1) ? 1 : 0 , m_cROTidxSCModel.get(0,0, 2+offset) );
+                   if(idxROT >1 )
+                    {
+                        m_pcBinIf->encodeBin( (idxROT-2) ? 1 : 0, m_cROTidxSCModel.get(0,0, 4+offset) );
+                    }
+               #endif
             }
     } 
 return;
@@ -915,7 +934,7 @@ return;
 #if COM16_C1044_NSST
   if( iNumberOfPassesROT==4 && pcCU->getPartitionSize(uiAbsPartIdx)==SIZE_2Nx2N )
   {
-    iNumberOfPassesROT = pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) <= DC_IDX ? 3 : 4;
+   iNumberOfPassesROT = pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) <= DC_IDX ? 3 : 4;
   }
 
   //static int id = 0;
@@ -950,7 +969,7 @@ return;
 }
 #endif
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 Void TEncSbac::codeTuROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
 {
 #if COM16_C1044_NSST
@@ -969,7 +988,7 @@ Void TEncSbac::codeTuROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  
  if(iNumberOfPassesROT==2)
   {
     Int idxTuROT = pcCU->getTuROTIdx( uiAbsPartIdx );
-     assert(idxTuROT<MAX_TU_NSST);
+     assert(idxTuROT<2);
     m_pcBinIf->encodeBin( idxTuROT ? 1 : 0, m_cTuROTidxSCModel.get(0,0, 0) );
   }
 }
@@ -1840,7 +1859,7 @@ Void TEncSbac::codeLastSignificantXY( UInt uiPosX, UInt uiPosY, Int width, Int h
   }
 }
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 Int TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID 
 #if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
   , Int& bCbfCU
@@ -2398,7 +2417,7 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
   }
 #endif
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
   if ( (!pcCU->getTransformSkip( uiAbsPartIdx, compID) && compID == COMPONENT_Y ) && pcCU->isIntra( uiAbsPartIdx )  )
   {
       if( uiTuNumSig>SLA_NSST_ADAP_SIG_NZ_NUM && pcCU->getPartitionSize(uiAbsPartIdx)==SIZE_NxN ) return 1;
@@ -2410,7 +2429,7 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
   }
   else return 0;
 #endif
-#if !JVET_B0051_NSST_PDPC_HARMONIZATION
+#if !CU_TU_NSST
   return;
 #endif
 }

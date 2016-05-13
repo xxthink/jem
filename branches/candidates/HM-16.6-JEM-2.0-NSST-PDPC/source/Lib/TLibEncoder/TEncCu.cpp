@@ -1033,6 +1033,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
    Char iROTidx = 0; Char iNumberOfPassesROT = 4; 
 
+
 #if COM16_C1044_NSST
    if (!rpcTempCU->getSlice()->getSPS()->getUseNSST()) iNumberOfPassesROT = 1;
 #else
@@ -1053,7 +1054,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 
 #if COM16_C1046_PDPC_INTRA
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
-#if !JVET_B0051_NSST_PDPC_HARMONIZATION
+#if !JVET_B0051_REMOVE_PDPC_RESTRICTION
        if (iROTidx) iNumberOfPassesPDPC = 1;
 #endif
 #if SLA_FAST
@@ -1168,7 +1169,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
                 iPDPCidx = 0;   iNumberOfPassesPDPC = 2;
                 if (rpcTempCU->getSlice()->getSliceType() != I_SLICE)  iNumberOfPassesPDPC = 2;
                 if (!rpcTempCU->getSlice()->getSPS()->getUsePDPC()) iNumberOfPassesPDPC = 1;
-#if !JVET_B0051_NSST_PDPC_HARMONIZATION
+#if !JVET_B0051_REMOVE_PDPC_RESTRICTION
                 if (iROTidx) iNumberOfPassesPDPC = 1;
 #endif
 #if SLA_FAST

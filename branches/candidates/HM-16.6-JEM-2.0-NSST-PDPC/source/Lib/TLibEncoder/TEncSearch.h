@@ -163,7 +163,7 @@ protected:
   UChar*          m_puhQTTempEmtTuIdx;
   UChar*          m_puhQTTempEmtCuFlag;
 #endif
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
   UChar*          m_puhQTTempTuNsstIdx;
 #endif
 public:
@@ -300,7 +300,7 @@ protected:
   UInt  xGetIntraBitsQTChroma    ( TComTU &rTu,
                                    ComponentID compID,
                                    Bool          bRealCoeff );
- #if JVET_B0051_NSST_PDPC_HARMONIZATION
+ #if CU_TU_NSST
   Void  xReconIntraTUBlock       (        TComYuv*      pcOrgYuv,
                                           TComYuv*      pcPredYuv,
                                           TComYuv*      pcResiYuv,
@@ -315,7 +315,7 @@ protected:
                                           TComTU        &rTu
                                     DEBUG_STRING_FN_DECLARE(sTest)
                                          ,Int           default0Save1Load2 = 0
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
                                          ,Int           default0Save1Load2nsst = 0
 #endif
                                    );
@@ -335,7 +335,7 @@ protected:
                                           TComTU        &rTu
                                     DEBUG_STRING_FN_DECLARE(sTest)
                                          ,Int           default0Save1Load2 = 0
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
                                          , Int          default0Save1Load2nsst = 0
 #endif                                         
 #if COM16_C806_EMT

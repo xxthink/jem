@@ -145,7 +145,7 @@ public:
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Void parseROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
   Void parseTuROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
 #endif
@@ -177,7 +177,7 @@ public:
 
   Void parseLastSignificantXY( UInt& uiPosLastX, UInt& uiPosLastY, Int width, Int height, ComponentID component, UInt uiScanIdx );
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
   Int parseCoeffNxN      ( class TComTU &rTu, ComponentID compID  
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& bCbfCU
@@ -238,7 +238,7 @@ private:
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   ContextModel3DBuffer m_cROTidxSCModel;
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
   ContextModel3DBuffer m_cTuROTidxSCModel;
 #endif
 #endif

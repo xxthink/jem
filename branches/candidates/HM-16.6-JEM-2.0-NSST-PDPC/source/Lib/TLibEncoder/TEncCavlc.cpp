@@ -1319,7 +1319,7 @@ Void TEncCavlc::codeROTIdx    ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth
 {
   assert(0);
 }
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 Void TEncCavlc::codeTuROTIdx    ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth )
 {
   assert(0);
@@ -1474,7 +1474,7 @@ Void TEncCavlc::codeChromaQpAdjustment( TComDataCU* /*pcCU*/, UInt /*uiAbsPartId
   assert(0);
 }
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 Int TEncCavlc::codeCoeffNxN    ( TComTU& /*rTu*/, TCoeff* /*pcCoef*/, const ComponentID /*compID*/ 
 #if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
   , Int& bCbfCU

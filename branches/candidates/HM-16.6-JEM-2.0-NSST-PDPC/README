@@ -10,9 +10,13 @@ The followings are detailed description of implementation
 
 The followings are macros to include the above mentioned changes based on JEM2.0
 
-#define JVET_B0051_NSST_PDPC_HARMONIZATION 1     // NSST is always allowed regardless of PDPC
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
-#define MAX_TU_NSST 2                            // TU level flag is sent to indicate whether NSST index signalled in CU level is to be applied for a TU. 
-#define JVET_B0059_TU_NSST_USE_HYGT 1            // Use new secondary transform and permutation in EE
-#define SLA_FAST 1                               // NSST idx restriction (two NSST index instead of four) based on PDPC index ==1 && block size <16
+#define CU_TU_NSST                1 // NSST index is sent in CU level and TU level flag indicates if NSST is applied or not. 
+#if CU_TU_NSST
+#define JVET_B0059_TU_NSST_USE_HYGT                       1 // Use new secondary transform matrix and permutation in EE2.7
+#define SLA_FAST                                          0 // 1: NSST idx restriction (two NSST index instead of four) based on PDPC index ==1 && block size <16
+#define JVET_B0051_REMOVE_PDPC_RESTRICTION     1       // NSST is enabled regardless of the value of PDPC index 
+#define JVET_B0051_NSST_UNIFIED_BINARIZATION   1   // unified binarization for NSST index and context modeling based on partition type and intra prediction mode
+#if JVET_B0051_NSST_UNIFIED_BINARIZATION
+#define JVET_B0051_NSST_UNIFIED_BINARIZATION2  1    // 0: NSST index range is always the same (i.e. 0~3) 1:NSST index range depends on intra prediction and partitionsize as JEM20, unified binarization for NSST index and context modeling based on partition type and intra prediction mode
+#endif
 #endif

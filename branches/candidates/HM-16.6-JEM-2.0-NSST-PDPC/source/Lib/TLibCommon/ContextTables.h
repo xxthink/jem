@@ -70,7 +70,7 @@
 #else
  #define NUM_ROT_TR_CTX               7       /// < number of context models for ROT Idx coding
  #endif
- #if JVET_B0051_NSST_PDPC_HARMONIZATION
+ #if CU_TU_NSST
  #define NUM_TuROT_TR_CTX               7       /// < number of context models for ROT Idx coding
  #endif
 #endif
@@ -335,7 +335,7 @@ INIT_ROT_TR_IDX[3][NUM_ROT_TR_CTX] =
   { 139,139,139,139,139,139,139 }, 
 };
 #endif
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 static const UChar 
 INIT_TuROT_TR_IDX[3][NUM_TuROT_TR_CTX] =  
 {

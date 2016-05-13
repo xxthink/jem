@@ -267,7 +267,7 @@ Void InvNsst4x4( Int* src, UInt uiMode, UChar index );
 #endif
                            TCoeff         & uiAbsSum,
                      const QpParam        & cQP 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
                          , Int              default0Save1Load2nsst = 0
                          , UInt          *  puiDist = NULL
 #endif                     
@@ -448,7 +448,7 @@ protected:
   Double  m_sliceSumC[LEVEL_RANGE+1] ;
 #endif
   TCoeff* m_plTempCoeff;
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
   TCoeff  m_plSharedTempCoeff[4096];
 #endif
 //  QpParam  m_cQP; - removed - placed on the stack.

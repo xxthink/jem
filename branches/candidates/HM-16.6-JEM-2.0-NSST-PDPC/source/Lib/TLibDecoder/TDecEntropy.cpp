@@ -116,7 +116,7 @@ Void TDecEntropy::decodeROTIdx( TComDataCU* pcSubCU, UInt uiAbsPartIdx, UInt uiD
 }
 #endif
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 Void TDecEntropy::decodeTuROTIdx( TComDataCU* pcSubCU, UInt uiAbsPartIdx, UInt uiDepth )
 { 
   m_pcEntropyDecoderIf->parseTuROTIdx( pcSubCU, uiAbsPartIdx, uiDepth );
@@ -723,12 +723,12 @@ Void TDecEntropy::decodeMVPIdxPU( TComDataCU* pcSubCU, UInt uiPartAddr, UInt uiD
   pcSubCU->getCUMvField( eRefList )->setAllMv(cMv, ePartSize, uiPartAddr, 0, uiPartIdx);
 }
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 Int TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjCoded, TComTU &rTu, const Int quadtreeTULog2MinSizeInCU 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& bCbfCU
 #endif
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 , Int& TuCmap
 , UInt&  uiAbsTu
 #endif
@@ -738,7 +738,7 @@ Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjC
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& bCbfCU
 #endif
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 , Int& TuCmap
 , UInt&  uiAbsTu
 #endif
@@ -764,7 +764,7 @@ Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjC
   }
 #endif
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
    Int TU_NSST=0;
    Int TU_R;
 #endif
@@ -836,12 +836,12 @@ Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjC
 
     do
     {
-   #if JVET_B0051_NSST_PDPC_HARMONIZATION
+   #if CU_TU_NSST
      TU_R= xDecodeTransform( bCodeDQP, isChromaQpAdjCoded, tuRecurseChild, quadtreeTULog2MinSizeInCU 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     ,  bCbfCU
 #endif
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 ,  TuCmap
 ,  uiAbsTu
 #endif
@@ -852,7 +852,7 @@ Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjC
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     ,  bCbfCU
 #endif
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 ,  TuCmap
 ,  uiAbsTu
 #endif
@@ -988,7 +988,7 @@ Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjC
                   printf("Call NxN for chan %d width=%d height=%d cbf=%d\n", compID, subTUIterator.getRect(compID).width, subTUIterator.getRect(compID).height, 1);
                 }
 #endif
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
                 TU_NSST=m_pcEntropyDecoderIf->parseCoeffNxN( subTUIterator, compID 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     ,  bCbfCU
@@ -1018,7 +1018,7 @@ if(TU_NSST)   TuCmap += 1<<(4+uiAbsTu-uiAbsPartIdx);
 
             if(cbf[compID] != 0)
             {
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 TU_NSST =  m_pcEntropyDecoderIf->parseCoeffNxN( rTu, compID 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     ,  bCbfCU
@@ -1041,7 +1041,7 @@ if(TU_NSST)   TuCmap += 1<<(4+uiAbsTu-uiAbsPartIdx);
     }
     // transform_unit end
   }
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 return TuCmap;
 #endif
 
@@ -1099,12 +1099,12 @@ Void TDecEntropy::decodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
 
   Int quadtreeTULog2MinSizeInCU = pcCU->getQuadtreeTULog2MinSizeInCU(uiAbsPartIdx);
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Bool bCbfCU = 0;
 #endif
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
  Int TuCmap = 0;
 UInt uiAbsTu =0;
 Int TuFlag=0;
@@ -1116,7 +1116,7 @@ Int TuFlag=0;
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     ,  bCbfCU
 #endif
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 , TuCmap
 , uiAbsTu
 #endif
@@ -1179,7 +1179,7 @@ else if (pcCU->getPartitionSize(uiAbsPartIdx) == SIZE_NxN && pcCU->getROTIdx(uiA
 }
 
 
-#else //  JVET_B0051_NSST_PDPC_HARMONIZATION
+#else //  CU_TU_NSST
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Bool bCbfCU = 0;
 #endif  
@@ -1192,7 +1192,7 @@ else if (pcCU->getPartitionSize(uiAbsPartIdx) == SIZE_NxN && pcCU->getROTIdx(uiA
   if (bCbfCU ) 
     decodeROTIdx( pcCU, uiAbsPartIdx, uiDepth );
 #endif
-#endif //JVET_B0051_NSST_PDPC_HARMONIZATION
+#endif //CU_TU_NSST
 }
 
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP

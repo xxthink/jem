@@ -111,7 +111,7 @@ public:
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Void codeROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth );
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
   Void codeTuROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth );
 #endif
 #endif
@@ -159,7 +159,7 @@ public:
   Void codeDeltaQP       ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeChromaQpAdjustment( TComDataCU* pcCU, UInt uiAbsPartIdx );
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
   Int codeCoeffNxN      ( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID 
 #if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
     , Int& bCbfCU
