@@ -67,7 +67,7 @@ TComDataCU::TComDataCU()
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   m_ROTIdx           = NULL;
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
   m_TuROTIdx           = NULL;
 #endif
 #endif
@@ -192,7 +192,7 @@ Void TComDataCU::create( ChromaFormat chromaFormatIDC, UInt uiNumPartition, UInt
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     m_ROTIdx           = new Char[ uiNumPartition ];
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
    m_TuROTIdx           = new Char[ uiNumPartition ];
 #endif
 #endif
@@ -372,7 +372,7 @@ Void TComDataCU::destroy()
       delete[] m_ROTIdx;          
       m_ROTIdx          = NULL; 
     }
- #if JVET_B0051_NSST_PDPC_HARMONIZATION
+ #if CU_TU_NSST
     if ( m_TuROTIdx           ) 
     { 
       delete[] m_TuROTIdx;          
@@ -686,7 +686,7 @@ Void TComDataCU::initCtu( TComPic* pcPic, UInt ctuRsAddr )
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   memset( m_ROTIdx            , 0,                      m_uiNumPartition * sizeof( *m_ROTIdx ) );
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
   memset( m_TuROTIdx            , 0,                      m_uiNumPartition * sizeof( *m_TuROTIdx ) );
 #endif
 #endif
@@ -880,7 +880,7 @@ Void TComDataCU::initEstData( const UInt uiDepth, const Int qp, const Bool bTran
 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     m_ROTIdx[ui] = 0;
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
     m_TuROTIdx[ui] = 0;
 #endif
 #endif
@@ -1066,7 +1066,7 @@ Void TComDataCU::initSubCU( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth, 
 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     m_ROTIdx[ui] = 0;
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
     m_TuROTIdx[ui] = 0;
 #endif
 #endif
@@ -1166,7 +1166,7 @@ Void TComDataCU::copySubCU( TComDataCU* pcCU, UInt uiAbsPartIdx )
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   m_ROTIdx            = pcCU->getROTIdx()           + uiPart;
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
   m_TuROTIdx            = pcCU->getTuROTIdx()           + uiPart;
 #endif
 #endif
@@ -1300,7 +1300,7 @@ Void TComDataCU::copyInterPredInfoFrom    ( TComDataCU* pcCU, UInt uiAbsPartIdx,
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   m_ROTIdx             = pcCU->getROTIdx ()               + uiAbsPartIdx;
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
  m_TuROTIdx             = pcCU->getTuROTIdx ()               + uiAbsPartIdx;
 #endif
 #endif
@@ -1376,7 +1376,7 @@ Void TComDataCU::copySameSizeCUFrom(TComDataCU* pcCU, UInt uiPartUnitIdx, UInt u
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     memcpy(m_ROTIdx + uiOffset, pcCU->getROTIdx(), sizeof(*m_ROTIdx)   * uiNumPartition);
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
    memcpy(m_TuROTIdx + uiOffset, pcCU->getTuROTIdx(), sizeof(*m_TuROTIdx)   * uiNumPartition);
 #endif
 #endif
@@ -1515,7 +1515,7 @@ Void TComDataCU::copyPartFrom( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDept
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   memcpy( m_ROTIdx     + uiOffset, pcCU->getROTIdx(),         sizeof( *m_ROTIdx )   * uiNumPartition );
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
  memcpy( m_TuROTIdx     + uiOffset, pcCU->getTuROTIdx(),         sizeof( *m_TuROTIdx )   * uiNumPartition );
 #endif
 #endif
@@ -1652,7 +1652,7 @@ Void TComDataCU::copyToPic( UChar uhDepth )
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   memcpy( pCtu->getROTIdx()   + m_absZIdxInCtu, m_ROTIdx, sizeof( *m_ROTIdx ) * m_uiNumPartition );
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
   memcpy( pCtu->getTuROTIdx()   + m_absZIdxInCtu, m_TuROTIdx, sizeof( *m_TuROTIdx ) * m_uiNumPartition );
 #endif
 #endif
@@ -3150,7 +3150,7 @@ Void TComDataCU::setROTIdxSubParts( Char ROTIdx, UInt absPartIdx, UInt depth  )
   UInt uiCurrPartNumb = m_pcPic->getNumPartitionsInCtu() >> (depth << 1);
   memset(  m_ROTIdx + absPartIdx, ROTIdx, sizeof(Char)*uiCurrPartNumb );
 }
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 Void TComDataCU::setTuROTIdxSubParts( Char TuROTIdx, UInt absPartIdx, UInt depth  )
 {
   assert( sizeof( *m_TuROTIdx) == 1 );

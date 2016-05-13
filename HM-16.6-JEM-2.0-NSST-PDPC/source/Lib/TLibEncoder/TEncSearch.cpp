@@ -137,7 +137,7 @@ TEncSearch::TEncSearch()
 , m_puhQTTempEmtTuIdx (NULL)
 , m_puhQTTempEmtCuFlag (NULL)
 #endif
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 , m_puhQTTempTuNsstIdx (NULL)
 #endif
 {
@@ -266,7 +266,7 @@ Void TEncSearch::destroy()
   delete[] m_puhQTTempEmtCuFlag;
 #endif
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
   delete[] m_puhQTTempTuNsstIdx;
 #endif
 
@@ -528,7 +528,7 @@ Void TEncSearch::init(TEncCfg*      pcEncCfg,
   m_puhQTTempEmtTuIdx  = new UChar  [uiNumPartitions];
   m_puhQTTempEmtCuFlag = new UChar  [uiNumPartitions];
 #endif
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
   m_puhQTTempTuNsstIdx  = new UChar  [uiNumPartitions];
 #endif
   for( UInt ui = 0; ui < uiNumLayersToAllocate; ++ui )
@@ -1397,7 +1397,7 @@ UInt TEncSearch::xGetIntraBitsQTChroma(TComTU &rTu,
   return uiBits;
 }
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 Void TEncSearch::xReconIntraTUBlock (       TComYuv*    pcOrgYuv,
                                             TComYuv*    pcPredYuv,
                                             TComYuv*    pcResiYuv,
@@ -1412,7 +1412,7 @@ Void TEncSearch::xReconIntraTUBlock (       TComYuv*    pcOrgYuv,
                                             TComTU&     rTu
                                       DEBUG_STRING_FN_DECLARE(sDebug)
                                            , Int        default0Save1Load2
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
                                            , Int        default0Save1Load2nsst
 #endif
                                      )
@@ -1719,7 +1719,7 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
                                             TComTU&     rTu
                                       DEBUG_STRING_FN_DECLARE(sDebug)
                                            , Int        default0Save1Load2
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
                                            , Int        default0Save1Load2nsst
 #endif
 #if COM16_C806_EMT
@@ -1903,7 +1903,7 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
     }
   }
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
   UChar ucTuRotIdx = pcCU->getTuROTIdx( uiAbsPartIdx );
 #endif
 
@@ -1944,7 +1944,7 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
     }
   }
 #endif
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
   Bool useTrDistEst = ( pcCU->getCUTransquantBypass(uiAbsPartIdx) || useTransformSkip ) ? false : true;
   Distortion uiTrDistEst = 0;   // Transform-domain Distortion Estimation
 #endif
@@ -1953,13 +1953,13 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
     pcArlCoeff,
 #endif
     uiAbsSum, cQP 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
     , default0Save1Load2nsst
     , &uiTrDistEst
 #endif
     );
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
   UInt uiMinSigNumThr, uiMaxSigNumThr;
   
   if( ucTrIdx==0 )
@@ -1978,7 +1978,7 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
 #endif
 
 #if COM16_C806_EMT
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
   if( ( ( ucTrIdx!=DCT2_EMT && ucTrIdx!=DCT2_HEVC ) || ucTuRotIdx !=0 ) && puiSigNum )
 #else
   if( ucTrIdx!=DCT2_EMT && ucTrIdx!=DCT2_HEVC )
@@ -1990,7 +1990,7 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
       if( pcCoeff[uiX] )
       {
         (*puiSigNum) ++;
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
         if( *puiSigNum > uiMaxSigNumThr )
 #else
         if( *puiSigNum > g_iEmtSigNumThr )
@@ -2001,7 +2001,7 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
       }
     }
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
     if( ucTrIdx!=0 && *puiSigNum<=uiMinSigNumThr && !useTransformSkip )
 #else
     if( ucTrIdx!=0 && *puiSigNum<=g_iEmtSigNumThr && !useTransformSkip )
@@ -2012,7 +2012,7 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
   }
 #endif
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
   if ( !useTrDistEst )
   {
 #endif
@@ -2132,7 +2132,7 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
 
   //===== update distortion =====
   ruiDist += m_pcRdCost->getDistPart( bitDepth, piReco, uiStride, piOrg, uiStride, uiWidth, uiHeight, compID );
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
   }
   else
   {
@@ -2537,7 +2537,7 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
   // Re-use the selected transform indexes in the previous call of xRecurIntraCodingQT
   UInt    uiInitTrDepth     = pcCU->getPartitionSize(0) == SIZE_2Nx2N ? 0 : 1;
   UChar   ucSavedEmtTrIdx   = 0;
-  #if JVET_B0051_NSST_PDPC_HARMONIZATION
+  #if CU_TU_NSST
   UChar   ucSavedTuNsstTrIdx   = 0;
 #endif
   Bool    bCheckInitTrDepth = false;
@@ -2549,7 +2549,7 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
   if ( !bCheckFirst && uiTrDepth==uiInitTrDepth )
   {
     ucSavedEmtTrIdx   = m_puhQTTempEmtTuIdx[uiAbsPartIdx-uiInitAbsPartIdx];
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
     ucSavedTuNsstTrIdx  = m_puhQTTempTuNsstIdx[uiAbsPartIdx-uiInitAbsPartIdx];
 #endif
     bCheckInitTrDepth = true;
@@ -2569,8 +2569,8 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
   Bool    bAllIntra     = (m_pcEncCfg->getIntraPeriod()==1);
 #endif
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
-  UChar   nNumTuNsstCands   = MAX_TU_NSST;
+#if CU_TU_NSST
+  UChar   nNumTuNsstCands   = 2;
   UChar   bestTuNsstIdx     = 0;
   if(pcCU->getROTIdx(uiAbsPartIdx)==0 || pcCU->getPartitionSize(uiAbsPartIdx)==SIZE_2Nx2N) nNumTuNsstCands=1;
 #endif
@@ -2670,7 +2670,7 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
           }
 #endif
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 #if !COM16_C983_RSAF_ESTIMATION_MODE_FULL
         UChar numTuNsstIdxCands = ( !bCheckInitTrDepth ) ? nNumTuNsstCands : 1;
 #else
@@ -2693,14 +2693,14 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
         //----- store original entropy coding status -----
 
 #if COM16_C806_EMT
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
         Int default0Save1Load2 = ( ucTrIdx==0 && ucTuNsstIdx==0 ) ? 1 : 2;
 #else
         Int default0Save1Load2 = numTrIdxCands>1 ? ( bSaveEmtResults ? 1 : 2 ) : 0;
 #endif
 #endif
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
       Int default0Save1Load2nsst = ucTuNsstIdx==0 ? 1 : 2;
 #endif
 
@@ -2714,7 +2714,7 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
         pcCU->setEmtTuIdxSubParts( trIdx, uiAbsPartIdx, uiFullDepth );
 #endif
 #endif
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 #if HHI_RQT_INTRA_SPEEDUP
         pcCU->setTuROTIdxSubParts( bCheckInitTrDepth?ucSavedTuNsstTrIdx:ucTuNsstIdx, uiAbsPartIdx, uiFullDepth );
 #else
@@ -2738,7 +2738,7 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
 #if COM16_C806_EMT
           , default0Save1Load2
 #endif
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
           , default0Save1Load2nsst
 #endif
 #if COM16_C806_EMT
@@ -2768,7 +2768,7 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
         {
           singleCostTmp = MAX_DOUBLE;
         }
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
         else if( ucTuNsstIdx && uiSigNum<=SLA_NSST_ADAP_SIG_NZ_NUM )  
         {
           singleCostTmp = MAX_DOUBLE; 
@@ -2817,7 +2817,7 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
 #if COM16_C806_EMT
           bestTrIdx        = ucTrIdx;
 #endif
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
           bestTuNsstIdx      = ucTuNsstIdx;
 #endif
 #if JVET_B0041_SIMPLIFICATION_1A
@@ -2838,7 +2838,7 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
         {
           m_pcRDGoOnSbacCoder->load ( m_pppcRDSbacCoder[ uiFullDepth ][ CI_QT_TRAFO_ROOT ] );
         }
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
         }
 #endif
         } //  for (UChar ucTrIdx = 0; ucTrIdx < numTrIdxCands; ucTrIdx++)
@@ -2858,13 +2858,13 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
           assert (dSingleCost != MAX_DOUBLE);
       }
       
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 #if COM16_C806_EMT
       bestTrIdx = bCheckInitTrDepth?ucSavedEmtTrIdx:bestTrIdx;
 #endif
       bestTuNsstIdx = bCheckInitTrDepth?ucSavedTuNsstTrIdx:bestTuNsstIdx;
 #endif
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
       pcCU->setTuROTIdxSubParts( bestTuNsstIdx, uiAbsPartIdx, uiFullDepth );
 #endif
 
@@ -2878,7 +2878,7 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
         pcCU->setCbfSubParts  ( uiSingleCbfLuma << uiTrDepth, COMPONENT_Y, uiAbsPartIdx, uiFullDepth );
         m_pcRDGoOnSbacCoder->load( m_pppcRDSbacCoder[ uiFullDepth ][ CI_TEMP_BEST ] );
       }
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 #if !COM16_C983_RSAF_ESTIMATION_MODE_FULL
       if ( !bCheckFirst || uiTrDepth!=uiInitTrDepth )
 #endif
@@ -3117,7 +3117,7 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
 #if COM16_C806_EMT
     pcCU->setEmtTuIdxSubParts( bestTrIdx, uiAbsPartIdx, uiFullDepth );
 #endif
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
     pcCU->setTuROTIdxSubParts( bestTuNsstIdx, uiAbsPartIdx, uiFullDepth );
 #endif
 #if VCEG_AZ08_INTRA_KLT
@@ -3226,7 +3226,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
   // Re-use the selected transform indexes in the previous call of xRecurIntraCodingQT
   UInt    uiInitTrDepth     = pcCU->getPartitionSize(0) == SIZE_2Nx2N ? 0 : 1;
   UChar   ucSavedEmtTrIdx   = 0;
-  #if JVET_B0051_NSST_PDPC_HARMONIZATION
+  #if CU_TU_NSST
   UChar   ucSavedTuNsstTrIdx   = 0;
 #endif
   Bool    bCheckInitTrDepth = false;
@@ -3238,7 +3238,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
   if ( !bCheckFirst && uiTrDepth==uiInitTrDepth )
   {
     ucSavedEmtTrIdx   = m_puhQTTempEmtTuIdx[uiAbsPartIdx-uiInitAbsPartIdx];
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
     ucSavedTuNsstTrIdx  = m_puhQTTempTuNsstIdx[uiAbsPartIdx-uiInitAbsPartIdx];
 #endif
     bCheckInitTrDepth = true;
@@ -3256,8 +3256,8 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
   Bool    bAllIntra     = (m_pcEncCfg->getIntraPeriod()==1);
 #endif
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
-  UChar   nNumTuNsstCands   = MAX_TU_NSST; 
+#if CU_TU_NSST
+  UChar   nNumTuNsstCands   = 2; 
   UChar   bestTuNsstIdx     = 0;
   if(pcCU->getROTIdx(uiAbsPartIdx)==0 || pcCU->getPartitionSize(uiAbsPartIdx)==SIZE_2Nx2N) nNumTuNsstCands=1;
 #endif
@@ -3315,7 +3315,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
       UInt       singleCbfTmpLuma                     = 0;
       Double     singleCostTmp                        = 0;
       Int        firstCheckId                         = 0;
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
       Int        default0Save1Load2nsst               = 0;
 #endif
 #if VCEG_AZ08_INTRA_KLT
@@ -3339,7 +3339,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
           }
 #endif
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 #if HHI_RQT_INTRA_SPEEDUP
         UChar numTuNsstIdxCands = ((modeId == firstCheckId && !bCheckInitTrDepth) ? nNumTuNsstCands : 1 );
 #else
@@ -3359,13 +3359,13 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
         singleDistTmpLuma=0;
 #if COM16_C806_EMT
         if (modeId == firstCheckId && ucTrIdx == 0
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
           && ucTuNsstIdx == 0
 #endif
         )
 #else
         if(modeId == firstCheckId
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
           && ucTuNsstIdx == 0
 #endif
         )
@@ -3377,7 +3377,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
         {
           default0Save1Load2 = 2;
         }
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
         if (modeId == firstCheckId && ucTuNsstIdx == 0)
         {
           default0Save1Load2nsst = 1;
@@ -3396,7 +3396,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
 #endif
 #endif
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 #if HHI_RQT_INTRA_SPEEDUP
         pcCU->setTuROTIdxSubParts( bCheckInitTrDepth?ucSavedTuNsstTrIdx:ucTuNsstIdx, uiAbsPartIdx, uiFullDepth );
 #else
@@ -3417,7 +3417,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
 #endif
           false, singleDistTmpLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sModeString)
           , default0Save1Load2 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
          , default0Save1Load2nsst
 #endif
 #if COM16_C806_EMT
@@ -3438,7 +3438,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
           //In order not to code TS flag when cbf is zero, the case for TS with cbf being zero is forbidden.
           singleCostTmp = MAX_DOUBLE;
         }
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
         else if( (modeId==0 && ucTuNsstIdx && uiSigNum<=SLA_NSST_ADAP_SIG_NZ_NUM) ) 
         {
           singleCostTmp = MAX_DOUBLE; 
@@ -3458,7 +3458,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
 #if COM16_C806_EMT
           bestTrIdx     = ucTrIdx;
 #endif
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
           bestTuNsstIdx   = ucTuNsstIdx;
 #endif
           bestModeId[COMPONENT_Y] = modeId;
@@ -3491,7 +3491,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
         {
           m_pcRDGoOnSbacCoder->load ( m_pppcRDSbacCoder[ uiFullDepth ][ CI_QT_TRAFO_ROOT ] );
         }
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
         }
 #endif
 #if COM16_C806_EMT
@@ -3499,7 +3499,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
 #endif
       }
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 #if COM16_C806_EMT
       bestTrIdx = bCheckInitTrDepth?ucSavedEmtTrIdx:bestTrIdx;
 #endif
@@ -3511,7 +3511,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
       pcCU ->setEmtTuIdxSubParts ( bestTrIdx, uiAbsPartIdx, uiFullDepth );
 #endif
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
       pcCU->setTuROTIdxSubParts (bestTuNsstIdx, uiAbsPartIdx, uiFullDepth );
 #endif
       if(bestModeId[COMPONENT_Y] == firstCheckId)
@@ -3522,7 +3522,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
         m_pcRDGoOnSbacCoder->load( m_pppcRDSbacCoder[ uiFullDepth ][ CI_TEMP_BEST ] );
       }
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
       if ( bestModeId[COMPONENT_Y] == firstCheckId 
 #if !COM16_C983_RSAF
         && ( !bCheckFirst || uiTrDepth!=uiInitTrDepth )
@@ -3544,7 +3544,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
     }
     else
     {
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 #if HHI_RQT_INTRA_SPEEDUP
       UChar numTuNsstIdxCands = ( !bCheckInitTrDepth ) ? nNumTuNsstCands : 1;
 #else
@@ -3565,7 +3565,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
         UInt   singleDistYTmp     = 0;
         UInt   singleCbfYTmp      = 0;
         Double singleCostTmp      = 0;
-#if !JVET_B0051_NSST_PDPC_HARMONIZATION
+#if !CU_TU_NSST
         Bool   bSaveEmtResults    = ucTrIdx<(numTrIdxCands-1);  
 #endif
         // Skip checking other transform candidates if zero CBF is encountered
@@ -3575,7 +3575,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
         }
 #endif
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
         for (UChar ucTuNsstIdx = 0; ucTuNsstIdx < numTuNsstIdxCands; ucTuNsstIdx++)
         {
 #if COM16_C806_EMT
@@ -3608,14 +3608,14 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
       }
 
 #if COM16_C806_EMT
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
       Int default0Save1Load2 = ( ucTrIdx==0 && ucTuNsstIdx==0 ) ? 1 : 2;
 #else
       Int default0Save1Load2 = numTrIdxCands>1 ? ( bSaveEmtResults ? 1 : 2 ) : 0;
 #endif
 #endif
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
       Int default0Save1Load2nsst = ucTuNsstIdx==0 ? 1 : 2;
 #endif
 
@@ -3632,7 +3632,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
       pcCU->setEmtTuIdxSubParts( trIdx, uiAbsPartIdx, uiFullDepth );
 #endif
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 #if HHI_RQT_INTRA_SPEEDUP
       pcCU->setTuROTIdxSubParts( bCheckInitTrDepth?ucSavedTuNsstTrIdx:ucTuNsstIdx, uiAbsPartIdx, uiFullDepth );
 #else
@@ -3651,7 +3651,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
         resiLumaSingle, 
 #endif
         false, singleDistYTmp, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sDebug), default0Save1Load2
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
         , default0Save1Load2nsst
 #endif
         , &uiSigNum
@@ -3696,7 +3696,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
       {
         singleCostTmp = MAX_DOUBLE;
       }
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
       else if( ucTuNsstIdx && uiSigNum<=SLA_NSST_ADAP_SIG_NZ_NUM  ) 
       {
         singleCostTmp = MAX_DOUBLE; 
@@ -3745,7 +3745,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
         uiSingleDistLuma = singleDistYTmp;
         uiSingleCbfLuma  = singleCbfYTmp;
         bestTrIdx        = ucTrIdx;
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
         bestTuNsstIdx      = ucTuNsstIdx;
 #endif
         if( bSaveEmtResults && ( uiSingleCbfLuma || !bAllIntra || !m_pcEncCfg->getUseFastIntraEMT() ) )
@@ -3759,12 +3759,12 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
       {
         m_pcRDGoOnSbacCoder->load ( m_pppcRDSbacCoder[ uiFullDepth ][ CI_QT_TRAFO_ROOT ] );
       }
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
       }
 #endif
       }
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 #if COM16_C806_EMT
       bestTrIdx = bCheckInitTrDepth?ucSavedEmtTrIdx:bestTrIdx;
 #endif
@@ -3772,10 +3772,10 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
 #endif
 
       pcCU->setEmtTuIdxSubParts( bestTrIdx, uiAbsPartIdx, uiFullDepth );
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
       pcCU->setTuROTIdxSubParts( bestTuNsstIdx, uiAbsPartIdx, uiFullDepth );
 #endif
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
       if( ( bestTrIdx < (numTrIdxCands-1) || bestTuNsstIdx < (numTuNsstIdxCands-1) ) && ( uiSingleCbfLuma || !bAllIntra || !m_pcEncCfg->getUseFastIntraEMT() ) )
 #else
       if( bestTrIdx < (numTrIdxCands-1) && ( uiSingleCbfLuma || !bAllIntra || !m_pcEncCfg->getUseFastIntraEMT() ) )
@@ -3787,7 +3787,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
       }
 #endif
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 #if !COM16_C983_RSAF
       if ( !bCheckFirst || uiTrDepth!=uiInitTrDepth )
 #endif
@@ -4008,7 +4008,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
 #if COM16_C806_EMT
     pcCU->setEmtTuIdxSubParts( bestTrIdx, uiAbsPartIdx, uiFullDepth );
 #endif
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
     pcCU->setTuROTIdxSubParts( bestTuNsstIdx, uiAbsPartIdx, uiFullDepth );
 #endif
 #if VCEG_AZ08_INTRA_KLT
@@ -4360,7 +4360,7 @@ TEncSearch::xRecurIntraChromaCodingQT(TComYuv*    pcOrgYuv,
 
             if (isOneMode)
             {
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
               default0Save1Load2 = 1;
 #else
               default0Save1Load2 = 0;
@@ -4439,7 +4439,7 @@ TEncSearch::xRecurIntraChromaCodingQT(TComYuv*    pcOrgYuv,
         DEBUG_STRING_APPEND(sDebug, sDebugBestMode)
         pcCU ->setTransformSkipPartRange                ( bestTransformSkipMode,     compID, subTUAbsPartIdx, partIdxesPerSubTU );
         pcCU ->setCrossComponentPredictionAlphaPartRange( bestCrossCPredictionAlpha, compID, subTUAbsPartIdx, partIdxesPerSubTU );
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
         if( bestTransformSkipMode==0 )
         {
           xReconIntraTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv, resiLuma, (bestCrossCPredictionAlpha != 0), singleDistC, compID, TUIterator DEBUG_STRING_PASS_INTO(sDebugMode), 2);
@@ -4715,7 +4715,7 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         if( pcCU->getPartitionSize(0)==SIZE_2Nx2N )
         {
         
-#if  JVET_B0051_NSST_PDPC_HARMONIZATION 
+#if  !JVET_B0051_NSST_UNIFIED_BINARIZATION2 // David 
   const Int iNumberOfPassesROT = 4;
 #else
   const Int iNumberOfPassesROT = ( uiMode<=DC_IDX ) ? 3 : 4;
@@ -4783,7 +4783,7 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
             if( pcCU->getPartitionSize(0)==SIZE_2Nx2N )
             {
             
-#if JVET_B0051_NSST_PDPC_HARMONIZATION 
+#if !JVET_B0051_NSST_UNIFIED_BINARIZATION2  // David
  const Int iNumberOfPassesROT = 4;
 #else
   const Int iNumberOfPassesROT =( uiMode<=DC_IDX ) ? 3 : 4;
@@ -4843,7 +4843,7 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
           if( pcCU->getPartitionSize(0)==SIZE_2Nx2N )
           {
           
-#if  JVET_B0051_NSST_PDPC_HARMONIZATION   
+#if  !JVET_B0051_NSST_UNIFIED_BINARIZATION2  // David
  const Int iNumberOfPassesROT = 4;
 #else
   const Int iNumberOfPassesROT = ( mostProbableMode<=DC_IDX ) ? 3 : 4;
@@ -5081,7 +5081,7 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         ::memcpy( m_puhQTTempEmtTuIdx,   pcCU->getEmtTuIdx()+uiPartOffset,  uiQPartNum * sizeof( UChar ) );
         ::memcpy( m_puhQTTempEmtCuFlag,  pcCU->getEmtCuFlag()+uiPartOffset, uiQPartNum * sizeof( UChar ) );
 #endif
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
         ::memcpy( m_puhQTTempTuNsstIdx,   pcCU->getTuROTIdx()+uiPartOffset,  uiQPartNum * sizeof( UChar ) );
 #endif
         ::memcpy( m_puhQTTempTrIdx,  pcCU->getTransformIdx()       + uiPartOffset, uiQPartNum * sizeof( UChar ) );
@@ -5164,7 +5164,7 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
             uiPUDistY, false, dPUCost, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sModeTree));
 
       // check r-d cost
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
       UInt maxTuSize = 1<<pcCU->getSlice()->getSPS()->getQuadtreeTULog2MaxSize();
 
       if( maxTuSize>=pcCU->getWidth(0) )
@@ -5209,7 +5209,7 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         ::memcpy( m_puhQTTempEmtTuIdx,   pcCU->getEmtTuIdx()+uiPartOffset,  uiQPartNum * sizeof( UChar ) );
         ::memcpy( m_puhQTTempEmtCuFlag,  pcCU->getEmtCuFlag()+uiPartOffset, uiQPartNum * sizeof( UChar ) );
 #endif
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
         ::memcpy( m_puhQTTempTuNsstIdx,   pcCU->getTuROTIdx()+uiPartOffset,  uiQPartNum * sizeof( UChar ) );
 #endif
 
@@ -5318,7 +5318,7 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
                 ::memcpy(m_puhQTTempEmtTuIdx, pcCU->getEmtTuIdx() + uiPartOffset, uiQPartNum * sizeof(UChar));
                 ::memcpy(m_puhQTTempEmtCuFlag, pcCU->getEmtCuFlag() + uiPartOffset, uiQPartNum * sizeof(UChar));
 #endif
-#if  JVET_B0051_NSST_PDPC_HARMONIZATION  
+#if  CU_TU_NSST  
         ::memcpy( m_puhQTTempTuNsstIdx,   pcCU->getROTIdx()+uiPartOffset,  uiQPartNum * sizeof( UChar ) );
 #endif
                 for (UInt component = 0; component < numberValidComponents; component++)
@@ -5349,7 +5349,7 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
     ::memcpy( pcCU->getEmtTuIdx()      + uiPartOffset, m_puhQTTempEmtTuIdx,   uiQPartNum * sizeof( UChar ) );
     ::memcpy( pcCU->getEmtCuFlag()     + uiPartOffset, m_puhQTTempEmtCuFlag,  uiQPartNum * sizeof( UChar ) );
 #endif
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
     ::memcpy( pcCU->getTuROTIdx()        + uiPartOffset,  m_puhQTTempTuNsstIdx,  uiQPartNum * sizeof( UChar ) );
 #endif
     for (UInt component = 0; component < numberValidComponents; component++)

@@ -215,7 +215,7 @@ if( bRD )
 }
 #endif
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 Void TEncEntropy::encodeTuROTIdx( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth, Bool bRD )
 { 
 
@@ -321,12 +321,12 @@ Void TEncEntropy::encodeIPCMInfo( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD 
 
 }
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 Int TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComTU &rTu
 #if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
   , Int& bCbfCU
 #endif
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 , Int& TuCmap
 , UInt& uiAbsTu
 #endif
@@ -362,7 +362,7 @@ Void TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComT
   Bool bHaveACodedBlock       = false;
   Bool bHaveACodedChromaBlock = false;
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
    Int TU_NSST=0;
    Int TU_R=0;
 #endif
@@ -450,12 +450,12 @@ Void TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComT
 #endif
     do
     {
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
      TU_R= xEncodeTransform( bCodeDQP, codeChromaQpAdj, tuRecurseChild 
 #if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
         , bCbfCU
 #endif
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 , TuCmap
 , uiAbsTu
 #endif
@@ -553,7 +553,7 @@ Void TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComT
                 }
 #endif
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
                 TU_NSST= m_pcEntropyCoderIf->codeCoeffNxN( subTUIterator, (pcCU->getCoeff(compID) + subTUIterator.getCoefficientOffset(compID)), compID 
 #if  VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
                   , bCbfCU
@@ -589,7 +589,7 @@ if(TU_NSST)  TuCmap += 1<<(4+uiAbsTu-uiAbsPartIdx);
 
             if (cbf[compID] != 0)
             {
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
               TU_NSST=m_pcEntropyCoderIf->codeCoeffNxN( rTu, (pcCU->getCoeff(compID) + rTu.getCoefficientOffset(compID)), compID
 #if  VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
                 , bCbfCU
@@ -617,7 +617,7 @@ if(TU_NSST)       TuCmap += 1<<(4+uiAbsTu-uiAbsPartIdx);
       }
     }
   }
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
     return TuCmap;
 #endif
 }
@@ -944,7 +944,7 @@ Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
   }
 #endif
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 
 #if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
   Int  bCbfCU = false;
@@ -958,7 +958,7 @@ Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
 #if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
     , bCbfCU
 #endif
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 , TuCmap
 , uiAbsTu
 #endif
@@ -1001,7 +1001,7 @@ if(  pcCU->getPartitionSize(uiAbsPartIdx) == SIZE_NxN && pcCU->getROTIdx(uiAbsPa
 
 
 
-#else // JVET_B0051_NSST_PDPC_HARMONIZATION
+#else // CU_TU_NSST
 
 #if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
   Int  bCbfCU = false;
@@ -1019,7 +1019,7 @@ if(  pcCU->getPartitionSize(uiAbsPartIdx) == SIZE_NxN && pcCU->getROTIdx(uiAbsPa
   if (bCbfCU )  
    encodeROTIdx( pcCU, uiAbsPartIdx, uiDepth );
 #endif 
-#endif //JVET_B0051_NSST_PDPC_HARMONIZATION
+#endif //CU_TU_NSST
 }
 
 Void TEncEntropy::encodeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID)
@@ -1030,7 +1030,7 @@ Void TEncEntropy::encodeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID
   Int  bCbfCU = false;
 #endif
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 Int TU_NSST=0;
 UInt uiAbsPartIdx=rTu.GetAbsPartIdxTU(compID);
 Int TuCmap =0;
@@ -1051,7 +1051,7 @@ Int TuCmap =0;
 
         if (subTUCBF != 0)
         {
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
           TU_NSST= m_pcEntropyCoderIf->codeCoeffNxN( subTUIterator, (pcCoef + (subTUIterator.GetSectionNumber() * subTUSize)), compID
 #if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
             , bCbfCU
@@ -1072,7 +1072,7 @@ if(TU_NSST)   TuCmap += 1<<(4-uiAbsPartIdx);
     }
     else
     {
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
       TU_NSST= m_pcEntropyCoderIf->codeCoeffNxN(rTu, pcCoef, compID
 #if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
         , bCbfCU

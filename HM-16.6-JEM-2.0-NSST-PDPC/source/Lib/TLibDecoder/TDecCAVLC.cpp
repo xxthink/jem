@@ -1883,7 +1883,7 @@ Void TDecCavlc::parseChromaQpAdjustment( TComDataCU* /*pcCU*/, UInt /*uiAbsPartI
   assert(0);
 }
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 Int TDecCavlc::parseCoeffNxN( TComTU &/*rTu*/, ComponentID /*compID*/ 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& /*g_bCbfCU*/
@@ -1953,7 +1953,7 @@ Void TDecCavlc::parseROTIdx ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt 
 {
   assert(0);
 }
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
 Void TDecCavlc::parseTuROTIdx ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/ )
 {
   assert(0);

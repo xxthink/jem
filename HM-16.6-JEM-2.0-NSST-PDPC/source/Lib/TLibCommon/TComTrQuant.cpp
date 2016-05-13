@@ -4222,7 +4222,7 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
 #endif
                                       TCoeff        & uiAbsSum,
                                 const QpParam       & cQP 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
                                     , Int             default0Save1Load2nsst
                                     , UInt         *  puiDist
 #endif                                
@@ -4277,7 +4277,7 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
       }
       else
       {
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
         if(default0Save1Load2nsst != 2)
         {
 #endif
@@ -4291,7 +4291,7 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
           , useKLT && (compID == 0)
 #endif
           );
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
         if(default0Save1Load2nsst==1)
         {
           memcpy(m_plSharedTempCoeff, m_plTempCoeff, uiWidth*uiHeight*sizeof(TCoeff));
@@ -4347,7 +4347,7 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
   }
 #elif COM16_C1044_NSST
       if (pcCU->getROTIdx(uiAbsPartIdx)  
-#if JVET_B0051_NSST_PDPC_HARMONIZATION  
+#if CU_TU_NSST  
         && !pcCU->getTransformSkip(uiAbsPartIdx, compID)
         && ( isLuma(compID) || pcCU->getCbf(uiAbsPartIdx, COMPONENT_Y, rTu.GetTransformDepthRel()) )
 #endif
@@ -4377,7 +4377,7 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
 #endif
 
        
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
  UInt NSST_IDX ;  
 if(pcCU->getPartitionSize(uiAbsPartIdx) ==SIZE_2Nx2N) NSST_IDX = pcCU->getROTIdx(uiAbsPartIdx);
 else
@@ -4385,11 +4385,17 @@ else
      UChar ucTuNsstIdx = pcCU->getTuROTIdx(uiAbsPartIdx);
      if(ucTuNsstIdx==0) NSST_IDX =  pcCU->getROTIdx(uiAbsPartIdx); 
      else NSST_IDX= 0;
-}
-      
+}     
 #endif
 
         UInt uiIntraMode = pcCU->getIntraDir( toChannelType(compID), uiAbsPartIdx);
+
+#if  JVET_B0051_NSST_UNIFIED_BINARIZATION2  // David
+if(NSST_IDX ==3 &&  uiIntraMode<=DC_IDX && pcCU->getPartitionSize(uiAbsPartIdx)==SIZE_2Nx2N)
+{
+   NSST_IDX=2;
+}
+#endif
 
         if( compID != COMPONENT_Y )
         {
@@ -4406,13 +4412,13 @@ else
         }
 
         assert( uiIntraMode<NUM_INTRA_MODE-1 );
-        
-#if  !JVET_B0051_NSST_PDPC_HARMONIZATION  
+
+
+#if CU_TU_NSST
+       if( NSST_IDX ) 
+#else
         const Int iNsstCandNum = ( uiIntraMode<=DC_IDX && pcCU->getPartitionSize(uiAbsPartIdx)==SIZE_2Nx2N) ? 3 : 4;
         if( iNsstCandNum > pcCU->getROTIdx(uiAbsPartIdx) )
-#endif
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
-       if( NSST_IDX ) 
 #endif
         {
 
@@ -4444,7 +4450,7 @@ else
                 }
                 piCoeffTemp +=uiWidth;
               }
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
               FwdNsst4x4( NSST_MATRIX, g_NsstLut[uiIntraMode],  NSST_IDX-1 );  
 #else
               FwdNsst4x4( NSST_MATRIX, g_NsstLut[uiIntraMode], pcCU->getROTIdx(uiAbsPartIdx)-1 );
@@ -4489,7 +4495,7 @@ else
       printBlock(rpcCoeff, uiWidth, uiHeight, uiWidth);
 #endif
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
       if ( puiDist && !pcCU->getTransformSkip(uiAbsPartIdx, compID) )
       {
         assert ( uiWidth <= m_uiMaxTrSize );
@@ -4667,7 +4673,7 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
   }
 #elif COM16_C1044_NSST  
     if (pcCU->getROTIdx(uiAbsPartIdx) 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION  
+#if CU_TU_NSST  
         && !pcCU->getTransformSkip(uiAbsPartIdx, compID)
         && ( isLuma(compID) || pcCU->getCbf(uiAbsPartIdx, COMPONENT_Y, rTu.GetTransformDepthRel()) )
 #endif
@@ -4696,7 +4702,7 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
       const UInt *scan = g_scanOrder[ SCAN_GROUPED_4x4 ][ uiScanIdx ][ log2BlockWidth    ][ log2BlockHeight    ];
 #endif
 
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
  UInt NSST_IDX ;  
 if(pcCU->getPartitionSize(uiAbsPartIdx) ==SIZE_2Nx2N) NSST_IDX = pcCU->getROTIdx(uiAbsPartIdx);
 else
@@ -4705,11 +4711,16 @@ else
     if(ucTuNsstIdx==0) NSST_IDX = pcCU->getROTIdx(uiAbsPartIdx); 
      else NSST_IDX= 0;
 }
-
 #endif
 
       UInt uiIntraMode = pcCU->getIntraDir( toChannelType(compID), uiAbsPartIdx);
 
+#if JVET_B0051_NSST_UNIFIED_BINARIZATION2  // David
+if(NSST_IDX ==3 &&  uiIntraMode<=DC_IDX && pcCU->getPartitionSize(uiAbsPartIdx)==SIZE_2Nx2N)
+{
+   NSST_IDX=2;
+}
+#endif
 
       if( compID != COMPONENT_Y )
       {
@@ -4726,13 +4737,14 @@ else
       }
 
       assert( uiIntraMode<NUM_INTRA_MODE-1 );
+      
 
-#if  !JVET_B0051_NSST_PDPC_HARMONIZATION 
-      const Int iNsstCandNum = ( uiIntraMode<=DC_IDX ) ? 3 : 4;
-      if( iNsstCandNum > pcCU->getROTIdx(uiAbsPartIdx) )
-#endif
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
-       if( NSST_IDX )  
+
+#if CU_TU_NSST
+       if( NSST_IDX )
+#else
+       const Int iNsstCandNum = ( uiIntraMode<=DC_IDX ) ? 3 : 4;
+       if( iNsstCandNum > pcCU->getROTIdx(uiAbsPartIdx) )
 #endif
       {
 
@@ -4756,7 +4768,7 @@ else
               piNsstTemp[y] = piCoeffTemp[scan[y]];
 #endif
             }
-#if JVET_B0051_NSST_PDPC_HARMONIZATION
+#if CU_TU_NSST
             InvNsst4x4( NSST_MATRIX, g_NsstLut[uiIntraMode],  NSST_IDX-1 );
 #else
             InvNsst4x4( NSST_MATRIX, g_NsstLut[uiIntraMode], ucNsstIdx-1 );
