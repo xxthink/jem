@@ -293,7 +293,7 @@ Void initROM()
   }
 #endif
 
-#if JVET_B0059_TU_NSST_USE_HYGT
+#if JVET_B0059_USE_HYGT
   for ( i=0; i<HyGT_PTS; i++ )
   {
     const Double ScPi = 6.28318530718 / HyGT_PTS;
@@ -654,7 +654,7 @@ TMatrixCoeff g_aiTr64[NUM_TRANS_TYPE][64][64];
 #endif
 
 #if COM16_C1044_NSST
-#if JVET_B0059_TU_NSST_USE_HYGT
+#if JVET_B0059_USE_HYGT
 HyGT_SC g_HyGTscTable[HyGT_PTS];
 #if VCEG_AZ07_INTRA_65ANG_MODES
 const UChar g_NsstLut[NUM_INTRA_MODE-1] = 
@@ -689,7 +689,7 @@ const UInt g_auiCoefScanFirstCG8x8[ 3 ][ 16 ] = {
 };
 #endif
 
-#if JVET_B0059_TU_NSST_USE_HYGT
+#if JVET_B0059_USE_HYGT
 
 const UChar g_NsstHyGTPar[35][3][64] = 
 {

@@ -182,14 +182,17 @@
 #endif                                                       
 
 #if COM16_C1044_NSST
-#define JVET_B0059_TU_NSST                                1 ///< JVET-B0059: TU-level non-separable secondary transform 
-#define JVET_B0059_USE_TRANS_DIST                         1 ///< Encoder speedup using transform-domain distortion for RD optimization
-#if JVET_B0059_TU_NSST
-#define JVET_B0059_TU_NSST_USE_HYGT                       1 ///< 1: Enable HyGT, 0: Disable HyGT
+#define JVET_B0059_TU_NSST                                1 ///< 1: JVET-B0059: TU-level NSST, 0: CU-level NSST
+#define JVET_B0059_USE_HYGT                               1 ///< 1: JVET-B0059: Hyper-cube Givens Transform, 0: Matrix mult
+#define JVET_B0059_NSST_PDPC_ON                           1 ///< 1: Enable NSST when PDPC is enabled, 0: Disable NSST when PDPC is enabled
 #define JVET_B0059_TU_NSST_TL_8x8                         1 ///< 1: Apply NSST for top-left 8x8 coefficients, 0: Apply NSST for all TU coefficients
+#define NSST_TU_BINARIZATION                              1 ///< 1: Use truncated unary NSST binarization from B0051
+#if JVET_B0059_TU_NSST
 #define JVET_B0059_TU_NSST_ADAP_SIG                       1 ///< 1: Skip NSST signaling for TU with very few non-zero coefficients, 0: Always signal NSST for TU with non-zero CBF
+#define JVET_B0059_TU_NSST_LM_OFF                         1 ///< 1: Disable NSST for LM mode, 0: Enable NSST for LM mode
+#define JVET_B0059_TU_NSST_TS_OFF                         1 ///< 1: Disalbe NSST for Transform Skip mode, 0: Enable NSST for Transform Skip mode
 #endif
-#define NSST_TU_BINARIZATION                              0 ///< 1: Use truncated unary NSST binarization from B0051
+#define JVET_B0059_USE_TRANS_DIST                         1 ///< Non-normative, 1: Use transform-domain distortion for RD optimization, 0: Use spatial-domain distortion for RD optimization
 #endif
 
 #define COM16_C1046_PDPC_INTRA                            1  ///< Position dependent intra prediction combination
