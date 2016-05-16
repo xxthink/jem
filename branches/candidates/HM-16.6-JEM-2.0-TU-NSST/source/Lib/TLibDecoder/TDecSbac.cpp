@@ -785,7 +785,7 @@ Void TDecSbac::parseROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 #if VCEG_AZ05_INTRA_MPI
     && pcCU->getMPIIdx(uiAbsPartIdx) ==0
 #endif
-#if COM16_C1046_PDPC_INTRA && !JVET_B0059_TU_NSST
+#if COM16_C1046_PDPC_INTRA && !JVET_B0059_NSST_PDPC_ON
     && pcCU->getPDPCIdx(uiAbsPartIdx) == 0
 #endif
     && !pcCU->getCUTransquantBypass(uiAbsPartIdx)
@@ -806,7 +806,7 @@ Void TDecSbac::parseROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
   UInt uiSymbol = 0;
   Int val = 0;
 
-  static UInt ctxLUT[2][3] = { { 0, 1, 2 }, { 0, 2, 3 } };
+  static UInt ctxLUT[2][3] = { { 0, 2, 4 }, { 1, 3, 5 } };
   UInt *ctx = ctxLUT[Int(maxVal == 3)];
 
   // TU binarization
@@ -2433,7 +2433,11 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
   }
 #endif
 #if JVET_B0059_TU_NSST
+#if !JVET_B0059_TU_NSST_TS_OFF
+  if (compID == COMPONENT_Y )
+#else
   if (!pcCU->getTransformSkip( uiAbsPartIdx, compID) && compID == COMPONENT_Y )
+#endif
   {
     if ( pcCU->isIntra( uiAbsPartIdx ) )
     {

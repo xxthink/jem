@@ -170,7 +170,7 @@ extern TMatrixCoeff g_aiTr64[NUM_TRANS_TYPE][64][64];
 
 #if COM16_C1044_NSST
 extern const UChar g_NsstLut[NUM_INTRA_MODE-1];
-#if JVET_B0059_TU_NSST_USE_HYGT
+#if JVET_B0059_USE_HYGT
 const  int HyGT_PTS = 256;
 struct HyGT_SC { int c, s; };
 extern HyGT_SC g_HyGTscTable[HyGT_PTS]; 

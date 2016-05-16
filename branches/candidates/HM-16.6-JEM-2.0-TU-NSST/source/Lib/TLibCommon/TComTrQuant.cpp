@@ -4039,7 +4039,7 @@ Void TComTrQuant::RotTransform4I( Int* matrix, UChar index )
 
 #elif COM16_C1044_NSST
 
-#if JVET_B0059_TU_NSST_USE_HYGT
+#if JVET_B0059_USE_HYGT
 
 Void TComTrQuant::FwdNsst4x4( Int* src, UInt uiMode, UChar index )
 {
@@ -4349,7 +4349,9 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
 #elif COM16_C1044_NSST
       if (pcCU->getROTIdx(uiAbsPartIdx) 
 #if JVET_B0059_TU_NSST
+#if JVET_B0059_TU_NSST_TS_OFF
         && !pcCU->getTransformSkip(uiAbsPartIdx, compID)
+#endif
         && ( isLuma(compID) || pcCU->getCbf(uiAbsPartIdx, COMPONENT_Y, rTu.GetTransformDepthRel()) )
 #endif
         )
@@ -4381,7 +4383,7 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
         const UInt *scan = g_scanOrder[ SCAN_GROUPED_4x4 ][ uiScanIdx ][ log2BlockWidth    ][ log2BlockHeight    ];
 #endif
 
-#if JVET_B0059_TU_NSST
+#if JVET_B0059_TU_NSST || JVET_B0059_USE_HYGT
         UChar ucNsstIdx = pcCU->getROTIdx(uiAbsPartIdx);
 #endif
 
@@ -4405,12 +4407,12 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
         const Int iNsstCandNum = ( uiIntraMode<=DC_IDX ) ? 3 : 4;
 
         if( iNsstCandNum > pcCU->getROTIdx(uiAbsPartIdx) 
-#if JVET_B0059_TU_NSST && COM16_C806_LMCHROMA
+#if JVET_B0059_TU_NSST && COM16_C806_LMCHROMA && JVET_B0059_TU_NSST_LM_OFF
           && pcCU->getIntraDir( toChannelType(compID), uiAbsPartIdx) != LM_CHROMA_IDX
 #endif
           )
         {
-#if JVET_B0059_TU_NSST_USE_HYGT
+#if JVET_B0059_USE_HYGT
           const UChar * permut = g_NsstSrt[g_NsstLut[uiIntraMode]][ucNsstIdx-1];
 #endif
           for (Int iSubGroupX = 0; iSubGroupX<iSubGroupXMax; iSubGroupX++)
@@ -4449,7 +4451,7 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
 
               for(  y = 0; y < 16; y++ )
               {    
-#if JVET_B0059_TU_NSST_USE_HYGT
+#if JVET_B0059_USE_HYGT
                 piCoeffTemp[scan[y]] = piNsstTemp[permut[y]];
 #else
                 piCoeffTemp[scan[y]] = piNsstTemp[y];
@@ -4661,7 +4663,9 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
 #elif COM16_C1044_NSST
     if (pcCU->getROTIdx(uiAbsPartIdx)
 #if JVET_B0059_TU_NSST
+#if JVET_B0059_TU_NSST_TS_OFF
         && !pcCU->getTransformSkip(uiAbsPartIdx, compID)
+#endif
         && ( isLuma(compID) || pcCU->getCbf(uiAbsPartIdx, COMPONENT_Y, rTu.GetTransformDepthRel()) )
 #endif
       )
@@ -4714,12 +4718,12 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
       const Int iNsstCandNum = ( uiIntraMode<=DC_IDX ) ? 3 : 4;
 
       if( iNsstCandNum > ucNsstIdx 
-#if JVET_B0059_TU_NSST && COM16_C806_LMCHROMA
+#if JVET_B0059_TU_NSST && COM16_C806_LMCHROMA && JVET_B0059_TU_NSST_LM_OFF
           && pcCU->getIntraDir( toChannelType(compID), uiAbsPartIdx) != LM_CHROMA_IDX
 #endif
         )
       {
-#if JVET_B0059_TU_NSST_USE_HYGT
+#if JVET_B0059_USE_HYGT
         const UChar * permut = g_NsstSrt[g_NsstLut[uiIntraMode]][ucNsstIdx-1];
 #endif
         for (Int iSubGroupX = 0; iSubGroupX<iSubGroupXMax; iSubGroupX++)
@@ -4733,7 +4737,7 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
 
             for(  y = 0; y < 16; y++ )
             {    
-#if JVET_B0059_TU_NSST_USE_HYGT
+#if JVET_B0059_USE_HYGT
               piNsstTemp[permut[y]] = piCoeffTemp[scan[y]];
 #else
               piNsstTemp[y] = piCoeffTemp[scan[y]];
