@@ -67,6 +67,7 @@
 
 // for fast algorithms
 #define AMAX_BT                                           1  ///< slice level adaptive maximum BT size (encoder only)
+#define AMAX_BT_FIX                                       1  ///< init at first layer 0 slice after each iRAP
 #define FAST_MRG                                          1
 #define PBINTRA_FAST                                      1
 #define ITSKIP                                            1  ///< skip zero row/column in inverse transform (decoder speedup)
