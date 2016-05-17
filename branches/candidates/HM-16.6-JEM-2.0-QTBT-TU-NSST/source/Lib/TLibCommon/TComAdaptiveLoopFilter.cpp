@@ -884,7 +884,9 @@ Void TComAdaptiveLoopFilter::ALFProcess(TComPic* pcPic, ALFParam* pcAlfParam)
   {
     return;
   }
-  
+#if QT_BT_STRUCTURE
+  pcPic->getSlice(0)->setTextType(CHANNEL_TYPE_LUMA);  //cu level on off only for luma
+#endif  
   m_pcTempPicYuv = pcPic->replacePicYuvRecPointer( m_pcTempPicYuv );
   TComPicYuv* pcPicYuvRec    = pcPic->getPicYuvRec();
   TComPicYuv* pcPicYuvExtRec = m_pcTempPicYuv;
@@ -897,7 +899,11 @@ Void TComAdaptiveLoopFilter::ALFProcess(TComPic* pcPic, ALFParam* pcAlfParam)
     for(UInt uiCUAddr = 0; uiCUAddr < pcPic->getNumberOfCtusInFrame(); uiCUAddr++)
     {
       TComDataCU *pcCU = pcPic->getCtu(uiCUAddr);
+#if QT_BT_STRUCTURE
+      setAlfCtrlFlags(pcAlfParam, pcCU, 0, 0, pcCU->getSlice()->getSPS()->getCTUSize(), pcCU->getSlice()->getSPS()->getCTUSize(), idx);
+#else
       setAlfCtrlFlags(pcAlfParam, pcCU, 0, 0, idx);
+#endif
     }
   }
   xALFLuma_qc(pcPic, pcAlfParam, pcPicYuvExtRec, pcPicYuvRec);
@@ -1461,28 +1467,52 @@ Void TComAdaptiveLoopFilter::xCUAdaptive_qc(TComPic* pcPic, ALFParam* pcAlfParam
   for( UInt uiCUAddr = 0; uiCUAddr < pcPic->getNumberOfCtusInFrame() ; uiCUAddr++ )
   {
     TComDataCU* pcCU = pcPic->getCtu( uiCUAddr );
+#if QT_BT_STRUCTURE
+    xSubCUAdaptive_qc(pcCU, pcAlfParam, imgY_rec_post, imgY_rec, 0, 0, pcCU->getSlice()->getSPS()->getCTUSize(), pcCU->getSlice()->getSPS()->getCTUSize(), Stride);
+#else
     xSubCUAdaptive_qc(pcCU, pcAlfParam, imgY_rec_post, imgY_rec, 0, 0, Stride);
+#endif
   }
 }
 
+#if QT_BT_STRUCTURE
+Void TComAdaptiveLoopFilter::xSubCUAdaptive_qc(TComDataCU* pcCU, ALFParam* pcAlfParam, imgpel *imgY_rec_post, imgpel *imgY_rec, UInt uiAbsPartIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight, Int Stride)
+#else
 Void TComAdaptiveLoopFilter::xSubCUAdaptive_qc(TComDataCU* pcCU, ALFParam* pcAlfParam, imgpel *imgY_rec_post, imgpel *imgY_rec, UInt uiAbsPartIdx, UInt uiDepth, Int Stride)
+#endif
 {
   TComPic* pcPic = pcCU->getPic();
   
+#if !QT_BT_STRUCTURE
   Bool bBoundary = false;
+#endif
   UInt uiLPelX   = pcCU->getCUPelX() + g_auiRasterToPelX[ g_auiZscanToRaster[uiAbsPartIdx] ];
+#if QT_BT_STRUCTURE
+  UInt uiRPelX   = uiLPelX + uiWidth  - 1;
+#else
   UInt uiRPelX   = uiLPelX + (pcCU->getSlice()->getSPS()->getMaxCUWidth()>>uiDepth)  - 1;
+#endif
   UInt uiTPelY   = pcCU->getCUPelY() + g_auiRasterToPelY[ g_auiZscanToRaster[uiAbsPartIdx] ];
+#if QT_BT_STRUCTURE
+  UInt uiBPelY   = uiTPelY + uiHeight - 1;
+#else
   UInt uiBPelY   = uiTPelY + (pcCU->getSlice()->getSPS()->getMaxCUHeight() >>uiDepth) - 1;
+#endif
   
+#if !QT_BT_STRUCTURE
   // check picture boundary
   if ( ( uiRPelX >= pcCU->getSlice()->getSPS()->getPicWidthInLumaSamples() ) || ( uiBPelY >= pcCU->getSlice()->getSPS()->getPicHeightInLumaSamples() ) )
   {
     bBoundary = true;
   }
+#endif
   
   // go to sub-CU?
+#if QT_BT_STRUCTURE
+  if ( uiDepth < pcCU->getDepth( uiAbsPartIdx ) && uiDepth < pcAlfParam->alf_max_depth  )
+#else
   if ( ( ( uiDepth < pcCU->getDepth( uiAbsPartIdx ) ) && ( uiDepth < pcCU->getSlice()->getSPS()->getLog2DiffMaxMinCodingBlockSize() ) && uiDepth < pcAlfParam->alf_max_depth ) || bBoundary )
+#endif
   {
     UInt uiQNumParts = ( pcPic->getNumPartitionsInCtu() >> (uiDepth<<1) )>>2;
     for ( UInt uiPartUnitIdx = 0; uiPartUnitIdx < 4; uiPartUnitIdx++, uiAbsPartIdx+=uiQNumParts )
@@ -1491,18 +1521,41 @@ Void TComAdaptiveLoopFilter::xSubCUAdaptive_qc(TComDataCU* pcCU, ALFParam* pcAlf
       uiTPelY   = pcCU->getCUPelY() + g_auiRasterToPelY[ g_auiZscanToRaster[uiAbsPartIdx] ];
       
       if( ( uiLPelX < pcCU->getSlice()->getSPS()->getPicWidthInLumaSamples() ) && ( uiTPelY < pcCU->getSlice()->getSPS()->getPicHeightInLumaSamples() ) )
+#if QT_BT_STRUCTURE
+        xSubCUAdaptive_qc(pcCU, pcAlfParam, imgY_rec_post, imgY_rec, uiAbsPartIdx, uiDepth+1, uiWidth>>1, uiHeight>>1, Stride);
+#else
         xSubCUAdaptive_qc(pcCU, pcAlfParam, imgY_rec_post, imgY_rec, uiAbsPartIdx, uiDepth+1, Stride);
+#endif
     }
     return;
   }
   
+#if QT_BT_STRUCTURE
+  if( uiRPelX >= pcCU->getSlice()->getSPS()->getPicWidthInLumaSamples() )
+  {
+    //bBoundary = true;
+    uiWidth = pcCU->getSlice()->getSPS()->getPicWidthInLumaSamples() - uiLPelX;
+    uiRPelX = pcCU->getSlice()->getSPS()->getPicWidthInLumaSamples() - 1;
+  }
+  if ( uiBPelY >= pcCU->getSlice()->getSPS()->getPicHeightInLumaSamples() )
+  {
+    //  bBoundary = true;
+      uiHeight = pcCU->getSlice()->getSPS()->getPicHeightInLumaSamples() - uiTPelY;
+      uiBPelY = pcCU->getSlice()->getSPS()->getPicHeightInLumaSamples() - 1;
+  }
+#endif
   // check maskImagedec
   if ( pcCU->getAlfCtrlFlag(uiAbsPartIdx) )
   {
+#if QT_BT_STRUCTURE
+    calcVar( m_imgY_var, imgY_rec, m_FILTER_LENGTH/2, m_VAR_SIZE, uiHeight, uiWidth, Stride , uiLPelX , uiTPelY );
+    subfilterFrame(imgY_rec_post, imgY_rec, pcAlfParam->realfiltNo, uiTPelY, uiBPelY+1, uiLPelX, uiRPelX+1, Stride);
+#else
     Int nHeight = min(uiBPelY+1,(unsigned int)(m_img_height)) - uiTPelY;
     Int nWidth  = min(uiRPelX+1,(unsigned int)(m_img_width)) - uiLPelX;
     calcVar( m_imgY_var, imgY_rec, m_FILTER_LENGTH/2, m_VAR_SIZE, nHeight, nWidth, Stride , uiLPelX , uiTPelY );
     subfilterFrame(imgY_rec_post, imgY_rec, pcAlfParam->realfiltNo, uiTPelY, min(uiBPelY+1,(unsigned int)(m_img_height)), uiLPelX, min(uiRPelX+1,(unsigned int)(m_img_width)), Stride);
+#endif
   }
   else
   {
@@ -1510,10 +1563,15 @@ Void TComAdaptiveLoopFilter::xSubCUAdaptive_qc(TComDataCU* pcCU, ALFParam* pcAlf
     Int nOffset = uiTPelY * Stride + uiLPelX;
     imgpel * pSrc = imgY_rec + nOffset;
     imgpel * pDst = imgY_rec_post + nOffset;
+#if QT_BT_STRUCTURE
+    Int nSize = uiWidth * sizeof(imgpel);
+    for (Int n=0; n<uiHeight; n++)
+#else
     Int nHeight = min(uiBPelY+1,(unsigned int)(m_img_height)) - uiTPelY;
     Int nWidth  = min(uiRPelX+1,(unsigned int)(m_img_width)) - uiLPelX;
     Int nSize = nWidth * sizeof( imgpel );
     for( Int n = 0 ; n < nHeight ; n++ )
+#endif
     {
       memcpy( pDst , pSrc , nSize );
       pSrc += Stride;
@@ -1857,24 +1915,40 @@ Void TComAdaptiveLoopFilter::setNumCUsInFrame(UInt uiNumCUsInFrame)
 }
 #endif
 
+#if QT_BT_STRUCTURE
+Void TComAdaptiveLoopFilter::setAlfCtrlFlags(ALFParam *pAlfParam, TComDataCU *pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight, UInt &idx)
+#else
 Void TComAdaptiveLoopFilter::setAlfCtrlFlags(ALFParam *pAlfParam, TComDataCU *pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt &idx)
+#endif
 {
   TComPic* pcPic = pcCU->getPic();
   UInt uiCurNumParts    = pcPic->getNumPartitionsInCtu() >> (uiDepth<<1);
   UInt uiQNumParts      = uiCurNumParts>>2;
   
+#if !QT_BT_STRUCTURE
   Bool bBoundary = false;
+#endif
   UInt uiLPelX   = pcCU->getCUPelX() + g_auiRasterToPelX[ g_auiZscanToRaster[uiAbsPartIdx] ];
+#if !QT_BT_STRUCTURE
   UInt uiRPelX   = uiLPelX + (pcCU->getSlice()->getSPS()->getMaxCUWidth() >>uiDepth)  - 1;
+#endif
   UInt uiTPelY   = pcCU->getCUPelY() + g_auiRasterToPelY[ g_auiZscanToRaster[uiAbsPartIdx] ];
+#if !QT_BT_STRUCTURE
   UInt uiBPelY   = uiTPelY + (pcCU->getSlice()->getSPS()->getMaxCUHeight() >>uiDepth) - 1;
+#endif
   
+#if !QT_BT_STRUCTURE
   if( ( uiRPelX >= pcCU->getSlice()->getSPS()->getPicWidthInLumaSamples() ) || ( uiBPelY >= pcCU->getSlice()->getSPS()->getPicHeightInLumaSamples() ) )
   {
     bBoundary = true;
   }
+#endif
   
+#if QT_BT_STRUCTURE
+  if( uiDepth < pcCU->getDepth( uiAbsPartIdx )  && uiDepth < pAlfParam->alf_max_depth  )
+#else
   if( ( ( uiDepth < pcCU->getDepth( uiAbsPartIdx ) ) && ( uiDepth < pcCU->getSlice()->getSPS()->getLog2DiffMaxMinCodingBlockSize() ) ) || bBoundary )
+#endif
   {
     UInt uiIdx = uiAbsPartIdx;
     for ( UInt uiPartUnitIdx = 0; uiPartUnitIdx < 4; uiPartUnitIdx++ )
@@ -1884,7 +1958,11 @@ Void TComAdaptiveLoopFilter::setAlfCtrlFlags(ALFParam *pAlfParam, TComDataCU *pc
       
       if( ( uiLPelX < pcCU->getSlice()->getSPS()->getPicWidthInLumaSamples() ) && ( uiTPelY < pcCU->getSlice()->getSPS()->getPicHeightInLumaSamples() ) )
       {
+#if QT_BT_STRUCTURE
+        setAlfCtrlFlags(pAlfParam, pcCU, uiIdx, uiDepth+1, uiWidth>>1, uiHeight>>1, idx);
+#else
         setAlfCtrlFlags(pAlfParam, pcCU, uiIdx, uiDepth+1, idx);
+#endif
       }
       uiIdx += uiQNumParts;
     }
@@ -1892,6 +1970,23 @@ Void TComAdaptiveLoopFilter::setAlfCtrlFlags(ALFParam *pAlfParam, TComDataCU *pc
     return;
   }
   
+#if QT_BT_STRUCTURE
+  /*if( uiRPelX >= pcCU->getSlice()->getSPS()->getPicWidthInLumaSamples() )
+  {
+    bBoundary = true;
+    uiWidth = pcCU->getSlice()->getSPS()->getPicWidthInLumaSamples() - uiLPelX;
+    uiRPelX = pcCU->getSlice()->getSPS()->getPicWidthInLumaSamples() - 1;
+  }
+  if ( uiBPelY >= pcCU->getSlice()->getSPS()->getPicHeightInLumaSamples() )
+  {
+      bBoundary = true;
+      uiHeight = pcCU->getSlice()->getSPS()->getPicHeightInLumaSamples() - uiTPelY;
+      uiBPelY = pcCU->getSlice()->getSPS()->getPicHeightInLumaSamples() - 1;
+  }*/
+
+  pcCU->setAlfCtrlFlagSubParts(pAlfParam->alf_cu_flag[idx], uiAbsPartIdx, uiWidth, uiHeight);
+  idx ++;
+#else
   if( uiDepth <= pAlfParam->alf_max_depth || pcCU->isFirstAbsZorderIdxInDepth(uiAbsPartIdx, pAlfParam->alf_max_depth))
   {
     if (uiDepth > pAlfParam->alf_max_depth)
@@ -1904,6 +1999,7 @@ Void TComAdaptiveLoopFilter::setAlfCtrlFlags(ALFParam *pAlfParam, TComDataCU *pc
     }
     idx++;
   }
+#endif
 }
 
 #if FIX_TICKET12

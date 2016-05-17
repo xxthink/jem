@@ -47,6 +47,33 @@
 //! \ingroup TLibCommon
 //! \{
 
+#define QT_BT_STRUCTURE                                   1
+
+#if QT_BT_STRUCTURE
+
+#define MIN_CU_LOG2                                       2
+#if MIN_CU_LOG2==1
+#define DF_MODIFY                                         1 //deblocking modifications
+#else
+#define DF_MODIFY                                         0
+#endif
+
+#define BT_RMV_REDUNDANT                                  1  ///< Remove redundant BT structure for B/P slice
+
+#define SPS_MAX_BT_SIZE                                   0  ///< signal max BT size in SPS
+#define SPS_MAX_BT_DEPTH                                  1  ///< signal max BT depth in SPS 
+
+#define QT_BT_CTU_256                                     0  ///< support CTU 256 for QTBT, force QT split for CU 256x256 
+
+// for fast algorithms
+#define AMAX_BT                                           1  ///< slice level adaptive maximum BT size (encoder only)
+#define AMAX_BT_FIX                                       1  ///< init at first layer 0 slice after each iRAP
+#define FAST_MRG                                          1
+#define PBINTRA_FAST                                      1
+#define ITSKIP                                            1  ///< skip zero row/column in inverse transform (decoder speedup)
+
+#endif // end of QT_BT_STRUCTURE
+
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////
@@ -130,6 +157,11 @@
 #define VCEG_AZ06_IC                                      1  ///< Local illumination compensation (LIC)
 #if VCEG_AZ06_IC
 #define VCEG_AZ06_IC_SPEEDUP                              1  ///< speedup of IC
+#if QT_BT_STRUCTURE
+#undef VCEG_AZ06_IC_SPEEDUP                              
+#define VCEG_AZ06_IC_SPEEDUP                              0  ///< speedup of IC
+#define IC_THRESHOLD                                      0.06
+#endif
 #endif
 
 #define VCEG_AZ07_INTRA_4TAP_FILTER                       1  ///< 4-tap interpolation filter for intra prediction
@@ -181,10 +213,29 @@
 #error                                                       
 #endif                                                       
 
+#if COM16_C1044_NSST && QT_BT_STRUCTURE
+#define QTBT_NSST                                         1
+#endif
+
 #define COM16_C1046_PDPC_INTRA                            1  ///< Position dependent intra prediction combination
 #if COM16_C1046_PDPC_INTRA && COM16_C983_RSAF                
 #define COM16_C1046_PDPC_RSAF_HARMONIZATION               1  ///< Harmonization between PDPC and RSAF
 #endif
+
+#if COM16_C1044_NSST
+#define JVET_B0059_TU_NSST                                1 ///< JVET-B0059: TU-level NSST
+#define JVET_B0059_USE_HYGT                               1 ///< 1: JVET-B0059: Hyper-cube Givens Transform, 0: Matrix mult
+#define JVET_B0059_NSST_PDPC_ON                           1 ///< 1: Enable NSST when PDPC is enabled, 0: Disable NSST when PDPC is enabled
+#define JVET_B0059_TU_NSST_TL_8x8                         1 ///< 1: Apply NSST for top-left 8x8 coefficients, 0: Apply NSST for all TU coefficients
+#define NSST_TU_BINARIZATION                              1 ///< 1: Use truncated unary NSST binarization from B0051
+#if JVET_B0059_TU_NSST
+#define JVET_B0059_TU_NSST_ADAP_SIG                       1 ///< 1: Skip NSST signaling for TU with very few non-zero coefficients, 0: Always signal NSST for TU with non-zero CBF
+#define JVET_B0059_TU_NSST_LM_OFF                         1 ///< 1: Disable NSST for LM mode, 0: Enable NSST for LM mode
+#define JVET_B0059_TU_NSST_TS_OFF                         1 ///< 1: Disalbe NSST for Transform Skip mode, 0: Enable NSST for Transform Skip mode
+#endif
+#endif
+
+
 
 #if COM16_C1046_PDPC_INTRA && VCEG_AZ05_INTRA_MPI
 #error
@@ -475,6 +526,9 @@ enum DeblockEdgeDir
 enum PartSize
 {
   SIZE_2Nx2N           = 0,           ///< symmetric motion partition,  2Nx2N
+#if QT_BT_STRUCTURE
+  NUMBER_OF_PART_SIZES = 1
+#else
   SIZE_2NxN            = 1,           ///< symmetric motion partition,  2Nx N
   SIZE_Nx2N            = 2,           ///< symmetric motion partition,   Nx2N
   SIZE_NxN             = 3,           ///< symmetric motion partition,   Nx N
@@ -483,6 +537,7 @@ enum PartSize
   SIZE_nLx2N           = 6,           ///< asymmetric motion partition, ( N/2)x2N + (3N/2)x2N
   SIZE_nRx2N           = 7,           ///< asymmetric motion partition, (3N/2)x2N + ( N/2)x2N
   NUMBER_OF_PART_SIZES = 8
+#endif
 };
 
 /// supported prediction type
@@ -638,7 +693,12 @@ enum ScalingListMode
 
 enum ScalingListSize
 {
+#if QT_BT_STRUCTURE
+  SCALING_LIST_2x2 = 0,
+  SCALING_LIST_4x4,
+#else
   SCALING_LIST_4x4 = 0,
+#endif
   SCALING_LIST_8x8,
   SCALING_LIST_16x16,
   SCALING_LIST_32x32,

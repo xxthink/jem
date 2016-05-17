@@ -104,8 +104,13 @@ Void getTUEntropyCodingParameters(      TUEntropyCodingParameters &result,
         TComDataCU    *const pcCU            = rTu.getCU();
   const TComRectangle &      area            = rTu.getRect(component);
   const UInt                 uiAbsPartIdx    = rTu.GetAbsPartIdxTU(component);
+#if QT_BT_STRUCTURE
+  const UInt                 log2BlockWidth  = g_aucConvertToBit[area.width]  + MIN_CU_LOG2;
+  const UInt                 log2BlockHeight = g_aucConvertToBit[area.height] + MIN_CU_LOG2;
+#else
   const UInt                 log2BlockWidth  = g_aucConvertToBit[area.width]  + 2;
   const UInt                 log2BlockHeight = g_aucConvertToBit[area.height] + 2;
+#endif
 #if !VCEG_AZ07_CTX_RESIDUALCODING
   const ChannelType          channelType     = toChannelType(component);
 #endif
@@ -115,16 +120,26 @@ Void getTUEntropyCodingParameters(      TUEntropyCodingParameters &result,
   //------------------------------------------------
 
   //set the group layout
-
+#if QT_BT_STRUCTURE
+  const UInt uiCGLog2 = (area.width==2 || area.height==2) ? MLS_CG_LOG2_WIDTH-1: MLS_CG_LOG2_WIDTH;
+  result.widthInGroups  = area.width  >> uiCGLog2;
+  result.heightInGroups = area.height >> uiCGLog2;
+#else
   result.widthInGroups  = area.width  >> MLS_CG_LOG2_WIDTH;
   result.heightInGroups = area.height >> MLS_CG_LOG2_HEIGHT;
+#endif
 
   //------------------------------------------------
 
   //set the scan orders
 
+#if QT_BT_STRUCTURE
+  const UInt log2WidthInGroups  = g_aucConvertToBit[result.widthInGroups ] + MIN_CU_LOG2;
+  const UInt log2HeightInGroups = g_aucConvertToBit[result.heightInGroups] + MIN_CU_LOG2;
+#else
   const UInt log2WidthInGroups  = g_aucConvertToBit[result.widthInGroups  * 4];
   const UInt log2HeightInGroups = g_aucConvertToBit[result.heightInGroups * 4];
+#endif
 
   result.scan   = g_scanOrder[ SCAN_GROUPED_4x4 ][ result.scanType ][ log2BlockWidth    ][ log2BlockHeight    ];
   result.scanCG = g_scanOrder[ SCAN_UNGROUPED   ][ result.scanType ][ log2WidthInGroups ][ log2HeightInGroups ];

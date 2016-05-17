@@ -711,7 +711,11 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   opts.addOptions()
   ("help",                                            do_help,                                          false, "this help text")
   ("c",    po::parseConfigFile, "configuration file name")
+#if QT_BT_STRUCTURE
+  ("WarnUnknowParameter,w",                           warnUnknowParameter,                                  1, "warn for unknown configuration parameters instead of failing")
+#else
   ("WarnUnknowParameter,w",                           warnUnknowParameter,                                  0, "warn for unknown configuration parameters instead of failing")
+#endif
 
   // File, I/O and source parameters
   ("InputFile,i",                                     cfg_InputFile,                               string(""), "Original YUV input file name")
@@ -782,12 +786,29 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   ("FrameOnly",                                       m_frameOnlyConstraintFlag,                        false, "Indicate that the bitstream contains only frames")
 
   // Unit definition parameters
+#if QT_BT_STRUCTURE
+  ("CTUSize",                                         m_uiCTUSize,                                       128u, "CTUSize")
+  ("MinQTLumaISlice",                                 m_uiMinQT[0],                                       16u, "MinQTSizeLuma")
+  ("MinQTChromaISlice",                               m_uiMinQT[1],                                        4u, "MinQTSizeChroma")
+  ("MinQTNonISlice",                                  m_uiMinQT[2],                                       16u, "MinQTSize")
+#if SPS_MAX_BT_SIZE
+  ("MaxBTSize",                                       m_uiMaxBTSize,                                     128u, "MaxBTSize")
+  ("MaxBTSizeISliceL",                                m_uiMaxBTSizeISliceL,                               32u, "MaxBTSizeISliceL")
+  ("MaxBTSizeISliceC",                                m_uiMaxBTSizeISliceC,                               16u, "MaxBTSizeISliceC")
+#endif
+#if SPS_MAX_BT_DEPTH
+  ("MaxBTDepth",                                      m_uiMaxBTDepth,                                      4u, "MaxBTDepth")
+  ("MaxBTDepthISliceL",                               m_uiMaxBTDepthISliceL,                               4u, "MaxBTDepthISliceL")
+  ("MaxBTDepthISliceC",                               m_uiMaxBTDepthISliceC,                               0u, "MaxBTDepthISliceC")
+#endif
+#else
   ("MaxCUWidth",                                      m_uiMaxCUWidth,                                     64u)
   ("MaxCUHeight",                                     m_uiMaxCUHeight,                                    64u)
   // todo: remove defaults from MaxCUSize
   ("MaxCUSize,s",                                     m_uiMaxCUWidth,                                     64u, "Maximum CU size")
   ("MaxCUSize,s",                                     m_uiMaxCUHeight,                                    64u, "Maximum CU size")
   ("MaxPartitionDepth,h",                             m_uiMaxCUDepth,                                      4u, "CU depth")
+#endif
 
   ("QuadtreeTULog2MaxSize",                           m_uiQuadtreeTULog2MaxSize,                           6u, "Maximum TU size in logarithm base 2")
   ("QuadtreeTULog2MinSize",                           m_uiQuadtreeTULog2MinSize,                           2u, "Minimum TU size in logarithm base 2")
@@ -1398,7 +1419,11 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   case 1:
     {
       // automatic padding to minimum CU size
+#if QT_BT_STRUCTURE
+      Int minCuSize = max(max(m_uiMinQT[0], m_uiMinQT[1]), m_uiMinQT[2]);
+#else
       Int minCuSize = m_uiMaxCUHeight >> (m_uiMaxCUDepth - 1);
+#endif
       if (m_iSourceWidth % minCuSize)
       {
         m_aiPad[0] = m_confWinRight  = ((m_iSourceWidth / minCuSize) + 1) * minCuSize - m_iSourceWidth;
@@ -1593,16 +1618,28 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   // check validity of input parameters
   xCheckParameter();
 
+#if QT_BT_STRUCTURE
+  Int minCuSize = 1<<MIN_CU_LOG2;//min(min(m_uiMinQT[0], m_uiMinQT[1]), m_uiMinQT[2]);
+  m_uiMaxTotalCUDepth = 0;
+  while( (m_uiCTUSize>>m_uiMaxTotalCUDepth) > minCuSize )
+  {
+    m_uiMaxTotalCUDepth++;
+  }
+#else
   // compute actual CU depth with respect to config depth and max transform size
   UInt uiAddCUDepth  = 0;
+#if QT_BT_STRUCTURE
+  while( (m_uiCTUSize>>m_uiMaxCUDepth) > ( 1 << ( m_uiQuadtreeTULog2MinSize + uiAddCUDepth )  ) )
+#else
   while( (m_uiMaxCUWidth>>m_uiMaxCUDepth) > ( 1 << ( m_uiQuadtreeTULog2MinSize + uiAddCUDepth )  ) )
+#endif
   {
     uiAddCUDepth++;
   }
 
   m_uiMaxTotalCUDepth = m_uiMaxCUDepth + uiAddCUDepth + getMaxCUDepthOffset(m_chromaFormatIDC, m_uiQuadtreeTULog2MinSize); // if minimum TU larger than 4x4, allow for additional part indices for 4:2:2 SubTUs.
   m_uiLog2DiffMaxMinCodingBlockSize = m_uiMaxCUDepth - 1;
-
+#endif
   // print-out parameters
   xPrintParameter();
 
@@ -1812,7 +1849,9 @@ Void TAppEncCfg::xCheckParameter()
   xConfirmPara( m_iSearchRange < 0 ,                                                        "Search Range must be more than 0" );
   xConfirmPara( m_bipredSearchRange < 0 ,                                                   "Search Range must be more than 0" );
   xConfirmPara( m_iMaxDeltaQP > 7,                                                          "Absolute Delta QP exceeds supported range (0 to 7)" );
+#if !QT_BT_STRUCTURE
   xConfirmPara( m_iMaxCuDQPDepth > m_uiMaxCUDepth - 1,                                          "Absolute depth for a minimum CuDQP exceeds maximum coding unit depth" );
+#endif
 
   xConfirmPara( m_cbQpOffset < -12,   "Min. Chroma Cb QP Offset is -12" );
   xConfirmPara( m_cbQpOffset >  12,   "Max. Chroma Cb QP Offset is  12" );
@@ -1824,6 +1863,17 @@ Void TAppEncCfg::xCheckParameter()
   {
     xConfirmPara( m_iIntraPeriod > 0 && m_iIntraPeriod <= m_iGOPSize ,                      "Intra period must be larger than GOP size for periodic IDR pictures");
   }
+#if QT_BT_STRUCTURE
+  if( m_uiCTUSize * 2 > m_iSourceWidth && m_uiCTUSize * 2 > m_iSourceHeight )
+  {
+    while( m_uiCTUSize * 2 > m_iSourceWidth && m_uiCTUSize * 2 > m_iSourceHeight )
+    {
+      m_uiCTUSize >>= 1;
+      //m_uiMaxCUDepth--;
+    }
+    printf( "\nWarning: CTU size is reduced to (%dx%d) to better fit picture size (%dx%d)\n" , m_uiCTUSize , m_uiCTUSize , m_iSourceWidth , m_iSourceHeight );
+  }
+#else
 #if COM16_C806_LARGE_CTU
   if( m_uiMaxCUWidth * 2 > m_iSourceWidth && m_uiMaxCUHeight * 2 > m_iSourceHeight )
   {
@@ -1836,6 +1886,20 @@ Void TAppEncCfg::xCheckParameter()
     printf( "\nWarning: CTU size is reduced to (%dx%d) to better fit picture size (%dx%d)\n" , m_uiMaxCUWidth , m_uiMaxCUHeight , m_iSourceWidth , m_iSourceHeight );
   }
 #endif
+#endif
+#if QT_BT_STRUCTURE
+  xConfirmPara( m_uiMinQT[0] < 1<<MIN_CU_LOG2,                   "Minimum QT size should be larger than or equal to 4");
+  xConfirmPara( m_uiMinQT[1] < 1<<MIN_CU_LOG2,                   "Minimum QT size should be larger than or equal to 4");
+  xConfirmPara( m_uiMinQT[2] < 1<<MIN_CU_LOG2,                   "Minimum QT size should be larger than or equal to 4");
+  xConfirmPara( m_uiCTUSize < 16,                                  "Maximum partition width size should be larger than or equal to 16");
+  xConfirmPara( m_uiCTUSize < 16,                                  "Maximum partition height size should be larger than or equal to 16");
+  xConfirmPara( (m_iSourceWidth  % (1<<MIN_CU_LOG2))!=0,             "Resulting coded frame width must be a multiple of the minimum unit size");
+  xConfirmPara( (m_iSourceHeight % (1<<MIN_CU_LOG2))!=0,             "Resulting coded frame height must be a multiple of the minimum unit size");
+  xConfirmPara( (m_iSourceWidth  % (1<<MIN_CU_LOG2))!=0,             "Resulting coded frame width must be a multiple of the minimum unit size");
+  xConfirmPara( (m_iSourceHeight % (1<<MIN_CU_LOG2))!=0,             "Resulting coded frame height must be a multiple of the minimum unit size");
+  xConfirmPara( (m_iSourceWidth  % (1<<MIN_CU_LOG2))!=0,              "Resulting coded frame width must be a multiple of the minimum unit size");
+  xConfirmPara( (m_iSourceHeight % (1<<MIN_CU_LOG2))!=0,              "Resulting coded frame height must be a multiple of the minimum unit size");
+#else
   xConfirmPara( m_uiMaxCUDepth < 1,                                                         "MaxPartitionDepth must be greater than zero");
   xConfirmPara( (m_uiMaxCUWidth  >> m_uiMaxCUDepth) < 4,                                    "Minimum partition width size should be larger than or equal to 8");
   xConfirmPara( (m_uiMaxCUHeight >> m_uiMaxCUDepth) < 4,                                    "Minimum partition height size should be larger than or equal to 8");
@@ -1858,13 +1922,18 @@ Void TAppEncCfg::xCheckParameter()
   xConfirmPara( m_uiMaxCUWidth < ( 1 << (m_uiQuadtreeTULog2MinSize + m_uiQuadtreeTUMaxDepthInter - 1) ), "QuadtreeTUMaxDepthInter must be less than or equal to the difference between log2(maxCUSize) and QuadtreeTULog2MinSize plus 1" );
   xConfirmPara( m_uiQuadtreeTUMaxDepthIntra < 1,                                                         "QuadtreeTUMaxDepthIntra must be greater than or equal to 1" );
   xConfirmPara( m_uiMaxCUWidth < ( 1 << (m_uiQuadtreeTULog2MinSize + m_uiQuadtreeTUMaxDepthIntra - 1) ), "QuadtreeTUMaxDepthInter must be less than or equal to the difference between log2(maxCUSize) and QuadtreeTULog2MinSize plus 1" );
+#endif
 
   xConfirmPara(  m_maxNumMergeCand < 1,  "MaxNumMergeCand must be 1 or greater.");
   xConfirmPara(  m_maxNumMergeCand > 5,  "MaxNumMergeCand must be 5 or smaller.");
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
   xConfirmPara( m_subPUTLog2Size < 2,                                                               "SubPULog2Size must be 2 or greater.");
   xConfirmPara( m_subPUTLog2Size > 6,                                                               "SubPULog2Size must be 6 or smaller.");
+#if QT_BT_STRUCTURE
+  xConfirmPara( (1<<m_subPUTLog2Size) > m_uiCTUSize,                                                "SubPULog2Size must be log2(maxCUSize) or smaller.");
+#else
   xConfirmPara( (1<<m_subPUTLog2Size) > m_uiMaxCUWidth,                                             "SubPULog2Size must be log2(maxCUSize) or smaller.");
+#endif
 #endif 
 #if ADAPTIVE_QP_SELECTION
   xConfirmPara( m_bUseAdaptQpSelect == true && m_iQP < 0,                                              "AdaptiveQpSelection must be disabled when QP < 0.");
@@ -1938,7 +2007,11 @@ Void TAppEncCfg::xCheckParameter()
   }
 
   // max CU width and height should be power of 2
+#if QT_BT_STRUCTURE
+  UInt ui = m_uiCTUSize;
+#else
   UInt ui = m_uiMaxCUWidth;
+#endif
   while(ui)
   {
     ui >>= 1;
@@ -1947,7 +2020,11 @@ Void TAppEncCfg::xCheckParameter()
       xConfirmPara( ui != 1 , "Width should be 2^n");
     }
   }
+#if QT_BT_STRUCTURE
+  ui = m_uiCTUSize;
+#else
   ui = m_uiMaxCUHeight;
+#endif
   while(ui)
   {
     ui >>= 1;
@@ -2277,6 +2354,27 @@ Void TAppEncCfg::xCheckParameter()
     {
       Int maxTileWidth = 0;
       Int maxTileHeight = 0;
+#if QT_BT_STRUCTURE
+      Int widthInCU = (m_iSourceWidth % m_uiCTUSize) ? m_iSourceWidth/m_uiCTUSize + 1: m_iSourceWidth/m_uiCTUSize;
+      Int heightInCU = (m_iSourceHeight % m_uiCTUSize) ? m_iSourceHeight/m_uiCTUSize + 1: m_iSourceHeight/m_uiCTUSize;
+      if(m_tileUniformSpacingFlag)
+      {
+        maxTileWidth = m_uiCTUSize*((widthInCU+m_numTileColumnsMinus1)/(m_numTileColumnsMinus1+1));
+        maxTileHeight = m_uiCTUSize*((heightInCU+m_numTileRowsMinus1)/(m_numTileRowsMinus1+1));
+        // if only the last tile-row is one treeblock higher than the others
+        // the maxTileHeight becomes smaller if the last row of treeblocks has lower height than the others
+        if(!((heightInCU-1)%(m_numTileRowsMinus1+1)))
+        {
+          maxTileHeight = maxTileHeight - m_uiCTUSize + (m_iSourceHeight % m_uiCTUSize);
+        }
+        // if only the last tile-column is one treeblock wider than the others
+        // the maxTileWidth becomes smaller if the last column of treeblocks has lower width than the others
+        if(!((widthInCU-1)%(m_numTileColumnsMinus1+1)))
+        {
+          maxTileWidth = maxTileWidth - m_uiCTUSize + (m_iSourceWidth % m_uiCTUSize);
+        }
+      }
+#else
       Int widthInCU = (m_iSourceWidth % m_uiMaxCUWidth) ? m_iSourceWidth/m_uiMaxCUWidth + 1: m_iSourceWidth/m_uiMaxCUWidth;
       Int heightInCU = (m_iSourceHeight % m_uiMaxCUHeight) ? m_iSourceHeight/m_uiMaxCUHeight + 1: m_iSourceHeight/m_uiMaxCUHeight;
       if(m_tileUniformSpacingFlag)
@@ -2296,6 +2394,7 @@ Void TAppEncCfg::xCheckParameter()
           maxTileWidth = maxTileWidth - m_uiMaxCUWidth + (m_iSourceWidth % m_uiMaxCUWidth);
         }
       }
+#endif
       else // not uniform spacing
       {
         if(m_numTileColumnsMinus1<1)
@@ -2310,7 +2409,11 @@ Void TAppEncCfg::xCheckParameter()
             maxTileWidth = m_tileColumnWidth[col]>maxTileWidth ? m_tileColumnWidth[col]:maxTileWidth;
             accColumnWidth += m_tileColumnWidth[col];
           }
+#if QT_BT_STRUCTURE
+          maxTileWidth = (widthInCU-accColumnWidth)>maxTileWidth ? m_uiCTUSize*(widthInCU-accColumnWidth):m_uiCTUSize*maxTileWidth;
+#else
           maxTileWidth = (widthInCU-accColumnWidth)>maxTileWidth ? m_uiMaxCUWidth*(widthInCU-accColumnWidth):m_uiMaxCUWidth*maxTileWidth;
+#endif
         }
         if(m_numTileRowsMinus1<1)
         {
@@ -2324,7 +2427,11 @@ Void TAppEncCfg::xCheckParameter()
             maxTileHeight = m_tileRowHeight[row]>maxTileHeight ? m_tileRowHeight[row]:maxTileHeight;
             accRowHeight += m_tileRowHeight[row];
           }
+#if QT_BT_STRUCTURE
+          maxTileHeight = (heightInCU-accRowHeight)>maxTileHeight ? m_uiCTUSize*(heightInCU-accRowHeight):m_uiCTUSize*maxTileHeight;
+#else
           maxTileHeight = (heightInCU-accRowHeight)>maxTileHeight ? m_uiMaxCUHeight*(heightInCU-accRowHeight):m_uiMaxCUHeight*maxTileHeight;
+#endif
         }
       }
       Int maxSizeInSamplesY = maxTileWidth*maxTileHeight;
@@ -2332,11 +2439,19 @@ Void TAppEncCfg::xCheckParameter()
     }
     else if(m_iWaveFrontSynchro)
     {
+#if QT_BT_STRUCTURE
+      m_minSpatialSegmentationIdc = 4*PicSizeInSamplesY/((2*m_iSourceHeight+m_iSourceWidth)*m_uiCTUSize)-4;
+#else
       m_minSpatialSegmentationIdc = 4*PicSizeInSamplesY/((2*m_iSourceHeight+m_iSourceWidth)*m_uiMaxCUHeight)-4;
+#endif
     }
     else if(m_sliceMode == FIXED_NUMBER_OF_CTU)
     {
+#if QT_BT_STRUCTURE
+      m_minSpatialSegmentationIdc = 4*PicSizeInSamplesY/(m_sliceArgument*m_uiCTUSize*m_uiCTUSize)-4;
+#else
       m_minSpatialSegmentationIdc = 4*PicSizeInSamplesY/(m_sliceArgument*m_uiMaxCUWidth*m_uiMaxCUHeight)-4;
+#endif
     }
     else
     {
@@ -2492,7 +2607,19 @@ Void TAppEncCfg::xPrintParameter()
   {
     printf("Profile                                : %s\n", profileToString(m_profile) );
   }
+#if QT_BT_STRUCTURE
+  printf("CTU size / minQTL / minQTC / minQT          : %d / %d / %d /%d\n", m_uiCTUSize, m_uiMinQT[0], m_uiMinQT[1], m_uiMinQT[2] );
+  printf("I slice: MaxBTSize: %d, %d; MaxBTDepth: %d, %d; MinBTSize: %d, %d\n", MAX_BT_SIZE, MAX_BT_SIZE_C, MAX_BT_DEPTH, MAX_BT_DEPTH_C, MIN_BT_SIZE, MIN_BT_SIZE_C );
+  printf("P/B slice: MaxBTSize: %d; MaxBTDepth: %d; MinBTSize: %d\n", MAX_BT_SIZE_INTER, MAX_BT_DEPTH_INTER, MIN_BT_SIZE_INTER );
+#if SPS_MAX_BT_DEPTH
+  printf("SPS MaxBTDepth: %d; MaxBTDepthISliceL: %d; MaxBTDepthISliceC: %d\n", m_uiMaxBTDepth, m_uiMaxBTDepthISliceL, m_uiMaxBTDepthISliceC );
+#endif
+#if SPS_MAX_BT_SIZE
+  printf("SPS MaxBTSize: %d; MaxBTSizeISliceL: %d; MaxBTSizeISliceC: %d\n", m_uiMaxBTSize, m_uiMaxBTSizeISliceL, m_uiMaxBTSizeISliceC );
+#endif
+#else
   printf("CU size / depth / total-depth          : %d / %d / %d\n", m_uiMaxCUWidth, m_uiMaxCUDepth, m_uiMaxTotalCUDepth );
+#endif
   printf("RQT trans. size (min / max)            : %d / %d\n", 1 << m_uiQuadtreeTULog2MinSize, 1 << m_uiQuadtreeTULog2MaxSize );
   printf("Max RQT depth inter                    : %d\n", m_uiQuadtreeTUMaxDepthInter);
   printf("Max RQT depth intra                    : %d\n", m_uiQuadtreeTUMaxDepthIntra);
@@ -2585,7 +2712,11 @@ Void TAppEncCfg::xPrintParameter()
   }
   printf("CIP:%d ", m_bUseConstrainedIntraPred);
   printf("SAO:%d ", (m_bUseSAO)?(1):(0));
+#if QT_BT_STRUCTURE
+  printf("PCM:%d ", (m_usePCM && (1<<m_uiPCMLog2MinSize) <= m_uiCTUSize)? 1 : 0);
+#else
   printf("PCM:%d ", (m_usePCM && (1<<m_uiPCMLog2MinSize) <= m_uiMaxCUWidth)? 1 : 0);
+#endif
 
   if (m_TransquantBypassEnableFlag && m_CUTransquantBypassFlagForce)
   {
@@ -2599,7 +2730,11 @@ Void TAppEncCfg::xPrintParameter()
   printf("WPP:%d ", (Int)m_useWeightedPred);
   printf("WPB:%d ", (Int)m_useWeightedBiPred);
   printf("PME:%d ", m_log2ParallelMergeLevel);
+#if QT_BT_STRUCTURE
+  const Int iWaveFrontSubstreams = m_iWaveFrontSynchro ? (m_iSourceHeight + m_uiCTUSize - 1) / m_uiCTUSize : 1;
+#else
   const Int iWaveFrontSubstreams = m_iWaveFrontSynchro ? (m_iSourceHeight + m_uiMaxCUHeight - 1) / m_uiMaxCUHeight : 1;
+#endif
   printf(" WaveFrontSynchro:%d WaveFrontSubstreams:%d",
           m_iWaveFrontSynchro, iWaveFrontSubstreams);
   printf(" ScalingList:%d ", m_useScalingListId );

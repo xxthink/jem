@@ -512,9 +512,26 @@ Void TEncCavlc::codeSPS( const TComSPS* pcSPS )
       break;
     }
   }
+#if QT_BT_STRUCTURE
+  WRITE_UVLC( g_aucConvertToBit[pcSPS->getCTUSize()],                                "log2_CTU_size_minus2" );
+  WRITE_UVLC( g_aucConvertToBit[pcSPS->getMinQTSize(I_SLICE, CHANNEL_TYPE_LUMA)],    "log2_minQT_ISliceLuma_minus2" );
+  WRITE_UVLC( g_aucConvertToBit[pcSPS->getMinQTSize(I_SLICE, CHANNEL_TYPE_CHROMA)],  "log2_minQT_ISliceChroma_minus2" );
+  WRITE_UVLC( g_aucConvertToBit[pcSPS->getMinQTSize(B_SLICE, CHANNEL_TYPE_LUMA)],    "log2_minQT_PBSlice_minus2" );
+#if SPS_MAX_BT_SIZE
+  WRITE_UVLC( g_aucConvertToBit[pcSPS->getMaxBTSize()],                              "log2_max_bt_size_minus2" );
+  WRITE_UVLC( g_aucConvertToBit[pcSPS->getMaxBTSizeISliceL()],                       "log2_max_bt_size_i_slice_luma_minus2" );
+  WRITE_UVLC( g_aucConvertToBit[pcSPS->getMaxBTSizeISliceC()],                       "log2_max_bt_size_i_slice_chroma_minus2" );
+#endif
+#if SPS_MAX_BT_DEPTH
+  WRITE_UVLC( pcSPS->getMaxBTDepth(),                                                "max_bt_depth" );
+  WRITE_UVLC( pcSPS->getMaxBTDepthISliceL(),                                         "max_bt_depth_i_slice_luma" );
+  WRITE_UVLC( pcSPS->getMaxBTDepthISliceC(),                                         "max_bt_depth_i_slice_chroma" );
+#endif
+#else
   assert( pcSPS->getMaxCUWidth() == pcSPS->getMaxCUHeight() );
   WRITE_UVLC( pcSPS->getLog2MinCodingBlockSize() - 3,                                "log2_min_luma_coding_block_size_minus3" );
   WRITE_UVLC( pcSPS->getLog2DiffMaxMinCodingBlockSize(),                             "log2_diff_max_min_luma_coding_block_size" );
+#endif
   WRITE_UVLC( pcSPS->getQuadtreeTULog2MinSize() - 2,                                 "log2_min_luma_transform_block_size_minus2" );
   WRITE_UVLC( pcSPS->getQuadtreeTULog2MaxSize() - pcSPS->getQuadtreeTULog2MinSize(), "log2_diff_max_min_luma_transform_block_size" );
   WRITE_UVLC( pcSPS->getQuadtreeTUMaxDepthInter() - 1,                               "max_transform_hierarchy_depth_inter" );
@@ -1080,6 +1097,15 @@ Void TEncCavlc::codeSliceHeader         ( TComSlice* pcSlice )
       WRITE_FLAG( pcSlice->getApplyIC() ? 1 : 0, "slice_ic_enable_flag" );
     }
 #endif
+#if QT_BT_STRUCTURE
+    if (!pcSlice->isIntra())
+    {
+      if( pcSlice->getSPS()->getCTUSize() > pcSlice->getMaxBTSize() )
+        WRITE_UVLC(g_aucConvertToBit[pcSlice->getSPS()->getCTUSize()] - g_aucConvertToBit[pcSlice->getMaxBTSize()], "max_binary_tree_unit_size");
+      else
+        WRITE_UVLC(0, "max_binary_tree_unit_size");
+    }
+#endif
     if (!pcSlice->isIntra())
     {
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
@@ -1281,10 +1307,12 @@ Void TEncCavlc::codeMVPIdx ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, RefPic
   assert(0);
 }
 
+#if !QT_BT_STRUCTURE
 Void TEncCavlc::codePartSize( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/ )
 {
   assert(0);
 }
+#endif
 
 Void TEncCavlc::codePredMode( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/ )
 {
@@ -1319,6 +1347,13 @@ Void TEncCavlc::codeROTIdx    ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth
 {
   assert(0);
 }
+
+#if QT_BT_STRUCTURE
+Void TEncCavlc::codeROTIdxChroma( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth )
+{
+  assert(0);
+}
+#endif
 #endif
 #if VCEG_AZ07_FRUC_MERGE
 Void TEncCavlc::codeFRUCMgrMode  ( TComDataCU* pcCU, UInt uiAbsPartIdx , UInt uiPUIdx )
@@ -1367,6 +1402,13 @@ Void TEncCavlc::codeSplitFlag   ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, U
 {
   assert(0);
 }
+
+#if QT_BT_STRUCTURE
+Void TEncCavlc::codeBTSplitMode (TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight)
+{
+  assert(0);
+}
+#endif
 
 Void TEncCavlc::codeTransformSubdivFlag( UInt /*uiSymbol*/, UInt /*uiCtx*/ )
 {
@@ -1469,7 +1511,7 @@ Void TEncCavlc::codeChromaQpAdjustment( TComDataCU* /*pcCU*/, UInt /*uiAbsPartId
 }
 
 Void TEncCavlc::codeCoeffNxN    ( TComTU& /*rTu*/, TCoeff* /*pcCoef*/, const ComponentID /*compID*/ 
-#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST ) || COM16_C1046_PDPC_INTRA
   , Int& bCbfCU
 #endif
   )
@@ -1702,6 +1744,7 @@ Void TEncCavlc::codeAlfSvlc( Int iCode )
   WRITE_SVLC( iCode , "alf_svlc" );
 }
 
+#if !QT_BT_STRUCTURE
 Void TEncCavlc::codeAlfCtrlFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
 {  
   if (!m_bAlfCtrl)
@@ -1718,6 +1761,7 @@ Void TEncCavlc::codeAlfCtrlFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
   //xWriteFlag( uiSymbol );
   WRITE_FLAG( uiSymbol , "alf_ctrl_flag" );
 }
+#endif
 
 Void TEncCavlc::codeAlfCtrlDepth( UInt uiMaxTotalCUDepth )
 {  
