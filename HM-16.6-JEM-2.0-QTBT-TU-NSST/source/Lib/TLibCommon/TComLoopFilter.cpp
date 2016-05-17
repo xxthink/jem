@@ -138,7 +138,21 @@ Void TComLoopFilter::loopFilterPic( TComPic* pcPic )
     ::memset( m_aapbEdgeFilter[EDGE_VER], 0, sizeof( Bool  ) * m_uiNumPartitions );
 
     // CU-based deblocking
+#if QT_BT_STRUCTURE
+    pCtu->getSlice()->setTextType(CHANNEL_TYPE_LUMA);
+    UInt uiCTUSize = pCtu->getSlice()->getSPS()->getCTUSize() ;
+    xDeblockCU( pCtu, 0, 0, uiCTUSize, uiCTUSize,EDGE_VER );
+    if (pCtu->getSlice()->isIntra())
+    {
+      ::memset( m_aapucBS       [EDGE_VER], 0, sizeof( UChar ) * m_uiNumPartitions );
+      ::memset( m_aapbEdgeFilter[EDGE_VER], 0, sizeof( Bool  ) * m_uiNumPartitions );
+
+      pCtu->getSlice()->setTextType(CHANNEL_TYPE_CHROMA);
+      xDeblockCU( pCtu, 0, 0, uiCTUSize, uiCTUSize, EDGE_VER );
+    }
+#else
     xDeblockCU( pCtu, 0, 0, EDGE_VER );
+#endif
   }
 
   // Vertical filtering
@@ -150,7 +164,21 @@ Void TComLoopFilter::loopFilterPic( TComPic* pcPic )
     ::memset( m_aapbEdgeFilter[EDGE_HOR], 0, sizeof( Bool  ) * m_uiNumPartitions );
 
     // CU-based deblocking
+#if QT_BT_STRUCTURE
+    pCtu->getSlice()->setTextType(CHANNEL_TYPE_LUMA);
+    UInt uiCTUSize = pCtu->getSlice()->getSPS()->getCTUSize() ;
+    xDeblockCU( pCtu, 0, 0, uiCTUSize, uiCTUSize, EDGE_HOR );
+    if (pCtu->getSlice()->isIntra())
+    {
+      ::memset( m_aapucBS       [EDGE_HOR], 0, sizeof( UChar ) * m_uiNumPartitions );
+      ::memset( m_aapbEdgeFilter[EDGE_HOR], 0, sizeof( Bool  ) * m_uiNumPartitions );
+
+      pCtu->getSlice()->setTextType(CHANNEL_TYPE_CHROMA);
+      xDeblockCU( pCtu, 0, 0, uiCTUSize, uiCTUSize, EDGE_HOR );
+    }
+#else
     xDeblockCU( pCtu, 0, 0, EDGE_HOR );
+#endif
   }
 }
 
@@ -167,9 +195,17 @@ Void TComLoopFilter::loopFilterPic( TComPic* pcPic )
  \param uiDepth          Depth in CU
  \param edgeDir          the direction of the edge in block boundary (horizontal/vertical), which is added newly
 */
+#if QT_BT_STRUCTURE
+Void TComLoopFilter::xDeblockCU( TComDataCU* pcCU, UInt uiAbsZorderIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight, DeblockEdgeDir edgeDir )
+#else
 Void TComLoopFilter::xDeblockCU( TComDataCU* pcCU, UInt uiAbsZorderIdx, UInt uiDepth, DeblockEdgeDir edgeDir )
+#endif
 {
+#if QT_BT_STRUCTURE 
+  if(pcCU->getPic()==0)
+#else
   if(pcCU->getPic()==0||pcCU->getPartitionSize(uiAbsZorderIdx)==NUMBER_OF_PART_SIZES)
+#endif
   {
     return;
   }
@@ -186,17 +222,68 @@ Void TComLoopFilter::xDeblockCU( TComDataCU* pcCU, UInt uiAbsZorderIdx, UInt uiD
       UInt uiTPelY   = pcCU->getCUPelY() + g_auiRasterToPelY[ g_auiZscanToRaster[uiAbsZorderIdx] ];
       if( ( uiLPelX < sps.getPicWidthInLumaSamples() ) && ( uiTPelY < sps.getPicHeightInLumaSamples() ) )
       {
+#if QT_BT_STRUCTURE
+        xDeblockCU( pcCU, uiAbsZorderIdx, uiDepth+1, uiWidth>>1, uiHeight>>1, edgeDir );
+#else
         xDeblockCU( pcCU, uiAbsZorderIdx, uiDepth+1, edgeDir );
+#endif
       }
     }
     return;
   }
 
+#if QT_BT_STRUCTURE
+  UInt uiBTDepth = pcCU->getBTDepth(uiAbsZorderIdx, uiWidth, uiHeight);
+  UInt uiMinCUW = pcCU->getPic()->getMinCUWidth();
+  UInt uiMinCUH = pcCU->getPic()->getMinCUHeight();
+
+  if (pcCU->getBTSplitModeForBTDepth(uiAbsZorderIdx, uiBTDepth)==1)
+  {
+    for ( UInt uiPartUnitIdx = 0; uiPartUnitIdx < 2; uiPartUnitIdx++ )
+    {
+      if (uiPartUnitIdx==1)
+      {
+        uiAbsZorderIdx = g_auiRasterToZscan[g_auiZscanToRaster[uiAbsZorderIdx] 
+        + (uiHeight>>1)/uiMinCUH*pcCU->getPic()->getNumPartInCtuWidth()];
+      }
+      xDeblockCU( pcCU, uiAbsZorderIdx, uiDepth, uiWidth, uiHeight>>1, edgeDir );
+    }
+    return;
+  }
+  else if (pcCU->getBTSplitModeForBTDepth(uiAbsZorderIdx, uiBTDepth)==2)
+  {
+    for ( UInt uiPartUnitIdx = 0; uiPartUnitIdx < 2; uiPartUnitIdx++ )
+    {
+      if (uiPartUnitIdx==1)
+      {
+        uiAbsZorderIdx = g_auiRasterToZscan[g_auiZscanToRaster[uiAbsZorderIdx] 
+        + (uiWidth>>1)/uiMinCUW];
+      }
+      xDeblockCU( pcCU, uiAbsZorderIdx, uiDepth, uiWidth>>1, uiHeight, edgeDir );
+    }
+    return;
+  }
+#endif
+
   xSetLoopfilterParam( pcCU, uiAbsZorderIdx );
+#if QT_BT_STRUCTURE
+  xSetEdgefilterCU   ( pcCU, uiAbsZorderIdx, uiWidth, uiHeight);
+#else
   TComTURecurse tuRecurse(pcCU, uiAbsZorderIdx);
   xSetEdgefilterTU   ( tuRecurse );
   xSetEdgefilterPU   ( pcCU, uiAbsZorderIdx );
+#endif
 
+#if QT_BT_STRUCTURE
+ // const UInt uiPelsInPart = sps.getCTUSize() >> sps.getMaxTotalCUDepth();
+  for (UInt j=0; j<(edgeDir==EDGE_VER ? uiHeight: 1); j+=uiMinCUH)
+  {
+    for (UInt i=0; i<(edgeDir==EDGE_VER ? 1: uiWidth); i+=uiMinCUW)
+    {
+      UInt uiRaster = j/uiMinCUH * pcCU->getPic()->getNumPartInCtuWidth() + i/uiMinCUW + g_auiZscanToRaster[uiAbsZorderIdx];
+      UInt uiPartIdx = g_auiRasterToZscan[uiRaster];
+      UInt uiBSCheck = 1;
+#else
   const UInt uiPelsInPart = sps.getMaxCUWidth() >> sps.getMaxTotalCUDepth();
 
   for( UInt uiPartIdx = uiAbsZorderIdx; uiPartIdx < uiAbsZorderIdx + uiCurNumParts; uiPartIdx++ )
@@ -211,10 +298,18 @@ Void TComLoopFilter::xDeblockCU( TComDataCU* pcCU, UInt uiAbsZorderIdx, UInt uiD
       uiBSCheck = 1;
     }
 
+#endif
     if ( m_aapbEdgeFilter[edgeDir][uiPartIdx] && uiBSCheck )
     {
       xGetBoundaryStrengthSingle ( pcCU, edgeDir, uiPartIdx );
     }
+#if QT_BT_STRUCTURE
+    }
+  }
+
+  UInt uiSizeInPU = 1;
+  UInt PartIdxIncr = 1;
+#else
   }
 
   UInt PartIdxIncr = DEBLOCK_SMALLEST_BLOCK / uiPelsInPart ? DEBLOCK_SMALLEST_BLOCK / uiPelsInPart : 1 ;
@@ -223,18 +318,32 @@ Void TComLoopFilter::xDeblockCU( TComDataCU* pcCU, UInt uiAbsZorderIdx, UInt uiD
   const ChromaFormat chFmt=pcPic->getChromaFormat();
   const UInt shiftFactor  = edgeDir == EDGE_VER ? pcPic->getComponentScaleX(COMPONENT_Cb) : pcPic->getComponentScaleY(COMPONENT_Cb);
   const Bool bAlwaysDoChroma=chFmt==CHROMA_444;
+#endif
 
   for ( Int iEdge = 0; iEdge < uiSizeInPU ; iEdge+=PartIdxIncr)
   {
+#if QT_BT_STRUCTURE
+    if (isLuma(pcCU->getTextType()))
+    {
+#endif
     xEdgeFilterLuma     ( pcCU, uiAbsZorderIdx, uiDepth, edgeDir, iEdge );
+#if QT_BT_STRUCTURE
+    }
+    if ((isChroma(pcCU->getTextType()) || !pcCU->getSlice()->isIntra()) && pcPic->getChromaFormat()!=CHROMA_400)
+    {
+#else
     if ( chFmt!=CHROMA_400 && (bAlwaysDoChroma ||
                                (uiPelsInPart>DEBLOCK_SMALLEST_BLOCK) ||
                                (iEdge % ( (DEBLOCK_SMALLEST_BLOCK<<shiftFactor)/uiPelsInPart ) ) == 0
                               )
        )
+#endif
     {
       xEdgeFilterChroma   ( pcCU, uiAbsZorderIdx, uiDepth, edgeDir, iEdge );
     }
+#if QT_BT_STRUCTURE
+    }
+#endif
   }
 }
 
@@ -271,12 +380,31 @@ Void TComLoopFilter::xSetEdgefilterMultiple( TComDataCU*    pcCU,
   }
 }
 
+#if QT_BT_STRUCTURE
+Void TComLoopFilter::xSetEdgefilterCU( TComDataCU* pcCU, UInt uiAbsZorderIdx, UInt uiWidth, UInt uiHeight )
+{
+  const TComSPS &sps=*(pcCU->getSlice()->getSPS());
+
+  UInt uiWidthInBaseUnits  = uiWidth / (sps.getCTUSize()  >> sps.getMaxTotalCUDepth());
+  UInt uiHeightInBaseUnits = uiHeight / (sps.getCTUSize()  >> sps.getMaxTotalCUDepth());
+
+  xSetEdgefilterMultiple( pcCU, uiAbsZorderIdx, 0, EDGE_VER, 0, m_stLFCUParam.bInternalEdge, uiWidthInBaseUnits, uiHeightInBaseUnits );
+  xSetEdgefilterMultiple( pcCU, uiAbsZorderIdx, 0, EDGE_HOR, 0, m_stLFCUParam.bInternalEdge, uiWidthInBaseUnits, uiHeightInBaseUnits );
+
+  xSetEdgefilterMultiple( pcCU, uiAbsZorderIdx, 0, EDGE_VER, 0, m_stLFCUParam.bLeftEdge, uiWidthInBaseUnits, uiHeightInBaseUnits );
+  xSetEdgefilterMultiple( pcCU, uiAbsZorderIdx, 0, EDGE_HOR, 0, m_stLFCUParam.bTopEdge, uiWidthInBaseUnits, uiHeightInBaseUnits );
+}
+#else
+
 Void TComLoopFilter::xSetEdgefilterTU(  TComTU &rTu )
 {
   TComDataCU* pcCU  = rTu.getCU();
   UInt uiTransDepthTotal = rTu.GetTransformDepthTotal();
-
+#if QT_BT_STRUCTURE
+  if( pcCU->getDepth( rTu.GetAbsPartIdxTU()) > uiTransDepthTotal )
+#else
   if( pcCU->getTransformIdx( rTu.GetAbsPartIdxTU() ) + pcCU->getDepth( rTu.GetAbsPartIdxTU()) > uiTransDepthTotal )
+#endif
   {
     TComTURecurse tuChild(rTu, false);
     do
@@ -289,8 +417,13 @@ Void TComLoopFilter::xSetEdgefilterTU(  TComTU &rTu )
   const TComRectangle &rect = rTu.getRect(COMPONENT_Y);
   const TComSPS &sps=*(pcCU->getSlice()->getSPS());
 
+#if QT_BT_STRUCTURE
+  const UInt uiWidthInBaseUnits  = rect.width  / (sps.getCTUSize()  >> sps.getMaxTotalCUDepth());
+  const UInt uiHeightInBaseUnits = rect.height / (sps.getCTUSize() >> sps.getMaxTotalCUDepth());
+#else
   const UInt uiWidthInBaseUnits  = rect.width  / (sps.getMaxCUWidth()  >> sps.getMaxTotalCUDepth());
   const UInt uiHeightInBaseUnits = rect.height / (sps.getMaxCUHeight() >> sps.getMaxTotalCUDepth());
+#endif
 
   xSetEdgefilterMultiple( pcCU, rTu.GetAbsPartIdxCU(), uiTransDepthTotal, EDGE_VER, 0, m_stLFCUParam.bInternalEdge, uiWidthInBaseUnits, uiHeightInBaseUnits, &rect );
   xSetEdgefilterMultiple( pcCU, rTu.GetAbsPartIdxCU(), uiTransDepthTotal, EDGE_HOR, 0, m_stLFCUParam.bInternalEdge, uiWidthInBaseUnits, uiHeightInBaseUnits, &rect );
@@ -300,15 +433,29 @@ Void TComLoopFilter::xSetEdgefilterPU( TComDataCU* pcCU, UInt uiAbsZorderIdx )
 {
   const UInt uiDepth = pcCU->getDepth( uiAbsZorderIdx );
   const UInt uiWidthInBaseUnits  = pcCU->getPic()->getNumPartInCtuWidth () >> uiDepth;
+#if !QT_BT_STRUCTURE
   const UInt uiHeightInBaseUnits = pcCU->getPic()->getNumPartInCtuHeight() >> uiDepth;
   const UInt uiHWidthInBaseUnits  = uiWidthInBaseUnits  >> 1;
   const UInt uiHHeightInBaseUnits = uiHeightInBaseUnits >> 1;
   const UInt uiQWidthInBaseUnits  = uiWidthInBaseUnits  >> 2;
   const UInt uiQHeightInBaseUnits = uiHeightInBaseUnits >> 2;
+#endif
 
   xSetEdgefilterMultiple( pcCU, uiAbsZorderIdx, uiDepth, EDGE_VER, 0, m_stLFCUParam.bLeftEdge );
   xSetEdgefilterMultiple( pcCU, uiAbsZorderIdx, uiDepth, EDGE_HOR, 0, m_stLFCUParam.bTopEdge );
 
+#if QT_BT_STRUCTURE
+  if( pcCU->getFRUCMgrMode( uiAbsZorderIdx ) )
+  {
+    assert( MIN_PU_SIZE == 4 && FRUC_MERGE_REFINE_MINBLKSIZE == 4 );
+    const Int nUnits = FRUC_MERGE_REFINE_MINBLKSIZE >> 2;
+    for( UInt nEdgeIdx = nUnits ; nEdgeIdx < uiWidthInBaseUnits ; nEdgeIdx += nUnits )
+    {
+      xSetEdgefilterMultiple( pcCU, uiAbsZorderIdx, uiDepth, EDGE_VER, nEdgeIdx, m_stLFCUParam.bInternalEdge );
+      xSetEdgefilterMultiple( pcCU, uiAbsZorderIdx, uiDepth, EDGE_HOR, nEdgeIdx, m_stLFCUParam.bInternalEdge );
+    }
+  }
+#else
   switch ( pcCU->getPartitionSize( uiAbsZorderIdx ) )
   {
     case SIZE_2Nx2N:
@@ -380,9 +527,11 @@ Void TComLoopFilter::xSetEdgefilterPU( TComDataCU* pcCU, UInt uiAbsZorderIdx )
       break;
     }
   }
+#endif
 }
 
 
+#endif
 Void TComLoopFilter::xSetLoopfilterParam( TComDataCU* pcCU, UInt uiAbsZorderIdx )
 {
   UInt uiX           = pcCU->getCUPelX() + g_auiRasterToPelX[ g_auiZscanToRaster[ uiAbsZorderIdx ] ];
@@ -468,12 +617,19 @@ Void TComLoopFilter::xGetBoundaryStrengthSingle ( TComDataCU* pCtu, DeblockEdgeD
   }
 
   //-- Set BS for not Intra MB : BS = 2 or 1 or 0
+#if QT_BT_STRUCTURE
+  if ( isLuma(pCtu->getTextType()) && (!pcCUP->isIntra(uiPartP) && !pcCUQ->isIntra(uiPartQ)) )
+#else
   if ( !pcCUP->isIntra(uiPartP) && !pcCUQ->isIntra(uiPartQ) )
+#endif
   {
     UInt nsPartQ = uiPartQ;
     UInt nsPartP = uiPartP;
-
+#if QT_BT_STRUCTURE
+    if ( m_aapucBS[edgeDir][uiAbsPartIdx4x4BlockWithinCtu] && (pcCUQ->getCbf( nsPartQ, COMPONENT_Y, 0) != 0 || pcCUP->getCbf( nsPartP, COMPONENT_Y, 0 ) != 0) )
+#else
     if ( m_aapucBS[edgeDir][uiAbsPartIdx4x4BlockWithinCtu] && (pcCUQ->getCbf( nsPartQ, COMPONENT_Y, pcCUQ->getTransformIdx(nsPartQ)) != 0 || pcCUP->getCbf( nsPartP, COMPONENT_Y, pcCUP->getTransformIdx(nsPartP) ) != 0) )
+#endif
     {
       uiBs = 1;
     }
@@ -629,11 +785,38 @@ Void TComLoopFilter::xEdgeFilterLuma( TComDataCU* const pcCU, const UInt uiAbsZo
   Int iQP = 0;
   Int iQP_P = 0;
   Int iQP_Q = 0;
+#if QT_BT_STRUCTURE 
+  UInt uiNumParts;
+  if (edgeDir == EDGE_VER)
+  {
+    uiNumParts = pcCU->getHeight(uiAbsZorderIdx) / pcCU->getPic()->getMinCUHeight();
+  }
+  else
+  {
+    uiNumParts = pcCU->getWidth(uiAbsZorderIdx) / pcCU->getPic()->getMinCUWidth();
+  }
+#else
   UInt uiNumParts = pcCU->getPic()->getNumPartInCtuWidth()>>uiDepth;
+#endif
 
+#if QT_BT_STRUCTURE
+  UInt  uiPelsInPart = sps.getCTUSize() >> sps.getMaxTotalCUDepth();
+#else
   UInt  uiPelsInPart = sps.getMaxCUWidth() >> sps.getMaxTotalCUDepth();
+#endif
   UInt  uiBsAbsIdx = 0, uiBs = 0;
   Int   iOffset, iSrcStep;
+
+#if DF_MODIFY
+  const UInt uiLCUWidthInBaseUnits = pcCU->getPic()->getNumPartInCtuWidth();
+  UInt uiEdgeNumInLCUVert = g_auiZscanToRaster[uiAbsZorderIdx]%uiLCUWidthInBaseUnits + iEdge;
+  UInt uiEdgeNumInLCUHor = g_auiZscanToRaster[uiAbsZorderIdx]/uiLCUWidthInBaseUnits + iEdge;
+  
+  if ( (uiPelsInPart < DEBLOCK_SMALLEST_BLOCK) && (( (uiEdgeNumInLCUVert%(DEBLOCK_SMALLEST_BLOCK/uiPelsInPart))&&(edgeDir==EDGE_VER) ) || ( (uiEdgeNumInLCUHor%(DEBLOCK_SMALLEST_BLOCK/uiPelsInPart))&& (edgeDir==EDGE_HOR) ) ))
+  {
+    return;
+  }
+#endif
 
   Bool  bPCMFilter = (sps.getUsePCM() && sps.getPCMFilterDisableFlag())? true : false;
   Bool  bPartPNoFilter = false;
@@ -690,13 +873,22 @@ Void TComLoopFilter::xEdgeFilterLuma( TComDataCU* const pcCU, const UInt uiAbsZo
       Int iThrCut = iTc*10;
 
 
+#if DF_MODIFY
+      UInt  uiBlocksInPart = 1;
+#else
       UInt  uiBlocksInPart = uiPelsInPart / 4 ? uiPelsInPart / 4 : 1;
+#endif
       for (UInt iBlkIdx = 0; iBlkIdx<uiBlocksInPart; iBlkIdx ++)
       {
         Int dp0 = xCalcDP( piTmpSrc+iSrcStep*(iIdx*uiPelsInPart+iBlkIdx*4+0), iOffset);
         Int dq0 = xCalcDQ( piTmpSrc+iSrcStep*(iIdx*uiPelsInPart+iBlkIdx*4+0), iOffset);
+#if DF_MODIFY
+        Int dp3 = xCalcDP( piTmpSrc+iSrcStep*(iIdx*uiPelsInPart+iBlkIdx*4+uiPelsInPart-1), iOffset);
+        Int dq3 = xCalcDQ( piTmpSrc+iSrcStep*(iIdx*uiPelsInPart+iBlkIdx*4+uiPelsInPart-1), iOffset);
+#else
         Int dp3 = xCalcDP( piTmpSrc+iSrcStep*(iIdx*uiPelsInPart+iBlkIdx*4+3), iOffset);
         Int dq3 = xCalcDQ( piTmpSrc+iSrcStep*(iIdx*uiPelsInPart+iBlkIdx*4+3), iOffset);
+#endif
         Int d0 = dp0 + dq0;
         Int d3 = dp3 + dq3;
 
@@ -721,9 +913,17 @@ Void TComLoopFilter::xEdgeFilterLuma( TComDataCU* const pcCU, const UInt uiAbsZo
           Bool bFilterQ = (dq < iSideThreshold);
 
           Bool sw =  xUseStrongFiltering( iOffset, 2*d0, iBeta, iTc, piTmpSrc+iSrcStep*(iIdx*uiPelsInPart+iBlkIdx*4+0))
+#if DF_MODIFY
+          && xUseStrongFiltering( iOffset, 2*d3, iBeta, iTc, piTmpSrc+iSrcStep*(iIdx*uiPelsInPart+iBlkIdx*4+uiPelsInPart-1));
+#else
           && xUseStrongFiltering( iOffset, 2*d3, iBeta, iTc, piTmpSrc+iSrcStep*(iIdx*uiPelsInPart+iBlkIdx*4+3));
+#endif
 
+#if DF_MODIFY
+          for ( Int i = 0; i < uiPelsInPart; i++)
+#else
           for ( Int i = 0; i < DEBLOCK_SMALLEST_BLOCK/2; i++)
+#endif
           {
             xPelFilterLuma( piTmpSrc+iSrcStep*(iIdx*uiPelsInPart+iBlkIdx*4+i), iOffset, iTc, sw, bPartPNoFilter, bPartQNoFilter, iThrCut, bFilterP, bFilterQ, bitDepthLuma);
           }
@@ -743,8 +943,13 @@ Void TComLoopFilter::xEdgeFilterChroma( TComDataCU* const pcCU, const UInt uiAbs
   const TComSPS    &sps            = *(pcCU->getSlice()->getSPS());
   const Int         bitDepthChroma = sps.getBitDepth(CHANNEL_TYPE_CHROMA);
 
+#if QT_BT_STRUCTURE
+  const UInt  uiPelsInPartChromaH = sps.getCTUSize() >> (sps.getMaxTotalCUDepth()+pcPicYuvRec->getComponentScaleX(COMPONENT_Cb));
+  const UInt  uiPelsInPartChromaV = sps.getCTUSize() >> (sps.getMaxTotalCUDepth()+pcPicYuvRec->getComponentScaleY(COMPONENT_Cb)); //seems Cr ? a bug in HM16.6?
+#else
   const UInt  uiPelsInPartChromaH = sps.getMaxCUWidth() >> (sps.getMaxTotalCUDepth()+pcPicYuvRec->getComponentScaleX(COMPONENT_Cb));
   const UInt  uiPelsInPartChromaV = sps.getMaxCUHeight() >> (sps.getMaxTotalCUDepth()+pcPicYuvRec->getComponentScaleY(COMPONENT_Cb));
+#endif
 
   Int iQP = 0;
   Int iQP_P = 0;
@@ -778,7 +983,19 @@ Void TComLoopFilter::xEdgeFilterChroma( TComDataCU* const pcCU, const UInt uiAbs
 
   const Bool lfCrossSliceBoundaryFlag=pcCU->getSlice()->getLFCrossSliceBoundaryFlag();
 
+#if QT_BT_STRUCTURE
+  UInt uiNumParts;
+  if (edgeDir == EDGE_VER)
+  {
+    uiNumParts = pcCU->getHeight(uiAbsZorderIdx) / pcCU->getPic()->getMinCUHeight();
+  }
+  else
+  {
+    uiNumParts = pcCU->getWidth(uiAbsZorderIdx) / pcCU->getPic()->getMinCUWidth();
+  }
+#else
   UInt  uiNumParts = pcCU->getPic()->getNumPartInCtuWidth()>>uiDepth;
+#endif
 
   UInt  uiBsAbsIdx;
   UChar ucBs;

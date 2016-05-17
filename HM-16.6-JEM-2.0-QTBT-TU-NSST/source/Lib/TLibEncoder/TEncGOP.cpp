@@ -154,8 +154,13 @@ Void TEncGOP::init ( TEncTop* pcTEncTop )
   {
     m_pcAdaptiveLoopFilter = pcTEncTop->getAdaptiveLoopFilter();
 #if COM16_C806_ALF_TEMPPRED_NUM
+#if QT_BT_STRUCTURE
+    UInt uiMaxCUWidth = m_pcCfg->getCTUSize();
+    UInt uiMaxCUHeight = m_pcCfg->getCTUSize();
+#else
     UInt uiMaxCUWidth = m_pcCfg->getMaxCUWidth();
     UInt uiMaxCUHeight = m_pcCfg->getMaxCUHeight();
+#endif
     UInt uiPicWidth = m_pcCfg->getSourceWidth();
     UInt uiPicHeight = m_pcCfg->getSourceHeight();
     UInt uiWidthInCU       = ( uiPicWidth %uiMaxCUWidth  ) ? uiPicWidth /uiMaxCUWidth  + 1 : uiPicWidth /uiMaxCUWidth;
@@ -1286,6 +1291,52 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
 
     //  Set reference list
     pcSlice->setRefPicList ( rcListPic );
+
+#if AMAX_BT
+    if (!pcSlice->isIntra() ) 
+    {
+      Int refLayer=pcSlice->getDepth();
+      if( refLayer>9) refLayer=9; // Max layer is 10  
+#if AMAX_BT_FIX
+      if( g_bInitAMaxBT && pcSlice->getPOC() > g_uiPrevISlicePOC )
+      {
+        ::memset( g_uiBlkSize, 0, sizeof(g_uiBlkSize) );
+        ::memset( g_uiNumBlk, 0, sizeof(g_uiNumBlk) );
+        g_bInitAMaxBT = false;
+      }
+#endif
+      if (refLayer >= 0 && g_uiNumBlk[refLayer] != 0) 
+      {
+        Double dBlkSize = sqrt((Double)g_uiBlkSize[refLayer]/g_uiNumBlk[refLayer]);
+        if (dBlkSize < AMAXBT_TH32)
+        {
+          pcSlice->setMaxBTSize(32>MAX_BT_SIZE_INTER ? MAX_BT_SIZE_INTER: 32);
+        }
+        else if (dBlkSize < AMAXBT_TH64)
+        {
+          pcSlice->setMaxBTSize(64>MAX_BT_SIZE_INTER ? MAX_BT_SIZE_INTER: 64);
+        }
+        else
+        {
+          pcSlice->setMaxBTSize(128>MAX_BT_SIZE_INTER? MAX_BT_SIZE_INTER: 128);
+        }
+#if !AMAX_BT_FIX
+        printf("\n previous layer=%d, avg blk size = %3.2f, current max BT set to %d\n", refLayer, dBlkSize, pcSlice->getMaxBTSize());
+#endif
+
+        g_uiBlkSize[refLayer] = 0;
+        g_uiNumBlk[refLayer] = 0;
+      }
+    }
+#if AMAX_BT_FIX
+    else
+    {
+      g_uiPrevISlicePOC = pcSlice->getPOC();
+      g_bInitAMaxBT = true;
+    }
+#endif
+#endif
+
 
     //  Slice info. refinement
     if ( (pcSlice->getSliceType() == B_SLICE) && (pcSlice->getNumRefIdx(REF_PIC_LIST_1) == 0) )

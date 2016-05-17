@@ -68,19 +68,37 @@ static const UInt NUM_MV_PREDICTORS=3;
 class TEncSearch : public TComPrediction
 {
 private:
+#if QT_BT_STRUCTURE
+  TCoeff***       m_pppcQTTempCoeff[MAX_NUM_COMPONENT /* 0->Y, 1->Cb, 2->Cr*/];
+#else
   TCoeff**        m_ppcQTTempCoeff[MAX_NUM_COMPONENT /* 0->Y, 1->Cb, 2->Cr*/];
+#endif
   TCoeff*         m_pcQTTempCoeff[MAX_NUM_COMPONENT];
 #if ADAPTIVE_QP_SELECTION
+#if QT_BT_STRUCTURE
+  TCoeff***       m_pppcQTTempArlCoeff[MAX_NUM_COMPONENT];
+#else
   TCoeff**        m_ppcQTTempArlCoeff[MAX_NUM_COMPONENT];
+#endif
   TCoeff*         m_pcQTTempArlCoeff[MAX_NUM_COMPONENT];
 #endif
+#if !QT_BT_STRUCTURE
   UChar*          m_puhQTTempTrIdx;
+#endif
   UChar*          m_puhQTTempCbf[MAX_NUM_COMPONENT];
 
+#if QT_BT_STRUCTURE
+  TComYuv**       m_ppcQTTempTComYuv;
+#else
   TComYuv*        m_pcQTTempTComYuv;
+#endif
 #if VCEG_AZ08_INTER_KLT
+#if QT_BT_STRUCTURE
+  TComYuv**       m_ppcQTTempTComYuvRec;
+#else
   TComYuv*        m_pcQTTempTComYuvRec;
 #endif
+#endif  
   TComYuv         m_tmpYuvPred; // To be used in xGetInterPredictionError() to avoid constant memory allocation/deallocation
 
   Char*           m_phQTTempCrossComponentPredictionAlpha[MAX_NUM_COMPONENT];
@@ -114,8 +132,12 @@ private:
 #endif
 
 #if COM16_C806_LARGE_CTU
+#if QT_BT_STRUCTURE
+  Pel*            m_resiSingleBuffer[MAX_CU_DEPTH][MAX_CU_DEPTH][NUMBER_OF_STORED_RESIDUAL_TYPES];
+#else
   Pel*            m_resiSplitBuffer[MAX_CU_DEPTH][NUMBER_OF_STORED_RESIDUAL_TYPES];
   Pel*            m_resiSingleBuffer[MAX_CU_DEPTH][NUMBER_OF_STORED_RESIDUAL_TYPES];
+#endif
   Pel*            m_resiPUBuffer[NUMBER_OF_STORED_RESIDUAL_TYPES];
 #endif
 
@@ -143,7 +165,11 @@ protected:
   TComMv          m_acMvPredictors[NUM_MV_PREDICTORS]; // Left, Above, AboveRight. enum MVP_DIR first NUM_MV_PREDICTORS entries are suitable for accessing.
 
   // RD computation
+#if QT_BT_STRUCTURE
+  TEncSbac****    m_ppppcRDSbacCoder;
+#else
   TEncSbac***     m_pppcRDSbacCoder;
+#endif
   TEncSbac*       m_pcRDGoOnSbacCoder;
   DistParam       m_cDistParam;
 
@@ -164,6 +190,10 @@ protected:
   UChar*          m_puhQTTempEmtCuFlag;
 #endif
 
+#if JVET_B0059_TU_NSST
+  UChar*          m_puhQTTempNsstTuIdx;
+#endif
+
 public:
   TEncSearch();
   virtual ~TEncSearch();
@@ -178,7 +208,11 @@ public:
             const UInt    maxTotalCUDepth,
             TEncEntropy*  pcEntropyCoder,
             TComRdCost*   pcRdCost,
+#if QT_BT_STRUCTURE
+            TEncSbac****  ppppcRDSbacCoder,
+#else
             TEncSbac***   pppcRDSbacCoder,
+#endif
             TEncSbac*     pcRDGoOnSbacCoder );
 
   Void destroy();
@@ -272,6 +306,9 @@ public:
 
   Void xEncPCM    (TComDataCU* pcCU, UInt uiAbsPartIdx, Pel* piOrg, Pel* piPCM, Pel* piPred, Pel* piResi, Pel* piReco, UInt uiStride, UInt uiWidth, UInt uiHeight, const ComponentID compID );
   Void IPCMSearch (TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* rpcPredYuv, TComYuv* rpcResiYuv, TComYuv* rpcRecoYuv );
+#if FAST_MRG
+  static UInt updateCandList( UInt uiMode, Double uiCost, UInt uiFastCandNum, UInt * CandModeList, Double * CandCostList );
+#endif
 protected:
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -293,7 +330,11 @@ protected:
   UInt  xGetIntraBitsQT           ( TComTU &rTu,
                                     Bool         bLuma,
                                     Bool         bChroma,
-                                    Bool         bRealCoeff );
+                                    Bool         bRealCoeff 
+#if JVET_B0059_TU_NSST
+                                    , Int        iNonZeroChroma = 0
+#endif
+                                    );
 
   UInt  xGetIntraBitsQTChroma    ( TComTU &rTu,
                                    ComponentID compID,
@@ -313,7 +354,10 @@ protected:
                                           TComTU        &rTu
                                     DEBUG_STRING_FN_DECLARE(sTest)
                                          ,Int           default0Save1Load2 = 0
-#if COM16_C806_EMT
+#if JVET_B0059_TU_NSST
+                                         ,Int          default0Save1Load2nsst = 0
+#endif
+#if COM16_C806_EMT || JVET_B0059_TU_NSST_ADAP_SIG
                                          ,UInt*         puiSigNum = NULL
 #endif
                                    );
@@ -620,8 +664,9 @@ protected:
   // T & Q & Q-1 & T-1
   // -------------------------------------------------------------------------------------------------------------------
 
-
+#if !QT_BT_STRUCTURE
   Void xEncodeInterResidualQT( const ComponentID compID, TComTU &rTu );
+#endif  
   Void xEstimateInterResidualQT( TComYuv* pcResi, Double &rdCost, UInt &ruiBits, Distortion &ruiDist, Distortion *puiZeroDist, TComTU &rTu 
 #if VCEG_AZ08_INTER_KLT
       , TComYuv* pcPred
@@ -635,7 +680,9 @@ protected:
     , Int  iAboveLeftCase = -1
 #endif
     );
+#if !FAST_MRG
   UInt  xUpdateCandList( UInt uiMode, Double uiCost, UInt uiFastCandNum, UInt * CandModeList, Double * CandCostList );
+#endif
 
   // -------------------------------------------------------------------------------------------------------------------
   // compute symbol bits

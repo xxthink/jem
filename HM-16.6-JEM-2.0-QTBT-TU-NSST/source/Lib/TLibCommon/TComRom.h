@@ -69,6 +69,14 @@ Void         destroyROM();
 // ====================================================================================================================
 // Data structure related table & variable
 // ====================================================================================================================
+#if AMAX_BT
+extern UInt g_uiBlkSize[ 10 ];
+extern UInt g_uiNumBlk[ 10 ];
+#if AMAX_BT_FIX
+extern UInt g_uiPrevISlicePOC;
+extern Bool g_bInitAMaxBT;
+#endif
+#endif
 
 // flexible conversion from relative to absolute index
 extern       UInt   g_auiZscanToRaster[ MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH ];
@@ -88,7 +96,9 @@ extern       UInt   g_auiRasterToPelY[ MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PA
 
 Void         initRasterToPelXY ( UInt uiMaxCUWidth, UInt uiMaxCUHeight, UInt uiMaxDepth );
 
+#if !QT_BT_STRUCTURE
 extern const UInt g_auiPUOffset[NUMBER_OF_PART_SIZES];
+#endif
 
 extern const Int g_quantScales[SCALING_LIST_REM_NUM];             // Q(QP%6)
 extern const Int g_invQuantScales[SCALING_LIST_REM_NUM];          // IQ(QP%6)
@@ -136,7 +146,11 @@ extern const UInt   g_uiLastCtx[ 28 ];
 // Intra prediction table
 // ====================================================================================================================
 
+#if QT_BT_STRUCTURE
+extern const UChar  g_aucIntraModeNumFast_UseMPM[7-MIN_CU_LOG2+1][7-MIN_CU_LOG2+1];
+#else
 extern const UChar  g_aucIntraModeNumFast_UseMPM[MAX_CU_DEPTH];
+#endif
 extern const UChar  g_aucIntraModeNumFast_NotUseMPM[MAX_CU_DEPTH];
 
 extern const UChar  g_chroma422IntraAngleMappingTable[NUM_INTRA_MODE];
@@ -161,6 +175,10 @@ extern const UInt g_iEmtSigNumThr;
 #endif
 
 #if COM16_C806_EMT || COM16_C806_T64
+#if QT_BT_STRUCTURE
+extern TMatrixCoeff g_aiTr2 [NUM_TRANS_TYPE][ 2][ 2];
+extern TMatrixCoeff g_aiTr128 [NUM_TRANS_TYPE][ 128][ 128];
+#endif
 extern TMatrixCoeff g_aiTr4 [NUM_TRANS_TYPE][ 4][ 4];
 extern TMatrixCoeff g_aiTr8 [NUM_TRANS_TYPE][ 8][ 8];
 extern TMatrixCoeff g_aiTr16[NUM_TRANS_TYPE][16][16];
@@ -170,7 +188,15 @@ extern TMatrixCoeff g_aiTr64[NUM_TRANS_TYPE][64][64];
 
 #if COM16_C1044_NSST
 extern const UChar g_NsstLut[NUM_INTRA_MODE-1];
+#if JVET_B0059_USE_HYGT
+const  int HyGT_PTS = 256;
+struct HyGT_SC { int c, s; };
+extern HyGT_SC g_HyGTscTable[HyGT_PTS]; 
+extern const UChar g_NsstSrt[35][3][16];
+extern const UChar g_NsstHyGTPar[35][3][64];
+#else
 extern const Int   g_aiNsst4x4[12][3][16][16];
+#endif
 #if VCEG_AZ07_CTX_RESIDUALCODING
 extern const UInt  g_auiCoefScanFirstCG8x8[3][16];
 #endif
@@ -235,7 +261,11 @@ extern const UInt g_scalingListSize [SCALING_LIST_SIZE_NUM];
 extern const UInt g_scalingListSizeX[SCALING_LIST_SIZE_NUM];
 
 #if COM16_C1046_PDPC_INTRA
+#if QT_BT_STRUCTURE // lossless change, just remove unused entries from the table
+extern const Int g_pdpc_pred_param[5][35][6];
+#else
 extern const Int g_pdpc_pred_param[5][2][35][7];
+#endif
 #endif
 //! \}
 

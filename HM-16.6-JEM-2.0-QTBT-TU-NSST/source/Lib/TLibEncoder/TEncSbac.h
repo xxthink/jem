@@ -146,6 +146,9 @@ public:
 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Void codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  );
+#if QT_BT_STRUCTURE
+  Void codeROTIdxChroma ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  );
+#endif
 #endif
 #if COM16_C806_OBMC
   Void codeOBMCFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
@@ -162,9 +165,14 @@ public:
   Void codeFRUCMgrMode   ( TComDataCU* pcCU, UInt uiAbsPartIdx , UInt uiPUIdx );
 #endif
   Void codeSplitFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#if QT_BT_STRUCTURE
+  Void codeBTSplitMode   ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight);
+#endif
   Void codeMVPIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList );
 
+#if !QT_BT_STRUCTURE
   Void codePartSize      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
   Void codePredMode      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeIPCMInfo      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeTransformSubdivFlag ( UInt uiSymbol, UInt uiCtx );
@@ -190,7 +198,7 @@ public:
 
   Void codeLastSignificantXY ( UInt uiPosX, UInt uiPosY, Int width, Int height, ComponentID component, UInt uiScanIdx );
   Void codeCoeffNxN            ( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID
-#if VCEG_AZ05_ROT_TR   || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+#if VCEG_AZ05_ROT_TR   || VCEG_AZ05_INTRA_MPI || ( COM16_C1044_NSST && !JVET_B0059_TU_NSST ) || COM16_C1046_PDPC_INTRA
     , Int& bCbfCU
 #endif  
     );
@@ -226,7 +234,9 @@ public:
   Void  codeAlfCtrlDepth  ( UInt uiMaxTotalCUDepth );
   Void  codeAlfFlagNum    ( UInt uiCode, UInt minValue );
   Void  codeAlfCtrlFlag   ( UInt uiSymbol );
+#if !QT_BT_STRUCTURE
   Void  codeAlfCtrlFlag   ( TComDataCU* pcCU, UInt uiAbsPartIdx );
+#endif
 #endif
 
 #if COM16_C806_EMT
@@ -242,6 +252,9 @@ private:
   ContextModel         m_contextModels[MAX_NUM_CTX_MOD];
   Int                  m_numContextModels;
   ContextModel3DBuffer m_cCUSplitFlagSCModel;
+#if QT_BT_STRUCTURE
+  ContextModel3DBuffer m_cBTSplitFlagSCModel;
+#endif
   ContextModel3DBuffer m_cCUSkipFlagSCModel;
 #if VCEG_AZ05_INTRA_MPI
   ContextModel3DBuffer m_cMPIIdxSCModel;

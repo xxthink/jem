@@ -317,7 +317,11 @@ Void TComRdCost::setDistParam( UInt uiBlkWidth, UInt uiBlkHeight, DFunc eDFunc, 
     rcDistParam.DistFunc = m_afpDistortFunc[eDFunc];
   else
 #endif
+#if QT_BT_STRUCTURE
+  rcDistParam.DistFunc = m_afpDistortFunc[eDFunc + g_aucConvertToBit[ rcDistParam.iCols ] + MIN_CU_LOG2 - 1 ];
+#else
   rcDistParam.DistFunc = m_afpDistortFunc[eDFunc + g_aucConvertToBit[ rcDistParam.iCols ] + 1 ];
+#endif
 
   // initialize
   rcDistParam.iSubShift  = 0;
@@ -341,7 +345,11 @@ Void TComRdCost::setDistParam( TComPattern* pcPatternKey, Pel* piRefY, Int iRefS
     rcDistParam.DistFunc = m_afpDistortFunc[DF_SAD];
   else
 #endif
+#if QT_BT_STRUCTURE
+  rcDistParam.DistFunc = m_afpDistortFunc[DF_SAD + g_aucConvertToBit[ rcDistParam.iCols ] + MIN_CU_LOG2 - 1 ];
+#else
   rcDistParam.DistFunc = m_afpDistortFunc[DF_SAD + g_aucConvertToBit[ rcDistParam.iCols ] + 1 ];
+#endif
 
   if (rcDistParam.iCols == 12)
   {
@@ -385,7 +393,11 @@ Void TComRdCost::setDistParam( TComPattern* pcPatternKey, Pel* piRefY, Int iRefS
       rcDistParam.DistFunc =  m_afpDistortFunc[DF_SADS];
     else
 #endif
+#if QT_BT_STRUCTURE
+    rcDistParam.DistFunc = m_afpDistortFunc[DF_SADS + g_aucConvertToBit[ rcDistParam.iCols ] + MIN_CU_LOG2 - 1 ];
+#else
     rcDistParam.DistFunc = m_afpDistortFunc[DF_SADS + g_aucConvertToBit[ rcDistParam.iCols ] + 1 ];
+#endif
     if (rcDistParam.iCols == 12)
     {
       rcDistParam.DistFunc = m_afpDistortFunc[DF_SADS12];
@@ -429,7 +441,11 @@ Void TComRdCost::setDistParam( DistParam& rcDP, Int bitDepth, Pel* p1, Int iStri
     rcDP.DistFunc   = m_afpDistortFunc[ ( bHadamard ? DF_HADS : DF_SADS ) ];
   else
 #endif
+#if QT_BT_STRUCTURE
+  rcDP.DistFunc   = m_afpDistortFunc[ ( bHadamard ? DF_HADS : DF_SADS ) + g_aucConvertToBit[ iWidth ] + MIN_CU_LOG2 - 1 ];
+#else
   rcDP.DistFunc   = m_afpDistortFunc[ ( bHadamard ? DF_HADS : DF_SADS ) + g_aucConvertToBit[ iWidth ] + 1 ];
+#endif
 }
 
 Distortion TComRdCost::calcHAD( Int bitDepth, Pel* pi0, Int iStride0, Pel* pi1, Int iStride1, Int iWidth, Int iHeight )
@@ -3038,6 +3054,443 @@ Distortion TComRdCost::xCalcHADs8x8( Pel *piOrg, Pel *piCur, Int iStrideOrg, Int
   return sad;
 }
 
+#if QT_BT_STRUCTURE
+Distortion TComRdCost::xCalcHADs16x8( Pel *piOrg, Pel *piCur, Int iStrideOrg, Int iStrideCur)
+{   //need to add SIMD implementation ,JCA
+  Int k, i, j, jj, sad=0;
+  Int diff[128], m1[8][16], m2[8][16];
+  for( k = 0; k < 128; k += 16 )
+  {
+    diff[k+0] = piOrg[0] - piCur[0];
+    diff[k+1] = piOrg[1] - piCur[1];
+    diff[k+2] = piOrg[2] - piCur[2];
+    diff[k+3] = piOrg[3] - piCur[3];
+    diff[k+4] = piOrg[4] - piCur[4];
+    diff[k+5] = piOrg[5] - piCur[5];
+    diff[k+6] = piOrg[6] - piCur[6];
+    diff[k+7] = piOrg[7] - piCur[7];
+
+    diff[k+8]  = piOrg[8]  - piCur[8] ;
+    diff[k+9]  = piOrg[9]  - piCur[9] ;
+    diff[k+10] = piOrg[10] - piCur[10];
+    diff[k+11] = piOrg[11] - piCur[11];
+    diff[k+12] = piOrg[12] - piCur[12];
+    diff[k+13] = piOrg[13] - piCur[13];
+    diff[k+14] = piOrg[14] - piCur[14];
+    diff[k+15] = piOrg[15] - piCur[15];
+
+    piCur += iStrideCur;
+    piOrg += iStrideOrg;
+  }
+
+  //horizontal
+  for (j=0; j < 8; j++)
+  {
+    jj = j << 4;
+
+    m2[j][0]  = diff[jj  ] + diff[jj+8];
+    m2[j][1]  = diff[jj+1] + diff[jj+9];
+    m2[j][2]  = diff[jj+2] + diff[jj+10];
+    m2[j][3]  = diff[jj+3] + diff[jj+11];
+    m2[j][4]  = diff[jj+4] + diff[jj+12];
+    m2[j][5]  = diff[jj+5] + diff[jj+13];
+    m2[j][6]  = diff[jj+6] + diff[jj+14];
+    m2[j][7]  = diff[jj+7] + diff[jj+15];
+    m2[j][8]  = diff[jj  ] - diff[jj+8];
+    m2[j][9]  = diff[jj+1] - diff[jj+9];
+    m2[j][10] = diff[jj+2] - diff[jj+10];
+    m2[j][11] = diff[jj+3] - diff[jj+11];
+    m2[j][12] = diff[jj+4] - diff[jj+12];
+    m2[j][13] = diff[jj+5] - diff[jj+13];
+    m2[j][14] = diff[jj+6] - diff[jj+14];
+    m2[j][15] = diff[jj+7] - diff[jj+15];
+
+    m1[j][0]  = m2[j][0]  + m2[j][4];
+    m1[j][1]  = m2[j][1]  + m2[j][5];
+    m1[j][2]  = m2[j][2]  + m2[j][6];
+    m1[j][3]  = m2[j][3]  + m2[j][7];
+    m1[j][4]  = m2[j][0]  - m2[j][4];
+    m1[j][5]  = m2[j][1]  - m2[j][5];
+    m1[j][6]  = m2[j][2]  - m2[j][6];
+    m1[j][7]  = m2[j][3]  - m2[j][7];
+    m1[j][8]  = m2[j][8]  + m2[j][12];
+    m1[j][9]  = m2[j][9]  + m2[j][13];
+    m1[j][10] = m2[j][10] + m2[j][14];
+    m1[j][11] = m2[j][11] + m2[j][15];
+    m1[j][12] = m2[j][8]  - m2[j][12];
+    m1[j][13] = m2[j][9]  - m2[j][13];
+    m1[j][14] = m2[j][10] - m2[j][14];
+    m1[j][15] = m2[j][11] - m2[j][15];
+
+    m2[j][0]  = m1[j][0]  + m1[j][2];
+    m2[j][1]  = m1[j][1]  + m1[j][3];
+    m2[j][2]  = m1[j][0]  - m1[j][2];
+    m2[j][3]  = m1[j][1]  - m1[j][3];
+    m2[j][4]  = m1[j][4]  + m1[j][6];
+    m2[j][5]  = m1[j][5]  + m1[j][7];
+    m2[j][6]  = m1[j][4]  - m1[j][6];
+    m2[j][7]  = m1[j][5]  - m1[j][7];
+    m2[j][8]  = m1[j][8]  + m1[j][10];
+    m2[j][9]  = m1[j][9]  + m1[j][11];
+    m2[j][10] = m1[j][8]  - m1[j][10];
+    m2[j][11] = m1[j][9]  - m1[j][11];
+    m2[j][12] = m1[j][12] + m1[j][14];
+    m2[j][13] = m1[j][13] + m1[j][15];
+    m2[j][14] = m1[j][12] - m1[j][14];
+    m2[j][15] = m1[j][13] - m1[j][15];
+
+    m1[j][0]  = m2[j][0]  + m2[j][1];
+    m1[j][1]  = m2[j][0]  - m2[j][1];
+    m1[j][2]  = m2[j][2]  + m2[j][3];
+    m1[j][3]  = m2[j][2]  - m2[j][3];
+    m1[j][4]  = m2[j][4]  + m2[j][5];
+    m1[j][5]  = m2[j][4]  - m2[j][5];
+    m1[j][6]  = m2[j][6]  + m2[j][7];
+    m1[j][7]  = m2[j][6]  - m2[j][7];
+    m1[j][8]  = m2[j][8]  + m2[j][9];
+    m1[j][9]  = m2[j][8]  - m2[j][9];
+    m1[j][10] = m2[j][10] + m2[j][11];
+    m1[j][11] = m2[j][10] - m2[j][11];
+    m1[j][12] = m2[j][12] + m2[j][13];
+    m1[j][13] = m2[j][12] - m2[j][13];
+    m1[j][14] = m2[j][14] + m2[j][15];
+    m1[j][15] = m2[j][14] - m2[j][15];
+  }
+
+  //vertical
+  for (i=0; i < 16; i++)
+  {    
+    m2[0][i] = m1[0][i] + m1[4][i];
+    m2[1][i] = m1[1][i] + m1[5][i];
+    m2[2][i] = m1[2][i] + m1[6][i];
+    m2[3][i] = m1[3][i] + m1[7][i];
+    m2[4][i] = m1[0][i] - m1[4][i];
+    m2[5][i] = m1[1][i] - m1[5][i];
+    m2[6][i] = m1[2][i] - m1[6][i];
+    m2[7][i] = m1[3][i] - m1[7][i];
+
+    m1[0][i] = m2[0][i] + m2[2][i];
+    m1[1][i] = m2[1][i] + m2[3][i];
+    m1[2][i] = m2[0][i] - m2[2][i];
+    m1[3][i] = m2[1][i] - m2[3][i];
+    m1[4][i] = m2[4][i] + m2[6][i];
+    m1[5][i] = m2[5][i] + m2[7][i];
+    m1[6][i] = m2[4][i] - m2[6][i];
+    m1[7][i] = m2[5][i] - m2[7][i];
+
+    m2[0][i] = m1[0][i] + m1[1][i];
+    m2[1][i] = m1[0][i] - m1[1][i];
+    m2[2][i] = m1[2][i] + m1[3][i];
+    m2[3][i] = m1[2][i] - m1[3][i];
+    m2[4][i] = m1[4][i] + m1[5][i];
+    m2[5][i] = m1[4][i] - m1[5][i];
+    m2[6][i] = m1[6][i] + m1[7][i];
+    m2[7][i] = m1[6][i] - m1[7][i];
+  }
+
+  for (i = 0; i < 8; i++)
+  {
+    for (j = 0; j < 16; j++)
+    {
+      sad += abs(m2[i][j]);
+    }
+  }
+
+  sad=(Int)(sad/sqrt(16.0*8)*2);
+
+  return sad;
+}
+
+Distortion TComRdCost::xCalcHADs8x16( Pel *piOrg, Pel *piCur, Int iStrideOrg, Int iStrideCur)
+{
+  Int k, i, j, jj, sad=0;
+  Int diff[128], m1[16][8], m2[16][8];
+  for( k = 0; k < 128; k += 8 )
+  {
+    diff[k+0] = piOrg[0] - piCur[0];
+    diff[k+1] = piOrg[1] - piCur[1];
+    diff[k+2] = piOrg[2] - piCur[2];
+    diff[k+3] = piOrg[3] - piCur[3];
+    diff[k+4] = piOrg[4] - piCur[4];
+    diff[k+5] = piOrg[5] - piCur[5];
+    diff[k+6] = piOrg[6] - piCur[6];
+    diff[k+7] = piOrg[7] - piCur[7];
+
+    piCur += iStrideCur;
+    piOrg += iStrideOrg;
+  }
+
+  //horizontal
+  for (j=0; j < 16; j++)
+  {
+    jj = j << 3;
+
+    m2[j][0] = diff[jj  ] + diff[jj+4];
+    m2[j][1] = diff[jj+1] + diff[jj+5];
+    m2[j][2] = diff[jj+2] + diff[jj+6];
+    m2[j][3] = diff[jj+3] + diff[jj+7];
+    m2[j][4] = diff[jj  ] - diff[jj+4];
+    m2[j][5] = diff[jj+1] - diff[jj+5];
+    m2[j][6] = diff[jj+2] - diff[jj+6];
+    m2[j][7] = diff[jj+3] - diff[jj+7];
+
+    m1[j][0] = m2[j][0] + m2[j][2];
+    m1[j][1] = m2[j][1] + m2[j][3];
+    m1[j][2] = m2[j][0] - m2[j][2];
+    m1[j][3] = m2[j][1] - m2[j][3];
+    m1[j][4] = m2[j][4] + m2[j][6];
+    m1[j][5] = m2[j][5] + m2[j][7];
+    m1[j][6] = m2[j][4] - m2[j][6];
+    m1[j][7] = m2[j][5] - m2[j][7];
+
+    m2[j][0] = m1[j][0] + m1[j][1];
+    m2[j][1] = m1[j][0] - m1[j][1];
+    m2[j][2] = m1[j][2] + m1[j][3];
+    m2[j][3] = m1[j][2] - m1[j][3];
+    m2[j][4] = m1[j][4] + m1[j][5];
+    m2[j][5] = m1[j][4] - m1[j][5];
+    m2[j][6] = m1[j][6] + m1[j][7];
+    m2[j][7] = m1[j][6] - m1[j][7];
+  }
+
+  //vertical
+  for (i=0; i < 8; i++)
+  {    
+    m1[0][i]  = m2[0][i] + m2[8][i];
+    m1[1][i]  = m2[1][i] + m2[9][i];
+    m1[2][i]  = m2[2][i] + m2[10][i];
+    m1[3][i]  = m2[3][i] + m2[11][i];
+    m1[4][i]  = m2[4][i] + m2[12][i];
+    m1[5][i]  = m2[5][i] + m2[13][i];
+    m1[6][i]  = m2[6][i] + m2[14][i];
+    m1[7][i]  = m2[7][i] + m2[15][i];
+    m1[8][i]  = m2[0][i] - m2[8][i];
+    m1[9][i]  = m2[1][i] - m2[9][i];
+    m1[10][i]  = m2[2][i] - m2[10][i];
+    m1[11][i]  = m2[3][i] - m2[11][i];
+    m1[12][i]  = m2[4][i] - m2[12][i];
+    m1[13][i]  = m2[5][i] - m2[13][i];
+    m1[14][i]  = m2[6][i] - m2[14][i];
+    m1[15][i]  = m2[7][i] - m2[15][i];
+
+    m2[0][i]  = m1[0][i]  + m1[4][i];
+    m2[1][i]  = m1[1][i]  + m1[5][i];
+    m2[2][i]  = m1[2][i]  + m1[6][i];
+    m2[3][i]  = m1[3][i]  + m1[7][i];
+    m2[4][i]  = m1[0][i]  - m1[4][i];
+    m2[5][i]  = m1[1][i]  - m1[5][i];
+    m2[6][i]  = m1[2][i]  - m1[6][i];
+    m2[7][i]  = m1[3][i]  - m1[7][i];
+    m2[8][i]  = m1[8][i]  + m1[12][i];
+    m2[9][i]  = m1[9][i]  + m1[13][i];
+    m2[10][i] = m1[10][i] + m1[14][i];
+    m2[11][i] = m1[11][i] + m1[15][i];
+    m2[12][i] = m1[8][i]  - m1[12][i];
+    m2[13][i] = m1[9][i]  - m1[13][i];
+    m2[14][i] = m1[10][i] - m1[14][i];
+    m2[15][i] = m1[11][i] - m1[15][i];
+
+    m1[0][i]  = m2[0][i]  + m2[2][i];
+    m1[1][i]  = m2[1][i]  + m2[3][i];
+    m1[2][i]  = m2[0][i]  - m2[2][i];
+    m1[3][i]  = m2[1][i]  - m2[3][i];
+    m1[4][i]  = m2[4][i]  + m2[6][i];
+    m1[5][i]  = m2[5][i]  + m2[7][i];
+    m1[6][i]  = m2[4][i]  - m2[6][i];
+    m1[7][i]  = m2[5][i]  - m2[7][i];
+    m1[8][i]  = m2[8][i]  + m2[10][i];
+    m1[9][i]  = m2[9][i]  + m2[11][i];
+    m1[10][i] = m2[8][i]  - m2[10][i];
+    m1[11][i] = m2[9][i]  - m2[11][i];
+    m1[12][i] = m2[12][i] + m2[14][i];
+    m1[13][i] = m2[13][i] + m2[15][i];
+    m1[14][i] = m2[12][i] - m2[14][i];
+    m1[15][i] = m2[13][i] - m2[15][i];
+
+    m2[0][i]  = m1[0][i]  + m1[1][i];
+    m2[1][i]  = m1[0][i]  - m1[1][i];
+    m2[2][i]  = m1[2][i]  + m1[3][i];
+    m2[3][i]  = m1[2][i]  - m1[3][i];
+    m2[4][i]  = m1[4][i]  + m1[5][i];
+    m2[5][i]  = m1[4][i]  - m1[5][i];
+    m2[6][i]  = m1[6][i]  + m1[7][i];
+    m2[7][i]  = m1[6][i]  - m1[7][i];
+    m2[8][i]  = m1[8][i]  + m1[9][i];
+    m2[9][i]  = m1[8][i]  - m1[9][i];
+    m2[10][i] = m1[10][i] + m1[11][i];
+    m2[11][i] = m1[10][i] - m1[11][i];
+    m2[12][i] = m1[12][i] + m1[13][i];
+    m2[13][i] = m1[12][i] - m1[13][i];
+    m2[14][i] = m1[14][i] + m1[15][i];
+    m2[15][i] = m1[14][i] - m1[15][i];
+  }
+
+  for (i = 0; i < 16; i++)
+  {
+    for (j = 0; j < 8; j++)
+    {
+      sad += abs(m2[i][j]);
+    }
+  }
+
+  sad=(Int)(sad/sqrt(16.0*8)*2);
+
+  return sad;
+}
+Distortion TComRdCost::xCalcHADs4x8( Pel *piOrg, Pel *piCur, Int iStrideOrg, Int iStrideCur )
+{
+  Int k, i, j, jj, sad=0;
+  Int diff[32], m1[8][4], m2[8][4];
+  for( k = 0; k < 32; k += 4 )
+  {
+    diff[k+0] = piOrg[0] - piCur[0];
+    diff[k+1] = piOrg[1] - piCur[1];
+    diff[k+2] = piOrg[2] - piCur[2];
+    diff[k+3] = piOrg[3] - piCur[3];
+
+    piCur += iStrideCur;
+    piOrg += iStrideOrg;
+  }
+
+  //horizontal
+  for (j=0; j < 8; j++)
+  {
+    jj = j << 2;
+    m2[j][0] = diff[jj  ] + diff[jj+2];
+    m2[j][1] = diff[jj+1] + diff[jj+3];
+    m2[j][2] = diff[jj  ] - diff[jj+2];
+    m2[j][3] = diff[jj+1] - diff[jj+3];
+
+    m1[j][0] = m2[j][0] + m2[j][1];
+    m1[j][1] = m2[j][0] - m2[j][1];
+    m1[j][2] = m2[j][2] + m2[j][3];
+    m1[j][3] = m2[j][2] - m2[j][3];
+  }
+
+  //vertical
+  for (i=0; i<4; i++)
+  {
+    m2[0][i] = m1[0][i] + m1[4][i];
+    m2[1][i] = m1[1][i] + m1[5][i];
+    m2[2][i] = m1[2][i] + m1[6][i];
+    m2[3][i] = m1[3][i] + m1[7][i];
+    m2[4][i] = m1[0][i] - m1[4][i];
+    m2[5][i] = m1[1][i] - m1[5][i];
+    m2[6][i] = m1[2][i] - m1[6][i];
+    m2[7][i] = m1[3][i] - m1[7][i];
+
+    m1[0][i] = m2[0][i] + m2[2][i];
+    m1[1][i] = m2[1][i] + m2[3][i];
+    m1[2][i] = m2[0][i] - m2[2][i];
+    m1[3][i] = m2[1][i] - m2[3][i];
+    m1[4][i] = m2[4][i] + m2[6][i];
+    m1[5][i] = m2[5][i] + m2[7][i];
+    m1[6][i] = m2[4][i] - m2[6][i];
+    m1[7][i] = m2[5][i] - m2[7][i];
+
+    m2[0][i] = m1[0][i] + m1[1][i];
+    m2[1][i] = m1[0][i] - m1[1][i];
+    m2[2][i] = m1[2][i] + m1[3][i];
+    m2[3][i] = m1[2][i] - m1[3][i];
+    m2[4][i] = m1[4][i] + m1[5][i];
+    m2[5][i] = m1[4][i] - m1[5][i];
+    m2[6][i] = m1[6][i] + m1[7][i];
+    m2[7][i] = m1[6][i] - m1[7][i];
+  }
+
+  for (i = 0; i < 8; i++)
+  {
+    for (j = 0; j < 4; j++)
+    {
+      sad += abs(m2[i][j]);
+    }
+  }
+
+  sad=(Int)(sad/sqrt(4.0*8)*2);
+
+  return sad;
+}
+
+Distortion TComRdCost::xCalcHADs8x4( Pel *piOrg, Pel *piCur, Int iStrideOrg, Int iStrideCur )
+{
+  Int k, i, j, jj, sad=0;
+  Int diff[32], m1[4][8], m2[4][8];
+  for( k = 0; k < 32; k += 8 )
+  {
+    diff[k+0] = piOrg[0] - piCur[0];
+    diff[k+1] = piOrg[1] - piCur[1];
+    diff[k+2] = piOrg[2] - piCur[2];
+    diff[k+3] = piOrg[3] - piCur[3];
+    diff[k+4] = piOrg[4] - piCur[4];
+    diff[k+5] = piOrg[5] - piCur[5];
+    diff[k+6] = piOrg[6] - piCur[6];
+    diff[k+7] = piOrg[7] - piCur[7];
+
+    piCur += iStrideCur;
+    piOrg += iStrideOrg;
+  }
+
+  //horizontal
+  for (j=0; j < 4; j++)
+  {
+    jj = j << 3;
+
+    m2[j][0] = diff[jj  ] + diff[jj+4];
+    m2[j][1] = diff[jj+1] + diff[jj+5];
+    m2[j][2] = diff[jj+2] + diff[jj+6];
+    m2[j][3] = diff[jj+3] + diff[jj+7];
+    m2[j][4] = diff[jj  ] - diff[jj+4];
+    m2[j][5] = diff[jj+1] - diff[jj+5];
+    m2[j][6] = diff[jj+2] - diff[jj+6];
+    m2[j][7] = diff[jj+3] - diff[jj+7];
+
+    m1[j][0] = m2[j][0] + m2[j][2];
+    m1[j][1] = m2[j][1] + m2[j][3];
+    m1[j][2] = m2[j][0] - m2[j][2];
+    m1[j][3] = m2[j][1] - m2[j][3];
+    m1[j][4] = m2[j][4] + m2[j][6];
+    m1[j][5] = m2[j][5] + m2[j][7];
+    m1[j][6] = m2[j][4] - m2[j][6];
+    m1[j][7] = m2[j][5] - m2[j][7];
+
+    m2[j][0] = m1[j][0] + m1[j][1];
+    m2[j][1] = m1[j][0] - m1[j][1];
+    m2[j][2] = m1[j][2] + m1[j][3];
+    m2[j][3] = m1[j][2] - m1[j][3];
+    m2[j][4] = m1[j][4] + m1[j][5];
+    m2[j][5] = m1[j][4] - m1[j][5];
+    m2[j][6] = m1[j][6] + m1[j][7];
+    m2[j][7] = m1[j][6] - m1[j][7];
+  }
+
+  //vertical
+  for (i=0; i < 8; i++)
+  {    
+    m1[0][i] = m2[0][i] + m2[2][i];
+    m1[1][i] = m2[1][i] + m2[3][i];
+    m1[2][i] = m2[0][i] - m2[2][i];
+    m1[3][i] = m2[1][i] - m2[3][i];
+
+    m2[0][i] = m1[0][i] + m1[1][i];
+    m2[1][i] = m1[0][i] - m1[1][i];
+    m2[2][i] = m1[2][i] + m1[3][i];
+    m2[3][i] = m1[2][i] - m1[3][i];
+  }
+
+  for (i = 0; i < 4; i++)
+  {
+    for (j = 0; j < 8; j++)
+    {
+      sad += abs(m2[i][j]);
+    }
+  }
+
+  sad=(Int)(sad/sqrt(4.0*8)*2);
+
+  return sad;
+}
+
+#endif
 
 Distortion TComRdCost::xGetHADs( DistParam* pcDtParam )
 {
@@ -3064,6 +3517,57 @@ Distortion TComRdCost::xGetHADs( DistParam* pcDtParam )
 
   Distortion uiSum = 0;
 
+#if QT_BT_STRUCTURE
+  if ( iCols > iRows && iRows>=8) 
+  {
+    for ( y=0; y<iRows; y+= 8 )
+    {
+      for ( x=0; x<iCols; x+= 16 )
+      {
+        uiSum += xCalcHADs16x8( &piOrg[x], &piCur[x], iStrideOrg, iStrideCur );
+      }
+      piOrg += iStrideOrg*8;
+      piCur += iStrideCur*8;
+    }
+  }
+  else if (  iCols < iRows && iCols>=8) 
+  {
+    for ( y=0; y<iRows; y+= 16 )
+    {
+      for ( x=0; x<iCols; x+= 8 )
+      {
+        uiSum += xCalcHADs8x16(&piOrg[x], &piCur[x], iStrideOrg, iStrideCur );
+      }
+      piOrg += iStrideOrg*16;
+      piCur += iStrideCur*16;
+    }
+  }
+  else if ( iCols > iRows && iRows==4) 
+  {
+    for ( y=0; y<iRows; y+= 4 )
+    {
+      for ( x=0; x<iCols; x+= 8 )
+      {
+        uiSum += xCalcHADs8x4( &piOrg[x], &piCur[x], iStrideOrg, iStrideCur );
+      }
+      piOrg += iStrideOrg*4;
+      piCur += iStrideCur*4;
+    }
+  }
+  else if (  iCols < iRows && iCols==4) 
+  {
+    for ( y=0; y<iRows; y+= 8 )
+    {
+      for ( x=0; x<iCols; x+= 4 )
+      {
+        uiSum += xCalcHADs4x8(&piOrg[x], &piCur[x], iStrideOrg, iStrideCur );
+      }
+      piOrg += iStrideOrg*8;
+      piCur += iStrideCur*8;
+    }
+  }
+  else
+#endif
   if( ( iRows % 8 == 0) && (iCols % 8 == 0) )
   {
     Int  iOffsetOrg = iStrideOrg<<3;
@@ -3163,6 +3667,57 @@ UInt TComRdCost::xGetMRHADs( DistParam* pcDtParam )
 
   piOrg   = pcDtParam->pOrg;
 
+#if QT_BT_STRUCTURE 
+  if ( iCols > iRows && iRows>=8) 
+  {
+    for ( y=0; y<iRows; y+= 8 )
+    {
+      for ( x=0; x<iCols; x+= 16 )
+      {
+        uiSum += xCalcHADs16x8( &piOrg[x], &piCur[x], iStrideOrg, iStrideCur );
+      }
+      piOrg += iStrideOrg*8;
+      piCur += iStrideCur*8;
+    }
+  }
+  else if (  iCols < iRows && iCols>=8) 
+  {
+    for ( y=0; y<iRows; y+= 16 )
+    {
+      for ( x=0; x<iCols; x+= 8 )
+      {
+        uiSum += xCalcHADs8x16(&piOrg[x], &piCur[x], iStrideOrg, iStrideCur );
+      }
+      piOrg += iStrideOrg*16;
+      piCur += iStrideCur*16;
+    }
+  }
+  else if ( iCols > iRows && iRows==4) 
+  {
+    for ( y=0; y<iRows; y+= 4 )
+    {
+      for ( x=0; x<iCols; x+= 8 )
+      {
+        uiSum += xCalcHADs8x4( &piOrg[x], &piCur[x], iStrideOrg, iStrideCur );
+      }
+      piOrg += iStrideOrg*4;
+      piCur += iStrideCur*4;
+    }
+  }
+  else if (  iCols < iRows && iCols==4) 
+  {
+    for ( y=0; y<iRows; y+= 8 )
+    {
+      for ( x=0; x<iCols; x+= 4 )
+      {
+        uiSum += xCalcHADs4x8(&piOrg[x], &piCur[x], iStrideOrg, iStrideCur );
+      }
+      piOrg += iStrideOrg*8;
+      piCur += iStrideCur*8;
+    }
+  }
+  else
+#endif
   if( ( iRows % 8 == 0) && (iCols % 8 == 0) )
   {
     Int  iOffsetOrg = iStrideOrg<<3;
