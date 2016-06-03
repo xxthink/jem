@@ -887,14 +887,6 @@ Void TEncSbac::codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
     iNumberOfPassesROT = pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) <= DC_IDX ? 3 : 4;
   }
 
-  //static int id = 0;
-  //id++;
-  //if (id == 4)
-  //{
-     // printf("come here\n");
-  //}
-  //printf("id = %d\n", id);
-
   if( iNumberOfPassesROT==3 )
   {
 #if QT_BT_STRUCTURE

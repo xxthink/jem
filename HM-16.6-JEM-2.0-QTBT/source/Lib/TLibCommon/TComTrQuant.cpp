@@ -10459,12 +10459,10 @@ TempLibFast::TempLibFast()
     m_pY = NULL;
     m_pDiff = NULL;
     m_pId = NULL;
-#if QT_BT_STRUCTURE
     m_pXInteger = NULL;
     m_pYInteger = NULL;
     m_pDiffInteger = NULL;
     m_pIdInteger = NULL;
-#endif
 }
 
 TempLibFast::~TempLibFast()
