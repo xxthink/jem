@@ -165,7 +165,7 @@ static inline Bool TUCompRectHasAssociatedTransformSkipFlag(const TComRectangle 
 #endif
 {
 #if JVET_C0024_QTBT
-  return (rectSamples.width * rectSamples.height <= (isISlice ? 1<<(transformSkipLog2MaxSize<<1) : 1<<((transformSkipLog2MaxSize+1)<<1)) );  
+  return (rectSamples.width * rectSamples.height <= (isISlice ? 1<<(transformSkipLog2MaxSize<<1) : 1<<(transformSkipLog2MaxSize<<1)) );  
 #else
   return (rectSamples.width <= (1<<transformSkipLog2MaxSize));
 #endif
