@@ -105,7 +105,7 @@ public:
 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Void parseROTIdx       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Void parseROTIdxChroma ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
 #endif
@@ -115,7 +115,7 @@ public:
   Void parseFRUCMgrMode     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx );
 #endif
   Void parseSplitFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Void parseBTSplitMode     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight);
 #else
   Void parsePartSize        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
@@ -169,7 +169,7 @@ public:
   Void  parseAlfUvlc        ( UInt& ruiVal );
   Void  parseAlfSvlc        ( Int&  riVal  );
   Void  parseAlfCtrlDepth   ( UInt& ruiAlfCtrlDepth , UInt uiMaxTotalCUDepth ); 
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
   Void  parseAlfCtrlFlag    ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth , UInt uiMaxAlfCtrlDepth );
 #endif
   Void  parseAlfFlagNum     ( UInt& ruiVal, UInt minValue, UInt depth );

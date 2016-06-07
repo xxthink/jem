@@ -692,7 +692,7 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
     }
   }
 
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
   READ_UVLC( uiCode, "log2_min_luma_coding_block_size_minus3" );
   Int log2MinCUSize = uiCode + 3;
   pcSPS->setLog2MinCodingBlockSize(log2MinCUSize);
@@ -706,7 +706,7 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
   
   Int maxCUDepthDelta = uiCode;
 #endif
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   READ_UVLC( uiCode, "log2_CTU_size_minus2" );
   pcSPS->setCTUSize     ( 1<<(uiCode + MIN_CU_LOG2) );
   UInt uiMax = uiCode;
@@ -719,7 +719,7 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
   uiMinQT[2] = 1<<(uiCode + MIN_CU_LOG2);
   pcSPS->setMinQTSizes(uiMinQT);
   pcSPS->setMaxTotalCUDepth(uiMax);
-#if SPS_MAX_BT_SIZE
+#if JVET_C0024_SPS_MAX_BT_SIZE
   UInt uiMaxBTSize, uiMaxBTSizeISliceL, uiMaxBTSizeISliceC;
   READ_UVLC( uiCode, "log2_max_bt_size_minus2" );
   uiMaxBTSize = 1<<(uiCode + MIN_CU_LOG2);
@@ -729,7 +729,7 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
   uiMaxBTSizeISliceC = 1<<(uiCode + MIN_CU_LOG2);
   pcSPS->setMaxBTSize( uiMaxBTSize, uiMaxBTSizeISliceL, uiMaxBTSizeISliceC ); 
 #endif
-#if SPS_MAX_BT_DEPTH
+#if JVET_C0024_SPS_MAX_BT_DEPTH
   UInt uiMaxBTDepth, uiMaxBTDepthISliceL, uiMaxBTDepthISliceC;
   READ_UVLC( uiCode, "max_bt_depth_minus2" );
   uiMaxBTDepth = uiCode;
@@ -751,7 +751,7 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
   READ_UVLC( uiCode, "max_transform_hierarchy_depth_inter" );    pcSPS->setQuadtreeTUMaxDepthInter( uiCode+1 );
   READ_UVLC( uiCode, "max_transform_hierarchy_depth_intra" );    pcSPS->setQuadtreeTUMaxDepthIntra( uiCode+1 );
 
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
   Int addCuDepth = max (0, log2MinCUSize - (Int)pcSPS->getQuadtreeTULog2MinSize() );
   pcSPS->setMaxTotalCUDepth( maxCUDepthDelta + addCuDepth  + getMaxCUDepthOffset(pcSPS->getChromaFormatIdc(), pcSPS->getQuadtreeTULog2MinSize()) );
 #endif
@@ -1091,7 +1091,7 @@ Void TDecCavlc::parseSliceHeader (TComSlice* pcSlice, ParameterSetManager *param
   {
     pcSlice->setDependentSliceSegmentFlag(false);
   }
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Int numCTUs = ((sps->getPicWidthInLumaSamples()+sps->getCTUSize()-1)/sps->getCTUSize())*((sps->getPicHeightInLumaSamples()+sps->getCTUSize()-1)/sps->getCTUSize());
 #else
   Int numCTUs = ((sps->getPicWidthInLumaSamples()+sps->getMaxCUWidth()-1)/sps->getMaxCUWidth())*((sps->getPicHeightInLumaSamples()+sps->getMaxCUHeight()-1)/sps->getMaxCUHeight());
@@ -1486,7 +1486,7 @@ Void TDecCavlc::parseSliceHeader (TComSlice* pcSlice, ParameterSetManager *param
       pcSlice->setApplyIC( uiCodeTmp );
     }
 #endif
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     if (!pcSlice->isIntra())
     {
       READ_UVLC(uiCode, "max_binary_tree_unit_size");
@@ -1853,7 +1853,7 @@ Void TDecCavlc::parseMVPIdx( Int& /*riMVPIdx*/ )
   assert(0);
 }
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 Void TDecCavlc::parseBTSplitMode     ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiWidth*/, UInt /*uiHeight*/ )
 {
   assert(0);
@@ -1865,7 +1865,7 @@ Void TDecCavlc::parseSplitFlag     ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/
   assert(0);
 }
 
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
 Void TDecCavlc::parsePartSize( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/ )
 {
   assert(0);
@@ -2007,7 +2007,7 @@ Void TDecCavlc::parseROTIdx ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt 
   assert(0);
 }
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 Void TDecCavlc::parseROTIdxChroma ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/ )
 {
   assert(0);
@@ -2402,7 +2402,7 @@ Void TDecCavlc::parseAlfCtrlDepth( UInt& ruiAlfCtrlDepth , UInt uiMaxTotalCUDept
   ruiAlfCtrlDepth = uiSymbol;
 }
 
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
 Void TDecCavlc::parseAlfCtrlFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth  , UInt uiMaxAlfCtrlDepth )
 {
   if( uiDepth > uiMaxAlfCtrlDepth && !pcCU->isFirstAbsZorderIdxInDepth(uiAbsPartIdx, uiMaxAlfCtrlDepth))

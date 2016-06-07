@@ -69,7 +69,7 @@ class TEncCu
 {
 private:
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   TComDataCU***            m_pppcBestCU;      ///< Best CUs in each depth
   TComDataCU***            m_pppcTempCU;      ///< Temporary CUs in each depth
 #if COM16_C806_OBMC
@@ -78,7 +78,7 @@ private:
 #if VCEG_AZ07_FRUC_MERGE
   TComDataCU***            m_pppcFRUCBufferCU;      
 #endif
-#if VCEG_AZ07_IMV && !QT_BT_STRUCTURE
+#if VCEG_AZ07_IMV && !JVET_C0024_QTBT
   TComDataCU***            m_pppcTempCUIMVCache[NUMBER_OF_PART_SIZES]; 
 #endif
 #else
@@ -96,8 +96,8 @@ private:
 #endif
   UChar                   m_uhTotalDepth;
 
-#if QT_BT_STRUCTURE
-#if FAST_MRG
+#if JVET_C0024_QTBT
+#if JVET_C0024_FAST_MRG
   TComYuv*                 m_pcMrgPredTempYuv[MRG_MAX_NUM_CANDS]; ///< Best Prediction Yuv for each depth
 #endif
   TComYuv***               m_pppcPredYuvBest; ///< Best Prediction Yuv for each depth
@@ -146,7 +146,7 @@ private:
   TEncBinCABAC*           m_pcBinCABAC;
 
   // SBAC RD
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   TEncSbac****            m_ppppcRDSbacCoder;
 #else
   TEncSbac***             m_pppcRDSbacCoder;
@@ -183,7 +183,7 @@ public:
 protected:
   Void  finishCU            ( TComDataCU*  pcCU, UInt uiAbsPartIdx );
 #if AMP_ENC_SPEEDUP
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Void  xCompressCU         ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const UInt uiDepth, UInt uiWidth, UInt uiHeight, UInt uiBTSplitMode DEBUG_STRING_FN_DECLARE(sDebug), UInt uiSplitConstrain=0 );
 #else
   Void  xCompressCU         ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const UInt uiDepth DEBUG_STRING_FN_DECLARE(sDebug), PartSize eParentPartSize = NUMBER_OF_PART_SIZES );
@@ -191,14 +191,14 @@ protected:
 #else
   Void  xCompressCU         ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const UInt uiDepth        );
 #endif
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Void  xEncodeCU           ( TComDataCU*  pcCU, UInt uiAbsPartIdx,           UInt uiDepth, UInt uiWidth, UInt uiHeight, UInt uiSplitConstrain=0);
 #else
   Void  xEncodeCU           ( TComDataCU*  pcCU, UInt uiAbsPartIdx,           UInt uiDepth        );
 #endif
 
   Int   xComputeQP          ( TComDataCU* pcCU, UInt uiDepth );
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Void  xCheckBestMode      ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, UInt uiDepth, UInt uiWidth=0, UInt uiHeight=0 DEBUG_STRING_FN_DECLARE(sParent) DEBUG_STRING_FN_DECLARE(sTest) DEBUG_STRING_PASS_INTO(Bool bAddSizeInfo=true));
 #else
   Void  xCheckBestMode      ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, UInt uiDepth DEBUG_STRING_FN_DECLARE(sParent) DEBUG_STRING_FN_DECLARE(sTest) DEBUG_STRING_PASS_INTO(Bool bAddSizeInfo=true));
@@ -244,7 +244,7 @@ protected:
 
   Void  xCheckIntraPCM      ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU                      );
   Void  xCopyAMVPInfo       ( AMVPInfo* pSrc, AMVPInfo* pDst );
-#if QT_BT_STRUCTURE //uiSplitMethod: 0: quadtree; 1: hor; 2: ver
+#if JVET_C0024_QTBT //uiSplitMethod: 0: quadtree; 1: hor; 2: ver
   Void  xCopyYuv2Pic        (TComPic* rpcPic, UInt uiCUAddr, UInt uiAbsPartIdx, UInt uiDepth, UInt uiSrcDepth, UInt uiWidth, UInt uiHeight );
   Void  xCopyYuv2Tmp        ( UInt uiPartUnitIdx, UInt uiWidth, UInt uiHeight, UInt uiSplitMethod=0 );
 #else
@@ -266,7 +266,7 @@ protected:
   Int  xTuCollectARLStats(TCoeff* rpcCoeff, TCoeff* rpcArlCoeff, Int NumCoeffInCU, Double* cSum, UInt* numSamples );
 #endif
 
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
 #if AMP_ENC_SPEEDUP
 #if AMP_MRG
   Void deriveTestModeAMP (TComDataCU *pcBestCU, PartSize eParentPartSize, Bool &bTestAMP_Hor, Bool &bTestAMP_Ver, Bool &bTestMergeAMP_Hor, Bool &bTestMergeAMP_Ver);

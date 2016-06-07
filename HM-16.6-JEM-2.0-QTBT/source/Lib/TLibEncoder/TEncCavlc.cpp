@@ -512,17 +512,17 @@ Void TEncCavlc::codeSPS( const TComSPS* pcSPS )
       break;
     }
   }
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   WRITE_UVLC( g_aucConvertToBit[pcSPS->getCTUSize()],                                "log2_CTU_size_minus2" );
   WRITE_UVLC( g_aucConvertToBit[pcSPS->getMinQTSize(I_SLICE, CHANNEL_TYPE_LUMA)],    "log2_minQT_ISliceLuma_minus2" );
   WRITE_UVLC( g_aucConvertToBit[pcSPS->getMinQTSize(I_SLICE, CHANNEL_TYPE_CHROMA)],  "log2_minQT_ISliceChroma_minus2" );
   WRITE_UVLC( g_aucConvertToBit[pcSPS->getMinQTSize(B_SLICE, CHANNEL_TYPE_LUMA)],    "log2_minQT_PBSlice_minus2" );
-#if SPS_MAX_BT_SIZE
+#if JVET_C0024_SPS_MAX_BT_SIZE
   WRITE_UVLC( g_aucConvertToBit[pcSPS->getMaxBTSize()],                              "log2_max_bt_size_minus2" );
   WRITE_UVLC( g_aucConvertToBit[pcSPS->getMaxBTSizeISliceL()],                       "log2_max_bt_size_i_slice_luma_minus2" );
   WRITE_UVLC( g_aucConvertToBit[pcSPS->getMaxBTSizeISliceC()],                       "log2_max_bt_size_i_slice_chroma_minus2" );
 #endif
-#if SPS_MAX_BT_DEPTH
+#if JVET_C0024_SPS_MAX_BT_DEPTH
   WRITE_UVLC( pcSPS->getMaxBTDepth(),                                                "max_bt_depth" );
   WRITE_UVLC( pcSPS->getMaxBTDepthISliceL(),                                         "max_bt_depth_i_slice_luma" );
   WRITE_UVLC( pcSPS->getMaxBTDepthISliceC(),                                         "max_bt_depth_i_slice_chroma" );
@@ -1097,7 +1097,7 @@ Void TEncCavlc::codeSliceHeader         ( TComSlice* pcSlice )
       WRITE_FLAG( pcSlice->getApplyIC() ? 1 : 0, "slice_ic_enable_flag" );
     }
 #endif
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     if (!pcSlice->isIntra())
     {
       if( pcSlice->getSPS()->getCTUSize() > pcSlice->getMaxBTSize() )
@@ -1307,7 +1307,7 @@ Void TEncCavlc::codeMVPIdx ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, RefPic
   assert(0);
 }
 
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
 Void TEncCavlc::codePartSize( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/ )
 {
   assert(0);
@@ -1348,7 +1348,7 @@ Void TEncCavlc::codeROTIdx    ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth
   assert(0);
 }
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 Void TEncCavlc::codeROTIdxChroma( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth )
 {
   assert(0);
@@ -1403,7 +1403,7 @@ Void TEncCavlc::codeSplitFlag   ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, U
   assert(0);
 }
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 Void TEncCavlc::codeBTSplitMode (TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight)
 {
   assert(0);
@@ -1744,7 +1744,7 @@ Void TEncCavlc::codeAlfSvlc( Int iCode )
   WRITE_SVLC( iCode , "alf_svlc" );
 }
 
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
 Void TEncCavlc::codeAlfCtrlFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
 {  
   if (!m_bAlfCtrl)

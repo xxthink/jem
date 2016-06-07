@@ -67,7 +67,7 @@ class TComTU
     UInt          mAbsPartIdxTURelCU;
     UInt          mAbsPartIdxStep;
     TComDataCU   *mpcCU;
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
     UInt          mLog2TrLumaSize;
 #endif
     TComTU       *mpParent;
@@ -129,7 +129,7 @@ class TComTU
     const TComDataCU *getCU()                                  const { return mpcCU; }
     Bool IsLastSection() const { return mSection+1>=((1<<mSplitMode)); }
 
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
     UInt GetLog2LumaTrSize()                                   const { return mLog2TrLumaSize; }
 #endif
     UInt GetEquivalentLog2TrSize(const ComponentID compID)     const;

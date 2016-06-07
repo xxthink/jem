@@ -137,7 +137,7 @@ public:
 #endif
   Void parseCUTransquantBypassFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   Void parseSplitFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Void parseBTSplitMode   ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight );
 #endif
 #if VCEG_AZ05_INTRA_MPI
@@ -148,7 +148,7 @@ public:
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Void parseROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Void parseROTIdxChroma( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
 #endif
@@ -157,7 +157,7 @@ public:
 #if VCEG_AZ07_FRUC_MERGE
   Void parseFRUCMgrMode   ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx );
 #endif
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
   Void parsePartSize      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
   Void parsePredMode      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
@@ -199,7 +199,7 @@ public:
   Void  parseAlfUvlc          ( UInt& ruiVal           );
   Void  parseAlfSvlc          ( Int&  riVal            );
   Void  parseAlfCtrlDepth     ( UInt& ruiAlfCtrlDepth , UInt uiMaxTotalCUDepth ); 
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
   Void  parseAlfCtrlFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth , UInt uiMaxAlfCtrlDepth );
 #endif
   Void  parseAlfFlagNum       ( UInt& ruiVal, UInt minValue, UInt depth );
@@ -226,7 +226,7 @@ private:
   ContextModel         m_contextModels[MAX_NUM_CTX_MOD];
   Int                  m_numContextModels;
   ContextModel3DBuffer m_cCUSplitFlagSCModel;
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   ContextModel3DBuffer m_cBTSplitFlagSCModel;
 #endif
   ContextModel3DBuffer m_cCUSkipFlagSCModel;

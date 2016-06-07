@@ -202,7 +202,7 @@ static const Int NSST_SIG_NZ_CHROMA =                            1;
 #endif
 
 #if COM16_C806_T64
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 static const Int MLS_GRP_NUM =                                    1024; ///< Max number of coefficient groups, max(16, 256)
 #else
 static const Int MLS_GRP_NUM =                                    256; ///< Max number of coefficient groups, max(16, 256)
@@ -268,7 +268,7 @@ static const Int DM_CHROMA_IDX =                                   36; ///< chro
 
 #if COM16_C806_EMT
 static const UChar INTER_MODE_IDX =                               255; ///< index for inter modes
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 static const UInt  EMT_INTRA_MAX_CU =                              64; ///< Max Intra CU size applying EMT, supported values: 8, 16, 32, 64, 128
 static const UInt  EMT_INTER_MAX_CU =                              64; ///< Max Inter CU size applying EMT, supported values: 8, 16, 32, 64, 128
 #else
@@ -315,7 +315,7 @@ static const Int RExt__PREDICTION_WEIGHTING_ANALYSIS_DC_PRECISION = 0; ///< Addi
 static const Int MAX_TIMECODE_SEI_SETS =                            3; ///< Maximum number of time sets
 
 #if COM16_C806_LARGE_CTU
-#if QT_BT_STRUCTURE && !QT_BT_CTU_256
+#if JVET_C0024_QTBT && !JVET_C0024_CTU_256
 static const Int MAX_CU_DEPTH =                                     7; ///< log2(CTUSize)
 static const Int MAX_CU_SIZE =                                    128; ///< = 1<<(MAX_CU_DEPTH)
 #else
@@ -326,7 +326,7 @@ static const Int MAX_CU_SIZE =                                    256; ///< = 1<
 static const Int MAX_CU_DEPTH =                                     6; ///< log2(CTUSize)
 static const Int MAX_CU_SIZE =                                     64; ///< = 1<<(MAX_CU_DEPTH)
 #endif
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 static const Int MIN_PU_SIZE =                                      1<<MIN_CU_LOG2;
 static const Int MIN_TU_SIZE =                                      1<<MIN_CU_LOG2;
 #else
@@ -334,7 +334,7 @@ static const Int MIN_PU_SIZE =                                      4;
 static const Int MIN_TU_SIZE =                                      4;
 #endif
 #if COM16_C806_T64
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 static const Int MAX_TU_SIZE =                                      128; 
 static const Int MAX_LOG2_TU_SIZE_PLUS_ONE =                        8; ///< log2(MAX_TU_SIZE) + 1 
 #else
@@ -362,7 +362,7 @@ static const Int SCALING_LIST_DC =                                16 ; ///< defa
 
 static const Int CONTEXT_STATE_BITS =                              6 ;
 #if COM16_C806_T64
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 static const Int LAST_SIGNIFICANT_GROUPS =                        14 ;
 #else
 static const Int LAST_SIGNIFICANT_GROUPS =                        12 ;
@@ -400,9 +400,9 @@ static const Int AFFINE_MAX_NUM_COMB =                             12; ///< max 
 static const Int AFFINE_MIN_BLOCK_SIZE =                            4; ///< Minimum affine MC block size
 #endif
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 
-#if AMAX_BT
+#if JVET_C0024_AMAX_BT
 static const Double AMAXBT_TH32 =                                   15.0;
 static const Double AMAXBT_TH64 =                                   30.0;
 #endif
@@ -410,12 +410,12 @@ static const Double AMAXBT_TH64 =                                   30.0;
 static const Int    SKIP_DEPTH =                                    3;
 static const Int    SKIPHORNOVERQT_DEPTH_TH =                       2;
 
-#if FAST_MRG
+#if JVET_C0024_FAST_MRG
 static const Int    NUM_MRG_SATD_CAND =                             4;
 static const Double MRG_FAST_RATIO    =                             1.25;
 #endif
 
-#if PBINTRA_FAST
+#if JVET_C0024_PBINTRA_FAST
 static const Double PBINTRA_RATIO     =                             1.1;
 #endif
 

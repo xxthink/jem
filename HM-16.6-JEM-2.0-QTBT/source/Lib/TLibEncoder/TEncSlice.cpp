@@ -129,7 +129,7 @@ Void TEncSlice::init( TEncTop* pcEncTop )
   m_pcTrQuant         = pcEncTop->getTrQuant();
 
   m_pcRdCost          = pcEncTop->getRdCost();
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   m_ppppcRDSbacCoder  = pcEncTop->getRDSbacCoder();
 #else
   m_pppcRDSbacCoder   = pcEncTop->getRDSbacCoder();
@@ -478,7 +478,7 @@ Void TEncSlice::initEncSlice( TComPic* pcPic, Int pocLast, Int pocCurr, Int iGOP
 #else
   rpcSlice->setMaxNumMergeCand        ( m_pcCfg->getMaxNumMergeCand()        );
 #endif
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   rpcSlice->setMaxBTSize(rpcSlice->isIntra() ? MAX_BT_SIZE: MAX_BT_SIZE_INTER);
 #endif
 }
@@ -638,7 +638,7 @@ Void TEncSlice::calCostSliceI(TComPic* pcPic) // TODO: this only analyses the fi
     TComDataCU* pCtu = pcPic->getCtu( ctuRsAddr );
     pCtu->initCtu( pcPic, ctuRsAddr );
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     Int height  = min( sps.getCTUSize(),sps.getPicHeightInLumaSamples() - ctuRsAddr / pcPic->getFrameWidthInCtus() * sps.getCTUSize() );
     Int width   = min( sps.getCTUSize(), sps.getPicWidthInLumaSamples()  - ctuRsAddr % pcPic->getFrameWidthInCtus() * sps.getCTUSize() );
 #else
@@ -684,7 +684,7 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
 #if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
   m_pcEntropyCoder->setStatsHandle ( pcSlice->getStatsHandle() );
 #endif  
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   UInt uiMaxWIdx = g_aucConvertToBit[pcSlice->getSPS()->getCTUSize()];
   UInt uiMaxHIdx = g_aucConvertToBit[pcSlice->getSPS()->getCTUSize()];
   m_pcEntropyCoder->setEntropyCoder   ( m_ppppcRDSbacCoder[uiMaxWIdx][uiMaxHIdx][CI_CURR_BEST] );
@@ -693,7 +693,7 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
 #endif
   m_pcEntropyCoder->resetEntropy      ( pcSlice );
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   TEncBinCABAC* pRDSbacCoder = (TEncBinCABAC *) m_ppppcRDSbacCoder[uiMaxWIdx][uiMaxHIdx][CI_CURR_BEST]->getEncBinIf();
 #else
   TEncBinCABAC* pRDSbacCoder = (TEncBinCABAC *) m_pppcRDSbacCoder[0][CI_CURR_BEST]->getEncBinIf();
@@ -756,7 +756,7 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
 #if VCEG_AZ06_IC
   if ( m_pcCfg->getUseIC() )
   {
-#if VCEG_AZ06_IC_SPEEDUP || QT_BT_STRUCTURE
+#if VCEG_AZ06_IC_SPEEDUP || JVET_C0024_QTBT
     pcSlice->xSetApplyIC();
 #else
     pcSlice->setApplyIC( pcSlice->isIntra() ? false : true );
@@ -775,7 +775,7 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
       // This will only occur if dependent slice-segments (m_entropyCodingSyncContextState=true) are being used.
       if( pCurrentTile->getTileWidthInCtus() >= 2 || !m_pcCfg->getWaveFrontsynchro() )
       {
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
         m_ppppcRDSbacCoder[uiMaxWIdx][uiMaxHIdx][CI_CURR_BEST]->loadContexts( &m_lastSliceSegmentEndContextState );
 #else
         m_pppcRDSbacCoder[0][CI_CURR_BEST]->loadContexts( &m_lastSliceSegmentEndContextState );
@@ -800,7 +800,7 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
     
     if (ctuRsAddr == firstCtuRsAddrOfTile)
     {
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
       m_ppppcRDSbacCoder[uiMaxWIdx][uiMaxHIdx][CI_CURR_BEST]->resetEntropy(pcSlice);
 #else
       m_pppcRDSbacCoder[0][CI_CURR_BEST]->resetEntropy(pcSlice);
@@ -809,7 +809,7 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
     else if ( ctuXPosInCtus == tileXPosInCtus && m_pcCfg->getWaveFrontsynchro())
     {
       // reset and then update contexts to the state at the end of the top-right CTU (if within current slice and tile).
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
       m_ppppcRDSbacCoder[uiMaxWIdx][uiMaxHIdx][CI_CURR_BEST]->resetEntropy(pcSlice);
 #else
       m_pppcRDSbacCoder[0][CI_CURR_BEST]->resetEntropy(pcSlice);
@@ -822,7 +822,7 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
         if ( pCtu->CUIsFromSameSliceAndTile(pCtuTR) )
         {
           // Top-Right is available, we use it.
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
           m_ppppcRDSbacCoder[uiMaxWIdx][uiMaxHIdx][CI_CURR_BEST]->loadContexts( &m_entropyCodingSyncContextState );
 #else
           m_pppcRDSbacCoder[0][CI_CURR_BEST]->loadContexts( &m_entropyCodingSyncContextState );
@@ -839,7 +839,7 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
 #if VCEG_AZ07_INIT_PREVFRAME
     if( pcSlice->getSliceType() != I_SLICE && ctuTsAddr == 0 )
     {
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
       m_ppppcRDSbacCoder[uiMaxWIdx][uiMaxHIdx][CI_CURR_BEST]->loadContextsFromPrev( pcSlice->getStatsHandle(), pcSlice->getSliceType(), pcSlice->getCtxMapQPIdx(), true, pcSlice->getCtxMapQPIdxforStore(), (pcSlice->getPOC() >  pcSlice->getStatsHandle()->m_uiLastIPOC) ); 
 #else
       m_pppcRDSbacCoder[0][CI_CURR_BEST]->loadContextsFromPrev( pcSlice->getStatsHandle(), pcSlice->getSliceType(), pcSlice->getCtxMapQPIdx(), true, pcSlice->getCtxMapQPIdxforStore(), (pcSlice->getPOC() >  pcSlice->getStatsHandle()->m_uiLastIPOC) ); 
@@ -847,7 +847,7 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
     }
 #endif
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     m_pcRDGoOnSbacCoder->load( m_ppppcRDSbacCoder[uiMaxWIdx][uiMaxHIdx][CI_CURR_BEST] ); // this copy is not strictly necessary here, but indicates that the GoOnSbacCoder
 #else
     m_pcRDGoOnSbacCoder->load( m_pppcRDSbacCoder[0][CI_CURR_BEST] ); // this copy is not strictly necessary here, but indicates that the GoOnSbacCoder
@@ -908,14 +908,14 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
     // which will result in the state of the contexts being correct. It will also count up the number of bits coded,
     // which is used if there is a limit of the number of bytes per slice-segment.
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     m_pcEntropyCoder->setEntropyCoder ( m_ppppcRDSbacCoder[uiMaxWIdx][uiMaxHIdx][CI_CURR_BEST] );
 #else
     m_pcEntropyCoder->setEntropyCoder ( m_pppcRDSbacCoder[0][CI_CURR_BEST] );
 #endif
     m_pcEntropyCoder->setBitstream( &tempBitCounter );
     pRDSbacCoder->setBinCountingEnableFlag( true );
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     m_ppppcRDSbacCoder[uiMaxWIdx][uiMaxHIdx][CI_CURR_BEST]->resetBits();
 #else
     m_pppcRDSbacCoder[0][CI_CURR_BEST]->resetBits();
@@ -957,7 +957,7 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
     // Store probabilities of second CTU in line into buffer - used only if wavefront-parallel-processing is enabled.
     if ( ctuXPosInCtus == tileXPosInCtus+1 && m_pcCfg->getWaveFrontsynchro())
     {
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
       m_entropyCodingSyncContextState.loadContexts(m_ppppcRDSbacCoder[uiMaxWIdx][uiMaxHIdx][CI_CURR_BEST]);
 #else
       m_entropyCodingSyncContextState.loadContexts(m_pppcRDSbacCoder[0][CI_CURR_BEST]);
@@ -1001,7 +1001,7 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
   // store context state at the end of this slice-segment, in case the next slice is a dependent slice and continues using the CABAC contexts.
   if( pcSlice->getPPS()->getDependentSliceSegmentsEnabledFlag() )
   {
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     m_lastSliceSegmentEndContextState.loadContexts( m_ppppcRDSbacCoder[uiMaxWIdx][uiMaxHIdx][CI_CURR_BEST] );//ctx end of dep.slice
 #else
     m_lastSliceSegmentEndContextState.loadContexts( m_pppcRDSbacCoder[0][CI_CURR_BEST] );//ctx end of dep.slice
@@ -1009,7 +1009,7 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
   }
 
   // stop use of temporary bit counter object.
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   m_ppppcRDSbacCoder[uiMaxWIdx][uiMaxHIdx][CI_CURR_BEST]->setBitstream(NULL);
 #else
   m_pppcRDSbacCoder[0][CI_CURR_BEST]->setBitstream(NULL);

@@ -56,7 +56,7 @@
 #else
 #define NUM_SPLIT_FLAG_CTX            3       ///< number of context models for split flag
 #endif
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 #define NUM_BTSPLIT_MODE_CTX          6
 #endif
 #define NUM_SKIP_FLAG_CTX             3       ///< number of context models for skip flag
@@ -166,7 +166,7 @@ static const UInt notFirstGroupNeighbourhoodContextOffset[MAX_NUM_CHANNEL_TYPE] 
 #define NUM_CTX_LAST_FLAG_SETS         2
 
 #if COM16_C806_T64
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 #define NUM_CTX_LAST_FLAG_XY          25      ///< number of context models for last coefficient position
 #else
 #define NUM_CTX_LAST_FLAG_XY          19      ///< number of context models for last coefficient position
@@ -291,7 +291,7 @@ INIT_SPLIT_FLAG[NUMBER_OF_SLICE_TYPES][NUM_SPLIT_FLAG_CTX] =
 #endif
 };
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 static const UChar
 INIT_BTSPLIT_MODE[3][NUM_BTSPLIT_MODE_CTX] = 
 {

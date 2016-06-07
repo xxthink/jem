@@ -87,7 +87,7 @@ protected:
   TComPicYuv*   m_tempPicYuv; //temporary buffer
   Int m_picWidth;
   Int m_picHeight;
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Int m_CTUSize;
 #else
   Int m_maxCUWidth;

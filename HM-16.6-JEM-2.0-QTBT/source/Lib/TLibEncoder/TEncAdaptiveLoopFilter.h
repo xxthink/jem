@@ -120,7 +120,7 @@ private:
   Void xCopyTmpAlfCtrlFlagsFrom ();
   
   // encoder ALF control flags
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
   Void xEncodeCUAlfCtrlFlags  ();
   Void xEncodeCUAlfCtrlFlag   ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth);
 #endif
@@ -133,7 +133,7 @@ private:
   Void xQuantFilterCoef       ( Double* h, Int* qh, Int tap, int bit_depth );
   Void xClearFilterCoefInt    ( Int* qh, Int N );
   Void xCopyDecToRestCUs      ( TComPicYuv* pcPicDec, TComPicYuv* pcPicRest );
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Void xCopyDecToRestCU       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight, TComPicYuv* pcPicDec, TComPicYuv* pcPicRest );
 #else
   Void xCopyDecToRestCU       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, TComPicYuv* pcPicDec, TComPicYuv* pcPicRest );
@@ -180,7 +180,7 @@ public:
                                          UInt64& ruiMinDist, Double& rdMinCost, const TComSlice * pSlice );
   Void xSetCUAlfCtrlFlags_qc            (UInt uiAlfCtrlDepth, TComPicYuv* pcPicOrg, TComPicYuv* pcPicDec, TComPicYuv* pcPicRest, 
                                          UInt64& ruiDist, ALFParam *pAlfParam);
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Void xSetCUAlfCtrlFlag_qc             (TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight, UInt uiAlfCtrlDepth, TComPicYuv* pcPicOrg,
 #else
   Void xSetCUAlfCtrlFlag_qc             (TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiAlfCtrlDepth, TComPicYuv* pcPicOrg,

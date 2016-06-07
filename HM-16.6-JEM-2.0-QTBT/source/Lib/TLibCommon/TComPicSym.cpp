@@ -79,7 +79,7 @@ Void TComPicSym::create  ( const TComSPS &sps, const TComPPS &pps, UInt uiMaxDep
   const ChromaFormat chromaFormatIDC = sps.getChromaFormatIdc();
   const Int iPicWidth      = sps.getPicWidthInLumaSamples();
   const Int iPicHeight     = sps.getPicHeightInLumaSamples();
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   const UInt uiMaxCuWidth  = sps.getCTUSize();
   const UInt uiMaxCuHeight = sps.getCTUSize();
 #else
@@ -116,7 +116,7 @@ Void TComPicSym::create  ( const TComSPS &sps, const TComPPS &pps, UInt uiMaxDep
   {
     m_pictureCtuArray[i] = new TComDataCU;
     m_pictureCtuArray[i]->create( chromaFormatIDC, m_numPartitionsInCtu, uiMaxCuWidth, uiMaxCuHeight, false, uiMaxCuWidth >> m_uhTotalDepth
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
       , uiMaxCuWidth, uiMaxCuHeight
 #endif
 #if ADAPTIVE_QP_SELECTION
@@ -270,7 +270,7 @@ Void TComPicSym::xInitTiles()
   {
     if (m_pps.getTilesEnabledFlag())
     {
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
       minHeight = 64  / m_sps.getCTUSize();
       minWidth  = 256 / m_sps.getCTUSize();
 #else
@@ -488,7 +488,7 @@ Void TComPicSym::deriveLoopFilterBoundaryAvailibility(Int ctuRsAddr,
 #if VCEG_AZ07_FRUC_MERGE
 Void TComPicSym::initFRUCMVP()
 {
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   const Int nBlkPosMask = getSPS().getCTUSize() - 1;
   const Int nCUSizeLog2 = g_aucConvertToBit[getSPS().getCTUSize()] + MIN_CU_LOG2;
 #else
@@ -496,7 +496,7 @@ Void TComPicSym::initFRUCMVP()
   const Int nCUSizeLog2 = g_aucConvertToBit[getSPS().getMaxCUWidth()] + 2;
 #endif
   const Int nWidthInNumSPU = 1 << ( nCUSizeLog2 - 2 );
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   assert( MAX_CU_DEPTH == g_aucConvertToBit[MAX_CU_SIZE] + MIN_CU_LOG2 && MIN_PU_SIZE == 4 );
 #else
   assert( MAX_CU_DEPTH == g_aucConvertToBit[MAX_CU_SIZE] + 2 && MIN_PU_SIZE == 4 );
@@ -507,7 +507,7 @@ Void TComPicSym::initFRUCMVP()
   for( UInt uiCUAddr = 0 ; uiCUAddr < getNumberOfCtusInFrame() ; uiCUAddr++ )
   {
     TComDataCU * pCurPicCU = getCtu( uiCUAddr );
-#if QT_BT_STRUCTURE //clearMvField before initCtu
+#if JVET_C0024_QTBT //clearMvField before initCtu
     pCurPicCU->getFRUCUniLateralMVField( REF_PIC_LIST_0 )->clearCtuMvField();
     pCurPicCU->getFRUCUniLateralMVField( REF_PIC_LIST_1 )->clearCtuMvField();
 #else

@@ -154,7 +154,7 @@ Void TEncGOP::init ( TEncTop* pcTEncTop )
   {
     m_pcAdaptiveLoopFilter = pcTEncTop->getAdaptiveLoopFilter();
 #if COM16_C806_ALF_TEMPPRED_NUM
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     UInt uiMaxCUWidth = m_pcCfg->getCTUSize();
     UInt uiMaxCUHeight = m_pcCfg->getCTUSize();
 #else
@@ -1292,12 +1292,12 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     //  Set reference list
     pcSlice->setRefPicList ( rcListPic );
 
-#if AMAX_BT
+#if JVET_C0024_AMAX_BT
     if (!pcSlice->isIntra() ) 
     {
       Int refLayer=pcSlice->getDepth();
       if( refLayer>9) refLayer=9; // Max layer is 10  
-#if AMAX_BT_FIX
+#if JVET_C0024_AMAX_BT_FIX
       if( g_bInitAMaxBT && pcSlice->getPOC() > g_uiPrevISlicePOC )
       {
         ::memset( g_uiBlkSize, 0, sizeof(g_uiBlkSize) );
@@ -1320,7 +1320,7 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
         {
           pcSlice->setMaxBTSize(128>MAX_BT_SIZE_INTER? MAX_BT_SIZE_INTER: 128);
         }
-#if !AMAX_BT_FIX
+#if !JVET_C0024_AMAX_BT_FIX
         printf("\n previous layer=%d, avg blk size = %3.2f, current max BT set to %d\n", refLayer, dBlkSize, pcSlice->getMaxBTSize());
 #endif
 
@@ -1328,7 +1328,7 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
         g_uiNumBlk[refLayer] = 0;
       }
     }
-#if AMAX_BT_FIX
+#if JVET_C0024_AMAX_BT_FIX
     else
     {
       g_uiPrevISlicePOC = pcSlice->getPOC();

@@ -50,7 +50,7 @@
 const UChar TComPrediction::m_aucIntraFilter[MAX_NUM_CHANNEL_TYPE][MAX_INTRA_FILTER_DEPTHS] =
 {
   { // Luma
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     20, //2x2
 #endif
 #if VCEG_AZ07_INTRA_65ANG_MODES
@@ -61,7 +61,7 @@ const UChar TComPrediction::m_aucIntraFilter[MAX_NUM_CHANNEL_TYPE][MAX_INTRA_FIL
     20, //64x64
 #if COM16_C806_LARGE_CTU
     0, //128x128
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
     0, //256x256
 #endif
 #endif
@@ -73,14 +73,14 @@ const UChar TComPrediction::m_aucIntraFilter[MAX_NUM_CHANNEL_TYPE][MAX_INTRA_FIL
     10, //64x64
 #if COM16_C806_LARGE_CTU
     0, //128x128
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
     0, //256x256
 #endif
 #endif
 #endif
   },
   { // Chroma
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     20, //2x2
 #endif
 #if VCEG_AZ07_INTRA_65ANG_MODES
@@ -91,7 +91,7 @@ const UChar TComPrediction::m_aucIntraFilter[MAX_NUM_CHANNEL_TYPE][MAX_INTRA_FIL
     20, //64xn
 #if COM16_C806_LARGE_CTU
     0, //128xn
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
     0, //256xn
 #endif
 #endif
@@ -103,7 +103,7 @@ const UChar TComPrediction::m_aucIntraFilter[MAX_NUM_CHANNEL_TYPE][MAX_INTRA_FIL
     10, //64xn
 #if COM16_C806_LARGE_CTU
     0, //128x128
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
     0, //256x256
 #endif
 #endif
@@ -405,7 +405,7 @@ Pel TComPrediction::predIntraGetPredValDC( const Pel* pSrc, Int iSrcStride, UInt
     iSum += pSrc[iInd*iSrcStride-1];
   }
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   pDcVal = (iSum + ((iWidth+iHeight)>>1)) / (iWidth + iHeight);
 #else
   pDcVal = (iSum + iWidth) / (iWidth + iHeight);
@@ -507,12 +507,12 @@ Void TComPrediction::xPredIntraAng(       Int bitDepth,
     if (intraPredAngle < 0)
     {
       const Int refMainOffsetPreScale = (bIsModeVer ? height : width ) - 1;
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
       const Int refMainOffset         = height - 1;
 #endif
       for (Int x=0;x<width+1;x++)
       {
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
         refAbove[x+height-1] = pSrc[x-srcStride-1];
 #else
         refAbove[x+refMainOffset] = pSrc[x-srcStride-1];
@@ -520,13 +520,13 @@ Void TComPrediction::xPredIntraAng(       Int bitDepth,
       }
       for (Int y=0;y<height+1;y++)
       {
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
         refLeft[y+width-1] = pSrc[(y-1)*srcStride-1];
 #else
         refLeft[y+refMainOffset] = pSrc[(y-1)*srcStride-1];
 #endif
       }
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
       refMain = (bIsModeVer ? refAbove + height : refLeft + width)  - 1;
       refSide = (bIsModeVer ? refLeft + width  : refAbove + height) - 1;
 #else
@@ -544,18 +544,18 @@ Void TComPrediction::xPredIntraAng(       Int bitDepth,
     }
     else
     {
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
       for (Int x=0;x<width+height+1;x++)
 #else
       for (Int x=0;x<2*width+1;x++)
 #endif
       {
         refAbove[x] = pSrc[x-srcStride-1];
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
         refLeft[x] = pSrc[(x-1)*srcStride-1];
 #endif
       }
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
       for (Int y=0;y<2*height+1;y++)
       {
         refLeft[y] = pSrc[(y-1)*srcStride-1];
@@ -696,7 +696,7 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
   const Int            iWidth      = rect.width;
   const Int            iHeight     = rect.height;
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   assert( g_aucConvertToBit[ iWidth ] >= -1 );  //2x2
   assert( g_aucConvertToBit[ iWidth ] <= MAX_CU_DEPTH - MIN_CU_LOG2 ); 
 #else
@@ -712,7 +712,7 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
         Pel *pDst = piPred;
 
   // get starting pixel in block
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   const Int sw = (iHeight + iWidth + 1);
 #else
   const Int sw = (2 * iWidth + 1);
@@ -768,14 +768,14 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 #if !COM16_C1046_PDPC_RSAF_HARMONIZATION
     Pel *ptrSrc = getPredictorPtr(compID, false);
 #endif
-#if QT_BT_STRUCTURE //different PDPC filter coeff between sizes, w!=h? JCA
+#if JVET_C0024_QTBT //different PDPC filter coeff between sizes, w!=h? JCA
     Int iBlkSizeGrp = std::min(4, 1 + std::max((Int)g_aucConvertToBit[iWidth], (Int) g_aucConvertToBit[iHeight]));
     Int blkSizeGroup[2] = { std::min(4, 1 + (Int)g_aucConvertToBit[iWidth]), std::min(4, 1 + (Int)g_aucConvertToBit[iHeight]) };
 #else
     Int iBlkSizeGrp = std::min(4, 1 + (Int)g_aucConvertToBit[iWidth]); //Block Size
 #endif
     
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     Int iPdpcIdx = pcCU->getPDPCIdx(uiAbsPartIdx);
 
     if( isChroma(pcCU->getTextType()) )
@@ -792,19 +792,19 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
     if (pcCU->getPDPCIdx(uiAbsPartIdx) && pcCU->getCUPelX() && pcCU->getCUPelY() && pcCU->getSlice()->getSPS()->getUsePDPC())
 #endif
     {
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
       PartSize eSize = pcCU->getPartitionSize(uiAbsPartIdx);
       iPdpcIdx = pcCU->getPDPCIdx(uiAbsPartIdx);
 #endif
 
       if (iPdpcIdx > 3) iPdpcIdx = 0;
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
       if (iBlkSizeGrp==1) iBlkSizeGrp = 0;  
 #else
       if ((eSize == SIZE_NxN) && (iBlkSizeGrp == 1)) iBlkSizeGrp = 0;
 #endif
     }
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     else
     {
       iPdpcIdx = 0;
@@ -817,7 +817,7 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 #if COM16_C1046_PDPC_RSAF_HARMONIZATION 
       Pel *ptrSrc = getPredictorPtr(compID, false);
 #endif
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
       const Int iSrcStride = iWidth + iHeight + 1;
       const Int iDoubleSize = iWidth + iHeight;
 #else
@@ -828,14 +828,14 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 
 #if VCEG_AZ07_INTRA_65ANG_MODES
       Int   iSelMode = (uiDirMode > 1 ? 18 + ((Int(uiDirMode) - 34)>>1) : uiDirMode);
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
       const Int *pdpcParam[2] = { g_pdpc_pred_param[blkSizeGroup[0]][iSelMode], g_pdpc_pred_param[blkSizeGroup[1]][iSelMode] };
       const Int *pPdpcPar = pdpcParam[iWidth < iHeight];
 #else
       const Int * pPdpcPar = g_pdpc_pred_param[iBlkSizeGrp][iPdpcIdx][iSelMode];
 #endif
 #else
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
       const Int *pdpcParam[2] = { g_pdpc_pred_param[blkSizeGroup[0]][uiDirMode], g_pdpc_pred_param[blkSizeGroup[1]][uiDirMode] };
       const Int *pPdpcPar = pdpcParam[iWidth < iHeight];
 #else
@@ -843,7 +843,7 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 #endif
 #endif
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
       Int * piRefVector = piTempRef + iDoubleSize;
       Int * piLowpRefer = piFiltRef + iDoubleSize;
 #else
@@ -852,7 +852,7 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 #endif
 
       //unfiltered reference
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
       for (Int j = 0; j <= iDoubleSize; j++)
         piRefVector[j] = ptrSrc[j];
 
@@ -869,7 +869,7 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 
       if (pPdpcPar[5] != 0) 
       { // filter reference samples
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
         xReferenceFilter(iDoubleSize, pPdpcPar[4], pPdpcPar[5], piRefVector, piLowpRefer);
         for (Int j = 0; j <= iDoubleSize; j++)
           ptrSrc[j] = piLowpRefer[j];
@@ -909,7 +909,7 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
       //use unfiltered reference sample for weighted prediction
       if (pPdpcPar[5] != 0) 
       {
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
         for (int j = 0; j <= iDoubleSize; j++)
           ptrSrc[j] = piRefVector[j];
 
@@ -924,7 +924,7 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 #endif
       }
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
       Int scale = g_aucConvertToBit[iWidth] + MIN_CU_LOG2 + g_aucConvertToBit[iHeight] + MIN_CU_LOG2 < 10 ? 0: 1;
 #else
       Int scale = (iBlkSize < 32 ? 0 : 1);
@@ -934,7 +934,7 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
       Int ParScale = 1 << ParShift;
       Int ParOffset = 1 << (ParShift - 1);
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
       for (Int row = 0; row < iHeight; row++) 
 #else
       for (Int row = 0; row < iBlkSize; row++) 
@@ -942,7 +942,7 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
       {
         Int pos          = row * uiStride;
         Int shiftRow     = row >> scale;
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
         Int Coeff_Top    = pdpcParam[1][2] >> shiftRow;
         Int Coeff_offset = pdpcParam[1][3] >> shiftRow;
 #else
@@ -950,14 +950,14 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
         Int Coeff_offset = pPdpcPar[3] >> shiftRow;
 #endif
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
         for (Int col = 0; col < iWidth; col++, pos++) 
 #else
         for (Int col = 0; col < iBlkSize; col++, pos++) 
 #endif
         {
           Int shiftCol      = col >> scale;
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
           Int Coeff_Left    = pdpcParam[0][0] >> shiftCol;
           Int Coeff_TopLeft = (pdpcParam[0][1] >> shiftCol) + Coeff_offset;
 #else
@@ -1032,7 +1032,7 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
         );
 
 #if VCEG_AZ05_INTRA_MPI
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
       if (!(pcCU->getMPIIdx(uiAbsPartIdx) && isLuma(compID)) && (uiDirMode == DC_IDX))
 #else
       if (!pcCU->getMPIIdx(uiAbsPartIdx) && (uiDirMode == DC_IDX))
@@ -1044,7 +1044,7 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
         xDCPredFiltering( ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight, channelType );
       }
 #if VCEG_AZ07_INTRA_BOUNDARY_FILTER
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
       else if( enableBoundaryFilter && isLuma(compID) && iWidth>2 && iHeight>2)
 #else
       else if( enableBoundaryFilter && isLuma(compID) )
@@ -1074,7 +1074,7 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 #endif
     }
 #if VCEG_AZ05_INTRA_MPI
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     if (pcCU->getMPIIdx(uiAbsPartIdx) && isLuma(compID) && pcCU->getCUPelX() && pcCU->getCUPelY() && pcCU->getSlice()->getSPS()->getUseMPI())
 #else
     if (pcCU->getMPIIdx(uiAbsPartIdx) && pcCU->getCUPelX() && pcCU->getCUPelY() && pcCU->getSlice()->getSPS()->getUseMPI())
@@ -1082,14 +1082,14 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
     {
       Pel* pRec = pcCU->getPic()->getPicYuvRec()->getAddr(compID, pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu() + uiAbsPartIdx);   
       Int iStrideRec = pcCU->getPic()->getPicYuvRec()->getStride(compID);
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
       PartSize eSize = SIZE_2Nx2N;
 #else
       PartSize eSize = pcCU->getPartitionSize(uiAbsPartIdx);
 #endif
       Int idexMPI = pcCU->getMPIIdx(uiAbsPartIdx);
       if (idexMPI>3) idexMPI = 0;
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
       idexMPI += (iWidth*iHeight<64 ? 4 : 0);
 #else
       idexMPI += (eSize == SIZE_NxN ? 4 : 0);
@@ -1132,7 +1132,7 @@ Void TComPrediction::motionCompensation ( TComDataCU* pcCU, TComYuv* pcYuvPred, 
   Int         iHeight;
   UInt        uiPartAddr;
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   assert(iPartIdx<=0);
 #endif
   if ( iPartIdx >= 0 )
@@ -1968,7 +1968,7 @@ Void TComPrediction::xGetLLSICPrediction( TComDataCU* pcCU, TComMv *pMv, TComPic
   iHor = ( pMv->getHor() + (1<<(shiftHor-1)) ) >> shiftHor;
   iVer = ( pMv->getVer() + (1<<(shiftVer-1)) ) >> shiftVer;
   uiWidth  = ( eComp == COMPONENT_Y ) ? pcCU->getWidth( 0 )  : ( pcCU->getWidth( 0 )  >> 1 );
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   UInt uiHeight = ( eComp == COMPONENT_Y ) ? pcCU->getHeight( 0 )  : ( pcCU->getHeight( 0 )  >> 1 );
 #endif
   Int j, iCountShift = 0;
@@ -1979,7 +1979,7 @@ Void TComPrediction::xGetLLSICPrediction( TComDataCU* pcCU, TComMv *pMv, TComPic
   Int precShift = std::max( 0, ( nBitDepth - 12 ) );
   Int iTmpRec, iTmpRef;
   Int iRefStep, iRecStep;
-#if  QT_BT_STRUCTURE
+#if  JVET_C0024_QTBT
   UInt uiStep = min(uiWidth, uiHeight) > 8 ? 2 : 1;
 #else
   UInt uiStep = 2;//uiWidth > 8 ? 2 : 1;
@@ -1987,7 +1987,7 @@ Void TComPrediction::xGetLLSICPrediction( TComDataCU* pcCU, TComMv *pMv, TComPic
   TComDataCU* pNeigCu = NULL;
   TComMv cMv;
   Int iMaxNumMinus1 = 30 - 2*min( nBitDepth, 12 ) - 1;
-#if  QT_BT_STRUCTURE
+#if  JVET_C0024_QTBT
   while( min(uiWidth, uiHeight)/uiStep > ( 1 << iMaxNumMinus1 ) ) //make sure log2(2*uiWidth/uiStep) + 2*min(g_bitDepthY, 12) <= 30
 #else
   while( uiWidth/uiStep > ( 1 << iMaxNumMinus1 ) ) //make sure log2(2*uiWidth/uiStep) + 2*min(g_bitDepthY, 12) <= 30
@@ -1996,7 +1996,7 @@ Void TComPrediction::xGetLLSICPrediction( TComDataCU* pcCU, TComMv *pMv, TComPic
     uiStep <<= 1;
   }
 
-#if  QT_BT_STRUCTURE
+#if  JVET_C0024_QTBT
   UInt uiStepX = uiStep, uiStepY = uiStep;
   if (uiWidth > uiHeight)
   {
@@ -2015,14 +2015,14 @@ Void TComPrediction::xGetLLSICPrediction( TComDataCU* pcCU, TComMv *pMv, TComPic
     {
       pNeigCu = pcCU->getPUAbove( uiTmpPartIdx, pcCU->getZorderIdxInCtu() );
 
-#if  QT_BT_STRUCTURE
+#if  JVET_C0024_QTBT
       uiStep = uiStepX;
 #endif
     }
     else
     {
       pNeigCu =  pcCU->getPULeft( uiTmpPartIdx, pcCU->getZorderIdxInCtu() );
-#if  QT_BT_STRUCTURE
+#if  JVET_C0024_QTBT
       uiStep = uiStepY;
 #endif
     }
@@ -2053,7 +2053,7 @@ Void TComPrediction::xGetLLSICPrediction( TComDataCU* pcCU, TComMv *pMv, TComPic
     pRef = pRefPic->getAddr( eComp, pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu() ) + iRefOffset;
     pRec = pRecPic->getAddr( eComp, pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu() ) + iRecOffset;
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     for( j = 0; j < (iDir==0 ? uiWidth: uiHeight); j+=uiStep )
 #else
     for( j = 0; j < uiWidth; j+=uiStep )
@@ -2071,7 +2071,7 @@ Void TComPrediction::xGetLLSICPrediction( TComDataCU* pcCU, TComMv *pMv, TComPic
       pRec += iRecStep;
     }
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     iCountShift += ( iCountShift ? 1 : g_aucConvertToBit[ min(uiWidth, uiHeight)/oriStep ] + MIN_CU_LOG2 );
 #else
     iCountShift += ( iCountShift ? 1 : g_aucConvertToBit[ uiWidth/uiStep ] + 2 );
@@ -2626,12 +2626,12 @@ Void TComPrediction::getMvPredAMVP( TComDataCU* pcCU, UInt uiPartIdx, UInt uiPar
 //NOTE: Bit-Limit - 24-bit source
 Void TComPrediction::xPredIntraPlanar( const Pel* pSrc, Int srcStride, Pel* rpDst, Int dstStride, UInt width, UInt height )
 {
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
   assert(width <= height);
 #endif
 
   Int leftColumn[MAX_CU_SIZE+1], topRow[MAX_CU_SIZE+1], bottomRow[MAX_CU_SIZE], rightColumn[MAX_CU_SIZE];
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   UInt shift1Dhor = g_aucConvertToBit[ width ] + MIN_CU_LOG2;
   UInt shift1Dver = g_aucConvertToBit[ height ] + MIN_CU_LOG2;
   UInt delt = width*height;
@@ -2671,7 +2671,7 @@ Void TComPrediction::xPredIntraPlanar( const Pel* pSrc, Int srcStride, Pel* rpDs
   // Generate prediction signal
   for (Int y=0;y<height;y++)
   {
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     Int horPred = leftColumn[y];
 #else
     Int horPred = leftColumn[y] + width;
@@ -2682,7 +2682,7 @@ Void TComPrediction::xPredIntraPlanar( const Pel* pSrc, Int srcStride, Pel* rpDs
       topRow[x] += bottomRow[x];
 
       Int vertPred = ((topRow[x] + topRowShift)>>topRowShift);
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
       rpDst[y*dstStride+x] = ((horPred<<shift1Dver) + (vertPred<<shift1Dhor) + delt) >> (shift1Dhor+shift1Dver+1);
 #else
       rpDst[y*dstStride+x] = ( horPred + vertPred ) >> (shift1Dhor+1);
@@ -2737,13 +2737,13 @@ Void TComPrediction::xIntraPredFilteringMode34( const Pel* pSrc, Int iSrcStride,
     pDst[iDstStride2  ] = (  8 * pDst[iDstStride2  ] + 8 * pSrc[iSrcStride2+iSrcStride  ] + 8 ) >> 4;
 #if VCEG_AZ07_INTRA_BOUNDARY_FILTER_MULTI_LINE
     pDst[iDstStride2+1] = ( 12 * pDst[iDstStride2+1] + 4 * pSrc[iSrcStride2+iSrcStride*2] + 8 ) >> 4;     
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     if (iWidth>2)
     {
 #endif
     pDst[iDstStride2+2] = ( 14 * pDst[iDstStride2+2] + 2 * pSrc[iSrcStride2+iSrcStride*3] + 8 ) >> 4;    
     pDst[iDstStride2+3] = ( 15 * pDst[iDstStride2+3] +     pSrc[iSrcStride2+iSrcStride*4] + 8 ) >> 4;
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     }
 #endif
 #endif
@@ -2760,13 +2760,13 @@ Void TComPrediction::xIntraPredFilteringMode02( const Pel* pSrc, Int iSrcStride,
     pDst[x             ] = (  8 * pDst[x             ] + 8 * pSrc[x - iSrcStride + 1] + 8 ) >> 4;
 #if VCEG_AZ07_INTRA_BOUNDARY_FILTER_MULTI_LINE
     pDst[x+iDstStride  ] = ( 12 * pDst[x+iDstStride  ] + 4 * pSrc[x - iSrcStride + 2] + 8 ) >> 4;
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     if (iHeight>2)
     {
 #endif
     pDst[x+iDstStride*2] = ( 14 * pDst[x+iDstStride*2] + 2 * pSrc[x - iSrcStride + 3] + 8 ) >> 4;
     pDst[x+iDstStride*3] = ( 15 * pDst[x+iDstStride*3] +     pSrc[x - iSrcStride + 4] + 8 ) >> 4; 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     }
 #endif
 #endif
@@ -2947,7 +2947,7 @@ Void TComPrediction::subBlockOBMC( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv
     return;
   }
   
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   PartSize ePartSize = SIZE_2Nx2N;
 #else
   PartSize ePartSize = pcCU->getPartitionSize( uiAbsPartIdx );
@@ -2962,7 +2962,7 @@ Void TComPrediction::subBlockOBMC( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv
   UInt uiHeightInBlock   = uiHeight / uiMinCUW;
   UInt uiWidthInBlock    = uiWidth / uiMinCUW;
   UInt uiStep            = uiOBMCBlkSize / uiMinCUW;
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
   UInt uiMaxCUDepth      = pcCU->getSlice()->getSPS()->getMaxTotalCUDepth();
   UInt uiDepth           = uiMaxCUDepth - pcCU->getDepth( uiAbsPartIdx );
 #endif
@@ -2970,7 +2970,7 @@ Void TComPrediction::subBlockOBMC( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv
   UInt uiSubPartIdx      = 0;
   UInt uiZeroIdx         = pcCU->getZorderIdxInCtu();
   UInt uiAbsPartIdxLCURaster = g_auiZscanToRaster[uiAbsPartIdx + uiZeroIdx];
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Bool bOBMCSimp         = uiWidth * uiHeight < 64;
 #else
   Bool bOBMCSimp             = ( uiWidth == 8 && ePartSize != SIZE_2Nx2N );
@@ -2980,7 +2980,7 @@ Void TComPrediction::subBlockOBMC( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv
 #endif
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
   Bool bATMVP       = (pcCU->getMergeType( uiAbsPartIdx ) == MGR_TYPE_SUBPU_TMVP || pcCU->getMergeType( uiAbsPartIdx ) == MGR_TYPE_SUBPU_TMVP_EXT);
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Bool bNormal2Nx2N = !bATMVP;
   Bool bSubMotion   = bATMVP;
 #else
@@ -2989,14 +2989,14 @@ Void TComPrediction::subBlockOBMC( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv
 #endif
 #else
   Bool bNormal2Nx2N = ePartSize == SIZE_2Nx2N;
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Bool bSubMotion   = false;
 #else
   Bool bSubMotion   = ePartSize == SIZE_NxN;
 #endif
 #endif
 #if VCEG_AZ07_FRUC_MERGE
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Int avgLength = 1<<(((g_aucConvertToBit[pcCU->getWidth( 0 )] + g_aucConvertToBit[pcCU->getHeight( 0 )] + 1)>>1) + MIN_CU_LOG2);
   Int nFrucRefineSize = max( avgLength >> pcCU->getSlice()->getSPS()->getFRUCSmallBlkRefineDepth(), FRUC_MERGE_REFINE_MINBLKSIZE );
 #else
@@ -3015,7 +3015,7 @@ Void TComPrediction::subBlockOBMC( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv
     bSubMotion = true;
   }
 #endif
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
   Bool bVerticalPU  = ( ePartSize == SIZE_2NxN || ePartSize == SIZE_2NxnU || ePartSize == SIZE_2NxnD );
   Bool bHorizonalPU = ( ePartSize == SIZE_Nx2N || ePartSize == SIZE_nLx2N || ePartSize == SIZE_nRx2N );
   Bool bAtmvpPU = false, bNormalTwoPUs = false;
@@ -3025,7 +3025,7 @@ Void TComPrediction::subBlockOBMC( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv
   Bool bTwoPUs  = ( bVerticalPU || bHorizonalPU );
 #endif
   Int  iNeigPredDir = 0, iCurPredDir = 0;
-#if QT_BT_STRUCTURE && COM16_C1016_AFFINE
+#if JVET_C0024_QTBT && COM16_C1016_AFFINE
   Bool isCurAffine;
 #endif
 
@@ -3043,7 +3043,7 @@ Void TComPrediction::subBlockOBMC( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv
     break;
   }
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Bool bCurrMotStored = false;
 #else
   if( bTwoPUs )
@@ -3097,7 +3097,7 @@ Void TComPrediction::subBlockOBMC( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv
           continue;
         }
  
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
         Bool bVerPUBound  = false;
         Bool bHorPUBound  = false;
 #endif
@@ -3112,7 +3112,7 @@ Void TComPrediction::subBlockOBMC( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv
         else
         {
           Bool bCheckNeig = bSubMotion || ( iSubX == 0 && iDir == 1 ) || ( iSubY == 0 && iDir == 0 ); //CU boundary or NxN or 2nx2n_ATMVP
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
           if( !bCheckNeig && bTwoPUs )
           {
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
@@ -3145,7 +3145,7 @@ Void TComPrediction::subBlockOBMC( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv
           }
         }
         
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
         Bool bCurSubBkFetched  = bNormalTwoPUs && ( ( bVerPUBound && iSubX ) || ( bHorPUBound && iSubY ) );
 #endif
 
@@ -3160,13 +3160,13 @@ Void TComPrediction::subBlockOBMC( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv
 #if JVET_B0038_AFFINE_HARMONIZATION
         bSubBlockOBMCSimp |= ( bOBMCSimp || pcCU->getAffineFlag( uiSubPartIdx ) );
 #endif
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
         if( pcCU->getNeigMotion( uiSubPartIdx, cNeigMvField, iNeigPredDir, iDir, cCurMvField, iCurPredDir, uiZeroIdx, bCurrMotStored ) )
 #else
         if( ( bCurSubBkFetched && bDiffMot[iDir] ) || pcCU->getNeigMotion( uiSubPartIdx, cNeigMvField, iNeigPredDir, iDir, cCurMvField, iCurPredDir, uiZeroIdx, bCurrMotStored ) )
 #endif
         {
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
           //store temporary motion information
 #if COM16_C1016_AFFINE
           isCurAffine = pcCU->getAffineFlag(uiSubPartIdx);  //bug fix for affine OBMC
@@ -3868,7 +3868,7 @@ Bool TComPrediction::xFrucFindBlkMv4Pred( TComDataCU * pCU , UInt uiPUIdx , RefP
         uiMinCost = xFrucRefineMv( mvFinal , eTargetRefPicList , uiMinCost , 2 , pCU , uiAbsPartIdx , mvStart[eTargetRefPicList] , nWidth , nHeight , true );
         bAvailable = true;
         // save Mv
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
         pCU->getCUMvField( eTargetRefPicList )->setAllMv( mvFinal[eTargetRefPicList].getMv(), SIZE_2Nx2N , uiAbsPartIdx , 0 , uiPUIdx ); 
 #else
         pCU->getCUMvField( eTargetRefPicList )->setAllMv( mvFinal[eTargetRefPicList].getMv(), pCU->getPartitionSize( 0 ) , uiAbsPartIdx , 0 , uiPUIdx ); 
@@ -3945,7 +3945,7 @@ Bool TComPrediction::xFrucFindBlkMv( TComDataCU * pCU , UInt uiPUIdx )
   if( bAvailable )
   {
     // save Mv
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     pCU->getCUMvField( REF_PIC_LIST_0 )->setAllMvField( mvFinal[0] , SIZE_2Nx2N , uiAbsPartIdx , 0 , uiPUIdx ); 
     pCU->getCUMvField( REF_PIC_LIST_1 )->setAllMvField( mvFinal[1] , SIZE_2Nx2N , uiAbsPartIdx , 0 , uiPUIdx ); 
 #else
@@ -4413,7 +4413,7 @@ Bool TComPrediction::xFrucIsLeftTempAvailable( TComDataCU * pCU , UInt uiAbsPart
  */
 Int TComPrediction::xFrucGetSubBlkSize( TComDataCU * pcCU , UInt uiAbsPartIdx , Int nBlkWidth , Int nBlkHeight )
 {
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Int avgLength = 1<<(((g_aucConvertToBit[pcCU->getWidth( uiAbsPartIdx )] + g_aucConvertToBit[pcCU->getHeight( uiAbsPartIdx )] + 1)>>1) + MIN_CU_LOG2);
   Int nRefineBlkSize = max( avgLength >> pcCU->getSlice()->getSPS()->getFRUCSmallBlkRefineDepth() , FRUC_MERGE_REFINE_MINBLKSIZE );
 #else
@@ -4810,7 +4810,7 @@ Void TComPrediction::getLumaRecPixels( TComTU& rTu, UInt uiCWidth, UInt uiCHeigh
   const TComSPS &sps = *(pcCU->getSlice()->getSPS());
   const UInt uiTuWidth        = rTu.getRect(COMPONENT_Y).width;
   const UInt uiTuHeight       = rTu.getRect(COMPONENT_Y).height;
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   const Int  iBaseUnitSize    = sps.getCTUSize() >> sps.getMaxTotalCUDepth();
   assert(iBaseUnitSize == (1<<MIN_CU_LOG2));
 #else
@@ -4828,13 +4828,13 @@ Void TComPrediction::getLumaRecPixels( TComTU& rTu, UInt uiCWidth, UInt uiCHeigh
   
   Bool tempbuf[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*4+1];
   Int availlableUnit = isLeftAvailable ( pcCU, uiPartIdxLT, uiPartIdxLB, tempbuf+MAX_NUM_PART_IDXS_IN_CTU_WIDTH);
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Bool bLeftAvaillable = availlableUnit == iTUHeightInUnits ? true : false; 
 #else
   Bool bLeftAvaillable = availlableUnit == iTUWidthInUnits ? true : false; 
 #endif
   availlableUnit = isAboveAvailable( pcCU, uiPartIdxLT, uiPartIdxRT, tempbuf+MAX_NUM_PART_IDXS_IN_CTU_WIDTH);
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Bool bAboveAvaillable = availlableUnit == iTUWidthInUnits ? true : false; 
 #else
   Bool bAboveAvaillable = availlableUnit == iTUHeightInUnits ? true : false; 
@@ -5075,7 +5075,7 @@ Void TComPrediction::xGetLMParameters( TComTU& rTu, const ComponentID compID, UI
   const UInt uiZorderIdxInPart=rTu.GetAbsPartIdxTU();
   const UInt uiTuWidth        = rTu.getRect(compID).width;
   const UInt uiTuHeight       = rTu.getRect(compID).height;
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   assert(uiTuWidth==uiWidth && uiTuHeight==uiHeight);
   const Int  iBaseUnitSize    = sps.getCTUSize() >> sps.getMaxTotalCUDepth();
 #else
@@ -5093,13 +5093,13 @@ Void TComPrediction::xGetLMParameters( TComTU& rTu, const ComponentID compID, UI
 
   Bool tempbuf[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*4+1];
   Int availlableUnit = isLeftAvailable ( pcCU, uiPartIdxLT, uiPartIdxLB, tempbuf+MAX_NUM_PART_IDXS_IN_CTU_WIDTH);
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Bool bLeftAvaillable = availlableUnit == iTUHeightInUnits ? true : false; 
 #else
   Bool bLeftAvaillable = availlableUnit == iTUWidthInUnits ? true : false; 
 #endif
   availlableUnit = isAboveAvailable( pcCU, uiPartIdxLT, uiPartIdxRT, tempbuf+MAX_NUM_PART_IDXS_IN_CTU_WIDTH);
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Bool bAboveAvaillable = availlableUnit == iTUWidthInUnits ? true : false; 
 #else
   Bool bAboveAvaillable = availlableUnit == iTUHeightInUnits ? true : false; 
@@ -5112,7 +5112,7 @@ Void TComPrediction::xGetLMParameters( TComTU& rTu, const ComponentID compID, UI
 
     pCurChroma0  = m_piYuvExt[compID][PRED_BUF_UNFILTERED];
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     iCurStride   = uiWidth + uiHeight + 1;
 #else
     iCurStride   = 2 * uiWidth+ 1;
@@ -5128,7 +5128,7 @@ Void TComPrediction::xGetLMParameters( TComTU& rTu, const ComponentID compID, UI
     pCurChroma0  = m_piYuvExt[COMPONENT_Cr][PRED_BUF_UNFILTERED];
 //    pCurChroma0  = pcPattern->getAdiCrBuf( uiWidth, uiHeight, getPredicBuf() ); 
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     iSrcStride = uiWidth + uiHeight + 1;
     iCurStride = uiWidth + uiHeight + 1;
 #else
@@ -5147,7 +5147,7 @@ Void TComPrediction::xGetLMParameters( TComTU& rTu, const ComponentID compID, UI
   Pel *pSrc = pSrcColor0 - iSrcStride;
   Pel *pCur = pCurChroma0 - iCurStride;
 
-#if  QT_BT_STRUCTURE
+#if  JVET_C0024_QTBT
   Int xStep = 1;
   Int yStep = 1;
 
@@ -5166,7 +5166,7 @@ Void TComPrediction::xGetLMParameters( TComTU& rTu, const ComponentID compID, UI
 #endif
   if (bAboveAvaillable)
   {
-#if  QT_BT_STRUCTURE
+#if  JVET_C0024_QTBT
     for( j = 0; j < uiWidth; j+=xStep )
 #else 
     for( j = 0; j < uiWidth; j++ )
@@ -5184,7 +5184,7 @@ Void TComPrediction::xGetLMParameters( TComTU& rTu, const ComponentID compID, UI
     pSrc  = pSrcColor0 - 1;
     pCur = pCurChroma0 - 1;
 
-#if  QT_BT_STRUCTURE
+#if  JVET_C0024_QTBT
     for( i = 0; i < uiHeight; i+=yStep )
 #else 
     for( i = 0; i < uiHeight; i++ )
@@ -5195,7 +5195,7 @@ Void TComPrediction::xGetLMParameters( TComTU& rTu, const ComponentID compID, UI
       xx += pSrc[0] * pSrc[0];
       xy += pSrc[0] * pCur[0];
 
-#if  QT_BT_STRUCTURE
+#if  JVET_C0024_QTBT
       pSrc += yStep*iSrcStride;
       pCur += yStep*iCurStride;
 #else
@@ -5207,7 +5207,7 @@ Void TComPrediction::xGetLMParameters( TComTU& rTu, const ComponentID compID, UI
   
   if (bLeftAvaillable && bAboveAvaillable)
   {
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     iCountShift = g_aucConvertToBit[ min(uiWidth, uiHeight) ] + MIN_CU_LOG2 + 1;
 #else
     iCountShift = g_aucConvertToBit[ uiWidth ] + 3;
@@ -5215,7 +5215,7 @@ Void TComPrediction::xGetLMParameters( TComTU& rTu, const ComponentID compID, UI
   }
   else if (bLeftAvaillable || bAboveAvaillable)
   {
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     iCountShift = g_aucConvertToBit[ bLeftAvaillable? uiHeight: uiWidth ] + MIN_CU_LOG2;
 #else
     iCountShift = g_aucConvertToBit[ uiWidth ] + 2;
@@ -5378,13 +5378,13 @@ Void TComPrediction::xPredAffineBlk(const ComponentID compID, TComDataCU *cu, TC
   Int iOffset  = 8;
 
   Int iHorMax = ( sps.getPicWidthInLumaSamples()  + iOffset - cu->getCUPelX() - 1 ) << iMvShift;
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Int iHorMin = (      -(Int)sps.getCTUSize()  - iOffset - (Int)cu->getCUPelX() + 1 ) << iMvShift;
 #else
   Int iHorMin = (      -(Int)sps.getMaxCUWidth()  - iOffset - (Int)cu->getCUPelX() + 1 ) << iMvShift;
 #endif
   Int iVerMax = ( sps.getPicHeightInLumaSamples() + iOffset - cu->getCUPelY() - 1 ) << iMvShift;
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Int iVerMin = (      -(Int)sps.getCTUSize() - iOffset - (Int)cu->getCUPelY() + 1 ) << iMvShift;
 #else
   Int iVerMin = (      -(Int)sps.getMaxCUHeight() - iOffset - (Int)cu->getCUPelY() + 1 ) << iMvShift;
@@ -5473,7 +5473,7 @@ Void TComPrediction::getMvPredAffineAMVP( TComDataCU* pcCU, UInt uiPartIdx, UInt
 
 
 #if COM16_C1046_PDPC_INTRA
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 void TComPrediction::xReferenceFilter(Int iDoubleSize, Int iOrigWeight, Int iFilterOrder, Int * piRefrVector, Int * piLowPassRef)
 #else
 void TComPrediction::xReferenceFilter(Int iBlkSize, Int iOrigWeight, Int iFilterOrder, Int * piRefrVector, Int * piLowPassRef)
@@ -5487,7 +5487,7 @@ void TComPrediction::xReferenceFilter(Int iBlkSize, Int iOrigWeight, Int iFilter
   };
 
   const Int * piFc;
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
   const Int iDoubleSize = 2 * iBlkSize;                   // symmetric representation
 #endif
   Int * piTmp = &piBinBuff[2 * MAX_CU_SIZE + 4];   // to  use negative indexes

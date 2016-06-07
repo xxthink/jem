@@ -317,7 +317,7 @@ Void TComRdCost::setDistParam( UInt uiBlkWidth, UInt uiBlkHeight, DFunc eDFunc, 
     rcDistParam.DistFunc = m_afpDistortFunc[eDFunc];
   else
 #endif
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   rcDistParam.DistFunc = m_afpDistortFunc[eDFunc + g_aucConvertToBit[ rcDistParam.iCols ] + MIN_CU_LOG2 - 1 ];
 #else
   rcDistParam.DistFunc = m_afpDistortFunc[eDFunc + g_aucConvertToBit[ rcDistParam.iCols ] + 1 ];
@@ -345,7 +345,7 @@ Void TComRdCost::setDistParam( TComPattern* pcPatternKey, Pel* piRefY, Int iRefS
     rcDistParam.DistFunc = m_afpDistortFunc[DF_SAD];
   else
 #endif
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   rcDistParam.DistFunc = m_afpDistortFunc[DF_SAD + g_aucConvertToBit[ rcDistParam.iCols ] + MIN_CU_LOG2 - 1 ];
 #else
   rcDistParam.DistFunc = m_afpDistortFunc[DF_SAD + g_aucConvertToBit[ rcDistParam.iCols ] + 1 ];
@@ -393,7 +393,7 @@ Void TComRdCost::setDistParam( TComPattern* pcPatternKey, Pel* piRefY, Int iRefS
       rcDistParam.DistFunc =  m_afpDistortFunc[DF_SADS];
     else
 #endif
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     rcDistParam.DistFunc = m_afpDistortFunc[DF_SADS + g_aucConvertToBit[ rcDistParam.iCols ] + MIN_CU_LOG2 - 1 ];
 #else
     rcDistParam.DistFunc = m_afpDistortFunc[DF_SADS + g_aucConvertToBit[ rcDistParam.iCols ] + 1 ];
@@ -441,7 +441,7 @@ Void TComRdCost::setDistParam( DistParam& rcDP, Int bitDepth, Pel* p1, Int iStri
     rcDP.DistFunc   = m_afpDistortFunc[ ( bHadamard ? DF_HADS : DF_SADS ) ];
   else
 #endif
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   rcDP.DistFunc   = m_afpDistortFunc[ ( bHadamard ? DF_HADS : DF_SADS ) + g_aucConvertToBit[ iWidth ] + MIN_CU_LOG2 - 1 ];
 #else
   rcDP.DistFunc   = m_afpDistortFunc[ ( bHadamard ? DF_HADS : DF_SADS ) + g_aucConvertToBit[ iWidth ] + 1 ];
@@ -3054,7 +3054,7 @@ Distortion TComRdCost::xCalcHADs8x8( Pel *piOrg, Pel *piCur, Int iStrideOrg, Int
   return sad;
 }
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 Distortion TComRdCost::xCalcHADs16x8( Pel *piOrg, Pel *piCur, Int iStrideOrg, Int iStrideCur)
 {   //need to add SIMD implementation ,JCA
   Int k, i, j, jj, sad=0;
@@ -3517,7 +3517,7 @@ Distortion TComRdCost::xGetHADs( DistParam* pcDtParam )
 
   Distortion uiSum = 0;
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   if ( iCols > iRows && iRows>=8) 
   {
     for ( y=0; y<iRows; y+= 8 )
@@ -3667,7 +3667,7 @@ UInt TComRdCost::xGetMRHADs( DistParam* pcDtParam )
 
   piOrg   = pcDtParam->pOrg;
 
-#if QT_BT_STRUCTURE 
+#if JVET_C0024_QTBT 
   if ( iCols > iRows && iRows>=8) 
   {
     for ( y=0; y<iRows; y+= 8 )

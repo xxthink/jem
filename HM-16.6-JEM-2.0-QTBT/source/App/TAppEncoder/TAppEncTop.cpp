@@ -176,13 +176,13 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setUseSelectiveRDOQ                                  ( m_useSelectiveRDOQ );
 #endif
   m_cTEncTop.setRDpenalty                                         ( m_rdPenalty );
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   m_cTEncTop.setCTUSize                                           ( m_uiCTUSize );
   m_cTEncTop.setMinQTSizes                                        ( m_uiMinQT );
-#if SPS_MAX_BT_DEPTH
+#if JVET_C0024_SPS_MAX_BT_DEPTH
   m_cTEncTop.setMaxBTDepth                                        ( m_uiMaxBTDepth, m_uiMaxBTDepthISliceL, m_uiMaxBTDepthISliceC );
 #endif
-#if SPS_MAX_BT_SIZE
+#if JVET_C0024_SPS_MAX_BT_SIZE
   m_cTEncTop.setMaxBTSize                                         ( m_uiMaxBTSize, m_uiMaxBTSizeISliceL, m_uiMaxBTSizeISliceC );
 #endif
 #else
@@ -190,7 +190,7 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setMaxCUHeight                                       ( m_uiMaxCUHeight );
 #endif
   m_cTEncTop.setMaxTotalCUDepth                                   ( m_uiMaxTotalCUDepth );
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
   m_cTEncTop.setLog2DiffMaxMinCodingBlockSize                     ( m_uiLog2DiffMaxMinCodingBlockSize );
 #endif
   m_cTEncTop.setQuadtreeTULog2MaxSize                             ( m_uiQuadtreeTULog2MaxSize );
@@ -561,7 +561,7 @@ Void TAppEncTop::encode()
   TComPicYuv cPicYuvTrueOrg;
 
   // allocate original YUV buffer
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   if( m_isField )
   {
     pcPicYuvOrg->create  ( m_iSourceWidth, m_iSourceHeightOrg, m_chromaFormatIDC, m_uiCTUSize, m_uiCTUSize, m_uiMaxTotalCUDepth, true );
@@ -684,7 +684,7 @@ Void TAppEncTop::xGetBuffer( TComPicYuv*& rpcPicYuvRec)
   {
     rpcPicYuvRec = new TComPicYuv;
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     rpcPicYuvRec->create( m_iSourceWidth, m_iSourceHeight, m_chromaFormatIDC, m_uiCTUSize, m_uiCTUSize, m_uiMaxTotalCUDepth, true );
 #else
     rpcPicYuvRec->create( m_iSourceWidth, m_iSourceHeight, m_chromaFormatIDC, m_uiMaxCUWidth, m_uiMaxCUHeight, m_uiMaxTotalCUDepth, true );

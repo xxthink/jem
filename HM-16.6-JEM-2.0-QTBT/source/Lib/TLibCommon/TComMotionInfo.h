@@ -43,7 +43,7 @@
 #include "CommonDef.h"
 #include "TComMv.h"
 
-#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP || VCEG_AZ07_FRUC_MERGE || QT_BT_STRUCTURE
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP || VCEG_AZ07_FRUC_MERGE || JVET_C0024_QTBT
 class TComDataCU;
 class TComPic;
 #endif
@@ -97,7 +97,7 @@ public:
   Int getRefIdx() const { return  m_iRefIdx;       }
   Int getHor   () const { return  m_acMv.getHor(); }
   Int getVer   () const { return  m_acMv.getVer(); }
-#if COM16_C806_GEN_MRG_IMPROVEMENT || COM16_C806_OBMC || VCEG_AZ07_FRUC_MERGE || QT_BT_STRUCTURE
+#if COM16_C806_GEN_MRG_IMPROVEMENT || COM16_C806_OBMC || VCEG_AZ07_FRUC_MERGE || JVET_C0024_QTBT
   Bool operator== (const TComMvField& rcMv) const
   {
     return (m_acMv.getHor()== rcMv.getHor() && m_acMv.getVer()== rcMv.getVer() && m_iRefIdx == rcMv.getRefIdx());
@@ -117,7 +117,7 @@ private:
 #if COM16_C1016_AFFINE
   AffineAMVPInfo m_cAffineAMVPInfo;
 #endif
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   TComDataCU* m_pcCU;
 #endif
 
@@ -141,7 +141,7 @@ public:
 
   Void    clearMvField();
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Void    clearCtuMvField();
   Void    copyFromTo( TComCUMvField const * pcCUMvFieldSrc, Int iNumPart, Int iPartAddrSrc, Int iPartAddrDst );
 #endif
@@ -156,7 +156,7 @@ public:
   TComMv const & getMv    ( Int iIdx ) const { return  m_pcMv    [iIdx]; }
   TComMv const & getMvd   ( Int iIdx ) const { return  m_pcMvd   [iIdx]; }
   Int            getRefIdx( Int iIdx ) const { return  m_piRefIdx[iIdx]; }
-#if VCEG_AZ07_FRUC_MERGE || COM16_C1016_AFFINE || QT_BT_STRUCTURE
+#if VCEG_AZ07_FRUC_MERGE || COM16_C1016_AFFINE || JVET_C0024_QTBT
   Void           setMv    ( TComMv  cMv,     Int iIdx ) { m_pcMv    [iIdx] = cMv;     }
   Void           setRefIdx( Int     iRefIdx, Int iIdx ) { m_piRefIdx[iIdx] = iRefIdx; }
 #endif
@@ -172,14 +172,14 @@ public:
   // set
   // ------------------------------------------------------------------------------------------------------------------
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Void    setCU(TComDataCU* pcCU) { m_pcCU = pcCU;}
 #endif
   Void    setAllMv     ( TComMv const & rcMv,         PartSize eCUMode, Int iPartAddr, UInt uiDepth, Int iPartIdx=0 );
   Void    setAllMvd    ( TComMv const & rcMvd,        PartSize eCUMode, Int iPartAddr, UInt uiDepth, Int iPartIdx=0 );
   Void    setAllRefIdx ( Int iRefIdx,                 PartSize eMbMode, Int iPartAddr, UInt uiDepth, Int iPartIdx=0 );
   Void    setAllMvField( TComMvField const & mvField, PartSize eMbMode, Int iPartAddr, UInt uiDepth, Int iPartIdx=0 );
-#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP || VCEG_AZ07_FRUC_MERGE || QT_BT_STRUCTURE
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP || VCEG_AZ07_FRUC_MERGE || JVET_C0024_QTBT
   Void    setMvFieldSP ( TComDataCU* pcCU, UInt uiAbsPartIdx, TComMvField cMvField, Int iWidth, Int iHeight  );
 #endif
 

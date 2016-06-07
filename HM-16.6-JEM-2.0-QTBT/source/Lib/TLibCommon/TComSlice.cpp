@@ -119,7 +119,7 @@ TComSlice::TComSlice()
 #if VCEG_AZ06_IC
 , m_bApplyIC                      ( false )
 #endif
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 , m_eType                         (CHANNEL_TYPE_LUMA)
 #endif
 {
@@ -1607,7 +1607,7 @@ TComSPS::TComSPS()
 , m_picHeightInLumaSamples    (288)
 , m_log2MinCodingBlockSize    (  0)
 , m_log2DiffMaxMinCodingBlockSize(0)
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 , m_uiCTUSize                 ( 32)
 #else
 , m_uiMaxCUWidth              ( 32)
@@ -2347,7 +2347,7 @@ Void calculateParameterSetChangedFlag(Bool &bChanged, const std::vector<UChar> *
   }
 }
 
-#if VCEG_AZ06_IC_SPEEDUP || (QT_BT_STRUCTURE && VCEG_AZ06_IC)
+#if VCEG_AZ06_IC_SPEEDUP || (JVET_C0024_QTBT && VCEG_AZ06_IC)
 Void TComSlice::xSetApplyIC()
 {
   m_bApplyIC = false;
@@ -2385,7 +2385,7 @@ Void TComSlice::xSetApplyIC()
       memset(aiCurrHist, 0, iMaxPelValue*sizeof(Int) );
 
       double dThresholdOrgSAD = 0.05;
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
       dThresholdOrgSAD = IC_THRESHOLD;
 #endif
       // Histogram building - luminance

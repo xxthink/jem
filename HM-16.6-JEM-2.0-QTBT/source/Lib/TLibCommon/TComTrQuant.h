@@ -71,11 +71,11 @@ extern UInt g_uiDepth2MinCandiNum[5];
  __inline static Short  xMult ( Int i, UInt uiShift ) { return ((i)>>uiShift); }
 #endif
 #if COM16_C806_EMT
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 void fastForwardDCT2_B2 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
 void fastInverseDCT2_B2 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDCT2_B128(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
-#if ITSKIP
+#if JVET_C0024_ITSKIP
 void fastInverseDCT2_B128(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, const TCoeff outputMinimum, const TCoeff outputMaximum);
 #else
 void fastInverseDCT2_B128(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
@@ -90,7 +90,7 @@ void fastInverseDCT2_B16(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo
 void fastForwardDCT2_B32(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
 void fastInverseDCT2_B32(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDCT2_B64(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
-#if ITSKIP
+#if JVET_C0024_ITSKIP
 void fastInverseDCT2_B64(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, const TCoeff outputMinimum, const TCoeff outputMaximum);
 #else
 void fastInverseDCT2_B64(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
@@ -105,7 +105,7 @@ void fastForwardDST7_B16(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo
 void fastInverseDST7_B16(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDST7_B32(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
 void fastInverseDST7_B32(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 void fastForwardDST7_B64(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
 void fastInverseDST7_B64(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDST7_B128(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
@@ -120,7 +120,7 @@ void fastForwardDCT5_B16(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo
 void fastInverseDCT5_B16(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDCT5_B32(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
 void fastInverseDCT5_B32(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 void fastForwardDCT5_B64(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
 void fastInverseDCT5_B64(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDCT5_B128(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
@@ -135,7 +135,7 @@ void fastForwardDCT8_B16(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo
 void fastInverseDCT8_B16(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDCT8_B32(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
 void fastInverseDCT8_B32(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 void fastForwardDCT8_B64(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
 void fastInverseDCT8_B64(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDCT8_B128(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
@@ -150,7 +150,7 @@ void fastForwardDST1_B16(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo
 void fastInverseDST1_B16(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDST1_B32(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
 void fastInverseDST1_B32(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 void fastForwardDST1_B64(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
 void fastInverseDST1_B64(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDST1_B128(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
@@ -412,7 +412,7 @@ Void InvNsst4x4( Int* src, UInt uiMode, UChar index );
 
   Void initScalingList                      ();
   Void destroyScalingList                   ();
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Void setErrScaleCoeff    ( UInt list, UInt w, UInt h, Int qp, const Int maxLog2TrDynamicRange[MAX_NUM_CHANNEL_TYPE], const BitDepths &bitDepths );
   Double* getErrScaleCoeff              ( UInt list, UInt w, UInt h, Int qp ) { return m_errScale             [w][h][list][qp]; };  //!< get Error Scale Coefficent
   Double& getErrScaleCoeffNoScalingList ( UInt list, UInt w, UInt h, Int qp ) { return m_errScaleNoScalingList[w][h][list][qp]; };  //!< get Error Scale Coefficent
@@ -428,7 +428,7 @@ Void InvNsst4x4( Int* src, UInt uiMode, UChar index );
   Void setUseScalingList   ( Bool bUseScalingList){ m_scalingListEnabledFlag = bUseScalingList; };
   Bool getUseScalingList   (const UInt width, const UInt height, const Bool isTransformSkip){ return m_scalingListEnabledFlag && (!isTransformSkip || ((width == 4) && (height == 4))); };
   Void setFlatScalingList  (const Int maxLog2TrDynamicRange[MAX_NUM_CHANNEL_TYPE], const BitDepths &bitDepths);
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Void xsetFlatScalingList ( UInt list, UInt w, UInt h, Int qp);
 #else
   Void xsetFlatScalingList ( UInt list, UInt size, Int qp);
@@ -518,7 +518,7 @@ protected:
 
   Bool     m_scalingListEnabledFlag;
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Int      *m_quantCoef            [SCALING_LIST_SIZE_NUM][SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM][SCALING_LIST_REM_NUM]; ///< array of quantization matrix coefficient 4x4
   Int      *m_dequantCoef          [SCALING_LIST_SIZE_NUM][SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM][SCALING_LIST_REM_NUM]; ///< array of dequantization matrix coefficient 4x4
   Double   *m_errScale             [SCALING_LIST_SIZE_NUM][SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM][SCALING_LIST_REM_NUM]; ///< array of quantization matrix coefficient 4x4
@@ -650,7 +650,7 @@ __inline UInt              xGetCodedLevel  ( Double&          rd64CodedCost,
     , UChar ucMode
     , UChar ucTrIdx
 #endif
-#if ITSKIP
+#if JVET_C0024_ITSKIP
     , UInt uiSkipWidth
     , UInt uiSkipHeight
 #endif

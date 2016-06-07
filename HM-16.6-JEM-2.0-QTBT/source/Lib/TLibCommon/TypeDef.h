@@ -47,36 +47,36 @@
 //! \ingroup TLibCommon
 //! \{
 
-#define QT_BT_STRUCTURE                                   1
-
-#if QT_BT_STRUCTURE
-
-#define MIN_CU_LOG2                                       2
-#if MIN_CU_LOG2==1
-#define DF_MODIFY                                         1 //deblocking modifications
-#else
-#define DF_MODIFY                                         0
-#endif
-
-#define BT_RMV_REDUNDANT                                  1  ///< Remove redundant BT structure for B/P slice
-
-#define SPS_MAX_BT_SIZE                                   0  ///< signal max BT size in SPS
-#define SPS_MAX_BT_DEPTH                                  1  ///< signal max BT depth in SPS 
-
-#define QT_BT_CTU_256                                     0  ///< support CTU 256 for QTBT, force QT split for CU 256x256 
-
-// for fast algorithms
-#define AMAX_BT                                           1  ///< slice level adaptive maximum BT size (encoder only)
-#define AMAX_BT_FIX                                       1  ///< init at first layer 0 slice after each iRAP
-#define FAST_MRG                                          1
-#define PBINTRA_FAST                                      1
-#define ITSKIP                                            1  ///< skip zero row/column in inverse transform (decoder speedup)
-
-#endif // end of QT_BT_STRUCTURE
-
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////
+#define JVET_C0024_QTBT                                   1
+
+#if JVET_C0024_QTBT
+
+#define MIN_CU_LOG2                                       2
+#if MIN_CU_LOG2==1
+#define JVET_C0024_DF_MODIFY                              1 //deblocking modifications
+#else
+#define JVET_C0024_DF_MODIFY                              0
+#endif
+
+#define JVET_C0024_BT_RMV_REDUNDANT                       1  ///< Remove redundant BT structure for B/P slice
+
+#define JVET_C0024_SPS_MAX_BT_SIZE                        0  ///< signal max BT size in SPS
+#define JVET_C0024_SPS_MAX_BT_DEPTH                       1  ///< signal max BT depth in SPS 
+
+#define JVET_C0024_CTU_256                                0  ///< support CTU 256 for QTBT, force QT split for CU 256x256 
+
+// for fast algorithms
+#define JVET_C0024_AMAX_BT                                1  ///< slice level adaptive maximum BT size (encoder only)
+#define JVET_C0024_AMAX_BT_FIX                            1  ///< Support parallel encoding
+#define JVET_C0024_FAST_MRG                               1
+#define JVET_C0024_PBINTRA_FAST                           1
+#define JVET_C0024_ITSKIP                                 1  ///< skip zero row/column in inverse transform (decoder speedup)
+
+#endif // end of JVET_C0024_QTBT
+
 #define VCEG_AZ08_USE_KLT                                 1  ///< KLT (if defined 1, use cfg option of KLT to control the enablement of intra KLT and inter KLT (INTERA_KLT, VCEG_AZ08_INTER_KLT should be set as 1); if 0, use INTERA_KLT, VCEG_AZ08_INTER_KLT to control the enablement.)
 
 #define VCEG_AZ08_INTER_KLT                               1  ///< (default 1) Enable inter KLT
@@ -157,7 +157,7 @@
 #define VCEG_AZ06_IC                                      1  ///< Local illumination compensation (LIC)
 #if VCEG_AZ06_IC
 #define VCEG_AZ06_IC_SPEEDUP                              1  ///< speedup of IC
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 #undef VCEG_AZ06_IC_SPEEDUP                              
 #define VCEG_AZ06_IC_SPEEDUP                              0  ///< speedup of IC
 #define IC_THRESHOLD                                      0.06
@@ -213,7 +213,7 @@
 #error                                                       
 #endif                                                       
 
-#if COM16_C1044_NSST && QT_BT_STRUCTURE
+#if COM16_C1044_NSST && JVET_C0024_QTBT
 #define QTBT_NSST                                         1
 #endif
 
@@ -511,7 +511,7 @@ enum DeblockEdgeDir
 enum PartSize
 {
   SIZE_2Nx2N           = 0,           ///< symmetric motion partition,  2Nx2N
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   NUMBER_OF_PART_SIZES = 1
 #else
   SIZE_2NxN            = 1,           ///< symmetric motion partition,  2Nx N
@@ -678,7 +678,7 @@ enum ScalingListMode
 
 enum ScalingListSize
 {
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   SCALING_LIST_2x2 = 0,
   SCALING_LIST_4x4,
 #else

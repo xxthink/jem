@@ -96,14 +96,14 @@ private:
   TComPPS                 m_cPPS;                         ///< PPS. This is the base value. This is copied to TComPicSym
   // RD cost computation
   TComRdCost              m_cRdCost;                      ///< RD cost computation class
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   TEncSbac****            m_ppppcRDSbacCoder;              ///< temporal storage for RD computation
 #else
   TEncSbac***             m_pppcRDSbacCoder;              ///< temporal storage for RD computation
 #endif
   TEncSbac                m_cRDGoOnSbacCoder;             ///< going on SBAC model for RD stage
 #if FAST_BIT_EST
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   TEncBinCABACCounter**** m_ppppcBinCoderCABAC;            ///< temporal CABAC state storage for RD computation
 #else
   TEncBinCABACCounter***  m_pppcBinCoderCABAC;            ///< temporal CABAC state storage for RD computation
@@ -162,7 +162,7 @@ public:
   TEncBinCABAC*           getBinCABAC           () { return  &m_cBinCoderCABAC;       }
 
   TComRdCost*             getRdCost             () { return  &m_cRdCost;              }
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   TEncSbac****            getRDSbacCoder        () { return  m_ppppcRDSbacCoder;       }
 #else
   TEncSbac***             getRDSbacCoder        () { return  m_pppcRDSbacCoder;       }

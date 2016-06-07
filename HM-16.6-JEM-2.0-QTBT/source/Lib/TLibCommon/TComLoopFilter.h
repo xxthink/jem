@@ -44,7 +44,7 @@
 //! \ingroup TLibCommon
 //! \{
 
-#if DF_MODIFY
+#if JVET_C0024_DF_MODIFY
 #define DEBLOCK_SMALLEST_BLOCK  4
 #else
 #define DEBLOCK_SMALLEST_BLOCK  8
@@ -68,7 +68,7 @@ private:
 
 protected:
   /// CU-level deblocking function
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Void xDeblockCU                 ( TComDataCU* pcCU, UInt uiAbsZorderIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight, DeblockEdgeDir edgeDir );
 #else
   Void xDeblockCU                 ( TComDataCU* pcCU, UInt uiAbsZorderIdx, UInt uiDepth, DeblockEdgeDir edgeDir );
@@ -77,7 +77,7 @@ protected:
   // set / get functions
   Void xSetLoopfilterParam        ( TComDataCU* pcCU, UInt uiAbsZorderIdx );
   // filtering functions
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Void xSetEdgefilterCU           ( TComDataCU* pcCU, UInt uiAbsZorderIdx, UInt uiWidth, UInt uiHeight );
 #else
   Void xSetEdgefilterTU           ( TComTU &rTu );

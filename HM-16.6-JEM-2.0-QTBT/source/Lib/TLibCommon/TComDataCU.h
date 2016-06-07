@@ -53,7 +53,7 @@
 //! \{
 
 class TComTU; // forward declaration
-#if VCEG_AZ07_FRUC_MERGE || QT_BT_STRUCTURE
+#if VCEG_AZ07_FRUC_MERGE || JVET_C0024_QTBT
 class TComPrediction;
 #endif
 
@@ -89,7 +89,7 @@ private:
   UInt          m_uiCUPelX;           ///< CU position in a pixel (X)
   UInt          m_uiCUPelY;           ///< CU position in a pixel (Y)
   UInt          m_uiNumPartition;     ///< total number of minimum partitions in a CU
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   UChar*        m_puhWidth[MAX_NUM_CHANNEL_TYPE];           ///< array of widths, for both luma and chroma
   UChar*        m_puhHeight[MAX_NUM_CHANNEL_TYPE];          ///< array of heights, for both luma and chroma
 #else
@@ -101,7 +101,7 @@ private:
   UChar*        m_puhHeight;          ///< array of heights
 #endif
 #endif
-#if QT_BT_STRUCTURE  
+#if JVET_C0024_QTBT  
   UChar*        m_puhDepth[MAX_NUM_CHANNEL_TYPE];           ///< array of QT depths, for both luma and chroma
 
   UChar*         m_puhBTSplitMode[MAX_NUM_CHANNEL_TYPE][2];     ///< [luma/chroma][0~3 BTDepth/4~7 BTDepth]: array of PU split mode for both luma and chroma: 0: no split; 1: hor split; 2: ver split. 
@@ -110,10 +110,10 @@ private:
   UChar*        m_puhDepth;           ///< array of depths
 #endif
   Int           m_unitSize;           ///< size of a "minimum partition"
-#if PBINTRA_FAST
+#if JVET_C0024_PBINTRA_FAST
   UInt          m_uiInterHAD;
 #endif
-#if ITSKIP
+#if JVET_C0024_ITSKIP
   UInt*          m_puiSkipWidth[MAX_NUM_COMPONENT]; //#of trailing 0 coeff in each row, only used for decoder
   UInt*          m_puiSkipHeight[MAX_NUM_COMPONENT]; //#of trailing 0 coeff in each column, only used for decoder
 #endif
@@ -129,13 +129,13 @@ private:
   Char*          m_PDPCIdx;             ///< array of PDPCIdxs
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Char*          m_ROTIdx[MAX_NUM_CHANNEL_TYPE]; // 0-> Luma, 1-> Chroma
 #else
   Char*          m_ROTIdx;          ///< array of ROTIdxs; When NSST is enabled, the same member varaible of ROT is re-used
 #endif
 #endif
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
   Char*          m_pePartSize;         ///< array of partition sizes
 #endif
   Char*          m_pePredMode;         ///< array of prediction modes
@@ -144,7 +144,7 @@ private:
   Char*          m_phQP;               ///< array of QP values
   UChar*         m_ChromaQpAdj;        ///< array of chroma QP adjustments (indexed). when value = 0, cu_chroma_qp_offset_flag=0; when value>0, indicates cu_chroma_qp_offset_flag=1 and cu_chroma_qp_offset_idx=value-1
   UInt           m_codedChromaQpAdj;
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
   UChar*         m_puhTrIdx;           ///< array of transform indices
 #endif
   UChar*         m_puhTransformSkip[MAX_NUM_COMPONENT];///< array of transform skipping flags
@@ -178,7 +178,7 @@ private:
   TComMvField   m_cMvFieldC;          ///< motion vector of position C
   TComMv        m_cMvPred;            ///< motion vector predictor
 
-#if BT_RMV_REDUNDANT
+#if JVET_C0024_BT_RMV_REDUNDANT
   UInt m_uiSplitConstrain;
 #endif
   // -------------------------------------------------------------------------------------------------------------------
@@ -209,7 +209,7 @@ private:
 #if VCEG_AZ06_IC
   Bool*         m_pbICFlag;           ///< array of IC flags
 #endif
-#if AMP_MRG && !QT_BT_STRUCTURE
+#if AMP_MRG && !JVET_C0024_QTBT
   Bool          m_bIsMergeAMP;
 #endif
   UChar*        m_puhIntraDir[MAX_NUM_CHANNEL_TYPE]; // 0-> Luma, 1-> Chroma
@@ -219,7 +219,7 @@ private:
   Bool*         m_pbIPCMFlag;         ///< array of intra_pcm flags
 
 #if ALF_HM3_REFACTOR
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   UChar*        m_puhAlfCtrlFlag;     ///< array of ALF flags
   UChar*        m_puhTmpAlfCtrlFlag;  ///< temporal array of ALF flags
 #else
@@ -283,7 +283,7 @@ public:
   // -------------------------------------------------------------------------------------------------------------------
 
   Void          create                ( ChromaFormat chromaFormatIDC, UInt uiNumPartition, UInt uiWidth, UInt uiHeight, Bool bDecSubCu, Int unitSize
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     , UInt uiCUWidth, UInt uiCUHeight
 #endif
 #if ADAPTIVE_QP_SELECTION
@@ -293,8 +293,8 @@ public:
   Void          destroy               ();
 
   Void          initCtu               ( TComPic* pcPic, UInt ctuRsAddr );
-#if QT_BT_STRUCTURE
-#if BT_RMV_REDUNDANT
+#if JVET_C0024_QTBT
+#if JVET_C0024_BT_RMV_REDUNDANT
   Void          setSplitConstrain( UInt uiTag ){ m_uiSplitConstrain = uiTag; }
   UInt          getSplitConstrain(            ){ return m_uiSplitConstrain ; }
 #endif
@@ -308,7 +308,7 @@ public:
 
   Void          copySubCU             ( TComDataCU* pcCU, UInt uiPartUnitIdx );
   Void          copyInterPredInfoFrom ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefPicList );
-#if QT_BT_STRUCTURE 
+#if JVET_C0024_QTBT 
   Void          copyPartFrom          ( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight );
   Void          copyToPic             ( UChar uiDepth, UInt uiWidth, UInt uiHeight );
 #else
@@ -317,7 +317,7 @@ public:
 #if VCEG_AZ08_INTER_KLT 
   Void          copySameSizeCUFrom    ( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth);
 #endif
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
   Void          copyToPic             ( UChar uiDepth );
 #endif
   // -------------------------------------------------------------------------------------------------------------------
@@ -334,7 +334,7 @@ public:
   UInt          getCUPelX             () const                  { return m_uiCUPelX;        }
   UInt          getCUPelY             () const                  { return m_uiCUPelY;        }
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   ChannelType   getTextType           () const                  { return m_pcSlice->getTextType();}
 
   UChar*        getDepth              ()                        { return m_puhDepth[getTextType()];        }
@@ -352,7 +352,7 @@ public:
   // member functions for CU data
   // -------------------------------------------------------------------------------------------------------------------
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   UChar*        getBTSplitModePart (UInt uiBTDepthIdx) { return m_puhBTSplitMode[getTextType()][uiBTDepthIdx];}
   UChar         getBTSplitModePart ( UInt uiBTDepthIdx, UInt uiIdx) { return m_puhBTSplitMode[getTextType()][uiBTDepthIdx][uiIdx];}
   UInt          getBTSplitMode (UInt uiIdx) { return ((UInt)m_puhBTSplitMode[getTextType()][1][uiIdx]<<8) + m_puhBTSplitMode[getTextType()][0][uiIdx];}
@@ -388,7 +388,7 @@ public:
 #endif
 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Char*         getROTIdx               ( const ChannelType channelType ) { return m_ROTIdx[channelType];      } // When NSST is enabled, the same interface functions of ROT is re-used
   Char          getROTIdx               ( const ChannelType channelType, UInt idx)               { return m_ROTIdx[channelType][idx];     }
   Void          setROTIdx               ( const ChannelType channelType, UInt idx, Char ROTIdx)  { m_ROTIdx[channelType][idx] = ROTIdx;   }
@@ -411,8 +411,8 @@ public:
   Bool*         getCUTransquantBypass ()                        { return m_CUTransquantBypass;        }
   Bool          getCUTransquantBypass( UInt uiIdx )             { return m_CUTransquantBypass[uiIdx]; }
 
-#if QT_BT_STRUCTURE  
-#if QT_BT_CTU_256
+#if JVET_C0024_QTBT  
+#if JVET_C0024_CTU_256
   UChar*        getWidth              ()                        { return m_puhWidth[getTextType()];          }
   UShort        getWidth              ( UInt uiIdx )            { return (UShort)m_puhWidth[getTextType()][uiIdx] << MIN_CU_LOG2;   }
 
@@ -466,7 +466,7 @@ public:
 
   Bool          isLosslessCoded       ( UInt absPartIdx );
 
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
   UChar*        getTransformIdx       ()                        { return m_puhTrIdx;          }
   UChar         getTransformIdx       ( UInt uiIdx )            { return m_puhTrIdx[uiIdx];   }
   Void          setTrIdxSubParts      ( UInt uiTrIdx, UInt uiAbsPartIdx, UInt uiDepth );
@@ -494,7 +494,7 @@ public:
 
   Void          setCrossComponentPredictionAlphaPartRange    ( Char alphaValue, ComponentID compID, UInt uiAbsPartIdx, UInt uiCoveredPartIdxes );
   Void          setTransformSkipPartRange                    ( UInt useTransformSkip, ComponentID compID, UInt uiAbsPartIdx, UInt uiCoveredPartIdxes );
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
 
   UInt          getQuadtreeTULog2MinSizeInCU( UInt uiIdx );
 #endif
@@ -524,11 +524,11 @@ public:
 
   Void          setCbfSubParts        ( const UInt uiCbf[MAX_NUM_COMPONENT],  UInt uiAbsPartIdx, UInt uiDepth           );
   Void          setCbfSubParts        ( UInt uiCbf, ComponentID compID, UInt uiAbsPartIdx, UInt uiDepth                    );
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
   Void          setCbfSubParts        ( UInt uiCbf, ComponentID compID, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth    );
 #endif
   Void          setCbfPartRange       ( UInt uiCbf, ComponentID compID, UInt uiAbsPartIdx, UInt uiCoveredPartIdxes      );
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
   Void          bitwiseOrCbfPartRange ( UInt uiCbf, ComponentID compID, UInt uiAbsPartIdx, UInt uiCoveredPartIdxes      );
 #endif
 
@@ -584,13 +584,13 @@ public:
   Bool          isICFlagCoded        ( UInt uiAbsPartIdx );
 #endif
   template <typename T>
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Void          setSubPart            ( T bParameter, T* pbBaseCtu, UInt uiCUAddr, UInt uiWidth, UInt uiHeight );
 #else
   Void          setSubPart            ( T bParameter, T* pbBaseCtu, UInt uiCUAddr, UInt uiCUDepth, UInt uiPUIdx );
 #endif
 
-#if AMP_MRG && !QT_BT_STRUCTURE
+#if AMP_MRG && !JVET_C0024_QTBT
   Void          setMergeAMP( Bool b )      { m_bIsMergeAMP = b; }
   Bool          getMergeAMP( )             { return m_bIsMergeAMP; }
 #endif
@@ -627,7 +627,7 @@ public:
 #endif
 
 #if ALF_HM3_REFACTOR
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   UChar*         getAlfCtrlFlag        ()                        { return m_puhAlfCtrlFlag;            }
   UChar          getAlfCtrlFlag        ( UInt uiIdx )            { return m_puhAlfCtrlFlag[uiIdx];     }
   Void          setAlfCtrlFlag        ( UInt uiIdx, UChar uhFlag){ m_puhAlfCtrlFlag[uiIdx] = uhFlag;   }
@@ -699,7 +699,7 @@ public:
   Void          getPartIndexAndSize   ( UInt uiPartIdx, UInt& ruiPartAddr, Int& riWidth, Int& riHeight, UInt uiAbsPartIdx, Bool bLCU) ;
 #endif
   UChar         getNumPartitions      ( const UInt uiAbsPartIdx = 0 );
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
   Bool          isFirstAbsZorderIdxInDepth (UInt uiAbsPartIdx, UInt uiDepth);
 #endif
 
@@ -866,7 +866,7 @@ public:
   // -------------------------------------------------------------------------------------------------------------------
 
   UInt          getCtxSplitFlag                 ( UInt   uiAbsPartIdx, UInt uiDepth                   );
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   UInt          getCtxBTSplitFlag( UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight );
 #endif
 #if COM16_C806_LARGE_CTU
@@ -894,10 +894,10 @@ public:
   Distortion&   getTotalDistortion()            { return m_uiTotalDistortion; }
   UInt&         getTotalBits()                  { return m_uiTotalBits;       }
   UInt&         getTotalNumPart()               { return m_uiNumPartition;    }
-#if PBINTRA_FAST
+#if JVET_C0024_PBINTRA_FAST
   UInt&         getInterHAD()                   { return m_uiInterHAD; }
 #endif
-#if ITSKIP
+#if JVET_C0024_ITSKIP
   UInt*         getTUSkipWidth(ComponentID compID)                { return m_puiSkipWidth[compID];}
   UInt*         getTUSkipHeight(ComponentID compID)               { return m_puiSkipHeight[compID];}
   UInt&         getTUSkipWidth(ComponentID compID, UInt uiAbsPartIdx)                { return m_puiSkipWidth[compID][uiAbsPartIdx];}
