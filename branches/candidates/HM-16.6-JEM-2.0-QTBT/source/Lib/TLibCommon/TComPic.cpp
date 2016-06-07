@@ -77,7 +77,7 @@ Void TComPic::create( const TComSPS &sps, const TComPPS &pps, const Bool bIsVirt
   const ChromaFormat chromaFormatIDC = sps.getChromaFormatIdc();
   const Int          iWidth          = sps.getPicWidthInLumaSamples();
   const Int          iHeight         = sps.getPicHeightInLumaSamples();
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   const UInt         uiMaxCuWidth    = sps.getCTUSize();
   const UInt         uiMaxCuHeight   = sps.getCTUSize();
 #else
@@ -225,7 +225,7 @@ UInt TComPic::getSubstreamForCtuAddr(const UInt ctuAddr, const Bool bAddressInRa
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
 Void TComPic::getCUAddrAndPartIdx( Int iX, Int iY, Int& riCuAddr, Int& riAbsZorderIdx )
 {
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Int iMaxCUWidth   = (Int) ( getPicSym()->getSPS().getCTUSize()  );
   Int iMaxCuHeight  = (Int) ( getPicSym()->getSPS().getCTUSize() );
 #else
@@ -244,7 +244,7 @@ Void TComPic::getCUAddrAndPartIdx( Int iX, Int iY, Int& riCuAddr, Int& riAbsZord
 }
 #endif
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 Void TComPic::setCodedBlkInCTU(Bool bCoded, UInt uiBlkX, UInt uiBlkY, UInt uiWidth, UInt uiHeight)
 {
   assert(sizeof(**m_bCodedBlkInCTU)==1);

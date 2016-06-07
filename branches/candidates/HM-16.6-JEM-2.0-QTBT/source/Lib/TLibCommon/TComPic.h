@@ -81,7 +81,7 @@ private:
   Int                   m_iBaseUnitHeight;      ///< Height of Base Unit (with maximum depth or minimum size, m_iCuHeight >> Max. Depth)
   Int                   m_iNumCuInWidth;
 #endif
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   //for record codec block info.
   Bool m_bCodedBlkInCTU[MAX_CU_SIZE>>MIN_CU_LOG2][MAX_CU_SIZE>>MIN_CU_LOG2];    //[CTUSize>>MIN_CU_Log2][CTUSize>>MIN_CU_Log2]; [h][w]
   Int  m_iCodedArea;
@@ -102,7 +102,7 @@ public:
   TComPic();
   virtual ~TComPic();
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   //to record coded block info.
   Void          setCodedBlkInCTU(Bool bCoded, UInt uiBlkX, UInt uiBlkY, UInt uiWidth, UInt uiHeight);
   Bool          getCodedBlkInCTU(UInt uiBlkX, UInt uiBlkY) {return m_bCodedBlkInCTU[uiBlkY][uiBlkX];}

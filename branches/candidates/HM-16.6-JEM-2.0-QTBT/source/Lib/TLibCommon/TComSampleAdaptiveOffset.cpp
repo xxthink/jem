@@ -133,7 +133,7 @@ Void TComSampleAdaptiveOffset::create( Int picWidth, Int picHeight, ChromaFormat
   m_picWidth        = picWidth;
   m_picHeight       = picHeight;
   m_chromaFormatIDC = format;
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   assert(maxCUWidth == maxCUHeight);
   m_CTUSize = maxCUWidth;
   m_numCTUInWidth   = (m_picWidth/m_CTUSize) + ((m_picWidth % m_CTUSize)?1:0);
@@ -151,7 +151,7 @@ Void TComSampleAdaptiveOffset::create( Int picWidth, Int picHeight, ChromaFormat
   if ( !m_tempPicYuv )
   {
     m_tempPicYuv = new TComPicYuv;
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     m_tempPicYuv->create( m_picWidth, m_picHeight, m_chromaFormatIDC, m_CTUSize, m_CTUSize, maxCUDepth, true );
 #else
     m_tempPicYuv->create( m_picWidth, m_picHeight, m_chromaFormatIDC, m_maxCUWidth, m_maxCUHeight, maxCUDepth, true );
@@ -325,7 +325,7 @@ Void TComSampleAdaptiveOffset::offsetBlock(const Int channelBitDepth, Int typeId
                                           , Pel* srcBlk, Pel* resBlk, Int srcStride, Int resStride,  Int width, Int height
                                           , Bool isLeftAvail,  Bool isRightAvail, Bool isAboveAvail, Bool isBelowAvail, Bool isAboveLeftAvail, Bool isAboveRightAvail, Bool isBelowLeftAvail, Bool isBelowRightAvail)
 {
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   if(m_lineBufWidth != m_CTUSize)
   {
     m_lineBufWidth = m_CTUSize;
@@ -589,7 +589,7 @@ Void TComSampleAdaptiveOffset::offsetCTU(Int ctuRsAddr, TComPicYuv* srcYuv, TCom
   //block boundary availability
   pPic->getPicSym()->deriveLoopFilterBoundaryAvailibility(ctuRsAddr, isLeftAvail,isRightAvail,isAboveAvail,isBelowAvail,isAboveLeftAvail,isAboveRightAvail,isBelowLeftAvail,isBelowRightAvail);
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Int yPos   = (ctuRsAddr / m_numCTUInWidth)*m_CTUSize;
   Int xPos   = (ctuRsAddr % m_numCTUInWidth)*m_CTUSize;
   Int height = (yPos + m_CTUSize > m_picHeight)?(m_picHeight- yPos):m_CTUSize;
@@ -718,7 +718,7 @@ Void TComSampleAdaptiveOffset::xPCMCURestoration ( TComDataCU* pcCU, UInt uiAbsZ
   // restore PCM samples
   if ((pcCU->getIPCMFlag(uiAbsZorderIdx)&& pcPic->getSlice(0)->getSPS()->getPCMFilterDisableFlag()) || pcCU->isLosslessCoded( uiAbsZorderIdx))
   {
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     assert(0);  //currently IPCM mode not support QTBT
 #endif
     const UInt numComponents=pcPic->getNumberValidComponents();
@@ -748,7 +748,7 @@ Void TComSampleAdaptiveOffset::xPCMSampleRestoration (TComDataCU* pcCU, UInt uiA
   const Pel *piPcm = pcCU->getPCMSample(compID) + uiOffset;
   const UInt uiStride  = pcPicYuvRec->getStride(compID);
   const TComSPS &sps = *(pcCU->getSlice()->getSPS());
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   const UInt uiWidth  = ((sps.getCTUSize()  >> uiDepth) >> csx);
   const UInt uiHeight = ((sps.getCTUSize() >> uiDepth) >> csy);
 #else

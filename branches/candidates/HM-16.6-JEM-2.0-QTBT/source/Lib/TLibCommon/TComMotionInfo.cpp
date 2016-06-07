@@ -39,7 +39,7 @@
 #include "TComMotionInfo.h"
 #include "assert.h"
 #include <stdlib.h>
-#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP || VCEG_AZ07_FRUC_MERGE || QT_BT_STRUCTURE
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP || VCEG_AZ07_FRUC_MERGE || JVET_C0024_QTBT
 #include "TComDataCU.h"
 #include "TComPic.h"
 #endif
@@ -88,7 +88,7 @@ Void TComCUMvField::destroy()
 // Clear / copy
 // --------------------------------------------------------------------------------------------------------------------
 
-#if QT_BT_STRUCTURE //only for FRUC, which clears the MvField before initCtu.
+#if JVET_C0024_QTBT //only for FRUC, which clears the MvField before initCtu.
 Void TComCUMvField::clearCtuMvField()
 {
   for ( Int i = 0; i < m_uiNumPartition; i++ )
@@ -103,7 +103,7 @@ Void TComCUMvField::clearCtuMvField()
 
 Void TComCUMvField::clearMvField()
 {
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   UInt uiRaster = g_auiZscanToRaster[m_pcCU->getZorderIdxInCtu()];
   UInt uiShort, uiLong;
   UInt uiStride;
@@ -149,7 +149,7 @@ Void TComCUMvField::clearMvField()
 #endif
 }
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 Void TComCUMvField::copyFromTo( TComCUMvField const * pcCUMvFieldSrc, Int iNumPart, Int iPartAddrSrc, Int iPartAddrDst )
 {
   Int iSizeInTComMv = sizeof( TComMv ) * iNumPart;
@@ -191,7 +191,7 @@ Void TComCUMvField::copyTo( TComCUMvField* pcCUMvFieldDst, Int iPartAddrDst, UIn
 template <typename T>
 Void TComCUMvField::setAll( T *p, T const & val, PartSize eCUMode, Int iPartAddr, UInt uiDepth, Int iPartIdx  )
 {
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   assert(eCUMode == SIZE_2Nx2N); 
   UInt uiRaster = g_auiZscanToRaster[m_pcCU->getZorderIdxInCtu()+iPartAddr];
   UInt uiShort, uiLong;

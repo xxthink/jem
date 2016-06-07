@@ -111,7 +111,7 @@ public:
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Void codeROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth );
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Void codeROTIdxChroma ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth );
 #endif
 #endif
@@ -133,7 +133,7 @@ public:
   Void codeAlfCtrlFlag   ( ComponentID /*component*/, UInt /*code*/ ) {printf("Not supported\n"); assert(0);}
   Void codeInterModeFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiEncMode );
   Void codeSplitFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Void codeBTSplitMode   (TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight);
 #else
   Void codePartSize      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
@@ -197,7 +197,7 @@ public:
   Void codeAlfUvlc       ( UInt uiCode );
   Void codeAlfSvlc       ( Int   iCode );
   Void codeAlfCtrlDepth  ( UInt uiMaxTotalCUDepth );
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
   Void codeAlfCtrlFlag   ( TComDataCU* pcCU, UInt uiAbsPartIdx );
 #endif
   Void codeAlfFlagNum    ( UInt uiCode, UInt minValue );

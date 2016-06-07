@@ -146,7 +146,7 @@ public:
 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Void codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  );
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Void codeROTIdxChroma ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  );
 #endif
 #endif
@@ -165,12 +165,12 @@ public:
   Void codeFRUCMgrMode   ( TComDataCU* pcCU, UInt uiAbsPartIdx , UInt uiPUIdx );
 #endif
   Void codeSplitFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Void codeBTSplitMode   ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight);
 #endif
   Void codeMVPIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList );
 
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
   Void codePartSize      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
   Void codePredMode      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
@@ -234,7 +234,7 @@ public:
   Void  codeAlfCtrlDepth  ( UInt uiMaxTotalCUDepth );
   Void  codeAlfFlagNum    ( UInt uiCode, UInt minValue );
   Void  codeAlfCtrlFlag   ( UInt uiSymbol );
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
   Void  codeAlfCtrlFlag   ( TComDataCU* pcCU, UInt uiAbsPartIdx );
 #endif
 #endif
@@ -252,7 +252,7 @@ private:
   ContextModel         m_contextModels[MAX_NUM_CTX_MOD];
   Int                  m_numContextModels;
   ContextModel3DBuffer m_cCUSplitFlagSCModel;
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   ContextModel3DBuffer m_cBTSplitFlagSCModel;
 #endif
   ContextModel3DBuffer m_cCUSkipFlagSCModel;

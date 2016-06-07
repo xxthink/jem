@@ -60,7 +60,7 @@ class TDecCu
 {
 private:
   UInt                m_uiMaxDepth;       ///< max. number of depth
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   TComYuv***          m_pppcYuvResi;
   TComYuv***          m_pppcYuvReco;
   TComDataCU***       m_pppcCU;
@@ -115,14 +115,14 @@ public:
 
 protected:
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Void xDecodeCU                ( TComDataCU* const pcCU, const UInt uiAbsPartIdx, const UInt uiDepth, const UInt uiWidth, const UInt uiHeight, Bool &isLastCtuOfSliceSegment, UInt uiSplitConstrain=0);
 #else
   Void xDecodeCU                ( TComDataCU* const pcCU, const UInt uiAbsPartIdx, const UInt uiDepth, Bool &isLastCtuOfSliceSegment);
 #endif
   Void xFinishDecodeCU          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool &isLastCtuOfSliceSegment);
   Bool xDecodeSliceEnd          ( TComDataCU* pcCU, UInt uiAbsPartIdx );
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   Void xDecompressCU            ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight );
 #else
   Void xDecompressCU            ( TComDataCU* pCtu, UInt uiAbsPartIdx, UInt uiDepth );
@@ -142,7 +142,7 @@ protected:
   Void xDecodeInterTexture      ( TComDataCU* pcCU, UInt uiDepth );
   Void xDecodePCMTexture        ( TComDataCU* pcCU, const UInt uiPartIdx, const Pel *piPCM, Pel* piReco, const UInt uiStride, const UInt uiWidth, const UInt uiHeight, const ComponentID compID);
 
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
   Void xCopyToPic               ( TComDataCU* pcCU, TComPic* pcPic, UInt uiZorderIdx, UInt uiDepth );
 #endif
 
@@ -153,7 +153,7 @@ protected:
 
   Void xFillPCMBuffer           (TComDataCU* pCU, UInt depth);
 
-#if VCEG_AZ07_FRUC_MERGE || QT_BT_STRUCTURE
+#if VCEG_AZ07_FRUC_MERGE || JVET_C0024_QTBT
   Void xDeriveCUMV              ( TComDataCU * pcCU , UInt uiAbsPartIdx , UInt uiDepth );
 #endif
 };

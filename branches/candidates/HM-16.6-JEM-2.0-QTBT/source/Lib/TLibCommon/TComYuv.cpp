@@ -277,7 +277,7 @@ Void TComYuv::copyPartToPartComponentMxN  ( const ComponentID compID, TComYuv* p
 
 
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 Void TComYuv::addClip( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const UInt uiTrUnitIdx, const UInt uiWidth, const UInt uiHeight, const BitDepths &clipBitDepths )
 #else
 Void TComYuv::addClip( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const UInt uiTrUnitIdx, const UInt uiPartSize, const BitDepths &clipBitDepths )
@@ -286,7 +286,7 @@ Void TComYuv::addClip( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const
   for(Int comp=0; comp<getNumberValidComponents(); comp++)
   {
     const ComponentID compID=ComponentID(comp);
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     const Int uiPartWidth =uiWidth>>getComponentScaleX(compID);
     const Int uiPartHeight=uiHeight>>getComponentScaleY(compID);
 #else
@@ -326,7 +326,7 @@ Void TComYuv::addClip( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const
 
 
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 Void TComYuv::subtract( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const UInt uiTrUnitIdx, const UInt uiWidth, const UInt uiHeight )
 #else
 Void TComYuv::subtract( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const UInt uiTrUnitIdx, const UInt uiPartSize )
@@ -335,7 +335,7 @@ Void TComYuv::subtract( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, cons
   for(Int comp=0; comp<getNumberValidComponents(); comp++)
   {
     const ComponentID compID=ComponentID(comp);
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     const Int uiPartWidth =uiWidth>>getComponentScaleX(compID);
     const Int uiPartHeight=uiHeight>>getComponentScaleY(compID);
 #else

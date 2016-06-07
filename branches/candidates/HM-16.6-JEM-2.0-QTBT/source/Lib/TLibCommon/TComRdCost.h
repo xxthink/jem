@@ -262,7 +262,7 @@ private:
     , Int bitDepth
 #endif
     );
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   static Distortion xCalcHADs16x8     ( Pel *piOrg, Pel *piCur, Int iStrideOrg, Int iStrideCur);
   static Distortion xCalcHADs8x16     ( Pel *piOrg, Pel *piCur, Int iStrideOrg, Int iStrideCur);
   static Distortion xCalcHADs4x8     ( Pel *piOrg, Pel *piCur, Int iStrideOrg, Int iStrideCur);

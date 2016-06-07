@@ -126,7 +126,7 @@ Void TEncPic::create( const TComSPS &sps, const TComPPS &pps, UInt uiMaxAdaptive
   TComPic::create( sps, pps, bIsVirtual );
   const Int  iWidth      = sps.getPicWidthInLumaSamples();
   const Int  iHeight     = sps.getPicHeightInLumaSamples();
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   const UInt uiMaxWidth  = sps.getCTUSize();
   const UInt uiMaxHeight = sps.getCTUSize();
 #else

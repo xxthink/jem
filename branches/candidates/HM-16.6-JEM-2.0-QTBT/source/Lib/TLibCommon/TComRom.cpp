@@ -52,10 +52,10 @@
 
 //! \ingroup TLibCommon
 //! \{
-#if AMAX_BT
+#if JVET_C0024_AMAX_BT
 UInt g_uiBlkSize[ 10 ];
 UInt g_uiNumBlk[ 10 ];
-#if AMAX_BT_FIX
+#if JVET_C0024_AMAX_BT_FIX
 UInt g_uiPrevISlicePOC = 0;
 Bool g_bInitAMaxBT = false;
 #endif
@@ -232,7 +232,7 @@ Void initROM()
   // g_aucConvertToBit[ x ]: log2(x/4), if x=4 -> 0, x=8 -> 1, x=16 -> 2, ...
   ::memset( g_aucConvertToBit,   -1, sizeof( g_aucConvertToBit ) );
   c=0;
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   for ( i=1<<MIN_CU_LOG2; i<=MAX_CU_SIZE; i*=2 )
 #else
   for ( i=4; i<=MAX_CU_SIZE; i*=2 )
@@ -241,7 +241,7 @@ Void initROM()
     g_aucConvertToBit[ i ] = c;
     c++;
   }
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   if (MIN_CU_LOG2>=1)
   {
     c = -1;
@@ -254,13 +254,13 @@ Void initROM()
 #endif
 
 #if COM16_C806_EMT || COM16_C806_T64
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   c = 2;
 #else
   c = 4;
 #endif
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   for ( i=0; i<7; i++ ) 
 #else
   for ( i=0; i<5; i++ )
@@ -272,7 +272,7 @@ Void initROM()
 
     switch(i)
     {
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
       case 0: iT = g_aiTr2 [0][0]; break; 
       case 1: iT = g_aiTr4 [0][0]; break;
       case 2: iT = g_aiTr8[0][0]; break;
@@ -382,7 +382,7 @@ Void initROM()
       //--------------------------------------------------------------------------------------------------
 
       //grouped scan orders
-#if VCEG_AZ07_CTX_RESIDUALCODING || QT_BT_STRUCTURE
+#if VCEG_AZ07_CTX_RESIDUALCODING || JVET_C0024_QTBT
       UInt  groupWidth                 = 1           << MLS_CG_LOG2_WIDTH;
       UInt  groupHeight                = 1           << MLS_CG_LOG2_HEIGHT;
       UInt  widthInGroups              = blockWidth  >> MLS_CG_LOG2_WIDTH;
@@ -394,7 +394,7 @@ Void initROM()
       const UInt  heightInGroups       = blockHeight >> MLS_CG_LOG2_HEIGHT;
 #endif
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
       if (log2BlockWidth==1 || log2BlockHeight==1)
       {
         groupWidth                 = 1           << (MLS_CG_LOG2_WIDTH-1);
@@ -484,7 +484,7 @@ UInt g_auiRasterToZscan [ MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CT
 UInt g_auiRasterToPelX  [ MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH ] = { 0, };
 UInt g_auiRasterToPelY  [ MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH ] = { 0, };
 
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
 const UInt g_auiPUOffset[NUMBER_OF_PART_SIZES] = { 0, 8, 4, 4, 2, 10, 1, 5};
 #endif
 #if VCEG_AZ07_CTX_RESIDUALCODING
@@ -692,7 +692,7 @@ const UInt g_iEmtSigNumThr = 2;
 #endif
 
 #if COM16_C806_EMT || COM16_C806_T64
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 TMatrixCoeff g_aiTr2 [NUM_TRANS_TYPE][ 2][ 2];
 TMatrixCoeff g_aiTr128 [NUM_TRANS_TYPE][ 128][ 128];
 #endif
@@ -1535,7 +1535,7 @@ const UChar g_aucChromaScale[NUM_CHROMA_FORMAT][chromaQPMappingTableSize]=
 // Intra prediction
 // ====================================================================================================================
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 const UChar g_aucIntraModeNumFast_UseMPM[7-MIN_CU_LOG2+1][7-MIN_CU_LOG2+1] =
 {
 #if MIN_CU_LOG2==1
@@ -1641,7 +1641,7 @@ const UInt ctxIndMap4x4[4*4] =
 };
 
 #if COM16_C806_T64
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 const UInt g_uiMinInGroup[  LAST_SIGNIFICANT_GROUPS ] = {0,1,2,3,4,6,8,12,16,24,32,48,64,96};
 const UInt g_uiGroupIdx  [  MAX_TU_SIZE ] = {0,1,2,3,4,4,5,5,6,6,6,6,7,7,7,7,8,8,8,8,8,8,8,8,9,9,9,9,9,9,9,9, 10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11
 ,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12
@@ -1747,7 +1747,7 @@ const Int g_quantInterDefault8x8[8*8] =
   24,25,28,33,41,54,71,91
 };
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 const UInt g_scalingListSize   [SCALING_LIST_SIZE_NUM] = {4,16,64,256,1024,4096};
 const UInt g_scalingListSizeX  [SCALING_LIST_SIZE_NUM] = {2, 4, 8, 16,  32, 64};
 #else
@@ -1764,7 +1764,7 @@ const UInt g_scalingListSizeX  [SCALING_LIST_SIZE_NUM] = { 4, 8, 16,  32
 #endif
 
 #if COM16_C1046_PDPC_INTRA
-#if QT_BT_STRUCTURE // lossless change, just remove unused entries from the table
+#if JVET_C0024_QTBT // lossless change, just remove unused entries from the table
 const Int g_pdpc_pred_param[5][35][6] = {
 { {  33,   7,  33,   7,  30,    3 },
   {  25,   5,  25,   5,   0,    0 },

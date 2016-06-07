@@ -301,7 +301,7 @@ Void TEncSampleAdaptiveOffset::getStatistics(SAOStatData*** blkStats, TComPicYuv
 
   for(Int ctuRsAddr= 0; ctuRsAddr < m_numCTUsPic; ctuRsAddr++)
   {
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     Int yPos   = (ctuRsAddr / m_numCTUInWidth)*m_CTUSize;
     Int xPos   = (ctuRsAddr % m_numCTUInWidth)*m_CTUSize;
     Int height = (yPos + m_CTUSize > m_picHeight)?(m_picHeight- yPos):m_CTUSize;
@@ -318,7 +318,7 @@ Void TEncSampleAdaptiveOffset::getStatistics(SAOStatData*** blkStats, TComPicYuv
     //NOTE: The number of skipped lines during gathering CTU statistics depends on the slice boundary availabilities.
     //For simplicity, here only picture boundaries are considered.
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
     isRightAvail      = (xPos + m_CTUSize  < m_picWidth );
     isBelowAvail      = (yPos + m_CTUSize  < m_picHeight);
 #else
@@ -941,7 +941,7 @@ Void TEncSampleAdaptiveOffset::getBlkStats(const ComponentID compIdx, const Int 
                         , Bool isCalculatePreDeblockSamples
                         )
 {
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   if(m_lineBufWidth != m_CTUSize)
   {
     m_lineBufWidth = m_CTUSize;

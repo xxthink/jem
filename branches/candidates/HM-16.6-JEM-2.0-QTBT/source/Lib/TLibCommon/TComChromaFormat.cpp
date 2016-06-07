@@ -104,7 +104,7 @@ Void getTUEntropyCodingParameters(      TUEntropyCodingParameters &result,
         TComDataCU    *const pcCU            = rTu.getCU();
   const TComRectangle &      area            = rTu.getRect(component);
   const UInt                 uiAbsPartIdx    = rTu.GetAbsPartIdxTU(component);
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   const UInt                 log2BlockWidth  = g_aucConvertToBit[area.width]  + MIN_CU_LOG2;
   const UInt                 log2BlockHeight = g_aucConvertToBit[area.height] + MIN_CU_LOG2;
 #else
@@ -120,7 +120,7 @@ Void getTUEntropyCodingParameters(      TUEntropyCodingParameters &result,
   //------------------------------------------------
 
   //set the group layout
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   const UInt uiCGLog2 = (area.width==2 || area.height==2) ? MLS_CG_LOG2_WIDTH-1: MLS_CG_LOG2_WIDTH;
   result.widthInGroups  = area.width  >> uiCGLog2;
   result.heightInGroups = area.height >> uiCGLog2;
@@ -133,7 +133,7 @@ Void getTUEntropyCodingParameters(      TUEntropyCodingParameters &result,
 
   //set the scan orders
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   const UInt log2WidthInGroups  = g_aucConvertToBit[result.widthInGroups ] + MIN_CU_LOG2;
   const UInt log2HeightInGroups = g_aucConvertToBit[result.heightInGroups] + MIN_CU_LOG2;
 #else

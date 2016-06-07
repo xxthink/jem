@@ -158,13 +158,13 @@ static inline Bool filterIntraReferenceSamples (const ChannelType chType, const 
 //Transform and Quantisation  ==========================================================================================
 //======================================================================================================================
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 static inline Bool TUCompRectHasAssociatedTransformSkipFlag(Bool isISlice, const TComRectangle &rectSamples, const UInt transformSkipLog2MaxSize)
 #else
 static inline Bool TUCompRectHasAssociatedTransformSkipFlag(const TComRectangle &rectSamples, const UInt transformSkipLog2MaxSize)
 #endif
 {
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   return (rectSamples.width * rectSamples.height <= (isISlice ? 1<<(transformSkipLog2MaxSize<<1) : 1<<((transformSkipLog2MaxSize+1)<<1)) );  
 #else
   return (rectSamples.width <= (1<<transformSkipLog2MaxSize));
@@ -225,7 +225,7 @@ static inline Void getLastSignificantContextParameters (const ComponentID  compo
                                                               Int         &result_shiftX,
                                                               Int         &result_shiftY)
 {
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   const UInt g_uiLastPrefixCtx[8] = {0, 0, 0, 3, 6, 10, 15, 21}; //for 1, 2, 4, 8, 16, 32,64,128 side length
   const UInt convertedWidth  = g_aucConvertToBit[width] + MIN_CU_LOG2;
   const UInt convertedHeight = g_aucConvertToBit[height] + MIN_CU_LOG2;

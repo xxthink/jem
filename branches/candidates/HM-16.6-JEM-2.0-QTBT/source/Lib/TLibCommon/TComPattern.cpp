@@ -68,7 +68,7 @@ Void fillReferenceSamples( const Int bitDepth,
 Bool  isAboveLeftAvailable  ( TComDataCU* pcCU, UInt uiPartIdxLT );
 Int   isAboveAvailable      ( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxRT, Bool* bValidFlags );
 Int   isLeftAvailable       ( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxLB, Bool* bValidFlags );
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 Int   isAboveRightAvailable ( TComDataCU* pcCU, UInt uiPartIdxRT, UInt uiNumUnitsInPU, Bool *bValidFlags );
 Int   isBelowLeftAvailable  ( TComDataCU* pcCU, UInt uiPartIdxLB, UInt uiNumUnitsInPU, Bool* bValidFlags );
 #else
@@ -165,7 +165,7 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
   const UInt uiZorderIdxInPart=rTu.GetAbsPartIdxTU();
   const UInt uiTuWidth        = rTu.getRect(compID).width;
   const UInt uiTuHeight       = rTu.getRect(compID).height;
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   const UInt uiTuWidth2       = uiTuWidth  + uiTuHeight;
   const UInt uiTuHeight2      = uiTuHeight + uiTuWidth;
 #else
@@ -173,7 +173,7 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
   const UInt uiTuHeight2      = uiTuHeight << 1;
 #endif
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   assert(uiZorderIdxInPart==0);
   const Int  iBaseUnitSize    = sps.getCTUSize() >> sps.getMaxTotalCUDepth();
 #else
@@ -183,7 +183,7 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
   const Int  iUnitHeight      = iBaseUnitSize  >> pcCU->getPic()->getPicYuvRec()->getComponentScaleY(compID);
   const Int  iTUWidthInUnits  = uiTuWidth  / iUnitWidth;
   const Int  iTUHeightInUnits = uiTuHeight / iUnitHeight;
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   const Int  iAboveUnits      = iTUWidthInUnits  + iTUHeightInUnits;
   const Int  iLeftUnits       = iTUHeightInUnits + iTUWidthInUnits;
 #else
@@ -206,13 +206,13 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
   bNeighborFlags[iLeftUnits] = isAboveLeftAvailable( pcCU, uiPartIdxLT );
   iNumIntraNeighbor += bNeighborFlags[iLeftUnits] ? 1 : 0;
   iNumIntraNeighbor  += isAboveAvailable     ( pcCU, uiPartIdxLT, uiPartIdxRT, (bNeighborFlags + iLeftUnits + 1)                    );
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   iNumIntraNeighbor  += isAboveRightAvailable( pcCU, uiPartIdxRT, iTUHeightInUnits, (bNeighborFlags + iLeftUnits + 1 + iTUWidthInUnits ) );
 #else
   iNumIntraNeighbor  += isAboveRightAvailable( pcCU, uiPartIdxLT, uiPartIdxRT, (bNeighborFlags + iLeftUnits + 1 + iTUWidthInUnits ) );
 #endif
   iNumIntraNeighbor  += isLeftAvailable      ( pcCU, uiPartIdxLT, uiPartIdxLB, (bNeighborFlags + iLeftUnits - 1)                    );
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   iNumIntraNeighbor  += isBelowLeftAvailable ( pcCU, uiPartIdxLB, iTUWidthInUnits, (bNeighborFlags + iLeftUnits - 1 - iTUHeightInUnits) );
 #else
   iNumIntraNeighbor  += isBelowLeftAvailable ( pcCU, uiPartIdxLT, uiPartIdxLB, (bNeighborFlags + iLeftUnits - 1 - iTUHeightInUnits) );
@@ -310,7 +310,7 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
 
       if (useStrongIntraSmoothing)
       {
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
         const Int shift = g_aucConvertToBit[uiTuHeight] + MIN_CU_LOG2 + 1; //log2(uiTuHeight2)    //it is a bug for non-square PU for strong filter, JCA
 #else
         const Int shift = g_aucConvertToBit[uiTuHeight] + 3; //log2(uiTuHeight2)    //it is a bug for non-square PU for strong filter, 
@@ -365,7 +365,7 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
 
       if (useStrongIntraSmoothing)
       {
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
         const Int shift = g_aucConvertToBit[uiTuWidth] + MIN_CU_LOG2 + 1; //log2(uiTuWidth2)
 #else
         const Int shift = g_aucConvertToBit[uiTuWidth] + 3; //log2(uiTuWidth2)
@@ -660,7 +660,7 @@ Bool TComPrediction::filteringIntraReferenceSamples(const ComponentID compID, UI
   }
   else
   {
-#if COM16_C806_LARGE_CTU || QT_BT_STRUCTURE
+#if COM16_C806_LARGE_CTU || JVET_C0024_QTBT
     assert(uiTuChWidth>=MIN_PU_SIZE && uiTuChHeight>=MIN_PU_SIZE && uiTuChWidth<=MAX_CU_SIZE && uiTuChHeight<=MAX_CU_SIZE);
 #else
     assert(uiTuChWidth>=4 && uiTuChHeight>=4 && uiTuChWidth<128 && uiTuChHeight<128);
@@ -673,7 +673,7 @@ Bool TComPrediction::filteringIntraReferenceSamples(const ComponentID compID, UI
     else
     {
       Int diff = min<Int>(abs((Int) uiDirMode - HOR_IDX), abs((Int)uiDirMode - VER_IDX));
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
       UInt log2Size=((g_aucConvertToBit[uiTuChWidth]+g_aucConvertToBit[uiTuChHeight])>>1) + MIN_CU_LOG2;
       UInt sizeIndex = log2Size - 1;
 #else
@@ -789,13 +789,13 @@ Int isLeftAvailable( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxLB, Bool 
   return iNumIntra;
 }
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 Int isAboveRightAvailable( TComDataCU* pcCU, UInt uiPartIdxRT, UInt uiNumUnitsInPU, Bool *bValidFlags )
 #else
 Int isAboveRightAvailable( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxRT, Bool *bValidFlags )
 #endif
 {
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
   const UInt uiNumUnitsInPU = g_auiZscanToRaster[uiPartIdxRT] - g_auiZscanToRaster[uiPartIdxLT] + 1;
 #endif
   Bool *pbValidFlags = bValidFlags;
@@ -835,13 +835,13 @@ Int isAboveRightAvailable( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxRT,
   return iNumIntra;
 }
 
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
 Int isBelowLeftAvailable( TComDataCU* pcCU, UInt uiPartIdxLB, UInt uiNumUnitsInPU, Bool *bValidFlags )
 #else
 Int isBelowLeftAvailable( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxLB, Bool *bValidFlags )
 #endif
 {
-#if !QT_BT_STRUCTURE
+#if !JVET_C0024_QTBT
   const UInt uiNumUnitsInPU = (g_auiZscanToRaster[uiPartIdxLB] - g_auiZscanToRaster[uiPartIdxLT]) / pcCU->getPic()->getNumPartInCtuWidth() + 1;
 #endif
   Bool *pbValidFlags = bValidFlags;

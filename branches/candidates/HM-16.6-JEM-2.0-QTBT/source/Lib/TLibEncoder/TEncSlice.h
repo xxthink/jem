@@ -85,7 +85,7 @@ private:
 
   // RD optimization
   TComRdCost*             m_pcRdCost;                           ///< RD cost computation
-#if QT_BT_STRUCTURE
+#if JVET_C0024_QTBT
   TEncSbac****            m_ppppcRDSbacCoder;                    ///< storage for SBAC-based RD optimization
 #else
   TEncSbac***             m_pppcRDSbacCoder;                    ///< storage for SBAC-based RD optimization
