@@ -176,10 +176,23 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setUseSelectiveRDOQ                                  ( m_useSelectiveRDOQ );
 #endif
   m_cTEncTop.setRDpenalty                                         ( m_rdPenalty );
+#if JVET_C0024_QTBT
+  m_cTEncTop.setCTUSize                                           ( m_uiCTUSize );
+  m_cTEncTop.setMinQTSizes                                        ( m_uiMinQT );
+#if JVET_C0024_SPS_MAX_BT_DEPTH
+  m_cTEncTop.setMaxBTDepth                                        ( m_uiMaxBTDepth, m_uiMaxBTDepthISliceL, m_uiMaxBTDepthISliceC );
+#endif
+#if JVET_C0024_SPS_MAX_BT_SIZE
+  m_cTEncTop.setMaxBTSize                                         ( m_uiMaxBTSize, m_uiMaxBTSizeISliceL, m_uiMaxBTSizeISliceC );
+#endif
+#else
   m_cTEncTop.setMaxCUWidth                                        ( m_uiMaxCUWidth );
   m_cTEncTop.setMaxCUHeight                                       ( m_uiMaxCUHeight );
+#endif
   m_cTEncTop.setMaxTotalCUDepth                                   ( m_uiMaxTotalCUDepth );
+#if !JVET_C0024_QTBT
   m_cTEncTop.setLog2DiffMaxMinCodingBlockSize                     ( m_uiLog2DiffMaxMinCodingBlockSize );
+#endif
   m_cTEncTop.setQuadtreeTULog2MaxSize                             ( m_uiQuadtreeTULog2MaxSize );
   m_cTEncTop.setQuadtreeTULog2MinSize                             ( m_uiQuadtreeTULog2MinSize );
   m_cTEncTop.setQuadtreeTUMaxDepthInter                           ( m_uiQuadtreeTUMaxDepthInter );
@@ -548,6 +561,18 @@ Void TAppEncTop::encode()
   TComPicYuv cPicYuvTrueOrg;
 
   // allocate original YUV buffer
+#if JVET_C0024_QTBT
+  if( m_isField )
+  {
+    pcPicYuvOrg->create  ( m_iSourceWidth, m_iSourceHeightOrg, m_chromaFormatIDC, m_uiCTUSize, m_uiCTUSize, m_uiMaxTotalCUDepth, true );
+    cPicYuvTrueOrg.create(m_iSourceWidth, m_iSourceHeightOrg, m_chromaFormatIDC, m_uiCTUSize, m_uiCTUSize, m_uiMaxTotalCUDepth, true);
+  }
+  else
+  {
+    pcPicYuvOrg->create  ( m_iSourceWidth, m_iSourceHeight, m_chromaFormatIDC, m_uiCTUSize, m_uiCTUSize, m_uiMaxTotalCUDepth, true );
+    cPicYuvTrueOrg.create(m_iSourceWidth, m_iSourceHeight, m_chromaFormatIDC, m_uiCTUSize, m_uiCTUSize, m_uiMaxTotalCUDepth, true );
+  }
+#else
   if( m_isField )
   {
     pcPicYuvOrg->create  ( m_iSourceWidth, m_iSourceHeightOrg, m_chromaFormatIDC, m_uiMaxCUWidth, m_uiMaxCUHeight, m_uiMaxTotalCUDepth, true );
@@ -558,6 +583,7 @@ Void TAppEncTop::encode()
     pcPicYuvOrg->create  ( m_iSourceWidth, m_iSourceHeight, m_chromaFormatIDC, m_uiMaxCUWidth, m_uiMaxCUHeight, m_uiMaxTotalCUDepth, true );
     cPicYuvTrueOrg.create(m_iSourceWidth, m_iSourceHeight, m_chromaFormatIDC, m_uiMaxCUWidth, m_uiMaxCUHeight, m_uiMaxTotalCUDepth, true );
   }
+#endif
 
   while ( !bEos )
   {
@@ -658,7 +684,11 @@ Void TAppEncTop::xGetBuffer( TComPicYuv*& rpcPicYuvRec)
   {
     rpcPicYuvRec = new TComPicYuv;
 
+#if JVET_C0024_QTBT
+    rpcPicYuvRec->create( m_iSourceWidth, m_iSourceHeight, m_chromaFormatIDC, m_uiCTUSize, m_uiCTUSize, m_uiMaxTotalCUDepth, true );
+#else
     rpcPicYuvRec->create( m_iSourceWidth, m_iSourceHeight, m_chromaFormatIDC, m_uiMaxCUWidth, m_uiMaxCUHeight, m_uiMaxTotalCUDepth, true );
+#endif
 
   }
   m_cListPicYuvRec.pushBack( rpcPicYuvRec );

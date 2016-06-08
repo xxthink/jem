@@ -52,6 +52,14 @@
 
 //! \ingroup TLibCommon
 //! \{
+#if JVET_C0024_AMAX_BT
+UInt g_uiBlkSize[ 10 ];
+UInt g_uiNumBlk[ 10 ];
+#if JVET_C0024_AMAX_BT_FIX
+UInt g_uiPrevISlicePOC = 0;
+Bool g_bInitAMaxBT = false;
+#endif
+#endif
 
 #if VCEG_AZ08_KLT_COMMON
 short **g_ppsEigenVector[USE_MORE_BLOCKSIZE_DEPTH_MAX];
@@ -224,15 +232,39 @@ Void initROM()
   // g_aucConvertToBit[ x ]: log2(x/4), if x=4 -> 0, x=8 -> 1, x=16 -> 2, ...
   ::memset( g_aucConvertToBit,   -1, sizeof( g_aucConvertToBit ) );
   c=0;
+#if JVET_C0024_QTBT
+  for ( i=1<<MIN_CU_LOG2; i<=MAX_CU_SIZE; i*=2 )
+#else
   for ( i=4; i<=MAX_CU_SIZE; i*=2 )
+#endif
   {
     g_aucConvertToBit[ i ] = c;
     c++;
   }
+#if JVET_C0024_QTBT
+  if (MIN_CU_LOG2>=1)
+  {
+    c = -1;
+    for ( i=(1<<(MIN_CU_LOG2-1)); i>=1; i>>=1 )
+    {
+      g_aucConvertToBit[ i ] = c;
+      c--;
+    }
+  }
+#endif
 
 #if COM16_C806_EMT || COM16_C806_T64
+#if JVET_C0024_QTBT
+  c = 2;
+#else
   c = 4;
+#endif
+
+#if JVET_C0024_QTBT
+  for ( i=0; i<7; i++ ) 
+#else
   for ( i=0; i<5; i++ )
+#endif
   {
     TMatrixCoeff *iT = NULL;
     const Double s = sqrt((Double)c) * ( 64 << COM16_C806_TRANS_PREC );
@@ -240,12 +272,23 @@ Void initROM()
 
     switch(i)
     {
+#if JVET_C0024_QTBT
+      case 0: iT = g_aiTr2 [0][0]; break; 
+      case 1: iT = g_aiTr4 [0][0]; break;
+      case 2: iT = g_aiTr8[0][0]; break;
+      case 3: iT = g_aiTr16[0][0]; break;
+      case 4: iT = g_aiTr32[0][0]; break;
+      case 5: iT = g_aiTr64[0][0]; break;
+      case 6: iT = g_aiTr128[0][0]; break;
+      case 7: exit(0); break;
+#else
     case 0: iT = g_aiTr4 [0][0]; break;
     case 1: iT = g_aiTr8 [0][0]; break;
     case 2: iT = g_aiTr16[0][0]; break;
     case 3: iT = g_aiTr32[0][0]; break;
     case 4: iT = g_aiTr64[0][0]; break;
     case 5: exit(0); break;
+#endif
     }
 
     for( Int k=0; k<c; k++ )
@@ -339,7 +382,7 @@ Void initROM()
       //--------------------------------------------------------------------------------------------------
 
       //grouped scan orders
-#if VCEG_AZ07_CTX_RESIDUALCODING
+#if VCEG_AZ07_CTX_RESIDUALCODING || JVET_C0024_QTBT
       UInt  groupWidth                 = 1           << MLS_CG_LOG2_WIDTH;
       UInt  groupHeight                = 1           << MLS_CG_LOG2_HEIGHT;
       UInt  widthInGroups              = blockWidth  >> MLS_CG_LOG2_WIDTH;
@@ -349,6 +392,16 @@ Void initROM()
       const UInt  groupHeight          = 1           << MLS_CG_LOG2_HEIGHT;
       const UInt  widthInGroups        = blockWidth  >> MLS_CG_LOG2_WIDTH;
       const UInt  heightInGroups       = blockHeight >> MLS_CG_LOG2_HEIGHT;
+#endif
+
+#if JVET_C0024_QTBT
+      if (log2BlockWidth==1 || log2BlockHeight==1)
+      {
+        groupWidth                 = 1           << (MLS_CG_LOG2_WIDTH-1);
+        groupHeight                = 1           << (MLS_CG_LOG2_HEIGHT-1);
+        widthInGroups              = blockWidth  >> (MLS_CG_LOG2_WIDTH-1);
+        heightInGroups             = blockHeight >> (MLS_CG_LOG2_HEIGHT-1);
+      }
 #endif
 
       const UInt  groupSize            = groupWidth    * groupHeight;
@@ -431,7 +484,9 @@ UInt g_auiRasterToZscan [ MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CT
 UInt g_auiRasterToPelX  [ MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH ] = { 0, };
 UInt g_auiRasterToPelY  [ MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH ] = { 0, };
 
+#if !JVET_C0024_QTBT
 const UInt g_auiPUOffset[NUMBER_OF_PART_SIZES] = { 0, 8, 4, 4, 2, 10, 1, 5};
+#endif
 #if VCEG_AZ07_CTX_RESIDUALCODING
 const UInt g_auiGoRiceRange[MAX_GR_ORDER_RESIDUAL] =
 {
@@ -637,6 +692,10 @@ const UInt g_iEmtSigNumThr = 2;
 #endif
 
 #if COM16_C806_EMT || COM16_C806_T64
+#if JVET_C0024_QTBT
+TMatrixCoeff g_aiTr2 [NUM_TRANS_TYPE][ 2][ 2];
+TMatrixCoeff g_aiTr128 [NUM_TRANS_TYPE][ 128][ 128];
+#endif
 TMatrixCoeff g_aiTr4 [NUM_TRANS_TYPE][ 4][ 4];
 TMatrixCoeff g_aiTr8 [NUM_TRANS_TYPE][ 8][ 8];
 TMatrixCoeff g_aiTr16[NUM_TRANS_TYPE][16][16];
@@ -1476,6 +1535,27 @@ const UChar g_aucChromaScale[NUM_CHROMA_FORMAT][chromaQPMappingTableSize]=
 // Intra prediction
 // ====================================================================================================================
 
+#if JVET_C0024_QTBT
+const UChar g_aucIntraModeNumFast_UseMPM[7-MIN_CU_LOG2+1][7-MIN_CU_LOG2+1] =
+{
+#if MIN_CU_LOG2==1
+    {2, 2, 2, 2, 2, 2, 2},
+    {3, 3, 3, 3, 2, 2, 2},  //4x2, 4x4, 4x8, 4x16, 4x32, 4x64, 4x128
+    {3, 3, 3, 3, 3, 2, 2},  //8x2, 8x4, 8x8, 8x16, 8x32, 8x64, 8x128, 
+    {3, 3, 3, 3, 3, 2, 2},  //16x2, 16x4, 16x8, 16x16, 16x32, 16x64, 16x128, 
+    {3, 3, 3, 3, 3, 2, 2},  //32x2, 32x4, 32x8, 32x16, 32x32, 32x64, 32x128, 
+    {2, 3, 3, 3, 3, 2, 2},  //64x2, 64x4, 64x8, 64x16, 64x32, 64x64, 64x128, 
+    {2, 2, 2, 2, 2, 3, 2},  //128x2, 128x4, 128x8, 128x16, 128x32, 128x64, 128x128,  
+#elif MIN_CU_LOG2==2
+    {3, 3, 3, 3, 2, 2},  //4x4, 4x8, 4x16, 4x32, 4x64, 4x128
+    {3, 3, 3, 3, 3, 2},  //8x4, 8x8, 8x16, 8x32, 8x64, 8x128, 
+    {3, 3, 3, 3, 3, 2},  //16x4, 16x8, 16x16, 16x32, 16x64, 16x128, 
+    {3, 3, 3, 3, 3, 2},  //32x4, 32x8, 32x16, 32x32, 32x64, 32x128, 
+    {2, 3, 3, 3, 3, 2},  //64x4, 64x8, 64x16, 64x32, 64x64, 64x128, 
+    {2, 2, 2, 2, 2, 3},  //128x4, 128x8, 128x16, 128x32, 128x64, 128x128, 
+#endif
+};
+#else
 const UChar g_aucIntraModeNumFast_UseMPM[MAX_CU_DEPTH] =
 {
   3,  //   2x2
@@ -1502,6 +1582,7 @@ const UChar g_aucIntraModeNumFast_NotUseMPM[MAX_CU_DEPTH] =
   ,9 //  256x2565
 #endif
 };
+#endif
 
 const UChar g_chroma422IntraAngleMappingTable[NUM_INTRA_MODE] =
 #if VCEG_AZ07_INTRA_65ANG_MODES
@@ -1560,8 +1641,15 @@ const UInt ctxIndMap4x4[4*4] =
 };
 
 #if COM16_C806_T64
+#if JVET_C0024_QTBT
+const UInt g_uiMinInGroup[  LAST_SIGNIFICANT_GROUPS ] = {0,1,2,3,4,6,8,12,16,24,32,48,64,96};
+const UInt g_uiGroupIdx  [  MAX_TU_SIZE ] = {0,1,2,3,4,4,5,5,6,6,6,6,7,7,7,7,8,8,8,8,8,8,8,8,9,9,9,9,9,9,9,9, 10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11
+,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12
+,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13};
+#else
 const UInt g_uiMinInGroup[  LAST_SIGNIFICANT_GROUPS ] = {0,1,2,3,4,6,8,12,16,24,32,48};
 const UInt g_uiGroupIdx  [  MAX_TU_SIZE ] = {0,1,2,3,4,4,5,5,6,6,6,6,7,7,7,7,8,8,8,8,8,8,8,8,9,9,9,9,9,9,9,9, 10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11};
+#endif
 #else
 const UInt g_uiMinInGroup[ LAST_SIGNIFICANT_GROUPS ] = {0,1,2,3,4,6,8,12,16,24};
 const UInt g_uiGroupIdx[ MAX_TU_SIZE ]   = {0,1,2,3,4,4,5,5,6,6,6,6,7,7,7,7,8,8,8,8,8,8,8,8,9,9,9,9,9,9,9,9};
@@ -1659,6 +1747,10 @@ const Int g_quantInterDefault8x8[8*8] =
   24,25,28,33,41,54,71,91
 };
 
+#if JVET_C0024_QTBT
+const UInt g_scalingListSize   [SCALING_LIST_SIZE_NUM] = {4,16,64,256,1024,4096};
+const UInt g_scalingListSizeX  [SCALING_LIST_SIZE_NUM] = {2, 4, 8, 16,  32, 64};
+#else
 const UInt g_scalingListSize   [SCALING_LIST_SIZE_NUM] = {16,64,256,1024
 #if COM16_C806_T64
   , 4096
@@ -1669,8 +1761,187 @@ const UInt g_scalingListSizeX  [SCALING_LIST_SIZE_NUM] = { 4, 8, 16,  32
   , 64
 #endif
 };
+#endif
 
 #if COM16_C1046_PDPC_INTRA
+#if JVET_C0024_QTBT // lossless change, just remove unused entries from the table
+const Int g_pdpc_pred_param[5][35][6] = {
+{ {  33,   7,  33,   7,  30,    3 },
+  {  25,   5,  25,   5,   0,    0 },
+  {  10,   8,  29,   4,  11,    1 },
+  {  10,   8,  29,   4,  11,    1 },
+  {  17,   5,  20,   5,  52,    1 },
+  {  17,   5,  20,   5,  52,    1 },
+  {  21,   3,  18,   7,  70,    2 },
+  {  21,   3,  18,   7,  70,    2 },
+  {  20,   1,  18,  11,  63,    2 },
+  {  20,   1,  18,  11,  63,    2 },
+  {  16,   1,  30,  24,  56,    1 },
+  {  16,   1,  30,  24,  56,    1 },
+  {  15,   0,  15,  14,  67,    3 },
+  {  15,   0,  15,  14,  67,    3 },
+  {  15,   2,   9,   2,  62,    1 },
+  {  15,   2,   9,   2,  62,    1 },
+  {  11,   4,  10,   2,  40,    1 },
+  {  11,   4,  10,   2,  40,    1 },
+  {   4,   3,   4,   3,  22,    1 },
+  {  10,   2,  11,   4,  40,    1 },
+  {  10,   2,  11,   4,  40,    1 },
+  {   9,   2,  15,   2,  62,    1 },
+  {   9,   2,  15,   2,  62,    1 },
+  {  15,  14,  15,   0,  67,    3 },
+  {  15,  14,  15,   0,  67,    3 },
+  {  30,  24,  16,   1,  56,    1 },
+  {  30,  24,  16,   1,  56,    1 },
+  {  18,  11,  20,   1,  63,    2 },
+  {  18,  11,  20,   1,  63,    2 },
+  {  18,   7,  21,   3,  70,    2 },
+  {  18,   7,  21,   3,  70,    2 },
+  {  20,   5,  17,   5,  52,    1 },
+  {  20,   5,  17,   5,  52,    1 },
+  {  29,   4,  10,   8,  11,    1 },
+  {  29,   4,  10,   8,  11,    1 } },
+{ {  36,   7,  36,   7,  26,    3 },
+  {  33,   8,  33,   8,   0,    0 },
+  {  22,   7,  32,   6,  24,    3 },
+  {  22,   7,  32,   6,  24,    3 },
+  {  35,   4,  29,   8,  45,    2 },
+  {  35,   4,  29,   8,  45,    2 },
+  {  41,   3,  27,  12,  65,    3 },
+  {  41,   3,  27,  12,  65,    3 },
+  {  54,   1,  26,  16,  63,    2 },
+  {  54,   1,  26,  16,  63,    2 },
+  {  54,  -1,  34,  25,  52,    1 },
+  {  54,  -1,  34,  25,  52,    1 },
+  {  24,  -1,  21,  20,  62,    1 },
+  {  24,  -1,  21,  20,  62,    1 },
+  {  21,   3,  19,   3,  35,    1 },
+  {  21,   3,  19,   3,  35,    1 },
+  {  19,   4,  21,   3,  36,    2 },
+  {  19,   4,  21,   3,  36,    2 },
+  {  15,   6,  15,   6,  23,    2 },
+  {  21,   3,  19,   4,  36,    2 },
+  {  21,   3,  19,   4,  36,    2 },
+  {  19,   3,  21,   3,  35,    1 },
+  {  19,   3,  21,   3,  35,    1 },
+  {  21,  20,  24,  -1,  62,    1 },
+  {  21,  20,  24,  -1,  62,    1 },
+  {  34,  25,  54,  -1,  52,    1 },
+  {  34,  25,  54,  -1,  52,    1 },
+  {  26,  16,  54,   1,  63,    2 },
+  {  26,  16,  54,   1,  63,    2 },
+  {  27,  12,  41,   3,  65,    3 },
+  {  27,  12,  41,   3,  65,    3 },
+  {  29,   8,  35,   4,  45,    2 },
+  {  29,   8,  35,   4,  45,    2 },
+  {  32,   6,  22,   7,  24,    3 },
+  {  32,   6,  22,   7,  24,    3 } },
+{ {  45,   5,  45,   5,  -5,    3 },
+  {  36,   8,  36,   8,   0,    0 },
+  {  30,   6,  46,   6, -15,    3 },
+  {  30,   6,  46,   6, -15,    3 },
+  {  31,   5,  39,   8,  15,    3 },
+  {  31,   5,  39,   8,  15,    3 },
+  {  35,   3,  35,  11,  42,    3 },
+  {  35,   3,  35,  11,  42,    3 },
+  {  45,   1,  35,  19,  46,    3 },
+  {  45,   1,  35,  19,  46,    3 },
+  {  32,   0,  40,  32,  47,    3 },
+  {  32,   0,  40,  32,  47,    3 },
+  {  38,   0,  23,  13,  38,    2 },
+  {  38,   0,  23,  13,  38,    2 },
+  {  26,   2,  24,   0,  28,    3 },
+  {  26,   2,  24,   0,  28,    3 },
+  {  25,   2,  23,   0,  19,    3 },
+  {  25,   2,  23,   0,  19,    3 },
+  {  29,   1,  29,   1,  -7,    3 },
+  {  24,   0,  25,   2,  19,    3 },
+  {  24,   0,  25,   2,  19,    3 },
+  {  24,   0,  26,   2,  28,    3 },
+  {  24,   0,  26,   2,  28,    3 },
+  {  23,  13,  38,   0,  38,    2 },
+  {  23,  13,  38,   0,  38,    2 },
+  {  40,  32,  32,   0,  47,    3 },
+  {  40,  32,  32,   0,  47,    3 },
+  {  35,  19,  45,   1,  46,    3 },
+  {  35,  19,  45,   1,  46,    3 },
+  {  35,  11,  35,   3,  42,    3 },
+  {  35,  11,  35,   3,  42,    3 },
+  {  39,   8,  31,   5,  15,    3 },
+  {  39,   8,  31,   5,  15,    3 },
+  {  46,   6,  30,   6, -15,    3 },
+  {  46,   6,  30,   6, -15,    3 } },
+{ {  46,   6,  46,   6,  -3,    5 },
+  {  44,   4,  44,   4,   0,    0 },
+  {  33,   3,  52,   4, -18,    5 },
+  {  33,   3,  52,   4, -18,    5 },
+  {  38,   3,  50,   5,  -5,    5 },
+  {  38,   3,  50,   5,  -5,    5 },
+  {  40,   2,  47,   9,  16,    5 },
+  {  40,   2,  47,   9,  16,    5 },
+  {  48,   1,  45,  17,  22,    5 },
+  {  48,   1,  45,  17,  22,    5 },
+  {  45,  -1,  46,  30,  36,    5 },
+  {  45,  -1,  46,  30,  36,    5 },
+  {  41,   1,  37,  -1,  14,    5 },
+  {  41,   1,  37,  -1,  14,    5 },
+  {  35,   1,  39,  -2,   3,    5 },
+  {  35,   1,  39,  -2,   3,    5 },
+  {  41,  -1,  43,  -1,  -7,    5 },
+  {  41,  -1,  43,  -1,  -7,    5 },
+  {  32,   0,  32,   0,  -6,    5 },
+  {  43,  -1,  41,  -1,  -7,    5 },
+  {  43,  -1,  41,  -1,  -7,    5 },
+  {  39,  -2,  35,   1,   3,    5 },
+  {  39,  -2,  35,   1,   3,    5 },
+  {  37,  -1,  41,   1,  14,    5 },
+  {  37,  -1,  41,   1,  14,    5 },
+  {  46,  30,  45,  -1,  36,    5 },
+  {  46,  30,  45,  -1,  36,    5 },
+  {  45,  17,  48,   1,  22,    5 },
+  {  45,  17,  48,   1,  22,    5 },
+  {  47,   9,  40,   2,  16,    5 },
+  {  47,   9,  40,   2,  16,    5 },
+  {  50,   5,  38,   3,  -5,    5 },
+  {  50,   5,  38,   3,  -5,    5 },
+  {  52,   4,  33,   3, -18,    5 },
+  {  52,   4,  33,   3, -18,    5 } },
+{ {  42,   5,  42,   5,  -5,    7 },
+  {  40,   3,  40,   3,   0,    0 },
+  {  28,   2,  49,   3, -22,    7 },
+  {  28,   2,  49,   3, -22,    7 },
+  {  27,   2,  48,   3, -16,    7 },
+  {  27,   2,  48,   3, -16,    7 },
+  {  27,   1,  44,   5,   8,    7 },
+  {  27,   1,  44,   5,   8,    7 },
+  {  41,   2,  39,  12,  16,    7 },
+  {  41,   2,  39,  12,  16,    7 },
+  {  42,   0,  38,  21,  24,    7 },
+  {  42,   0,  38,  21,  24,    7 },
+  {  38,   0,  34,  -4,   5,    7 },
+  {  38,   0,  34,  -4,   5,    7 },
+  {  37,   1,  43,  -1,  -5,    7 },
+  {  37,   1,  43,  -1,  -5,    7 },
+  {  25,   0,  42,  -1, -13,    7 },
+  {  25,   0,  42,  -1, -13,    7 },
+  {  27,  -1,  27,  -1, -11,    7 },
+  {  42,  -1,  25,   0, -13,    7 },
+  {  42,  -1,  25,   0, -13,    7 },
+  {  43,  -1,  37,   1,  -5,    7 },
+  {  43,  -1,  37,   1,  -5,    7 },
+  {  34,  -4,  38,   0,   5,    7 },
+  {  34,  -4,  38,   0,   5,    7 },
+  {  38,  21,  42,   0,  24,    7 },
+  {  38,  21,  42,   0,  24,    7 },
+  {  39,  12,  41,   2,  16,    7 },
+  {  39,  12,  41,   2,  16,    7 },
+  {  44,   5,  27,   1,   8,    7 },
+  {  44,   5,  27,   1,   8,    7 },
+  {  48,   3,  27,   2, -16,    7 },
+  {  48,   3,  27,   2, -16,    7 },
+  {  49,   3,  28,   2, -22,    7 },
+  {  49,   3,  28,   2, -22,    7 } } };
+#else
 const Int g_pdpc_pred_param[5][2][35][7] =
 { { { {   27,   10,   27,   10,   29,    3,    0, },
 {   22,    9,   22,    9,    0,    0,    0, },
@@ -2038,6 +2309,7 @@ const Int g_pdpc_pred_param[5][2][35][7] =
 },
 },
 };
+#endif
 
 
 #endif

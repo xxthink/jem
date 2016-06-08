@@ -77,8 +77,13 @@ Void TComPic::create( const TComSPS &sps, const TComPPS &pps, const Bool bIsVirt
   const ChromaFormat chromaFormatIDC = sps.getChromaFormatIdc();
   const Int          iWidth          = sps.getPicWidthInLumaSamples();
   const Int          iHeight         = sps.getPicHeightInLumaSamples();
+#if JVET_C0024_QTBT
+  const UInt         uiMaxCuWidth    = sps.getCTUSize();
+  const UInt         uiMaxCuHeight   = sps.getCTUSize();
+#else
   const UInt         uiMaxCuWidth    = sps.getMaxCUWidth();
   const UInt         uiMaxCuHeight   = sps.getMaxCUHeight();
+#endif
   const UInt         uiMaxDepth      = sps.getMaxTotalCUDepth();
 
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
@@ -220,8 +225,13 @@ UInt TComPic::getSubstreamForCtuAddr(const UInt ctuAddr, const Bool bAddressInRa
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
 Void TComPic::getCUAddrAndPartIdx( Int iX, Int iY, Int& riCuAddr, Int& riAbsZorderIdx )
 {
+#if JVET_C0024_QTBT
+  Int iMaxCUWidth   = (Int) ( getPicSym()->getSPS().getCTUSize()  );
+  Int iMaxCuHeight  = (Int) ( getPicSym()->getSPS().getCTUSize() );
+#else
   Int iMaxCUWidth   = (Int) ( getPicSym()->getSPS().getMaxCUWidth()  );
   Int iMaxCuHeight  = (Int) ( getPicSym()->getSPS().getMaxCUHeight() );
+#endif
 
   Int iCuX            = iX / iMaxCUWidth;
   Int iCuY            = iY / iMaxCuHeight;
@@ -234,4 +244,107 @@ Void TComPic::getCUAddrAndPartIdx( Int iX, Int iY, Int& riCuAddr, Int& riAbsZord
 }
 #endif
 
+#if JVET_C0024_QTBT
+Void TComPic::setCodedBlkInCTU(Bool bCoded, UInt uiBlkX, UInt uiBlkY, UInt uiWidth, UInt uiHeight)
+{
+  assert(sizeof(**m_bCodedBlkInCTU)==1);
+  for (UInt i=uiBlkY; i<uiBlkY+uiHeight; i++)
+  {
+    memset(&m_bCodedBlkInCTU[i][uiBlkX], bCoded, uiWidth);
+  }
+}
+Int TComPic::getCodedAreaInCTU()
+{
+  return m_iCodedArea;
+}
+
+Void TComPic::setCodedAreaInCTU(Int iArea)
+{
+  m_iCodedArea = iArea;
+}
+
+Void TComPic::addCodedAreaInCTU(Int iArea)
+{
+  m_iCodedArea += iArea;
+  assert(m_iCodedArea>=0);
+}
+
+Void  TComPic::setSkiped(UInt uiZorder, UInt uiWidth, UInt uiHeight, Bool bSkiped)
+{
+  UInt uiWIdx = g_aucConvertToBit[uiWidth];
+  UInt uiHIdx = g_aucConvertToBit[uiHeight];
+  m_bSkiped[uiZorder][uiWIdx][uiHIdx] = bSkiped;  
+}
+Bool  TComPic::getSkiped(UInt uiZorder, UInt uiWidth, UInt uiHeight)
+{
+  UInt uiWIdx = g_aucConvertToBit[uiWidth];
+  UInt uiHIdx = g_aucConvertToBit[uiHeight];
+  return m_bSkiped[uiZorder][uiWIdx][uiHIdx];
+}
+Void  TComPic::clearAllSkiped()
+{
+  memset(m_bSkiped, 0, (1<<((MAX_CU_DEPTH-MIN_CU_LOG2)<<1))*(MAX_CU_DEPTH-MIN_CU_LOG2+1)*(MAX_CU_DEPTH-MIN_CU_LOG2+1)*sizeof(Bool));
+}
+
+Void  TComPic::setInter(UInt uiZorder, UInt uiWidth, UInt uiHeight, Bool bInter)
+{
+  UInt uiWIdx = g_aucConvertToBit[uiWidth];
+  UInt uiHIdx = g_aucConvertToBit[uiHeight];
+  m_bInter[uiZorder][uiWIdx][uiHIdx] = bInter; 
+}
+Bool  TComPic::getInter(UInt uiZorder, UInt uiWidth, UInt uiHeight)
+{
+  UInt uiWIdx = g_aucConvertToBit[uiWidth];
+  UInt uiHIdx = g_aucConvertToBit[uiHeight];
+  return m_bInter[uiZorder][uiWIdx][uiHIdx];
+}
+Void  TComPic::clearAllInter()
+{
+  memset(m_bInter, 0, (1<<((MAX_CU_DEPTH-MIN_CU_LOG2)<<1))*(MAX_CU_DEPTH-MIN_CU_LOG2+1)*(MAX_CU_DEPTH-MIN_CU_LOG2+1)*sizeof(Bool));
+}
+
+Void  TComPic::setIntra(UInt uiZorder, UInt uiWidth, UInt uiHeight, Bool bIntra)
+{
+  UInt uiWIdx = g_aucConvertToBit[uiWidth];
+  UInt uiHIdx = g_aucConvertToBit[uiHeight];
+  m_bIntra[uiZorder][uiWIdx][uiHIdx] = bIntra; 
+}
+Bool  TComPic::getIntra(UInt uiZorder, UInt uiWidth, UInt uiHeight)
+{
+  UInt uiWIdx = g_aucConvertToBit[uiWidth];
+  UInt uiHIdx = g_aucConvertToBit[uiHeight];
+  return m_bIntra[uiZorder][uiWIdx][uiHIdx];
+}
+Void  TComPic::clearAllIntra()
+{
+  memset(m_bIntra, 0, (1<<((MAX_CU_DEPTH-MIN_CU_LOG2)<<1))*(MAX_CU_DEPTH-MIN_CU_LOG2+1)*(MAX_CU_DEPTH-MIN_CU_LOG2+1)*sizeof(Bool));
+}
+
+Void  TComPic::setIntMv(UInt uiZorder, UInt uiWidth, UInt uiHeight, RefPicList eRefList, UInt uiRefIdx, TComMv cMv)
+{
+  UInt uiWIdx = g_aucConvertToBit[uiWidth];
+  UInt uiHIdx = g_aucConvertToBit[uiHeight];
+  m_cIntMv[uiZorder][uiWIdx][uiHIdx][(UInt)eRefList][uiRefIdx] = cMv;
+  m_bSetIntMv[uiZorder][uiWIdx][uiHIdx][(UInt)eRefList][uiRefIdx] = true; 
+}
+
+TComMv  TComPic::getIntMv(UInt uiZorder, UInt uiWidth, UInt uiHeight, RefPicList eRefList, UInt uiRefIdx)
+{
+  UInt uiWIdx = g_aucConvertToBit[uiWidth];
+  UInt uiHIdx = g_aucConvertToBit[uiHeight];
+  return m_cIntMv[uiZorder][uiWIdx][uiHIdx][(UInt)eRefList][uiRefIdx];
+}
+
+Bool  TComPic::IsSetIntMv(UInt uiZorder, UInt uiWidth, UInt uiHeight, RefPicList eRefList, UInt uiRefIdx)
+{
+  UInt uiWIdx = g_aucConvertToBit[uiWidth];
+  UInt uiHIdx = g_aucConvertToBit[uiHeight];
+  return m_bSetIntMv[uiZorder][uiWIdx][uiHIdx][(UInt)eRefList][uiRefIdx];
+}
+
+Void  TComPic::clearAllIntMv()
+{
+  memset(m_bSetIntMv, 0, (1<<((MAX_CU_DEPTH-MIN_CU_LOG2)<<1))*(MAX_CU_DEPTH-MIN_CU_LOG2+1)*(MAX_CU_DEPTH-MIN_CU_LOG2+1)*2*5*sizeof(Bool));
+}
+#endif
 //! \}

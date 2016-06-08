@@ -68,19 +68,37 @@ static const UInt NUM_MV_PREDICTORS=3;
 class TEncSearch : public TComPrediction
 {
 private:
+#if JVET_C0024_QTBT
+  TCoeff***       m_pppcQTTempCoeff[MAX_NUM_COMPONENT /* 0->Y, 1->Cb, 2->Cr*/];
+#else
   TCoeff**        m_ppcQTTempCoeff[MAX_NUM_COMPONENT /* 0->Y, 1->Cb, 2->Cr*/];
+#endif
   TCoeff*         m_pcQTTempCoeff[MAX_NUM_COMPONENT];
 #if ADAPTIVE_QP_SELECTION
+#if JVET_C0024_QTBT
+  TCoeff***       m_pppcQTTempArlCoeff[MAX_NUM_COMPONENT];
+#else
   TCoeff**        m_ppcQTTempArlCoeff[MAX_NUM_COMPONENT];
+#endif
   TCoeff*         m_pcQTTempArlCoeff[MAX_NUM_COMPONENT];
 #endif
+#if !JVET_C0024_QTBT
   UChar*          m_puhQTTempTrIdx;
+#endif
   UChar*          m_puhQTTempCbf[MAX_NUM_COMPONENT];
 
+#if JVET_C0024_QTBT
+  TComYuv**       m_ppcQTTempTComYuv;
+#else
   TComYuv*        m_pcQTTempTComYuv;
+#endif
 #if VCEG_AZ08_INTER_KLT
+#if JVET_C0024_QTBT
+  TComYuv**       m_ppcQTTempTComYuvRec;
+#else
   TComYuv*        m_pcQTTempTComYuvRec;
 #endif
+#endif  
   TComYuv         m_tmpYuvPred; // To be used in xGetInterPredictionError() to avoid constant memory allocation/deallocation
 
   Char*           m_phQTTempCrossComponentPredictionAlpha[MAX_NUM_COMPONENT];
@@ -114,8 +132,12 @@ private:
 #endif
 
 #if COM16_C806_LARGE_CTU
+#if JVET_C0024_QTBT
+  Pel*            m_resiSingleBuffer[MAX_CU_DEPTH][MAX_CU_DEPTH][NUMBER_OF_STORED_RESIDUAL_TYPES];
+#else
   Pel*            m_resiSplitBuffer[MAX_CU_DEPTH][NUMBER_OF_STORED_RESIDUAL_TYPES];
   Pel*            m_resiSingleBuffer[MAX_CU_DEPTH][NUMBER_OF_STORED_RESIDUAL_TYPES];
+#endif
   Pel*            m_resiPUBuffer[NUMBER_OF_STORED_RESIDUAL_TYPES];
 #endif
 
@@ -143,7 +165,11 @@ protected:
   TComMv          m_acMvPredictors[NUM_MV_PREDICTORS]; // Left, Above, AboveRight. enum MVP_DIR first NUM_MV_PREDICTORS entries are suitable for accessing.
 
   // RD computation
+#if JVET_C0024_QTBT
+  TEncSbac****    m_ppppcRDSbacCoder;
+#else
   TEncSbac***     m_pppcRDSbacCoder;
+#endif
   TEncSbac*       m_pcRDGoOnSbacCoder;
   DistParam       m_cDistParam;
 
@@ -178,7 +204,11 @@ public:
             const UInt    maxTotalCUDepth,
             TEncEntropy*  pcEntropyCoder,
             TComRdCost*   pcRdCost,
+#if JVET_C0024_QTBT
+            TEncSbac****  ppppcRDSbacCoder,
+#else
             TEncSbac***   pppcRDSbacCoder,
+#endif
             TEncSbac*     pcRDGoOnSbacCoder );
 
   Void destroy();
@@ -272,6 +302,9 @@ public:
 
   Void xEncPCM    (TComDataCU* pcCU, UInt uiAbsPartIdx, Pel* piOrg, Pel* piPCM, Pel* piPred, Pel* piResi, Pel* piReco, UInt uiStride, UInt uiWidth, UInt uiHeight, const ComponentID compID );
   Void IPCMSearch (TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* rpcPredYuv, TComYuv* rpcResiYuv, TComYuv* rpcRecoYuv );
+#if JVET_C0024_FAST_MRG
+  static UInt updateCandList( UInt uiMode, Double uiCost, UInt uiFastCandNum, UInt * CandModeList, Double * CandCostList );
+#endif
 protected:
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -620,8 +653,9 @@ protected:
   // T & Q & Q-1 & T-1
   // -------------------------------------------------------------------------------------------------------------------
 
-
+#if !JVET_C0024_QTBT
   Void xEncodeInterResidualQT( const ComponentID compID, TComTU &rTu );
+#endif  
   Void xEstimateInterResidualQT( TComYuv* pcResi, Double &rdCost, UInt &ruiBits, Distortion &ruiDist, Distortion *puiZeroDist, TComTU &rTu 
 #if VCEG_AZ08_INTER_KLT
       , TComYuv* pcPred
@@ -635,7 +669,9 @@ protected:
     , Int  iAboveLeftCase = -1
 #endif
     );
+#if !JVET_C0024_FAST_MRG
   UInt  xUpdateCandList( UInt uiMode, Double uiCost, UInt uiFastCandNum, UInt * CandModeList, Double * CandCostList );
+#endif
 
   // -------------------------------------------------------------------------------------------------------------------
   // compute symbol bits
