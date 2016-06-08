@@ -350,22 +350,38 @@ Void TDecTop::xActivateParameterSets()
     if( sps->getUseALF() )
     {
       assert( sps->getBitDepth( CHANNEL_TYPE_LUMA ) == sps->getBitDepth( CHANNEL_TYPE_CHROMA ) );
+#if JVET_C0024_QTBT
+      m_cAdaptiveLoopFilter.create( sps->getPicWidthInLumaSamples(), sps->getPicHeightInLumaSamples(), sps->getChromaFormatIdc() , sps->getCTUSize(), sps->getCTUSize(), sps->getMaxTotalCUDepth() ,
+#else
       m_cAdaptiveLoopFilter.create( sps->getPicWidthInLumaSamples(), sps->getPicHeightInLumaSamples(), sps->getChromaFormatIdc() , sps->getMaxCUWidth(), sps->getMaxCUHeight(), sps->getMaxTotalCUDepth() ,
+#endif
         sps->getBitDepth( CHANNEL_TYPE_LUMA ) , sps->getBitDepth( CHANNEL_TYPE_LUMA ) );
     }
 #endif
+#if JVET_C0024_QTBT
+    m_cSAO.create( sps->getPicWidthInLumaSamples(), sps->getPicHeightInLumaSamples(), sps->getChromaFormatIdc(), sps->getCTUSize(), sps->getCTUSize(), sps->getMaxTotalCUDepth(), pps->getPpsRangeExtension().getLog2SaoOffsetScale(CHANNEL_TYPE_LUMA), pps->getPpsRangeExtension().getLog2SaoOffsetScale(CHANNEL_TYPE_CHROMA) );
+#else
     m_cSAO.create( sps->getPicWidthInLumaSamples(), sps->getPicHeightInLumaSamples(), sps->getChromaFormatIdc(), sps->getMaxCUWidth(), sps->getMaxCUHeight(), sps->getMaxTotalCUDepth(), pps->getPpsRangeExtension().getLog2SaoOffsetScale(CHANNEL_TYPE_LUMA), pps->getPpsRangeExtension().getLog2SaoOffsetScale(CHANNEL_TYPE_CHROMA) );
+#endif
     m_cLoopFilter.create( sps->getMaxTotalCUDepth() );
 #if COM16_C806_LMCHROMA
     m_cPrediction.initTempBuff(sps->getChromaFormatIdc(), sps->getBitDepth(CHANNEL_TYPE_LUMA)
 #if VCEG_AZ08_INTER_KLT
+#if JVET_C0024_QTBT
+      , sps->getUseInterKLT() , sps->getPicWidthInLumaSamples() , sps->getPicHeightInLumaSamples() , sps->getCTUSize() , sps->getCTUSize() , sps->getMaxTotalCUDepth()
+#else
       , sps->getUseInterKLT() , sps->getPicWidthInLumaSamples() , sps->getPicHeightInLumaSamples() , sps->getMaxCUWidth() , sps->getMaxCUHeight() , sps->getMaxTotalCUDepth()
+#endif
 #endif
       );
 #else
     m_cPrediction.initTempBuff(sps->getChromaFormatIdc()
 #if VCEG_AZ08_INTER_KLT
+#if JVET_C0024_QTBT
+      , sps->getUseInterKLT() , sps->getPicWidthInLumaSamples() , sps->getPicHeightInLumaSamples() , sps->getCTUSize() , sps->getCTUSize() , sps->getMaxTotalCUDepth()
+#else
       , sps->getUseInterKLT() , sps->getPicWidthInLumaSamples() , sps->getPicHeightInLumaSamples() , sps->getMaxCUWidth() , sps->getMaxCUHeight() , sps->getMaxTotalCUDepth()
+#endif
 #endif
       );
 #endif
@@ -394,13 +410,25 @@ Void TDecTop::xActivateParameterSets()
     m_SEIs.clear();
 
     // Recursive structure
+#if JVET_C0024_QTBT
+    m_cCuDecoder.create ( sps->getMaxTotalCUDepth(), sps->getCTUSize(), sps->getCTUSize(), sps->getChromaFormatIdc() );
+#else
     m_cCuDecoder.create ( sps->getMaxTotalCUDepth(), sps->getMaxCUWidth(), sps->getMaxCUHeight(), sps->getChromaFormatIdc() );
+#endif
     m_cCuDecoder.init   ( &m_cEntropyDecoder, &m_cTrQuant, &m_cPrediction );
+#if JVET_C0024_QTBT
+    m_cTrQuant.init     ( sps->getCTUSize() 
+#if VCEG_AZ08_USE_KLT
+        , sps->getUseKLT()
+#endif
+);
+#else
     m_cTrQuant.init     ( sps->getMaxTrSize() 
 #if VCEG_AZ08_USE_KLT
         , sps->getUseKLT()
 #endif
         );
+#endif
 
     m_cSliceDecoder.create();
   }

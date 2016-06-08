@@ -50,6 +50,33 @@
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////
+#define JVET_C0024_QTBT                                   1
+
+#if JVET_C0024_QTBT
+
+#define MIN_CU_LOG2                                       2
+#if MIN_CU_LOG2==1
+#define JVET_C0024_DF_MODIFY                              1 //deblocking modifications
+#else
+#define JVET_C0024_DF_MODIFY                              0
+#endif
+
+#define JVET_C0024_BT_RMV_REDUNDANT                       1  ///< Remove redundant BT structure for B/P slice
+
+#define JVET_C0024_SPS_MAX_BT_SIZE                        0  ///< signal max BT size in SPS
+#define JVET_C0024_SPS_MAX_BT_DEPTH                       1  ///< signal max BT depth in SPS 
+
+#define JVET_C0024_CTU_256                                0  ///< support CTU 256 for QTBT, force QT split for CU 256x256 
+
+// for fast algorithms
+#define JVET_C0024_AMAX_BT                                1  ///< slice level adaptive maximum BT size (encoder only)
+#define JVET_C0024_AMAX_BT_FIX                            1  ///< Support parallel encoding
+#define JVET_C0024_FAST_MRG                               1
+#define JVET_C0024_PBINTRA_FAST                           1
+#define JVET_C0024_ITSKIP                                 1  ///< skip zero row/column in inverse transform (decoder speedup)
+
+#endif // end of JVET_C0024_QTBT
+
 #define VCEG_AZ08_USE_KLT                                 1  ///< KLT (if defined 1, use cfg option of KLT to control the enablement of intra KLT and inter KLT (INTERA_KLT, VCEG_AZ08_INTER_KLT should be set as 1); if 0, use INTERA_KLT, VCEG_AZ08_INTER_KLT to control the enablement.)
 
 #define VCEG_AZ08_INTER_KLT                               1  ///< (default 1) Enable inter KLT
@@ -130,6 +157,11 @@
 #define VCEG_AZ06_IC                                      1  ///< Local illumination compensation (LIC)
 #if VCEG_AZ06_IC
 #define VCEG_AZ06_IC_SPEEDUP                              1  ///< speedup of IC
+#if JVET_C0024_QTBT
+#undef VCEG_AZ06_IC_SPEEDUP                              
+#define VCEG_AZ06_IC_SPEEDUP                              0  ///< speedup of IC
+#define IC_THRESHOLD                                      0.06
+#endif
 #endif
 
 #define VCEG_AZ07_INTRA_4TAP_FILTER                       1  ///< 4-tap interpolation filter for intra prediction
@@ -180,6 +212,10 @@
 #if COM16_C1044_NSST && VCEG_AZ05_ROT_TR                     
 #error                                                       
 #endif                                                       
+
+#if COM16_C1044_NSST && JVET_C0024_QTBT
+#define QTBT_NSST                                         1
+#endif
 
 #define COM16_C1046_PDPC_INTRA                            1  ///< Position dependent intra prediction combination
 #if COM16_C1046_PDPC_INTRA && COM16_C983_RSAF                
@@ -475,6 +511,9 @@ enum DeblockEdgeDir
 enum PartSize
 {
   SIZE_2Nx2N           = 0,           ///< symmetric motion partition,  2Nx2N
+#if JVET_C0024_QTBT
+  NUMBER_OF_PART_SIZES = 1
+#else
   SIZE_2NxN            = 1,           ///< symmetric motion partition,  2Nx N
   SIZE_Nx2N            = 2,           ///< symmetric motion partition,   Nx2N
   SIZE_NxN             = 3,           ///< symmetric motion partition,   Nx N
@@ -483,6 +522,7 @@ enum PartSize
   SIZE_nLx2N           = 6,           ///< asymmetric motion partition, ( N/2)x2N + (3N/2)x2N
   SIZE_nRx2N           = 7,           ///< asymmetric motion partition, (3N/2)x2N + ( N/2)x2N
   NUMBER_OF_PART_SIZES = 8
+#endif
 };
 
 /// supported prediction type
@@ -638,7 +678,12 @@ enum ScalingListMode
 
 enum ScalingListSize
 {
+#if JVET_C0024_QTBT
+  SCALING_LIST_2x2 = 0,
+  SCALING_LIST_4x4,
+#else
   SCALING_LIST_4x4 = 0,
+#endif
   SCALING_LIST_8x8,
   SCALING_LIST_16x16,
   SCALING_LIST_32x32,

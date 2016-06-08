@@ -50,11 +50,14 @@
 #if COM16_C1046_PDPC_INTRA
 #include "TComRom.h"
 #endif
+#if VCEG_AZ08_INTER_KLT
+#include "TComPic.h"
+#endif
 
 // forward declaration
 class TComMv;
 class TComTU; 
-#if VCEG_AZ07_FRUC_MERGE
+#if VCEG_AZ07_FRUC_MERGE || JVET_C0024_QTBT
 class TComMvField;
 #endif
 
@@ -73,10 +76,14 @@ typedef enum PRED_BUF_E
   NUM_PRED_BUF=2
 } PRED_BUF;
 
+#if JVET_C0024_QTBT
+static const UInt MAX_INTRA_FILTER_DEPTHS=MAX_CU_DEPTH;
+#else
 #if COM16_C806_LARGE_CTU
 static const UInt MAX_INTRA_FILTER_DEPTHS=MAX_CU_DEPTH-1;
 #else
 static const UInt MAX_INTRA_FILTER_DEPTHS=5;
+#endif
 #endif
 
 class TComPrediction : public TComWeightPrediction

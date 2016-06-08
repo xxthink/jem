@@ -130,10 +130,18 @@ public:
   // ------------------------------------------------------------------------------------------------------------------
 
   //  Clip(pcYuvSrc0 + pcYuvSrc1) -> m_apiBuf
+#if JVET_C0024_QTBT
+  Void         addClip                    ( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const UInt uiTrUnitIdx, const UInt uiWidth, const UInt uiHeight, const BitDepths &clipBitDepths );
+#else
   Void         addClip                    ( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const UInt uiTrUnitIdx, const UInt uiPartSize, const BitDepths &clipBitDepths );
+#endif
 
   //  pcYuvSrc0 - pcYuvSrc1 -> m_apiBuf
+#if JVET_C0024_QTBT
+  Void         subtract                   ( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const UInt uiTrUnitIdx, const UInt uiWidth, const UInt uiHeight );
+#else
   Void         subtract                   ( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const UInt uiTrUnitIdx, const UInt uiPartSize );
+#endif
 #if COM16_C806_OBMC
   UInt         sadLuma                    ( TComYuv* pcYuvSrc0 );
 #endif
@@ -209,6 +217,10 @@ public:
   UInt         getNumberValidComponents   ()                     const { return ::getNumberValidComponents(m_chromaFormatIDC); }
   UInt         getComponentScaleX         (const ComponentID id) const { return ::getComponentScaleX(id, m_chromaFormatIDC); }
   UInt         getComponentScaleY         (const ComponentID id) const { return ::getComponentScaleY(id, m_chromaFormatIDC); }
+#if JVET_C0024_FAST_MRG
+  Void         setWidth                   (UInt uiWidth) { m_iWidth = uiWidth;}
+  Void         setHeight                  (UInt uiHeight) { m_iHeight = uiHeight;}
+#endif
 };// END CLASS DEFINITION TComYuv
 
 //! \}

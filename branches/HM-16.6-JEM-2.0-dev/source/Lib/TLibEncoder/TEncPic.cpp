@@ -126,8 +126,13 @@ Void TEncPic::create( const TComSPS &sps, const TComPPS &pps, UInt uiMaxAdaptive
   TComPic::create( sps, pps, bIsVirtual );
   const Int  iWidth      = sps.getPicWidthInLumaSamples();
   const Int  iHeight     = sps.getPicHeightInLumaSamples();
+#if JVET_C0024_QTBT
+  const UInt uiMaxWidth  = sps.getCTUSize();
+  const UInt uiMaxHeight = sps.getCTUSize();
+#else
   const UInt uiMaxWidth  = sps.getMaxCUWidth();
   const UInt uiMaxHeight = sps.getMaxCUHeight();
+#endif
   m_uiMaxAQDepth = uiMaxAdaptiveQPDepth;
   if ( uiMaxAdaptiveQPDepth > 0 )
   {

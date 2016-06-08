@@ -81,6 +81,18 @@ private:
   Int                   m_iBaseUnitHeight;      ///< Height of Base Unit (with maximum depth or minimum size, m_iCuHeight >> Max. Depth)
   Int                   m_iNumCuInWidth;
 #endif
+#if JVET_C0024_QTBT
+  //for record codec block info.
+  Bool m_bCodedBlkInCTU[MAX_CU_SIZE>>MIN_CU_LOG2][MAX_CU_SIZE>>MIN_CU_LOG2];    //[CTUSize>>MIN_CU_Log2][CTUSize>>MIN_CU_Log2]; [h][w]
+  Int  m_iCodedArea;
+
+  //for encoder speedup
+  TComMv                m_cIntMv[1<<((MAX_CU_DEPTH-MIN_CU_LOG2)<<1)][MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1][2][5]; //[zorder][w][h][refList][refIdx]
+  Bool                  m_bSetIntMv[1<<((MAX_CU_DEPTH-MIN_CU_LOG2)<<1)][MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1][2][5]; //[zorder][w][h][refList][refIdx]
+  Bool                  m_bSkiped[1<<((MAX_CU_DEPTH-MIN_CU_LOG2)<<1)][MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1]; //[zorder][w][h] , if skip mode, not try inter, intra
+  Bool                  m_bInter[1<<((MAX_CU_DEPTH-MIN_CU_LOG2)<<1)][MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1]; //[zorder][w][h] , if inter mode, not try intra
+  Bool                  m_bIntra[1<<((MAX_CU_DEPTH-MIN_CU_LOG2)<<1)][MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1]; // if intra mode, not try inter
+#endif
 
   std::vector<std::vector<TComDataCU*> > m_vSliceCUDataLink;
 
@@ -89,6 +101,31 @@ private:
 public:
   TComPic();
   virtual ~TComPic();
+
+#if JVET_C0024_QTBT
+  //to record coded block info.
+  Void          setCodedBlkInCTU(Bool bCoded, UInt uiBlkX, UInt uiBlkY, UInt uiWidth, UInt uiHeight);
+  Bool          getCodedBlkInCTU(UInt uiBlkX, UInt uiBlkY) {return m_bCodedBlkInCTU[uiBlkY][uiBlkX];}
+  Void          setCodedAreaInCTU(Int iArea);
+  Void          addCodedAreaInCTU(Int iArea);
+  Int           getCodedAreaInCTU();
+
+  //for encoder speed-up
+  Void          setSkiped(UInt uiZorder, UInt uiWidth, UInt uiHeight, Bool bSkip);
+  Bool          getSkiped(UInt uiZorder, UInt uiWidth, UInt uiHeight);
+  Void          clearAllSkiped();
+  Void          setInter(UInt uiZorder, UInt uiWidth, UInt uiHeight, Bool bInter);
+  Bool          getInter(UInt uiZorder, UInt uiWidth, UInt uiHeight);
+  Void          clearAllInter();
+  Void          setIntra(UInt uiZorder, UInt uiWidth, UInt uiHeight, Bool bIntra);
+  Bool          getIntra(UInt uiZorder, UInt uiWidth, UInt uiHeight);
+  Void          clearAllIntra();
+
+  Void          setIntMv(UInt uiZorder, UInt uiWidth, UInt uiHeight, RefPicList eRefList, UInt uiRefIdx, TComMv cMv);
+  TComMv        getIntMv(UInt uiZorder, UInt uiWidth, UInt uiHeight, RefPicList eRefList, UInt uiRefIdx);
+  Void          clearAllIntMv();
+  Bool          IsSetIntMv(UInt uiZorder, UInt uiWidth, UInt uiHeight, RefPicList eRefList, UInt uiRefIdx);
+#endif
 
   Void          create( const TComSPS &sps, const TComPPS &pps, const Bool bIsVirtual /*= false*/ );
 

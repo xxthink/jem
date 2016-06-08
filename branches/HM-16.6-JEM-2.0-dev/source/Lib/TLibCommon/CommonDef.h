@@ -196,9 +196,17 @@ static const Int MAX_NUM_VPS =                                     16;
 static const Int MAX_NUM_SPS =                                     16;
 static const Int MAX_NUM_PPS =                                     64;
 
+#if QTBT_NSST
+static const Int NSST_SIG_NZ_LUMA =                              1;
+static const Int NSST_SIG_NZ_CHROMA =                            1;
+#endif
 
 #if COM16_C806_T64
+#if JVET_C0024_QTBT
+static const Int MLS_GRP_NUM =                                    1024; ///< Max number of coefficient groups, max(16, 256)
+#else
 static const Int MLS_GRP_NUM =                                    256; ///< Max number of coefficient groups, max(16, 256)
+#endif
 #else
 static const Int MLS_GRP_NUM =                                     64; ///< Max number of coefficient groups, max(16, 64)
 #endif
@@ -260,8 +268,13 @@ static const Int DM_CHROMA_IDX =                                   36; ///< chro
 
 #if COM16_C806_EMT
 static const UChar INTER_MODE_IDX =                               255; ///< index for inter modes
+#if JVET_C0024_QTBT
+static const UInt  EMT_INTRA_MAX_CU =                              64; ///< Max Intra CU size applying EMT, supported values: 8, 16, 32, 64, 128
+static const UInt  EMT_INTER_MAX_CU =                              64; ///< Max Inter CU size applying EMT, supported values: 8, 16, 32, 64, 128
+#else
 static const UInt  EMT_INTRA_MAX_CU =                              32; ///< Max Intra CU size applying EMT, supported values: 8, 16, 32
 static const UInt  EMT_INTER_MAX_CU =                              32; ///< Max Inter CU size applying EMT, supported values: 8, 16, 32
+#endif
 #endif
 
 #if VCEG_AZ07_INTRA_65ANG_MODES
@@ -302,17 +315,32 @@ static const Int RExt__PREDICTION_WEIGHTING_ANALYSIS_DC_PRECISION = 0; ///< Addi
 static const Int MAX_TIMECODE_SEI_SETS =                            3; ///< Maximum number of time sets
 
 #if COM16_C806_LARGE_CTU
+#if JVET_C0024_QTBT && !JVET_C0024_CTU_256
+static const Int MAX_CU_DEPTH =                                     7; ///< log2(CTUSize)
+static const Int MAX_CU_SIZE =                                    128; ///< = 1<<(MAX_CU_DEPTH)
+#else
 static const Int MAX_CU_DEPTH =                                     8; ///< log2(CTUSize)
 static const Int MAX_CU_SIZE =                                    256; ///< = 1<<(MAX_CU_DEPTH)
+#endif
 #else
 static const Int MAX_CU_DEPTH =                                     6; ///< log2(CTUSize)
 static const Int MAX_CU_SIZE =                                     64; ///< = 1<<(MAX_CU_DEPTH)
 #endif
+#if JVET_C0024_QTBT
+static const Int MIN_PU_SIZE =                                      1<<MIN_CU_LOG2;
+static const Int MIN_TU_SIZE =                                      1<<MIN_CU_LOG2;
+#else
 static const Int MIN_PU_SIZE =                                      4;
 static const Int MIN_TU_SIZE =                                      4;
+#endif
 #if COM16_C806_T64
+#if JVET_C0024_QTBT
+static const Int MAX_TU_SIZE =                                      128; 
+static const Int MAX_LOG2_TU_SIZE_PLUS_ONE =                        8; ///< log2(MAX_TU_SIZE) + 1 
+#else
 static const Int MAX_TU_SIZE =                                     64;
 static const Int MAX_LOG2_TU_SIZE_PLUS_ONE =                        7; ///< log2(MAX_TU_SIZE) + 1
+#endif
 #else
 static const Int MAX_TU_SIZE =                                     32;
 #endif
@@ -334,7 +362,11 @@ static const Int SCALING_LIST_DC =                                16 ; ///< defa
 
 static const Int CONTEXT_STATE_BITS =                              6 ;
 #if COM16_C806_T64
+#if JVET_C0024_QTBT
+static const Int LAST_SIGNIFICANT_GROUPS =                        14 ;
+#else
 static const Int LAST_SIGNIFICANT_GROUPS =                        12 ;
+#endif
 #else
 static const Int LAST_SIGNIFICANT_GROUPS =                        10 ;
 #endif
@@ -366,6 +398,43 @@ static const Int AFFINE_MAX_NUM_V1 =                                2; ///< max 
 static const Int AFFINE_MAX_NUM_V2 =                                2; ///< max number of motion candidates in left-bottom corner
 static const Int AFFINE_MAX_NUM_COMB =                             12; ///< max number of combined motion candidates
 static const Int AFFINE_MIN_BLOCK_SIZE =                            4; ///< Minimum affine MC block size
+#endif
+
+#if JVET_C0024_QTBT
+
+#if JVET_C0024_AMAX_BT
+static const Double AMAXBT_TH32 =                                   15.0;
+static const Double AMAXBT_TH64 =                                   30.0;
+#endif
+ 
+static const Int    SKIP_DEPTH =                                    3;
+static const Int    SKIPHORNOVERQT_DEPTH_TH =                       2;
+
+#if JVET_C0024_FAST_MRG
+static const Int    NUM_MRG_SATD_CAND =                             4;
+static const Double MRG_FAST_RATIO    =                             1.25;
+#endif
+
+#if JVET_C0024_PBINTRA_FAST
+static const Double PBINTRA_RATIO     =                             1.1;
+#endif
+
+//QTBT high level parameters
+//for I slice luma CTB configuration para.
+static const Int    MAX_BT_DEPTH  =                                 4;      ///<  <=7
+static const Int    MAX_BT_SIZE   =                                 32;     ///<  [1<<MIN_QT_SIZE, 1<<CTU_LOG2]
+static const Int    MIN_BT_SIZE   =                                 4;      ///<  can be set down to 1<<MIN_CU_LOG2
+
+//for I slice chroma CTB configuration para. (in luma samples)
+static const Int    MAX_BT_DEPTH_C =                                0;      ///< <=7   
+static const Int    MAX_BT_SIZE_C  =                                16;     ///< [1<<MIN_QT_SIZE_C, 1<<CTU_LOG2]
+static const Int    MIN_BT_SIZE_C  =                                4;      ///< can be set down to 4
+
+//for P/B slice CTU config. para.
+static const Int    MAX_BT_DEPTH_INTER =                            4;      ///< <=7
+static const Int    MAX_BT_SIZE_INTER  =                          128;      ///< for initialization, [1<<MIN_BT_SIZE_INTER, 1<<CTU_LOG2]
+static const Int    MIN_BT_SIZE_INTER  =                            4;      ///<
+
 #endif
 
 // ====================================================================================================================
