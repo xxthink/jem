@@ -2428,7 +2428,20 @@ Void TDecCavlc::parseAlfFlag (UInt& ruiVal)
 {
   READ_FLAG( ruiVal , "alf_flag" );
 }
-
+#if JVET_C0038_GALF  
+Void TDecCavlc::parseALFTruncBinVal(UInt& ruiSymbol, UInt uiMaxSymbol)
+{
+  assert(0);
+}
+Void TDecCavlc::parseALFPrevFiltType ( UInt& uiCode )
+{
+  assert(0);
+}
+Void TDecCavlc::parseALFPrevFiltFlag ( UInt& uiCode )
+{
+  assert(0);
+}
+#endif
 Void TDecCavlc::parseAlfFlagNum( UInt& ruiVal, UInt minValue, UInt depth )
 {
   UInt uiLength = 0;

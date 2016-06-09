@@ -161,6 +161,11 @@ public:
 
 #if ALF_HM3_REFACTOR
   virtual Void parseAlfFlag       ( UInt& ruiVal           ) = 0;
+#if JVET_C0038_GALF  
+  virtual Void parseALFTruncBinVal  ( UInt& ruiSymbol, UInt uiMaxSymbol ) = 0;
+  virtual Void parseALFPrevFiltType ( UInt& uiCode ) = 0;
+  virtual Void parseALFPrevFiltFlag ( UInt& uiCode ) = 0;
+#endif
   virtual Void parseAlfUvlc       ( UInt& ruiVal           ) = 0;
   virtual Void parseAlfSvlc       ( Int&  riVal            ) = 0;
   virtual Void parseAlfCtrlDepth   ( UInt& ruiAlfCtrlDepth , UInt uiMaxTotalCUDepth ) = 0; 
@@ -317,10 +322,16 @@ public:
 #endif
     );
   Void decodeAux(ALFParam* pAlfParam);
-  Void decodeFilt(ALFParam* pAlfParam);
+   Void decodeFilt(ALFParam* pAlfParam);
+#if JVET_C0038_GALF
+  Void readFilterCodingParams(ALFParam* pAlfParam, Bool bChroma = false);
+  Void readFilterCoeffs(ALFParam* pAlfParam, Bool bChroma = false);
+  Void decodeFilterCoeff (ALFParam* pAlfParam, Bool bChroma = false);
+#else
   Void readFilterCodingParams(ALFParam* pAlfParam);
   Void readFilterCoeffs(ALFParam* pAlfParam);
   Void decodeFilterCoeff (ALFParam* pAlfParam);
+#endif
   Int  golombDecode(Int k);
   Void decodeAlfCtrlParam      ( ALFParam *pAlfParam );
 #endif
@@ -328,6 +339,7 @@ public:
 #if COM16_C1016_AFFINE
   Void decodeAffineFlag        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPuIdx );
 #endif
+
 
 };// END CLASS DEFINITION TDecEntropy
 

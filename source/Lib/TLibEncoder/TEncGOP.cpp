@@ -1667,6 +1667,9 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
         m_iStoredAlfParaNum++;
         m_acStoredAlfPara[iIdx].temproalPredFlag = false;
         m_pcAdaptiveLoopFilter->copyALFParam( &m_acStoredAlfPara[iIdx], &cAlfParam );
+#if JVET_C0038_GALF
+        m_pcAdaptiveLoopFilter->resetALFPredParam(&m_acStoredAlfPara[iIdx], (pcSlice->getSliceType()== I_SLICE? true: false));
+#endif
       }
 #endif     
       m_pcAdaptiveLoopFilter->endALFEnc();
@@ -1965,7 +1968,7 @@ Void TEncGOP::printOutSummary(UInt uiNumAllPicCoded, Bool isField, const Bool pr
 
   printf("\nRVM: %.3lf\n" , xCalculateRVM());
 }
-
+#if !JVET_C0038_GALF
 Void TEncGOP::preLoopFilterPicAll( TComPic* pcPic, UInt64& ruiDist )
 {
   Bool bCalcDist = false;
@@ -1996,6 +1999,8 @@ Void TEncGOP::preLoopFilterPicAll( TComPic* pcPic, UInt64& ruiDist )
     ruiDist = xFindDistortionFrame(pcPic->getPicYuvOrg(), pcPic->getPicYuvRec(), pcPic->getPicSym()->getSPS().getBitDepths());
   }
 }
+#endif
+
 
 // ====================================================================================================================
 // Protected member functions

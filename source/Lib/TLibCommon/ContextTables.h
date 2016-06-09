@@ -236,7 +236,11 @@ static const UInt notFirstGroupNeighbourhoodContextOffset[MAX_NUM_CHANNEL_TYPE] 
 #define NUM_CROSS_COMPONENT_PREDICTION_CTX 10
 
 #if ALF_HM3_REFACTOR
+#if JVET_C0038_GALF
+#define NUM_ALF_CTRL_FLAG_CTX         1       ///< number of context models for ALF control flag
+#else
 #define NUM_ALF_CTRL_FLAG_CTX         3       ///< number of context models for ALF control flag
+#endif
 #define NUM_ALF_FLAG_CTX              1       ///< number of context models for ALF flag
 #define NUM_ALF_UVLC_CTX              2       ///< number of context models for ALF UVLC (filter length)
 #define NUM_ALF_SVLC_CTX              3       ///< number of context models for ALF SVLC (filter coeff.)
@@ -788,9 +792,15 @@ INIT_CROSS_COMPONENT_PREDICTION[NUMBER_OF_SLICE_TYPES][NUM_CROSS_COMPONENT_PREDI
 static const UChar
   INIT_ALF_CTRL_FLAG[NUMBER_OF_SLICE_TYPES][NUM_ALF_CTRL_FLAG_CTX] =
 {
+#if JVET_C0038_GALF 
+  { CNU, },
+  { CNU, },
+  { CNU, },
+#else
   { CNU, CNU, CNU },
   { CNU, CNU, CNU },
   { CNU, CNU, CNU },
+#endif
 };
 
 // initial probability for ALF flag

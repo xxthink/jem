@@ -1704,7 +1704,21 @@ Void TEncCavlc::codeAlfFlag( UInt uiCode )
   //xWriteFlag( uiCode );
   WRITE_FLAG( uiCode , "alf_flag" );
 }
-
+#if JVET_C0038_GALF  
+Void TEncCavlc::xWriteTruncBinCode(UInt uiSymbol, UInt uiMaxSymbol)
+{
+  assert(0);
+}
+//0: no pred; 1: all same index; 2: diff index for each variance index
+Void TEncCavlc::codeALFPrevFiltType( UInt uiCode)
+{
+  assert(0);
+}
+Void TEncCavlc::codeALFPrevFiltFlag( Int uiCode)
+{
+  assert(0);
+}
+#endif
 Void TEncCavlc::codeAlfFlagNum( UInt uiCode, UInt minValue )
 {
   UInt uiLength = 0;

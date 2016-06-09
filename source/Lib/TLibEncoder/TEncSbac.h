@@ -117,7 +117,7 @@ public:
 #endif
 
 private:
-#if JVET_B0051_NON_MPM_MODE
+#if JVET_B0051_NON_MPM_MODE || JVET_C0038_GALF
   Void  xWriteTruncBinCode      ( UInt uiSymbol, UInt uiMaxSymbol );
 #endif
   Void  xWriteUnarySymbol    ( UInt uiSymbol, ContextModel* pcSCModel, Int iOffset );
@@ -224,6 +224,10 @@ public:
   TEncBinIf* getEncBinIf()  { return m_pcBinIf; }
 
 #if ALF_HM3_REFACTOR
+#if JVET_C0038_GALF  
+  Void codeALFPrevFiltType( UInt uiCode);
+  Void codeALFPrevFiltFlag( Int uiCode);
+#endif
   Bool  getAlfCtrl             ()                         { return m_bAlfCtrl;          }
   UInt  getMaxAlfCtrlDepth     ()                         { return m_uiMaxAlfCtrlDepth; }
   Void  setAlfCtrl             ( Bool bAlfCtrl          ) { m_bAlfCtrl          = bAlfCtrl;          }
@@ -321,9 +325,13 @@ private:
   Bool          m_bAlfCtrl;
   UInt          m_uiMaxAlfCtrlDepth;
   ContextModel3DBuffer m_cCUAlfCtrlFlagSCModel;
+#if !JVET_C0038_GALF
   ContextModel3DBuffer m_cALFFlagSCModel;
+#endif
   ContextModel3DBuffer m_cALFUvlcSCModel;
+#if !JVET_C0038_GALF
   ContextModel3DBuffer m_cALFSvlcSCModel;
+#endif
 #endif
 
 #if COM16_C806_EMT

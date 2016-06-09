@@ -113,7 +113,14 @@
 #if COM16_C806_ALF_TEMPPRED_NUM
 #define FIX_TICKET12                                      1  ///< fixed ticket #12
 #endif
+
+#define JVET_C0038_GALF                                   1 ///<JVET-C0038 GALF
+#if JVET_C0038_GALF
+#define JVET_C0038_SHIFT_VAL_HALFW                        1  ///<clean up
+#define JVET_C0038_NO_PREV_FILTERS                        16 ///<number of fixed filters per class
 #endif
+#endif
+
 
 #define COM16_C806_VCEG_AZ10_SUB_PU_TMVP                  1  ///< Sub-PU level motion vector prediction
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP                     

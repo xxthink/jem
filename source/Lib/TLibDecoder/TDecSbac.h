@@ -103,7 +103,7 @@ public:
 
 private:
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
-#if JVET_B0051_NON_MPM_MODE
+#if JVET_B0051_NON_MPM_MODE || JVET_C0038_GALF
   Void  xReadTruncBinCode   (UInt& ruiSymbol, UInt uiMaxSymbol, const class TComCodingStatisticsClassType &whichStat);
 #endif
   Void  xReadUnarySymbol    ( UInt& ruiSymbol, ContextModel* pcSCModel, Int iOffset, const class TComCodingStatisticsClassType &whichStat );
@@ -111,7 +111,7 @@ private:
   Void  xReadEpExGolomb     ( UInt& ruiSymbol, UInt uiCount, const class TComCodingStatisticsClassType &whichStat );
   Void  xReadCoefRemainExGolomb ( UInt &rSymbol, UInt &rParam, const Bool useLimitedPrefixLength, const Int maxLog2TrDynamicRange, const class TComCodingStatisticsClassType &whichStat );
 #else
-#if JVET_B0051_NON_MPM_MODE
+#if JVET_B0051_NON_MPM_MODE || JVET_C0038_GALF
  Void  xReadTruncBinCode       (UInt& ruiSymbol, UInt uiMaxSymbol);
 #endif
   Void  xReadUnarySymbol    ( UInt& ruiSymbol, ContextModel* pcSCModel, Int iOffset );
@@ -196,6 +196,11 @@ public:
 
 #if ALF_HM3_REFACTOR
   Void  parseAlfFlag          ( UInt& ruiVal           );
+#if JVET_C0038_GALF
+  Void parseALFTruncBinVal  ( UInt& ruiSymbol, UInt uiMaxSymbol );
+  Void parseALFPrevFiltType ( UInt& uiCode );
+  Void parseALFPrevFiltFlag ( UInt& uiCode );
+#endif
   Void  parseAlfUvlc          ( UInt& ruiVal           );
   Void  parseAlfSvlc          ( Int&  riVal            );
   Void  parseAlfCtrlDepth     ( UInt& ruiAlfCtrlDepth , UInt uiMaxTotalCUDepth ); 
@@ -292,9 +297,13 @@ private:
 #endif
 #if ALF_HM3_REFACTOR
   ContextModel3DBuffer m_cCUAlfCtrlFlagSCModel;
+#if !JVET_C0038_GALF
   ContextModel3DBuffer m_cALFFlagSCModel;
+#endif
   ContextModel3DBuffer m_cALFUvlcSCModel;
+#if !JVET_C0038_GALF
   ContextModel3DBuffer m_cALFSvlcSCModel;
+#endif
 #endif
 
 #if COM16_C806_EMT
