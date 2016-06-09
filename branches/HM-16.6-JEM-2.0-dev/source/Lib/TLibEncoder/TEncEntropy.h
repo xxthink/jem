@@ -162,6 +162,11 @@ public:
 #endif
 
 #if ALF_HM3_REFACTOR
+#if JVET_C0038_GALF  
+  virtual Void xWriteTruncBinCode   (UInt iSymbol, UInt iMaxSymbol) = 0;
+  virtual Void codeALFPrevFiltType( UInt uiCode) = 0;
+  virtual Void codeALFPrevFiltFlag( Int uiCode)  = 0;
+#endif
   virtual Bool getAlfCtrl()                = 0;
   virtual UInt getMaxAlfCtrlDepth()                = 0;
   virtual Void setAlfCtrl(Bool bAlfCtrl)                = 0;
@@ -338,10 +343,23 @@ public:
   Void codeFiltCountBit(ALFParam* pAlfParam, Int64* ruiRate, const TComSlice * pSlice);
   Void codeAux (ALFParam* pAlfParam);
   Void codeFilt (ALFParam* pAlfParam);
-  Int codeFilterCoeff(ALFParam* ALFp);
+  Int codeFilterCoeff(ALFParam* ALFp
+#if JVET_C0038_GALF
+    , Bool bChroma = false
+#endif
+    );
+#if JVET_C0038_GALF
+  Void codeFilterCoeffForce0(ALFParam* ALFp);
+  Int writeFilterCodingParams(Int minKStart, Int maxScanVal, Int kMinTab[], Bool forceCoeff0, Int filters_per_group, Bool codedVarBins[]);
+  Int writeFilterCoeffs(Int sqrFiltLength, Int filters_per_group, const Int pDepthInt[], Int **FilterCoeff, Int kMinTab[], Bool codedVarBins[]);
+#else
   Int writeFilterCodingParams(int minKStart, int maxScanVal, int kMinTab[]);
   Int writeFilterCoeffs(int sqrFiltLength, int filters_per_group, const int pDepthInt[], 
     int **FilterCoeff, int kMinTab[]);
+#endif
+#if JVET_C0038_GALF
+  Int writeFilterCoeffsForChroma(Int sqrFiltLength, const Int pDepthInt[], Int *FilterCoeff, Int kMinTab[]);
+#endif
   Int golombEncode(int coeff, int k);
   Int lengthGolomb(int coeffVal, int k);
 #endif

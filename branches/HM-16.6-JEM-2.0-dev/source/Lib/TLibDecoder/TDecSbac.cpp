@@ -127,9 +127,13 @@ TDecSbac::TDecSbac()
 #endif
 #if ALF_HM3_REFACTOR
 , m_cCUAlfCtrlFlagSCModel                    ( 1,             1,                      NUM_ALF_CTRL_FLAG_CTX                , m_contextModels + m_numContextModels, m_numContextModels)
+#if !JVET_C0038_GALF
 , m_cALFFlagSCModel                          ( 1,             1,                      NUM_ALF_FLAG_CTX                     , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 , m_cALFUvlcSCModel                          ( 1,             1,                      NUM_ALF_UVLC_CTX                     , m_contextModels + m_numContextModels, m_numContextModels)
+#if !JVET_C0038_GALF
 , m_cALFSvlcSCModel                          ( 1,             1,                      NUM_ALF_SVLC_CTX                     , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 #endif
 #if COM16_C806_EMT
 , m_cEmtTuIdxSCModel                         ( 1,             1,                      NUM_EMT_TU_IDX_CTX                   , m_contextModels + m_numContextModels, m_numContextModels)
@@ -248,9 +252,13 @@ Void TDecSbac::resetEntropy(TComSlice* pSlice)
 #endif  
 #if ALF_HM3_REFACTOR
   m_cCUAlfCtrlFlagSCModel.initBuffer              ( sliceType, qp, (UChar*)INIT_ALF_CTRL_FLAG );
+#if !JVET_C0038_GALF
   m_cALFFlagSCModel.initBuffer                    ( sliceType, qp, (UChar*)INIT_ALF_FLAG );
+#endif
   m_cALFUvlcSCModel.initBuffer                    ( sliceType, qp, (UChar*)INIT_ALF_UVLC );
+#if !JVET_C0038_GALF
   m_cALFSvlcSCModel.initBuffer                    ( sliceType, qp, (UChar*)INIT_ALF_SVLC );
+#endif
 #endif
 #if COM16_C806_EMT
   m_cEmtTuIdxSCModel.initBuffer                   ( sliceType, qp, (UChar*)INIT_EMT_TU_IDX );
@@ -343,8 +351,8 @@ Void TDecSbac::xReadUnaryMaxSymbol( UInt& ruiSymbol, ContextModel* pcSCModel, In
   ruiSymbol = uiSymbol;
 }
 
-#if JVET_B0051_NON_MPM_MODE
-#if RExt__DECODER_DEBUG_BIT_STATISTICS
+#if JVET_B0051_NON_MPM_MODE || JVET_C0038_GALF
+#if RExt__DECODER_DEBUG_BIT_STATISTICS 
 Void TDecSbac::xReadTruncBinCode(UInt& ruiSymbol, UInt uiMaxSymbol, const class TComCodingStatisticsClassType &whichStat)
 #else
 Void TDecSbac::xReadTruncBinCode(UInt& ruiSymbol, UInt uiMaxSymbol)
@@ -3029,10 +3037,29 @@ Void TDecSbac::parseAlfCtrlFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDep
   }
 }
 #endif
+#if JVET_C0038_GALF  
+Void TDecSbac::parseALFTruncBinVal( UInt& ruiSymbol, UInt uiMaxSymbol )
+{
+  xReadTruncBinCode(ruiSymbol, uiMaxSymbol RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD_EP));
+}
+//0: no pred; 1: all same index; 2: diff index for each variance index
+Void TDecSbac::parseALFPrevFiltType( UInt& uiCode)
+{
+  xReadEpExGolomb (uiCode, 0 RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ALF_FLAG) );
+}
+Void TDecSbac::parseALFPrevFiltFlag( UInt& uiCode)
+{
+   m_pcTDecBinIf->decodeBinEP( uiCode RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ALF_FLAG) );
+}
+#endif
 Void TDecSbac::parseAlfFlag (UInt& ruiVal)
 {
   UInt uiSymbol;
+#if JVET_C0038_GALF
+  m_pcTDecBinIf->decodeBinEP( uiSymbol RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ALF_FLAG));
+#else
   m_pcTDecBinIf->decodeBin( uiSymbol, m_cALFFlagSCModel.get( 0, 0, 0 ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ALF_FLAG));
+#endif
   DTRACE_CABAC_VL( g_nSymbolCounter++ )
   DTRACE_CABAC_T( "\tAlfFlag\n" )
 
@@ -3068,7 +3095,7 @@ Void TDecSbac::parseAlfFlagNum( UInt& ruiVal, UInt minValue, UInt depth )
   }
   ruiVal += minValue;
   DTRACE_CABAC_VL( g_nSymbolCounter++ )
-    DTRACE_CABAC_T( "\tAlfFlagNum\n" )
+  DTRACE_CABAC_T( "\tAlfFlagNum\n" )
 }
 
 Void TDecSbac::parseAlfCtrlFlag( UInt &ruiAlfCtrlFlag )
@@ -3084,7 +3111,22 @@ Void TDecSbac::parseAlfUvlc (UInt& ruiVal)
 {
   UInt uiCode;
   Int  i;
+#if JVET_C0038_GALF
+  m_pcTDecBinIf->decodeBinEP( uiCode  RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ALF_UVLC));
+  if ( uiCode == 0 )
+  {
+    ruiVal = 0;
+    return;
+  }
 
+  i=1;
+  while (1)
+  {
+    m_pcTDecBinIf->decodeBinEP( uiCode  RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ALF_UVLC));
+    if ( uiCode == 0 ) break;
+    i++;
+  }
+#else
   m_pcTDecBinIf->decodeBin( uiCode, m_cALFUvlcSCModel.get( 0, 0, 0 ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ALF_UVLC));
   if ( uiCode == 0 )
   {
@@ -3099,7 +3141,7 @@ Void TDecSbac::parseAlfUvlc (UInt& ruiVal)
     if ( uiCode == 0 ) break;
     i++;
   }
-
+#endif
   ruiVal = i;
 }
 
@@ -3108,7 +3150,29 @@ Void TDecSbac::parseAlfSvlc (Int&  riVal)
   UInt uiCode;
   Int  iSign;
   Int  i;
+#if JVET_C0038_GALF
+  m_pcTDecBinIf->decodeBinEP( uiCode  RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ALF_SVLC));
+  if ( uiCode == 0 )
+  {
+    riVal = 0;
+    return;
+  }
 
+  // read sign
+  m_pcTDecBinIf->decodeBinEP( uiCode RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ALF_SVLC));
+
+  if ( uiCode == 0 ) iSign =  1;
+  else               iSign = -1;
+
+  // read magnitude
+  i=1;
+  while (1)
+  {
+    m_pcTDecBinIf->decodeBinEP( uiCode  RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ALF_SVLC));
+    if ( uiCode == 0 ) break;
+    i++;
+  }
+#else
   m_pcTDecBinIf->decodeBin( uiCode, m_cALFSvlcSCModel.get( 0, 0, 0 ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ALF_SVLC));
 
   if ( uiCode == 0 )
@@ -3131,7 +3195,7 @@ Void TDecSbac::parseAlfSvlc (Int&  riVal)
     if ( uiCode == 0 ) break;
     i++;
   }
-
+#endif
   riVal = i*iSign;
 }
 #endif

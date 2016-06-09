@@ -127,9 +127,13 @@ TEncSbac::TEncSbac()
 , m_bAlfCtrl                           ( false )
 , m_uiMaxAlfCtrlDepth                  ( 0 )
 , m_cCUAlfCtrlFlagSCModel              ( 1,             1,               NUM_ALF_CTRL_FLAG_CTX         , m_contextModels + m_numContextModels, m_numContextModels)
+#if !JVET_C0038_GALF
 , m_cALFFlagSCModel                    ( 1,             1,               NUM_ALF_FLAG_CTX              , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 , m_cALFUvlcSCModel                    ( 1,             1,               NUM_ALF_UVLC_CTX              , m_contextModels + m_numContextModels, m_numContextModels)
+#if !JVET_C0038_GALF
 , m_cALFSvlcSCModel                    ( 1,             1,               NUM_ALF_SVLC_CTX              , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 #endif
 #if COM16_C806_EMT
 , m_cEmtTuIdxSCModel                   ( 1,             1,               NUM_EMT_TU_IDX_CTX            , m_contextModels + m_numContextModels, m_numContextModels)
@@ -224,9 +228,13 @@ Void TEncSbac::resetEntropy           (const TComSlice *pSlice)
 #endif
 #if ALF_HM3_REFACTOR
   m_cCUAlfCtrlFlagSCModel.initBuffer              ( eSliceType, iQp, (UChar*)INIT_ALF_CTRL_FLAG );
+#if !JVET_C0038_GALF
   m_cALFFlagSCModel.initBuffer                    ( eSliceType, iQp, (UChar*)INIT_ALF_FLAG );
+#endif
   m_cALFUvlcSCModel.initBuffer                    ( eSliceType, iQp, (UChar*)INIT_ALF_UVLC );
+#if !JVET_C0038_GALF
   m_cALFSvlcSCModel.initBuffer                    ( eSliceType, iQp, (UChar*)INIT_ALF_SVLC );
+#endif
 #endif
 #if COM16_C806_EMT
   m_cEmtTuIdxSCModel.initBuffer                   ( eSliceType, iQp, (UChar*)INIT_EMT_TU_IDX );
@@ -434,7 +442,7 @@ Void TEncSbac::xWriteUnaryMaxSymbol( UInt uiSymbol, ContextModel* pcSCModel, Int
   return;
 }
 
-#if JVET_B0051_NON_MPM_MODE
+#if JVET_B0051_NON_MPM_MODE || JVET_C0038_GALF
 Void TEncSbac::xWriteTruncBinCode(UInt uiSymbol, UInt uiMaxSymbol)
 {
   UInt uiThresh;
@@ -3088,11 +3096,25 @@ Void TEncSbac::codeAlfCtrlDepth( UInt uiMaxTotalCUDepth )
   DTRACE_CABAC_VL( g_nSymbolCounter++ )
   DTRACE_CABAC_T( "\tAlfCtrlDepth\n" )
 }
-
+#if JVET_C0038_GALF  
+//0: no pred; 1: all same index; 2: diff index for each variance index
+Void TEncSbac::codeALFPrevFiltType( UInt uiCode)
+{
+  xWriteEpExGolomb( uiCode, 0);
+}
+Void TEncSbac::codeALFPrevFiltFlag( Int uiCode)
+{
+   m_pcBinIf->encodeBinEP( uiCode > 0 ? 1: 0 );
+}
+#endif
 Void TEncSbac::codeAlfFlag       ( UInt uiCode )
 {
   UInt uiSymbol = ( ( uiCode == 0 ) ? 0 : 1 );
+#if JVET_C0038_GALF
+  m_pcBinIf->encodeBinEP( uiSymbol);
+#else
   m_pcBinIf->encodeBin( uiSymbol, m_cALFFlagSCModel.get( 0, 0, 0 ) );
+#endif
   DTRACE_CABAC_VL( g_nSymbolCounter++ )
   DTRACE_CABAC_T( "\tAlfFlag\n" )
 }
@@ -3133,7 +3155,21 @@ Void TEncSbac::codeAlfCtrlFlag( UInt uiSymbol )
 Void TEncSbac::codeAlfUvlc       ( UInt uiCode )
 {
   Int i;
-
+#if JVET_C0038_GALF
+  if ( uiCode == 0 )
+  {
+    m_pcBinIf->encodeBinEP(0);
+  }
+  else
+  {
+    m_pcBinIf->encodeBinEP(1);
+    for ( i=0; i<uiCode-1; i++ )
+    {
+        m_pcBinIf->encodeBinEP(1);
+    }
+    m_pcBinIf->encodeBinEP(0);
+  }
+#else
   if ( uiCode == 0 )
   {
     m_pcBinIf->encodeBin( 0, m_cALFUvlcSCModel.get( 0, 0, 0 ) );
@@ -3147,12 +3183,40 @@ Void TEncSbac::codeAlfUvlc       ( UInt uiCode )
     }
     m_pcBinIf->encodeBin( 0, m_cALFUvlcSCModel.get( 0, 0, 1 ) );
   }
+#endif
 }
 
 Void TEncSbac::codeAlfSvlc       ( Int iCode )
 {
   Int i;
+#if JVET_C0038_GALF
+  if ( iCode == 0 )
+  {
+    m_pcBinIf->encodeBinEP(0);
+  }
+  else
+  {
+    m_pcBinIf->encodeBinEP(1);
 
+    // write sign
+    if ( iCode > 0 )
+    {
+      m_pcBinIf->encodeBinEP(0);
+    }
+    else
+    {
+     m_pcBinIf->encodeBinEP(1);
+      iCode = -iCode;
+    }
+
+    // write magnitude
+    for ( i=0; i<iCode-1; i++ )
+    {
+      m_pcBinIf->encodeBinEP(1);
+    }
+    m_pcBinIf->encodeBinEP(0);
+  }
+#else
   if ( iCode == 0 )
   {
     m_pcBinIf->encodeBin( 0, m_cALFSvlcSCModel.get( 0, 0, 0 ) );
@@ -3179,6 +3243,7 @@ Void TEncSbac::codeAlfSvlc       ( Int iCode )
     }
     m_pcBinIf->encodeBin( 0, m_cALFSvlcSCModel.get( 0, 0, 2 ) );
   }
+#endif
 }
 #endif
 

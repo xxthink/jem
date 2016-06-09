@@ -165,7 +165,9 @@ Void TDecGop::decompressSlice(TComInputBitstream* pcBitstream, TComPic* pcPic
   {
     for( Int i = 0; i < COM16_C806_ALF_TEMPPRED_NUM; i++ )
     {
+#if !JVET_C0038_GALF
       m_acStoredAlfPara[i].coeff        = NULL;
+#endif
       m_acStoredAlfPara[i].coeff_chroma = NULL;
       m_acStoredAlfPara[i].coeffmulti = NULL;
       m_acStoredAlfPara[i].alf_cu_flag = NULL;
@@ -247,6 +249,9 @@ Void TDecGop::filterPicture(TComPic* pcPic)
       m_iStoredAlfParaNum++;
       m_acStoredAlfPara[iIdx].temproalPredFlag = false;
       m_pcAdaptiveLoopFilter->copyALFParam( &m_acStoredAlfPara[iIdx], &m_cAlfParam );
+#if JVET_C0038_GALF
+      m_pcAdaptiveLoopFilter->resetALFPredParam(&m_acStoredAlfPara[iIdx], (pcSlice->getSliceType()== I_SLICE? true: false));
+#endif
     }
 #endif
     m_pcAdaptiveLoopFilter->freeALFParam(&m_cAlfParam);
