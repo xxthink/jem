@@ -114,6 +114,8 @@ private:
   Int **m_FilterCoeffQuantTemp;
 #if JVET_C0038_GALF
   Int **m_imgY_preFilter;
+  Double m_filterCoeffPrev[m_NO_VAR_BINS*JVET_C0038_NO_PREV_FILTERS][21];
+  Double m_filterCoeffDefault[21];
 #endif
   static Int  m_aiTapPos9x9_In9x9Sym[21];
   static Int  m_aiTapPos7x7_In9x9Sym[14];
@@ -163,6 +165,7 @@ private:
   Int    xGauss               ( Double **a, Int N );
   
 #if JVET_C0038_GALF
+  Void  xInitFixedFilters();
   Void  setInitialMask(TComPicYuv* pcPicOrg, TComPicYuv* pcPicDec, ALFParam* pcAlfParam);
 #else
   Void  setInitialMask(TComPicYuv* pcPicOrg, TComPicYuv* pcPicDec);

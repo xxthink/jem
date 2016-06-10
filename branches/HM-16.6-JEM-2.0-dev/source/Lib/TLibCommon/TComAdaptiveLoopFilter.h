@@ -116,13 +116,6 @@ void initMatrix_int(int ***m2D, int d1, int d2);
 /// adaptive loop filter class
 class TComAdaptiveLoopFilter
 {
-#if JVET_C0038_GALF
-public:
-  Int m_max_NO_VAR_BINS; 
-  Int m_max_NO_FILTERS;
-  Double m_filterCoeffPrev[25*JVET_C0038_NO_PREV_FILTERS][21];
-  Double m_filterCoeffDefault[21];
-#endif
 protected:
 #if !JVET_C0038_GALF
   static const Int m_ALF_VAR_SIZE_H        = 4;
@@ -190,9 +183,14 @@ public:
 
 public:
   static const Int* m_pDepthIntTab[m_NO_TEST_FILT];
+#if JVET_C0038_GALF
+  Int m_max_NO_VAR_BINS; 
+  Int m_max_NO_FILTERS;
+#endif
 
 protected:
 #if JVET_C0038_GALF
+  static const Int m_ALFfilterCoeffFixed[m_NO_FILTERS*JVET_C0038_NO_PREV_FILTERS][21]; /// fixed filters used in ALF.
   static const Int depthInt9x9Cut[21];
   static const Int depthInt7x7Cut[14];
   static const Int depthInt5x5Cut[8];
@@ -306,7 +304,6 @@ protected:
 #endif
 #if JVET_C0038_GALF
   Int selectTransposeVarInd(Int varInd, Int *transpose);
-  Void initFixedFilters();
 #endif  
   // ------------------------------------------------------------------------------------------------------------------
   // For chroma component

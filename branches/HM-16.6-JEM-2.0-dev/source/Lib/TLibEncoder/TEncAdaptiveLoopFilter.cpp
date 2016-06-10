@@ -51,7 +51,6 @@
 // ====================================================================================================================
 // Tables
 // ====================================================================================================================
-
 const Int TEncAdaptiveLoopFilter::m_aiSymmetricArray9x9[81] =
 {
    0,  1,  2,  3,  4,  5,  6,  7,  8,
@@ -297,7 +296,7 @@ Void TEncAdaptiveLoopFilter::ALFProcess( ALFParam* pcAlfParam, Double dLambdaLum
   resetALFParam( m_pcTempAlfParam );
 
 #if JVET_C0038_GALF  
-  initFixedFilters();
+  xInitFixedFilters();
 #endif
   // set lambda
   m_dLambdaLuma   = dLambdaLuma;
@@ -1487,6 +1486,20 @@ Void TEncAdaptiveLoopFilter::xdecideCoeffForce0(int codedVarBins[m_NO_VAR_BINS],
   }   
 }
 #if JVET_C0038_GALF
+Void TEncAdaptiveLoopFilter::xInitFixedFilters()
+{
+  Int factor = (1<<(m_NUM_BITS-1));
+  Int maxFilterLength = m_MAX_SQR_FILT_LENGTH/2 + 1;
+  for(Int i = 0; i < maxFilterLength; i++)
+  {
+    for (Int j=0; j<m_NO_FILTERS*JVET_C0038_NO_PREV_FILTERS; j++)
+    {
+      m_filterCoeffPrev[j][i]=(Double)m_ALFfilterCoeffFixed[j][i]/(Double)factor;
+    }
+  }
+  memset( m_filterCoeffDefault, 0, (maxFilterLength-1)*sizeof(Double) );
+  m_filterCoeffDefault[maxFilterLength - 1] = 1.0;
+}
 Double TEncAdaptiveLoopFilter::xfindBestCoeffCodMethod(Bool codedVarBins[m_NO_VAR_BINS], Bool *forceCoeff0, Int fl, Int sqrFiltLength, 
                                                        Int filters_per_fr, Double errorForce0CoeffTab[m_NO_VAR_BINS][2], 
                                                        Double *errorQuant, Double lambda, const TComSlice * pSlice)
@@ -3414,7 +3427,7 @@ Void TEncAdaptiveLoopFilter::xfindBestFilterPredictor(Double ***E_temp, Double**
         for (i=0; i<iFixedFilters; i++)
         {
           filterNo=varInd*iFixedFilters + i;
-          error = xTestFixedFilterFast(E_temp, y_temp, pixAcc_temp, TComAdaptiveLoopFilter::m_filterCoeffPrev[filterNo], TComAdaptiveLoopFilter::m_filterCoeffDefault, varInd);
+          error = xTestFixedFilterFast(E_temp, y_temp, pixAcc_temp, m_filterCoeffPrev[filterNo], m_filterCoeffDefault, varInd);
 
           if (error<errorMin || i==0)
           {
