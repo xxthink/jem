@@ -185,6 +185,9 @@ public:
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& bCbfCU
 #endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+    , Int& iNonZeroCoeffNonTs
+#endif
     );
   Void parseTransformSkipFlags ( class TComTU &rTu, ComponentID component );
 

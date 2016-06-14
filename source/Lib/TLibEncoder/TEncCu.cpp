@@ -2928,9 +2928,15 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 #if  VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
   Int bNonZeroCoeff = false;
 #endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+  Int iNonZeroCoeffNonTs;
+#endif
   m_pcEntropyCoder->encodeCoeff( pcCU, uiAbsPartIdx, uiDepth, bCodeDQP, codeChromaQpAdj
 #if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
     , bNonZeroCoeff
+#endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+    , iNonZeroCoeffNonTs
 #endif
     );
   setCodeChromaQpAdjFlag( codeChromaQpAdj );
@@ -4040,12 +4046,18 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
 #if QTBT_NSST
   UChar ucNsstIdx = rpcTempCU->getROTIdx( rpcTempCU->getTextType(), 0 );
 #endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+  Int   iNonZeroCoeffNonTs;
+#endif
 
   Bool bCodeDQP = getdQPFlag();
   Bool codeChromaQpAdjFlag = getCodeChromaQpAdjFlag();
   m_pcEntropyCoder->encodeCoeff( rpcTempCU, 0, uiDepth, bCodeDQP, codeChromaQpAdjFlag
 #if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
     , bNonZeroCoeff
+#endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+    , iNonZeroCoeffNonTs
 #endif
     );
   setCodeChromaQpAdjFlag( codeChromaQpAdjFlag );
@@ -4064,7 +4076,11 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
 #if QTBT_NSST
   const Int iNonZeroCoeffThr = isLuma(rpcTempCU->getTextType()) ? NSST_SIG_NZ_LUMA + (rpcTempCU->getSlice()->isIntra() ? 0 : NSST_SIG_NZ_CHROMA) : NSST_SIG_NZ_CHROMA;
 
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+  if ( ucNsstIdx && iNonZeroCoeffNonTs <= iNonZeroCoeffThr && iNonZeroCoeffNonTs>0 )
+#else
   if ( ucNsstIdx && bNonZeroCoeff <= iNonZeroCoeffThr && bNonZeroCoeff>0 )
+#endif
   {
     rpcTempCU->getTotalCost() = MAX_DOUBLE;
   }

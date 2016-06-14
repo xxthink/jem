@@ -6346,9 +6346,17 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
 #elif COM16_C1044_NSST
 #if JVET_C0024_QTBT
     Char ucNsstIdx = pcCU->getROTIdx(toChannelType(compID), uiAbsPartIdx) ;
-    if (ucNsstIdx && uiWidth>=4 && uiHeight>=4)
+    if (ucNsstIdx && uiWidth>=4 && uiHeight>=4
+#if  JVET_C0045_C0053_NO_NSST_FOR_TS
+      && !pcCU->getTransformSkip(uiAbsPartIdx, compID)
+#endif
+      )
 #else
-      if (pcCU->getROTIdx(uiAbsPartIdx) )
+      if (pcCU->getROTIdx(uiAbsPartIdx) 
+#if  JVET_C0045_C0053_NO_NSST_FOR_TS
+        && !pcCU->getTransformSkip(uiAbsPartIdx, compID)
+#endif
+        )
 #endif
       {           
         static Int NSST_MATRIX[16];
@@ -6629,9 +6637,17 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
 #elif COM16_C1044_NSST
 #if JVET_C0024_QTBT
     Char ucNsstIdx = pcCU->getROTIdx(toChannelType(compID), uiAbsPartIdx) ;
-    if (ucNsstIdx && uiWidth>=4 && uiHeight>=4)
+    if (ucNsstIdx && uiWidth>=4 && uiHeight>=4
+#if  JVET_C0045_C0053_NO_NSST_FOR_TS
+      && !pcCU->getTransformSkip(uiAbsPartIdx, compID)
+#endif
+      )
 #else
-    if (pcCU->getROTIdx(uiAbsPartIdx))
+    if (pcCU->getROTIdx(uiAbsPartIdx)
+#if  JVET_C0045_C0053_NO_NSST_FOR_TS
+      && !pcCU->getTransformSkip(uiAbsPartIdx, compID)
+#endif
+      )
 #endif
     {   
 #if !JVET_C0024_QTBT
