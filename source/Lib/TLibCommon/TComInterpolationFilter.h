@@ -55,8 +55,10 @@
 
 #if COM16_C1016_AFFINE
 #define IF_FILTER_PREC_AFFINE    8  ///< Log2 of sum of affine filter taps
+#if !JVET_C0025_AFFINE_FILTER_SIMPLIFICATION
 #define NFRACS_LUMA_AFFINE       64 ///< Number of fraction positions for luma affine MCP
 #define NFRACS_CHROMA_AFFINE     64 ///< Number of fraction positions for chroma affine MCP
+#endif
 #endif
 
 /**
@@ -89,8 +91,10 @@ class TComInterpolationFilter
 #endif
 
 #if COM16_C1016_AFFINE
+#if !JVET_C0025_AFFINE_FILTER_SIMPLIFICATION
   static const Short m_lumaFilterAffine[(NFRACS_LUMA_AFFINE)*NTAPS_LUMA];
   static const Short m_chromaFilterAffine[(NFRACS_CHROMA_AFFINE)*NTAPS_CHROMA];
+#endif
 #endif
 
   static Void filterCopy(Int bitDepth, const Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Bool isFirst, Bool isLast);
@@ -104,6 +108,7 @@ class TComInterpolationFilter
   static Void filterVer(Int bitDepth, Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Bool isFirst, Bool isLast, TFilterCoeff const *coeff);
 
 #if COM16_C1016_AFFINE
+#if !JVET_C0025_AFFINE_FILTER_SIMPLIFICATION
   template<Int N, Bool isVertical, Bool isFirst, Bool isLast>
   static Void filterAffine(Int bitDepth, Pel const *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height, Short const *coeff);
 
@@ -111,6 +116,7 @@ class TComInterpolationFilter
   static Void filterHorAffine(Int bitDepth, Pel *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height,               Bool isLast, Short const *coeff);
   template<Int N>
   static Void filterVerAffine(Int bitDepth, Pel *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height, Bool isFirst, Bool isLast, Short const *coeff);
+#endif
 #endif
 
 public:
@@ -129,8 +135,10 @@ public:
     );
 
 #if COM16_C1016_AFFINE
+#if !JVET_C0025_AFFINE_FILTER_SIMPLIFICATION
   Void filterHorAffine(const ComponentID compID, Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Int frac,               Bool isLast, const ChromaFormat fmt, const Int bitDepth );
   Void filterVerAffine(const ComponentID compID, Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Int frac, Bool isFirst, Bool isLast, const ChromaFormat fmt, const Int bitDepth );
+#endif
 #endif
 };
 
