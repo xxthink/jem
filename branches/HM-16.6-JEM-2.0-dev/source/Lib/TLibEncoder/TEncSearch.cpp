@@ -202,12 +202,21 @@ TEncSearch::TEncSearch()
 
   setWpScalingDistParam( NULL, -1, REF_PIC_LIST_X );
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+#if JVET_C0035_ATMVP_SIMPLIFICATION
+  for (Int i=0; i< NUM_MGR_TYPE; i++)
+  {
+    m_pMvFieldSP[i] = new TComMvField[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH*2];
+    m_phInterDirSP[i] = new UChar[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
+    assert( m_pMvFieldSP[i] != NULL && m_phInterDirSP[i] != NULL );
+  }
+#else
   m_pMvFieldSP[0] = new TComMvField[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH*2];
   m_pMvFieldSP[1] = new TComMvField[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH*2];
   m_phInterDirSP[0] = new UChar[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
   m_phInterDirSP[1] = new UChar[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
   assert( m_pMvFieldSP[0] != NULL && m_phInterDirSP[0] != NULL );
   assert( m_pMvFieldSP[1] != NULL && m_phInterDirSP[1] != NULL );
+#endif
 #endif
 
 #if VCEG_AZ07_FRUC_MERGE
@@ -416,7 +425,11 @@ Void TEncSearch::destroy()
   m_tmpYuvPred.destroy();
   m_isInitialized = false;
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+#if JVET_C0035_ATMVP_SIMPLIFICATION
+  for (UInt ui=0;ui<NUM_MGR_TYPE;ui++)
+#else
   for (UInt ui=0;ui<2;ui++)
+#endif
   {
     if( m_pMvFieldSP[ui] != NULL )
     {
@@ -6017,8 +6030,13 @@ Void TEncSearch::xGetInterPredictionError( TComDataCU* pcCU, TComYuv* pcYuvOrg, 
 Void TEncSearch::xMergeEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPUIdx, UInt& uiInterDir, TComMvField* pacMvField, UInt& uiMergeIndex, Distortion& ruiCost, TComMvField* cMvFieldNeighbours, UChar* uhInterDirNeighbours, Int& numValidMergeCand
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
   , UChar*          pMergeTypeNeighbor 
+#if JVET_C0035_ATMVP_SIMPLIFICATION
+    , TComMvField*    pcMvFieldSP[NUM_MGR_TYPE]
+    , UChar*          puhInterDirSP[NUM_MGR_TYPE]
+#else
     , TComMvField*    pcMvFieldSP[2]
     , UChar*          puhInterDirSP[2]
+#endif
 #endif
   )
 {
@@ -6092,7 +6110,11 @@ Void TEncSearch::xMergeEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPUI
 
       UInt uiSPAddr;
       Int iNumSPInOneLine, iNumSP, iSPWidth, iSPHeight;
+#if JVET_C0035_ATMVP_SIMPLIFICATION
+      UInt uiSPListIndex = pMergeTypeNeighbor[uiMergeCand];
+#else
       UInt uiSPListIndex = pMergeTypeNeighbor[uiMergeCand]==MGR_TYPE_SUBPU_TMVP?0:1;
+#endif
       pcCU->getSPPara(iWidth, iHeight, iNumSP, iNumSPInOneLine, iSPWidth, iSPHeight);
 
       for (Int iPartitionIdx = 0; iPartitionIdx < iNumSP; iPartitionIdx++)
@@ -6823,7 +6845,11 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
           UInt uiSPAddr;
           Int iNumSPInOneLine, iNumSP, iSPWidth, iSPHeight;
           pcCU->getSPPara(iRoiWidth, iRoiHeight, iNumSP, iNumSPInOneLine, iSPWidth, iSPHeight);
+#if JVET_C0035_ATMVP_SIMPLIFICATION
+          UInt uiSPListIndex = eMergeCandTypeNieghors[uiMRGIndex];
+#else
           UInt uiSPListIndex = eMergeCandTypeNieghors[uiMRGIndex]==MGR_TYPE_SUBPU_TMVP ? 0:1;
+#endif
           for (Int iPartitionIdx = 0; iPartitionIdx < iNumSP; iPartitionIdx++)
           {
             pcCU->getSPAbsPartIdx(uiPartAddr, iSPWidth, iSPHeight, iPartitionIdx, iNumSPInOneLine, uiSPAddr);

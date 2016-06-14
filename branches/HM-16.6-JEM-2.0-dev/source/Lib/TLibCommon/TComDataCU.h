@@ -784,33 +784,60 @@ public:
 #endif
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
   , UChar*          peMergeTypeNeighbors
+#if JVET_C0035_ATMVP_SIMPLIFICATION
+  , TComMvField*    pcMvFieldSP[NUM_MGR_TYPE]
+  , UChar*          puhInterDirSP[NUM_MGR_TYPE]
+#else
   , TComMvField*    pcMvFieldSP[2]
   , UChar*          puhInterDirSP[2]
+#endif
   , UInt            uiDecCurrAbsPartIdx = 0
   , TComDataCU*     pDecCurrCU = NULL
 #endif
     , Int mrgCandIdx = -1 );
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
-  Void          get1stTvFromSpatialNeighbor ( UInt uiAbsPartIdx, UInt uiPUIdx, Bool &bTvAva, Int &iPOC, TComMv &rcMv);
+  
   Void          getSPPara(Int iPUWidth, Int iPUHeight, Int& iNumSP, Int& iNumSPInOneLine, Int& iSPWidth, Int& iSPHeight);
   Void          getSPAbsPartIdx(UInt uiBaseAbsPartIdx, Int iWidth, Int iHeight, Int iPartIdx, Int iNumPartLine, UInt& ruiPartAddr );
   Void          setInterDirSP( UInt uiDir, UInt uiAbsPartIdx, Int iWidth, Int iHeight );
+
+#if JVET_C0035_ATMVP_SIMPLIFICATION
+  Bool          getInterMergeSubPUTmvpCandidate ( UInt uiAbsPartIdx, UInt uiPUIdx,UInt uiCount,TComMvField* pcMvFieldNeighbours, UChar* puhInterDirNeighbours,
+                                                   TComMvField* pcMvFieldSP, UChar* puhInterDirSP, TComMvField* pcMvFieldDefault, UChar* pcInterDirDefault, Bool bMrgIdxMatchATMVPCan, 
+#if VCEG_AZ06_IC
+    Bool& rbICFlag,
+#endif
+    TComDataCU* pDecCurrCU = NULL, UInt uiDecCurrAbsPartIdx=0);
+#else
+  Void          get1stTvFromSpatialNeighbor ( UInt uiAbsPartIdx, UInt uiPUIdx, Bool &bTvAva, Int &iPOC, TComMv &rcMv);
   Bool          getInterMergeSubPUTmvpCandidate ( UInt uiPUIdx,  TComMvField* pcMvFieldSP, UChar* puhInterDirSP, TComMvField* pcMvFieldDefault, UChar* pcInterDirDefault, TComMv cTMv, Bool bMrgIdxMatchATMVPCan, 
 #if VCEG_AZ06_IC
     Bool& rbICFlag,
 #endif
     Int iPocColPic =0, TComDataCU* pDecCurrCU = NULL, UInt uiDecCurrAbsPartIdx=0);
+#endif
+
   Bool          deriveScaledMotionTemporalForOneDirection( TComDataCU* pcTempCU,RefPicList eCurrRefPicList, TComMv &cColMv, UInt uiAbsPartIdx, Int iTargetRefIdx, 
 #if VCEG_AZ06_IC
     Bool& rbICFlag,
 #endif
+#if JVET_C0035_ATMVP_SIMPLIFICATION
+    TComPic *pColPic,  RefPicList eFetchRefPicList=REF_PIC_LIST_0);
+#else
     TComPic *pColPic);
+#endif
   TComPic*      getPicfromPOC (Int iPocColPic);
 
   Void getNeighboringMvField(TComDataCU *pcCU, UInt uiPartIdx, TComMvField *cMvField,UChar *pucInterDir);
   Void generateMvField(TComMvField *cMvField,UChar* pucInterDir, UInt uiMvNum,TComMvField* cMvFieldMedian,UChar &ucInterDirMedian);  
   Bool getInterMergeSubPURecursiveCandidate( UInt uiAbsPartIdx, UInt uiPUIdx, TComMvField* pcMvFieldNeighbours, UChar* puhInterDirNeighbours, Int& numValidMergeCand
-  , UChar*          peMergeTypeNeighbors  , TComMvField*    pcMvFieldSP[2] , UChar*          puhInterDirSP[2] , Int iCount );
+  , UChar*          peMergeTypeNeighbors  , 
+#if JVET_C0035_ATMVP_SIMPLIFICATION
+    TComMvField* pcMvFieldSP[NUM_MGR_TYPE] , UChar* puhInterDirSP[NUM_MGR_TYPE] ,
+#else
+    TComMvField* pcMvFieldSP[2] , UChar* puhInterDirSP[2] ,
+#endif
+  Int iCount );
 #endif
 #if VCEG_AZ07_IMV
 #if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE

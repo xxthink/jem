@@ -127,6 +127,7 @@
 #define COM16_C806_HEVC_MOTION_CONSTRAINT_REMOVAL         1
 #define COM16_C806_DISABLE_4X4_PU                         1
 #define COM16_C806_GEN_MRG_IMPROVEMENT                    1
+#define JVET_C0035_ATMVP_SIMPLIFICATION                   1 ///< JVET-C0035 ATMVP_SIMPLIFICATION
 #endif
 
 #define COM16_C806_OBMC                                   1  ///< Overlapped block motion compensation (OBMC)
@@ -448,9 +449,17 @@ typedef       float           EigenType;
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
 enum MergeType
 {
+#if JVET_C0035_ATMVP_SIMPLIFICATION
+  MGR_TYPE_DEFAULT_N  = 0, // 0
+  MGR_TYPE_SUBPU_ATMVP = 1, // 1
+  MGR_TYPE_SUBPU_ATMVP_EXT =2, // 2
+  NUM_MGR_TYPE =3,              // 3
+#else
   MGR_TYPE_DEFAULT_N  = 0, // 0
   MGR_TYPE_SUBPU_TMVP = 1, // 1
   MGR_TYPE_SUBPU_TMVP_EXT =2, // 2
+  NUM_MGR_TYPE =3, 
+#endif
 };
 #endif
 
