@@ -217,6 +217,9 @@
 #endif                                                       
 
 #define COM16_C1044_NSST                                  1  ///< Mode dependent non-separable secondary transforms
+#if COM16_C1044_NSST || VCEG_AZ05_ROT_TR
+#define JVET_C0042_UNIFIED_BINARIZATION 1       // unified binarization for NSST index and context modeling based on partition type and intra prediction mode
+#endif
 #if COM16_C1044_NSST && VCEG_AZ05_ROT_TR                     
 #error                                                       
 #endif                                                       
