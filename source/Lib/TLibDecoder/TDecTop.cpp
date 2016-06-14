@@ -723,6 +723,31 @@ Bool TDecTop::xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisp
 
     //---------------
     pcSlice->setRefPOCList();
+#if JVET_C0027_BIO
+  if (pcSlice->getSliceType() != B_SLICE) // there is no bi-pred
+  {
+   pcSlice->setBioLDBPossible(false);   
+  }
+  else if (pcSlice->getNumRefIdx(REF_PIC_LIST_0)<=1 && pcSlice->getNumRefIdx(REF_PIC_LIST_1)<=1)
+  {
+    Int  iPOCcurrent = pcSlice->getPOC();
+    Int  iPOCL0 =  pcSlice->getRefPOC(REF_PIC_LIST_0,0); 
+    Int  iPOCL1 =  pcSlice->getRefPOC(REF_PIC_LIST_1,0); 
+    if (abs (iPOCL0-iPOCcurrent) ==1 && abs(iPOCL1-iPOCcurrent)==1)
+    {
+       pcSlice->setBioLDBPossible(true);  // this is LDB
+    }
+    else
+    {
+       pcSlice->setBioLDBPossible(false); // this is RA
+    }
+  }
+
+  else   // check wheather bi-pred from different time direction is possible
+  {
+    pcSlice->setBioLDBPossible(pcSlice->getCheckLDC()); // this is LDB
+  }
+#endif
   }
 
   m_pcPic->setCurrSliceIdx(m_uiSliceIdx);

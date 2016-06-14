@@ -199,6 +199,7 @@
 
 #if VCEG_AZ05_BIO                                            
 #define COM16_C1045_BIO_HARMO_IMPROV                      1  ///< Improvement of BIO
+#define JVET_C0027_BIO                                    1   /// MV refinement max value up, BIO_LDB check optimization,  BIO  for 1/16 pel MV support
 #endif                                                       
 
 #define COM16_C1016_AFFINE                                1  ///< Affine motion prediction

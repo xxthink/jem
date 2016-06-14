@@ -1512,6 +1512,9 @@ class TComSlice
 private:
   //  Bitstream writing
   Bool                       m_saoEnabledFlag[MAX_NUM_CHANNEL_TYPE];
+#if JVET_C0027_BIO
+  Bool                       m_bioLDBPossible;
+#endif
   Int                        m_iPPSId;               ///< picture parameter set ID
   Bool                       m_PicOutputFlag;        ///< pic_output_flag
   Int                        m_iPOC;
@@ -1659,6 +1662,10 @@ public:
   Bool                        getPicOutputFlag() const                               { return m_PicOutputFlag;                                       }
   Void                        setSaoEnabledFlag(ChannelType chType, Bool s)          {m_saoEnabledFlag[chType] =s;                                   }
   Bool                        getSaoEnabledFlag(ChannelType chType) const            { return m_saoEnabledFlag[chType];                              }
+#if JVET_C0027_BIO
+ Void                        setBioLDBPossible(Bool s)            { m_bioLDBPossible =s;                                   }
+ Bool                        getBioLDBPossible() const            { return m_bioLDBPossible;                              }
+#endif
   Void                        setRPS( const TComReferencePictureSet *pcRPS )         { m_pRPS = pcRPS;                                               }
   const TComReferencePictureSet* getRPS()                                            { return m_pRPS;                                                }
   TComReferencePictureSet*    getLocalRPS()                                          { return &m_localRPS;                                           }

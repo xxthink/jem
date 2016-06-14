@@ -157,7 +157,9 @@ TComSlice::TComSlice()
   {
     m_saoEnabledFlag[ch] = false;
   }
-
+#if JVET_C0027_BIO
+  m_bioLDBPossible = false;
+#endif
 #if VCEG_AZ07_FRUC_MERGE
   m_bFrucRefIdxPairValid = false;
   if( TComSlice::m_bScaleFactorValid == false )
@@ -804,7 +806,9 @@ Void TComSlice::copySliceInfo(TComSlice *pSrc)
   {
     m_saoEnabledFlag[ch] = pSrc->m_saoEnabledFlag[ch];
   }
-
+#if JVET_C0027_BIO
+  m_bioLDBPossible = pSrc->m_bioLDBPossible;
+#endif
   m_cabacInitFlag                 = pSrc->m_cabacInitFlag;
 
   m_bLMvdL1Zero                   = pSrc->m_bLMvdL1Zero;

@@ -206,7 +206,7 @@ protected:
 #if VCEG_AZ05_BIO                  
     , Bool bBIOapplied 
 #endif
-#if COM16_C1045_BIO_HARMO_IMPROV
+#if COM16_C1045_BIO_HARMO_IMPROV || JVET_C0027_BIO
     , TComDataCU * pCu
 #endif
     );
