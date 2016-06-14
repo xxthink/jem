@@ -1653,7 +1653,7 @@ Void TComPrediction::xPredInterBi ( TComDataCU* pcCU, UInt uiPartAddr, Int iWidt
 #if VCEG_AZ05_BIO                  
       ,bBIOapplied
 #endif
-#if COM16_C1045_BIO_HARMO_IMPROV
+#if COM16_C1045_BIO_HARMO_IMPROV || JVET_C0027_BIO
       , pcCU 
 #endif
       );
@@ -1780,11 +1780,11 @@ Void TComPrediction::xPredInterBlk(const ComponentID compID, TComDataCU *cu, TCo
     }
 
     ref -=(2+2*refStride);
-#if JVET_B058_HIGH_PRECISION_MOTION_VECTOR_MC
+#if JVET_B058_HIGH_PRECISION_MOTION_VECTOR_MC && !JVET_C0027_BIO
     xGradFilterY(ref , refStride,pGradY,iWidthG,iWidthG,iHeightG, yFrac>>VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE,  xFrac>>VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE,  bitDepth);
     xGradFilterX(ref , refStride,pGradX,iWidthG,iWidthG,iHeightG, yFrac>>VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE,  xFrac>>VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE,  bitDepth);
 #else
-#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE == 1
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE == 1 && !JVET_C0027_BIO
     xGradFilterY(ref , refStride,pGradY,iWidthG,iWidthG,iHeightG, yFrac>>1,  xFrac>>1,  bitDepth);
     xGradFilterX(ref , refStride,pGradX,iWidthG,iWidthG,iHeightG, yFrac>>1,  xFrac>>1,  bitDepth);
 #else
@@ -2169,7 +2169,7 @@ Void TComPrediction::xWeightedAverage( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, I
 #if VCEG_AZ05_BIO                  
   ,bool bBIOapplied
 #endif
-#if COM16_C1045_BIO_HARMO_IMPROV
+#if COM16_C1045_BIO_HARMO_IMPROV || JVET_C0027_BIO
   , TComDataCU * pCu
 #endif
 )
@@ -2238,7 +2238,16 @@ Void TComPrediction::xWeightedAverage( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, I
       static const int  bitDepth =clipBitDepths.recon[toChannelType(COMPONENT_Y)];
       static const int  shiftNum    = IF_INTERNAL_PREC + 1 - bitDepth;
       static const int  offset      = ( 1 << ( shiftNum - 1 ) ) + 2 * IF_INTERNAL_OFFS;
+#if JVET_C0027_BIO
+      static const bool bShortRefMV =  (pCu->getSlice()->getCheckLDC()
+#if COM16_C1045_BIO_HARMO_IMPROV
+        && pCu->isBIOLDB(uiPartIdx)
+#endif
+        );
+      static const Int64 limit = (12<<(IF_INTERNAL_PREC -bShortRefMV - bitDepth)); 
+#else
       static const Int64 limit = (12<<(IF_INTERNAL_PREC-1- bitDepth)); 
+#endif
       static const Int64 regularizator_1 = 500* (1<< (bitDepth-8))* (1<< (bitDepth-8));
       static const Int64 regularizator_2 =regularizator_1<<1;
       static const Int64 denom_min_1 = 700* (1<< (bitDepth-8))* (1<< (bitDepth-8));
@@ -2374,6 +2383,94 @@ Void TComPrediction::xWeightedAverage( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, I
 }
 
 #if VCEG_AZ05_BIO 
+#if JVET_C0027_BIO && JVET_B058_HIGH_PRECISION_MOTION_VECTOR_MC
+const Short m_lumaGradientFilter[4<<VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE][BIO_FILTER_LENGTH] =
+{
+  {       8,     -39,      -3,      46,     -17,       5 },//0
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  {       8,     -32,     -13,      50,     -18,       5,}, //1 -->-->
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 1 
+  {       7,     -27,     -20,      54,     -19,       5,}, //2-->
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+ {       6,     -21,     -29,      57,     -18,       5,}, //3-->-->
+#endif
+  {       4,     -17,     -36,      60,     -15,       4,},//4
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+ {       3,      -9,     -44,      61,     -15,       4,},//5-->-->
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 1 
+ {       1,      -4,     -48,      61,     -13,       3,},//6-->
+#endif
+  #if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  {       0,       1,     -54,      60,      -9,       2,},//7-->-->
+#endif
+  {      -1,       4,     -57,      57,      -4,       1 },//8
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  {      -2,       9,     -60,      54,      -1,       0,},//9-->-->
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 1 
+  {      -3,      13,     -61,      48,       4,      -1,},//10-->
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  {      -4,      15,     -61,      44,       9,      -3,},//11-->-->
+#endif
+  {      -4,      15,     -60,      36,      17,      -4,},//12
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  {      -5,      18,     -57,      29,      21,      -6,},//13-->-->
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 1 
+  {      -5,      19,     -54,      20,      27,      -7,},//14-->
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  {      -5,      18,     -50,      13,      32,      -8,},//15-->-->
+#endif
+};
+const Short m_lumaInterpolationFilter[4<<VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE][BIO_FILTER_LENGTH] =
+{
+  {       0,       0,      64,       0,       0,       0,},//0
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  {       1,      -3,      64,       4,      -2,       0,},//1 -->-->
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 1 
+  {       1,      -6,      62,       9,      -3,       1,},//2-->
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  {       2,      -8,      60,      14,      -5,       1,},//3-->-->
+#endif
+  {       2,      -9,      57,      19,      -7,       2,},//4
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  {       3,     -10,      53,      24,      -8,       2,},//5-->-->
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 1 
+  {       3,     -11,      50,      29,      -9,       2,},//6-->
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  {       3,     -11,      44,      35,     -10,       3,},//7-->-->
+#endif
+  {       1,      -7,      38,      38,      -7,       1,},//8
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+ {       3,     -10,      35,      44,     -11,       3,},//9-->-->
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 1 
+  {       2,      -9,      29,      50,     -11,       3,},//10-->
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  {       2,      -8,      24,      53,     -10,       3,},//11-->-->
+#endif
+  {       2,      -7,      19,      57,      -9,       2,},//12
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  {       1,      -5,      14,      60,      -8,       2,},//13-->-->
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 1 
+  {       1,      -3,       9,      62,      -6,       1,},//14-->
+#endif
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE >= 2 
+  {       0,      -2,       4,      64,      -3,       1,},//15-->-->
+#endif
+};
+#else
 const Short m_lumaGradientFilter[4][BIO_FILTER_LENGTH] =
 {
   {  8,      -39,       -3,       46,      -17,        5 },
@@ -2388,7 +2485,7 @@ const Short m_lumaInterpolationFilter[4][BIO_FILTER_LENGTH] =
   {      1,   -7,  38,  38,   -7,    1  },
   {      2,   -7,  19,  57,   -9,    2  },
 };
-
+#endif
 
 __inline Void TComPrediction::gradFilter2DVer (Pel* piSrc, Int iSrcStride,  Int iWidth, Int iHeight, Int iDstStride,  
   Pel*& rpiDst, Int iMV, const Int iShift)

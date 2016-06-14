@@ -7744,6 +7744,9 @@ Void TComDataCU::getMaxMinCUDepth( UChar & rucMinDepth , UChar & rucMaxDepth , U
 Bool TComDataCU::isBIOLDB( UInt uiAbsPartIdx )
 {
   Bool BIOLDB = false;
+#if  JVET_C0027_BIO
+  if (!getSlice()->getBioLDBPossible() ) return( BIOLDB );
+#endif
   TComCUMvField * pCuMvField0 = getCUMvField( REF_PIC_LIST_0 );
   TComCUMvField * pCuMvField1 = getCUMvField( REF_PIC_LIST_1 );
   if( getSlice()->getCheckLDC()
