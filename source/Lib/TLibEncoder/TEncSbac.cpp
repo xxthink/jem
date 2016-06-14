@@ -903,11 +903,22 @@ Void TEncSbac::codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
     Int idxROT = pcCU->getROTIdx( uiAbsPartIdx );
 #endif
     assert(idxROT<3);
+
+#if JVET_C0042_UNIFIED_BINARIZATION
+            m_pcBinIf->encodeBin(  idxROT ? 1 : 0 , m_cROTidxSCModel.get(0,0, 1) );
+            if( idxROT )
+            {
+                   if(idxROT ==1) m_pcBinIf->encodeBin( 0 , m_cROTidxSCModel.get(0,0, 3) );
+                   else m_pcBinIf->encodeBin( 1 , m_cROTidxSCModel.get(0,0, 3) );
+            } 
+#else //#if JVET_C0042_UNIFIED_BINARIZATION
+
     m_pcBinIf->encodeBin( idxROT ? 1 : 0, m_cROTidxSCModel.get(0,0, 0 ) );
     if( idxROT )
     {
       m_pcBinIf->encodeBin( (idxROT-1) ? 1 : 0, m_cROTidxSCModel.get(0,0, 1 ) );
     }
+ #endif //#if JVET_C0042_UNIFIED_BINARIZATION
   }
   else
 #endif
@@ -918,10 +929,25 @@ Void TEncSbac::codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
 #else
       Int idxROT = pcCU->getROTIdx( uiAbsPartIdx );
 #endif
+
+#if JVET_C0042_UNIFIED_BINARIZATION
+            m_pcBinIf->encodeBin(  idxROT ? 1 : 0 , m_cROTidxSCModel.get(0,0, 0) );
+            if( idxROT )
+            {
+                     m_pcBinIf->encodeBin( (idxROT-1) ? 1 : 0 , m_cROTidxSCModel.get(0,0, 2) );
+
+                    if(idxROT >1 )
+                    {
+                        m_pcBinIf->encodeBin( (idxROT-2) ? 1 : 0, m_cROTidxSCModel.get(0,0, 4) );
+                    }
+               
+            } 
+#else
       const UInt uiSymbol0 = (idxROT >>1);
       const UInt uiSymbol1 = (idxROT %2 );
       m_pcBinIf->encodeBin( uiSymbol0, m_cROTidxSCModel.get(0,0, uiDepth ) );
       m_pcBinIf->encodeBin( uiSymbol1, m_cROTidxSCModel.get(0,0, uiDepth ) );
+#endif
   }
 }
 
@@ -959,21 +985,44 @@ Void TEncSbac::codeROTIdxChroma ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDep
   {
     Int idxROT = pcCU->getROTIdx( CHANNEL_TYPE_CHROMA, uiAbsPartIdx );
     assert(idxROT<3);
+#if JVET_C0042_UNIFIED_BINARIZATION
+      m_pcBinIf->encodeBin(  idxROT ? 1 : 0 , m_cROTidxSCModel.get(0,0, 1) );
+            if( idxROT )
+            {
+                   if(idxROT ==1) m_pcBinIf->encodeBin( 0 , m_cROTidxSCModel.get(0,0, 3) );
+                   else m_pcBinIf->encodeBin( 1 , m_cROTidxSCModel.get(0,0, 3) );
+            } 
+#else
     m_pcBinIf->encodeBin( idxROT ? 1 : 0, m_cROTidxSCModel.get(0,0, 0 ) );
     if( idxROT )
     {
       m_pcBinIf->encodeBin( (idxROT-1) ? 1 : 0, m_cROTidxSCModel.get(0,0, 1 ) );
     }
+ #endif //#if JVET_C0042_UNIFIED_BINARIZATION
   }
   else
 #endif
   if (iNumberOfPassesROT>1) // for only 1 pass no signaling is needed 
   {
       Int idxROT = pcCU->getROTIdx( CHANNEL_TYPE_CHROMA, uiAbsPartIdx );
+#if JVET_C0042_UNIFIED_BINARIZATION
+      m_pcBinIf->encodeBin(  idxROT ? 1 : 0 , m_cROTidxSCModel.get(0,0, 0) );
+            if( idxROT )
+            {
+                     m_pcBinIf->encodeBin( (idxROT-1) ? 1 : 0 , m_cROTidxSCModel.get(0,0, 2) );
+
+                    if(idxROT >1 )
+                    {
+                        m_pcBinIf->encodeBin( (idxROT-2) ? 1 : 0, m_cROTidxSCModel.get(0,0, 4) );
+                    }
+               
+            } 
+#else
       const UInt uiSymbol0 = (idxROT >>1);
       const UInt uiSymbol1 = (idxROT %2 );
       m_pcBinIf->encodeBin( uiSymbol0, m_cROTidxSCModel.get(0,0, uiDepth ) );
       m_pcBinIf->encodeBin( uiSymbol1, m_cROTidxSCModel.get(0,0, uiDepth ) );
+#endif
   }
 }
 #endif

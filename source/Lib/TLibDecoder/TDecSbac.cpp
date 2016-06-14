@@ -833,12 +833,21 @@ Void TDecSbac::parseROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
   if( iNumberOfPassesROT==3 )
   {
     UInt uiSymbol = 0;
+#if JVET_C0042_UNIFIED_BINARIZATION
+    m_pcTDecBinIf->decodeBin( uiSymbol, m_cROTidxSCModel.get(0,0, 1 ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG) );
+    if( uiSymbol )
+    {
+      m_pcTDecBinIf->decodeBin( uiSymbol, m_cROTidxSCModel.get(0,0, 3 ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG) );
+      uiSymbol ++;
+    }
+#else
     m_pcTDecBinIf->decodeBin( uiSymbol, m_cROTidxSCModel.get(0,0, 0 ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG) );
     if( uiSymbol )
     {
       m_pcTDecBinIf->decodeBin( uiSymbol, m_cROTidxSCModel.get(0,0, 1 ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG) );
       uiSymbol ++;
     }
+#endif
 #if JVET_C0024_QTBT
     pcCU->setROTIdxSubParts( CHANNEL_TYPE_LUMA, uiSymbol, uiAbsPartIdx,  uiDepth ); 
 #else
@@ -849,6 +858,27 @@ Void TDecSbac::parseROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 #endif
   if (iNumberOfPassesROT>1) // for only 1 pass no signaling is needed 
   {
+#if JVET_C0042_UNIFIED_BINARIZATION
+ UInt uiNSST = 0, idx_ROT=0;
+    m_pcTDecBinIf->decodeBin( uiNSST, m_cROTidxSCModel.get(0,0, 0) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG) );
+   idx_ROT +=uiNSST;
+    if( uiNSST )
+    {
+          m_pcTDecBinIf->decodeBin( uiNSST, m_cROTidxSCModel.get(0,0, 2) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG) );
+          idx_ROT +=uiNSST;
+
+           if(uiNSST )
+            {
+              m_pcTDecBinIf->decodeBin( uiNSST, m_cROTidxSCModel.get(0,0, 4) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG) );
+              idx_ROT +=uiNSST;
+            }
+    }
+#if JVET_C0024_QTBT
+    pcCU->setROTIdxSubParts( CHANNEL_TYPE_LUMA, idx_ROT, uiAbsPartIdx,  uiDepth ); 
+#else
+    pcCU->setROTIdxSubParts( idx_ROT, uiAbsPartIdx,  uiDepth ); 
+#endif
+#else
       UInt uiSymbol0 = 0;
       UInt uiSymbol1 = 0;
       m_pcTDecBinIf->decodeBin( uiSymbol0, m_cROTidxSCModel.get(0,0, uiDepth ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG));
@@ -857,6 +887,7 @@ Void TDecSbac::parseROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
       pcCU->setROTIdxSubParts( CHANNEL_TYPE_LUMA, (uiSymbol0<<1) +uiSymbol1, uiAbsPartIdx,  uiDepth ); //printf ("%d ",(uiSymbol0<<1) +uiSymbol1);
 #else
       pcCU->setROTIdxSubParts( (uiSymbol0<<1) +uiSymbol1, uiAbsPartIdx,  uiDepth ); //printf ("%d ",(uiSymbol0<<1) +uiSymbol1);
+#endif
 #endif
   }
   else
@@ -906,23 +937,50 @@ Void TDecSbac::parseROTIdxChroma ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiD
   if( iNumberOfPassesROT==3 )
   {
     UInt uiSymbol = 0;
+#if JVET_C0042_UNIFIED_BINARIZATION
+  m_pcTDecBinIf->decodeBin( uiSymbol, m_cROTidxSCModel.get(0,0, 1 ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG) );
+    if( uiSymbol )
+    {
+      m_pcTDecBinIf->decodeBin( uiSymbol, m_cROTidxSCModel.get(0,0, 3 ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG) );
+      uiSymbol ++;
+    }
+#else
     m_pcTDecBinIf->decodeBin( uiSymbol, m_cROTidxSCModel.get(0,0, 0 ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG) );
     if( uiSymbol )
     {
       m_pcTDecBinIf->decodeBin( uiSymbol, m_cROTidxSCModel.get(0,0, 1 ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG) );
       uiSymbol ++;
     }
+#endif
     pcCU->setROTIdxSubParts( CHANNEL_TYPE_CHROMA, uiSymbol, uiAbsPartIdx,  uiDepth ); 
   }
   else
 #endif
   if (iNumberOfPassesROT>1) // for only 1 pass no signaling is needed 
   {
+#if JVET_C0042_UNIFIED_BINARIZATION
+UInt uiNSST = 0, idx_ROT=0;
+    m_pcTDecBinIf->decodeBin( uiNSST, m_cROTidxSCModel.get(0,0, 0) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG) );
+   idx_ROT +=uiNSST;
+    if( uiNSST )
+    {
+          m_pcTDecBinIf->decodeBin( uiNSST, m_cROTidxSCModel.get(0,0, 2) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG) );
+          idx_ROT +=uiNSST;
+
+           if(uiNSST )
+            {
+              m_pcTDecBinIf->decodeBin( uiNSST, m_cROTidxSCModel.get(0,0, 4) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG) );
+              idx_ROT +=uiNSST;
+            }
+    }
+      pcCU->setROTIdxSubParts( CHANNEL_TYPE_CHROMA, idx_ROT, uiAbsPartIdx,  uiDepth ); 
+#else
       UInt uiSymbol0 = 0;
       UInt uiSymbol1 = 0;
       m_pcTDecBinIf->decodeBin( uiSymbol0, m_cROTidxSCModel.get(0,0, uiDepth ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG));
       m_pcTDecBinIf->decodeBin( uiSymbol1, m_cROTidxSCModel.get(0,0, uiDepth ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG));
       pcCU->setROTIdxSubParts( CHANNEL_TYPE_CHROMA, (uiSymbol0<<1) +uiSymbol1, uiAbsPartIdx,  uiDepth ); //printf ("%d ",(uiSymbol0<<1) +uiSymbol1);
+#endif
   }
   else
   {
