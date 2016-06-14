@@ -1951,6 +1951,9 @@ Void TDecCavlc::parseCoeffNxN( TComTU &/*rTu*/, ComponentID /*compID*/
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& /*g_bCbfCU*/
 #endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+    , Int& /*iNonZeroCoeffNonTs*/
+#endif
     )
 {
   assert(0);

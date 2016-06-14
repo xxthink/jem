@@ -9805,9 +9805,15 @@ Void  TEncSearch::xAddSymbolBitsInter( TComDataCU* pcCU, UInt& ruiBits )
 #if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
     Int bNonZeroCoeff = false;
 #endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+    Int iNonZeroCoeffNonTs;
+#endif
     m_pcEntropyCoder->encodeCoeff   ( pcCU, 0, pcCU->getDepth(0), codeDeltaQp, codeChromaQpAdj
 #if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
       , bNonZeroCoeff
+#endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+      , iNonZeroCoeffNonTs
 #endif
       );
 

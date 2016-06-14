@@ -817,7 +817,14 @@ Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjC
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     Bool dummyCbf;
-    m_pcEntropyDecoderIf->parseCoeffNxN( rTu, compID, dummyCbf);
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+    Int  dummyNzTs;
+#endif
+    m_pcEntropyDecoderIf->parseCoeffNxN( rTu, compID, dummyCbf
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+      , dummyNzTs
+#endif
+      );
 #else
     m_pcEntropyDecoderIf->parseCoeffNxN( rTu, compID);
 #endif
@@ -829,6 +836,9 @@ Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjC
 Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjCoded, TComTU &rTu, const Int quadtreeTULog2MinSizeInCU 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& bCbfCU
+#endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+    , Int& iNonZeroCoeffNonTs
 #endif
     )
 {
@@ -920,6 +930,9 @@ Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjC
       xDecodeTransform( bCodeDQP, isChromaQpAdjCoded, tuRecurseChild, quadtreeTULog2MinSizeInCU 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     ,  bCbfCU
+#endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+    , iNonZeroCoeffNonTs
 #endif
     );
       UInt childTUAbsPartIdx=tuRecurseChild.GetAbsPartIdxTU();
@@ -1056,6 +1069,9 @@ Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjC
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     ,  bCbfCU
 #endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+    , iNonZeroCoeffNonTs
+#endif
     );
               }
             } while (subTUIterator.nextSection(rTu));
@@ -1072,6 +1088,9 @@ Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjC
               m_pcEntropyDecoderIf->parseCoeffNxN( rTu, compID 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     ,  bCbfCU
+#endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+    , iNonZeroCoeffNonTs
 #endif
     );
             }
@@ -1169,6 +1188,9 @@ Void TDecEntropy::decodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
     const TComRectangle &rRect = tuRecurse.getRect(compID);
     const UInt uiWidth         = rRect.width;
     const UInt uiHeight        = rRect.height;
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+    if( !pcCU->getTransformSkip( uiAbsPartIdx, compID) )
+#endif
     iNonZeroCoeff += countNonZeroCoeffs(pcCoef, uiWidth * uiHeight);
   }
 #endif
@@ -1178,9 +1200,15 @@ Void TDecEntropy::decodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Bool bCbfCU = 0;
 #endif  
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+  Int iNonZeroCoeffNonTs = 0;
+#endif
   xDecodeTransform( bCodeDQP, isChromaQpAdjCoded, tuRecurse, quadtreeTULog2MinSizeInCU 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     ,  bCbfCU
+#endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+    , iNonZeroCoeffNonTs
 #endif
     );
 #endif
@@ -1208,7 +1236,11 @@ Void TDecEntropy::decodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
     decodeROTIdxChroma( pcCU, uiAbsPartIdx, uiDepth );
   }
 #else
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+  if ( iNonZeroCoeffNonTs )
+#else
   if (bCbfCU )
+#endif
     decodeROTIdx( pcCU, uiAbsPartIdx, uiDepth );
 #endif
 #endif

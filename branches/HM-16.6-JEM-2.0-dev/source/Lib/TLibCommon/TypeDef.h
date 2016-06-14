@@ -230,6 +230,10 @@
 #define QTBT_NSST                                         1
 #endif
 
+#if COM16_C1044_NSST
+#define JVET_C0045_C0053_NO_NSST_FOR_TS                   1  ///< JVET-C0045/C0053: Disable NSST for TS coded blocks 
+#endif
+
 #define COM16_C1046_PDPC_INTRA                            1  ///< Position dependent intra prediction combination
 #if COM16_C1046_PDPC_INTRA && COM16_C983_RSAF                
 #define COM16_C1046_PDPC_RSAF_HARMONIZATION               1  ///< Harmonization between PDPC and RSAF

@@ -2094,6 +2094,9 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& bCbfCU
 #endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+    , Int& iNonZeroCoeffNonTs
+#endif
     )
 {
   TComDataCU* pcCU=rTu.getCU();
@@ -2685,6 +2688,12 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
     }
 #if COM16_C806_EMT
     uiNumSig += numNonZero;
+#endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+    if( !pcCU->getTransformSkip( uiAbsPartIdx,compID) )
+    {
+      iNonZeroCoeffNonTs += numNonZero;
+    }
 #endif
   }
 

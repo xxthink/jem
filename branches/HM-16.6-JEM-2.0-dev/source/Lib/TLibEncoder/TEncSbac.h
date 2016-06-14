@@ -201,6 +201,9 @@ public:
 #if VCEG_AZ05_ROT_TR   || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
     , Int& bCbfCU
 #endif  
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+    , Int& iNonZeroCoeffNonTs
+#endif
     );
   Void codeTransformSkipFlags ( TComTU &rTu, ComponentID component );
 #if VCEG_AZ08_KLT_COMMON

@@ -147,6 +147,9 @@ public:
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& bCbfCU
 #endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+    , Int& iNonZeroCoeffNonTs
+#endif
     ) = 0;
 
   virtual Void parseTransformSkipFlags ( class TComTU &rTu, ComponentID component ) = 0;
@@ -307,6 +310,9 @@ private:
   Void xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjCoded, TComTU &rTu, const Int quadtreeTULog2MinSizeInCU 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& bCbfCU
+#endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+    , Int& iNonZeroCoeffNonTs
 #endif
     );
 #endif
