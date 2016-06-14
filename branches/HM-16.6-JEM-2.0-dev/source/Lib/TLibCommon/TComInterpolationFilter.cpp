@@ -314,6 +314,7 @@ const Short TComInterpolationFilter::m_lumaFilterBilinear[4][NTAPS_LUMA_FRUC] =
 #endif
 
 #if COM16_C1016_AFFINE
+#if !JVET_C0025_AFFINE_FILTER_SIMPLIFICATION
 const Short TComInterpolationFilter::m_lumaFilterAffine[(NFRACS_LUMA_AFFINE)*NTAPS_LUMA] =
 {
    0,  0,   0, 256,   0,   0,  0,  0,
@@ -449,6 +450,7 @@ const Short TComInterpolationFilter::m_chromaFilterAffine[(NFRACS_CHROMA_AFFINE)
    -3,  23, 225,  11,
    -1,   4, 255,  -2
 };
+#endif
 #endif
 
 
@@ -930,6 +932,7 @@ Void TComInterpolationFilter::filterVer(Int bitDepth, Pel *src, Int srcStride, P
 }
 
 #if COM16_C1016_AFFINE
+#if !JVET_C0025_AFFINE_FILTER_SIMPLIFICATION
 /**
  * \brief Apply FIR filter to a block of samples
  *
@@ -1227,6 +1230,7 @@ Void TComInterpolationFilter::filterVerAffine(Int bitDepth, Pel *src, Int srcStr
   }
 }
 #endif
+#endif
 
 // ====================================================================================================================
 // Public member functions
@@ -1337,6 +1341,7 @@ Void TComInterpolationFilter::filterVer(const ComponentID compID, Pel *src, Int 
 }
 
 #if COM16_C1016_AFFINE
+#if !JVET_C0025_AFFINE_FILTER_SIMPLIFICATION
 /**
  * \brief Filter a block of Luma/Chroma samples (horizontal)
  *
@@ -1404,6 +1409,7 @@ Void TComInterpolationFilter::filterVerAffine(const ComponentID compID, Pel *src
     filterVerAffine<NTAPS_CHROMA>( bitDepth, src, srcStride, dst, dstStride, width, height, isFirst, isLast, m_chromaFilterAffine+frac*NTAPS_CHROMA );
   }
 }
+#endif
 #endif
 
 //! \}

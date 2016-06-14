@@ -5374,7 +5374,11 @@ Void TComPrediction::xPredAffineBlk(const ComponentID compID, TComDataCU *cu, TC
 
   // get clip MV Range
   const TComSPS &sps=*(cu->getSlice()->getSPS());
+#if JVET_C0025_AFFINE_FILTER_SIMPLIFICATION
+  Int iMvShift = 4;
+#else
   Int iMvShift = 6;
+#endif
   Int iOffset  = 8;
 
   Int iHorMax = ( sps.getPicWidthInLumaSamples()  + iOffset - cu->getCUPelX() - 1 ) << iMvShift;
@@ -5399,6 +5403,9 @@ Void TComPrediction::xPredAffineBlk(const ComponentID compID, TComDataCU *cu, TC
 #if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
   shift += VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE;
 #endif
+#if JVET_C0025_AFFINE_FILTER_SIMPLIFICATION
+  shift += 2;
+#endif
 
   // get prediction block by block
   for ( Int h = 0; h < cxHeight; h += blockHeight )
@@ -5409,19 +5416,62 @@ Void TComPrediction::xPredAffineBlk(const ComponentID compID, TComDataCU *cu, TC
       iMvScaleTmpVer = ( iMvScaleVer + iDMvHorY * iHalfBW + iDMvVerY * iHalfBH ) >> shift;
 
       // clip and scale
+#if JVET_C0025_AFFINE_FILTER_SIMPLIFICATION
+      iMvScaleTmpHor = min( iHorMax, max( iHorMin, iMvScaleTmpHor ) );
+      iMvScaleTmpVer = min( iVerMax, max( iVerMin, iMvScaleTmpVer ) );
+#else
       iMvScaleTmpHor = min( iHorMax, max( iHorMin, iMvScaleTmpHor ) ) >> iScaleX;
       iMvScaleTmpVer = min( iVerMax, max( iVerMin, iMvScaleTmpVer ) ) >> iScaleY;
+#endif
 
       // get the MV in high precision
       Int xFrac, yFrac, xInt, yInt;
+#if JVET_C0025_AFFINE_FILTER_SIMPLIFICATION
+      if (!iScaleX)
+      {
+        xInt  = iMvScaleTmpHor >> 4;        
+        xFrac = iMvScaleTmpHor & 15;
+      }
+      else
+      {
+        xInt  = iMvScaleTmpHor >> 5;        
+        xFrac = iMvScaleTmpHor & 31;
+      }
+      if (!iScaleY)
+      {
+        yInt  = iMvScaleTmpVer >> 4;
+        yFrac = iMvScaleTmpVer & 15;
+      }
+      else
+      {
+        yInt  = iMvScaleTmpVer >> 5;
+        yFrac = iMvScaleTmpVer & 31;
+      }
+#else      
       xInt  = iMvScaleTmpHor >> 6;
       yInt  = iMvScaleTmpVer >> 6;
       xFrac = iMvScaleTmpHor & 63;
       yFrac = iMvScaleTmpVer & 63;
+#endif
 
       Int refOffset = xInt + w + yInt * refStride;
       Pel *ref = refOrg + refOffset;
 
+#if JVET_C0025_AFFINE_FILTER_SIMPLIFICATION
+      if ( yFrac == 0 )
+      {
+        m_if.filterHor(compID, ref, refStride, dst+w,  dstStride, blockWidth, blockHeight, xFrac, !bi, chFmt, bitDepth);
+      }
+      else if ( xFrac == 0 )
+      {
+        m_if.filterVer(compID, ref, refStride, dst+w, dstStride, blockWidth, blockHeight, yFrac, true, !bi, chFmt, bitDepth);
+      }
+      else
+      {
+        m_if.filterHor(compID, ref - ((vFilterSize>>1) -1)*refStride, refStride, tmp, tmpStride, blockWidth, blockHeight+vFilterSize-1, xFrac, false,      chFmt, bitDepth);
+        m_if.filterVer(compID, tmp + ((vFilterSize>>1) -1)*tmpStride, tmpStride, dst+w, dstStride, blockWidth, blockHeight,               yFrac, false, !bi, chFmt, bitDepth);
+      }
+#else
       if ( yFrac == 0 )
       {
         m_if.filterHorAffine(compID, ref, refStride, dst+w,  dstStride, blockWidth, blockHeight, xFrac, !bi, chFmt, bitDepth);
@@ -5435,6 +5485,7 @@ Void TComPrediction::xPredAffineBlk(const ComponentID compID, TComDataCU *cu, TC
         m_if.filterHorAffine(compID, ref - ((vFilterSize>>1) -1)*refStride, refStride, tmp, tmpStride, blockWidth, blockHeight+vFilterSize-1, xFrac, false,      chFmt, bitDepth);
         m_if.filterVerAffine(compID, tmp + ((vFilterSize>>1) -1)*tmpStride, tmpStride, dst+w, dstStride, blockWidth, blockHeight,               yFrac, false, !bi, chFmt, bitDepth);
       }
+#endif
 
       // switch from x to x+AffineBlockSize, add deltaMvHor
       iMvScaleHor += (iDMvHorX*blockWidth);
