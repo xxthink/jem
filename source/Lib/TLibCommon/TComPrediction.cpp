@@ -235,7 +235,11 @@ Void TComPrediction::destroy()
   m_cYuvPredFrucTemplate[0].destroy();
   m_cYuvPredFrucTemplate[1].destroy();
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+#if JVET_C0035_ATMVP_SIMPLIFICATION
+  for (UInt ui=0;ui<NUM_MGR_TYPE;ui++)
+#else
   for (UInt ui=0;ui<2;ui++)
+#endif
   {
     if( m_cMvFieldSP[ui] != NULL )
     {
@@ -355,10 +359,18 @@ Void TComPrediction::initTempBuff(ChromaFormat chromaFormatIDC
 #if VCEG_AZ07_FRUC_MERGE && COM16_C806_VCEG_AZ10_SUB_PU_TMVP
   if( m_cMvFieldSP[0] == NULL )
   {
+#if JVET_C0035_ATMVP_SIMPLIFICATION
+    for (Int i=0; i< NUM_MGR_TYPE; i++)
+    {
+      m_cMvFieldSP[i] = new TComMvField[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH*2];
+      m_uhInterDirSP[i] = new UChar[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
+    }
+#else
     m_cMvFieldSP[0] = new TComMvField[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH*2];
     m_cMvFieldSP[1] = new TComMvField[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH*2];
     m_uhInterDirSP[0] = new UChar[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
     m_uhInterDirSP[1] = new UChar[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
+#endif
   }
 #endif
 
@@ -3076,7 +3088,12 @@ Void TComPrediction::subBlockOBMC( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv
   UInt uiPartAddr   = 0;
 #endif
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+#if JVET_C0035_ATMVP_SIMPLIFICATION 
+  Bool bATMVP       = (pcCU->getMergeType( uiAbsPartIdx ) == MGR_TYPE_SUBPU_ATMVP || pcCU->getMergeType( uiAbsPartIdx ) == MGR_TYPE_SUBPU_ATMVP_EXT);
+#else
   Bool bATMVP       = (pcCU->getMergeType( uiAbsPartIdx ) == MGR_TYPE_SUBPU_TMVP || pcCU->getMergeType( uiAbsPartIdx ) == MGR_TYPE_SUBPU_TMVP_EXT);
+#endif
+  
 #if JVET_C0024_QTBT
   Bool bNormal2Nx2N = !bATMVP;
   Bool bSubMotion   = bATMVP;
@@ -3147,14 +3164,22 @@ Void TComPrediction::subBlockOBMC( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv
   {
     pcCU->getPartIndexAndSize( 1, uiPartAddr, i1stPUWidth, i1stPUHeight );
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+#if JVET_C0035_ATMVP_SIMPLIFICATION 
+    bAtmvpPU |= (pcCU->getMergeType( uiPartAddr ) == MGR_TYPE_SUBPU_ATMVP || pcCU->getMergeType( uiPartAddr ) == MGR_TYPE_SUBPU_ATMVP_EXT);
+#else
     bAtmvpPU |= (pcCU->getMergeType( uiPartAddr ) == MGR_TYPE_SUBPU_TMVP || pcCU->getMergeType( uiPartAddr ) == MGR_TYPE_SUBPU_TMVP_EXT);
+#endif
 #endif
 #if VCEG_AZ07_FRUC_MERGE
     bFrucPU |= (pcCU->getFRUCMgrMode( uiPartAddr ) != FRUC_MERGE_OFF );
 #endif
     pcCU->getPartIndexAndSize( 0, uiPartAddr, i1stPUWidth, i1stPUHeight );
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+#if JVET_C0035_ATMVP_SIMPLIFICATION 
+    bAtmvpPU |= (pcCU->getMergeType( uiPartAddr ) == MGR_TYPE_SUBPU_ATMVP || pcCU->getMergeType( uiPartAddr ) == MGR_TYPE_SUBPU_ATMVP_EXT);
+#else
     bAtmvpPU |= (pcCU->getMergeType( uiPartAddr ) == MGR_TYPE_SUBPU_TMVP || pcCU->getMergeType( uiPartAddr ) == MGR_TYPE_SUBPU_TMVP_EXT);
+#endif
 #endif
 #if VCEG_AZ07_FRUC_MERGE
     bFrucPU |= (pcCU->getFRUCMgrMode( uiPartAddr ) != FRUC_MERGE_OFF );
@@ -3216,7 +3241,11 @@ Void TComPrediction::subBlockOBMC( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv
             if( bAtmvpPU )
             {
               //sub-PU boundary
+#if JVET_C0035_ATMVP_SIMPLIFICATION 
+              bCheckNeig |= (pcCU->getMergeType( uiSubPartIdx ) == MGR_TYPE_SUBPU_ATMVP || pcCU->getMergeType( uiSubPartIdx ) == MGR_TYPE_SUBPU_ATMVP_EXT);
+#else
               bCheckNeig |= (pcCU->getMergeType( uiSubPartIdx ) == MGR_TYPE_SUBPU_TMVP || pcCU->getMergeType( uiSubPartIdx ) == MGR_TYPE_SUBPU_TMVP_EXT);
+#endif
             }
 #endif
 #if VCEG_AZ07_FRUC_MERGE
@@ -3247,7 +3276,11 @@ Void TComPrediction::subBlockOBMC( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv
 #endif
 
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+#if JVET_C0035_ATMVP_SIMPLIFICATION 
+        Bool bSubBlockOBMCSimp = (bOBMCSimp || (( pcCU->getMergeType( uiSubPartIdx ) == MGR_TYPE_SUBPU_ATMVP || pcCU->getMergeType( uiSubPartIdx ) == MGR_TYPE_SUBPU_ATMVP_EXT) && ( 1 << pcCU->getSlice()->getSPS()->getSubPUTLog2Size() ) == 4 ));
+#else
         Bool bSubBlockOBMCSimp = (bOBMCSimp || (( pcCU->getMergeType( uiSubPartIdx ) == MGR_TYPE_SUBPU_TMVP || pcCU->getMergeType( uiSubPartIdx ) == MGR_TYPE_SUBPU_TMVP_EXT) && ( 1 << pcCU->getSlice()->getSPS()->getSubPUTLog2Size() ) == 4 ));
+#endif
 #else
         Bool bSubBlockOBMCSimp = bOBMCSimp;
 #endif
@@ -4324,6 +4357,16 @@ Void TComPrediction::xFrucCollectSubBlkStartMv( TComDataCU * pCU , UInt uiAbsPar
     for( UInt n = 0 ; n < uiSubBlkRasterStep ; n++ )
     {
       UInt uiIdx = ( ( n + uiSubBlkRasterIdx ) << 1 ) + eRefPicList;
+#if JVET_C0035_ATMVP_SIMPLIFICATION
+      if( rMvStart.getRefIdx() == m_cMvFieldSP[MGR_TYPE_SUBPU_ATMVP][uiIdx].getRefIdx() )
+      {
+        xFrucInsertMv2StartList( m_cMvFieldSP[MGR_TYPE_SUBPU_ATMVP][uiIdx] , rStartMvList );
+      }
+      if( rMvStart.getRefIdx() == m_cMvFieldSP[MGR_TYPE_SUBPU_ATMVP_EXT][uiIdx].getRefIdx() )
+      {
+        xFrucInsertMv2StartList( m_cMvFieldSP[MGR_TYPE_SUBPU_ATMVP_EXT][uiIdx] , rStartMvList );
+      }
+#else
       if( rMvStart.getRefIdx() == m_cMvFieldSP[0][uiIdx].getRefIdx() )
       {
         xFrucInsertMv2StartList( m_cMvFieldSP[0][uiIdx] , rStartMvList );
@@ -4332,6 +4375,7 @@ Void TComPrediction::xFrucCollectSubBlkStartMv( TComDataCU * pCU , UInt uiAbsPar
       {
         xFrucInsertMv2StartList( m_cMvFieldSP[1][uiIdx] , rStartMvList );
       }
+#endif
     }
   }
 #endif
