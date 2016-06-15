@@ -883,7 +883,7 @@ public:
 
   Void          getAllowedChromaDir             ( UInt uiAbsPartIdx, UInt* uiModeList );
   Void          getIntraDirPredictor            ( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM_MOST_PROBABLE_MODES], const ComponentID compID
-#if VCEG_AZ07_INTRA_65ANG_MODES
+#if VCEG_AZ07_INTRA_65ANG_MODES && !JVET_C0055_INTRA_MPM
     , Int &iAboveLeftCase
 #endif
     , Int* piMode = NULL );
