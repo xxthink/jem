@@ -3129,11 +3129,187 @@ TComDataCU* TComDataCU::getPUAboveOffset( UInt& uiPartUnitIdx,
 *\returns Number of MPM
 */
 Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM_MOST_PROBABLE_MODES], const ComponentID compID
-#if VCEG_AZ07_INTRA_65ANG_MODES
+#if VCEG_AZ07_INTRA_65ANG_MODES && !JVET_C0055_INTRA_MPM
                                       , Int &iLeftAboveCase
 #endif
                                       , Int* piMode  )
 {
+#if JVET_C0055_INTRA_MPM
+  // This function is not used for chroma texture type.
+  // If it is used for chroma, DM mode should be converted to real mode during MPM list derivation.
+  assert( isLuma(compID) );
+
+  const ChannelType chType = toChannelType(compID);
+  Bool includedMode[NUM_INTRA_MODE];
+  memset( includedMode, false, sizeof(includedMode) );
+
+  UInt modeIdx = 0, partIdx;
+
+#if VCEG_AZ07_INTRA_65ANG_MODES
+  const Int offset = 62;
+#else
+  const Int offset = 29;
+#endif
+  const Int mod = offset + 3;
+
+  UInt width  = getWidth(uiAbsPartIdx);
+  UInt height = getHeight(uiAbsPartIdx);
+  UInt partIdxLT = m_absZIdxInCtu + uiAbsPartIdx;
+  UInt partIdxRT = g_auiRasterToZscan [g_auiZscanToRaster[ partIdxLT ] + width / m_pcPic->getMinCUWidth() - 1 ];
+  UInt partIdxLB = g_auiRasterToZscan [g_auiZscanToRaster[ partIdxLT ] + ( (height / m_pcPic->getMinCUHeight()) - 1 ) * m_pcPic->getNumPartInCtuWidth()];
+
+  // left
+  TComDataCU *cu = getPULeft( partIdx, partIdxLB );
+  if( cu && cu->isIntra(partIdx) )
+  {
+    uiIntraDirPred[modeIdx] = cu->getIntraDir( chType, partIdx );
+    if( !includedMode[uiIntraDirPred[modeIdx]] )
+    {
+      includedMode[uiIntraDirPred[modeIdx]] = true;
+      modeIdx++;
+    }   
+  }
+
+  // above
+  cu = getPUAbove( partIdx, partIdxRT );
+  if( cu && cu->isIntra(partIdx) )
+  {
+    uiIntraDirPred[modeIdx] = cu->getIntraDir( chType, partIdx );
+    if( !includedMode[uiIntraDirPred[modeIdx]] )
+    {
+      includedMode[uiIntraDirPred[modeIdx]] = true;
+      modeIdx++;
+    }   
+  }
+
+  if( piMode )
+  {
+    *piMode = Int(modeIdx > 1) + 1;
+  }
+
+  // PLANAR mode
+  uiIntraDirPred[modeIdx] = PLANAR_IDX;
+  if( !includedMode[uiIntraDirPred[modeIdx]] )
+  {
+    includedMode[uiIntraDirPred[modeIdx]] = true;
+    modeIdx++;
+  }
+            
+  // DC mode
+#if !VCEG_AZ07_INTRA_65ANG_MODES
+  if( modeIdx < NUM_MOST_PROBABLE_MODES )
+#endif
+  {
+    uiIntraDirPred[modeIdx] = DC_IDX;
+    if( !includedMode[uiIntraDirPred[modeIdx]] )
+    {
+      includedMode[uiIntraDirPred[modeIdx]] = true;
+      modeIdx++;
+    }
+  }
+
+  // below left
+#if !VCEG_AZ07_INTRA_65ANG_MODES
+  if( modeIdx < NUM_MOST_PROBABLE_MODES )
+#endif
+  {
+    cu = getPUBelowLeft( partIdx, partIdxLB );
+    if( cu && cu->isIntra(partIdx) )
+    {
+      uiIntraDirPred[modeIdx] = cu->getIntraDir( chType, partIdx );
+      if( !includedMode[uiIntraDirPred[modeIdx]] )
+      {
+        includedMode[uiIntraDirPred[modeIdx]] = true;
+        modeIdx++;
+      }
+    }
+  }
+
+  // above right
+#if !VCEG_AZ07_INTRA_65ANG_MODES
+  if( modeIdx < NUM_MOST_PROBABLE_MODES )
+#endif
+  {
+    cu = getPUAboveRight( partIdx, partIdxRT );
+    if( cu && cu->isIntra(partIdx) )
+    {
+      uiIntraDirPred[modeIdx] = cu->getIntraDir( chType, partIdx );
+      if( !includedMode[uiIntraDirPred[modeIdx]] )
+      {
+        includedMode[uiIntraDirPred[modeIdx]] = true;
+        modeIdx++;
+      }
+    }
+  }
+
+  //above left
+  if( modeIdx < NUM_MOST_PROBABLE_MODES )
+  {
+    cu = getPUAboveLeft( partIdx, partIdxLT );
+    if( cu && cu->isIntra(partIdx) )
+    {
+      uiIntraDirPred[modeIdx] = cu->getIntraDir( chType, partIdx );
+      if( !includedMode[uiIntraDirPred[modeIdx]] )
+      {
+        includedMode[uiIntraDirPred[modeIdx]] = true;
+        modeIdx++;
+      }
+    }
+  }
+
+  UInt numAddedModes = modeIdx;
+
+  // -+1 derived modes
+  for( UInt idx = 0; idx < numAddedModes && modeIdx < NUM_MOST_PROBABLE_MODES; idx++ )
+  {   
+    UInt mode = uiIntraDirPred[idx];
+    
+    // directional mode
+    if( mode <= DC_IDX )
+    {
+      continue;
+    }
+
+    // -1
+    uiIntraDirPred[modeIdx] = ((mode + offset) % mod) + 2;
+
+    if( !includedMode[uiIntraDirPred[modeIdx]] )
+    {
+      includedMode[uiIntraDirPred[modeIdx]] = true;
+      modeIdx++;
+    }    
+
+    if( modeIdx == NUM_MOST_PROBABLE_MODES )
+    {
+      break;
+    }
+
+    // +1
+    uiIntraDirPred[modeIdx] = ((mode - 1) % mod) + 2;
+
+    if( !includedMode[uiIntraDirPred[modeIdx]] )
+    {
+      includedMode[uiIntraDirPred[modeIdx]] = true;
+      modeIdx++;
+    }   
+  }
+
+  // default modes
+  UInt defaultIntraModes[] = {PLANAR_IDX, DC_IDX, VER_IDX, HOR_IDX, 2, DIA_IDX};
+  assert( modeIdx > 1 );
+
+  for( UInt idx = 2; idx < NUM_MOST_PROBABLE_MODES && modeIdx < NUM_MOST_PROBABLE_MODES; idx++ )
+  {
+    uiIntraDirPred[modeIdx] = defaultIntraModes[idx];
+    if( !includedMode[uiIntraDirPred[modeIdx]] )
+    {
+      includedMode[uiIntraDirPred[modeIdx]] = true;
+      modeIdx++;
+    }
+  }
+
+  assert( modeIdx == NUM_MOST_PROBABLE_MODES );
+#else
   TComDataCU* pcCULeft = NULL, *pcCUAbove = NULL;
   UInt        LeftPartIdx  = MAX_UINT;
   UInt        AbovePartIdx = MAX_UINT;
@@ -3375,6 +3551,7 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
   {
     iLeftAboveCase = uiCaseIdx;
   }
+#endif
 #endif
   for (UInt i=0; i<NUM_MOST_PROBABLE_MODES; i++)
   {

@@ -4794,7 +4794,11 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
       Int uiPreds[6] = {-1, -1, -1, -1, -1, -1};
       Int iAboveLeftCase=0, iMode=-1;
 
+#if JVET_C0055_INTRA_MPM
+      pcCU->getIntraDirPredictor( uiPartOffset, uiPreds, COMPONENT_Y, &iMode ); // Pre-calculate the MPMs, so avoid redundant MPM calculations during the SATD loop
+#else
       pcCU->getIntraDirPredictor( uiPartOffset, uiPreds, COMPONENT_Y, iAboveLeftCase, &iMode ); // Pre-calculate the MPMs, so avoid redundant MPM calculations during the SATD loop
+#endif
 
       assert( iMode >= 0 );
       

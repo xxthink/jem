@@ -182,6 +182,7 @@
 #if VCEG_AZ07_INTRA_65ANG_MODES
 #define JVET_B0051_NON_MPM_MODE                           1  // Use two mode sets for non-MPM mode coding
 #endif
+#define JVET_C0055_INTRA_MPM                              1  ///< Intra MPM derivation from JVET-C0055
 
 #define VCEG_AZ07_ECABAC                                  1  ///< CABAC improvements
 #if VCEG_AZ07_ECABAC                                         

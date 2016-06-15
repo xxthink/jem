@@ -1264,7 +1264,17 @@ Void TDecSbac::parseIntraDirLumaAng  ( TComDataCU* pcCU, UInt absPartIdx, UInt d
   UInt mpmPred[4],symbol;
   Int j,intraPredMode;
 
+#if JVET_C0055_INTRA_MPM
+  static const UInt mpmContext[NUM_INTRA_MODE] = { 1, 1, 
 #if VCEG_AZ07_INTRA_65ANG_MODES
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,   // 2-34
+    3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3       // 35-67
+#else
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,    // 2-18
+    3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3     // 19-35
+#endif
+  };
+#elif VCEG_AZ07_INTRA_65ANG_MODES
   const UInt uiContextMPM0[4] = { 2, 3, 1, 2 };
   const UInt uiContextMPM1[4] = { 4, 5, 5, 6 };
   const UInt uiContextMPM2[4] = { 7, 7, 8, 7 };
@@ -1292,30 +1302,43 @@ Void TDecSbac::parseIntraDirLumaAng  ( TComDataCU* pcCU, UInt absPartIdx, UInt d
   {
 #if VCEG_AZ07_INTRA_65ANG_MODES
     Int preds[6] = {-1, -1, -1, -1, -1, -1};
+#if !JVET_C0055_INTRA_MPM
     Int iLeftAboveCase=0;
+#endif
 #else
     Int preds[NUM_MOST_PROBABLE_MODES] = {-1, -1, -1};
 #endif
     pcCU->getIntraDirPredictor(absPartIdx+partOffset*j, preds, COMPONENT_Y
-#if VCEG_AZ07_INTRA_65ANG_MODES
+#if VCEG_AZ07_INTRA_65ANG_MODES && !JVET_C0055_INTRA_MPM
       , iLeftAboveCase
 #endif
       );
 
     if (mpmPred[j])
     {
-#if VCEG_AZ07_INTRA_65ANG_MODES
+#if JVET_C0055_INTRA_MPM
+      m_pcTDecBinIf->decodeBin( symbol, m_cCUIntraPredSCModel.get( 0, 0, mpmContext[preds[0]]) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
+#elif VCEG_AZ07_INTRA_65ANG_MODES
       m_pcTDecBinIf->decodeBin( symbol, m_cCUIntraPredSCModel.get( 0, 0, uiContextMPM0[iLeftAboveCase]) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
 #else
       m_pcTDecBinIf->decodeBinEP( symbol RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
 #endif
+
       if (symbol)
       {
 #if VCEG_AZ07_INTRA_65ANG_MODES
+#if JVET_C0055_INTRA_MPM
+        m_pcTDecBinIf->decodeBin( symbol, m_cCUIntraPredSCModel.get( 0, 0, mpmContext[preds[1]]) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
+        if( symbol )
+        {
+          m_pcTDecBinIf->decodeBin( symbol, m_cCUIntraPredSCModel.get( 0, 0, mpmContext[preds[2]]) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
+#else
         m_pcTDecBinIf->decodeBin( symbol, m_cCUIntraPredSCModel.get( 0, 0, uiContextMPM1[iLeftAboveCase]) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
         if( symbol )
         {
           m_pcTDecBinIf->decodeBin( symbol, m_cCUIntraPredSCModel.get( 0, 0, uiContextMPM2[iLeftAboveCase]) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
+#endif
+
           if( symbol )
           {
             m_pcTDecBinIf->decodeBinEP( symbol RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );

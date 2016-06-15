@@ -1206,7 +1206,17 @@ Void TEncSbac::codeIntraDirLumaAng( TComDataCU* pcCU, UInt absPartIdx, Bool isMu
 #endif
   UInt partOffset = ( pcCU->getPic()->getNumPartitionsInCtu() >> ( pcCU->getDepth(absPartIdx) << 1 ) ) >> 2;
   
+#if JVET_C0055_INTRA_MPM
+  static const UInt mpmContext[NUM_INTRA_MODE] = { 1, 1, 
 #if VCEG_AZ07_INTRA_65ANG_MODES
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,   // 2-34
+    3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3       // 35-67
+#else
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,    // 2-18
+    3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3     // 19-35
+#endif
+  };
+#elif VCEG_AZ07_INTRA_65ANG_MODES
   const UInt uiContextMPM0[4] = { 2, 3, 1, 2 };
   const UInt uiContextMPM1[4] = { 4, 5, 5, 6 };
   const UInt uiContextMPM2[4] = { 7, 7, 8, 7 };
@@ -1221,12 +1231,14 @@ Void TEncSbac::codeIntraDirLumaAng( TComDataCU* pcCU, UInt absPartIdx, Bool isMu
     {
       assert( !isMultiple );
       memcpy( preds[j], piModes, 6*sizeof(Int) );
+#if !JVET_C0055_INTRA_MPM
       aiCase[j] = iAboveLeftCase;
+#endif
     }
     else
 #endif
     pcCU->getIntraDirPredictor(absPartIdx+partOffset*j, preds[j], COMPONENT_Y
-#if VCEG_AZ07_INTRA_65ANG_MODES
+#if VCEG_AZ07_INTRA_65ANG_MODES && !JVET_C0055_INTRA_MPM
     , aiCase[j]
 #endif
     );
@@ -1243,7 +1255,9 @@ Void TEncSbac::codeIntraDirLumaAng( TComDataCU* pcCU, UInt absPartIdx, Bool isMu
   {
     if(predIdx[j] != -1)
     {
-#if VCEG_AZ07_INTRA_65ANG_MODES
+#if JVET_C0055_INTRA_MPM
+      m_pcBinIf->encodeBin( predIdx[j] ? 1 : 0, m_cCUIntraPredSCModel.get( 0, 0, mpmContext[preds[j][0]] ) );
+#elif VCEG_AZ07_INTRA_65ANG_MODES
       m_pcBinIf->encodeBin( predIdx[j] ? 1 : 0, m_cCUIntraPredSCModel.get( 0, 0, uiContextMPM0[aiCase[j]] ) );
 #else
       m_pcBinIf->encodeBinEP( predIdx[j] ? 1 : 0 );
@@ -1251,10 +1265,18 @@ Void TEncSbac::codeIntraDirLumaAng( TComDataCU* pcCU, UInt absPartIdx, Bool isMu
       if (predIdx[j])
       {
 #if VCEG_AZ07_INTRA_65ANG_MODES
+#if JVET_C0055_INTRA_MPM
+        m_pcBinIf->encodeBin( (predIdx[j]-1) ? 1 : 0, m_cCUIntraPredSCModel.get( 0, 0, mpmContext[preds[j][1]] ) );
+        if ( (predIdx[j]-1) )
+        {
+          m_pcBinIf->encodeBin( (predIdx[j]-2) ? 1 : 0, m_cCUIntraPredSCModel.get( 0, 0, mpmContext[preds[j][2]] ) );
+#else
         m_pcBinIf->encodeBin( (predIdx[j]-1) ? 1 : 0, m_cCUIntraPredSCModel.get( 0, 0, uiContextMPM1[aiCase[j]] ) );
         if ( (predIdx[j]-1) )
         {
           m_pcBinIf->encodeBin( (predIdx[j]-2) ? 1 : 0, m_cCUIntraPredSCModel.get( 0, 0, uiContextMPM2[aiCase[j]] ) );
+#endif
+
           if (predIdx[j]-2)
           {
             m_pcBinIf->encodeBinEP( (predIdx[j]-3) ? 1 : 0 );
