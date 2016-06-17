@@ -2074,7 +2074,7 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
 #endif
 #else
   const UInt         uiLog2BlockWidth  = g_aucConvertToBit[ uiWidth  ] + 2;
-#if !VCEG_AZ07_CTX_RESIDUALCODING
+#if !VCEG_AZ07_CTX_RESIDUALCODING || JVET_C0046_ZO_ASSERT
   const UInt         uiLog2BlockHeight = g_aucConvertToBit[ uiHeight ] + 2;
 #endif
 #endif
@@ -2252,6 +2252,17 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
   Int posLastX = posLast - ( posLastY << uiLog2BlockWidth );
   codeLastSignificantXY(posLastX, posLastY, uiWidth, uiHeight, compID, codingParameters.scanType);
 
+ 
+#if JVET_C0046_ZO_ASSERT && JVET_C0046_ZO_ASSERT_LAST_COEF
+  if ( (uiLog2BlockWidth + uiLog2BlockHeight) > TH_LOG2TBAREASIZE && 
+    (!pcCU->getTransformSkip(compID) && !pcCU->getCUTransquantBypass(uiAbsPartIdx)))
+  {
+    // last coeff shall be in the low freqecy domain
+    assert( (posLastX <= (uiWidth >> 1)) && (posLastY <= (uiHeight >> 1)) );
+  }
+#endif
+
+
   //===== code significance flag =====
 #if VCEG_AZ07_CTX_RESIDUALCODING
   UInt uiPrevGRParam = 0; 
@@ -2343,10 +2354,21 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
     {
       uiSigCoeffGroupFlag[ iCGBlkPos ] = 1;
     }
-#if COM16_C806_T64  && !JVET_C0024_QTBT
+#if COM16_C806_T64  && !JVET_C0024_QTBT && !JVET_C0046_ZO_ASSERT
     else if( uiWidth>=64 && ( iCGPosY>=(codingParameters.heightInGroups/2) || iCGPosX>=(codingParameters.widthInGroups/2) ) )
     {
       assert( 0 == uiSigCoeffGroupFlag[ iCGBlkPos ] );
+    }
+#endif
+#if JVET_C0046_ZO_ASSERT && JVET_C0046_ZO_ASSERT_CODED_SBK_FLAG  
+    else if ( (uiLog2BlockWidth + uiLog2BlockHeight) > TH_LOG2TBAREASIZE && 
+              (!pcCU->getTransformSkip(compID) && !pcCU->getCUTransquantBypass(uiAbsPartIdx) ))
+    {
+        if ( iCGPosY >= (codingParameters.heightInGroups / 2) || iCGPosX >= (codingParameters.widthInGroups / 2) )
+        {
+            // coded_sbk_flag(iCGX,iCGY) shall be equal to 0
+            assert(0 == uiSigCoeffGroupFlag[iCGBlkPos]);
+        }
     }
 #endif
     else
@@ -3121,8 +3143,10 @@ Void TEncSbac::codeExplicitRdpcmMode( TComTU &rTu, const ComponentID compID )
   const UInt tuHeight = g_aucConvertToBit[rect.height];
   const UInt tuWidth  = g_aucConvertToBit[rect.width];
 
+#if !JVET_C0046_OMIT_ASSERT_ERDPCM
   assert(tuHeight == tuWidth);
   assert(tuHeight < 4);
+#endif
 
   UInt explicitRdpcmMode = cu->getExplicitRdpcmMode(compID, absPartIdx);
 
