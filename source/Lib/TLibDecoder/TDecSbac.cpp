@@ -2188,7 +2188,7 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
 #endif
 #else
   const UInt         uiLog2BlockWidth  = g_aucConvertToBit[ uiWidth  ] + 2;
-#if !VCEG_AZ07_CTX_RESIDUALCODING
+#if !VCEG_AZ07_CTX_RESIDUALCODING || JVET_C0046_ZO_ASSERT
   const UInt         uiLog2BlockHeight = g_aucConvertToBit[ uiHeight ] + 2;
 #endif
 #endif
@@ -2328,6 +2328,16 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
   UInt uiBlkPosLast      = uiPosLastX + (uiPosLastY<<uiLog2BlockWidth);
   pcCoef[ uiBlkPosLast ] = 1;
 
+#if JVET_C0046_ZO_ASSERT && JVET_C0046_ZO_ASSERT_LAST_COEF
+  if ( (uiLog2BlockWidth + uiLog2BlockHeight) > TH_LOG2TBAREASIZE && 
+       (!pcCU->getTransformSkip(compID) && !pcCU->getCUTransquantBypass(uiAbsPartIdx)) )
+  {
+      // last coeff shall be in the low freqecy domain
+      assert( (uiPosLastX <= (uiWidth >> 1)) && (uiPosLastY <= (uiHeight >> 1)) );
+  }
+#endif
+
+
   //===== decode significance flags =====
   UInt uiScanPosLast;
   for( uiScanPosLast = 0; uiScanPosLast < uiMaxNumCoeffM1; uiScanPosLast++ )
@@ -2432,7 +2442,7 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
     {
       uiSigCoeffGroupFlag[ iCGBlkPos ] = 1;
     }
-#if COM16_C806_T64 && !JVET_C0024_QTBT
+#if COM16_C806_T64 && !JVET_C0024_QTBT && !JVET_C0046_ZO_ASSERT
     else if( uiWidth>=64 && ( iCGPosY>=(codingParameters.heightInGroups/2) || iCGPosX>=(codingParameters.widthInGroups/2) ) )
     {
       uiSigCoeffGroupFlag[ iCGBlkPos ] = 0;
@@ -2450,6 +2460,18 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
       uiSigCoeffGroupFlag[ iCGBlkPos ] = uiSigCoeffGroup;
     }
 
+#if JVET_C0046_ZO_ASSERT && JVET_C0046_ZO_ASSERT_CODED_SBK_FLAG
+    if ((uiLog2BlockWidth + uiLog2BlockHeight) > TH_LOG2TBAREASIZE && 
+        (!pcCU->getTransformSkip(compID) && !pcCU->getCUTransquantBypass(uiAbsPartIdx))
+    )
+    {
+        if (iCGPosY >= (codingParameters.heightInGroups / 2) || iCGPosX >= (codingParameters.widthInGroups / 2))
+        {
+            //coded_sbk_flag(iCGX,iCGY) shall be equal to 0
+            assert(0 == uiSigCoeffGroupFlag[iCGBlkPos]);
+        }
+    }
+#endif 
     // decode significant_coeff_flag
 #if !VCEG_AZ07_CTX_RESIDUALCODING
     const Int patternSigCtx = TComTrQuant::calcPatternSigCtx(uiSigCoeffGroupFlag, iCGPosX, iCGPosY, codingParameters.widthInGroups, codingParameters.heightInGroups);
@@ -3064,7 +3086,9 @@ Void TDecSbac::parseExplicitRdpcmMode( TComTU &rTu, ComponentID compID )
   const UInt tuWidth  = g_aucConvertToBit[rect.width];
   UInt code = 0;
 
+#if !JVET_C0046_OMIT_ASSERT_ERDPCM
   assert(tuHeight == tuWidth);
+#endif 
 
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
 #if JVET_C0024_QTBT

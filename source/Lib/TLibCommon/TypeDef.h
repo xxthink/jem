@@ -77,6 +77,16 @@
 
 #endif // end of JVET_C0024_QTBT
 
+#define JVET_C0046_ZO_ASSERT                              0  ///< assertion on last coeff and coded_sbk_flag when zeroing out is used (no TS and no TQBypass and using large transform is satisfied)
+#if JVET_C0046_ZO_ASSERT
+#define JVET_C0046_ZO_ASSERT_CODED_SBK_FLAG               1  ///< if (iCGX > TH || iCGY > TH) and (log2BlockWidth + log2BlockHeight) > log2TH and (no TS && no TQBypass), then coded_sbk_flag(iCGX, iCGY) shall be 0.
+#define JVET_C0046_ZO_ASSERT_LAST_COEF                    1  ///< if (log2BlockWidth + log2BlockHeight) > log2TH and (no TS && no TQBypass), then last coef (x,y) shall be in the low frequency domain.
+#endif
+
+#define JVET_C0046_OMIT_ASSERT_ERDPCM                     1  ///< for RExt, omit assertion related to Explict Residual DPCM
+
+#define JVET_C0046_FIX_DECODER_DEBUG_BIT_STATISTICS       1  ///< bugfix on DECODER_DEBUG_BIT_STATISTICS for QTBT
+
 #define VCEG_AZ08_USE_KLT                                 1  ///< KLT (if defined 1, use cfg option of KLT to control the enablement of intra KLT and inter KLT (INTERA_KLT, VCEG_AZ08_INTER_KLT should be set as 1); if 0, use INTERA_KLT, VCEG_AZ08_INTER_KLT to control the enablement.)
 
 #define VCEG_AZ08_INTER_KLT                               1  ///< (default 1) Enable inter KLT
