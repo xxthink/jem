@@ -3138,10 +3138,12 @@ Void  TEncSbac::loadContextsFromPrev (TComStats* apcStats, SliceType eSliceType,
 Void TEncSbac::codeExplicitRdpcmMode( TComTU &rTu, const ComponentID compID )
 {
   TComDataCU *cu = rTu.getCU();
+#if !JVET_C0046_OMIT_ASSERT_ERDPCM
   const TComRectangle &rect = rTu.getRect(compID);
-  const UInt absPartIdx   = rTu.GetAbsPartIdxTU(compID);
   const UInt tuHeight = g_aucConvertToBit[rect.height];
   const UInt tuWidth  = g_aucConvertToBit[rect.width];
+#endif
+  const UInt absPartIdx   = rTu.GetAbsPartIdxTU(compID);
 
 #if !JVET_C0046_OMIT_ASSERT_ERDPCM
   assert(tuHeight == tuWidth);
