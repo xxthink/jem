@@ -2,7 +2,7 @@
 CONFIG 				= CONSOLE
 
 # set directories to your wanted values
-SRC_DIR				= ../../../../tools/parcat
+SRC_DIR				= ../../../../source/App/utils/parcat/
 INC_DIR				= ../../../../source/Lib
 LIB_DIR				= ../../../../lib
 BIN_DIR				= ../../../../bin
