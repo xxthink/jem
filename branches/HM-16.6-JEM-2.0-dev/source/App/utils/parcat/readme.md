@@ -42,7 +42,7 @@ To use it
 Restrictions
 ------------
 
-parcat currently supports only JEM 2.0 bitstreams. Support for HM 16.9 bitstreams is scheduled.
+parcat currently supports only JEM-2.0 and JEM-3.0 bitstreams. Support for HM 16.9 bitstreams is scheduled.
 
 
 
