@@ -732,7 +732,7 @@ Void TEncSearch::init(TEncCfg*      pcEncCfg,
       {
           for (Int hidx=0; hidx<uiNumLayersToAllocate; hidx++)
           {
-              m_resiSingleBuffer[widx][hidx][n] = new Pel [1<<(widx+hidx+(MIN_CU_LOG2<<1))];
+              m_resiSingleBuffer[widx][hidx][n] = new Pel [(size_t)1<<(widx+hidx+(MIN_CU_LOG2<<1))];
           }
       }
 #else
