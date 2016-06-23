@@ -55,8 +55,13 @@ TEncTop::TEncTop()
   m_iPOCLast          = -1;
   m_iNumPicRcvd       =  0;
   m_uiNumAllPicCoded  =  0;
+#if JVET_C0024_QTBT
+  m_ppppcRDSbacCoder   =  NULL;
+  m_ppppcBinCoderCABAC =  NULL;
+#else
   m_pppcRDSbacCoder   =  NULL;
   m_pppcBinCoderCABAC =  NULL;
+#endif
   m_cRDGoOnSbacCoder.init( &m_cRDGoOnBinCoderCABAC );
 #if ENC_DEC_TRACE
   if (g_hTrace == NULL)
@@ -91,6 +96,15 @@ Void TEncTop::create ()
 
   // create processing unit classes
   m_cGOPEncoder.        create( );
+#if JVET_C0024_QTBT
+  m_cSliceEncoder.      create( getSourceWidth(), getSourceHeight(), m_chromaFormatIDC, m_CTUSize, m_CTUSize, m_maxTotalCUDepth );
+  m_cCuEncoder.         create( m_maxTotalCUDepth, m_CTUSize, m_CTUSize, m_chromaFormatIDC );
+  if (m_bUseSAO)
+  {
+    m_cEncSAO.create( getSourceWidth(), getSourceHeight(), m_chromaFormatIDC, m_CTUSize, m_CTUSize, m_maxTotalCUDepth, m_log2SaoOffsetScale[CHANNEL_TYPE_LUMA], m_log2SaoOffsetScale[CHANNEL_TYPE_CHROMA] );
+    m_cEncSAO.createEncData(getSaoCtuBoundary());
+  }
+#else
   m_cSliceEncoder.      create( getSourceWidth(), getSourceHeight(), m_chromaFormatIDC, m_maxCUWidth, m_maxCUHeight, m_maxTotalCUDepth );
   m_cCuEncoder.         create( m_maxTotalCUDepth, m_maxCUWidth, m_maxCUHeight, m_chromaFormatIDC );
   if (m_bUseSAO)
@@ -98,6 +112,7 @@ Void TEncTop::create ()
     m_cEncSAO.create( getSourceWidth(), getSourceHeight(), m_chromaFormatIDC, m_maxCUWidth, m_maxCUHeight, m_maxTotalCUDepth, m_log2SaoOffsetScale[CHANNEL_TYPE_LUMA], m_log2SaoOffsetScale[CHANNEL_TYPE_CHROMA] );
     m_cEncSAO.createEncData(getSaoCtuBoundary());
   }
+#endif
 #if ADAPTIVE_QP_SELECTION
   if (m_bUseAdaptQpSelect)
   {
@@ -109,10 +124,39 @@ Void TEncTop::create ()
 
   if ( m_RCEnableRateControl )
   {
+#if JVET_C0024_QTBT
+    m_cRateCtrl.init( m_framesToBeEncoded, m_RCTargetBitrate, (Int)( (Double)m_iFrameRate/m_temporalSubsampleRatio + 0.5), m_iGOPSize, m_iSourceWidth, m_iSourceHeight,
+        m_CTUSize, m_CTUSize, m_RCKeepHierarchicalBit, m_RCUseLCUSeparateModel, m_GOPList );
+#else
     m_cRateCtrl.init( m_framesToBeEncoded, m_RCTargetBitrate, (Int)( (Double)m_iFrameRate/m_temporalSubsampleRatio + 0.5), m_iGOPSize, m_iSourceWidth, m_iSourceHeight,
         m_maxCUWidth, m_maxCUHeight, m_RCKeepHierarchicalBit, m_RCUseLCUSeparateModel, m_GOPList );
+#endif
   }
 
+#if JVET_C0024_QTBT
+  UInt uiNumWidthIdx = g_aucConvertToBit[m_CTUSize] + 1;
+  UInt uiNumHeightIdx = g_aucConvertToBit[m_CTUSize] + 1;
+
+  m_ppppcRDSbacCoder = new TEncSbac*** [uiNumWidthIdx];
+  m_ppppcBinCoderCABAC = new TEncBinCABACCounter*** [uiNumWidthIdx];
+
+  for (Int w=0; w<uiNumWidthIdx; w++)
+  {
+    m_ppppcRDSbacCoder[w] = new TEncSbac** [uiNumHeightIdx];
+    m_ppppcBinCoderCABAC[w] = new TEncBinCABACCounter** [uiNumHeightIdx];
+    for (Int h=0; h<uiNumHeightIdx; h++)
+    {
+      m_ppppcRDSbacCoder[w][h] = new TEncSbac* [CI_NUM];
+      m_ppppcBinCoderCABAC[w][h] = new TEncBinCABACCounter* [CI_NUM];
+      for (Int iCIIdx = 0; iCIIdx < CI_NUM; iCIIdx ++ )
+      {
+        m_ppppcRDSbacCoder[w][h][iCIIdx] = new TEncSbac ;
+        m_ppppcBinCoderCABAC[w][h][iCIIdx] = new TEncBinCABACCounter ;
+        m_ppppcRDSbacCoder   [w][h][iCIIdx]->init( m_ppppcBinCoderCABAC [w][h][iCIIdx] );
+      }
+    }
+  }
+#else
   m_pppcRDSbacCoder = new TEncSbac** [m_maxTotalCUDepth+1];
 #if FAST_BIT_EST
   m_pppcBinCoderCABAC = new TEncBinCABACCounter** [m_maxTotalCUDepth+1];
@@ -140,12 +184,17 @@ Void TEncTop::create ()
       m_pppcRDSbacCoder   [iDepth][iCIIdx]->init( m_pppcBinCoderCABAC [iDepth][iCIIdx] );
     }
   }
+#endif
 
 #if ALF_HM3_REFACTOR
   if( m_useALF )
   {
     assert( m_bitDepth[CHANNEL_TYPE_LUMA] == m_bitDepth[CHANNEL_TYPE_CHROMA] );
+#if JVET_C0024_QTBT
+    m_cAdaptiveLoopFilter.create( getSourceWidth(), getSourceHeight(), getChromaFormatIdc(), m_CTUSize, m_CTUSize, m_maxTotalCUDepth , m_bitDepth[CHANNEL_TYPE_LUMA] , m_bitDepth[CHANNEL_TYPE_LUMA] );
+#else
     m_cAdaptiveLoopFilter.create( getSourceWidth(), getSourceHeight(), getChromaFormatIdc(), m_maxCUWidth, m_maxCUHeight, m_maxTotalCUDepth , m_bitDepth[CHANNEL_TYPE_LUMA] , m_bitDepth[CHANNEL_TYPE_LUMA] );
+#endif
   }
 #endif
 
@@ -188,6 +237,27 @@ Void TEncTop::destroy ()
     m_cAdaptiveLoopFilter.destroy();
   }
 #endif
+#if JVET_C0024_QTBT
+  UInt uiNumWidthIdx = g_aucConvertToBit[m_CTUSize] + 1;
+  UInt uiNumHeightIdx = g_aucConvertToBit[m_CTUSize] + 1;
+  for (Int w = 0; w<uiNumWidthIdx; w++)
+  {
+    for (Int h=0; h<uiNumHeightIdx; h++)
+    {
+      for (Int iCIIdx = 0; iCIIdx < CI_NUM; iCIIdx ++ )
+      {
+        delete m_ppppcRDSbacCoder[w][h][iCIIdx];
+        delete m_ppppcBinCoderCABAC[w][h][iCIIdx];
+      }
+      delete[] m_ppppcRDSbacCoder[w][h];
+      delete[] m_ppppcBinCoderCABAC[w][h];
+    }
+    delete[] m_ppppcRDSbacCoder[w];
+    delete[] m_ppppcBinCoderCABAC[w];
+  }
+  delete[] m_ppppcRDSbacCoder;
+  delete[] m_ppppcBinCoderCABAC;
+#else
   Int iDepth;
   for ( iDepth = 0; iDepth < m_maxTotalCUDepth+1; iDepth++ )
   {
@@ -206,6 +276,7 @@ Void TEncTop::destroy ()
 
   delete [] m_pppcRDSbacCoder;
   delete [] m_pppcBinCoderCABAC;
+#endif
 
   // destroy ROM
   destroyROM();
@@ -235,7 +306,11 @@ Void TEncTop::init(Bool isFieldCoding)
   // initialize transform & quantization class
   m_pcCavlcCoder = getCavlcCoder();
 
+#if JVET_C0024_QTBT
+  m_cTrQuant.init( m_cSPS.getCTUSize(),
+#else
   m_cTrQuant.init( 1 << m_uiQuadtreeTULog2MaxSize,
+#endif
 #if VCEG_AZ08_USE_KLT
                    m_useKLT,
 #endif
@@ -252,7 +327,11 @@ Void TEncTop::init(Bool isFieldCoding)
                   );
 
   // initialize encoder search class
+#if JVET_C0024_QTBT
+  m_cSearch.init( this, &m_cTrQuant, m_iSearchRange, m_bipredSearchRange, m_iFastSearch, m_CTUSize, m_CTUSize, m_maxTotalCUDepth, &m_cEntropyCoder, &m_cRdCost, getRDSbacCoder(), getRDGoOnSbacCoder() );
+#else
   m_cSearch.init( this, &m_cTrQuant, m_iSearchRange, m_bipredSearchRange, m_iFastSearch, m_maxCUWidth, m_maxCUHeight, m_maxTotalCUDepth, &m_cEntropyCoder, &m_cRdCost, getRDSbacCoder(), getRDGoOnSbacCoder() );
+#endif
 
   m_iMaxRefPicNum = 0;
 
@@ -456,7 +535,11 @@ Void TEncTop::encode(Bool flush, TComPicYuv* pcPicYuvOrg, TComPicYuv* pcPicYuvTr
         else
         {
           rpcPicYuvRec = new TComPicYuv;
+#if JVET_C0024_QTBT
+          rpcPicYuvRec->create( m_iSourceWidth, m_iSourceHeight, m_chromaFormatIDC, m_CTUSize, m_CTUSize, m_maxTotalCUDepth, true);
+#else
           rpcPicYuvRec->create( m_iSourceWidth, m_iSourceHeight, m_chromaFormatIDC, m_maxCUWidth, m_maxCUHeight, m_maxTotalCUDepth, true);
+#endif
         }
         rcListPicYuvRecOut.pushBack( rpcPicYuvRec );
       }
@@ -618,10 +701,22 @@ Void TEncTop::xInitSPS()
   m_cSPS.setPicWidthInLumaSamples  ( m_iSourceWidth      );
   m_cSPS.setPicHeightInLumaSamples ( m_iSourceHeight     );
   m_cSPS.setConformanceWindow      ( m_conformanceWindow );
+#if JVET_C0024_QTBT
+  m_cSPS.setCTUSize                ( m_CTUSize           );
+  m_cSPS.setMinQTSizes             ( m_uiMinQT           );
+#if JVET_C0024_SPS_MAX_BT_DEPTH
+  m_cSPS.setMaxBTDepth             ( m_uiMaxBTDepth, m_uiMaxBTDepthISliceL, m_uiMaxBTDepthISliceC );
+#endif
+#if JVET_C0024_SPS_MAX_BT_SIZE
+  m_cSPS.setMaxBTSize              ( m_uiMaxBTSize, m_uiMaxBTSizeISliceL, m_uiMaxBTSizeISliceC );
+#endif
+#else
   m_cSPS.setMaxCUWidth             ( m_maxCUWidth        );
   m_cSPS.setMaxCUHeight            ( m_maxCUHeight       );
+#endif
   m_cSPS.setMaxTotalCUDepth        ( m_maxTotalCUDepth   );
   m_cSPS.setChromaFormatIdc( m_chromaFormatIDC);
+#if !JVET_C0024_QTBT
   m_cSPS.setLog2DiffMaxMinCodingBlockSize(m_log2DiffMaxMinCodingBlockSize);
 
   Int minCUSize = m_cSPS.getMaxCUWidth() >> ( m_cSPS.getLog2DiffMaxMinCodingBlockSize() );
@@ -633,6 +728,7 @@ Void TEncTop::xInitSPS()
   }
 
   m_cSPS.setLog2MinCodingBlockSize(log2MinCUSize);
+#endif
 
   m_cSPS.setPCMLog2MinSize (m_uiPCMLog2MinSize);
   m_cSPS.setUsePCM        ( m_usePCM           );
@@ -1288,8 +1384,13 @@ Void  TEncTop::xInitPPSforTiles()
 
 Void  TEncCfg::xCheckGSParameters()
 {
+#if JVET_C0024_QTBT
+  Int   iWidthInCU = ( m_iSourceWidth%m_CTUSize ) ? m_iSourceWidth/m_CTUSize + 1 : m_iSourceWidth/m_CTUSize;
+  Int   iHeightInCU = ( m_iSourceHeight%m_CTUSize ) ? m_iSourceHeight/m_CTUSize + 1 : m_iSourceHeight/m_CTUSize;
+#else
   Int   iWidthInCU = ( m_iSourceWidth%m_maxCUWidth ) ? m_iSourceWidth/m_maxCUWidth + 1 : m_iSourceWidth/m_maxCUWidth;
   Int   iHeightInCU = ( m_iSourceHeight%m_maxCUHeight ) ? m_iSourceHeight/m_maxCUHeight + 1 : m_iSourceHeight/m_maxCUHeight;
+#endif
   UInt  uiCummulativeColumnWidth = 0;
   UInt  uiCummulativeRowHeight = 0;
 

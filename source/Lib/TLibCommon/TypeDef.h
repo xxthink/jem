@@ -50,6 +50,43 @@
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////
+#define JVET_C0024_QTBT                                   1
+
+#if JVET_C0024_QTBT
+
+#define MIN_CU_LOG2                                       2
+#if MIN_CU_LOG2==1
+#define JVET_C0024_DF_MODIFY                              1 //deblocking modifications
+#else
+#define JVET_C0024_DF_MODIFY                              0
+#endif
+
+#define JVET_C0024_BT_RMV_REDUNDANT                       1  ///< Remove redundant BT structure for B/P slice
+
+#define JVET_C0024_SPS_MAX_BT_SIZE                        0  ///< signal max BT size in SPS
+#define JVET_C0024_SPS_MAX_BT_DEPTH                       1  ///< signal max BT depth in SPS 
+
+#define JVET_C0024_CTU_256                                0  ///< support CTU 256 for QTBT, force QT split for CU 256x256 
+
+// for fast algorithms
+#define JVET_C0024_AMAX_BT                                1  ///< slice level adaptive maximum BT size (encoder only)
+#define JVET_C0024_AMAX_BT_FIX                            1  ///< Support parallel encoding
+#define JVET_C0024_FAST_MRG                               1
+#define JVET_C0024_PBINTRA_FAST                           1
+#define JVET_C0024_ITSKIP                                 1  ///< skip zero row/column in inverse transform (decoder speedup)
+
+#endif // end of JVET_C0024_QTBT
+
+#define JVET_C0046_ZO_ASSERT                              0  ///< assertion on last coeff and coded_sbk_flag when zeroing out is used (no TS and no TQBypass and using large transform is satisfied)
+#if JVET_C0046_ZO_ASSERT
+#define JVET_C0046_ZO_ASSERT_CODED_SBK_FLAG               1  ///< if (iCGX > TH || iCGY > TH) and (log2BlockWidth + log2BlockHeight) > log2TH and (no TS && no TQBypass), then coded_sbk_flag(iCGX, iCGY) shall be 0.
+#define JVET_C0046_ZO_ASSERT_LAST_COEF                    1  ///< if (log2BlockWidth + log2BlockHeight) > log2TH and (no TS && no TQBypass), then last coef (x,y) shall be in the low frequency domain.
+#endif
+
+#define JVET_C0046_OMIT_ASSERT_ERDPCM                     1  ///< for RExt, omit assertion related to Explict Residual DPCM
+
+#define JVET_C0046_FIX_DECODER_DEBUG_BIT_STATISTICS       1  ///< bugfix on DECODER_DEBUG_BIT_STATISTICS for QTBT
+
 #define VCEG_AZ08_USE_KLT                                 1  ///< KLT (if defined 1, use cfg option of KLT to control the enablement of intra KLT and inter KLT (INTERA_KLT, VCEG_AZ08_INTER_KLT should be set as 1); if 0, use INTERA_KLT, VCEG_AZ08_INTER_KLT to control the enablement.)
 
 #define VCEG_AZ08_INTER_KLT                               1  ///< (default 1) Enable inter KLT
@@ -86,13 +123,21 @@
 #if COM16_C806_ALF_TEMPPRED_NUM
 #define FIX_TICKET12                                      1  ///< fixed ticket #12
 #endif
+
+#define JVET_C0038_GALF                                   1 ///<JVET-C0038 GALF
+#if JVET_C0038_GALF
+#define JVET_C0038_SHIFT_VAL_HALFW                        1  ///<clean up
+#define JVET_C0038_NO_PREV_FILTERS                        16 ///<number of fixed filters per class
 #endif
+#endif
+
 
 #define COM16_C806_VCEG_AZ10_SUB_PU_TMVP                  1  ///< Sub-PU level motion vector prediction
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP                     
 #define COM16_C806_HEVC_MOTION_CONSTRAINT_REMOVAL         1
 #define COM16_C806_DISABLE_4X4_PU                         1
 #define COM16_C806_GEN_MRG_IMPROVEMENT                    1
+#define JVET_C0035_ATMVP_SIMPLIFICATION                   1 ///< JVET-C0035 ATMVP_SIMPLIFICATION
 #endif
 
 #define COM16_C806_OBMC                                   1  ///< Overlapped block motion compensation (OBMC)
@@ -130,6 +175,11 @@
 #define VCEG_AZ06_IC                                      1  ///< Local illumination compensation (LIC)
 #if VCEG_AZ06_IC
 #define VCEG_AZ06_IC_SPEEDUP                              1  ///< speedup of IC
+#if JVET_C0024_QTBT
+#undef VCEG_AZ06_IC_SPEEDUP                              
+#define VCEG_AZ06_IC_SPEEDUP                              0  ///< speedup of IC
+#define IC_THRESHOLD                                      0.06
+#endif
 #endif
 
 #define VCEG_AZ07_INTRA_4TAP_FILTER                       1  ///< 4-tap interpolation filter for intra prediction
@@ -142,6 +192,7 @@
 #if VCEG_AZ07_INTRA_65ANG_MODES
 #define JVET_B0051_NON_MPM_MODE                           1  // Use two mode sets for non-MPM mode coding
 #endif
+#define JVET_C0055_INTRA_MPM                              1  ///< Intra MPM derivation from JVET-C0055
 
 #define VCEG_AZ07_ECABAC                                  1  ///< CABAC improvements
 #if VCEG_AZ07_ECABAC                                         
@@ -160,11 +211,13 @@
 
 #if VCEG_AZ05_BIO                                            
 #define COM16_C1045_BIO_HARMO_IMPROV                      1  ///< Improvement of BIO
+#define JVET_C0027_BIO                                    1   /// MV refinement max value up, BIO_LDB check optimization,  BIO  for 1/16 pel MV support
 #endif                                                       
 
 #define COM16_C1016_AFFINE                                1  ///< Affine motion prediction
 #if COM16_C1016_AFFINE
 #define JVET_B0038_AFFINE_HARMONIZATION                   1  ///< Harmonization of affine, OBMC and DBF
+#define JVET_C0025_AFFINE_FILTER_SIMPLIFICATION           1  ///< Simplification of MC filters for affine
 #endif
 
 #define COM16_C983_RSAF                                   1  ///< Adaptive reference sample smoothing
@@ -177,9 +230,20 @@
 #endif                                                       
 
 #define COM16_C1044_NSST                                  1  ///< Mode dependent non-separable secondary transforms
+#if COM16_C1044_NSST || VCEG_AZ05_ROT_TR
+#define JVET_C0042_UNIFIED_BINARIZATION 1       // unified binarization for NSST index and context modeling based on partition type and intra prediction mode
+#endif
 #if COM16_C1044_NSST && VCEG_AZ05_ROT_TR                     
 #error                                                       
 #endif                                                       
+
+#if COM16_C1044_NSST && JVET_C0024_QTBT
+#define QTBT_NSST                                         1
+#endif
+
+#if COM16_C1044_NSST
+#define JVET_C0045_C0053_NO_NSST_FOR_TS                   1  ///< JVET-C0045/C0053: Disable NSST for TS coded blocks 
+#endif
 
 #define COM16_C1046_PDPC_INTRA                            1  ///< Position dependent intra prediction combination
 #if COM16_C1046_PDPC_INTRA && COM16_C983_RSAF                
@@ -400,9 +464,17 @@ typedef       float           EigenType;
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
 enum MergeType
 {
+#if JVET_C0035_ATMVP_SIMPLIFICATION
+  MGR_TYPE_DEFAULT_N  = 0, // 0
+  MGR_TYPE_SUBPU_ATMVP = 1, // 1
+  MGR_TYPE_SUBPU_ATMVP_EXT =2, // 2
+  NUM_MGR_TYPE =3,              // 3
+#else
   MGR_TYPE_DEFAULT_N  = 0, // 0
   MGR_TYPE_SUBPU_TMVP = 1, // 1
   MGR_TYPE_SUBPU_TMVP_EXT =2, // 2
+  NUM_MGR_TYPE =3, 
+#endif
 };
 #endif
 
@@ -475,6 +547,9 @@ enum DeblockEdgeDir
 enum PartSize
 {
   SIZE_2Nx2N           = 0,           ///< symmetric motion partition,  2Nx2N
+#if JVET_C0024_QTBT
+  NUMBER_OF_PART_SIZES = 1
+#else
   SIZE_2NxN            = 1,           ///< symmetric motion partition,  2Nx N
   SIZE_Nx2N            = 2,           ///< symmetric motion partition,   Nx2N
   SIZE_NxN             = 3,           ///< symmetric motion partition,   Nx N
@@ -483,6 +558,7 @@ enum PartSize
   SIZE_nLx2N           = 6,           ///< asymmetric motion partition, ( N/2)x2N + (3N/2)x2N
   SIZE_nRx2N           = 7,           ///< asymmetric motion partition, (3N/2)x2N + ( N/2)x2N
   NUMBER_OF_PART_SIZES = 8
+#endif
 };
 
 /// supported prediction type
@@ -638,7 +714,12 @@ enum ScalingListMode
 
 enum ScalingListSize
 {
+#if JVET_C0024_QTBT
+  SCALING_LIST_2x2 = 0,
+  SCALING_LIST_4x4,
+#else
   SCALING_LIST_4x4 = 0,
+#endif
   SCALING_LIST_8x8,
   SCALING_LIST_16x16,
   SCALING_LIST_32x32,

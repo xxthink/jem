@@ -133,18 +133,29 @@ Void TComSampleAdaptiveOffset::create( Int picWidth, Int picHeight, ChromaFormat
   m_picWidth        = picWidth;
   m_picHeight       = picHeight;
   m_chromaFormatIDC = format;
+#if JVET_C0024_QTBT
+  assert(maxCUWidth == maxCUHeight);
+  m_CTUSize = maxCUWidth;
+  m_numCTUInWidth   = (m_picWidth/m_CTUSize) + ((m_picWidth % m_CTUSize)?1:0);
+  m_numCTUInHeight  = (m_picHeight/m_CTUSize) + ((m_picHeight % m_CTUSize)?1:0);
+#else
   m_maxCUWidth      = maxCUWidth;
   m_maxCUHeight     = maxCUHeight;
 
   m_numCTUInWidth   = (m_picWidth/m_maxCUWidth) + ((m_picWidth % m_maxCUWidth)?1:0);
   m_numCTUInHeight  = (m_picHeight/m_maxCUHeight) + ((m_picHeight % m_maxCUHeight)?1:0);
+#endif
   m_numCTUsPic      = m_numCTUInHeight*m_numCTUInWidth;
 
   //temporary picture buffer
   if ( !m_tempPicYuv )
   {
     m_tempPicYuv = new TComPicYuv;
+#if JVET_C0024_QTBT
+    m_tempPicYuv->create( m_picWidth, m_picHeight, m_chromaFormatIDC, m_CTUSize, m_CTUSize, maxCUDepth, true );
+#else
     m_tempPicYuv->create( m_picWidth, m_picHeight, m_chromaFormatIDC, m_maxCUWidth, m_maxCUHeight, maxCUDepth, true );
+#endif
   }
 
   //bit-depth related
@@ -314,9 +325,15 @@ Void TComSampleAdaptiveOffset::offsetBlock(const Int channelBitDepth, Int typeId
                                           , Pel* srcBlk, Pel* resBlk, Int srcStride, Int resStride,  Int width, Int height
                                           , Bool isLeftAvail,  Bool isRightAvail, Bool isAboveAvail, Bool isBelowAvail, Bool isAboveLeftAvail, Bool isAboveRightAvail, Bool isBelowLeftAvail, Bool isBelowRightAvail)
 {
+#if JVET_C0024_QTBT
+  if(m_lineBufWidth != m_CTUSize)
+  {
+    m_lineBufWidth = m_CTUSize;
+#else
   if(m_lineBufWidth != m_maxCUWidth)
   {
     m_lineBufWidth = m_maxCUWidth;
+#endif
 
     if (m_signLineBuf1)
     {
@@ -572,10 +589,17 @@ Void TComSampleAdaptiveOffset::offsetCTU(Int ctuRsAddr, TComPicYuv* srcYuv, TCom
   //block boundary availability
   pPic->getPicSym()->deriveLoopFilterBoundaryAvailibility(ctuRsAddr, isLeftAvail,isRightAvail,isAboveAvail,isBelowAvail,isAboveLeftAvail,isAboveRightAvail,isBelowLeftAvail,isBelowRightAvail);
 
+#if JVET_C0024_QTBT
+  Int yPos   = (ctuRsAddr / m_numCTUInWidth)*m_CTUSize;
+  Int xPos   = (ctuRsAddr % m_numCTUInWidth)*m_CTUSize;
+  Int height = (yPos + m_CTUSize > m_picHeight)?(m_picHeight- yPos):m_CTUSize;
+  Int width  = (xPos + m_CTUSize  > m_picWidth )?(m_picWidth - xPos):m_CTUSize;
+#else
   Int yPos   = (ctuRsAddr / m_numCTUInWidth)*m_maxCUHeight;
   Int xPos   = (ctuRsAddr % m_numCTUInWidth)*m_maxCUWidth;
   Int height = (yPos + m_maxCUHeight > m_picHeight)?(m_picHeight- yPos):m_maxCUHeight;
   Int width  = (xPos + m_maxCUWidth  > m_picWidth )?(m_picWidth - xPos):m_maxCUWidth;
+#endif
 
   for(Int compIdx = 0; compIdx < numberOfComponents; compIdx++)
   {
@@ -694,6 +718,9 @@ Void TComSampleAdaptiveOffset::xPCMCURestoration ( TComDataCU* pcCU, UInt uiAbsZ
   // restore PCM samples
   if ((pcCU->getIPCMFlag(uiAbsZorderIdx)&& pcPic->getSlice(0)->getSPS()->getPCMFilterDisableFlag()) || pcCU->isLosslessCoded( uiAbsZorderIdx))
   {
+#if JVET_C0024_QTBT
+    assert(0);  //currently IPCM mode not support QTBT
+#endif
     const UInt numComponents=pcPic->getNumberValidComponents();
     for(UInt comp=0; comp<numComponents; comp++)
     {
@@ -721,8 +748,13 @@ Void TComSampleAdaptiveOffset::xPCMSampleRestoration (TComDataCU* pcCU, UInt uiA
   const Pel *piPcm = pcCU->getPCMSample(compID) + uiOffset;
   const UInt uiStride  = pcPicYuvRec->getStride(compID);
   const TComSPS &sps = *(pcCU->getSlice()->getSPS());
+#if JVET_C0024_QTBT
+  const UInt uiWidth  = ((sps.getCTUSize()  >> uiDepth) >> csx);
+  const UInt uiHeight = ((sps.getCTUSize() >> uiDepth) >> csy);
+#else
   const UInt uiWidth  = ((sps.getMaxCUWidth()  >> uiDepth) >> csx);
   const UInt uiHeight = ((sps.getMaxCUHeight() >> uiDepth) >> csy);
+#endif
 
   if ( pcCU->isLosslessCoded(uiAbsZorderIdx) && !pcCU->getIPCMFlag(uiAbsZorderIdx) )
   {

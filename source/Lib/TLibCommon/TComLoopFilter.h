@@ -44,7 +44,11 @@
 //! \ingroup TLibCommon
 //! \{
 
+#if JVET_C0024_DF_MODIFY
+#define DEBLOCK_SMALLEST_BLOCK  4
+#else
 #define DEBLOCK_SMALLEST_BLOCK  8
+#endif
 
 // ====================================================================================================================
 // Class definition
@@ -64,13 +68,21 @@ private:
 
 protected:
   /// CU-level deblocking function
+#if JVET_C0024_QTBT
+  Void xDeblockCU                 ( TComDataCU* pcCU, UInt uiAbsZorderIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight, DeblockEdgeDir edgeDir );
+#else
   Void xDeblockCU                 ( TComDataCU* pcCU, UInt uiAbsZorderIdx, UInt uiDepth, DeblockEdgeDir edgeDir );
+#endif
 
   // set / get functions
   Void xSetLoopfilterParam        ( TComDataCU* pcCU, UInt uiAbsZorderIdx );
   // filtering functions
+#if JVET_C0024_QTBT
+  Void xSetEdgefilterCU           ( TComDataCU* pcCU, UInt uiAbsZorderIdx, UInt uiWidth, UInt uiHeight );
+#else
   Void xSetEdgefilterTU           ( TComTU &rTu );
   Void xSetEdgefilterPU           ( TComDataCU* pcCU, UInt uiAbsZorderIdx );
+#endif
   Void xGetBoundaryStrengthSingle ( TComDataCU* pCtu, DeblockEdgeDir edgeDir, UInt uiPartIdx );
   UInt xCalcBsIdx                 ( TComDataCU* pcCU, UInt absZIdxInCtu, DeblockEdgeDir edgeDir, Int iEdgeIdx, Int iBaseUnitIdx, const struct TComRectangle *rect=NULL )
   {

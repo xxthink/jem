@@ -89,6 +89,9 @@ public:
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
    virtual Void codeROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth ) = 0;
+#if JVET_C0024_QTBT
+   virtual Void codeROTIdxChroma ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth ) = 0;
+#endif
 #endif
 #if VCEG_AZ07_IMV
   virtual Void codeiMVFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
@@ -105,8 +108,11 @@ public:
   virtual Void codeFRUCMgrMode   ( TComDataCU* pcCU, UInt uiAbsPartIdx , UInt uiPUIdx ) = 0;
 #endif
   virtual Void codeSplitFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
-
+#if JVET_C0024_QTBT
+  virtual Void codeBTSplitMode   ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight) = 0;
+#else
   virtual Void codePartSize      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
+#endif
   virtual Void codePredMode      ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
 
   virtual Void codeIPCMInfo      ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
@@ -135,6 +141,9 @@ public:
 #if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
     , int& bCbfCU
 #endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+    , Int& iNonZeroCoeffNonTs
+#endif
     ) = 0;
   virtual Void codeTransformSkipFlags ( TComTU &rTu, ComponentID component ) = 0;
 #if VCEG_AZ08_KLT_COMMON
@@ -156,12 +165,19 @@ public:
 #endif
 
 #if ALF_HM3_REFACTOR
+#if JVET_C0038_GALF  
+  virtual Void xWriteTruncBinCode   (UInt iSymbol, UInt iMaxSymbol) = 0;
+  virtual Void codeALFPrevFiltType( UInt uiCode) = 0;
+  virtual Void codeALFPrevFiltFlag( Int uiCode)  = 0;
+#endif
   virtual Bool getAlfCtrl()                = 0;
   virtual UInt getMaxAlfCtrlDepth()                = 0;
   virtual Void setAlfCtrl(Bool bAlfCtrl)                = 0;
   virtual Void setMaxAlfCtrlDepth(UInt uiMaxAlfCtrlDepth)                = 0;
   virtual Void codeAlfCtrlDepth     ( UInt uiMaxTotalCUDepth ) = 0;
+#if !JVET_C0024_QTBT
   virtual Void codeAlfCtrlFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
+#endif
   virtual Void codeAlfFlag          ( UInt uiCode ) = 0;
   virtual Void codeAlfUvlc          ( UInt uiCode ) = 0;
   virtual Void codeAlfSvlc          ( Int   iCode ) = 0;
@@ -220,6 +236,9 @@ public:
   Void encodeSPS               ( const TComSPS* pcSPS );
   Void encodePPS               ( const TComPPS* pcPPS );
   Void encodeSplitFlag         ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bRD = false );
+#if JVET_C0024_QTBT
+  Void encodeBTSplitMode       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight, Bool bRD = false );
+#endif
   Void encodeCUTransquantBypassFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
   Void encodeSkipFlag          ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
 #if COM16_C806_OBMC
@@ -246,12 +265,17 @@ public:
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     Void encodeROTIdx    ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth, Bool bRD = false );
+#if JVET_C0024_QTBT
+    Void encodeROTIdxChroma( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth, Bool bRD = false );
+#endif
 #endif
 #if VCEG_AZ07_FRUC_MERGE
   Void encodeFRUCMgrMode  ( TComDataCU* pcCU, UInt uiAbsPartIdx , UInt uiPUIdx );
 #endif
   Void encodePredMode          ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
+#if !JVET_C0024_QTBT
   Void encodePartSize          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bRD = false );
+#endif
   Void encodeIPCMInfo          ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
   Void encodePredInfo          ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void encodeIntraDirModeLuma  ( TComDataCU* pcCU, UInt absPartIdx, Bool isMultiplePU = false 
@@ -274,16 +298,26 @@ public:
   Void encodeCrossComponentPrediction( TComTU &rTu, ComponentID compID );
 
 private:
+#if JVET_C0024_QTBT
+  Void xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComTU &rTu, ComponentID compID);
+#else
   Void xEncodeTransform        ( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComTU &rTu
 #if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
     , Int& bCbfCU
 #endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+    , Int& iNonZeroCoeffNonTs
+#endif
     );
+#endif
 
 public:
   Void encodeCoeff             ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool& bCodeDQP, Bool& codeChromaQpAdj
 #if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
     , Int& bNonZeroCoeff
+#endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+    , Int& iNonZeroCoeffNonTs
 #endif
     );
 
@@ -306,7 +340,9 @@ public:
         ,const TComSlice * pSlice
 #endif
     );
+#if !JVET_C0024_QTBT
   Void encodeAlfCtrlFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
+#endif
   Void encodeAlfCtrlParam      ( ALFParam *pAlfParam );
   Bool getAlfCtrl() {return m_pcEntropyCoderIf->getAlfCtrl();}
   UInt getMaxAlfCtrlDepth() {return m_pcEntropyCoderIf->getMaxAlfCtrlDepth();}
@@ -316,10 +352,23 @@ public:
   Void codeFiltCountBit(ALFParam* pAlfParam, Int64* ruiRate, const TComSlice * pSlice);
   Void codeAux (ALFParam* pAlfParam);
   Void codeFilt (ALFParam* pAlfParam);
-  Int codeFilterCoeff(ALFParam* ALFp);
+  Int codeFilterCoeff(ALFParam* ALFp
+#if JVET_C0038_GALF
+    , Bool bChroma = false
+#endif
+    );
+#if JVET_C0038_GALF
+  Void codeFilterCoeffForce0(ALFParam* ALFp);
+  Int writeFilterCodingParams(Int minKStart, Int maxScanVal, Int kMinTab[], Bool forceCoeff0, Int filters_per_group, Bool codedVarBins[]);
+  Int writeFilterCoeffs(Int sqrFiltLength, Int filters_per_group, const Int pDepthInt[], Int **FilterCoeff, Int kMinTab[], Bool codedVarBins[]);
+#else
   Int writeFilterCodingParams(int minKStart, int maxScanVal, int kMinTab[]);
   Int writeFilterCoeffs(int sqrFiltLength, int filters_per_group, const int pDepthInt[], 
     int **FilterCoeff, int kMinTab[]);
+#endif
+#if JVET_C0038_GALF
+  Int writeFilterCoeffsForChroma(Int sqrFiltLength, const Int pDepthInt[], Int *FilterCoeff, Int kMinTab[]);
+#endif
   Int golombEncode(int coeff, int k);
   Int lengthGolomb(int coeffVal, int k);
 #endif

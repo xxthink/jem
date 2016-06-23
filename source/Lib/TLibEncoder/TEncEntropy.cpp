@@ -135,13 +135,21 @@ Void TEncEntropy::encodeiMVFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
   {
     return;
   }
+#if JVET_C0024_QTBT
+  else if( pcCU->getMergeFlag( uiAbsPartIdx ) )
+#else
   else if( pcCU->getMergeFlag( uiAbsPartIdx ) && pcCU->getPartitionSize( uiAbsPartIdx ) == SIZE_2Nx2N )
+#endif
   {
     assert( pcCU->getiMVFlag( uiAbsPartIdx ) == 0 );
     return;
   }
 #if COM16_C1016_AFFINE
+#if JVET_C0024_QTBT
+  else if( pcCU->getAffineFlag( uiAbsPartIdx ))
+#else
   else if( pcCU->getAffineFlag( uiAbsPartIdx ) && pcCU->getPartitionSize( uiAbsPartIdx ) == SIZE_2Nx2N )
+#endif
   {
     assert( pcCU->getiMVFlag( uiAbsPartIdx ) == 0 );
     return;
@@ -213,6 +221,19 @@ if( bRD )
   // at least one merge candidate existsput return when not encoded
  m_pcEntropyCoderIf->codeROTIdx( pcCU, uiAbsPartIdx, uiDepth );
 }
+
+#if JVET_C0024_QTBT
+Void TEncEntropy::encodeROTIdxChroma( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth, Bool bRD )
+{ 
+
+  if( bRD )
+  {
+    uiAbsPartIdx = 0;
+  }
+  // at least one merge candidate existsput return when not encoded
+ m_pcEntropyCoderIf->codeROTIdxChroma( pcCU, uiAbsPartIdx, uiDepth );
+}
+#endif
 #endif
 //! encode merge flag
 Void TEncEntropy::encodeMergeFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
@@ -227,7 +248,9 @@ Void TEncEntropy::encodeMergeIndex( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bR
   if( bRD )
   {
     uiAbsPartIdx = 0;
+#if !JVET_C0024_QTBT
     assert( pcCU->getPartitionSize(uiAbsPartIdx) == SIZE_2Nx2N );
+#endif
   }
   m_pcEntropyCoderIf->codeMergeIndex( pcCU, uiAbsPartIdx );
 }
@@ -266,6 +289,17 @@ Void TEncEntropy::encodeSplitFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiD
   m_pcEntropyCoderIf->codeSplitFlag( pcCU, uiAbsPartIdx, uiDepth );
 }
 
+#if JVET_C0024_QTBT
+Void TEncEntropy::encodeBTSplitMode( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight, Bool bRD )
+{
+  if (bRD)
+  {
+    uiAbsPartIdx=0;
+  }
+  m_pcEntropyCoderIf->codeBTSplitMode(pcCU, uiAbsPartIdx, uiWidth, uiHeight);
+}
+#endif
+
 #if COM16_C806_EMT
 Void TEncEntropy::encodeEmtCuFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bCodeCuFlag )
 {
@@ -273,6 +307,7 @@ Void TEncEntropy::encodeEmtCuFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiD
 }
 #endif
 
+#if !JVET_C0024_QTBT
 //! encode partition size
 Void TEncEntropy::encodePartSize( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bRD )
 {
@@ -283,6 +318,7 @@ Void TEncEntropy::encodePartSize( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDe
 
   m_pcEntropyCoderIf->codePartSize( pcCU, uiAbsPartIdx, uiDepth );
 }
+#endif
 
 
 /** Encode I_PCM information.
@@ -308,9 +344,63 @@ Void TEncEntropy::encodeIPCMInfo( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD 
 
 }
 
+#if JVET_C0024_QTBT
+Void TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComTU &rTu, ComponentID compID)
+{
+  TComDataCU *pcCU=rTu.getCU();
+  const UInt uiAbsPartIdx=rTu.GetAbsPartIdxTU();
+  const Bool bChroma = isChromaEnabled(pcCU->getPic()->getChromaFormat());
+#if COM16_C806_EMT
+  const UInt uiDepth = rTu.GetTransformDepthTotal();
+#endif
+  assert(rTu.GetTransformDepthRel()==0);
+
+
+  if( !pcCU->isIntra(uiAbsPartIdx) && isLuma(compID) && (!bChroma || (!pcCU->getCbf( uiAbsPartIdx, COMPONENT_Cb, 0 ) && !pcCU->getCbf( uiAbsPartIdx, COMPONENT_Cr, 0 ) ) ) )
+  {
+    assert( pcCU->getCbf( uiAbsPartIdx, COMPONENT_Y, 0 ) );
+    //      printf( "saved one bin! " );
+  }
+  else
+  {
+    m_pcEntropyCoderIf->codeQtCbf( rTu, compID, true ); //luma CBF is always at the lowest level
+  }
+
+  UChar cbf = pcCU->getCbf( uiAbsPartIdx, compID , 0 );
+
+  if (cbf)
+  {
+#if COM16_C806_EMT
+    if (compID == COMPONENT_Y)
+    {
+      m_pcEntropyCoderIf->codeEmtCuFlag( pcCU, uiAbsPartIdx, uiDepth, true );
+    }
+#endif
+#if  VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+    Int dummyCbf=0;
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+    Int dummyNzTs=0;
+#endif
+    m_pcEntropyCoderIf->codeCoeffNxN( rTu, (pcCU->getCoeff(compID) + rTu.getCoefficientOffset(compID)), compID, dummyCbf
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+      , dummyNzTs
+#endif
+      );
+#else
+    m_pcEntropyCoderIf->codeCoeffNxN( rTu, (pcCU->getCoeff(compID) + rTu.getCoefficientOffset(compID)), compID);
+#endif
+  }
+
+  //need to add qp coding, crosscomponentpred,... JCA
+}
+#else
+
 Void TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComTU &rTu
 #if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
   , Int& bCbfCU
+#endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+  , Int& iNonZeroCoeffNonTs
 #endif
   )
 {
@@ -424,6 +514,9 @@ Void TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComT
 #if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
         , bCbfCU
 #endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+        , iNonZeroCoeffNonTs
+#endif
         );
     } while (tuRecurseChild.nextSection(rTu));
   }
@@ -514,6 +607,9 @@ Void TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComT
 #if  VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
                   , bCbfCU
 #endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+                  , iNonZeroCoeffNonTs
+#endif
                   );
               }
 #if COM16_C806_EMT
@@ -538,6 +634,9 @@ Void TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComT
 #if  VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
                 , bCbfCU
 #endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+                , iNonZeroCoeffNonTs
+#endif
                 );
             }
 #if COM16_C806_EMT
@@ -554,6 +653,7 @@ Void TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComT
 }
 
 
+#endif //#if JVET_C0024_QTBT
 //! encode intra direction for luma
 Void TEncEntropy::encodeIntraDirModeLuma  ( TComDataCU* pcCU, UInt absPartIdx, Bool isMultiplePU 
 #if VCEG_AZ07_INTRA_65ANG_MODES
@@ -592,11 +692,22 @@ Void TEncEntropy::encodePredInfo( TComDataCU* pcCU, UInt uiAbsPartIdx )
 {
   if( pcCU->isIntra( uiAbsPartIdx ) )                                 // If it is Intra mode, encode intra prediction mode.
   {
+#if JVET_C0024_QTBT
+    if (isLuma(pcCU->getTextType()))
+    {
+#endif
     encodeIntraDirModeLuma  ( pcCU, uiAbsPartIdx,true );
+#if JVET_C0024_QTBT
+    }
+    if (pcCU->getPic()->getChromaFormat()!=CHROMA_400
+      && (isChroma(pcCU->getTextType()) || !pcCU->getSlice()->isIntra()))
+#else
     if (pcCU->getPic()->getChromaFormat()!=CHROMA_400)
+#endif
     {
       encodeIntraDirModeChroma( pcCU, uiAbsPartIdx );
 
+#if !JVET_C0024_QTBT
       if (enable4ChromaPUsInIntraNxNCU(pcCU->getPic()->getChromaFormat()) && pcCU->getPartitionSize( uiAbsPartIdx )==SIZE_NxN)
       {
         UInt uiPartOffset = ( pcCU->getPic()->getNumPartitionsInCtu() >> ( pcCU->getDepth(uiAbsPartIdx) << 1 ) ) >> 2;
@@ -604,6 +715,7 @@ Void TEncEntropy::encodePredInfo( TComDataCU* pcCU, UInt uiAbsPartIdx )
         encodeIntraDirModeChroma( pcCU, uiAbsPartIdx + uiPartOffset*2 );
         encodeIntraDirModeChroma( pcCU, uiAbsPartIdx + uiPartOffset*3 );
       }
+#endif
     }
   }
   else                                                                // if it is Inter mode, encode motion vector and reference index
@@ -624,10 +736,18 @@ Void TEncEntropy::encodePUWise( TComDataCU* pcCU, UInt uiAbsPartIdx )
   const Bool bDebugPred = bDebugPredEnabled && pcCU->getSlice()->getFinalized();
 #endif
 
+#if JVET_C0024_QTBT
+#if COM16_C1016_AFFINE
+  PartSize ePartSize = SIZE_2Nx2N;
+#endif
+  UInt uiNumPU = 1;
+  UInt uiPUOffset = 0;
+#else
   PartSize ePartSize = pcCU->getPartitionSize( uiAbsPartIdx );
   UInt uiNumPU = ( ePartSize == SIZE_2Nx2N ? 1 : ( ePartSize == SIZE_NxN ? 4 : 2 ) );
   UInt uiDepth = pcCU->getDepth( uiAbsPartIdx );
   UInt uiPUOffset = ( g_auiPUOffset[UInt( ePartSize )] << ( ( pcCU->getSlice()->getSPS()->getMaxTotalCUDepth() - uiDepth ) << 1 ) ) >> 4;
+#endif
 #if VCEG_AZ07_IMV
   Bool bNonZeroMvd = false;
 #endif
@@ -668,7 +788,11 @@ Void TEncEntropy::encodePUWise( TComDataCU* pcCU, UInt uiAbsPartIdx )
     {
       encodeInterDirPU( pcCU, uiSubPartIdx );
 #if COM16_C1016_AFFINE
+#if JVET_C0024_QTBT
+      if ( pcCU->getWidth(uiSubPartIdx) > 8 && pcCU->getHeight(uiSubPartIdx) > 8 && ePartSize == SIZE_2Nx2N )
+#else
       if ( pcCU->getWidth(uiSubPartIdx) > 8 && ePartSize == SIZE_2Nx2N )
+#endif
       {
         encodeAffineFlag( pcCU, uiSubPartIdx, uiPartIdx );
       }
@@ -839,6 +963,9 @@ Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
 #if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
   , Int& bNonZeroCoeff 
 #endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+  , Int& iNonZeroCoeffNonTs
+#endif
   )
 {
 #if ENVIRONMENT_VARIABLE_DEBUG_AND_TEST
@@ -857,7 +984,11 @@ Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
   }
   else
   {
+#if JVET_C0024_QTBT
+    if( !pcCU->getMergeFlag( uiAbsPartIdx) )
+#else
     if( !(pcCU->getMergeFlag( uiAbsPartIdx ) && pcCU->getPartitionSize(uiAbsPartIdx) == SIZE_2Nx2N ) )
+#endif
     {
       m_pcEntropyCoderIf->codeQtRootCbf( pcCU, uiAbsPartIdx );
     }
@@ -875,22 +1006,113 @@ Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
   }
 #endif
 
-
+#if JVET_C0024_QTBT
+  if (isChroma(pcCU->getTextType()) || !pcCU->getSlice()->isIntra())
+  {
+    const UInt numValidComponent = pcCU->getPic()->getNumberValidComponents();
+    for(UInt ch=COMPONENT_Cb; ch<numValidComponent; ch++)
+    {
+      const ComponentID compID=ComponentID(ch);
+      xEncodeTransform( bCodeDQP, codeChromaQpAdj, tuRecurse, compID);
+    }
+  }
+  if (isLuma(pcCU->getTextType()))
+  {
+    xEncodeTransform( bCodeDQP, codeChromaQpAdj, tuRecurse, COMPONENT_Y);
+  }
+#if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+#if !QTBT_NSST
+  Int  bCbfCU = bNonZeroCoeff = pcCU->getSlice()->isIntra() ? (isLuma(pcCU->getTextType()) ? pcCU->getCbf(uiAbsPartIdx, COMPONENT_Y)
+    : (pcCU->getCbf(uiAbsPartIdx, COMPONENT_Cb) || pcCU->getCbf(uiAbsPartIdx, COMPONENT_Cr) )): pcCU->getQtRootCbf(uiAbsPartIdx);
+#else
+  bNonZeroCoeff = 0;
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+  iNonZeroCoeffNonTs = 0;
+#endif
+  const UInt uiFirstComp = isLuma(pcCU->getTextType()) ? COMPONENT_Y : COMPONENT_Cb;
+  const UInt uiLastComp  = isLuma(pcCU->getTextType()) && pcCU->getSlice()->isIntra() ? COMPONENT_Y : pcCU->getPic()->getNumberValidComponents()-1;
+  const Int iNonZeroCoeffThr = isLuma(pcCU->getTextType()) ? NSST_SIG_NZ_LUMA + (pcCU->getSlice()->isIntra() ? 0 : NSST_SIG_NZ_CHROMA) : NSST_SIG_NZ_CHROMA;
+  for(UInt ch= uiFirstComp; ch<=uiLastComp; ch++)
+  {
+    const ComponentID compID   = ComponentID(ch);
+    TCoeff *pcCoef             = pcCU->getCoeff(compID) + tuRecurse.getCoefficientOffset(compID);
+    const TComRectangle &rRect = tuRecurse.getRect(compID);
+    const UInt uiWidth         = rRect.width;
+    const UInt uiHeight        = rRect.height;
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+    Int iNumNonZeros = countNonZeroCoeffs(pcCoef, uiWidth * uiHeight);
+    bNonZeroCoeff += iNumNonZeros;
+    if( !pcCU->getTransformSkip( uiAbsPartIdx, compID) )
+    {
+      iNonZeroCoeffNonTs += iNumNonZeros;
+    }
+#else
+    bNonZeroCoeff += countNonZeroCoeffs(pcCoef, uiWidth * uiHeight);
+#endif
+  }
+#endif
+#endif
+#else
 #if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
   Int  bCbfCU = false;
 #endif   
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+  iNonZeroCoeffNonTs = 0;
+#endif
+
   xEncodeTransform( bCodeDQP, codeChromaQpAdj, tuRecurse
 #if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
     , bCbfCU
+#endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+    , iNonZeroCoeffNonTs
 #endif
     );
 #if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
   bNonZeroCoeff = bCbfCU;
 #endif
+#endif
+
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   /// put conditions if sometimes flag is not encoded
-  if (bCbfCU  )
+#if JVET_C0024_QTBT
+  if (
+#if QTBT_NSST
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+    iNonZeroCoeffNonTs > iNonZeroCoeffThr
+#else
+    bNonZeroCoeff > iNonZeroCoeffThr
+#endif
+#else
+    bCbfCU 
+#endif
+    && isLuma(pcCU->getTextType()))
+  {
     encodeROTIdx( pcCU, uiAbsPartIdx, uiDepth );
+  }
+  else if(
+#if QTBT_NSST
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+    iNonZeroCoeffNonTs > iNonZeroCoeffThr
+#else
+    bNonZeroCoeff > iNonZeroCoeffThr
+#endif
+#else
+    bCbfCU 
+#endif
+     && isChroma(pcCU->getTextType()) && pcCU->getWidth(uiAbsPartIdx) >= 8 && pcCU->getHeight(uiAbsPartIdx) >= 8 )
+  {
+    assert( pcCU->getSlice()->isIntra() );
+    encodeROTIdxChroma( pcCU, uiAbsPartIdx, uiDepth );
+  }
+#else
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+  if ( iNonZeroCoeffNonTs  )
+#else
+  if (bCbfCU  )
+#endif
+    encodeROTIdx( pcCU, uiAbsPartIdx, uiDepth );
+#endif
 #endif 
 }
 
@@ -901,9 +1123,13 @@ Void TEncEntropy::encodeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID
 #if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
   Int  bCbfCU = false;
 #endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+  Int iNonZeroCoeffNonTs = 0;
+#endif
 
   if (pcCU->getCbf(rTu.GetAbsPartIdxTU(), compID, rTu.GetTransformDepthRel()) != 0)
   {
+#if !JVET_C0024_QTBT
     if (rTu.getRect(compID).width != rTu.getRect(compID).height)
     {
       //code two sub-TUs
@@ -921,16 +1147,23 @@ Void TEncEntropy::encodeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID
 #if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
             , bCbfCU
 #endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+            , iNonZeroCoeffNonTs
+#endif
             );
         }
       }
       while (subTUIterator.nextSection(rTu));
     }
     else
+#endif
     {
       m_pcEntropyCoderIf->codeCoeffNxN(rTu, pcCoef, compID
 #if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
         , bCbfCU
+#endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+        , iNonZeroCoeffNonTs
 #endif
         );
     }
@@ -939,9 +1172,18 @@ Void TEncEntropy::encodeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID
 
 Void TEncEntropy::estimateBit (estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, const ChannelType chType)
 {
+#if JVET_C0024_QTBT
+  if (width==2 || height==2)
+  {
+      return;   //don't use RDOQ for 2xn;
+  }
+
+  m_pcEntropyCoderIf->estBit ( pcEstBitsSbac, width, height, chType );
+#else
   const UInt heightAtEntropyCoding = (width != height) ? (height >> 1) : height;
 
   m_pcEntropyCoderIf->estBit ( pcEstBitsSbac, width, heightAtEntropyCoding, chType );
+#endif
 }
 
 Int TEncEntropy::countNonZeroCoeffs( TCoeff* pcCoef, UInt uiSize )
@@ -977,6 +1219,73 @@ Void TEncEntropy::codeAuxCountBit(ALFParam* pAlfParam, Int64* ruiRate, const TCo
   resetBits();
 }
 
+#if JVET_C0038_GALF
+Void TEncEntropy::codeAux(ALFParam* pAlfParam)
+{
+  //number of total filters
+  {
+    Int iNoVarBins = TComAdaptiveLoopFilter::m_NO_VAR_BINS;
+    m_pcEntropyCoderIf->xWriteTruncBinCode((UInt)(pAlfParam->noFilters-1), (UInt)iNoVarBins);
+  }
+
+  // Filter tap 
+  {
+    Int FiltTab[3] = {9, 7, 5};
+    Int Tab = FiltTab[pAlfParam->realfiltNo];
+    m_pcEntropyCoderIf->codeAlfUvlc((Tab-5)/2); 
+  }
+  Int iNoVarBins = TComAdaptiveLoopFilter::m_NO_VAR_BINS;
+
+  if(pAlfParam->noFilters > 1) //Filter used for each class
+  {
+    for (Int i=0; i< iNoVarBins; i++)
+    {
+      m_pcEntropyCoderIf->xWriteTruncBinCode((UInt)pAlfParam->filterPattern[i], (UInt)pAlfParam->noFilters);
+    }
+  }
+  {
+    Int i; 
+    UChar predPattern, codetab_pred[3] = {1, 0, 2};
+    UInt   availableFilters  = (UInt) pAlfParam->iAvailableFilters;
+
+    // frame that filter is predicted from
+    if (availableFilters > 0 )
+    { 
+      // prediction pattern
+      predPattern = pAlfParam->PrevFiltIdx[0] > 0 ? 1 : 0;
+      for (i=1; i<iNoVarBins; i++)
+      {
+        Int iCurrPredPattern = pAlfParam->PrevFiltIdx[i] > 0 ? 1: 0;
+        if (iCurrPredPattern != predPattern )
+        {
+          predPattern=2;
+          break;
+        }
+      }
+      pAlfParam->iPredPattern = predPattern;
+      m_pcEntropyCoderIf->codeALFPrevFiltType(codetab_pred[predPattern]); //0: all zero, no pred from pre-defined filters; 1: all are predicted but could be different values; 2: some predicted and some not
+
+      if (predPattern==2)
+      {
+        for (i=0; i<iNoVarBins; i++)
+        {    
+          m_pcEntropyCoderIf->codeALFPrevFiltFlag(pAlfParam->PrevFiltIdx[i]);
+        }
+      }
+      if (predPattern>0 && availableFilters>1)
+      {
+        for (i=0; i< iNoVarBins; i++)
+        {
+          if (pAlfParam->PrevFiltIdx[i] > 0)
+          {
+            m_pcEntropyCoderIf->xWriteTruncBinCode(pAlfParam->PrevFiltIdx[i]-1, availableFilters);
+          }
+        }
+      }
+    }
+  }
+}
+#else
 Void TEncEntropy::codeAux(ALFParam* pAlfParam)
 {
   Int FiltTab[3] = {9, 7, 5};
@@ -1003,6 +1312,8 @@ Void TEncEntropy::codeAux(ALFParam* pAlfParam)
     }
   }
 }
+#endif
+
 
 Int TEncEntropy::lengthGolomb(int coeffVal, int k)
 {
@@ -1013,12 +1324,116 @@ Int TEncEntropy::lengthGolomb(int coeffVal, int k)
   else
     return(q + 1 + k);
 }
-
-Int TEncEntropy::codeFilterCoeff(ALFParam* ALFp)
+#if JVET_C0038_GALF
+Void TEncEntropy::codeFilterCoeffForce0(ALFParam* ALFp)
 {
+  int filters_per_group = ALFp->filters_per_group;
+  int sqrFiltLength = ALFp->num_coeff;
+  int filtNo = ALFp->realfiltNo;
+  int flTab[]={9/2, 7/2, 5/2};
+  int fl = flTab[filtNo];
+  int i, k, kMin, kStart, minBits, ind, scanPos, maxScanVal, coeffVal, 
+    kMinTab[TComAdaptiveLoopFilter::m_MAX_SQR_FILT_LENGTH], bitsCoeffScan[TComAdaptiveLoopFilter::m_MAX_SCAN_VAL][TComAdaptiveLoopFilter::m_MAX_EXP_GOLOMB],
+    minKStart, minBitsKStart, bitsKStart;
+
+  const Int * pDepthInt = TComAdaptiveLoopFilter::m_pDepthIntTab[fl-2];
+  sqrFiltLength=sqrFiltLength-1;
+
+  maxScanVal = 0;
+  for(i = 0; i < sqrFiltLength; i++)
+  {
+    maxScanVal = max(maxScanVal, pDepthInt[i]);
+  }
+
+  // vlc for all
+  memset(bitsCoeffScan, 0, TComAdaptiveLoopFilter::m_MAX_SCAN_VAL * TComAdaptiveLoopFilter::m_MAX_EXP_GOLOMB * sizeof(int));
+  for(ind=0; ind<filters_per_group; ++ind)
+  {
+    if (ALFp->codedVarBins[ind])
+    {
+      for(i = 0; i < sqrFiltLength; i++)
+      {
+        scanPos=pDepthInt[i]-1;
+        coeffVal=abs(ALFp->coeffmulti[ind][i]);
+        for (k=1; k<15; k++)
+        {
+          bitsCoeffScan[scanPos][k]+=lengthGolomb(coeffVal, k);
+        }
+      }
+    }
+  }
+
+  minBitsKStart = 0;
+  minKStart = -1;
+  for(k = 1; k < 8; k++)
+  { 
+    bitsKStart = 0; 
+    kStart = k;
+    for(scanPos = 0; scanPos < maxScanVal; scanPos++)
+    {
+      kMin = kStart; 
+      minBits = bitsCoeffScan[scanPos][kMin];
+
+      if(bitsCoeffScan[scanPos][kStart+1] < minBits)
+      {
+        kMin = kStart + 1; 
+        minBits = bitsCoeffScan[scanPos][kMin];
+      }
+      kStart = kMin;
+      bitsKStart += minBits;
+    }
+    if((bitsKStart < minBitsKStart) || (k == 1))
+    {
+      minBitsKStart = bitsKStart;
+      minKStart = k;
+    }
+  }
+
+  kStart = minKStart; 
+  for(scanPos = 0; scanPos < maxScanVal; scanPos++)
+  {
+    kMin = kStart; 
+    minBits = bitsCoeffScan[scanPos][kMin];
+
+    if(bitsCoeffScan[scanPos][kStart+1] < minBits)
+    {
+      kMin = kStart + 1; 
+      minBits = bitsCoeffScan[scanPos][kMin];
+    }
+
+    kMinTab[scanPos] = kMin;
+    kStart = kMin;
+  }
+
+  // Coding parameters
+  ALFp->minKStart = minKStart;
+  ALFp->maxScanVal = maxScanVal;
+  for(scanPos = 0; scanPos < maxScanVal; scanPos++)
+  {
+    ALFp->kMinTab[scanPos] = kMinTab[scanPos];
+  }
+  writeFilterCodingParams(minKStart, maxScanVal, kMinTab, ALFp->forceCoeff0, ALFp->filters_per_group, ALFp->codedVarBins);
+
+  // Filter coefficients
+  writeFilterCoeffs(sqrFiltLength, filters_per_group, pDepthInt, ALFp->coeffmulti, kMinTab, ALFp->codedVarBins);  
+}
+#endif
+Int TEncEntropy::codeFilterCoeff(ALFParam* ALFp
+#if JVET_C0038_GALF
+    , Bool bChroma 
+#endif
+  )
+{
+#if JVET_C0038_GALF
+  int filters_per_group = bChroma ? 1: ALFp->filters_per_group_diff;
+  int sqrFiltLength = bChroma ? ALFp->num_coeff_chroma : ALFp->num_coeff;
+  int filtNo = bChroma ? ( ALFp->tap_chroma==5?2: (ALFp->tap_chroma==7? 1: 0) ) : ALFp->realfiltNo;    
+#else
   int filters_per_group = ALFp->filters_per_group_diff;
   int sqrFiltLength = ALFp->num_coeff;
   int filtNo = ALFp->realfiltNo;
+#endif
+
   int flTab[]={9/2, 7/2, 5/2};
   int fl = flTab[filtNo];
   int i, k, kMin, kStart, minBits, ind, scanPos, maxScanVal, coeffVal, len = 0,
@@ -1026,6 +1441,9 @@ Int TEncEntropy::codeFilterCoeff(ALFParam* ALFp)
     minKStart, minBitsKStart, bitsKStart;
 
   const Int * pDepthInt = TComAdaptiveLoopFilter::m_pDepthIntTab[fl-2];
+#if JVET_C0038_GALF
+  sqrFiltLength=sqrFiltLength-1;
+#endif
 
   maxScanVal = 0;
   for(i = 0; i < sqrFiltLength; i++)
@@ -1038,7 +1456,11 @@ Int TEncEntropy::codeFilterCoeff(ALFParam* ALFp)
     for(i = 0; i < sqrFiltLength; i++)
     {
       scanPos=pDepthInt[i]-1;
+#if JVET_C0038_GALF
+      coeffVal=abs(bChroma? ALFp->coeff_chroma[i]: ALFp->coeffmulti[ind][i]);
+#else
       coeffVal=abs(ALFp->coeffmulti[ind][i]);
+#endif
       for (k=1; k<15; k++)
       {
         bitsCoeffScan[scanPos][k]+=lengthGolomb(coeffVal, k);
@@ -1095,15 +1517,38 @@ Int TEncEntropy::codeFilterCoeff(ALFParam* ALFp)
   {
     ALFp->kMinTab[scanPos] = kMinTab[scanPos];
   }
+#if JVET_C0038_GALF
+  if(bChroma)
+  {
+    len += writeFilterCodingParams(minKStart, maxScanVal, kMinTab, 0, ALFp->filters_per_group, ALFp->codedVarBins);
+  }
+  else
+  {    
+    len += writeFilterCodingParams(minKStart, maxScanVal, kMinTab, ALFp->forceCoeff0, ALFp->filters_per_group, ALFp->codedVarBins);
+  }
+  // Filter coefficients
+  if(bChroma)
+  {
+    len += writeFilterCoeffsForChroma(sqrFiltLength, pDepthInt, ALFp->coeff_chroma, kMinTab);
+  }
+  else
+  {
+    len += writeFilterCoeffs(sqrFiltLength, filters_per_group, pDepthInt, ALFp->coeffmulti, kMinTab, ALFp->codedVarBins);
+  }
+#else
   len += writeFilterCodingParams(minKStart, maxScanVal, kMinTab);
 
   // Filter coefficients
   len += writeFilterCoeffs(sqrFiltLength, filters_per_group, pDepthInt, ALFp->coeffmulti, kMinTab);
-
+#endif
   return len;
 }
 
+#if JVET_C0038_GALF
+Int TEncEntropy::writeFilterCodingParams(Int minKStart, Int maxScanVal, Int kMinTab[], Bool forceCoeff0, Int filters_per_group, Bool codedVarBins[])
+#else
 Int TEncEntropy::writeFilterCodingParams(int minKStart, int maxScanVal, int kMinTab[])
+#endif
 {
   int scanPos;
   int golombIndexBit;
@@ -1122,17 +1567,35 @@ Int TEncEntropy::writeFilterCodingParams(int minKStart, int maxScanVal, int kMin
     m_pcEntropyCoderIf->codeAlfFlag(golombIndexBit);
     kMin = kMinTab[scanPos];
   }    
-
+#if JVET_C0038_GALF  
+  if(forceCoeff0)
+  {
+    for(Int ind=0; ind<filters_per_group; ++ind)
+    {
+      m_pcEntropyCoderIf->codeALFPrevFiltFlag( codedVarBins[ind] ? 1 : 0 );
+    }
+  }
+#endif
   return 0;
 }
 
 Int TEncEntropy::writeFilterCoeffs(int sqrFiltLength, int filters_per_group, const int pDepthInt[], 
-  int **FilterCoeff, int kMinTab[])
+  int **FilterCoeff, int kMinTab[]
+#if JVET_C0038_GALF
+ ,Bool codedVarBins[]
+#endif
+)
 {
   int ind, scanPos, i;
 
   for(ind = 0; ind < filters_per_group; ++ind)
   {
+#if JVET_C0038_GALF
+    if(codedVarBins[ind]==false)
+    {
+      continue;
+    }
+#endif
     for(i = 0; i < sqrFiltLength; i++)
     {
       scanPos = pDepthInt[i] - 1;
@@ -1141,7 +1604,20 @@ Int TEncEntropy::writeFilterCoeffs(int sqrFiltLength, int filters_per_group, con
   }
   return 0;
 }
-
+#if JVET_C0038_GALF
+Int TEncEntropy::writeFilterCoeffsForChroma(Int sqrFiltLength, const Int pDepthInt[], Int *FilterCoeff, Int kMinTab[])
+{
+  Int scanPos, i;  
+  {
+    for(i = 0; i < sqrFiltLength; i++)
+    {
+      scanPos = pDepthInt[i] - 1;
+      golombEncode(FilterCoeff[i], kMinTab[scanPos]);
+    }
+  }
+  return 0;
+}
+#endif
 Int TEncEntropy::golombEncode(int coeff, int k)
 {
   int q, i, m;
@@ -1171,13 +1647,25 @@ Int TEncEntropy::golombEncode(int coeff, int k)
 
 Void TEncEntropy::codeFilt(ALFParam* pAlfParam)
 {
+#if JVET_C0038_GALF
+  m_pcEntropyCoderIf->codeALFPrevFiltFlag(pAlfParam->forceCoeff0);
+  if( pAlfParam->forceCoeff0 )
+  {
+    codeFilterCoeffForce0(pAlfParam);
+  }
+  else
+  {
+#endif
   if(pAlfParam->filters_per_group > 1)
   {
     m_pcEntropyCoderIf->codeAlfFlag (pAlfParam->predMethod);
   }
   codeFilterCoeff (pAlfParam);
+#if JVET_C0038_GALF
+  }
+#endif
 }
-
+#if !JVET_C0038_GALF
 Void  print(ALFParam* pAlfParam)
 {
   Int i=0;
@@ -1230,6 +1718,7 @@ Void  print(ALFParam* pAlfParam)
   }
   printf("\n");
 }
+#endif
 
 Void TEncEntropy::encodeAlfParam(ALFParam* pAlfParam , UInt uiMaxTotalCUDepth
 #if FIX_TICKET12
@@ -1240,7 +1729,10 @@ Void TEncEntropy::encodeAlfParam(ALFParam* pAlfParam , UInt uiMaxTotalCUDepth
   m_pcEntropyCoderIf->codeAlfFlag(pAlfParam->alf_flag);
   if (!pAlfParam->alf_flag)
     return;
+#if !JVET_C0038_GALF 
   Int pos;
+#endif
+
 #if COM16_C806_ALF_TEMPPRED_NUM
   //encode temporal prediction flag and index
 #if FIX_TICKET12
@@ -1265,21 +1757,26 @@ Void TEncEntropy::encodeAlfParam(ALFParam* pAlfParam , UInt uiMaxTotalCUDepth
 #endif
   // filter parameters for chroma
   m_pcEntropyCoderIf->codeAlfUvlc(pAlfParam->chroma_idc);
+
 #if COM16_C806_ALF_TEMPPRED_NUM
   if( !pAlfParam->temproalPredFlag && pAlfParam->chroma_idc )
 #else
   if(pAlfParam->chroma_idc)
 #endif
   {
+#if !JVET_C0038_GALF 
     m_pcEntropyCoderIf->codeAlfUvlc((pAlfParam->tap_chroma-5)/2);
-
+#endif
     // filter coefficients for chroma
+#if JVET_C0038_GALF 
+    codeFilterCoeff(pAlfParam, true);
+#else
     for(pos=0; pos<pAlfParam->num_coeff_chroma; pos++)
     {
       m_pcEntropyCoderIf->codeAlfSvlc(pAlfParam->coeff_chroma[pos]);
     }
+#endif
   }
-
   // region control parameters for luma
   m_pcEntropyCoderIf->codeAlfFlag(pAlfParam->cu_control_flag);
   if (pAlfParam->cu_control_flag)
@@ -1289,6 +1786,7 @@ Void TEncEntropy::encodeAlfParam(ALFParam* pAlfParam , UInt uiMaxTotalCUDepth
   }
 }
 
+#if !JVET_C0024_QTBT
 Void TEncEntropy::encodeAlfCtrlFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD )
 {
   if( bRD )
@@ -1296,6 +1794,7 @@ Void TEncEntropy::encodeAlfCtrlFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool b
 
   m_pcEntropyCoderIf->codeAlfCtrlFlag( pcCU, uiAbsPartIdx );
 }
+#endif
 
 Void TEncEntropy::encodeAlfCtrlParam( ALFParam* pAlfParam )
 {

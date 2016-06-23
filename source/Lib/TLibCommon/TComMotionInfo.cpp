@@ -39,7 +39,7 @@
 #include "TComMotionInfo.h"
 #include "assert.h"
 #include <stdlib.h>
-#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP || VCEG_AZ07_FRUC_MERGE
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP || VCEG_AZ07_FRUC_MERGE || JVET_C0024_QTBT
 #include "TComDataCU.h"
 #include "TComPic.h"
 #endif
@@ -88,7 +88,8 @@ Void TComCUMvField::destroy()
 // Clear / copy
 // --------------------------------------------------------------------------------------------------------------------
 
-Void TComCUMvField::clearMvField()
+#if JVET_C0024_QTBT //only for FRUC, which clears the MvField before initCtu.
+Void TComCUMvField::clearCtuMvField()
 {
   for ( Int i = 0; i < m_uiNumPartition; i++ )
   {
@@ -98,6 +99,66 @@ Void TComCUMvField::clearMvField()
   assert( sizeof( *m_piRefIdx ) == 1 );
   memset( m_piRefIdx, NOT_VALID, m_uiNumPartition * sizeof( *m_piRefIdx ) );
 }
+#endif
+
+Void TComCUMvField::clearMvField()
+{
+#if JVET_C0024_QTBT
+  UInt uiRaster = g_auiZscanToRaster[m_pcCU->getZorderIdxInCtu()];
+  UInt uiShort, uiLong;
+  UInt uiStride;
+  if (m_pcCU->getHeight(0) > m_pcCU->getWidth(0))
+  {
+    uiShort = m_pcCU->getWidth(0);
+    uiLong = m_pcCU->getHeight(0);
+    uiStride = m_pcCU->getPic()->getNumPartInCtuWidth();
+  }
+  else
+  {
+    uiShort = m_pcCU->getHeight(0);
+    uiLong = m_pcCU->getWidth(0);
+    uiStride = 1;
+  }
+
+  UInt uiDepth = g_aucConvertToBit[m_pcCU->getSlice()->getSPS()->getCTUSize()] - g_aucConvertToBit[uiShort];
+  UInt uiCurrPartNumb = m_pcCU->getPic()->getNumPartitionsInCtu() >> (uiDepth << 1);
+  UInt uiNumPartInShort = m_pcCU->getPic()->getNumPartInCtuWidth() >> uiDepth;
+
+  for (UInt i=0; i<uiLong; i+=uiShort)
+  {
+    memset(m_piRefIdx + g_auiRasterToZscan[uiRaster] - m_pcCU->getZorderIdxInCtu(), NOT_VALID, uiCurrPartNumb );
+    TComMv* pMv = m_pcMv + g_auiRasterToZscan[uiRaster] - m_pcCU->getZorderIdxInCtu();
+    TComMv* pMvd = m_pcMvd + g_auiRasterToZscan[uiRaster] - m_pcCU->getZorderIdxInCtu();
+
+    for (UInt j=0; j<uiCurrPartNumb; j++)
+    {
+      pMv [ j ].setZero();
+      pMvd[ j ].setZero();  
+    }
+
+    uiRaster += uiNumPartInShort * uiStride;
+  }
+#else
+  for ( Int i = 0; i < m_uiNumPartition; i++ )
+  {
+    m_pcMv [ i ].setZero();
+    m_pcMvd[ i ].setZero();
+  }
+  assert( sizeof( *m_piRefIdx ) == 1 );
+  memset( m_piRefIdx, NOT_VALID, m_uiNumPartition * sizeof( *m_piRefIdx ) );
+#endif
+}
+
+#if JVET_C0024_QTBT
+Void TComCUMvField::copyFromTo( TComCUMvField const * pcCUMvFieldSrc, Int iNumPart, Int iPartAddrSrc, Int iPartAddrDst )
+{
+  Int iSizeInTComMv = sizeof( TComMv ) * iNumPart;
+  
+  memcpy( m_pcMv     + iPartAddrDst, pcCUMvFieldSrc->m_pcMv + iPartAddrSrc,     iSizeInTComMv );
+  memcpy( m_pcMvd    + iPartAddrDst, pcCUMvFieldSrc->m_pcMvd + iPartAddrSrc,    iSizeInTComMv );
+  memcpy( m_piRefIdx + iPartAddrDst, pcCUMvFieldSrc->m_piRefIdx + iPartAddrSrc, sizeof( *m_piRefIdx ) * iNumPart );
+}
+#endif
 
 Void TComCUMvField::copyFrom( TComCUMvField const * pcCUMvFieldSrc, Int iNumPartSrc, Int iPartAddrDst )
 {
@@ -130,6 +191,40 @@ Void TComCUMvField::copyTo( TComCUMvField* pcCUMvFieldDst, Int iPartAddrDst, UIn
 template <typename T>
 Void TComCUMvField::setAll( T *p, T const & val, PartSize eCUMode, Int iPartAddr, UInt uiDepth, Int iPartIdx  )
 {
+#if JVET_C0024_QTBT
+  assert(eCUMode == SIZE_2Nx2N); 
+  UInt uiRaster = g_auiZscanToRaster[m_pcCU->getZorderIdxInCtu()+iPartAddr];
+  UInt uiShort, uiLong;
+  UInt uiStride;
+  UInt uiWidth = m_pcCU->getWidth(iPartAddr);
+  UInt uiHeight = m_pcCU->getHeight(iPartAddr);
+  if (uiHeight > uiWidth)
+  {
+    uiShort = uiWidth;
+    uiLong = uiHeight;
+    uiStride = m_pcCU->getPic()->getNumPartInCtuWidth();
+  }
+  else
+  {
+    uiShort = uiHeight;
+    uiLong = uiWidth;
+    uiStride = 1;
+  }
+
+  uiDepth = g_aucConvertToBit[m_pcCU->getSlice()->getSPS()->getCTUSize()] - g_aucConvertToBit[uiShort];
+  UInt uiCurrPartNumb = m_pcCU->getPic()->getNumPartitionsInCtu() >> (uiDepth << 1);
+  UInt uiNumPartInShort = m_pcCU->getPic()->getNumPartInCtuWidth() >> uiDepth;
+
+  for (UInt i=0; i<uiLong; i+=uiShort)
+  {
+    T* p1 = p + g_auiRasterToZscan[uiRaster] - m_pcCU->getZorderIdxInCtu();
+    for (UInt j=0; j<uiCurrPartNumb; j++)
+    {
+      p1[ j ] = val;
+    }
+    uiRaster += uiNumPartInShort * uiStride;
+  }
+#else
   Int i;
   p += iPartAddr;
   Int numElements = m_uiNumPartition >> ( 2 * uiDepth );
@@ -303,6 +398,7 @@ Void TComCUMvField::setAll( T *p, T const & val, PartSize eCUMode, Int iPartAddr
       assert(0);
       break;
   }
+#endif
 }
 
 Void TComCUMvField::setAllMv( TComMv const & mv, PartSize eCUMode, Int iPartAddr, UInt uiDepth, Int iPartIdx )

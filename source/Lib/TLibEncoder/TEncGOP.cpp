@@ -154,8 +154,13 @@ Void TEncGOP::init ( TEncTop* pcTEncTop )
   {
     m_pcAdaptiveLoopFilter = pcTEncTop->getAdaptiveLoopFilter();
 #if COM16_C806_ALF_TEMPPRED_NUM
+#if JVET_C0024_QTBT
+    UInt uiMaxCUWidth = m_pcCfg->getCTUSize();
+    UInt uiMaxCUHeight = m_pcCfg->getCTUSize();
+#else
     UInt uiMaxCUWidth = m_pcCfg->getMaxCUWidth();
     UInt uiMaxCUHeight = m_pcCfg->getMaxCUHeight();
+#endif
     UInt uiPicWidth = m_pcCfg->getSourceWidth();
     UInt uiPicHeight = m_pcCfg->getSourceHeight();
     UInt uiWidthInCU       = ( uiPicWidth %uiMaxCUWidth  ) ? uiPicWidth /uiMaxCUWidth  + 1 : uiPicWidth /uiMaxCUWidth;
@@ -1287,6 +1292,52 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     //  Set reference list
     pcSlice->setRefPicList ( rcListPic );
 
+#if JVET_C0024_AMAX_BT
+    if (!pcSlice->isIntra() ) 
+    {
+      Int refLayer=pcSlice->getDepth();
+      if( refLayer>9) refLayer=9; // Max layer is 10  
+#if JVET_C0024_AMAX_BT_FIX
+      if( g_bInitAMaxBT && pcSlice->getPOC() > g_uiPrevISlicePOC )
+      {
+        ::memset( g_uiBlkSize, 0, sizeof(g_uiBlkSize) );
+        ::memset( g_uiNumBlk, 0, sizeof(g_uiNumBlk) );
+        g_bInitAMaxBT = false;
+      }
+#endif
+      if (refLayer >= 0 && g_uiNumBlk[refLayer] != 0) 
+      {
+        Double dBlkSize = sqrt((Double)g_uiBlkSize[refLayer]/g_uiNumBlk[refLayer]);
+        if (dBlkSize < AMAXBT_TH32)
+        {
+          pcSlice->setMaxBTSize(32>MAX_BT_SIZE_INTER ? MAX_BT_SIZE_INTER: 32);
+        }
+        else if (dBlkSize < AMAXBT_TH64)
+        {
+          pcSlice->setMaxBTSize(64>MAX_BT_SIZE_INTER ? MAX_BT_SIZE_INTER: 64);
+        }
+        else
+        {
+          pcSlice->setMaxBTSize(128>MAX_BT_SIZE_INTER? MAX_BT_SIZE_INTER: 128);
+        }
+#if !JVET_C0024_AMAX_BT_FIX
+        printf("\n previous layer=%d, avg blk size = %3.2f, current max BT set to %d\n", refLayer, dBlkSize, pcSlice->getMaxBTSize());
+#endif
+
+        g_uiBlkSize[refLayer] = 0;
+        g_uiNumBlk[refLayer] = 0;
+      }
+    }
+#if JVET_C0024_AMAX_BT_FIX
+    else
+    {
+      g_uiPrevISlicePOC = pcSlice->getPOC();
+      g_bInitAMaxBT = true;
+    }
+#endif
+#endif
+
+
     //  Slice info. refinement
     if ( (pcSlice->getSliceType() == B_SLICE) && (pcSlice->getNumRefIdx(REF_PIC_LIST_1) == 0) )
     {
@@ -1336,7 +1387,31 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
 
     //-------------------------------------------------------------
     pcSlice->setRefPOCList();
+#if JVET_C0027_BIO
+  if (pcSlice->getSliceType() != B_SLICE) // there is no bi-pred
+  {
+   pcSlice->setBioLDBPossible(false);   
+  }
+  else if (pcSlice->getNumRefIdx(REF_PIC_LIST_0)<=1 && pcSlice->getNumRefIdx(REF_PIC_LIST_1)<=1)
+  {
+    Int  iPOCcurrent = pcSlice->getPOC();
+    Int  iPOCL0 =  pcSlice->getRefPOC(REF_PIC_LIST_0,0); 
+    Int  iPOCL1 =  pcSlice->getRefPOC(REF_PIC_LIST_1,0); 
+    if (abs (iPOCL0-iPOCcurrent) ==1 && abs(iPOCL1-iPOCcurrent)==1)
+    {
+       pcSlice->setBioLDBPossible(true);  // this is LDB
+    }
+    else
+    {
+       pcSlice->setBioLDBPossible(false); // this is RA
+    }
+  }
 
+  else   // check wheather bi-pred from different time direction is possible
+  {
+    pcSlice->setBioLDBPossible(pcSlice->getCheckLDC()); // this is LDB
+  }
+#endif
     pcSlice->setList1IdxToList0Idx();
 
     if (m_pcEncTop->getTMVPModeId() == 2)
@@ -1616,6 +1691,9 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
         m_iStoredAlfParaNum++;
         m_acStoredAlfPara[iIdx].temproalPredFlag = false;
         m_pcAdaptiveLoopFilter->copyALFParam( &m_acStoredAlfPara[iIdx], &cAlfParam );
+#if JVET_C0038_GALF
+        m_pcAdaptiveLoopFilter->resetALFPredParam(&m_acStoredAlfPara[iIdx], (pcSlice->getSliceType()== I_SLICE? true: false));
+#endif
       }
 #endif     
       m_pcAdaptiveLoopFilter->endALFEnc();
@@ -1914,7 +1992,7 @@ Void TEncGOP::printOutSummary(UInt uiNumAllPicCoded, Bool isField, const Bool pr
 
   printf("\nRVM: %.3lf\n" , xCalculateRVM());
 }
-
+#if !JVET_C0038_GALF
 Void TEncGOP::preLoopFilterPicAll( TComPic* pcPic, UInt64& ruiDist )
 {
   Bool bCalcDist = false;
@@ -1945,6 +2023,8 @@ Void TEncGOP::preLoopFilterPicAll( TComPic* pcPic, UInt64& ruiDist )
     ruiDist = xFindDistortionFrame(pcPic->getPicYuvOrg(), pcPic->getPicYuvRec(), pcPic->getPicSym()->getSPS().getBitDepths());
   }
 }
+#endif
+
 
 // ====================================================================================================================
 // Protected member functions

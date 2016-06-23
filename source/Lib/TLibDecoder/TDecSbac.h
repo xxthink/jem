@@ -103,7 +103,7 @@ public:
 
 private:
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
-#if JVET_B0051_NON_MPM_MODE
+#if JVET_B0051_NON_MPM_MODE || JVET_C0038_GALF
   Void  xReadTruncBinCode   (UInt& ruiSymbol, UInt uiMaxSymbol, const class TComCodingStatisticsClassType &whichStat);
 #endif
   Void  xReadUnarySymbol    ( UInt& ruiSymbol, ContextModel* pcSCModel, Int iOffset, const class TComCodingStatisticsClassType &whichStat );
@@ -111,7 +111,7 @@ private:
   Void  xReadEpExGolomb     ( UInt& ruiSymbol, UInt uiCount, const class TComCodingStatisticsClassType &whichStat );
   Void  xReadCoefRemainExGolomb ( UInt &rSymbol, UInt &rParam, const Bool useLimitedPrefixLength, const Int maxLog2TrDynamicRange, const class TComCodingStatisticsClassType &whichStat );
 #else
-#if JVET_B0051_NON_MPM_MODE
+#if JVET_B0051_NON_MPM_MODE || JVET_C0038_GALF
  Void  xReadTruncBinCode       (UInt& ruiSymbol, UInt uiMaxSymbol);
 #endif
   Void  xReadUnarySymbol    ( UInt& ruiSymbol, ContextModel* pcSCModel, Int iOffset );
@@ -137,6 +137,9 @@ public:
 #endif
   Void parseCUTransquantBypassFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   Void parseSplitFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#if JVET_C0024_QTBT
+  Void parseBTSplitMode   ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight );
+#endif
 #if VCEG_AZ05_INTRA_MPI
   Void parseMPIIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
@@ -145,13 +148,18 @@ public:
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Void parseROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#if JVET_C0024_QTBT
+  Void parseROTIdxChroma( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
 #endif
   Void parseMergeFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx );
   Void parseMergeIndex    ( TComDataCU* pcCU, UInt& ruiMergeIndex );
 #if VCEG_AZ07_FRUC_MERGE
   Void parseFRUCMgrMode   ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx );
 #endif
+#if !JVET_C0024_QTBT
   Void parsePartSize      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
   Void parsePredMode      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 
   Void parseIntraDirLumaAng( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
@@ -177,6 +185,9 @@ public:
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& bCbfCU
 #endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+    , Int& iNonZeroCoeffNonTs
+#endif
     );
   Void parseTransformSkipFlags ( class TComTU &rTu, ComponentID component );
 
@@ -188,10 +199,17 @@ public:
 
 #if ALF_HM3_REFACTOR
   Void  parseAlfFlag          ( UInt& ruiVal           );
+#if JVET_C0038_GALF
+  Void parseALFTruncBinVal  ( UInt& ruiSymbol, UInt uiMaxSymbol );
+  Void parseALFPrevFiltType ( UInt& uiCode );
+  Void parseALFPrevFiltFlag ( UInt& uiCode );
+#endif
   Void  parseAlfUvlc          ( UInt& ruiVal           );
   Void  parseAlfSvlc          ( Int&  riVal            );
   Void  parseAlfCtrlDepth     ( UInt& ruiAlfCtrlDepth , UInt uiMaxTotalCUDepth ); 
+#if !JVET_C0024_QTBT
   Void  parseAlfCtrlFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth , UInt uiMaxAlfCtrlDepth );
+#endif
   Void  parseAlfFlagNum       ( UInt& ruiVal, UInt minValue, UInt depth );
   Void  parseAlfCtrlFlag      ( UInt &ruiAlfCtrlFlag );
 #endif
@@ -216,6 +234,9 @@ private:
   ContextModel         m_contextModels[MAX_NUM_CTX_MOD];
   Int                  m_numContextModels;
   ContextModel3DBuffer m_cCUSplitFlagSCModel;
+#if JVET_C0024_QTBT
+  ContextModel3DBuffer m_cBTSplitFlagSCModel;
+#endif
   ContextModel3DBuffer m_cCUSkipFlagSCModel;
 #if VCEG_AZ05_INTRA_MPI
   ContextModel3DBuffer m_cMPIIdxSCModel;
@@ -279,9 +300,13 @@ private:
 #endif
 #if ALF_HM3_REFACTOR
   ContextModel3DBuffer m_cCUAlfCtrlFlagSCModel;
+#if !JVET_C0038_GALF
   ContextModel3DBuffer m_cALFFlagSCModel;
+#endif
   ContextModel3DBuffer m_cALFUvlcSCModel;
+#if !JVET_C0038_GALF
   ContextModel3DBuffer m_cALFSvlcSCModel;
+#endif
 #endif
 
 #if COM16_C806_EMT

@@ -79,8 +79,13 @@ Void TComPicSym::create  ( const TComSPS &sps, const TComPPS &pps, UInt uiMaxDep
   const ChromaFormat chromaFormatIDC = sps.getChromaFormatIdc();
   const Int iPicWidth      = sps.getPicWidthInLumaSamples();
   const Int iPicHeight     = sps.getPicHeightInLumaSamples();
+#if JVET_C0024_QTBT
+  const UInt uiMaxCuWidth  = sps.getCTUSize();
+  const UInt uiMaxCuHeight = sps.getCTUSize();
+#else
   const UInt uiMaxCuWidth  = sps.getMaxCUWidth();
   const UInt uiMaxCuHeight = sps.getMaxCUHeight();
+#endif
 
   m_uhTotalDepth       = uiMaxDepth;
   m_numPartitionsInCtu = 1<<(m_uhTotalDepth<<1);
@@ -111,6 +116,9 @@ Void TComPicSym::create  ( const TComSPS &sps, const TComPPS &pps, UInt uiMaxDep
   {
     m_pictureCtuArray[i] = new TComDataCU;
     m_pictureCtuArray[i]->create( chromaFormatIDC, m_numPartitionsInCtu, uiMaxCuWidth, uiMaxCuHeight, false, uiMaxCuWidth >> m_uhTotalDepth
+#if JVET_C0024_QTBT
+      , uiMaxCuWidth, uiMaxCuHeight
+#endif
 #if ADAPTIVE_QP_SELECTION
       , m_pParentARLBuffer
 #endif
@@ -262,8 +270,13 @@ Void TComPicSym::xInitTiles()
   {
     if (m_pps.getTilesEnabledFlag())
     {
+#if JVET_C0024_QTBT
+      minHeight = 64  / m_sps.getCTUSize();
+      minWidth  = 256 / m_sps.getCTUSize();
+#else
       minHeight = 64  / m_sps.getMaxCUHeight();
       minWidth  = 256 / m_sps.getMaxCUWidth();
+#endif
     }
   }
   for(Int row=0; row < numRows; row++)
@@ -475,18 +488,32 @@ Void TComPicSym::deriveLoopFilterBoundaryAvailibility(Int ctuRsAddr,
 #if VCEG_AZ07_FRUC_MERGE
 Void TComPicSym::initFRUCMVP()
 {
+#if JVET_C0024_QTBT
+  const Int nBlkPosMask = getSPS().getCTUSize() - 1;
+  const Int nCUSizeLog2 = g_aucConvertToBit[getSPS().getCTUSize()] + MIN_CU_LOG2;
+#else
   const Int nBlkPosMask = getSPS().getMaxCUWidth() - 1;
   const Int nCUSizeLog2 = g_aucConvertToBit[getSPS().getMaxCUWidth()] + 2;
+#endif
   const Int nWidthInNumSPU = 1 << ( nCUSizeLog2 - 2 );
+#if JVET_C0024_QTBT
+  assert( MAX_CU_DEPTH == g_aucConvertToBit[MAX_CU_SIZE] + MIN_CU_LOG2 && MIN_PU_SIZE == 4 );
+#else
   assert( MAX_CU_DEPTH == g_aucConvertToBit[MAX_CU_SIZE] + 2 && MIN_PU_SIZE == 4 );
+#endif
   TComSlice * pCurSlice = getSlice( 0 );
   assert( !pCurSlice->isIntra() );
   // reset MV prediction
   for( UInt uiCUAddr = 0 ; uiCUAddr < getNumberOfCtusInFrame() ; uiCUAddr++ )
   {
     TComDataCU * pCurPicCU = getCtu( uiCUAddr );
+#if JVET_C0024_QTBT //clearMvField before initCtu
+    pCurPicCU->getFRUCUniLateralMVField( REF_PIC_LIST_0 )->clearCtuMvField();
+    pCurPicCU->getFRUCUniLateralMVField( REF_PIC_LIST_1 )->clearCtuMvField();
+#else
     pCurPicCU->getFRUCUniLateralMVField( REF_PIC_LIST_0 )->clearMvField();
     pCurPicCU->getFRUCUniLateralMVField( REF_PIC_LIST_1 )->clearMvField();
+#endif
   }
 
   // get MV from all reference

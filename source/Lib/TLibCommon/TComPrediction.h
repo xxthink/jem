@@ -50,11 +50,14 @@
 #if COM16_C1046_PDPC_INTRA
 #include "TComRom.h"
 #endif
+#if VCEG_AZ08_INTER_KLT
+#include "TComPic.h"
+#endif
 
 // forward declaration
 class TComMv;
 class TComTU; 
-#if VCEG_AZ07_FRUC_MERGE
+#if VCEG_AZ07_FRUC_MERGE || JVET_C0024_QTBT
 class TComMvField;
 #endif
 
@@ -73,10 +76,14 @@ typedef enum PRED_BUF_E
   NUM_PRED_BUF=2
 } PRED_BUF;
 
+#if JVET_C0024_QTBT
+static const UInt MAX_INTRA_FILTER_DEPTHS=MAX_CU_DEPTH;
+#else
 #if COM16_C806_LARGE_CTU
 static const UInt MAX_INTRA_FILTER_DEPTHS=MAX_CU_DEPTH-1;
 #else
 static const UInt MAX_INTRA_FILTER_DEPTHS=5;
+#endif
 #endif
 
 class TComPrediction : public TComWeightPrediction
@@ -150,8 +157,13 @@ protected:
   Bool                    m_bFrucTemplateAvailabe[2];
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
   UChar                   m_eMergeCandTypeNieghors[MRG_MAX_NUM_CANDS];
+#if JVET_C0035_ATMVP_SIMPLIFICATION
+  TComMvField *           m_cMvFieldSP[NUM_MGR_TYPE];
+  UChar *                 m_uhInterDirSP[NUM_MGR_TYPE];
+#else
   TComMvField *           m_cMvFieldSP[2];
   UChar *                 m_uhInterDirSP[2];
+#endif
 #endif
 #endif
 
@@ -199,7 +211,7 @@ protected:
 #if VCEG_AZ05_BIO                  
     , Bool bBIOapplied 
 #endif
-#if COM16_C1045_BIO_HARMO_IMPROV
+#if COM16_C1045_BIO_HARMO_IMPROV || JVET_C0027_BIO
     , TComDataCU * pCu
 #endif
     );
