@@ -100,6 +100,9 @@ public:
 #endif
   virtual Void parseCUTransquantBypassFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
   virtual Void parseSplitFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
+#if JVET_C0024_QTBT
+  virtual Void parseBTSplitMode   ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight ) = 0;
+#endif
   virtual Void parseMergeFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx ) = 0;
 #if VCEG_AZ05_INTRA_MPI
   virtual Void parseMPIIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
@@ -109,12 +112,17 @@ public:
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   virtual Void parseROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
+#if JVET_C0024_QTBT
+  virtual Void parseROTIdxChroma( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
+#endif
 #endif
   virtual Void parseMergeIndex    ( TComDataCU* pcCU, UInt& ruiMergeIndex ) = 0;
 #if VCEG_AZ07_FRUC_MERGE
   virtual Void parseFRUCMgrMode   ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx ) = 0;
 #endif
+#if !JVET_C0024_QTBT
   virtual Void parsePartSize      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
+#endif
   virtual Void parsePredMode      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
 
   virtual Void parseIntraDirLumaAng( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
@@ -139,6 +147,9 @@ public:
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& bCbfCU
 #endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+    , Int& iNonZeroCoeffNonTs
+#endif
     ) = 0;
 
   virtual Void parseTransformSkipFlags ( class TComTU &rTu, ComponentID component ) = 0;
@@ -153,10 +164,17 @@ public:
 
 #if ALF_HM3_REFACTOR
   virtual Void parseAlfFlag       ( UInt& ruiVal           ) = 0;
+#if JVET_C0038_GALF  
+  virtual Void parseALFTruncBinVal  ( UInt& ruiSymbol, UInt uiMaxSymbol ) = 0;
+  virtual Void parseALFPrevFiltType ( UInt& uiCode ) = 0;
+  virtual Void parseALFPrevFiltFlag ( UInt& uiCode ) = 0;
+#endif
   virtual Void parseAlfUvlc       ( UInt& ruiVal           ) = 0;
   virtual Void parseAlfSvlc       ( Int&  riVal            ) = 0;
   virtual Void parseAlfCtrlDepth   ( UInt& ruiAlfCtrlDepth , UInt uiMaxTotalCUDepth ) = 0; 
+#if !JVET_C0024_QTBT
   virtual Void parseAlfCtrlFlag    ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth , UInt uiMaxAlfCtrlDepth ) = 0;
+#endif
   virtual Void parseAlfFlagNum    ( UInt& ruiVal, UInt minValue, UInt depth ) = 0;
   virtual Void parseAlfCtrlFlag   ( UInt &ruiAlfCtrlFlag ) = 0;
 #endif
@@ -182,8 +200,13 @@ private:
   //UInt    m_bakAbsPartIdxCU;
 
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+#if JVET_C0035_ATMVP_SIMPLIFICATION
+  TComMvField*        m_pMvFieldSP[NUM_MGR_TYPE];
+  UChar*              m_phInterDirSP[NUM_MGR_TYPE];
+#else
   TComMvField*        m_pMvFieldSP[2];
   UChar*              m_phInterDirSP[2];
+#endif
 #endif
 
 public:
@@ -232,6 +255,9 @@ public:
   TDecEntropyIf* getEntropyDecoder() { return m_pcEntropyDecoderIf; }
 
 public:
+#if JVET_C0024_QTBT
+  Void decodeBTSplitMode       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight );
+#endif
   Void decodeSplitFlag         ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   Void decodeSkipFlag          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #if VCEG_AZ05_INTRA_MPI
@@ -243,6 +269,9 @@ public:
 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Void decodeROTIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#if JVET_C0024_QTBT
+  Void decodeROTIdxChroma  ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
 #endif
 #if COM16_C806_OBMC
   Void decodeOBMCFlag          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
@@ -260,7 +289,9 @@ public:
   Void decodeFRUCMgrMode       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx );
 #endif
   Void decodePredMode          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#if !JVET_C0024_QTBT
   Void decodePartSize          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
 
   Void decodeIPCMInfo          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 
@@ -273,16 +304,26 @@ public:
   Void decodeChromaQpAdjustment( TComDataCU* pcCU, UInt uiAbsPartIdx );
 
 private:
-
+#if JVET_C0024_QTBT
+  Void xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjCoded, TComTU &rTu, ComponentID compID);
+#else
   Void xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjCoded, TComTU &rTu, const Int quadtreeTULog2MinSizeInCU 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& bCbfCU
 #endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+    , Int& iNonZeroCoeffNonTs
+#endif
     );
+#endif
 
 public:
 
   Void decodeCoeff             ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool& bCodeDQP, Bool& isChromaQpAdjCoded );
+
+#if QTBT_NSST
+  Int countNonZeroCoeffs       ( TCoeff* pcCoef, UInt uiSize );
+#endif
 
 #if ALF_HM3_REFACTOR
   // Adaptive Loop filter
@@ -292,10 +333,16 @@ public:
 #endif
     );
   Void decodeAux(ALFParam* pAlfParam);
-  Void decodeFilt(ALFParam* pAlfParam);
+   Void decodeFilt(ALFParam* pAlfParam);
+#if JVET_C0038_GALF
+  Void readFilterCodingParams(ALFParam* pAlfParam, Bool bChroma = false);
+  Void readFilterCoeffs(ALFParam* pAlfParam, Bool bChroma = false);
+  Void decodeFilterCoeff (ALFParam* pAlfParam, Bool bChroma = false);
+#else
   Void readFilterCodingParams(ALFParam* pAlfParam);
   Void readFilterCoeffs(ALFParam* pAlfParam);
   Void decodeFilterCoeff (ALFParam* pAlfParam);
+#endif
   Int  golombDecode(Int k);
   Void decodeAlfCtrlParam      ( ALFParam *pAlfParam );
 #endif
@@ -303,6 +350,7 @@ public:
 #if COM16_C1016_AFFINE
   Void decodeAffineFlag        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPuIdx );
 #endif
+
 
 };// END CLASS DEFINITION TDecEntropy
 

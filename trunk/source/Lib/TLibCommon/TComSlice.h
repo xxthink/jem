@@ -792,8 +792,23 @@ private:
 
   Int              m_log2MinCodingBlockSize;
   Int              m_log2DiffMaxMinCodingBlockSize;
+#if JVET_C0024_QTBT
+  UInt             m_uiCTUSize; 
+  UInt             m_uiMinQT[3]; //0: I slice luma; 1: I slice chroma; 2: P/B slice
+#if JVET_C0024_SPS_MAX_BT_DEPTH
+  UInt             m_uiMaxBTDepth;
+  UInt             m_uiMaxBTDepthISliceL;
+  UInt             m_uiMaxBTDepthISliceC;
+#endif
+#if JVET_C0024_SPS_MAX_BT_SIZE
+  UInt             m_uiMaxBTSize;
+  UInt             m_uiMaxBTSizeISliceL;
+  UInt             m_uiMaxBTSizeISliceC;
+#endif
+#else
   UInt             m_uiMaxCUWidth;
   UInt             m_uiMaxCUHeight;
+#endif
   UInt             m_uiMaxTotalCUDepth; ///< Total CU depth, relative to the smallest possible transform block size.
 
   Window           m_conformanceWindow;
@@ -949,15 +964,36 @@ public:
   Bool                   getUsedByCurrPicLtSPSFlag(Int i) const                                          { assert( i < MAX_NUM_LONG_TERM_REF_PICS ); return m_usedByCurrPicLtSPSFlag[i];    }
   Void                   setUsedByCurrPicLtSPSFlag(Int i, Bool x)                                        { assert( i < MAX_NUM_LONG_TERM_REF_PICS ); m_usedByCurrPicLtSPSFlag[i] = x;       }
 
+#if !JVET_C0024_QTBT
   Int                    getLog2MinCodingBlockSize() const                                               { return m_log2MinCodingBlockSize;                                     }
   Void                   setLog2MinCodingBlockSize(Int val)                                              { m_log2MinCodingBlockSize = val;                                      }
   Int                    getLog2DiffMaxMinCodingBlockSize() const                                        { return m_log2DiffMaxMinCodingBlockSize;                              }
   Void                   setLog2DiffMaxMinCodingBlockSize(Int val)                                       { m_log2DiffMaxMinCodingBlockSize = val;                               }
+#endif
 
+#if JVET_C0024_QTBT
+  Void                   setCTUSize( UInt u )                                                            { m_uiCTUSize = u;                                                  }
+  UInt                   getCTUSize() const                                                              { return  m_uiCTUSize;                                              }
+  Void                   setMinQTSizes( UInt* minQT)                                                     { m_uiMinQT[0] = minQT[0]; m_uiMinQT[1] = minQT[1]; m_uiMinQT[2] = minQT[2]; }
+  UInt                   getMinQTSize(SliceType slicetype, ChannelType chtype)  const                    { return (isChroma(chtype) ? m_uiMinQT[1]: (slicetype==I_SLICE ? m_uiMinQT[0]: m_uiMinQT[2]));}
+#if JVET_C0024_SPS_MAX_BT_DEPTH
+  Void                   setMaxBTDepth( UInt uiMaxBTDepth, UInt uiMaxBTDepthISliceL, UInt uiMaxBTDepthISliceC ) { m_uiMaxBTDepth = uiMaxBTDepth; m_uiMaxBTDepthISliceL = uiMaxBTDepthISliceL; m_uiMaxBTDepthISliceC = uiMaxBTDepthISliceC; }
+  UInt                   getMaxBTDepth() const                                                           { return m_uiMaxBTDepth; }
+  UInt                   getMaxBTDepthISliceL() const                                                    { return m_uiMaxBTDepthISliceL; }
+  UInt                   getMaxBTDepthISliceC() const                                                    { return m_uiMaxBTDepthISliceC; }
+#endif
+#if JVET_C0024_SPS_MAX_BT_SIZE
+  Void                   setMaxBTSize( UInt uiMaxBTSize, UInt uiMaxBTSizeISliceL, UInt uiMaxBTSizeISliceC ) { m_uiMaxBTSize = uiMaxBTSize; m_uiMaxBTSizeISliceL = uiMaxBTSizeISliceL; m_uiMaxBTSizeISliceC = uiMaxBTSizeISliceC; }
+  UInt                   getMaxBTSize() const                                                           { return m_uiMaxBTSize; }
+  UInt                   getMaxBTSizeISliceL() const                                                    { return m_uiMaxBTSizeISliceL; }
+  UInt                   getMaxBTSizeISliceC() const                                                    { return m_uiMaxBTSizeISliceC; }
+#endif
+#else
   Void                   setMaxCUWidth( UInt u )                                                         { m_uiMaxCUWidth = u;                                                  }
   UInt                   getMaxCUWidth() const                                                           { return  m_uiMaxCUWidth;                                              }
   Void                   setMaxCUHeight( UInt u )                                                        { m_uiMaxCUHeight = u;                                                 }
   UInt                   getMaxCUHeight() const                                                          { return  m_uiMaxCUHeight;                                             }
+#endif
   Void                   setMaxTotalCUDepth( UInt u )                                                    { m_uiMaxTotalCUDepth = u;                                             }
   UInt                   getMaxTotalCUDepth() const                                                      { return  m_uiMaxTotalCUDepth;                                         }
   Void                   setUsePCM( Bool b )                                                             { m_usePCM = b;                                                        }
@@ -1476,6 +1512,9 @@ class TComSlice
 private:
   //  Bitstream writing
   Bool                       m_saoEnabledFlag[MAX_NUM_CHANNEL_TYPE];
+#if JVET_C0027_BIO
+  Bool                       m_bioLDBPossible;
+#endif
   Int                        m_iPPSId;               ///< picture parameter set ID
   Bool                       m_PicOutputFlag;        ///< pic_output_flag
   Int                        m_iPOC;
@@ -1544,6 +1583,9 @@ private:
   UInt                       m_colRefIdx;
   UInt                       m_maxNumMergeCand;
 
+#if JVET_C0024_QTBT
+  UInt                       m_uiMaxBTSize;
+#endif
   Double                     m_lambdas[MAX_NUM_COMPONENT];
 
   Bool                       m_abEqualRef  [NUM_REF_PIC_LIST_01][MAX_NUM_REF][MAX_NUM_REF];
@@ -1587,6 +1629,9 @@ private:
 #if VCEG_AZ06_IC
   Bool                       m_bApplyIC;
 #endif
+#if JVET_C0024_QTBT
+  ChannelType                m_eType;             ///< The channelType current CTB is coding
+#endif
 
 public:
                               TComSlice();
@@ -1603,7 +1648,7 @@ public:
 #if VCEG_AZ06_IC
   Void                        setApplyIC( Bool b )                                   { m_bApplyIC = b;                                               }
   Bool                        getApplyIC()                                           { return m_bApplyIC;                                            }
-#if VCEG_AZ06_IC_SPEEDUP
+#if VCEG_AZ06_IC_SPEEDUP || JVET_C0024_QTBT
   Void                        xSetApplyIC();
 #endif
 #endif
@@ -1617,6 +1662,10 @@ public:
   Bool                        getPicOutputFlag() const                               { return m_PicOutputFlag;                                       }
   Void                        setSaoEnabledFlag(ChannelType chType, Bool s)          {m_saoEnabledFlag[chType] =s;                                   }
   Bool                        getSaoEnabledFlag(ChannelType chType) const            { return m_saoEnabledFlag[chType];                              }
+#if JVET_C0027_BIO
+ Void                        setBioLDBPossible(Bool s)            { m_bioLDBPossible =s;                                   }
+ Bool                        getBioLDBPossible() const            { return m_bioLDBPossible;                              }
+#endif
   Void                        setRPS( const TComReferencePictureSet *pcRPS )         { m_pRPS = pcRPS;                                               }
   const TComReferencePictureSet* getRPS()                                            { return m_pRPS;                                                }
   TComReferencePictureSet*    getLocalRPS()                                          { return &m_localRPS;                                           }
@@ -1741,6 +1790,10 @@ public:
   Void                        setMaxNumMergeCand(UInt val )                          { m_maxNumMergeCand = val;                                      }
   UInt                        getMaxNumMergeCand() const                             { return m_maxNumMergeCand;                                     }
 
+#if JVET_C0024_QTBT
+  Void                        setMaxBTSize                     (Int i)             { m_uiMaxBTSize = i; }
+  UInt                        getMaxBTSize                     ()                  { return m_uiMaxBTSize; }
+#endif
   Void                        setNoOutputPriorPicsFlag( Bool val )                   { m_noOutputPriorPicsFlag = val;                                }
   Bool                        getNoOutputPriorPicsFlag() const                       { return m_noOutputPriorPicsFlag;                               }
 
@@ -1834,6 +1887,10 @@ public:
 #endif
 
 
+#if JVET_C0024_QTBT
+  ChannelType   getTextType() const {return m_eType;}
+  Void          setTextType(ChannelType eCType) { m_eType = eCType;}
+#endif
 protected:
   TComPic*                    xGetRefPic        (TComList<TComPic*>& rcListPic, Int poc);
   TComPic*                    xGetLongTermRefPic(TComList<TComPic*>& rcListPic, Int poc, Bool pocHasMsb);

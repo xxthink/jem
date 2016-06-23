@@ -137,15 +137,37 @@ typedef struct
 } coeffGroupRDStats;
 
 #if COM16_C806_EMT
+#if JVET_C0024_QTBT
+FwdTrans *fastFwdTrans[16][7] = 
+#else
 FwdTrans *fastFwdTrans[16][5] = 
+#endif
 {
+#if JVET_C0024_QTBT
+  {fastForwardDCT2_B2, fastForwardDCT2_B4, fastForwardDCT2_B8, fastForwardDCT2_B16, fastForwardDCT2_B32, fastForwardDCT2_B64, fastForwardDCT2_B128},
+  {NULL,               fastForwardDCT5_B4, fastForwardDCT5_B8, fastForwardDCT5_B16, fastForwardDCT5_B32, fastForwardDCT5_B64, fastForwardDCT5_B128},
+  {NULL,               fastForwardDCT8_B4, fastForwardDCT8_B8, fastForwardDCT8_B16, fastForwardDCT8_B32, fastForwardDCT8_B64, fastForwardDCT8_B128},
+  {NULL,               fastForwardDST1_B4, fastForwardDST1_B8, fastForwardDST1_B16, fastForwardDST1_B32, fastForwardDST1_B64, fastForwardDST1_B128},
+  {NULL,               fastForwardDST7_B4, fastForwardDST7_B8, fastForwardDST7_B16, fastForwardDST7_B32, fastForwardDST7_B64, fastForwardDST7_B128},
+#else
   {fastForwardDCT2_B4, fastForwardDCT2_B8, fastForwardDCT2_B16, fastForwardDCT2_B32, fastForwardDCT2_B64},
   {fastForwardDCT5_B4, fastForwardDCT5_B8, fastForwardDCT5_B16, fastForwardDCT5_B32, NULL               },
   {fastForwardDCT8_B4, fastForwardDCT8_B8, fastForwardDCT8_B16, fastForwardDCT8_B32, NULL               },
   {fastForwardDST1_B4, fastForwardDST1_B8, fastForwardDST1_B16, fastForwardDST1_B32, NULL               },
   {fastForwardDST7_B4, fastForwardDST7_B8, fastForwardDST7_B16, fastForwardDST7_B32, NULL               },
+#endif
 };
 
+#if JVET_C0024_QTBT
+InvTrans *fastInvTrans[16][7] = 
+{
+  {fastInverseDCT2_B2, fastInverseDCT2_B4, fastInverseDCT2_B8, fastInverseDCT2_B16, fastInverseDCT2_B32, fastInverseDCT2_B64, fastInverseDCT2_B128},
+  {NULL,               fastInverseDCT5_B4, fastInverseDCT5_B8, fastInverseDCT5_B16, fastInverseDCT5_B32, fastInverseDCT5_B64, fastInverseDCT5_B128},
+  {NULL,               fastInverseDCT8_B4, fastInverseDCT8_B8, fastInverseDCT8_B16, fastInverseDCT8_B32, fastInverseDCT8_B64, fastInverseDCT8_B128},
+  {NULL,               fastInverseDST1_B4, fastInverseDST1_B8, fastInverseDST1_B16, fastInverseDST1_B32, fastInverseDST1_B64, fastInverseDST1_B128},
+  {NULL,               fastInverseDST7_B4, fastInverseDST7_B8, fastInverseDST7_B16, fastInverseDST7_B32, fastInverseDST7_B64, fastInverseDST7_B128},
+};
+#else
 InvTrans *fastInvTrans[16][5] = 
 {
   {fastInverseDCT2_B4, fastInverseDCT2_B8, fastInverseDCT2_B16, fastInverseDCT2_B32, fastInverseDCT2_B64},
@@ -154,6 +176,7 @@ InvTrans *fastInvTrans[16][5] =
   {fastInverseDST1_B4, fastInverseDST1_B8, fastInverseDST1_B16, fastInverseDST1_B32, NULL               },
   {fastInverseDST7_B4, fastInverseDST7_B8, fastInverseDST7_B16, fastInverseDST7_B32, NULL               },
 };
+#endif
 #endif
 
 //! \ingroup TLibCommon
@@ -1392,6 +1415,54 @@ Void partialButterflyInverse32(TCoeff *src, TCoeff *dst, Int shift, Int line, co
   }
 }
 
+#if JVET_C0024_QTBT
+void fastForwardDCT2_B2(TCoeff *src, TCoeff *dst, Int shift, Int line, Int zo, Int use)
+{
+  Int j;
+  Int E,O;
+  Int add = 1<<(shift-1);
+  const TMatrixCoeff *iT = g_aiTr2[DCT2][0];
+
+  for (j=0; j<line; j++)
+  {    
+    /* E and O */
+    E = src[0] + src[1];
+    O = src[0] - src[1];
+
+    dst[0] = (iT[0]*E + add)>>shift;
+    dst[line] = (iT[2]*O + add)>>shift;
+
+    //assert(iT[2]==256 && iT[0]==256); 
+
+    src += 2;
+    dst ++;
+  }
+}
+
+void fastInverseDCT2_B2(TCoeff *src, TCoeff *dst, Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)
+{
+  Int j;
+  Int E,O;
+  Int add = 1<<(shift-1);
+
+  const TMatrixCoeff *iT = g_aiTr2[DCT2][0];
+
+  for (j=0; j<line; j++)
+  {    
+    /* Utilizing symmetry properties to the maximum to minimize the number of multiplications */    
+    E = iT[0]*(src[0] + src[line]);
+    O = iT[2]*(src[0] - src[line]);
+
+    /* Combining even and odd terms at each hierarchy levels to calculate the final spatial domain vector */
+    dst[0] = Clip3( outputMinimum, outputMaximum, (E + add)>>shift );
+    dst[1] = Clip3( outputMinimum, outputMaximum, (O + add)>>shift );
+
+    src   ++;
+    dst += 2;
+  }
+}
+#endif
+
 /** 4x4 forward transform implemented using partial butterfly structure (1D)
  *  \param src   input data (residual)
  *  \param dst   output data (transform coefficients)
@@ -1900,7 +1971,11 @@ void fastForwardDCT2_B64(TCoeff *src, TCoeff *dst, Int shift, Int line, Int zo, 
 __attribute__((optimize("no-tree-vrp")))
 #endif
 #endif
+#if JVET_C0024_ITSKIP
+void fastInverseDCT2_B64(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, const TCoeff outputMinimum, const TCoeff outputMaximum)
+#else
 void fastInverseDCT2_B64(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)
+#endif
 {
   Int rnd_factor = 1<<(shift-1);
   const Int uiTrSize = 64;
@@ -1917,7 +1992,12 @@ void fastInverseDCT2_B64(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int z
   Int EEE[8],EEO[8];
   Int EEEE[4],EEEO[4];
   Int EEEEE[2],EEEEO[2];
+#if JVET_C0024_ITSKIP
+  Bool zo = iSkipLine2 >= 32;
+  for (j=0; j<line-iSkipLine; j++)
+#else
   for (j=0; j<(line>>(2==zo?1:0)); j++)
+#endif
   {    
     /* Utilizing symmetry properties to the maximum to minimize the number of multiplications */
     for (k=0;k<32;k++)
@@ -1984,9 +2064,661 @@ void fastInverseDCT2_B64(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int z
     coeff ++;
     block += uiTrSize;
   }
+#if JVET_C0024_ITSKIP
+  memset(block, 0, uiTrSize*iSkipLine*sizeof(TCoeff));
+#endif
 }
 
 
+
+#if JVET_C0024_QTBT
+void fastForwardDCT2_B128(TCoeff *src, TCoeff *dst, Int shift, Int line, Int zo, Int use)
+{
+  Int j,k;
+  Int E[64],O[64];
+  Int EE[32],EO[32];
+  Int EEE[16],EEO[16];
+  Int EEEE[8],EEEO[8];
+  Int EEEEE[4], EEEEO[4];
+  Int EEEEEE[2], EEEEEO[2];
+  Int add = 1<<(shift-1);
+  const TMatrixCoeff (*iT)[128] = g_aiTr128[DCT2];
+
+  for (j=0; j<line; j++)
+  {    
+    /* E and O*/
+    for (k=0;k< 64;k++)
+    {
+      E[k] = src[k] + src[127-k];
+      O[k] = src[k] - src[127-k];
+    } 
+    /* EE and EO */
+    for (k=0;k< 32;k++)
+    {
+      EE[k] = E[k] + E[63-k];
+      EO[k] = E[k] - E[63-k];
+    }
+
+    /* EEE and EEO */
+    for (k=0;k< 16;k++)
+    {
+      EEE[k] = EE[k] + EE[31-k];
+      EEO[k] = EE[k] - EE[31-k];
+    }
+
+    /* EEEE and EEEO */
+    for( k=0; k< 8; k++)
+    {
+      EEEE[k]= EEE[k]+ EEE[15-k];
+      EEEO[k]= EEE[k]- EEE[15-k];
+    }
+
+    for( k=0; k< 4; k++)
+    {
+      EEEEE[k] = EEEE[k]+ EEEE[7-k];
+      EEEEO[k] = EEEE[k]- EEEE[7-k];
+    }
+
+    for( k=0; k< 2; k++)
+    {
+      EEEEEE[k] = EEEEE[k]+ EEEEE[3-k];
+      EEEEEO[k] = EEEEE[k]- EEEEE[3-k];
+    }
+
+    //0
+    dst[ 0       ] = (iT[0][0]*EEEEEE[0] 
+    + iT[0][ 1]*EEEEEE[1] 
+    + add)>>shift;
+    dst[ 64*line ] = (iT[64][0]*EEEEEE[0] 
+    + iT[64][1]*EEEEEE[1] 
+    + add)>>shift;
+
+    //2
+    for (k=32;k<128;k+=64)
+    {
+      dst[ k*line ] = ( iT[k][0]*EEEEEO[0] 
+      + iT[k][1]*EEEEEO[1] 
+      + add)>>shift;
+    }
+
+    //4
+    for (k=16;k<128;k+=32) 
+    {
+      dst[ k*line ] = ( iT[k][0]*EEEEO[0] 
+      + iT[k][1]*EEEEO[1] 
+      + iT[k][2]*EEEEO[2] 
+      + iT[k][3]*EEEEO[3] 
+      + add)>>shift;
+    }       
+
+    //8
+    for (k=8;k<128;k+=16)
+    {
+      dst[ k*line ] = (iT[k][0]*EEEO[0] 
+      + iT[k][1]*EEEO[1] 
+      + iT[k][2]*EEEO[2] 
+      + iT[k][3]*EEEO[3] 
+      + iT[k][4]*EEEO[4] 
+      + iT[k][5]*EEEO[5] 
+      + iT[k][6]*EEEO[6] 
+      + iT[k][7]*EEEO[7] 
+      + add)>>shift;
+    }  
+
+    //16
+    for (k=4;k<128;k+=8)
+    {
+      dst[ k*line ] = (iT[k][0]*EEO[ 0] 
+      + iT[k][1]*EEO[ 1] 
+      + iT[k][2]*EEO[ 2] 
+      + iT[k][3]*EEO[ 3] 
+      + iT[k][4]*EEO[ 4] 
+      + iT[k][5]*EEO[ 5] 
+      + iT[k][6]*EEO[ 6] 
+      + iT[k][7]*EEO[ 7] 
+      + iT[k][8]*EEO[ 8] 
+      + iT[k][9]*EEO[ 9] 
+      + iT[k][10]*EEO[10] 
+      + iT[k][11]*EEO[11] 
+      + iT[k][12]*EEO[12] 
+      + iT[k][13]*EEO[13] 
+      + iT[k][14]*EEO[14] 
+      + iT[k][15]*EEO[15] 
+      + add)>>shift;
+    }
+
+
+    //32
+    for (k=2;k<128;k+=4)
+    {
+      dst[ k*line ] = (iT[k][0]*EO[ 0] 
+      + iT[k][1]*EO[ 1] 
+      + iT[k][2]*EO[ 2] 
+      + iT[k][3]*EO[ 3] 
+      + iT[k][4]*EO[ 4] 
+      + iT[k][5]*EO[ 5] 
+      + iT[k][6]*EO[ 6] 
+      + iT[k][7]*EO[ 7] 
+      + iT[k][8]*EO[ 8] 
+      + iT[k][9]*EO[ 9] 
+      + iT[k][10]*EO[10] 
+      + iT[k][11]*EO[11] 
+      + iT[k][12]*EO[12] 
+      + iT[k][13]*EO[13] 
+      + iT[k][14]*EO[14] 
+      + iT[k][15]*EO[15] 
+      + iT[k][16]*EO[16] 
+      + iT[k][17]*EO[17] 
+      + iT[k][18]*EO[18] 
+      + iT[k][19]*EO[19] 
+      + iT[k][20]*EO[20] 
+      + iT[k][21]*EO[21] 
+      + iT[k][22]*EO[22] 
+      + iT[k][23]*EO[23] 
+      + iT[k][24]*EO[24] 
+      + iT[k][25]*EO[25] 
+      + iT[k][26]*EO[26] 
+      + iT[k][27]*EO[27] 
+      + iT[k][28]*EO[28] 
+      + iT[k][29]*EO[29] 
+      + iT[k][30]*EO[30] 
+      + iT[k][31]*EO[31] 
+      + add)>>shift;
+    }
+
+    //64
+    for (k=1;k<128;k+=2)
+    {
+      dst[ k*line ] = (iT[k][ 0]*O[ 0] 
+      + iT[k][1]*O[ 1] 
+      + iT[k][2]*O[ 2] 
+      + iT[k][3]*O[ 3] 
+      + iT[k][4]*O[ 4] 
+      + iT[k][5]*O[ 5] 
+      + iT[k][6]*O[ 6] 
+      + iT[k][7]*O[ 7] 
+      + iT[k][8]*O[ 8] 
+      + iT[k][9]*O[ 9] 
+      + iT[k][10]*O[10] 
+      + iT[k][11]*O[11] 
+      + iT[k][12]*O[12] 
+      + iT[k][13]*O[13] 
+      + iT[k][14]*O[14] 
+      + iT[k][15]*O[15] 
+      + iT[k][16]*O[16] 
+      + iT[k][17]*O[17] 
+      + iT[k][18]*O[18] 
+      + iT[k][19]*O[19] 
+      + iT[k][20]*O[20] 
+      + iT[k][21]*O[21] 
+      + iT[k][22]*O[22] 
+      + iT[k][23]*O[23] 
+      + iT[k][24]*O[24] 
+      + iT[k][25]*O[25] 
+      + iT[k][26]*O[26] 
+      + iT[k][27]*O[27] 
+      + iT[k][28]*O[28] 
+      + iT[k][29]*O[29] 
+      + iT[k][30]*O[30] 
+      + iT[k][31]*O[31] 
+
+      + iT[k][32]*O[32] 
+      + iT[k][33]*O[33] 
+      + iT[k][34]*O[34] 
+      + iT[k][35]*O[35] 
+      + iT[k][36]*O[36] 
+      + iT[k][37]*O[37] 
+      + iT[k][38]*O[38] 
+      + iT[k][39]*O[39] 
+      + iT[k][40]*O[40] 
+      + iT[k][41]*O[41] 
+      + iT[k][42]*O[42] 
+      + iT[k][43]*O[43] 
+      + iT[k][44]*O[44] 
+      + iT[k][45]*O[45] 
+      + iT[k][46]*O[46] 
+      + iT[k][47]*O[47] 
+      + iT[k][48]*O[48] 
+      + iT[k][49]*O[49] 
+      + iT[k][50]*O[50] 
+      + iT[k][51]*O[51] 
+      + iT[k][52]*O[52] 
+      + iT[k][53]*O[53] 
+      + iT[k][54]*O[54] 
+      + iT[k][55]*O[55] 
+      + iT[k][56]*O[56] 
+      + iT[k][57]*O[57] 
+      + iT[k][58]*O[58] 
+      + iT[k][59]*O[59] 
+      + iT[k][60]*O[60] 
+      + iT[k][61]*O[61] 
+      + iT[k][62]*O[62] 
+      + iT[k][63]*O[63] 
+      + add)>>shift;
+    }
+    src += 128;
+    dst ++;
+  }
+}
+#if JVET_C0024_ITSKIP
+void fastInverseDCT2_B128(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, const TCoeff outputMinimum, const TCoeff outputMaximum)
+#else
+void fastInverseDCT2_B128(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)
+#endif
+{
+  Int j,k;
+  Int E[64],O[64];
+  Int EE[32],EO[32];
+  Int EEE[16],EEO[16];
+  Int EEEE[8],EEEO[8];
+  Int EEEEE[4],EEEEO[4];
+  Int EEEEEE[2],EEEEEO[2];
+  Int add = 1<<(shift-1);
+  const TMatrixCoeff (*iT)[128] = g_aiTr128[DCT2];
+
+#if JVET_C0024_ITSKIP
+  Bool c1 = iSkipLine2 >= 96 ;
+  Bool c2 = iSkipLine2 >= 64 ;
+  Bool c3 = iSkipLine2 >= 32 ;
+
+  for (j=0; j<line - iSkipLine; j++)
+#else
+  for (j=0; j<line; j++)
+#endif
+  {    
+    /* Utilizing symmetry properties to the maximum to minimize the number of multiplications */
+#if JVET_C0024_ITSKIP
+    if (c1)
+    {
+      for (k=0;k<64;k++) //+2
+      {
+        O[k] = iT[ 1][k]*coeff[ line  ] 
+        + iT[ 3][k]*coeff[ 3*line  ] 
+        + iT[ 5][k]*coeff[ 5*line  ] 
+        + iT[ 7][k]*coeff[ 7*line  ] 
+        + iT[ 9][k]*coeff[ 9*line  ] 
+        + iT[11][k]*coeff[ 11*line ] 
+        + iT[13][k]*coeff[ 13*line ] 
+        + iT[15][k]*coeff[ 15*line ] 
+        + iT[17][k]*coeff[ 17*line ] 
+        + iT[19][k]*coeff[ 19*line ] 
+        + iT[21][k]*coeff[ 21*line ]
+        + iT[23][k]*coeff[ 23*line ] 
+        + iT[25][k]*coeff[ 25*line ] 
+        + iT[27][k]*coeff[ 27*line ] 
+        + iT[29][k]*coeff[ 29*line ] 
+        + iT[31][k]*coeff[ 31*line ]
+        ;
+      }
+
+      for (k=0;k<32;k++) //+4
+      {
+        EO[k] = iT[ 2][k]*coeff[ 2*line  ] 
+        + iT[ 6][k]*coeff[ 6*line  ] 
+        + iT[10][k]*coeff[ 10*line ] 
+        + iT[14][k]*coeff[ 14*line ] 
+        + iT[18][k]*coeff[ 18*line ] 
+        + iT[22][k]*coeff[ 22*line ] 
+        + iT[26][k]*coeff[ 26*line ] 
+        + iT[30][k]*coeff[ 30*line ]
+        ;
+      }
+    }
+    else if (c2)
+    {
+      for (k=0;k<64;k++) //+2
+      {
+        O[k] = iT[ 1][k]*coeff[ line  ] 
+        + iT[ 3][k]*coeff[ 3*line  ] 
+        + iT[ 5][k]*coeff[ 5*line  ] 
+        + iT[ 7][k]*coeff[ 7*line  ] 
+        + iT[ 9][k]*coeff[ 9*line  ] 
+        + iT[11][k]*coeff[ 11*line ] 
+        + iT[13][k]*coeff[ 13*line ] 
+        + iT[15][k]*coeff[ 15*line ] 
+        + iT[17][k]*coeff[ 17*line ] 
+        + iT[19][k]*coeff[ 19*line ] 
+        + iT[21][k]*coeff[ 21*line ]
+        + iT[23][k]*coeff[ 23*line ] 
+        + iT[25][k]*coeff[ 25*line ] 
+        + iT[27][k]*coeff[ 27*line ] 
+        + iT[29][k]*coeff[ 29*line ] 
+        + iT[31][k]*coeff[ 31*line ]
+        + iT[33][k]*coeff[ 33*line ] 
+        + iT[35][k]*coeff[ 35*line ] 
+        + iT[37][k]*coeff[ 37*line ] 
+        + iT[39][k]*coeff[ 39*line ]
+        + iT[41][k]*coeff[ 41*line ]
+        + iT[43][k]*coeff[ 43*line ] 
+        + iT[45][k]*coeff[ 45*line ] 
+        + iT[47][k]*coeff[ 47*line ] 
+        + iT[49][k]*coeff[ 49*line ] 
+        + iT[51][k]*coeff[ 51*line ]
+        + iT[53][k]*coeff[ 53*line ] 
+        + iT[55][k]*coeff[ 55*line ] 
+        + iT[57][k]*coeff[ 57*line ] 
+        + iT[59][k]*coeff[ 59*line ] 
+        + iT[61][k]*coeff[ 61*line ]
+        + iT[63][k]*coeff[ 63*line ] 
+        ;
+      }
+
+      for (k=0;k<32;k++) //+4
+      {
+        EO[k] = iT[ 2][k]*coeff[ 2*line  ] 
+        + iT[ 6][k]*coeff[ 6*line  ] 
+        + iT[10][k]*coeff[ 10*line ] 
+        + iT[14][k]*coeff[ 14*line ] 
+        + iT[18][k]*coeff[ 18*line ] 
+        + iT[22][k]*coeff[ 22*line ] 
+        + iT[26][k]*coeff[ 26*line ] 
+        + iT[30][k]*coeff[ 30*line ]
+        + iT[34][k]*coeff[ 34*line ] 
+        + iT[38][k]*coeff[ 38*line ] 
+        + iT[42][k]*coeff[ 42*line ] 
+        + iT[46][k]*coeff[ 46*line ] 
+        + iT[50][k]*coeff[ 50*line ]
+        + iT[54][k]*coeff[ 54*line ] 
+        + iT[58][k]*coeff[ 58*line ] 
+        + iT[62][k]*coeff[ 62*line ] 
+        ;
+      }
+    }
+    else if (c3)
+    {
+      for (k=0;k<64;k++) //+2
+      {
+        O[k] = iT[ 1][k]*coeff[ line  ] 
+        + iT[ 3][k]*coeff[ 3*line  ] 
+        + iT[ 5][k]*coeff[ 5*line  ] 
+        + iT[ 7][k]*coeff[ 7*line  ] 
+        + iT[ 9][k]*coeff[ 9*line  ] 
+        + iT[11][k]*coeff[ 11*line ] 
+        + iT[13][k]*coeff[ 13*line ] 
+        + iT[15][k]*coeff[ 15*line ] 
+        + iT[17][k]*coeff[ 17*line ] 
+        + iT[19][k]*coeff[ 19*line ] 
+        + iT[21][k]*coeff[ 21*line ]
+        + iT[23][k]*coeff[ 23*line ] 
+        + iT[25][k]*coeff[ 25*line ] 
+        + iT[27][k]*coeff[ 27*line ] 
+        + iT[29][k]*coeff[ 29*line ] 
+        + iT[31][k]*coeff[ 31*line ]
+        + iT[33][k]*coeff[ 33*line ] 
+        + iT[35][k]*coeff[ 35*line ] 
+        + iT[37][k]*coeff[ 37*line ] 
+        + iT[39][k]*coeff[ 39*line ]
+        + iT[41][k]*coeff[ 41*line ]
+        + iT[43][k]*coeff[ 43*line ] 
+        + iT[45][k]*coeff[ 45*line ] 
+        + iT[47][k]*coeff[ 47*line ] 
+        + iT[49][k]*coeff[ 49*line ] 
+        + iT[51][k]*coeff[ 51*line ]
+        + iT[53][k]*coeff[ 53*line ] 
+        + iT[55][k]*coeff[ 55*line ] 
+        + iT[57][k]*coeff[ 57*line ] 
+        + iT[59][k]*coeff[ 59*line ] 
+        + iT[61][k]*coeff[ 61*line ]
+        + iT[63][k]*coeff[ 63*line ] 
+        + iT[65][k]*coeff[ 65*line ] 
+        + iT[67][k]*coeff[ 67*line ] 
+        + iT[69][k]*coeff[ 69*line ] 
+        + iT[71][k]*coeff[ 71*line ] 
+        + iT[73][k]*coeff[ 73*line ] 
+        + iT[75][k]*coeff[ 75*line ] 
+        + iT[77][k]*coeff[ 77*line ] 
+        + iT[79][k]*coeff[ 79*line ] 
+        + iT[81][k]*coeff[ 81*line ] 
+        + iT[83][k]*coeff[ 83*line ] 
+        + iT[85][k]*coeff[ 85*line ]
+        + iT[87][k]*coeff[ 87*line ] 
+        + iT[89][k]*coeff[ 89*line ] 
+        + iT[91][k]*coeff[ 91*line ] 
+        + iT[93][k]*coeff[ 93*line ] 
+        + iT[95][k]*coeff[ 95*line ]
+        ;
+      }
+
+      for (k=0;k<32;k++) //+4
+      {
+        EO[k] = iT[ 2][k]*coeff[ 2*line  ] 
+        + iT[ 6][k]*coeff[ 6*line  ] 
+        + iT[10][k]*coeff[ 10*line ] 
+        + iT[14][k]*coeff[ 14*line ] 
+        + iT[18][k]*coeff[ 18*line ] 
+        + iT[22][k]*coeff[ 22*line ] 
+        + iT[26][k]*coeff[ 26*line ] 
+        + iT[30][k]*coeff[ 30*line ]
+        + iT[34][k]*coeff[ 34*line ] 
+        + iT[38][k]*coeff[ 38*line ] 
+        + iT[42][k]*coeff[ 42*line ] 
+        + iT[46][k]*coeff[ 46*line ] 
+        + iT[50][k]*coeff[ 50*line ]
+        + iT[54][k]*coeff[ 54*line ] 
+        + iT[58][k]*coeff[ 58*line ] 
+        + iT[62][k]*coeff[ 62*line ] 
+        + iT[66][k]*coeff[ 66*line  ] 
+        + iT[70][k]*coeff[ 70*line  ] 
+        + iT[74][k]*coeff[ 74*line ] 
+        + iT[78][k]*coeff[ 78*line ] 
+        + iT[82][k]*coeff[ 82*line ] 
+        + iT[86][k]*coeff[ 86*line ] 
+        + iT[90][k]*coeff[ 90*line ] 
+        + iT[94][k]*coeff[ 94*line ]
+        ;
+      }
+    }
+    else
+    {
+#endif
+      for (k=0;k<64;k++) //+2
+      {
+        O[k] = iT[ 1][k]*coeff[ line  ] 
+        + iT[ 3][k]*coeff[ 3*line  ] 
+        + iT[ 5][k]*coeff[ 5*line  ] 
+        + iT[ 7][k]*coeff[ 7*line  ] 
+        + iT[ 9][k]*coeff[ 9*line  ] 
+        + iT[11][k]*coeff[ 11*line ] 
+        + iT[13][k]*coeff[ 13*line ] 
+        + iT[15][k]*coeff[ 15*line ] 
+        + iT[17][k]*coeff[ 17*line ] 
+        + iT[19][k]*coeff[ 19*line ] 
+        + iT[21][k]*coeff[ 21*line ]
+        + iT[23][k]*coeff[ 23*line ] 
+        + iT[25][k]*coeff[ 25*line ] 
+        + iT[27][k]*coeff[ 27*line ] 
+        + iT[29][k]*coeff[ 29*line ] 
+        + iT[31][k]*coeff[ 31*line ]
+        + iT[33][k]*coeff[ 33*line ] 
+        + iT[35][k]*coeff[ 35*line ] 
+        + iT[37][k]*coeff[ 37*line ] 
+        + iT[39][k]*coeff[ 39*line ]
+        + iT[41][k]*coeff[ 41*line ]
+        + iT[43][k]*coeff[ 43*line ] 
+        + iT[45][k]*coeff[ 45*line ] 
+        + iT[47][k]*coeff[ 47*line ] 
+        + iT[49][k]*coeff[ 49*line ] 
+        + iT[51][k]*coeff[ 51*line ]
+        + iT[53][k]*coeff[ 53*line ] 
+        + iT[55][k]*coeff[ 55*line ] 
+        + iT[57][k]*coeff[ 57*line ] 
+        + iT[59][k]*coeff[ 59*line ] 
+        + iT[61][k]*coeff[ 61*line ]
+        + iT[63][k]*coeff[ 63*line ] 
+        + iT[65][k]*coeff[ 65*line ] 
+        + iT[67][k]*coeff[ 67*line ] 
+        + iT[69][k]*coeff[ 69*line ] 
+        + iT[71][k]*coeff[ 71*line ] 
+        + iT[73][k]*coeff[ 73*line ] 
+        + iT[75][k]*coeff[ 75*line ] 
+        + iT[77][k]*coeff[ 77*line ] 
+        + iT[79][k]*coeff[ 79*line ] 
+        + iT[81][k]*coeff[ 81*line ] 
+        + iT[83][k]*coeff[ 83*line ] 
+        + iT[85][k]*coeff[ 85*line ]
+        + iT[87][k]*coeff[ 87*line ] 
+        + iT[89][k]*coeff[ 89*line ] 
+        + iT[91][k]*coeff[ 91*line ] 
+        + iT[93][k]*coeff[ 93*line ] 
+        + iT[95][k]*coeff[ 95*line ]
+        + iT[97][k]*coeff[ 97*line ] 
+        + iT[99][k]*coeff[ 99*line ] 
+        + iT[101][k]*coeff[ 101*line ] 
+        + iT[103][k]*coeff[ 103*line ]
+        + iT[105][k]*coeff[ 105*line ]
+        + iT[107][k]*coeff[ 107*line ] 
+        + iT[109][k]*coeff[ 109*line ] 
+        + iT[111][k]*coeff[ 111*line ] 
+        + iT[113][k]*coeff[ 113*line ] 
+        + iT[115][k]*coeff[ 115*line ]
+        + iT[117][k]*coeff[ 117*line ] 
+        + iT[119][k]*coeff[ 119*line ] 
+        + iT[121][k]*coeff[ 121*line ] 
+        + iT[123][k]*coeff[ 123*line ] 
+        + iT[125][k]*coeff[ 125*line ]
+        + iT[127][k]*coeff[ 127*line ] 
+        ;
+      }
+
+      for (k=0;k<32;k++) //+4
+      {
+        EO[k] = iT[ 2][k]*coeff[ 2*line  ] 
+        + iT[ 6][k]*coeff[ 6*line  ] 
+        + iT[10][k]*coeff[ 10*line ] 
+        + iT[14][k]*coeff[ 14*line ] 
+        + iT[18][k]*coeff[ 18*line ] 
+        + iT[22][k]*coeff[ 22*line ] 
+        + iT[26][k]*coeff[ 26*line ] 
+        + iT[30][k]*coeff[ 30*line ]
+        + iT[34][k]*coeff[ 34*line ] 
+        + iT[38][k]*coeff[ 38*line ] 
+        + iT[42][k]*coeff[ 42*line ] 
+        + iT[46][k]*coeff[ 46*line ] 
+        + iT[50][k]*coeff[ 50*line ]
+        + iT[54][k]*coeff[ 54*line ] 
+        + iT[58][k]*coeff[ 58*line ] 
+        + iT[62][k]*coeff[ 62*line ] 
+        + iT[66][k]*coeff[ 66*line  ] 
+        + iT[70][k]*coeff[ 70*line  ] 
+        + iT[74][k]*coeff[ 74*line ] 
+        + iT[78][k]*coeff[ 78*line ] 
+        + iT[82][k]*coeff[ 82*line ] 
+        + iT[86][k]*coeff[ 86*line ] 
+        + iT[90][k]*coeff[ 90*line ] 
+        + iT[94][k]*coeff[ 94*line ]
+        + iT[98][k]*coeff[ 98*line ] 
+        + iT[102][k]*coeff[ 102*line ] 
+        + iT[106][k]*coeff[ 106*line ] 
+        + iT[110][k]*coeff[ 110*line ] 
+        + iT[114][k]*coeff[ 114*line ]
+        + iT[118][k]*coeff[ 118*line ] 
+        + iT[122][k]*coeff[ 122*line ] 
+        + iT[126][k]*coeff[ 126*line ] 
+        ;
+      }
+
+#if JVET_C0024_ITSKIP
+    }
+#endif
+
+    for (k=0;k<16;k++) //+8
+    {
+      EEO[k] = iT[4 ][k]*coeff[ 4*line ] 
+      + iT[12][k]*coeff[ 12*line ] 
+      + iT[20][k]*coeff[ 20*line ] 
+      + iT[28][k]*coeff[ 28*line ]
+      + iT[36][k]*coeff[ 36*line ]
+      + iT[44][k]*coeff[ 44*line ]
+      + iT[52][k]*coeff[ 52*line ] 
+      + iT[60][k]*coeff[ 60*line ]
+      + iT[68][k]*coeff[ 68*line ] 
+      + iT[76][k]*coeff[ 76*line ] 
+      + iT[84][k]*coeff[ 84*line ] 
+      + iT[92][k]*coeff[ 92*line ]
+      + iT[100][k]*coeff[ 100*line ]
+      + iT[108][k]*coeff[ 108*line ]
+      + iT[116][k]*coeff[ 116*line ] 
+      + iT[124][k]*coeff[ 124*line ]
+      ;
+    }
+
+    for (k=0;k<8;k++) //+16
+    {
+      EEEO[k] = iT[8 ][k]*coeff[ 8*line ] 
+      + iT[24][k]*coeff[ 24*line ] 
+      + iT[40][k]*coeff[ 40*line ] 
+      + iT[56][k]*coeff[ 56*line ] 
+      + iT[72][k]*coeff[ 72*line ] 
+      + iT[88][k]*coeff[ 88*line ] 
+      + iT[104][k]*coeff[ 104*line ] 
+      + iT[120][k]*coeff[ 120*line ] 
+      ;
+    }
+
+
+    for(k=0; k< 4; k++) //+32
+    {
+      EEEEO[k] = iT[16][k]*coeff[ 16*line ] 
+      + iT[48][k]*coeff[ 48*line ]
+      + iT[80][k]*coeff[ 80*line ] 
+      + iT[112][k]*coeff[ 112*line ]
+      ;
+    }
+
+    for(k=0; k< 2; k++) //+64
+    {
+      EEEEEO[k] = iT[32][k]*coeff[ 32*line ] 
+      + iT[96][k]*coeff[ 96*line ]
+      ;
+    }
+
+    EEEEEE[0] = iT[0][0]*coeff[ 0      ] + iT[64][0]*coeff[ 64*line ];    
+    EEEEEE[1] = iT[0][1]*coeff[ 0      ] + iT[64][1]*coeff[ 64*line ];
+
+    /* Combining even and odd terms at each hierarchy levels to calculate the final spatial domain vector */
+    for (k=0;k<2;k++)
+    {
+      EEEEE[k  ] = EEEEEE[k  ] + EEEEEO[k  ];
+      EEEEE[k+2] = EEEEEE[1-k] - EEEEEO[1-k];
+    }    
+
+    for (k=0;k<4;k++)
+    {
+      EEEE[k  ] = EEEEE[k  ] + EEEEO[k  ];
+      EEEE[k+4] = EEEEE[3-k] - EEEEO[3-k];
+    }    
+
+    for (k=0;k<8;k++)
+    {
+      EEE[k  ] = EEEE[k  ] + EEEO[k  ];
+      EEE[k+8] = EEEE[7-k] - EEEO[7-k];
+    }    
+
+    for (k=0;k<16;k++)
+    {
+      EE[k   ] = EEE[k   ] + EEO[k   ];
+      EE[k+16] = EEE[15-k] - EEO[15-k];
+    }    
+
+    for (k=0;k<32;k++)
+    {
+      E[k   ] = EE[k   ] + EO[k   ];
+      E[k+32] = EE[31-k] - EO[31-k];
+    }   
+
+    for (k=0;k<64;k++)
+    {
+      block[k]    = Clip3( outputMinimum, outputMaximum, (E[k   ] + O[k   ] + add)>>shift );
+      block[k+64] = Clip3( outputMinimum, outputMaximum, (E[63-k] - O[63-k] + add)>>shift );
+    }
+    coeff ++;
+    block += 128;
+  }
+#if JVET_C0024_ITSKIP
+  memset(block, 0, 128*iSkipLine*sizeof(TCoeff));
+#endif
+}
+#endif
 // Fast DST Algorithm. Full matrix multiplication for DST and Fast DST algorithm 
 // give identical results
 // ********************************** DST-VII **********************************
@@ -2010,10 +2742,17 @@ void fastForwardDST7_B4(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo
     c[2] = block[0] - block[1];
     c[3] = iT[2]* block[2];
 
+#if JVET_C0024_QTBT
+    coeff[ 0*line ] =  ( iT[0] * c[0] + iT[1] * c[1]         + c[3]               + rnd_factor ) >> shift;
+    coeff[ 1*line ] =  ( iT[2] * (block[0]+ block[1] - block[3])   + rnd_factor ) >> shift;
+    coeff[ 2*line ] =  ( iT[0] * c[2] + iT[1] * c[0]         - c[3]               + rnd_factor ) >> shift;
+    coeff[ 3*line ] =  ( iT[1] * c[2] - iT[0] * c[1]         + c[3]               + rnd_factor ) >> shift;
+#else
     coeff[ 0] =  ( iT[0] * c[0] + iT[1] * c[1]         + c[3]               + rnd_factor ) >> shift;
     coeff[ 4] =  ( iT[2] * (block[0]+ block[1] - block[3])   + rnd_factor ) >> shift;
     coeff[ 8] =  ( iT[0] * c[2] + iT[1] * c[0]         - c[3]               + rnd_factor ) >> shift;
     coeff[12] =  ( iT[1] * c[2] - iT[0] * c[1]         + c[3]               + rnd_factor ) >> shift;
+#endif
 
     block+=4;
     coeff++;
@@ -2035,14 +2774,25 @@ void fastInverseDST7_B4(TCoeff *coeff, TCoeff *block, Int shift, Int line, Int z
   for (i=0; i<line; i++)
   {  
     // Intermediate Variables
+#if JVET_C0024_QTBT
+    c[0] = coeff[0*line] + coeff[2*line];
+    c[1] = coeff[2*line] + coeff[3*line];
+    c[2] = coeff[0*line] - coeff[3*line];
+    c[3] = iT[2]* coeff[1*line];
+#else
     c[0] = coeff[0] + coeff[ 8];
     c[1] = coeff[8] + coeff[12];
     c[2] = coeff[0] - coeff[12];
     c[3] = iT[2]* coeff[4];
+#endif
 
     block[0] = Clip3( outputMinimum, outputMaximum, ( iT[0] * c[0] + iT[1] * c[1]     + c[3]               + rnd_factor ) >> shift );
     block[1] = Clip3( outputMinimum, outputMaximum, ( iT[1] * c[2] - iT[0] * c[1]     + c[3]               + rnd_factor ) >> shift );
+#if JVET_C0024_QTBT
+    block[2] = Clip3( outputMinimum, outputMaximum, ( iT[2] * (coeff[0*line] - coeff[2*line]  + coeff[3*line])      + rnd_factor ) >> shift );
+#else
     block[2] = Clip3( outputMinimum, outputMaximum, ( iT[2] * (coeff[0] - coeff[8]  + coeff[12])      + rnd_factor ) >> shift );
+#endif
     block[3] = Clip3( outputMinimum, outputMaximum, ( iT[1] * c[0] + iT[0] * c[2]     - c[3]               + rnd_factor ) >> shift );
 
     block+=4;
@@ -2289,6 +3039,277 @@ void fastInverseDST7_B32(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int z
 
 
 
+#if JVET_C0024_QTBT
+void fastForwardDST7_B64(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo, Int use)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 64;
+  const TMatrixCoeff *iT;
+  TCoeff *pCoef;
+
+  if ( zo )
+  {
+    TCoeff *tmp = coeff;
+    for (i=0; i<(line>>(zo-1)); i++)
+    {
+      pCoef = coeff;
+      iT = g_aiTr64[DST7][0];
+      for (j=0; j<uiTrSize/2; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize; k++)
+        {
+          iSum += block[k]*iT[k];
+        }
+        pCoef[i] = (iSum + rnd_factor)>>shift;
+        iT += uiTrSize;
+        pCoef += line;
+      }
+      block+=uiTrSize;
+    }
+
+    coeff += (line>>(zo-1));
+    if( zo==2 )
+    {
+      for (j=0; j<uiTrSize/2; j++)
+      {
+        memset( coeff, 0, sizeof(TCoeff)*uiTrSize/2 );
+        coeff += uiTrSize;
+      }
+    }
+    coeff = tmp + uiTrSize*uiTrSize/2;
+    memset( coeff, 0, sizeof(TCoeff)*uiTrSize*uiTrSize/2 );
+  }
+  else
+  {
+    for (i=0; i<line; i++)
+    {
+      pCoef = coeff;
+      iT = g_aiTr64[DST7][0];
+      for (j=0; j<uiTrSize; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize; k++)
+        {
+          iSum += block[k]*iT[k];
+        }
+        pCoef[i] = (iSum + rnd_factor)>>shift;
+        pCoef += line;
+        iT += uiTrSize;
+      }
+      block += uiTrSize;
+    }
+  }
+}
+
+#ifdef __GNUC__
+#define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
+#if GCC_VERSION > 40600 && GCC_VERSION < 40700
+__attribute__((optimize("no-tree-vrp")))
+#endif
+#endif
+#if JVET_C0024_ITSKIP
+void fastInverseDST7_B64(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
+#else
+void fastInverseDST7_B64(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
+#endif
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 64;
+  const TMatrixCoeff *iT = g_aiTr64[DST7][0];
+
+#if JVET_C0024_ITSKIP
+  Bool zo = iSkipLine2 >= 32;
+#endif
+
+  if ( zo )
+  {
+#if JVET_C0024_ITSKIP
+    for (i=0; i<line-iSkipLine; i++)
+#else
+    for (i=0; i<(line>>(zo-1)); i++)
+#endif
+    {
+      for (j=0; j<uiTrSize; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize/2; k++)
+        {
+          iSum += coeff[k*line]*iT[k*uiTrSize+j];
+        }
+        block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+      }
+      block+=uiTrSize;
+      coeff++;
+    }
+  }
+  else
+  {
+#if JVET_C0024_ITSKIP
+    for (i=0; i<line-iSkipLine; i++)
+#else
+    for (i=0; i<line; i++)
+#endif
+    {
+      for (j=0; j<uiTrSize; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize; k++)
+        {
+          iSum += coeff[k*line]*iT[k*uiTrSize+j];
+        }
+        block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+      }
+      block+=uiTrSize;
+      coeff++;
+    }
+  }
+
+#if JVET_C0024_ITSKIP
+  memset(block, 0, uiTrSize*iSkipLine*sizeof(TCoeff));
+#endif
+}
+
+void fastForwardDST7_B128(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo, Int use)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 128;
+  const TMatrixCoeff *iT;
+  TCoeff *pCoef;
+
+  if ( zo )
+  {
+    TCoeff *tmp = coeff;
+    for (i=0; i<(line>>(zo-1)); i++)
+    {
+      pCoef = coeff;
+      iT = g_aiTr128[DST7][0];
+      for (j=0; j<uiTrSize/2; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize; k++)
+        {
+          iSum += block[k]*iT[k];
+        }
+        pCoef[i] = (iSum + rnd_factor)>>shift;
+        iT += uiTrSize;
+        pCoef += line;
+      }
+      block+=uiTrSize;
+    }
+
+    coeff += (line>>(zo-1));
+    if( zo==2 )
+    {
+      for (j=0; j<uiTrSize/2; j++)
+      {
+        memset( coeff, 0, sizeof(TCoeff)*uiTrSize/2 );
+        coeff += uiTrSize;
+      }
+    }
+    coeff = tmp + uiTrSize*uiTrSize/2;
+    memset( coeff, 0, sizeof(TCoeff)*uiTrSize*uiTrSize/2 );
+  }
+  else
+  {
+    for (i=0; i<line; i++)
+    {
+      pCoef = coeff;
+      iT = g_aiTr128[DST7][0];
+      for (j=0; j<uiTrSize; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize; k++)
+        {
+          iSum += block[k]*iT[k];
+        }
+        pCoef[i] = (iSum + rnd_factor)>>shift;
+        pCoef += line;
+        iT += uiTrSize;
+      }
+      block += uiTrSize;
+    }
+  }
+}
+
+#ifdef __GNUC__
+#define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
+#if GCC_VERSION > 40600 && GCC_VERSION < 40700
+__attribute__((optimize("no-tree-vrp")))
+#endif
+#endif
+#if JVET_C0024_ITSKIP
+void fastInverseDST7_B128(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
+#else
+void fastInverseDST7_B128(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
+#endif
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 128;
+  const TMatrixCoeff *iT = g_aiTr128[DST7][0];
+
+#if JVET_C0024_ITSKIP
+  Bool zo = iSkipLine2 >= 64;
+#endif
+
+  if ( zo )
+  {
+#if JVET_C0024_ITSKIP
+    for (i=0; i<line-iSkipLine; i++)
+#else
+    for (i=0; i<(line>>(zo-1)); i++)
+#endif
+    {
+      for (j=0; j<uiTrSize; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize/2; k++)
+        {
+          iSum += coeff[k*line]*iT[k*uiTrSize+j];
+        }
+        block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+      }
+      block+=uiTrSize;
+      coeff++;
+    }
+  }
+  else
+  {
+#if JVET_C0024_ITSKIP
+    for (i=0; i<line-iSkipLine; i++)
+#else
+    for (i=0; i<line; i++)
+#endif
+    {
+      for (j=0; j<uiTrSize; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize; k++)
+        {
+          iSum += coeff[k*line]*iT[k*uiTrSize+j];
+        }
+        block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+      }
+      block+=uiTrSize;
+      coeff++;
+    }
+  }
+#if JVET_C0024_ITSKIP
+  memset(block, 0, uiTrSize*iSkipLine*sizeof(TCoeff));
+#endif
+}
+#endif
+
+
+
 
 // ********************************** DCT-VIII **********************************
 void fastForwardDCT8_B4(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo, Int use)  // input block, output coeff
@@ -2307,10 +3328,17 @@ void fastForwardDCT8_B4(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo
     c[2] = block[3] - block[2];
     c[3] = iT[1]* block[1];
 
+#if JVET_C0024_QTBT
+    coeff[ 0*line ] =  ( iT[3] * c[0] + iT[2] * c[1]         + c[3]               + rnd_factor ) >> shift;
+    coeff[ 1*line ] =  ( iT[1] * (block[0] - block[2] - block[3])   + rnd_factor ) >> shift;
+    coeff[ 2*line ] =  ( iT[3] * c[2] + iT[2] * c[0]         - c[3]               + rnd_factor ) >> shift;
+    coeff[ 3*line ] =  ( iT[3] * c[1] - iT[2] * c[2]         - c[3]               + rnd_factor ) >> shift;
+#else
     coeff[ 0] =  ( iT[3] * c[0] + iT[2] * c[1]         + c[3]               + rnd_factor ) >> shift;
     coeff[ 4] =  ( iT[1] * (block[0] - block[2] - block[3])   + rnd_factor ) >> shift;
     coeff[ 8] =  ( iT[3] * c[2] + iT[2] * c[0]         - c[3]               + rnd_factor ) >> shift;
     coeff[12] =  ( iT[3] * c[1] - iT[2] * c[2]         - c[3]               + rnd_factor ) >> shift;
+#endif
 
     block+=4;
     coeff++;
@@ -2329,13 +3357,24 @@ void fastInverseDCT8_B4(TCoeff *coeff, TCoeff *block, Int shift, Int line, Int z
   for (i=0; i<line; i++)
   {
     // Intermediate Variables
+#if JVET_C0024_QTBT
+    c[0] = coeff[0*line] + coeff[3*line];
+    c[1] = coeff[2*line] + coeff[0*line];
+    c[2] = coeff[3*line] - coeff[2*line];
+    c[3] = iT[1]* coeff[1*line];
+#else
     c[0] = coeff[ 0] + coeff[12];
     c[1] = coeff[ 8] + coeff[ 0];
     c[2] = coeff[12] - coeff[ 8];
     c[3] = iT[1]* coeff[4];
+#endif
 
     block[0] =  Clip3(outputMinimum, outputMaximum, ( iT[3] * c[0] + iT[2] * c[1]         + c[3]               + rnd_factor ) >> shift);
+#if JVET_C0024_QTBT
+    block[1] =  Clip3(outputMinimum, outputMaximum, ( iT[1] * (coeff[0*line] - coeff[2*line] - coeff[3*line])   + rnd_factor ) >> shift);
+#else
     block[1] =  Clip3(outputMinimum, outputMaximum, ( iT[1] * (coeff[0] - coeff[8] - coeff[12])   + rnd_factor ) >> shift);
+#endif
     block[2] =  Clip3(outputMinimum, outputMaximum, ( iT[3] * c[2] + iT[2] * c[0]         - c[3]               + rnd_factor ) >> shift);
     block[3] =  Clip3(outputMinimum, outputMaximum, ( iT[3] * c[1] - iT[2] * c[2]         - c[3]               + rnd_factor ) >> shift);
 
@@ -2578,6 +3617,274 @@ void fastInverseDCT8_B32(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int z
   }
 }
 
+#if JVET_C0024_QTBT
+void fastForwardDCT8_B64(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo, Int use)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 64;
+  const TMatrixCoeff *iT;
+  TCoeff *pCoef;
+
+  if ( zo )
+  {
+    TCoeff *tmp = coeff;
+    for (i=0; i<(line>>(zo-1)); i++)
+    {
+      pCoef = coeff;
+      iT = g_aiTr64[DCT8][0];
+      for (j=0; j<uiTrSize/2; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize; k++)
+        {
+          iSum += block[k]*iT[k];
+        }
+        pCoef[i] = (iSum + rnd_factor)>>shift;
+        iT += uiTrSize;
+        pCoef += line;
+      }
+      block+=uiTrSize;
+    }
+
+    coeff += (line>>(zo-1));
+    if( zo==2 )
+    {
+      for (j=0; j<uiTrSize/2; j++)
+      {
+        memset( coeff, 0, sizeof(TCoeff)*uiTrSize/2 );
+        coeff += uiTrSize;
+      }
+    }
+    coeff = tmp + uiTrSize*uiTrSize/2;
+    memset( coeff, 0, sizeof(TCoeff)*uiTrSize*uiTrSize/2 );
+  }
+  else
+  {
+    for (i=0; i<line; i++)
+    {
+      pCoef = coeff;
+      iT = g_aiTr64[DCT8][0];
+      for (j=0; j<uiTrSize; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize; k++)
+        {
+          iSum += block[k]*iT[k];
+        }
+        pCoef[i] = (iSum + rnd_factor)>>shift;
+        pCoef += line;
+        iT += uiTrSize;
+      }
+      block += uiTrSize;
+    }
+  }
+}
+
+#ifdef __GNUC__
+#define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
+#if GCC_VERSION > 40600 && GCC_VERSION < 40700
+__attribute__((optimize("no-tree-vrp")))
+#endif
+#endif
+#if JVET_C0024_ITSKIP
+void fastInverseDCT8_B64(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
+#else
+void fastInverseDCT8_B64(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
+#endif
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 64;
+  const TMatrixCoeff *iT = g_aiTr64[DCT8][0];
+
+#if JVET_C0024_ITSKIP
+  Bool zo = iSkipLine2 >= 32;
+#endif
+
+  if ( zo )
+  {
+#if JVET_C0024_ITSKIP
+    for (i=0; i<line-iSkipLine; i++)
+#else
+    for (i=0; i<(line>>(zo-1)); i++)
+#endif
+    {
+      for (j=0; j<uiTrSize; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize/2; k++)
+        {
+          iSum += coeff[k*line]*iT[k*uiTrSize+j];
+        }
+        block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+      }
+      block+=uiTrSize;
+      coeff++;
+    }
+  }
+  else
+  {
+#if JVET_C0024_ITSKIP
+    for (i=0; i<line-iSkipLine; i++)
+#else
+    for (i=0; i<line; i++)
+#endif
+    {
+      for (j=0; j<uiTrSize; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize; k++)
+        {
+          iSum += coeff[k*line]*iT[k*uiTrSize+j];
+        }
+        block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+      }
+      block+=uiTrSize;
+      coeff++;
+    }
+  }
+#if JVET_C0024_ITSKIP
+  memset(block, 0, uiTrSize*iSkipLine*sizeof(TCoeff));
+#endif
+}
+
+void fastForwardDCT8_B128(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo, Int use)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 128;
+  const TMatrixCoeff *iT;
+  TCoeff *pCoef;
+
+  if ( zo )
+  {
+    TCoeff *tmp = coeff;
+    for (i=0; i<(line>>(zo-1)); i++)
+    {
+      pCoef = coeff;
+      iT = g_aiTr128[DCT8][0];
+      for (j=0; j<uiTrSize/2; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize; k++)
+        {
+          iSum += block[k]*iT[k];
+        }
+        pCoef[i] = (iSum + rnd_factor)>>shift;
+        iT += uiTrSize;
+        pCoef += line;
+      }
+      block+=uiTrSize;
+    }
+
+    coeff += (line>>(zo-1));
+    if( zo==2 )
+    {
+      for (j=0; j<uiTrSize/2; j++)
+      {
+        memset( coeff, 0, sizeof(TCoeff)*uiTrSize/2 );
+        coeff += uiTrSize;
+      }
+    }
+    coeff = tmp + uiTrSize*uiTrSize/2;
+    memset( coeff, 0, sizeof(TCoeff)*uiTrSize*uiTrSize/2 );
+  }
+  else
+  {
+    for (i=0; i<line; i++)
+    {
+      pCoef = coeff;
+      iT = g_aiTr128[DCT8][0];
+      for (j=0; j<uiTrSize; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize; k++)
+        {
+          iSum += block[k]*iT[k];
+        }
+        pCoef[i] = (iSum + rnd_factor)>>shift;
+        pCoef += line;
+        iT += uiTrSize;
+      }
+      block += uiTrSize;
+    }
+  }
+}
+
+#ifdef __GNUC__
+#define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
+#if GCC_VERSION > 40600 && GCC_VERSION < 40700
+__attribute__((optimize("no-tree-vrp")))
+#endif
+#endif
+#if JVET_C0024_ITSKIP
+void fastInverseDCT8_B128(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
+#else
+void fastInverseDCT8_B128(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
+#endif
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 128;
+  const TMatrixCoeff *iT = g_aiTr128[DCT8][0];
+
+#if JVET_C0024_ITSKIP
+  Bool zo = iSkipLine2 >= 64;
+#endif
+
+  if ( zo )
+  {
+#if JVET_C0024_ITSKIP
+    for (i=0; i<line-iSkipLine; i++)
+#else
+    for (i=0; i<(line>>(zo-1)); i++)
+#endif
+    {
+      for (j=0; j<uiTrSize; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize/2; k++)
+        {
+          iSum += coeff[k*line]*iT[k*uiTrSize+j];
+        }
+        block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+      }
+      block+=uiTrSize;
+      coeff++;
+    }
+  }
+  else
+  {
+#if JVET_C0024_ITSKIP
+    for (i=0; i<line-iSkipLine; i++)
+#else
+    for (i=0; i<line; i++)
+#endif
+    {
+      for (j=0; j<uiTrSize; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize; k++)
+        {
+          iSum += coeff[k*line]*iT[k*uiTrSize+j];
+        }
+        block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+      }
+      block+=uiTrSize;
+      coeff++;
+    }
+  }
+
+#if JVET_C0024_ITSKIP
+  memset(block, 0, uiTrSize*iSkipLine*sizeof(TCoeff));
+#endif
+}
+#endif
 
 
 
@@ -2810,6 +4117,265 @@ void fastInverseDCT5_B32(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int z
   }
 }
 
+#if JVET_C0024_QTBT
+void fastForwardDCT5_B64(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo, Int use)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 64;
+  const TMatrixCoeff *iT;
+  TCoeff *pCoef;
+
+  if ( zo )
+  {
+    TCoeff *tmp = coeff;
+    for (i=0; i<(line>>(zo-1)); i++)
+    {
+      pCoef = coeff;
+      iT = g_aiTr64[DCT5][0];
+      for (j=0; j<uiTrSize/2; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize; k++)
+        {
+          iSum += block[k]*iT[k];
+        }
+        pCoef[i] = (iSum + rnd_factor)>>shift;
+        iT += uiTrSize;
+        pCoef += line;
+      }
+      block+=uiTrSize;
+    }
+
+    coeff += (line>>(zo-1));
+    if( zo==2 )
+    {
+      for (j=0; j<uiTrSize/2; j++)
+      {
+        memset( coeff, 0, sizeof(TCoeff)*uiTrSize/2 );
+        coeff += uiTrSize;
+      }
+    }
+    coeff = tmp + uiTrSize*uiTrSize/2;
+    memset( coeff, 0, sizeof(TCoeff)*uiTrSize*uiTrSize/2 );
+  }
+  else
+  {
+    for (i=0; i<line; i++)
+    {
+      pCoef = coeff;
+      iT = g_aiTr64[DCT5][0];
+      for (j=0; j<uiTrSize; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize; k++)
+        {
+          iSum += block[k]*iT[k];
+        }
+        pCoef[i] = (iSum + rnd_factor)>>shift;
+        pCoef += line;
+        iT += uiTrSize;
+      }
+      block += uiTrSize;
+    }
+  }
+}
+
+#if JVET_C0024_ITSKIP
+void fastInverseDCT5_B64(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
+#else
+void fastInverseDCT5_B64(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
+#endif
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 64;
+  const TMatrixCoeff *iT = g_aiTr64[DCT5][0];
+
+#if JVET_C0024_ITSKIP
+  Bool zo = iSkipLine2 >= 32;
+#endif
+
+  if ( zo )
+  {
+#if JVET_C0024_ITSKIP
+    for (i=0; i<line-iSkipLine; i++)
+#else
+    for (i=0; i<(line>>(zo-1)); i++)
+#endif
+    {
+      for (j=0; j<uiTrSize; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize/2; k++)
+        {
+          iSum += coeff[k*line]*iT[k*uiTrSize+j];
+        }
+        block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+      }
+      block+=uiTrSize;
+      coeff++;
+    }
+  }
+  else
+  {
+#if JVET_C0024_ITSKIP
+    for (i=0; i<line-iSkipLine; i++)
+#else
+    for (i=0; i<line; i++)
+#endif
+    {
+      for (j=0; j<uiTrSize; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize; k++)
+        {
+          iSum += coeff[k*line]*iT[k*uiTrSize+j];
+        }
+        block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+      }
+      block+=uiTrSize;
+      coeff++;
+    }
+  }
+
+#if JVET_C0024_ITSKIP
+  memset(block, 0, uiTrSize*iSkipLine*sizeof(TCoeff));
+#endif
+}
+
+void fastForwardDCT5_B128(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo, Int use)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 128;
+  const TMatrixCoeff *iT;
+  TCoeff *pCoef;
+
+  if ( zo )
+  {
+    TCoeff *tmp = coeff;
+    for (i=0; i<(line>>(zo-1)); i++)
+    {
+      pCoef = coeff;
+      iT = g_aiTr128[DCT5][0];
+      for (j=0; j<uiTrSize/2; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize; k++)
+        {
+          iSum += block[k]*iT[k];
+        }
+        pCoef[i] = (iSum + rnd_factor)>>shift;
+        iT += uiTrSize;
+        pCoef += line;
+      }
+      block+=uiTrSize;
+    }
+
+    coeff += (line>>(zo-1));
+    if( zo==2 )
+    {
+      for (j=0; j<uiTrSize/2; j++)
+      {
+        memset( coeff, 0, sizeof(TCoeff)*uiTrSize/2 );
+        coeff += uiTrSize;
+      }
+    }
+    coeff = tmp + uiTrSize*uiTrSize/2;
+    memset( coeff, 0, sizeof(TCoeff)*uiTrSize*uiTrSize/2 );
+  }
+  else
+  {
+    for (i=0; i<line; i++)
+    {
+      pCoef = coeff;
+      iT = g_aiTr128[DCT5][0];
+      for (j=0; j<uiTrSize; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize; k++)
+        {
+          iSum += block[k]*iT[k];
+        }
+        pCoef[i] = (iSum + rnd_factor)>>shift;
+        pCoef += line;
+        iT += uiTrSize;
+      }
+      block += uiTrSize;
+    }
+  }
+}
+
+#if JVET_C0024_ITSKIP
+void fastInverseDCT5_B128(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
+#else
+void fastInverseDCT5_B128(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
+#endif
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 128;
+  const TMatrixCoeff *iT = g_aiTr128[DCT5][0];
+
+#if JVET_C0024_ITSKIP
+  Bool zo = iSkipLine2 >= 64;
+#endif
+
+  if ( zo )
+  {
+#if JVET_C0024_ITSKIP
+    for (i=0; i<line-iSkipLine; i++)
+#else
+    for (i=0; i<(line>>(zo-1)); i++)
+#endif
+    {
+      for (j=0; j<uiTrSize; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize/2; k++)
+        {
+          iSum += coeff[k*line]*iT[k*uiTrSize+j];
+        }
+        block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+      }
+      block+=uiTrSize;
+      coeff++;
+    }
+  }
+  else
+  {
+#if JVET_C0024_ITSKIP
+    for (i=0; i<line-iSkipLine; i++)
+#else
+    for (i=0; i<line; i++)
+#endif
+    {
+      for (j=0; j<uiTrSize; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize; k++)
+        {
+          iSum += coeff[k*line]*iT[k*uiTrSize+j];
+        }
+        block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+      }
+      block+=uiTrSize;
+      coeff++;
+    }
+  }
+
+#if JVET_C0024_ITSKIP
+  memset(block, 0, uiTrSize*iSkipLine*sizeof(TCoeff));
+#endif
+}
+#endif
+
+
 
 // ********************************** DST-I **********************************
 void fastForwardDST1_B4(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo, Int use)  // input block, output coeff
@@ -2850,10 +4416,17 @@ void fastInverseDST1_B4(TCoeff *coeff, TCoeff *block, Int shift, Int line, Int z
   for (i=0; i<line; i++)
   {    
     /* E and O */
+#if JVET_C0024_QTBT
+    E[0] = coeff[0*line] + coeff[3*line];
+    O[0] = coeff[0*line] - coeff[3*line];
+    E[1] = coeff[1*line] + coeff[2*line];
+    O[1] = coeff[1*line] - coeff[2*line];
+#else
     E[0] = coeff[0*4] + coeff[3*4];
     O[0] = coeff[0*4] - coeff[3*4];
     E[1] = coeff[1*4] + coeff[2*4];
     O[1] = coeff[1*4] - coeff[2*4];
+#endif
 
     block[0] = Clip3(outputMinimum, outputMaximum, (E[0]*iT[0] + E[1]*iT[1] + rnd_factor)>>shift);
     block[1] = Clip3(outputMinimum, outputMaximum, (O[0]*iT[1] + O[1]*iT[0] + rnd_factor)>>shift);
@@ -3026,6 +4599,263 @@ void fastInverseDST1_B32(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int z
     }
   }
 }
+#if JVET_C0024_QTBT
+void fastForwardDST1_B64(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo, Int use)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 64;
+  const TMatrixCoeff *iT;
+  TCoeff *pCoef;
+
+  if ( zo )
+  {
+    TCoeff *tmp = coeff;
+    for (i=0; i<(line>>(zo-1)); i++)
+    {
+      pCoef = coeff;
+      iT = g_aiTr64[DST1][0];
+      for (j=0; j<uiTrSize/2; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize; k++)
+        {
+          iSum += block[k]*iT[k];
+        }
+        pCoef[i] = (iSum + rnd_factor)>>shift;
+        iT += uiTrSize;
+        pCoef += line;
+      }
+      block+=uiTrSize;
+    }
+
+    coeff += (line>>(zo-1));
+    if( zo==2 )
+    {
+      for (j=0; j<uiTrSize/2; j++)
+      {
+        memset( coeff, 0, sizeof(TCoeff)*uiTrSize/2 );
+        coeff += uiTrSize;
+      }
+    }
+    coeff = tmp + uiTrSize*uiTrSize/2;
+    memset( coeff, 0, sizeof(TCoeff)*uiTrSize*uiTrSize/2 );
+  }
+  else
+  {
+    for (i=0; i<line; i++)
+    {
+      pCoef = coeff;
+      iT = g_aiTr64[DST1][0];
+      for (j=0; j<uiTrSize; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize; k++)
+        {
+          iSum += block[k]*iT[k];
+        }
+        pCoef[i] = (iSum + rnd_factor)>>shift;
+        pCoef += line;
+        iT += uiTrSize;
+      }
+      block += uiTrSize;
+    }
+  }
+}
+
+#if JVET_C0024_ITSKIP
+void fastInverseDST1_B64(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
+#else
+void fastInverseDST1_B64(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
+#endif
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 64;
+  const TMatrixCoeff *iT = g_aiTr64[DST1][0];
+
+#if JVET_C0024_ITSKIP
+  Bool zo = iSkipLine2 >= 32;
+#endif
+
+  if ( zo )
+  {
+#if JVET_C0024_ITSKIP
+    for (i=0; i<line-iSkipLine; i++)
+#else
+    for (i=0; i<(line>>(zo-1)); i++)
+#endif
+    {
+      for (j=0; j<uiTrSize; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize/2; k++)
+        {
+          iSum += coeff[k*line]*iT[k*uiTrSize+j];
+        }
+        block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+      }
+      block+=uiTrSize;
+      coeff++;
+    }
+  }
+  else
+  {
+#if JVET_C0024_ITSKIP
+    for (i=0; i<line-iSkipLine; i++)
+#else
+    for (i=0; i<line; i++)
+#endif
+    {
+      for (j=0; j<uiTrSize; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize; k++)
+        {
+          iSum += coeff[k*line]*iT[k*uiTrSize+j];
+        }
+        block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+      }
+      block+=uiTrSize;
+      coeff++;
+    }
+  }
+
+#if JVET_C0024_ITSKIP
+  memset(block, 0, uiTrSize*iSkipLine*sizeof(TCoeff));
+#endif
+}
+
+void fastForwardDST1_B128(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int zo, Int use)  // input block, output coeff
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 128;
+  const TMatrixCoeff *iT;
+  TCoeff *pCoef;
+
+  if ( zo )
+  {
+    TCoeff *tmp = coeff;
+    for (i=0; i<(line>>(zo-1)); i++)
+    {
+      pCoef = coeff;
+      iT = g_aiTr128[DST1][0];
+      for (j=0; j<uiTrSize/2; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize; k++)
+        {
+          iSum += block[k]*iT[k];
+        }
+        pCoef[i] = (iSum + rnd_factor)>>shift;
+        iT += uiTrSize;
+        pCoef += line;
+      }
+      block+=uiTrSize;
+    }
+
+    coeff += (line>>(zo-1));
+    if( zo==2 )
+    {
+      for (j=0; j<uiTrSize/2; j++)
+      {
+        memset( coeff, 0, sizeof(TCoeff)*uiTrSize/2 );
+        coeff += uiTrSize;
+      }
+    }
+    coeff = tmp + uiTrSize*uiTrSize/2;
+    memset( coeff, 0, sizeof(TCoeff)*uiTrSize*uiTrSize/2 );
+  }
+  else
+  {
+    for (i=0; i<line; i++)
+    {
+      pCoef = coeff;
+      iT = g_aiTr128[DST1][0];
+      for (j=0; j<uiTrSize; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize; k++)
+        {
+          iSum += block[k]*iT[k];
+        }
+        pCoef[i] = (iSum + rnd_factor)>>shift;
+        pCoef += line;
+        iT += uiTrSize;
+      }
+      block += uiTrSize;
+    }
+  }
+}
+
+#if JVET_C0024_ITSKIP
+void fastInverseDST1_B128(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
+#else
+void fastInverseDST1_B128(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
+#endif
+{
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+
+  const Int uiTrSize = 128;
+  const TMatrixCoeff *iT = g_aiTr128[DST1][0];
+
+#if JVET_C0024_ITSKIP
+  Bool zo = iSkipLine2 >= 64;
+#endif
+
+  if ( zo )
+  {
+#if JVET_C0024_ITSKIP
+    for (i=0; i<line-iSkipLine; i++)
+#else
+    for (i=0; i<(line>>(zo-1)); i++)
+#endif
+    {
+      for (j=0; j<uiTrSize; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize/2; k++)
+        {
+          iSum += coeff[k*line]*iT[k*uiTrSize+j];
+        }
+        block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+      }
+      block+=uiTrSize;
+      coeff++;
+    }
+  }
+  else
+  {
+#if JVET_C0024_ITSKIP
+    for (i=0; i<line-iSkipLine; i++)
+#else
+    for (i=0; i<line; i++)
+#endif
+    {
+      for (j=0; j<uiTrSize; j++)
+      {
+        iSum = 0;
+        for (k=0; k<uiTrSize; k++)
+        {
+          iSum += coeff[k*line]*iT[k*uiTrSize+j];
+        }
+        block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+      }
+      block+=uiTrSize;
+      coeff++;
+    }
+  }
+#if JVET_C0024_ITSKIP
+  memset(block, 0, uiTrSize*iSkipLine*sizeof(TCoeff));
+#endif
+}
+#endif
+
 #endif
 
 /** MxN forward transform (2D)
@@ -3044,14 +4874,23 @@ void xTrMxN_EMT(Int bitDepth, TCoeff *block, TCoeff *coeff, Int iWidth, Int iHei
 {
   const Int TRANSFORM_MATRIX_SHIFT = g_transformMatrixShift[TRANSFORM_FORWARD];
 
+#if JVET_C0024_QTBT
+  const Int shift_1st        = ((g_aucConvertToBit[iWidth] + MIN_CU_LOG2) +  bitDepth + TRANSFORM_MATRIX_SHIFT) - maxLog2TrDynamicRange + COM16_C806_TRANS_PREC;
+  const Int shift_2nd        = (g_aucConvertToBit[iHeight] + MIN_CU_LOG2) + TRANSFORM_MATRIX_SHIFT + COM16_C806_TRANS_PREC;
+  const UInt nLog2WidthMinus1 = g_aucConvertToBit[iWidth] + MIN_CU_LOG2 - 1;  //nLog2WidthMinus1, since transform start from 2-point
+  const UInt nLog2HeightMinus1 = g_aucConvertToBit[iHeight] + MIN_CU_LOG2 - 1;  //nLog2HeightMinus1, since transform start from 2-point
+  const Bool bZeroOut        = 0;
+#else
   const Int shift_1st        = ((g_aucConvertToBit[iWidth] + 2) +  bitDepth + TRANSFORM_MATRIX_SHIFT) - maxLog2TrDynamicRange + COM16_C806_TRANS_PREC;
   const Int shift_2nd        = (g_aucConvertToBit[iHeight] + 2) + TRANSFORM_MATRIX_SHIFT + COM16_C806_TRANS_PREC;
   const UInt nLog2SizeMinus2 = g_aucConvertToBit[iWidth];
+
   const Bool bZeroOut        = ( ucMode == INTER_MODE_IDX
 #if COM16_C806_T64
     || iWidth==64
 #endif
     );
+#endif
 
   TCoeff tmp[ MAX_TU_SIZE * MAX_TU_SIZE ];
 
@@ -3069,8 +4908,13 @@ void xTrMxN_EMT(Int bitDepth, TCoeff *block, TCoeff *coeff, Int iWidth, Int iHei
     nTrIdxVer = g_aiTrSubsetInter[ucTrIdx>>1];
   }
 
+#if JVET_C0024_QTBT
+  fastFwdTrans[nTrIdxHor][nLog2WidthMinus1]( block, tmp, shift_1st, iHeight, bZeroOut?1:0, 1 );
+  fastFwdTrans[nTrIdxVer][nLog2HeightMinus1]( tmp, coeff, shift_2nd,  iWidth, bZeroOut?2:0, 1 );
+#else
   fastFwdTrans[nTrIdxHor][nLog2SizeMinus2]( block, tmp, shift_1st, iHeight, bZeroOut?1:0, 1 );
   fastFwdTrans[nTrIdxVer][nLog2SizeMinus2]( tmp, coeff, shift_2nd,  iWidth, bZeroOut?2:0, 1 );
+#endif
 }
 #endif
 
@@ -3089,22 +4933,40 @@ Void xTrMxN(Int bitDepth, TCoeff *block, TCoeff *coeff, Int iWidth, Int iHeight,
 #endif
   const Int TRANSFORM_MATRIX_SHIFT = g_transformMatrixShift[TRANSFORM_FORWARD];
 
-
 #if !COM16_C806_T64
   const
 #endif
+#if JVET_C0024_QTBT
+    Int shift_1st = ((g_aucConvertToBit[iWidth] + MIN_CU_LOG2) +  bitDepth + TRANSFORM_MATRIX_SHIFT) - maxLog2TrDynamicRange;
+#else
     Int shift_1st = ((g_aucConvertToBit[iWidth] + 2) +  bitDepth + TRANSFORM_MATRIX_SHIFT) - maxLog2TrDynamicRange;
+#endif
 #if !COM16_C806_T64
   const 
 #endif
+#if JVET_C0024_QTBT
+    Int shift_2nd = (g_aucConvertToBit[iHeight] + MIN_CU_LOG2) + TRANSFORM_MATRIX_SHIFT;
+#else
     Int shift_2nd = (g_aucConvertToBit[iHeight] + 2) + TRANSFORM_MATRIX_SHIFT;
+#endif
 
 #if COM16_C806_T64
+#if JVET_C0024_QTBT
+  if( iWidth>=64 || iWidth==2)
+  {
+      shift_1st += COM16_C806_TRANS_PREC;
+  }
+  if( iHeight>=64 || iHeight==2)
+  {
+      shift_2nd += COM16_C806_TRANS_PREC;
+  }
+#else
   if( iWidth==64 )
   {
     shift_1st += COM16_C806_TRANS_PREC;
     shift_2nd += COM16_C806_TRANS_PREC;
   }
+#endif
 #endif
 
   assert(shift_1st >= 0);
@@ -3112,8 +4974,11 @@ Void xTrMxN(Int bitDepth, TCoeff *block, TCoeff *coeff, Int iWidth, Int iHeight,
 
   TCoeff tmp[ MAX_TU_SIZE * MAX_TU_SIZE ];
 
-  switch (iWidth)
+  switch (iWidth)   
   {
+#if JVET_C0024_QTBT
+    case 2:    fastForwardDCT2_B2( block, tmp, shift_1st, iHeight, 0, 0 );  break;
+#endif
     case 4:
       {
         if ((iHeight == 4) && useDST)    // Check for DCT or DST
@@ -3131,7 +4996,12 @@ Void xTrMxN(Int bitDepth, TCoeff *block, TCoeff *coeff, Int iWidth, Int iHeight,
     case 16:    partialButterfly16( block, tmp, shift_1st, iHeight );  break;
     case 32:    partialButterfly32( block, tmp, shift_1st, iHeight );  break;
 #if COM16_C806_T64
+#if JVET_C0024_QTBT
+    case 64:    fastForwardDCT2_B64( block, tmp, shift_1st, iHeight, 0, 0 );  break;
+    case 128:   fastForwardDCT2_B128( block, tmp, shift_1st, iHeight, 0, 0 );  break;
+#else
     case 64:    fastForwardDCT2_B64( block, tmp, shift_1st, iHeight, 1, 0 );  break;
+#endif
 #endif
     default:
       assert(0); exit (1); break;
@@ -3139,6 +5009,9 @@ Void xTrMxN(Int bitDepth, TCoeff *block, TCoeff *coeff, Int iWidth, Int iHeight,
 
   switch (iHeight)
   {
+#if JVET_C0024_QTBT
+    case 2:    fastForwardDCT2_B2( tmp, coeff, shift_2nd, iWidth, 0, 0 );  break;
+#endif
     case 4:
       {
         if ((iWidth == 4) && useDST)    // Check for DCT or DST
@@ -3156,7 +5029,12 @@ Void xTrMxN(Int bitDepth, TCoeff *block, TCoeff *coeff, Int iWidth, Int iHeight,
     case 16:    partialButterfly16( tmp, coeff, shift_2nd, iWidth );    break;
     case 32:    partialButterfly32( tmp, coeff, shift_2nd, iWidth );    break;
 #if COM16_C806_T64
+#if JVET_C0024_QTBT
+    case 64:    fastForwardDCT2_B64( tmp, coeff, shift_2nd, iWidth, 0, 0 );  break;
+    case 128:   fastForwardDCT2_B128( tmp, coeff, shift_2nd, iWidth, 0, 0 );  break;
+#else
     case 64:    fastForwardDCT2_B64( tmp, coeff, shift_2nd, iWidth, 2, 0 );  break;
+#endif
 #endif
     default:
       assert(0); exit (1); break;
@@ -3175,7 +5053,11 @@ Void xTrMxN(Int bitDepth, TCoeff *block, TCoeff *coeff, Int iWidth, Int iHeight,
 */
 
 #if COM16_C806_EMT
+#if JVET_C0024_ITSKIP
+void xITrMxN_EMT(Int bitDepth, TCoeff *coeff, TCoeff *block, Int iWidth, Int iHeight, UInt uiSkipWidth, UInt uiSkipHeight, Bool useDST, const Int maxLog2TrDynamicRange, UChar ucMode, UChar ucTrIdx )
+#else
 void xITrMxN_EMT(Int bitDepth, TCoeff *coeff, TCoeff *block, Int iWidth, Int iHeight, Bool useDST, const Int maxLog2TrDynamicRange, UChar ucMode, UChar ucTrIdx )
+#endif
 {
   const Int TRANSFORM_MATRIX_SHIFT = g_transformMatrixShift[TRANSFORM_INVERSE];
 
@@ -3183,12 +5065,20 @@ void xITrMxN_EMT(Int bitDepth, TCoeff *coeff, TCoeff *block, Int iWidth, Int iHe
   const Int shift_2nd        = (TRANSFORM_MATRIX_SHIFT + maxLog2TrDynamicRange - 1) - bitDepth + COM16_C806_TRANS_PREC;
   const TCoeff clipMinimum   = -(1 << maxLog2TrDynamicRange);
   const TCoeff clipMaximum   =  (1 << maxLog2TrDynamicRange) - 1;
+#if JVET_C0024_QTBT
+  const UInt nLog2WidthMinus1 = g_aucConvertToBit[iWidth] + MIN_CU_LOG2 - 1;  //nLog2WidthMinus1, since transform start from 2-point
+  const UInt nLog2HeightMinus1 = g_aucConvertToBit[iHeight] + MIN_CU_LOG2 - 1;  //nLog2HeightMinus1, since transform start from 2-point
+#if !JVET_C0024_ITSKIP
+  const Bool bZeroOut        = 0;
+#endif
+#else
   const UInt nLog2SizeMinus2 = g_aucConvertToBit[iWidth];
   const Bool bZeroOut        = ( ucMode == INTER_MODE_IDX
 #if COM16_C806_T64
     || iWidth==64
 #endif
     );
+#endif
 
   TCoeff tmp[ MAX_TU_SIZE * MAX_TU_SIZE ];
 
@@ -3206,16 +5096,49 @@ void xITrMxN_EMT(Int bitDepth, TCoeff *coeff, TCoeff *block, Int iWidth, Int iHe
     nTrIdxVer = g_aiTrSubsetInter[ucTrIdx>>1];
   }
 
+#if JVET_C0024_QTBT
+#if JVET_C0024_ITSKIP
+  if (nLog2HeightMinus1 + 1 >= 6)
+  {
+    fastInvTrans[nTrIdxVer][nLog2HeightMinus1]( coeff, tmp, shift_1st,  iWidth, uiSkipWidth, uiSkipHeight, clipMinimum, clipMaximum );
+  }
+  else
+  {
+    fastInvTrans[nTrIdxVer][nLog2HeightMinus1]( coeff, tmp, shift_1st,  iWidth, 0, 1, clipMinimum, clipMaximum );
+  }
+
+  if (nLog2WidthMinus1 + 1>=6)
+  {
+    fastInvTrans[nTrIdxHor][nLog2WidthMinus1]( tmp, block, shift_2nd, iHeight, 0, uiSkipWidth, clipMinimum, clipMaximum );
+  }
+  else
+  {
+    fastInvTrans[nTrIdxHor][nLog2WidthMinus1]( tmp, block, shift_2nd, iHeight, 0, 1, clipMinimum, clipMaximum );
+  }
+#else
+  fastInvTrans[nTrIdxVer][nLog2HeightMinus1]( coeff, tmp, shift_1st,  iWidth, bZeroOut?2:0, 1, clipMinimum, clipMaximum );
+  fastInvTrans[nTrIdxHor][nLog2WidthMinus1]( tmp, block, shift_2nd, iHeight, bZeroOut?1:0, 1, clipMinimum, clipMaximum );
+#endif
+#else
   fastInvTrans[nTrIdxVer][nLog2SizeMinus2]( coeff, tmp, shift_1st,  iWidth, bZeroOut?2:0, 1, clipMinimum, clipMaximum );
   fastInvTrans[nTrIdxHor][nLog2SizeMinus2]( tmp, block, shift_2nd, iHeight, bZeroOut?1:0, 1, clipMinimum, clipMaximum );
+#endif
 }
 #endif
 
+#if JVET_C0024_ITSKIP
+Void xITrMxN(Int bitDepth, TCoeff *coeff, TCoeff *block, Int iWidth, Int iHeight, UInt uiSkipWidth, UInt uiSkipHeight, Bool useDST, const Int maxLog2TrDynamicRange
+#if VCEG_AZ08_KLT_COMMON
+    , Bool useKLT
+#endif
+)
+#else
 Void xITrMxN(Int bitDepth, TCoeff *coeff, TCoeff *block, Int iWidth, Int iHeight, Bool useDST, const Int maxLog2TrDynamicRange
 #if VCEG_AZ08_KLT_COMMON
     , Bool useKLT
 #endif
-    )
+)
+#endif
 {
 #if VCEG_AZ08_KLT_COMMON
     if (useKLT == true)
@@ -3233,11 +5156,22 @@ Void xITrMxN(Int bitDepth, TCoeff *coeff, TCoeff *block, Int iWidth, Int iHeight
   const TCoeff clipMaximum =  (1 << maxLog2TrDynamicRange) - 1;
 
 #if COM16_C806_T64
+#if JVET_C0024_QTBT
+  if( iWidth>=64 || iWidth==2)
+  {
+      shift_2nd += COM16_C806_TRANS_PREC;
+  }
+  if( iHeight>=64 || iHeight==2)
+  {
+      shift_1st += COM16_C806_TRANS_PREC;
+  }
+#else
   if( iWidth==64 )
   {
     shift_1st += COM16_C806_TRANS_PREC;
     shift_2nd += COM16_C806_TRANS_PREC;
   }
+#endif
 #endif
 
   assert(shift_1st >= 0);
@@ -3247,6 +5181,10 @@ Void xITrMxN(Int bitDepth, TCoeff *coeff, TCoeff *block, Int iWidth, Int iHeight
 
   switch (iHeight)
   {
+#if JVET_C0024_QTBT
+    case 2:
+        fastInverseDCT2_B2(coeff, tmp, shift_1st, iWidth, 0, 0, clipMinimum, clipMaximum); break;
+#endif
     case 4:
       {
         if ((iWidth == 4) && useDST)    // Check for DCT or DST
@@ -3264,7 +5202,17 @@ Void xITrMxN(Int bitDepth, TCoeff *coeff, TCoeff *block, Int iWidth, Int iHeight
     case 16: partialButterflyInverse16( coeff, tmp, shift_1st, iWidth, clipMinimum, clipMaximum); break;
     case 32: partialButterflyInverse32( coeff, tmp, shift_1st, iWidth, clipMinimum, clipMaximum); break;
 #if COM16_C806_T64
+#if JVET_C0024_QTBT
+#if JVET_C0024_ITSKIP
+    case 64: fastInverseDCT2_B64( coeff, tmp, shift_1st, iWidth, uiSkipWidth, uiSkipHeight, clipMinimum, clipMaximum); break;
+    case 128: fastInverseDCT2_B128( coeff, tmp, shift_1st, iWidth, uiSkipWidth, uiSkipHeight, clipMinimum, clipMaximum); break;
+#else
+    case 64: fastInverseDCT2_B64( coeff, tmp, shift_1st, iWidth, 0, 0, clipMinimum, clipMaximum); break;
+    case 128: fastInverseDCT2_B128( coeff, tmp, shift_1st, iWidth, 0, 0, clipMinimum, clipMaximum); break;
+#endif
+#else
     case 64: fastInverseDCT2_B64( coeff, tmp, shift_1st, iWidth, 2, 0, clipMinimum, clipMaximum); break;
+#endif
 #endif
     default:
       assert(0); exit (1); break;
@@ -3273,6 +5221,9 @@ Void xITrMxN(Int bitDepth, TCoeff *coeff, TCoeff *block, Int iWidth, Int iHeight
   switch (iWidth)
   {
     // Clipping here is not in the standard, but is used to protect the "Pel" data type into which the inverse-transformed samples will be copied
+#if JVET_C0024_QTBT
+    case 2: fastInverseDCT2_B2( tmp, block, shift_2nd, iHeight, 0, 0, std::numeric_limits<Pel>::min(), std::numeric_limits<Pel>::max()); break;
+#endif
     case 4:
       {
         if ((iHeight == 4) && useDST)    // Check for DCT or DST
@@ -3290,7 +5241,17 @@ Void xITrMxN(Int bitDepth, TCoeff *coeff, TCoeff *block, Int iWidth, Int iHeight
     case 16: partialButterflyInverse16( tmp, block, shift_2nd, iHeight, std::numeric_limits<Pel>::min(), std::numeric_limits<Pel>::max()); break;
     case 32: partialButterflyInverse32( tmp, block, shift_2nd, iHeight, std::numeric_limits<Pel>::min(), std::numeric_limits<Pel>::max()); break;
 #if COM16_C806_T64
+#if JVET_C0024_QTBT
+#if JVET_C0024_ITSKIP
+    case 64: fastInverseDCT2_B64( tmp, block, shift_2nd, iHeight, 0, uiSkipWidth, std::numeric_limits<Pel>::min(), std::numeric_limits<Pel>::max()); break;
+    case 128: fastInverseDCT2_B128( tmp, block, shift_2nd, iHeight, 0, uiSkipWidth, std::numeric_limits<Pel>::min(), std::numeric_limits<Pel>::max()); break;
+#else
+    case 64: fastInverseDCT2_B64( tmp, block, shift_2nd, iHeight, 0, 0, std::numeric_limits<Pel>::min(), std::numeric_limits<Pel>::max()); break;
+    case 128: fastInverseDCT2_B128( tmp, block, shift_2nd, iHeight, 0, 0, std::numeric_limits<Pel>::min(), std::numeric_limits<Pel>::max()); break;
+#endif
+#else
     case 64: fastInverseDCT2_B64( tmp, block, shift_2nd, iHeight, 1, 0, std::numeric_limits<Pel>::min(), std::numeric_limits<Pel>::max()); break;
+#endif
 #endif
     default:
       assert(0); exit (1); break;
@@ -3462,6 +5423,12 @@ Void TComTrQuant::xQuant(       TComTU       &rTu,
   const Int  maxLog2TrDynamicRange = pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID));
 
   Bool useRDOQ = useTransformSkip ? m_useRDOQTS : m_useRDOQ;
+#if JVET_C0024_QTBT
+  if (uiWidth<4 || uiHeight<4)
+  {
+    useRDOQ = false;
+  }
+#endif
   if ( useRDOQ && (isLuma(compID) || RDOQ_CHROMA) )
   {
 #if T0196_SELECTIVE_RDOQ
@@ -3492,11 +5459,17 @@ Void TComTrQuant::xQuant(       TComTU       &rTu,
 
     TCoeff deltaU[MAX_TU_SIZE * MAX_TU_SIZE];
 
-    const UInt uiLog2TrSize = rTu.GetEquivalentLog2TrSize(compID);
+    const UInt uiLog2TrSize = rTu.GetEquivalentLog2TrSize(compID);  
 
     Int scalingListType = getScalingListType(pcCU->getPredictionMode(uiAbsPartIdx), compID);
     assert(scalingListType < SCALING_LIST_NUM);
+#if JVET_C0024_QTBT
+    const UInt uiLog2TrWidth = g_aucConvertToBit[uiWidth] + MIN_CU_LOG2;
+    const UInt uiLog2TrHeight = g_aucConvertToBit[uiHeight] + MIN_CU_LOG2;
+    Int *piQuantCoeff = getQuantCoeff(scalingListType, cQP.rem, uiLog2TrWidth-1, uiLog2TrHeight-1);
+#else
     Int *piQuantCoeff = getQuantCoeff(scalingListType, cQP.rem, uiLog2TrSize-2);
+#endif
 
     const Bool enableScalingLists             = getUseScalingList(uiWidth, uiHeight, (pcCU->getTransformSkip(uiAbsPartIdx, compID) != 0));
     const Int  defaultQuantisationCoefficient = g_quantScales[cQP.rem];
@@ -3513,6 +5486,15 @@ Void TComTrQuant::xQuant(       TComTU       &rTu,
     {
       iTransformShift = std::max<Int>(0, iTransformShift);
     }
+
+#if JVET_C0024_QTBT
+  Int iWHScale = 1;
+  if ((g_aucConvertToBit[ uiWidth ] + g_aucConvertToBit[ uiHeight ] + (MIN_CU_LOG2<<1))%2 !=0)
+  {
+    iTransformShift += 7;
+    iWHScale = 181;
+  }
+#endif
 
     const Int iQBits = QUANT_SHIFT + cQP.per + iTransformShift;
     // QBits will be OK for any internal bit depth as the reduction in transform shift is balanced by an increase in Qp_per due to QpBDOffset
@@ -3541,12 +5523,21 @@ Void TComTrQuant::xQuant(       TComTU       &rTu,
 #if ADAPTIVE_QP_SELECTION
       if( m_bUseAdaptQpSelect )
       {
+#if JVET_C0024_QTBT
+      piArlCCoef[uiBlockPos] = (TCoeff)((tmpLevel * iWHScale + iAddC ) >> iQBitsC);
+#else
         piArlCCoef[uiBlockPos] = (TCoeff)((tmpLevel + iAddC ) >> iQBitsC);
+#endif
       }
 #endif
 
+#if JVET_C0024_QTBT
+      const TCoeff quantisedMagnitude = TCoeff((tmpLevel * iWHScale + iAdd ) >> iQBits);
+    deltaU[uiBlockPos] = (TCoeff)((tmpLevel * iWHScale - (quantisedMagnitude<<iQBits) )>> qBits8);
+#else
       const TCoeff quantisedMagnitude = TCoeff((tmpLevel + iAdd ) >> iQBits);
       deltaU[uiBlockPos] = (TCoeff)((tmpLevel - (quantisedMagnitude<<iQBits) )>> qBits8);
+#endif
 
       uiAbsSum += quantisedMagnitude;
       const TCoeff quantisedCoefficient = quantisedMagnitude * iSign;
@@ -3554,7 +5545,11 @@ Void TComTrQuant::xQuant(       TComTU       &rTu,
       piQCoef[uiBlockPos] = Clip3<TCoeff>( entropyCodingMinimum, entropyCodingMaximum, quantisedCoefficient );
     } // for n
 
+#if JVET_C0024_QTBT
+    if( pcCU->getSlice()->getPPS()->getSignHideFlag() && uiWidth>=4 && uiHeight>=4)
+#else
     if( pcCU->getSlice()->getPPS()->getSignHideFlag() )
+#endif
     {
       if(uiAbsSum >= 2) //this prevents TUs with only one coefficient of value 1 from being tested
       {
@@ -3584,7 +5579,13 @@ Bool TComTrQuant::xNeedRDOQ( TComTU &rTu, TCoeff * pSrc, const ComponentID compI
 
   Int scalingListType = getScalingListType(pcCU->getPredictionMode(uiAbsPartIdx), compID);
   assert(scalingListType < SCALING_LIST_NUM);
+#if JVET_C0024_QTBT
+  const UInt uiLog2TrWidth = g_aucConvertToBit[uiWidth] + MIN_CU_LOG2;
+  const UInt uiLog2TrHeight = g_aucConvertToBit[uiHeight] + MIN_CU_LOG2;
+  Int *piQuantCoeff = getQuantCoeff(scalingListType, cQP.rem, uiLog2TrWidth-1, uiLog2TrHeight-1);
+#else
   Int *piQuantCoeff = getQuantCoeff(scalingListType, cQP.rem, uiLog2TrSize-2);
+#endif
 
   const Bool enableScalingLists             = getUseScalingList(uiWidth, uiHeight, (pcCU->getTransformSkip(uiAbsPartIdx, compID) != 0));
   const Int  defaultQuantisationCoefficient = g_quantScales[cQP.rem];
@@ -3602,17 +5603,33 @@ Bool TComTrQuant::xNeedRDOQ( TComTU &rTu, TCoeff * pSrc, const ComponentID compI
     iTransformShift = std::max<Int>(0, iTransformShift);
   }
 
+#if JVET_C0024_QTBT
+  Int iWHScale = 1;
+  if ((g_aucConvertToBit[ uiWidth ] + g_aucConvertToBit[ uiHeight ] + (MIN_CU_LOG2<<1))%2 !=0)
+  {
+    iTransformShift += 7;
+    iWHScale = 181;
+  }
+#endif
   const Int iQBits = QUANT_SHIFT + cQP.per + iTransformShift;
   // QBits will be OK for any internal bit depth as the reduction in transform shift is balanced by an increase in Qp_per due to QpBDOffset
 
   // iAdd is different from the iAdd used in normal quantization
+#if JVET_C0024_QTBT
+  const Int64 iAdd   = (compID == COMPONENT_Y ? 171 : 256) << (iQBits-9);
+#else
   const Int iAdd   = (compID == COMPONENT_Y ? 171 : 256) << (iQBits-9);
+#endif
 
   for( Int uiBlockPos = 0; uiBlockPos < uiWidth*uiHeight; uiBlockPos++ )
   {
     const TCoeff iLevel   = piCoef[uiBlockPos];
     const Int64  tmpLevel = (Int64)abs(iLevel) * (enableScalingLists ? piQuantCoeff[uiBlockPos] : defaultQuantisationCoefficient);
+#if JVET_C0024_QTBT
+    const TCoeff quantisedMagnitude = TCoeff((tmpLevel * iWHScale + iAdd ) >> iQBits);
+#else
     const TCoeff quantisedMagnitude = TCoeff((tmpLevel + iAdd ) >> iQBits);
+#endif
 
     if ( quantisedMagnitude != 0 )
     {
@@ -3662,7 +5679,18 @@ Void TComTrQuant::xDeQuant(       TComTU        &rTu,
   const Int QP_per = cQP.per;
   const Int QP_rem = cQP.rem;
 
+#if JVET_C0024_QTBT
+  Int rightShift = (IQUANT_SHIFT - (iTransformShift + QP_per)) + (enableScalingLists ? LOG2_SCALING_LIST_NEUTRAL_VALUE : 0);
+  Int iWHScale = 1;
+  Int iWHShift = 0;
+  if ((g_aucConvertToBit[ uiWidth ] + g_aucConvertToBit[ uiHeight ] + (MIN_CU_LOG2<<1))%2 !=0)
+  {
+    iWHShift += 8;
+    iWHScale = 181;
+  }
+#else
   const Int rightShift = (IQUANT_SHIFT - (iTransformShift + QP_per)) + (enableScalingLists ? LOG2_SCALING_LIST_NEUTRAL_VALUE : 0);
+#endif
 
   if(enableScalingLists)
   {
@@ -3675,8 +5703,17 @@ Void TComTrQuant::xDeQuant(       TComTU        &rTu,
     const Intermediate_Int inputMinimum        = -(1 << (targetInputBitDepth - 1));
     const Intermediate_Int inputMaximum        =  (1 << (targetInputBitDepth - 1)) - 1;
 
+#if JVET_C0024_QTBT
+    const UInt uiLog2TrWidth = g_aucConvertToBit[uiWidth] + MIN_CU_LOG2;
+    const UInt uiLog2TrHeight = g_aucConvertToBit[uiHeight] + MIN_CU_LOG2;
+    Int *piDequantCoef = getDequantCoeff(scalingListType,QP_rem,uiLog2TrWidth-1, uiLog2TrHeight-1);
+#else
     Int *piDequantCoef = getDequantCoeff(scalingListType,QP_rem,uiLog2TrSize-2);
+#endif
 
+#if JVET_C0024_QTBT
+  rightShift += iWHShift;
+#endif
     if(rightShift > 0)
     {
       const Intermediate_Int iAdd = 1 << (rightShift - 1);
@@ -3684,7 +5721,11 @@ Void TComTrQuant::xDeQuant(       TComTU        &rTu,
       for( Int n = 0; n < numSamplesInBlock; n++ )
       {
         const TCoeff           clipQCoef = TCoeff(Clip3<Intermediate_Int>(inputMinimum, inputMaximum, piQCoef[n]));
+#if JVET_C0024_QTBT
+        const Intermediate_Int iCoeffQ   = ((Intermediate_Int(clipQCoef) * piDequantCoef[n] * iWHScale) + iAdd ) >> rightShift;
+#else
         const Intermediate_Int iCoeffQ   = ((Intermediate_Int(clipQCoef) * piDequantCoef[n]) + iAdd ) >> rightShift;
+#endif
 
         piCoef[n] = TCoeff(Clip3<Intermediate_Int>(transformMinimum,transformMaximum,iCoeffQ));
       }
@@ -3696,7 +5737,11 @@ Void TComTrQuant::xDeQuant(       TComTU        &rTu,
       for( Int n = 0; n < numSamplesInBlock; n++ )
       {
         const TCoeff           clipQCoef = TCoeff(Clip3<Intermediate_Int>(inputMinimum, inputMaximum, piQCoef[n]));
+#if JVET_C0024_QTBT
+        const Intermediate_Int iCoeffQ   = (Intermediate_Int(clipQCoef) * piDequantCoef[n] * iWHScale) << leftShift;
+#else
         const Intermediate_Int iCoeffQ   = (Intermediate_Int(clipQCoef) * piDequantCoef[n]) << leftShift;
+#endif
 
         piCoef[n] = TCoeff(Clip3<Intermediate_Int>(transformMinimum,transformMaximum,iCoeffQ));
       }
@@ -3704,7 +5749,11 @@ Void TComTrQuant::xDeQuant(       TComTU        &rTu,
   }
   else
   {
+#if JVET_C0024_QTBT
+    const Int scale     =  g_invQuantScales[QP_rem] * iWHScale;
+#else
     const Int scale     =  g_invQuantScales[QP_rem];
+#endif
     const Int scaleBits =     (IQUANT_SHIFT + 1)   ;
 
     //from the dequantisation equation:
@@ -3714,29 +5763,66 @@ Void TComTrQuant::xDeQuant(       TComTU        &rTu,
     const Intermediate_Int inputMinimum        = -(1 << (targetInputBitDepth - 1));
     const Intermediate_Int inputMaximum        =  (1 << (targetInputBitDepth - 1)) - 1;
 
+#if JVET_C0024_QTBT
+    rightShift += iWHShift;
+#endif
     if (rightShift > 0)
     {
       const Intermediate_Int iAdd = 1 << (rightShift - 1);
 
+#if JVET_C0024_ITSKIP
+      Int n=0;
+      for (UInt j=0; j<uiHeight-pcCU->getTUSkipHeight(compID, uiAbsPartIdx); j++)
+      {
+        n = j*uiWidth;
+        for (UInt i=0; i<uiWidth-pcCU->getTUSkipWidth(compID, uiAbsPartIdx); i++)
+        {
+#else
       for( Int n = 0; n < numSamplesInBlock; n++ )
       {
+#endif
         const TCoeff           clipQCoef = TCoeff(Clip3<Intermediate_Int>(inputMinimum, inputMaximum, piQCoef[n]));
         const Intermediate_Int iCoeffQ   = (Intermediate_Int(clipQCoef) * scale + iAdd) >> rightShift;
 
         piCoef[n] = TCoeff(Clip3<Intermediate_Int>(transformMinimum,transformMaximum,iCoeffQ));
+#if JVET_C0024_ITSKIP
+        n++;
       }
+      memset(piCoef+n, 0, pcCU->getTUSkipWidth(compID, uiAbsPartIdx)*sizeof(TCoeff));
+    }
+    memset(piCoef+(uiHeight-pcCU->getTUSkipHeight(compID, uiAbsPartIdx))*uiWidth, 0, pcCU->getTUSkipHeight(compID, uiAbsPartIdx)*uiWidth * sizeof(TCoeff));
+#else
+      }
+#endif
     }
     else
     {
       const Int leftShift = -rightShift;
 
+#if JVET_C0024_ITSKIP
+      Int n=0;
+      for (UInt j=0; j<uiHeight-pcCU->getTUSkipHeight(compID, uiAbsPartIdx); j++)
+      {
+        n = j*uiWidth;
+        for (UInt i=0; i<uiWidth-pcCU->getTUSkipWidth(compID, uiAbsPartIdx); i++)
+        {
+#else
       for( Int n = 0; n < numSamplesInBlock; n++ )
       {
+#endif
         const TCoeff           clipQCoef = TCoeff(Clip3<Intermediate_Int>(inputMinimum, inputMaximum, piQCoef[n]));
         const Intermediate_Int iCoeffQ   = (Intermediate_Int(clipQCoef) * scale) << leftShift;
 
         piCoef[n] = TCoeff(Clip3<Intermediate_Int>(transformMinimum,transformMaximum,iCoeffQ));
+#if JVET_C0024_ITSKIP
+        n++;
+        }
+        memset(piCoef+n, 0, pcCU->getTUSkipWidth(compID, uiAbsPartIdx)*sizeof(TCoeff));
       }
+      memset(piCoef+(uiHeight-pcCU->getTUSkipHeight(compID, uiAbsPartIdx))*uiWidth, 0, pcCU->getTUSkipHeight(compID, uiAbsPartIdx)*uiWidth * sizeof(TCoeff));
+#else
+      }
+#endif
     }
   }
 }
@@ -4183,7 +6269,11 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
       std::cout << g_debugCounter << ": " << uiWidth << "x" << uiHeight << " channel " << compID << " TU at input to transform\n";
       printBlock(pcResidual, uiWidth, uiHeight, uiStride);
 #endif
+#if JVET_C0024_QTBT
+      assert( (pcCU->getSlice()->getSPS()->getCTUSize() >= uiWidth) );
+#else
       assert( (pcCU->getSlice()->getSPS()->getMaxTrSize() >= uiWidth) );
+#endif
 
       if(pcCU->getTransformSkip(uiAbsPartIdx, compID) != 0)
       {
@@ -4208,7 +6298,12 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
       printBlock(m_plTempCoeff, uiWidth, uiHeight, uiWidth);
 #endif
 #if VCEG_AZ05_ROT_TR
+#if JVET_C0024_QTBT
+  Char ucROTIdx = pcCU->getROTIdx(toChannelType(compID), uiAbsPartIdx) ;
+  if (ucROTIdx && uiWidth>=4 && uiHeight>=4)
+#else
   if (pcCU->getROTIdx(uiAbsPartIdx) )
+#endif
   {           
             static Int ROT_MATRIX[16];
       Int iSubGroupXMax = Clip3 (1,16,(Int)( (uiWidth>>2)));
@@ -4233,7 +6328,11 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
                        piROTTemp +=4;
              piCoeffTemp +=uiWidth;
             }
+#if JVET_C0024_QTBT
+           RotTransform4I( ROT_MATRIX, ucROTIdx-1 );
+#else
            RotTransform4I( ROT_MATRIX, pcCU->getROTIdx(uiAbsPartIdx)-1 );
+#endif
           piROTTemp = ROT_MATRIX;
           piCoeffTemp = m_plTempCoeff+iOffSetX+iOffSetY;
           for(  y = 0; y < 4; y++ )
@@ -4245,7 +6344,20 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
              }
   }
 #elif COM16_C1044_NSST
-      if (pcCU->getROTIdx(uiAbsPartIdx) )
+#if JVET_C0024_QTBT
+    Char ucNsstIdx = pcCU->getROTIdx(toChannelType(compID), uiAbsPartIdx) ;
+    if (ucNsstIdx && uiWidth>=4 && uiHeight>=4
+#if  JVET_C0045_C0053_NO_NSST_FOR_TS
+      && !pcCU->getTransformSkip(uiAbsPartIdx, compID)
+#endif
+      )
+#else
+      if (pcCU->getROTIdx(uiAbsPartIdx) 
+#if  JVET_C0045_C0053_NO_NSST_FOR_TS
+        && !pcCU->getTransformSkip(uiAbsPartIdx, compID)
+#endif
+        )
+#endif
       {           
         static Int NSST_MATRIX[16];
         Int iSubGroupXMax = Clip3 (1,16,(Int)( (uiWidth>>2)));
@@ -4258,13 +6370,24 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
         Int* piNsstTemp = NSST_MATRIX;
         Int iString2CopySize = 4*sizeof(Int);
 #if VCEG_AZ07_CTX_RESIDUALCODING
+#if !JVET_C0024_QTBT
         const UInt uiLog2BlockSize = g_aucConvertToBit[ uiWidth ] + 2;
 #endif
+#endif
         const UInt uiScanIdx = pcCU->getCoefScanIdx(uiAbsPartIdx, uiWidth, uiHeight, compID);
+#if JVET_C0024_QTBT
+        const UInt log2BlockWidth  = g_aucConvertToBit[uiWidth]  + MIN_CU_LOG2;
+        const UInt log2BlockHeight = g_aucConvertToBit[uiHeight] + MIN_CU_LOG2;
+#else
         const UInt log2BlockWidth  = g_aucConvertToBit[uiWidth]  + 2;
         const UInt log2BlockHeight = g_aucConvertToBit[uiHeight] + 2;
+#endif
 #if VCEG_AZ07_CTX_RESIDUALCODING
+#if JVET_C0024_QTBT
+        const UInt *scan = (log2BlockWidth==3 && log2BlockHeight==3) ? g_auiCoefScanFirstCG8x8[uiScanIdx] : g_scanOrder[ SCAN_GROUPED_4x4 ][ uiScanIdx ][ log2BlockWidth    ][ log2BlockHeight    ];
+#else
         const UInt *scan = uiLog2BlockSize==3 ? g_auiCoefScanFirstCG8x8[uiScanIdx] : g_scanOrder[ SCAN_GROUPED_4x4 ][ uiScanIdx ][ log2BlockWidth    ][ log2BlockHeight    ];
+#endif
 #else
         const UInt *scan = g_scanOrder[ SCAN_GROUPED_4x4 ][ uiScanIdx ][ log2BlockWidth    ][ log2BlockHeight    ];
 #endif
@@ -4274,7 +6397,18 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
         {
           if( uiIntraMode == DM_CHROMA_IDX )
           {
+#if JVET_C0024_QTBT
+            if( pcCU->getSlice()->isIntra() )
+            {
+              uiIntraMode = pcCU->getPic()->getCtu(pcCU->getCtuRsAddr())->getIntraDir(CHANNEL_TYPE_LUMA, pcCU->getZorderIdxInCtu()+uiAbsPartIdx);
+            }
+            else
+            {
+#endif
             uiIntraMode = pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx );
+#if JVET_C0024_QTBT
+            }
+#endif
           }
 #if COM16_C806_LMCHROMA
           else if( uiIntraMode == LM_CHROMA_IDX )
@@ -4287,7 +6421,11 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
         assert( uiIntraMode<NUM_INTRA_MODE-1 );
         const Int iNsstCandNum = ( uiIntraMode<=DC_IDX ) ? 3 : 4;
 
+#if JVET_C0024_QTBT
+        if( iNsstCandNum > ucNsstIdx )
+#else
         if( iNsstCandNum > pcCU->getROTIdx(uiAbsPartIdx) )
+#endif
         {
           for (Int iSubGroupX = 0; iSubGroupX<iSubGroupXMax; iSubGroupX++)
           {
@@ -4314,7 +6452,11 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
                 piCoeffTemp +=uiWidth;
               }
 
+#if JVET_C0024_QTBT
+              FwdNsst4x4( NSST_MATRIX, g_NsstLut[uiIntraMode], ucNsstIdx-1 );
+#else
               FwdNsst4x4( NSST_MATRIX, g_NsstLut[uiIntraMode], pcCU->getROTIdx(uiAbsPartIdx)-1 );
+#endif
 
               piNsstTemp = NSST_MATRIX;
               piCoeffTemp = m_plTempCoeff+iOffSetX+iOffSetY;
@@ -4353,7 +6495,12 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
   }
 
     //set the CBF
+#if JVET_C0024_QTBT
+  assert(uiOrgTrDepth==0);
+  pcCU->setCbfPartRange((uiAbsSum > 0) ? 1 : 0, compID, uiAbsPartIdx, 0);
+#else
   pcCU->setCbfPartRange((((uiAbsSum > 0) ? 1 : 0) << uiOrgTrDepth), compID, uiAbsPartIdx, rTu.GetAbsPartIdxNumParts(compID));
+#endif
 }
 
 
@@ -4375,6 +6522,11 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
   const UInt uiWidth = rect.width;
   const UInt uiHeight = rect.height;
 
+#if JVET_C0024_ITSKIP
+  UInt skipWidth = pcCU->getTUSkipWidth(compID, uiAbsPartIdx);
+  UInt skipHeight = pcCU->getTUSkipHeight(compID, uiAbsPartIdx);
+#endif
+#if !JVET_C0024_QTBT
   if (uiWidth != uiHeight) //for intra, the TU will have been split above this level, so this condition won't be true, hence this only affects inter
   {
     //------------------------------------------------
@@ -4407,6 +6559,7 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
 
     return;
   }
+#endif
 
 #if DEBUG_STRING
   if (psDebug)
@@ -4438,9 +6591,16 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
 #endif
     xDeQuant(rTu, pcCoeff, m_plTempCoeff, compID, cQP);
 #if VCEG_AZ05_ROT_TR
+#if JVET_C0024_QTBT
+  Char ucROTIdx = pcCU->getROTIdx(toChannelType(compID), uiAbsPartIdx) ;
+  if (ucROTIdx && uiWidth>=4 && uiHeight>=4)
+#else
   if (pcCU->getROTIdx(uiAbsPartIdx))
+#endif
   {    
+#if !JVET_C0024_QTBT
     Char ucROTIdx = pcCU->getROTIdx(uiAbsPartIdx) ;
+#endif
        static Int ROT_MATRIX[16];
       Int iSubGroupXMax = Clip3 (1,16,(Int)( (uiWidth>>2)));
       Int iSubGroupYMax = Clip3 (1,16,(Int)( (uiHeight>>2)));
@@ -4475,9 +6635,24 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
         }
   }
 #elif COM16_C1044_NSST
-    if (pcCU->getROTIdx(uiAbsPartIdx))
+#if JVET_C0024_QTBT
+    Char ucNsstIdx = pcCU->getROTIdx(toChannelType(compID), uiAbsPartIdx) ;
+    if (ucNsstIdx && uiWidth>=4 && uiHeight>=4
+#if  JVET_C0045_C0053_NO_NSST_FOR_TS
+      && !pcCU->getTransformSkip(uiAbsPartIdx, compID)
+#endif
+      )
+#else
+    if (pcCU->getROTIdx(uiAbsPartIdx)
+#if  JVET_C0045_C0053_NO_NSST_FOR_TS
+      && !pcCU->getTransformSkip(uiAbsPartIdx, compID)
+#endif
+      )
+#endif
     {   
+#if !JVET_C0024_QTBT
       Char ucNsstIdx = pcCU->getROTIdx(uiAbsPartIdx) ;
+#endif
       static Int NSST_MATRIX[16];
       Int iSubGroupXMax = Clip3 (1,16,(Int)( (uiWidth>>2)));
       Int iSubGroupYMax = Clip3 (1,16,(Int)( (uiHeight>>2)));
@@ -4488,14 +6663,26 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
       Int* piNsstTemp = NSST_MATRIX;
       Int iString2CopySize = 4*sizeof(Int);
 
+
 #if VCEG_AZ07_CTX_RESIDUALCODING
+#if !JVET_C0024_QTBT
       const UInt uiLog2BlockSize = g_aucConvertToBit[ uiWidth ] + 2;
 #endif
+#endif
       const UInt uiScanIdx = pcCU->getCoefScanIdx(uiAbsPartIdx, uiWidth, uiHeight, compID);
+#if JVET_C0024_QTBT
+      const UInt log2BlockWidth  = g_aucConvertToBit[uiWidth]  + MIN_CU_LOG2;
+      const UInt log2BlockHeight = g_aucConvertToBit[uiHeight] + MIN_CU_LOG2;
+#else
       const UInt log2BlockWidth  = g_aucConvertToBit[uiWidth]  + 2;
       const UInt log2BlockHeight = g_aucConvertToBit[uiHeight] + 2;
+#endif
 #if VCEG_AZ07_CTX_RESIDUALCODING
+#if JVET_C0024_QTBT
+      const UInt *scan = (log2BlockWidth==3 && log2BlockHeight==3)? g_auiCoefScanFirstCG8x8[uiScanIdx] : g_scanOrder[ SCAN_GROUPED_4x4 ][ uiScanIdx ][ log2BlockWidth    ][ log2BlockHeight    ];
+#else
       const UInt *scan = uiLog2BlockSize==3 ? g_auiCoefScanFirstCG8x8[uiScanIdx] : g_scanOrder[ SCAN_GROUPED_4x4 ][ uiScanIdx ][ log2BlockWidth    ][ log2BlockHeight    ];
+#endif
 #else
       const UInt *scan = g_scanOrder[ SCAN_GROUPED_4x4 ][ uiScanIdx ][ log2BlockWidth    ][ log2BlockHeight    ];
 #endif
@@ -4505,7 +6692,18 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
       {
         if( uiIntraMode == DM_CHROMA_IDX )
         {
+#if JVET_C0024_QTBT
+          if( pcCU->getSlice()->isIntra() )
+          {
+            uiIntraMode = pcCU->getPic()->getCtu(pcCU->getCtuRsAddr())->getIntraDir(CHANNEL_TYPE_LUMA, pcCU->getZorderIdxInCtu()+uiAbsPartIdx);
+          }
+          else
+          {
+#endif
           uiIntraMode = pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx );
+#if JVET_C0024_QTBT
+          }
+#endif
         }
 #if COM16_C806_LMCHROMA
         else if( uiIntraMode == LM_CHROMA_IDX )
@@ -4555,6 +6753,32 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
             }
           }
         }
+#if JVET_C0024_ITSKIP
+        Int maxX = 0;
+        Int maxY = 0;
+        piCoeffTemp = m_plTempCoeff;
+        for (Int yy=0; yy<uiHeight; yy++)
+        {
+          for (Int xx=0; xx<uiWidth; xx++)
+          {
+            if (piCoeffTemp[xx]!=0)
+            {
+              if (xx > maxX )
+              {
+                maxX = xx;
+              }
+              if (yy > maxY)
+              {
+                maxY = yy;
+              }
+            }
+          }
+          piCoeffTemp+=uiWidth;
+        }
+
+        skipWidth = uiWidth-1-maxX;
+        skipHeight = uiHeight-1-maxY;
+#endif
       }
     }
 #endif
@@ -4598,6 +6822,10 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
         , getEmtMode ( rTu, compID )
         , getEmtTrIdx( rTu, compID )
 #endif
+#if JVET_C0024_ITSKIP
+        , skipWidth
+        , skipHeight
+#endif
 #if VCEG_AZ08_KLT_COMMON
         , useKLT
 #endif
@@ -4624,7 +6852,6 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
   invRdpcmNxN( rTu, compID, pcResidual, uiStride );
 }
 
-
 Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,
                                         TComYuv *pResidual,
                                         TComTU &rTu
@@ -4641,6 +6868,9 @@ Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,
   TComDataCU* pcCU = rTu.getCU();
   UInt absPartIdxTU = rTu.GetAbsPartIdxTU();
   UInt uiTrMode=rTu.GetTransformDepthRel();
+#if JVET_C0024_QTBT
+  assert(uiTrMode==0);
+#endif
   if( (pcCU->getCbf(absPartIdxTU, compID, uiTrMode) == 0) && (isLuma(compID) || !pcCU->getSlice()->getPPS()->getPpsRangeExtension().getCrossComponentPredictionEnabledFlag()) )
   {
 #if VCEG_AZ08_INTER_KLT
@@ -4649,7 +6879,11 @@ Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,
       {
 #endif
           UInt uiDepth = pcCU->getDepth(absPartIdxTU) + uiTrMode;
+#if JVET_C0024_QTBT
+          UInt uiLog2TrSize = g_aucConvertToBit[pcCU->getSlice()->getSPS()->getCTUSize() >> uiDepth] + 2;
+#else
           UInt uiLog2TrSize = g_aucConvertToBit[pcCU->getSlice()->getSPS()->getMaxCUWidth() >> uiDepth] + 2;
+#endif
           Int  tuWidth = rTu.getRect(compID).width;
           Int  tuHeight = rTu.getRect(compID).height;
           if (isChroma(compID) && uiLog2TrSize == 2)
@@ -4686,8 +6920,10 @@ Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,
     return;
   }
 
+#if !JVET_C0024_QTBT
   if( uiTrMode == pcCU->getTransformIdx( absPartIdxTU ) )
   {
+#endif
     const TComRectangle &tuRect      = rTu.getRect(compID);
     const Int            uiStride    = pResidual->getStride( compID );
           Pel           *rpcResidual = pResidual->getAddr( compID );
@@ -4697,7 +6933,7 @@ Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,
 
     const QpParam cQP(*pcCU, compID);
 
-    if (pcCU->getCbf(absPartIdxTU, compID, uiTrMode) != 0)
+    if(pcCU->getCbf(absPartIdxTU, compID, uiTrMode) != 0)
     {
         DEBUG_STRING_NEW(sTemp)
 #if DEBUG_STRING
@@ -4803,6 +7039,7 @@ Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,
         crossComponentPrediction( rTu, compID, pResiLuma, pResi, pResi, tuWidth, tuHeight, strideLuma, uiStride, uiStride, true );
       }
     }
+#if !JVET_C0024_QTBT
   }
   else
   {
@@ -4816,6 +7053,7 @@ Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,
             );
     } while (tuRecurseChild.nextSection(rTu));
   }
+#endif
 }
 
 Void TComTrQuant::applyForwardRDPCM( TComTU& rTu, const ComponentID compID, Pel* pcResidual, const UInt uiStride, const QpParam& cQP, TCoeff* pcCoeff, TCoeff &uiAbsSum, const RDPCMMode mode )
@@ -4887,9 +7125,15 @@ Void TComTrQuant::rdpcmNxN   ( TComTU& rTu, const ComponentID compID, Pel* pcRes
     const ChromaFormat chFmt = pcCU->getPic()->getPicYuvOrg()->getChromaFormat();
     const ChannelType chType = toChannelType(compID);
     const UInt uiChPredMode  = pcCU->getIntraDir( chType, uiAbsPartIdx );
+#if JVET_C0024_QTBT
+    const UInt uiChCodedMode = (uiChPredMode==DM_CHROMA_IDX && isChroma(compID)) 
+      ? (pcCU->getSlice()->isIntra()? pcCU->getPic()->getCtu(pcCU->getCtuRsAddr())->getIntraDir(CHANNEL_TYPE_LUMA, pcCU->getZorderIdxInCtu()+uiAbsPartIdx)
+      :pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx)) : uiChPredMode;
+#else
     const TComSPS *sps=pcCU->getSlice()->getSPS();
     const UInt partsPerMinCU = 1<<(2*(sps->getMaxTotalCUDepth() - sps->getLog2DiffMaxMinCodingBlockSize()));
     const UInt uiChCodedMode = (uiChPredMode==DM_CHROMA_IDX && isChroma(compID)) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, getChromasCorrespondingPULumaIdx(uiAbsPartIdx, chFmt, partsPerMinCU)) : uiChPredMode;
+#endif
     const UInt uiChFinalMode = ((chFmt == CHROMA_422)       && isChroma(compID)) ? g_chroma422IntraAngleMappingTable[uiChCodedMode] : uiChCodedMode;
 
     if (uiChFinalMode == VER_IDX || uiChFinalMode == HOR_IDX)
@@ -4959,9 +7203,15 @@ Void TComTrQuant::invRdpcmNxN( TComTU& rTu, const ComponentID compID, Pel* pcRes
       const ChromaFormat chFmt = pcCU->getPic()->getPicYuvRec()->getChromaFormat();
       const ChannelType chType = toChannelType(compID);
       const UInt uiChPredMode  = pcCU->getIntraDir( chType, uiAbsPartIdx );
+#if JVET_C0024_QTBT
+      const UInt uiChCodedMode = (uiChPredMode==DM_CHROMA_IDX && isChroma(compID)) 
+        ? (pcCU->getSlice()->isIntra()? pcCU->getPic()->getCtu(pcCU->getCtuRsAddr())->getIntraDir(CHANNEL_TYPE_LUMA, pcCU->getZorderIdxInCtu()+uiAbsPartIdx)
+        :pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx)) : uiChPredMode;
+#else
       const TComSPS *sps=pcCU->getSlice()->getSPS();
       const UInt partsPerMinCU = 1<<(2*(sps->getMaxTotalCUDepth() - sps->getLog2DiffMaxMinCodingBlockSize()));
       const UInt uiChCodedMode = (uiChPredMode==DM_CHROMA_IDX && isChroma(compID)) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, getChromasCorrespondingPULumaIdx(uiAbsPartIdx, chFmt, partsPerMinCU)) : uiChPredMode;
+#endif
       const UInt uiChFinalMode = ((chFmt == CHROMA_422)       && isChroma(compID)) ? g_chroma422IntraAngleMappingTable[uiChCodedMode] : uiChCodedMode;
 
       if (uiChFinalMode == VER_IDX || uiChFinalMode == HOR_IDX)
@@ -5091,6 +7341,10 @@ Void TComTrQuant::xIT( const Int channelBitDepth, Bool useDST, TCoeff* plCoef, P
                       , UChar ucMode
                       , UChar ucTrIdx
 #endif
+#if JVET_C0024_ITSKIP
+                      , UInt uiSkipWidth
+                      , UInt uiSkipHeight
+#endif
 #if VCEG_AZ08_KLT_COMMON
                       , Bool useKLT
 #endif
@@ -5123,15 +7377,27 @@ Void TComTrQuant::xIT( const Int channelBitDepth, Bool useDST, TCoeff* plCoef, P
   if(ucTrIdx!=DCT2_HEVC)
 #endif
   {
+#if JVET_C0024_ITSKIP
+    xITrMxN_EMT( channelBitDepth, coeff, block, iWidth, iHeight, uiSkipWidth, uiSkipHeight, useDST, maxLog2TrDynamicRange, ucMode, ucTrIdx );
+#else
     xITrMxN_EMT( channelBitDepth, coeff, block, iWidth, iHeight, useDST, maxLog2TrDynamicRange, ucMode, ucTrIdx );
+#endif
   }
   else
 #endif
+#if JVET_C0024_ITSKIP
+  xITrMxN( channelBitDepth, coeff, block, iWidth, iHeight, uiSkipWidth, uiSkipHeight, useDST, maxLog2TrDynamicRange
+#if VCEG_AZ08_KLT_COMMON
+  , useKLT
+#endif
+ );
+#else
   xITrMxN( channelBitDepth, coeff, block, iWidth, iHeight, useDST, maxLog2TrDynamicRange
 #if VCEG_AZ08_KLT_COMMON
   , useKLT
 #endif
   );
+#endif
 
   for (Int y = 0; y < iHeight; y++)
   {
@@ -5163,16 +7429,32 @@ Void TComTrQuant::xTransformSkip( Pel* piBlkResi, UInt uiStride, TCoeff* psCoeff
     iTransformShift = std::max<Int>(0, iTransformShift);
   }
 
+#if JVET_C0024_QTBT
+  Int iWHScale = 1;
+  if ((g_aucConvertToBit[ rTu.getRect(component).width ] + g_aucConvertToBit[ rTu.getRect(component).height ] + (MIN_CU_LOG2<<1))%2 !=0)
+  {
+    iTransformShift -= 8;
+    iWHScale = 181;
+  }
+#endif
+
   const Bool rotateResidual = rTu.isNonTransformedResidualRotated(component);
   const UInt uiSizeMinus1   = (width * height) - 1;
 
   if (iTransformShift >= 0)
   {
+#if JVET_C0024_QTBT
+    assert((g_aucConvertToBit[ rTu.getRect(component).width ] + g_aucConvertToBit[ rTu.getRect(component).height ] + (MIN_CU_LOG2<<1))%2 ==0);
+#endif
     for (UInt y = 0, coefficientIndex = 0; y < height; y++)
     {
       for (UInt x = 0; x < width; x++, coefficientIndex++)
       {
+#if JVET_C0024_QTBT
+        psCoeff[rotateResidual ? (uiSizeMinus1 - coefficientIndex) : coefficientIndex] = (TCoeff(piBlkResi[(y * uiStride) + x]) * iWHScale) << iTransformShift;
+#else
         psCoeff[rotateResidual ? (uiSizeMinus1 - coefficientIndex) : coefficientIndex] = TCoeff(piBlkResi[(y * uiStride) + x]) << iTransformShift;
+#endif
       }
     }
   }
@@ -5185,7 +7467,11 @@ Void TComTrQuant::xTransformSkip( Pel* piBlkResi, UInt uiStride, TCoeff* psCoeff
     {
       for (UInt x = 0; x < width; x++, coefficientIndex++)
       {
+#if JVET_C0024_QTBT
+        psCoeff[rotateResidual ? (uiSizeMinus1 - coefficientIndex) : coefficientIndex] = (TCoeff(piBlkResi[(y * uiStride) + x]) * iWHScale + offset) >> iTransformShift;
+#else
         psCoeff[rotateResidual ? (uiSizeMinus1 - coefficientIndex) : coefficientIndex] = (TCoeff(piBlkResi[(y * uiStride) + x]) + offset) >> iTransformShift;
+#endif
       }
     }
   }
@@ -5215,6 +7501,14 @@ Void TComTrQuant::xITransformSkip( TCoeff* plCoef, Pel* pResidual, UInt uiStride
   {
     iTransformShift = std::max<Int>(0, iTransformShift);
   }
+#if JVET_C0024_QTBT
+  Int iWHScale = 1;
+  if ((g_aucConvertToBit[ rTu.getRect(component).width ] + g_aucConvertToBit[ rTu.getRect(component).height ] + (MIN_CU_LOG2<<1))%2 !=0)
+  {
+    iTransformShift += 7;
+    iWHScale = 181;
+  }
+#endif
 
   const Bool rotateResidual = rTu.isNonTransformedResidualRotated(component);
   const UInt uiSizeMinus1   = (width * height) - 1;
@@ -5227,7 +7521,11 @@ Void TComTrQuant::xITransformSkip( TCoeff* plCoef, Pel* pResidual, UInt uiStride
     {
       for (UInt x = 0; x < width; x++, coefficientIndex++)
       {
+#if JVET_C0024_QTBT
+        pResidual[(y * uiStride) + x] =  Pel((plCoef[rotateResidual ? (uiSizeMinus1 - coefficientIndex) : coefficientIndex] * iWHScale + offset) >> iTransformShift);
+#else
         pResidual[(y * uiStride) + x] =  Pel((plCoef[rotateResidual ? (uiSizeMinus1 - coefficientIndex) : coefficientIndex] + offset) >> iTransformShift);
+#endif
       }
     }
   }
@@ -5239,7 +7537,11 @@ Void TComTrQuant::xITransformSkip( TCoeff* plCoef, Pel* pResidual, UInt uiStride
     {
       for (UInt x = 0; x < width; x++, coefficientIndex++)
       {
+#if JVET_C0024_QTBT
+        pResidual[(y * uiStride) + x] = Pel(plCoef[rotateResidual ? (uiSizeMinus1 - coefficientIndex) : coefficientIndex] * iWHScale << iTransformShift);
+#else
         pResidual[(y * uiStride) + x] = Pel(plCoef[rotateResidual ? (uiSizeMinus1 - coefficientIndex) : coefficientIndex] << iTransformShift);
+#endif
       }
     }
   }
@@ -5275,6 +7577,10 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
   const UInt             uiAbsPartIdx     = rTu.GetAbsPartIdxTU();
   const ChannelType      channelType      = toChannelType(compID);
   const UInt             uiLog2TrSize     = rTu.GetEquivalentLog2TrSize(compID);
+#if JVET_C0024_QTBT
+  const UInt             uiLog2BlockWidth    = g_aucConvertToBit[uiWidth] + MIN_CU_LOG2;
+  const UInt             uiLog2BlockHeight   = g_aucConvertToBit[uiHeight] + MIN_CU_LOG2;
+#endif
 
   const Bool             extendedPrecision = pcCU->getSlice()->getSPS()->getSpsRangeExtension().getExtendedPrecisionProcessingFlag();
   const Int              maxLog2TrDynamicRange = pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID));
@@ -5297,6 +7603,17 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
   {
     iTransformShift = std::max<Int>(0, iTransformShift);
   }
+#if JVET_C0024_QTBT
+  Int iWHScale = 1;
+  Int iWHShift = 0;
+  Int iWHOffset = 0;
+  if ((g_aucConvertToBit[ uiWidth ] + g_aucConvertToBit[ uiHeight ] + (MIN_CU_LOG2<<1))%2 !=0)
+  {
+    iWHOffset = 64; //1<<(iWHShift-1)
+    iWHShift = 7;
+    iWHScale = 181;
+  }
+#endif
   const Bool bUseGolombRiceParameterAdaptation = pcCU->getSlice()->getSPS()->getSpsRangeExtension().getPersistentRiceAdaptationEnabledFlag();
 #if VCEG_AZ07_CTX_RESIDUALCODING
   UInt uiPrevGRParam = 0;
@@ -5305,8 +7622,10 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
         UInt uiGoRiceParam                     = initialGolombRiceParameter;
 
         Double     d64BlockUncodedCost               = 0;
+#if !JVET_C0024_QTBT
   const UInt uiLog2BlockWidth                  = g_aucConvertToBit[ uiWidth  ] + 2;
-#if !VCEG_AZ07_CTX_RESIDUALCODING
+#endif
+#if !VCEG_AZ07_CTX_RESIDUALCODING && !JVET_C0024_QTBT
   const UInt uiLog2BlockHeight                 = g_aucConvertToBit[ uiHeight ] + 2;
 #endif
   const UInt uiMaxNumCoeff                     = uiWidth * uiHeight;
@@ -5319,27 +7638,49 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
   memset(piArlDstCoeff, 0, sizeof(TCoeff) *  uiMaxNumCoeff);
 #endif
 
+#if JVET_C0024_QTBT //to prevent stack overflow
+  Double* pdCostCoeff = new Double [uiMaxNumCoeff];
+  Double* pdCostSig = new Double [uiMaxNumCoeff];
+  Double* pdCostCoeff0 = new Double [uiMaxNumCoeff];
+#else
   Double pdCostCoeff [ MAX_TU_SIZE * MAX_TU_SIZE ];
   Double pdCostSig   [ MAX_TU_SIZE * MAX_TU_SIZE ];
   Double pdCostCoeff0[ MAX_TU_SIZE * MAX_TU_SIZE ];
+#endif
   memset( pdCostCoeff, 0, sizeof(Double) *  uiMaxNumCoeff );
   memset( pdCostSig,   0, sizeof(Double) *  uiMaxNumCoeff );
+#if JVET_C0024_QTBT
+  Int* rateIncUp   = new Int [uiMaxNumCoeff];
+  Int* rateIncDown = new Int [uiMaxNumCoeff];
+  Int* sigRateDelta= new Int [uiMaxNumCoeff];
+  TCoeff* deltaU   = new Int [uiMaxNumCoeff];
+#else
   Int rateIncUp   [ MAX_TU_SIZE * MAX_TU_SIZE ];
   Int rateIncDown [ MAX_TU_SIZE * MAX_TU_SIZE ];
   Int sigRateDelta[ MAX_TU_SIZE * MAX_TU_SIZE ];
   TCoeff deltaU   [ MAX_TU_SIZE * MAX_TU_SIZE ];
+#endif
   memset( rateIncUp,    0, sizeof(Int   ) *  uiMaxNumCoeff );
   memset( rateIncDown,  0, sizeof(Int   ) *  uiMaxNumCoeff );
   memset( sigRateDelta, 0, sizeof(Int   ) *  uiMaxNumCoeff );
   memset( deltaU,       0, sizeof(TCoeff) *  uiMaxNumCoeff );
 
   const Int iQBits = QUANT_SHIFT + cQP.per + iTransformShift;                   // Right shift of non-RDOQ quantizer;  level = (coeff*uiQ + offset)>>q_bits
+#if JVET_C0024_QTBT
+  const Double *const pdErrScale = getErrScaleCoeff(scalingListType, (uiLog2BlockWidth-1), (uiLog2BlockHeight-1), cQP.rem);
+  const Int    *const piQCoef    = getQuantCoeff(scalingListType, cQP.rem, (uiLog2BlockWidth-1), (uiLog2BlockHeight-1));
+#else
   const Double *const pdErrScale = getErrScaleCoeff(scalingListType, (uiLog2TrSize-2), cQP.rem);
   const Int    *const piQCoef    = getQuantCoeff(scalingListType, cQP.rem, (uiLog2TrSize-2));
+#endif
 
   const Bool   enableScalingLists             = getUseScalingList(uiWidth, uiHeight, (pcCU->getTransformSkip(uiAbsPartIdx, compID) != 0));
   const Int    defaultQuantisationCoefficient = g_quantScales[cQP.rem];
+#if JVET_C0024_QTBT
+  const Double defaultErrorScale              = getErrScaleCoeffNoScalingList(scalingListType, (uiLog2BlockWidth-1), (uiLog2BlockHeight-1), cQP.rem);
+#else
   const Double defaultErrorScale              = getErrScaleCoeffNoScalingList(scalingListType, (uiLog2TrSize-2), cQP.rem);
+#endif
 
   const TCoeff entropyCodingMinimum = -(1 << maxLog2TrDynamicRange);
   const TCoeff entropyCodingMaximum =  (1 << maxLog2TrDynamicRange) - 1;
@@ -5362,7 +7703,11 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
   UInt uiSigCoeffGroupFlag[ MLS_GRP_NUM ];
   Int iCGLastScanPos = -1;
 #if VCEG_AZ07_CTX_RESIDUALCODING
+#if JVET_C0024_QTBT
+  UInt uiOffsetonTU = (compID == COMPONENT_Y) ? (uiLog2TrSize<=2 ? 0: NUM_SIG_FLAG_CTX_LUMA_TU << ( min(1, (Int)(uiLog2TrSize - 3)))) : 0 ; 
+#else
   UInt uiOffsetonTU = (compID == COMPONENT_Y) ? (uiLog2BlockWidth==2 ? 0: NUM_SIG_FLAG_CTX_LUMA_TU << ( min(1, (Int)(uiLog2BlockWidth - 3)))) : 0 ; 
+#endif
 #else
   UInt    uiCtxSet            = 0;
   Int     c1                  = 1;
@@ -5416,7 +7761,11 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
       const Int    quantisationCoefficient = (enableScalingLists) ? piQCoef   [uiBlkPos] : defaultQuantisationCoefficient;
       const Double errorScale              = (enableScalingLists) ? pdErrScale[uiBlkPos] : defaultErrorScale;
 
+#if JVET_C0024_QTBT
+      const Int64  tmpLevel                = (Int64(abs(plSrcCoeff[ uiBlkPos ])) * quantisationCoefficient * iWHScale + iWHOffset)>>iWHShift;
+#else
       const Int64  tmpLevel                = Int64(abs(plSrcCoeff[ uiBlkPos ])) * quantisationCoefficient;
+#endif
 
       const Intermediate_Int lLevelDouble  = (Intermediate_Int)min<Int64>(tmpLevel, std::numeric_limits<Intermediate_Int>::max() - (Intermediate_Int(1) << (iQBits - 1)));
 
@@ -5477,7 +7826,9 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
                                                   );
 
           sigRateDelta[ uiBlkPos ] = m_pcEstBitsSbac->significantBits[ uiCtxSig ][ 1 ] - m_pcEstBitsSbac->significantBits[ uiCtxSig ][ 0 ];
+          
         }
+
 #if VCEG_AZ07_CTX_RESIDUALCODING
         uiPrevGRParam = max(0, (Int)uiGoRiceParam - 1);
 #endif
@@ -5551,6 +7902,7 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
       {
         d64BaseCost    += pdCostCoeff0[ iScanPos ];
       }
+      
       rdStats.d64SigCost += pdCostSig[ iScanPos ];
       if (iScanPosinCG == 0 )
       {
@@ -5648,13 +8000,26 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
   //===== estimate last position =====
   if ( iLastScanPos < 0 )
   {
+#if JVET_C0024_QTBT
+    delete [] pdCostCoeff;
+    delete [] pdCostSig;
+    delete [] pdCostCoeff0;
+    delete [] rateIncUp;
+    delete [] rateIncDown;
+    delete [] sigRateDelta;
+    delete [] deltaU;
+#endif
     return;
   }
 
   Double  d64BestCost         = 0;
   Int     ui16CtxCbf          = 0;
   Int     iBestLastIdxP1      = 0;
+#if JVET_C0024_QTBT
+  if( !pcCU->isIntra( uiAbsPartIdx ) && isLuma(compID))
+#else
   if( !pcCU->isIntra( uiAbsPartIdx ) && isLuma(compID) && pcCU->getTransformIdx( uiAbsPartIdx ) == 0 )
+#endif
   {
     ui16CtxCbf   = 0;
     d64BestCost  = d64BlockUncodedCost + xGetICost( m_pcEstBitsSbac->blockRootCbpBits[ ui16CtxCbf ][ 0 ] );
@@ -5720,6 +8085,11 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
     } // end if (uiSigCoeffGroupFlag[ uiCGBlkPos ])
   } // end for
 
+#if JVET_C0024_QTBT
+  delete [] pdCostCoeff;
+  delete [] pdCostSig;
+  delete [] pdCostCoeff0;
+#endif
 
   for ( Int scanPos = 0; scanPos < iBestLastIdxP1; scanPos++ )
   {
@@ -5748,9 +8118,17 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
 
 #if COM16_C983_RSAF
 #if COM16_C1046_PDPC_RSAF_HARMONIZATION
+#if JVET_C0024_QTBT
+    if (uiWidth * uiHeight <= 1024 && uiWidth * uiHeight>= 64 && pcCU->getSlice()->getSPS()->getUseRSAF() && pcCU->getPDPCIdx(uiAbsPartIdx) == 0)
+#else
     if (uiWidth <= 32 && uiWidth > 4 && pcCU->getSlice()->getSPS()->getUseRSAF() && pcCU->getPDPCIdx(uiAbsPartIdx) == 0)
+#endif
+#else
+#if JVET_C0024_QTBT
+    if (uiWidth * uiHeight <= 1024 && uiWidth * uiHeight>= 64 && pcCU->getSlice()->getSPS()->getUseRSAF())
 #else
     if (uiWidth <= 32 && uiWidth > 4 && pcCU->getSlice()->getSPS()->getUseRSAF())
+#endif
 #endif
     {
       vector<BitHidingInCGInfo> l_cgbh;
@@ -5774,9 +8152,13 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
         UInt64 bestDiff = std::numeric_limits<Int64>::max();
 
         Bool bMB = bRSAFflagToHide; 
+#if JVET_C0024_QTBT
+        Bool bNoMBH = bHidden;
+#else
         assert(uiWidth>=4);
 
         Bool bNoMBH = bHidden ||  (uiWidth<8);
+#endif
         bNoMBH |= (compID != COMPONENT_Y);
 
         if (bNoMBH) 
@@ -5844,6 +8226,9 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
             {
               if (l_cgbh[i].bHide && l_cgbh[i].bNonSBH) 
               {
+#if JVET_C0024_QTBT
+                assert(0);  //just for confirmation ,JCA
+#endif
                 if (l_cgbh[i].evenCoeff.minCost < minCostEven) 
                 {
                   minCostEven = l_cgbh[i].evenCoeff.minCost;
@@ -5996,6 +8381,12 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
           }
         }
       }
+#if JVET_C0024_QTBT
+      delete [] rateIncUp;
+      delete [] rateIncDown;
+      delete [] sigRateDelta;
+      delete [] deltaU;
+#endif
       return;
     }
 #endif
@@ -6122,6 +8513,12 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
       }
     }
   }
+#if JVET_C0024_QTBT
+  delete [] rateIncUp;
+  delete [] rateIncDown;
+  delete [] sigRateDelta;
+  delete [] deltaU;
+#endif
 }
 
 #if COM16_C983_RSAF
@@ -6736,7 +9133,11 @@ Int TComTrQuant::getGrtZeroCtxInc( TCoeff*                         pcCoeff,
                                   const ChannelType                chanType                                  
                                   )
 {
+#if JVET_C0024_QTBT
+  const UInt log2BlockWidth = g_aucConvertToBit[ width  ] + MIN_CU_LOG2;
+#else
   const UInt log2BlockWidth = g_aucConvertToBit[ width  ] + 2;
+#endif
   const UInt posY           = rasterPosition >> log2BlockWidth;
   const UInt posX           = rasterPosition - (posY << log2BlockWidth);
 
@@ -6783,7 +9184,11 @@ Int TComTrQuant::getGrtOneCtxInc ( TCoeff*                         pcCoeff,
                                    const ChannelType               chanType
                                    )
 {
+#if JVET_C0024_QTBT
+  const UInt log2BlockWidth = g_aucConvertToBit[ width  ] + MIN_CU_LOG2;
+#else
   const UInt log2BlockWidth = g_aucConvertToBit[ width  ] + 2;
+#endif
   const UInt posY           = rasterPosition >> log2BlockWidth;
   const UInt posX           = rasterPosition - (posY << log2BlockWidth);
 
@@ -6829,7 +9234,11 @@ Int TComTrQuant::getGrtTwoCtxInc ( TCoeff*                         pcCoeff,
                                   const ChannelType                chanType
                                   )
 {
+#if JVET_C0024_QTBT
+  const UInt log2BlockWidth = g_aucConvertToBit[ width  ] + MIN_CU_LOG2;
+#else
   const UInt log2BlockWidth = g_aucConvertToBit[ width  ] + 2;
+#endif
   const UInt posY           = rasterPosition >> log2BlockWidth;
   const UInt posX           = rasterPosition - (posY << log2BlockWidth);
 
@@ -6874,7 +9283,11 @@ Int TComTrQuant::getRemainCoeffCtxInc(   TCoeff*                            pcCo
                                          Int                                   height
                                   )
 {
+#if JVET_C0024_QTBT
+  const UInt log2BlockWidth = g_aucConvertToBit[ width  ] + MIN_CU_LOG2;
+#else
   const UInt log2BlockWidth = g_aucConvertToBit[ width  ] + 2;
+#endif
   const UInt posY           = rasterPosition >> log2BlockWidth;
   const UInt posX           = rasterPosition - (posY << log2BlockWidth);
 
@@ -6931,7 +9344,11 @@ Int TComTrQuant::getSigCtxInc    ( TCoeff*                         pcCoeff,
                                    UInt&                           sumAbs
                                   )
 {
+#if JVET_C0024_QTBT
+  const UInt log2BlockWidth = g_aucConvertToBit[ width  ] + MIN_CU_LOG2;
+#else
   const UInt log2BlockWidth = g_aucConvertToBit[ width  ] + 2;
+#endif
   const UInt posY           = rasterPosition >> log2BlockWidth;
   const UInt posX           = rasterPosition - (posY << log2BlockWidth);
 
@@ -7449,7 +9866,12 @@ Void TComTrQuant::setScalingList(TComScalingList *scalingList, const Int maxLog2
       {
         xSetScalingListEnc(scalingList,list,size,qp);
         xSetScalingListDec(*scalingList,list,size,qp);
+#if JVET_C0024_QTBT
+        assert(0);  //no impact for CTC
+        setErrScaleCoeff(list,size, size,qp,maxLog2TrDynamicRange, bitDepths);
+#else
         setErrScaleCoeff(list,size,qp,maxLog2TrDynamicRange, bitDepths);
+#endif
       }
     }
   }
@@ -7481,29 +9903,59 @@ Void TComTrQuant::setScalingListDec(const TComScalingList &scalingList)
  * \param maxLog2TrDynamicRange
  * \param bitDepths              reference to bit depth array for all channels
  */
+#if JVET_C0024_QTBT
+Void TComTrQuant::setErrScaleCoeff(UInt list, UInt w, UInt h, Int qp, const Int maxLog2TrDynamicRange[MAX_NUM_CHANNEL_TYPE], const BitDepths &bitDepths)
+#else
 Void TComTrQuant::setErrScaleCoeff(UInt list, UInt size, Int qp, const Int maxLog2TrDynamicRange[MAX_NUM_CHANNEL_TYPE], const BitDepths &bitDepths)
+#endif
 {
+#if JVET_C0024_QTBT
+  const UInt uiLog2TrSize = (g_aucConvertToBit[ g_scalingListSizeX[w] ] + MIN_CU_LOG2 
+      + g_aucConvertToBit[ g_scalingListSizeX[h] ] + MIN_CU_LOG2)>>1;
+#else
   const UInt uiLog2TrSize = g_aucConvertToBit[ g_scalingListSizeX[size] ] + 2;
+#endif
   const ChannelType channelType = ((list == 0) || (list == MAX_NUM_COMPONENT)) ? CHANNEL_TYPE_LUMA : CHANNEL_TYPE_CHROMA;
 
   const Int channelBitDepth    = bitDepths.recon[channelType];
   const Int iTransformShift = getTransformShift(channelBitDepth, uiLog2TrSize, maxLog2TrDynamicRange[channelType]);  // Represents scaling through forward transform
 
+#if JVET_C0024_QTBT
+  Double dShift=0;
+  if (((w+h)&1)!=0)
+  {
+      dShift = -0.5;
+  }
+  UInt i,uiMaxNumCoeff = g_scalingListSizeX[w]*g_scalingListSizeX[h];
+  Int *piQuantcoeff;
+  Double *pdErrScale;
+  piQuantcoeff   = getQuantCoeff(list, qp, w, h);
+  pdErrScale     = getErrScaleCoeff(list, w, h, qp);
+#else
   UInt i,uiMaxNumCoeff = g_scalingListSize[size];
   Int *piQuantcoeff;
   Double *pdErrScale;
   piQuantcoeff   = getQuantCoeff(list, qp,size);
   pdErrScale     = getErrScaleCoeff(list, size, qp);
+#endif
 
   Double dErrScale = (Double)(1<<SCALE_BITS);                                // Compensate for scaling of bitcount in Lagrange cost function
+#if JVET_C0024_QTBT
+  dErrScale = dErrScale*pow(2.0,(-2.0*(iTransformShift+dShift)));                     // Compensate for scaling through forward transform
+#else
   dErrScale = dErrScale*pow(2.0,(-2.0*iTransformShift));                     // Compensate for scaling through forward transform
+#endif
 
   for(i=0;i<uiMaxNumCoeff;i++)
   {
     pdErrScale[i] =  dErrScale / piQuantcoeff[i] / piQuantcoeff[i] / (1 << DISTORTION_PRECISION_ADJUSTMENT(2 * (bitDepths.recon[channelType] - 8)));
   }
 
+#if JVET_C0024_QTBT
+  getErrScaleCoeffNoScalingList(list, w, h, qp) = dErrScale / g_quantScales[qp] / g_quantScales[qp] / (1 << DISTORTION_PRECISION_ADJUSTMENT(2 * (bitDepths.recon[channelType] - 8)));
+#else
   getErrScaleCoeffNoScalingList(list, size, qp) = dErrScale / g_quantScales[qp] / g_quantScales[qp] / (1 << DISTORTION_PRECISION_ADJUSTMENT(2 * (bitDepths.recon[channelType] - 8)));
+#endif
 }
 
 /** set quantized matrix coefficient for encode
@@ -7515,12 +9967,19 @@ Void TComTrQuant::setErrScaleCoeff(UInt list, UInt size, Int qp, const Int maxLo
  */
 Void TComTrQuant::xSetScalingListEnc(TComScalingList *scalingList, UInt listId, UInt sizeId, Int qp)
 {
+#if JVET_C0024_QTBT
+  assert(0);  //scaling list, no impact for CTC, need to change later
+#endif
   UInt width  = g_scalingListSizeX[sizeId];
   UInt height = g_scalingListSizeX[sizeId];
   UInt ratio  = g_scalingListSizeX[sizeId]/min(MAX_MATRIX_SIZE_NUM,(Int)g_scalingListSizeX[sizeId]);
   Int *quantcoeff;
   Int *coeff  = scalingList->getScalingListAddress(sizeId,listId);
+#if JVET_C0024_QTBT 
+  quantcoeff  = getQuantCoeff(listId, qp, sizeId, sizeId);
+#else
   quantcoeff  = getQuantCoeff(listId, qp, sizeId);
+#endif
 
   Int quantScales = g_quantScales[qp];
 
@@ -7547,7 +10006,12 @@ Void TComTrQuant::xSetScalingListDec(const TComScalingList &scalingList, UInt li
   Int *dequantcoeff;
   const Int *coeff  = scalingList.getScalingListAddress(sizeId,listId);
 
+#if JVET_C0024_QTBT   //scaling list, no impact for CTC, JCA
+  assert(0);
+  dequantcoeff = getDequantCoeff(listId, qp, sizeId, sizeId);
+#else
   dequantcoeff = getDequantCoeff(listId, qp, sizeId);
+#endif
 
   Int invQuantScale = g_invQuantScales[qp];
 
@@ -7566,17 +10030,31 @@ Void TComTrQuant::setFlatScalingList(const Int maxLog2TrDynamicRange[MAX_NUM_CHA
   const Int minimumQp = 0;
   const Int maximumQp = SCALING_LIST_REM_NUM;
 
+#if JVET_C0024_QTBT
+  for (UInt w=0; w<SCALING_LIST_SIZE_NUM; w++)
+  {
+  for (UInt h=0; h<SCALING_LIST_SIZE_NUM; h++)
+#else
   for(UInt size = 0; size < SCALING_LIST_SIZE_NUM; size++)
+#endif
   {
     for(UInt list = 0; list < SCALING_LIST_NUM; list++)
     {
       for(Int qp = minimumQp; qp < maximumQp; qp++)
       {
+#if JVET_C0024_QTBT
+        xsetFlatScalingList(list,w,h,qp);
+        setErrScaleCoeff(list,w,h,qp,maxLog2TrDynamicRange, bitDepths);
+#else
         xsetFlatScalingList(list,size,qp);
         setErrScaleCoeff(list,size,qp,maxLog2TrDynamicRange, bitDepths);
+#endif
       }
     }
   }
+#if JVET_C0024_QTBT
+  }
+#endif
 }
 
 /** set flat matrix value to quantized coefficient
@@ -7585,17 +10063,30 @@ Void TComTrQuant::setFlatScalingList(const Int maxLog2TrDynamicRange[MAX_NUM_CHA
  * \param qp Quantization parameter
  * \param format chroma format
  */
+#if JVET_C0024_QTBT
+Void TComTrQuant::xsetFlatScalingList(UInt list, UInt w, UInt h, Int qp)
+#else
 Void TComTrQuant::xsetFlatScalingList(UInt list, UInt size, Int qp)
+#endif
 {
+#if JVET_C0024_QTBT
+  UInt i,num = g_scalingListSizeX[w]*g_scalingListSizeX[h];
+#else
   UInt i,num = g_scalingListSize[size];
+#endif
   Int *quantcoeff;
   Int *dequantcoeff;
 
   Int quantScales    = g_quantScales   [qp];
   Int invQuantScales = g_invQuantScales[qp] << 4;
 
+#if JVET_C0024_QTBT
+  quantcoeff   = getQuantCoeff(list, qp, w, h);
+  dequantcoeff = getDequantCoeff(list, qp, w, h);
+#else
   quantcoeff   = getQuantCoeff(list, qp, size);
   dequantcoeff = getDequantCoeff(list, qp, size);
+#endif
 
   for(i=0;i<num;i++)
   {
@@ -7660,30 +10151,68 @@ Void TComTrQuant::processScalingListDec( const Int *coeff, Int *dequantcoeff, In
  */
 Void TComTrQuant::initScalingList()
 {
-  for(UInt sizeId = 0; sizeId < SCALING_LIST_SIZE_NUM; sizeId++)
-  {
-    for(UInt qp = 0; qp < SCALING_LIST_REM_NUM; qp++)
+#if JVET_C0024_QTBT
+    for(UInt w = 0; w < SCALING_LIST_SIZE_NUM; w++)
     {
-      for(UInt listId = 0; listId < SCALING_LIST_NUM; listId++)
-      {
-        m_quantCoef   [sizeId][listId][qp] = new Int    [g_scalingListSize[sizeId]];
-        m_dequantCoef [sizeId][listId][qp] = new Int    [g_scalingListSize[sizeId]];
-        m_errScale    [sizeId][listId][qp] = new Double [g_scalingListSize[sizeId]];
-      } // listID loop
+        for (UInt h = 0; h < SCALING_LIST_SIZE_NUM; h++)
+        {
+#else
+    for(UInt sizeId = 0; sizeId < SCALING_LIST_SIZE_NUM; sizeId++)
+    {
+#endif
+        for(UInt qp = 0; qp < SCALING_LIST_REM_NUM; qp++)
+        {
+            for(UInt listId = 0; listId < SCALING_LIST_NUM; listId++)
+            {
+#if JVET_C0024_QTBT
+                m_quantCoef   [w][h][listId][qp] = new Int    [g_scalingListSizeX[w]*g_scalingListSizeX[h]];
+                m_dequantCoef [w][h][listId][qp] = new Int    [g_scalingListSizeX[w]*g_scalingListSizeX[h]];
+                m_errScale    [w][h][listId][qp] = new Double [g_scalingListSizeX[w]*g_scalingListSizeX[h]];
+#else
+                m_quantCoef   [sizeId][listId][qp] = new Int    [g_scalingListSize[sizeId]];
+                m_dequantCoef [sizeId][listId][qp] = new Int    [g_scalingListSize[sizeId]];
+                m_errScale    [sizeId][listId][qp] = new Double [g_scalingListSize[sizeId]];
+#endif
+            } // listID loop
+        }
     }
-  }
+#if JVET_C0024_QTBT
+}
+#endif
 }
 
 /** destroy quantization matrix array
  */
 Void TComTrQuant::destroyScalingList()
 {
+#if JVET_C0024_QTBT
+  for(UInt w = 0; w < SCALING_LIST_SIZE_NUM; w++)
+  {
+      for (UInt h = 0; h < SCALING_LIST_SIZE_NUM; h++)
+      {
+#else
   for(UInt sizeId = 0; sizeId < SCALING_LIST_SIZE_NUM; sizeId++)
   {
+#endif
     for(UInt listId = 0; listId < SCALING_LIST_NUM; listId++)
     {
       for(UInt qp = 0; qp < SCALING_LIST_REM_NUM; qp++)
       {
+#if JVET_C0024_QTBT
+        if(m_quantCoef[w][h][listId][qp])
+        {
+          delete [] m_quantCoef[w][h][listId][qp];
+        }
+        if(m_dequantCoef[w][h][listId][qp])
+        {
+          delete [] m_dequantCoef[w][h][listId][qp];
+        }
+        if(m_errScale[w][h][listId][qp])
+        {
+          delete [] m_errScale[w][h][listId][qp];
+        }
+      }
+#else
         if(m_quantCoef[sizeId][listId][qp])
         {
           delete [] m_quantCoef[sizeId][listId][qp];
@@ -7696,6 +10225,7 @@ Void TComTrQuant::destroyScalingList()
         {
           delete [] m_errScale[sizeId][listId][qp];
         }
+#endif
       }
     }
   }
@@ -7716,7 +10246,13 @@ Void TComTrQuant::transformSkipQuantOneSample(TComTU &rTu, const ComponentID com
   const Int            defaultQuantisationCoefficient = g_quantScales[cQP.rem];
 
   assert( scalingListType < SCALING_LIST_NUM );
+#if JVET_C0024_QTBT
+  const UInt uiLog2TrWidth = g_aucConvertToBit[uiWidth] + MIN_CU_LOG2;
+  const UInt uiLog2TrHeight = g_aucConvertToBit[uiHeight] + MIN_CU_LOG2;
+  const Int *const piQuantCoeff = getQuantCoeff( scalingListType, cQP.rem, uiLog2TrWidth-1, uiLog2TrHeight-1 );
+#else
   const Int *const piQuantCoeff = getQuantCoeff( scalingListType, cQP.rem, (rTu.GetEquivalentLog2TrSize(compID)-2) );
+#endif
 
 
   /* for 422 chroma blocks, the effective scaling applied during transformation is not a power of 2, hence it cannot be
@@ -7777,7 +10313,9 @@ Void TComTrQuant::invTrSkipDeQuantOneSample( TComTU &rTu, ComponentID compID, TC
   const Int            iTransformShift    = getTransformShift(channelBitDepth, rTu.GetEquivalentLog2TrSize(compID), maxLog2TrDynamicRange);
   const Int            scalingListType    = getScalingListType(pcCU->getPredictionMode(uiAbsPartIdx), compID);
   const Bool           enableScalingLists = getUseScalingList(uiWidth, uiHeight, true);
+#if !JVET_C0024_QTBT
   const UInt           uiLog2TrSize       = rTu.GetEquivalentLog2TrSize(compID);
+#endif
 
   assert( scalingListType < SCALING_LIST_NUM );
 
@@ -7798,7 +10336,13 @@ Void TComTrQuant::invTrSkipDeQuantOneSample( TComTU &rTu, ComponentID compID, TC
     const Intermediate_Int inputMinimum        = -(1 << (targetInputBitDepth - 1));
     const Intermediate_Int inputMaximum        =  (1 << (targetInputBitDepth - 1)) - 1;
 
+#if JVET_C0024_QTBT
+    const UInt uiLog2TrWidth = g_aucConvertToBit[uiWidth] + MIN_CU_LOG2;
+    const UInt uiLog2TrHeight = g_aucConvertToBit[uiHeight] + MIN_CU_LOG2;
+    Int *piDequantCoef = getDequantCoeff(scalingListType,QP_rem,uiLog2TrWidth-1, uiLog2TrHeight-1);
+#else
     Int *piDequantCoef = getDequantCoeff(scalingListType,QP_rem,uiLog2TrSize-2);
+#endif
 
     if(rightShift > 0)
     {
@@ -8989,8 +11533,13 @@ Void  TComTrQuant::searchCandidateFromOnePicIntra(TComDataCU *pcCU, UInt uiPartA
     Int iTemplateSize = uiTempSize;
     Int iBlkSize = uiBlkSize;
     regionId = 0;
+#if JVET_C0024_QTBT
+    const UInt maxCUWidth = pcCU->getPic()->getPicSym()->getSPS().getCTUSize();
+    const UInt maxCUHeight = pcCU->getPic()->getPicSym()->getSPS().getCTUSize();
+#else
     const UInt maxCUWidth = pcCU->getPic()->getPicSym()->getSPS().getMaxCUWidth();
     const UInt maxCUHeight = pcCU->getPic()->getPicSym()->getSPS().getMaxCUHeight();
+#endif
 
     Int iVerMin = max(((iTemplateSize) << iMvShift), (iCurrY - offsetLCUY - iBlkSize + 1) << iMvShift);
     Int iVerMax = (iCurrY - iBlkSize) << iMvShift;
@@ -9014,7 +11563,11 @@ Void  TComTrQuant::searchCandidateFromOnePicIntra(TComDataCU *pcCU, UInt uiPartA
     mvYMaxs[regionId] = iVerMax - iCurrY;
     Int combinedX = offsetLCUX + iBlkSize - 1;
     Int combinedY = offsetLCUY + iBlkSize - 1;
+#if JVET_C0024_QTBT
+    Int NumInRow = pcCU->getSlice()->getSPS()->getCTUSize() >> 2;
+#else
     Int NumInRow = pcCU->getSlice()->getSPS()->getMaxCUHeight() >> 2;
+#endif
 
     //check within LCU pixels
     for (regionId = 0; regionId < 2; regionId++)

@@ -111,6 +111,9 @@ public:
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Void codeROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth );
+#if JVET_C0024_QTBT
+  Void codeROTIdxChroma ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth );
+#endif
 #endif
 #if VCEG_AZ07_IMV
   Void codeiMVFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx );
@@ -126,12 +129,16 @@ public:
 #if VCEG_AZ07_FRUC_MERGE
   Void codeFRUCMgrMode   ( TComDataCU* pcCU, UInt uiAbsPartIdx , UInt uiPUIdx );
 #endif
-
+#if !JVET_C0038_GALF
   Void codeAlfCtrlFlag   ( ComponentID /*component*/, UInt /*code*/ ) {printf("Not supported\n"); assert(0);}
+#endif
   Void codeInterModeFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiEncMode );
   Void codeSplitFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
-
+#if JVET_C0024_QTBT
+  Void codeBTSplitMode   (TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight);
+#else
   Void codePartSize      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
   Void codePredMode      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
 
   Void codeIPCMInfo      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
@@ -159,6 +166,9 @@ public:
   Void codeCoeffNxN      ( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID 
 #if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
     , Int& bCbfCU
+#endif
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+    , Int& iNonZeroCoeffNonTs
 #endif
     );
   Void codeTransformSkipFlags ( TComTU &rTu, ComponentID component );
@@ -188,10 +198,17 @@ public:
   Void setAlfCtrl(Bool bAlfCtrl) {m_bAlfCtrl = bAlfCtrl;}
   Void setMaxAlfCtrlDepth(UInt uiMaxAlfCtrlDepth) {m_uiMaxAlfCtrlDepth = uiMaxAlfCtrlDepth;}
   Void codeAlfFlag       ( UInt uiCode );
+#if JVET_C0038_GALF  
+  Void xWriteTruncBinCode(UInt uiSymbol, UInt uiMaxSymbol);
+  Void codeALFPrevFiltType( UInt uiCode);
+  Void codeALFPrevFiltFlag( Int uiCode);
+#endif
   Void codeAlfUvlc       ( UInt uiCode );
   Void codeAlfSvlc       ( Int   iCode );
   Void codeAlfCtrlDepth  ( UInt uiMaxTotalCUDepth );
+#if !JVET_C0024_QTBT
   Void codeAlfCtrlFlag   ( TComDataCU* pcCU, UInt uiAbsPartIdx );
+#endif
   Void codeAlfFlagNum    ( UInt uiCode, UInt minValue );
   Void codeAlfCtrlFlag   ( UInt uiSymbol );
 #endif

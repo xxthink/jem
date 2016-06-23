@@ -117,7 +117,7 @@ public:
 #endif
 
 private:
-#if JVET_B0051_NON_MPM_MODE
+#if JVET_B0051_NON_MPM_MODE || JVET_C0038_GALF
   Void  xWriteTruncBinCode      ( UInt uiSymbol, UInt uiMaxSymbol );
 #endif
   Void  xWriteUnarySymbol    ( UInt uiSymbol, ContextModel* pcSCModel, Int iOffset );
@@ -146,6 +146,9 @@ public:
 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Void codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  );
+#if JVET_C0024_QTBT
+  Void codeROTIdxChroma ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  );
+#endif
 #endif
 #if COM16_C806_OBMC
   Void codeOBMCFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
@@ -162,9 +165,14 @@ public:
   Void codeFRUCMgrMode   ( TComDataCU* pcCU, UInt uiAbsPartIdx , UInt uiPUIdx );
 #endif
   Void codeSplitFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#if JVET_C0024_QTBT
+  Void codeBTSplitMode   ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight);
+#endif
   Void codeMVPIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList );
 
+#if !JVET_C0024_QTBT
   Void codePartSize      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
   Void codePredMode      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeIPCMInfo      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeTransformSubdivFlag ( UInt uiSymbol, UInt uiCtx );
@@ -193,6 +201,9 @@ public:
 #if VCEG_AZ05_ROT_TR   || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
     , Int& bCbfCU
 #endif  
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+    , Int& iNonZeroCoeffNonTs
+#endif
     );
   Void codeTransformSkipFlags ( TComTU &rTu, ComponentID component );
 #if VCEG_AZ08_KLT_COMMON
@@ -216,6 +227,10 @@ public:
   TEncBinIf* getEncBinIf()  { return m_pcBinIf; }
 
 #if ALF_HM3_REFACTOR
+#if JVET_C0038_GALF  
+  Void codeALFPrevFiltType( UInt uiCode);
+  Void codeALFPrevFiltFlag( Int uiCode);
+#endif
   Bool  getAlfCtrl             ()                         { return m_bAlfCtrl;          }
   UInt  getMaxAlfCtrlDepth     ()                         { return m_uiMaxAlfCtrlDepth; }
   Void  setAlfCtrl             ( Bool bAlfCtrl          ) { m_bAlfCtrl          = bAlfCtrl;          }
@@ -226,7 +241,9 @@ public:
   Void  codeAlfCtrlDepth  ( UInt uiMaxTotalCUDepth );
   Void  codeAlfFlagNum    ( UInt uiCode, UInt minValue );
   Void  codeAlfCtrlFlag   ( UInt uiSymbol );
+#if !JVET_C0024_QTBT
   Void  codeAlfCtrlFlag   ( TComDataCU* pcCU, UInt uiAbsPartIdx );
+#endif
 #endif
 
 #if COM16_C806_EMT
@@ -242,6 +259,9 @@ private:
   ContextModel         m_contextModels[MAX_NUM_CTX_MOD];
   Int                  m_numContextModels;
   ContextModel3DBuffer m_cCUSplitFlagSCModel;
+#if JVET_C0024_QTBT
+  ContextModel3DBuffer m_cBTSplitFlagSCModel;
+#endif
   ContextModel3DBuffer m_cCUSkipFlagSCModel;
 #if VCEG_AZ05_INTRA_MPI
   ContextModel3DBuffer m_cMPIIdxSCModel;
@@ -308,9 +328,13 @@ private:
   Bool          m_bAlfCtrl;
   UInt          m_uiMaxAlfCtrlDepth;
   ContextModel3DBuffer m_cCUAlfCtrlFlagSCModel;
+#if !JVET_C0038_GALF
   ContextModel3DBuffer m_cALFFlagSCModel;
+#endif
   ContextModel3DBuffer m_cALFUvlcSCModel;
+#if !JVET_C0038_GALF
   ContextModel3DBuffer m_cALFSvlcSCModel;
+#endif
 #endif
 
 #if COM16_C806_EMT
