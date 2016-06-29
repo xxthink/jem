@@ -93,7 +93,11 @@ TDecCu::TDecCu()
 TDecCu::~TDecCu()
 {
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+#if JVET_C0035_ATMVP_SIMPLIFICATION
+  for (UInt ui=0;ui<NUM_MGR_TYPE;ui++)
+#else
   for (UInt ui=0;ui<2;ui++)
+#endif
   {
     if( m_pMvFieldSP[ui] != NULL )
     {
