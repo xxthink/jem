@@ -903,6 +903,12 @@ Void TEncCu::encodeCtu ( TComDataCU* pCtu )
     pCtu->getSlice()->setTextType(CHANNEL_TYPE_CHROMA);
     // Encode CU data
     pCtu->getPic()->setCodedAreaInCTU(0);
+#if JVET_C0024_DELTA_QP_FIX
+    if (pCtu->getSlice()->getPPS()->getUseDQP())
+    {
+      setdQPFlag(true);
+    }
+#endif
 
     xEncodeCU( pCtu, 0, 0, uiCTUSize, uiCTUSize );  
   }
@@ -1049,6 +1055,14 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #if !JVET_C0024_QTBT
   const UInt uiWidth   = rpcBestCU->getWidth(0);
 #endif
+#if JVET_C0024_DELTA_QP_FIX
+  UInt uiQTWidth = sps.getCTUSize()>>uiDepth;
+  UInt uiQTHeight = sps.getCTUSize()>>uiDepth;
+  UInt uiBTDepth = g_aucConvertToBit[uiQTWidth]-g_aucConvertToBit[uiWidth] + g_aucConvertToBit[uiQTHeight]-g_aucConvertToBit[uiHeight];
+  const UInt uiQTBTDepth = (uiDepth<<1) + uiBTDepth;
+  const UInt uiMaxDQPDepthQTBT = pps.getMaxCuDQPDepth() << 1;
+#endif
+
 
   Int iBaseQP = xComputeQP( rpcBestCU, uiDepth );
   Int iMinQP;
@@ -1071,7 +1085,11 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #if VCEG_AZ08_INTER_KLT
   g_bEnableCheck = false;
 #endif
+#if JVET_C0024_DELTA_QP_FIX
+  if( uiQTBTDepth <= uiMaxDQPDepthQTBT )
+#else
   if( uiDepth <= pps.getMaxCuDQPDepth() )
+#endif
   {
     Int idQP = m_pcEncCfg->getMaxDeltaQP();
     iMinQP = Clip3( -sps.getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, iBaseQP-idQP );
@@ -1987,13 +2005,21 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #endif
   }
 
+#if JVET_C0024_DELTA_QP_FIX
+  if( uiQTBTDepth == uiMaxDQPDepthQTBT )
+#else
   if( uiDepth == pps.getMaxCuDQPDepth() )
+#endif
   {
     Int idQP = m_pcEncCfg->getMaxDeltaQP();
     iMinQP = Clip3( -sps.getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, iBaseQP-idQP );
     iMaxQP = Clip3( -sps.getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, iBaseQP+idQP );
   }
+#if JVET_C0024_DELTA_QP_FIX
+  else if( uiQTBTDepth < uiMaxDQPDepthQTBT )
+#else
   else if( uiDepth < pps.getMaxCuDQPDepth() )
+#endif
   {
     iMinQP = iBaseQP;
     iMaxQP = iBaseQP;
@@ -2061,9 +2087,11 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
     rpcBestCU->getPic()->setIntra(rpcBestCU->getZorderIdxInCtu(), uiWidth, uiHeight, true);
   }
 
+#if !JVET_C0024_DELTA_QP_FIX
   UInt uiQTWidth = sps.getCTUSize()>>uiDepth;
   UInt uiQTHeight = sps.getCTUSize()>>uiDepth;
   UInt uiBTDepth = g_aucConvertToBit[uiQTWidth]-g_aucConvertToBit[uiWidth] + g_aucConvertToBit[uiQTHeight]-g_aucConvertToBit[uiHeight];
+#endif
 
 #if JVET_C0024_SPS_MAX_BT_DEPTH
   UInt uiMaxBTD = pcSlice->isIntra() ? (isLuma(rpcTempCU->getTextType())?sps.getMaxBTDepthISliceL():sps.getMaxBTDepthISliceC()): sps.getMaxBTDepth();
@@ -2181,7 +2209,26 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
       rpcTempCU->getTotalBins() += ((TEncBinCABAC *)((TEncSbac*)m_pcEntropyCoder->m_pcEntropyCoderIf)->getEncBinIf())->getBinsCoded();
 
       rpcTempCU->getTotalCost()  = m_pcRdCost->calcRdCost( rpcTempCU->getTotalBits(), rpcTempCU->getTotalDistortion() );
-
+#if JVET_C0024_DELTA_QP_FIX
+      if( uiQTBTDepth == uiMaxDQPDepthQTBT && pps.getUseDQP())
+      {
+        Bool foundNonZeroCbf = false;
+        UInt uiFirstNonZeroPartIdx = 0;
+        rpcTempCU->setQPSubCUs( rpcTempCU->getRefQP( 0 ), 0, uiDepth, uiWidth, uiHeight, uiFirstNonZeroPartIdx, foundNonZeroCbf );
+        if ( foundNonZeroCbf )
+        {
+          m_pcEntropyCoder->resetBits();
+          m_pcEntropyCoder->encodeQP( rpcTempCU, uiFirstNonZeroPartIdx, false );
+          rpcTempCU->getTotalBits() += m_pcEntropyCoder->getNumberOfWrittenBits(); // dQP bits
+          rpcTempCU->getTotalBins() += ((TEncBinCABAC *)((TEncSbac*)m_pcEntropyCoder->m_pcEntropyCoderIf)->getEncBinIf())->getBinsCoded();
+          rpcTempCU->getTotalCost()  = m_pcRdCost->calcRdCost( rpcTempCU->getTotalBits(), rpcTempCU->getTotalDistortion() );
+        }
+        else
+        {
+          rpcTempCU->setQPSubParts( rpcTempCU->getRefQP( 0 ), 0, uiWidth, uiHeight ); // set QP to default QP
+        }
+      }
+#endif
       m_pcRDGoOnSbacCoder->store(m_ppppcRDSbacCoder[uiWidthIdx][uiHeightIdx][CI_TEMP_BEST]);
 
       if (rpcBestCU->getTotalCost()!=MAX_DOUBLE)
@@ -2291,7 +2338,26 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
       rpcTempCU->getTotalBins() += ((TEncBinCABAC *)((TEncSbac*)m_pcEntropyCoder->m_pcEntropyCoderIf)->getEncBinIf())->getBinsCoded();
 
       rpcTempCU->getTotalCost()  = m_pcRdCost->calcRdCost( rpcTempCU->getTotalBits(), rpcTempCU->getTotalDistortion() );
-
+#if JVET_C0024_DELTA_QP_FIX
+      if( uiQTBTDepth == uiMaxDQPDepthQTBT && pps.getUseDQP())
+      {
+        Bool foundNonZeroCbf = false;
+        UInt uiFirstNonZeroPartIdx = 0;
+        rpcTempCU->setQPSubCUs( rpcTempCU->getRefQP( 0 ), 0, uiDepth, uiWidth, uiHeight, uiFirstNonZeroPartIdx, foundNonZeroCbf );
+        if ( foundNonZeroCbf )
+        {
+          m_pcEntropyCoder->resetBits();
+          m_pcEntropyCoder->encodeQP( rpcTempCU, uiFirstNonZeroPartIdx, false );
+          rpcTempCU->getTotalBits() += m_pcEntropyCoder->getNumberOfWrittenBits(); // dQP bits
+          rpcTempCU->getTotalBins() += ((TEncBinCABAC *)((TEncSbac*)m_pcEntropyCoder->m_pcEntropyCoderIf)->getEncBinIf())->getBinsCoded();
+          rpcTempCU->getTotalCost()  = m_pcRdCost->calcRdCost( rpcTempCU->getTotalBits(), rpcTempCU->getTotalDistortion() );
+        }
+        else
+        {
+          rpcTempCU->setQPSubParts( rpcTempCU->getRefQP( 0 ), 0, uiWidth, uiHeight ); // set QP to default QP
+        }
+      }
+#endif
       m_pcRDGoOnSbacCoder->store(m_ppppcRDSbacCoder[uiWidthIdx][uiHeightIdx][CI_TEMP_BEST]);
 
       if (rpcBestCU->getTotalCost()!=MAX_DOUBLE)
@@ -2465,11 +2531,36 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
       }
       rpcTempCU->getTotalCost()  = m_pcRdCost->calcRdCost( rpcTempCU->getTotalBits(), rpcTempCU->getTotalDistortion() );
 
+#if JVET_C0024_DELTA_QP_FIX
+      if( uiQTBTDepth == uiMaxDQPDepthQTBT && pps.getUseDQP())
+#else
       if( uiDepth == pps.getMaxCuDQPDepth() && pps.getUseDQP())
+#endif
       {
         Bool hasResidual = false;
         for( UInt uiBlkIdx = 0; uiBlkIdx < rpcTempCU->getTotalNumPart(); uiBlkIdx ++)
         {
+#if JVET_C0024_DELTA_QP_FIX
+          if( rpcTempCU->getSlice()->isIntra() )
+          {
+            if( rpcTempCU->getTextType() == CHANNEL_TYPE_LUMA )
+            {
+              if( rpcTempCU->getCbf(uiBlkIdx, COMPONENT_Y) )
+              {
+                hasResidual = true;
+              }
+            }
+            else
+            {
+              if(  (rpcTempCU->getCbf(uiBlkIdx, COMPONENT_Cb) && (numberValidComponents > COMPONENT_Cb)) ||
+                   (rpcTempCU->getCbf(uiBlkIdx, COMPONENT_Cr) && (numberValidComponents > COMPONENT_Cr)) )
+              {
+                hasResidual = true;
+              }
+            }
+          }
+          else
+#endif
           if( (     rpcTempCU->getCbf(uiBlkIdx, COMPONENT_Y)
                 || (rpcTempCU->getCbf(uiBlkIdx, COMPONENT_Cb) && (numberValidComponents > COMPONENT_Cb))
                 || (rpcTempCU->getCbf(uiBlkIdx, COMPONENT_Cr) && (numberValidComponents > COMPONENT_Cr)) ) )
@@ -2481,6 +2572,18 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 
         if ( hasResidual )
         {
+#if JVET_C0024_DELTA_QP_FIX
+          Bool foundNonZeroCbf = false;
+          UInt uiFirstNonZeroPartIdx = 0;
+
+          rpcTempCU->setQPSubCUs( rpcTempCU->getRefQP( 0 ), 0, uiDepth, uiWidth, uiHeight, uiFirstNonZeroPartIdx, foundNonZeroCbf );
+          
+          m_pcEntropyCoder->resetBits();
+          m_pcEntropyCoder->encodeQP( rpcTempCU, 0, false );
+          rpcTempCU->getTotalBits() += m_pcEntropyCoder->getNumberOfWrittenBits(); // dQP bits
+          rpcTempCU->getTotalBins() += ((TEncBinCABAC *)((TEncSbac*)m_pcEntropyCoder->m_pcEntropyCoderIf)->getEncBinIf())->getBinsCoded();
+          rpcTempCU->getTotalCost()  = m_pcRdCost->calcRdCost( rpcTempCU->getTotalBits(), rpcTempCU->getTotalDistortion() );
+#else
           m_pcEntropyCoder->resetBits();
           m_pcEntropyCoder->encodeQP( rpcTempCU, 0, false );
           rpcTempCU->getTotalBits() += m_pcEntropyCoder->getNumberOfWrittenBits(); // dQP bits
@@ -2489,11 +2592,16 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 
           Bool foundNonZeroCbf = false;
           rpcTempCU->setQPSubCUs( rpcTempCU->getRefQP( 0 ), 0, uiDepth, foundNonZeroCbf );
+#endif
           assert( foundNonZeroCbf );
         }
         else
         {
+#if JVET_C0024_DELTA_QP_FIX
+          rpcTempCU->setQPSubParts( rpcTempCU->getRefQP( 0 ), 0, uiWidth, uiHeight ); // set QP to default QP
+#else
           rpcTempCU->setQPSubParts( rpcTempCU->getRefQP( 0 ), 0, uiDepth ); // set QP to default QP
+#endif
         }
       }
 
@@ -2669,6 +2777,12 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
     assert(uiWidth == uiHeight);
   }
   UInt uiCTUSize = pcCU->getSlice()->getSPS()->getCTUSize();
+#if JVET_C0024_DELTA_QP_FIX
+  UInt uiQTWidth = uiCTUSize>>uiDepth;
+  UInt uiQTHeight = uiCTUSize>>uiDepth;
+  const UInt uiQTBTDepth = (uiDepth<<1) + (g_aucConvertToBit[uiQTWidth]-g_aucConvertToBit[uiWidth] + g_aucConvertToBit[uiQTHeight]-g_aucConvertToBit[uiHeight]);
+  const UInt uiMaxDQPDepthQTBT = pps.getMaxCuDQPDepth() << 1;
+#endif
   if (uiCTUSize>>uiDepth == uiWidth && uiWidth==uiHeight)
   {
 #endif
@@ -2708,7 +2822,11 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 #endif
   {
     UInt uiQNumParts = ( pcPic->getNumPartitionsInCtu() >> (uiDepth<<1) )>>2;
+#if JVET_C0024_DELTA_QP_FIX
+    if( uiQTBTDepth == uiMaxDQPDepthQTBT && pps.getUseDQP())
+#else
     if( uiDepth == pps.getMaxCuDQPDepth() && pps.getUseDQP())
+#endif
     {
       setdQPFlag(true);
     }
@@ -2773,6 +2891,12 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
     m_pcEntropyCoder->encodeBTSplitMode(pcCU, uiAbsPartIdx, uiWidth, uiHeight);
     if (pcCU->getBTSplitModeForBTDepth(uiAbsPartIdx, uiBTDepth)==1)
     {
+#if JVET_C0024_DELTA_QP_FIX
+      if( uiQTBTDepth == uiMaxDQPDepthQTBT && pps.getUseDQP())
+      {
+        setdQPFlag(true);
+      }
+#endif
       for ( UInt uiPartUnitIdx = 0; uiPartUnitIdx < 2; uiPartUnitIdx++ )
       {
         if (uiPartUnitIdx==1)
@@ -2794,6 +2918,12 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
     }
     else if (pcCU->getBTSplitModeForBTDepth(uiAbsPartIdx, uiBTDepth)==2)
     {
+#if JVET_C0024_DELTA_QP_FIX
+      if( uiQTBTDepth == uiMaxDQPDepthQTBT && pps.getUseDQP())
+      {
+        setdQPFlag(true);
+      }
+#endif
       for ( UInt uiPartUnitIdx = 0; uiPartUnitIdx < 2; uiPartUnitIdx++ )
       {
         if (uiPartUnitIdx==1)
@@ -2829,7 +2959,11 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
     g_uiNumBlk[pcCU->getSlice()->getDepth()]++;
   }
 #endif
+#if JVET_C0024_DELTA_QP_FIX
+  if( uiQTBTDepth <= uiMaxDQPDepthQTBT && pps.getUseDQP())
+#else
   if( uiDepth <= pps.getMaxCuDQPDepth() && pps.getUseDQP())
+#endif
   {
     setdQPFlag(true);
   }
@@ -3772,10 +3906,17 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
   DebugInterPredResiReco(sTest, *(m_ppcPredYuvTemp[uhDepth]), *(m_ppcResiYuvBest[uhDepth]), *(m_ppcRecoYuvTemp[uhDepth]), DebugStringGetPredModeMask(rpcTempCU->getPredictionMode(0)));
 #endif
 
+#if JVET_C0024_DELTA_QP_FIX && COM16_C806_OBMC
+  Int orgQP = rpcTempCU->getQP( 0 );
+#endif
   xCheckDQP( rpcTempCU );
   xCheckBestMode(rpcBestCU, rpcTempCU, uhDepth DEBUG_STRING_PASS_INTO(sDebug) DEBUG_STRING_PASS_INTO(sTest));
 #if COM16_C806_OBMC
+#if JVET_C0024_DELTA_QP_FIX
+  rpcTempCU->initEstData( uhDepth, orgQP, rpcTempCU->getCUTransquantBypass( 0 ) );
+#else
   rpcTempCU->initEstData( uhDepth, rpcTempCU->getQP( 0 ), rpcTempCU->getCUTransquantBypass( 0 ) );
+#endif
   }
 #endif
 }
@@ -4073,6 +4214,9 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
   rpcTempCU->getTotalBins() = ((TEncBinCABAC *)((TEncSbac*)m_pcEntropyCoder->m_pcEntropyCoderIf)->getEncBinIf())->getBinsCoded();
   rpcTempCU->getTotalCost() = m_pcRdCost->calcRdCost( rpcTempCU->getTotalBits(), rpcTempCU->getTotalDistortion() );
 
+#if JVET_C0024_DELTA_QP_FIX
+  xCheckDQP( rpcTempCU );
+#endif
 #if QTBT_NSST
   const Int iNonZeroCoeffThr = isLuma(rpcTempCU->getTextType()) ? NSST_SIG_NZ_LUMA + (rpcTempCU->getSlice()->isIntra() ? 0 : NSST_SIG_NZ_CHROMA) : NSST_SIG_NZ_CHROMA;
 
@@ -4086,7 +4230,9 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
   }
 #endif
 
+#if !JVET_C0024_DELTA_QP_FIX
   xCheckDQP( rpcTempCU );
+#endif
 
   cost = rpcTempCU->getTotalCost();
 
@@ -4255,8 +4401,39 @@ Void TEncCu::xCheckDQP( TComDataCU* pcCU )
   UInt uiDepth = pcCU->getDepth( 0 );
 
   const TComPPS &pps = *(pcCU->getSlice()->getPPS());
+#if JVET_C0024_DELTA_QP_FIX
+  UInt uiBTDepth = pcCU->getBTDepth( 0 );
+  UInt uiQTBTDepth = (uiDepth<<1) + uiBTDepth;
+  UInt uiMaxDQPDepthQTBT = pps.getMaxCuDQPDepth() << 1;
+#endif
+#if JVET_C0024_DELTA_QP_FIX
+  if ( pps.getUseDQP() && uiQTBTDepth <= uiMaxDQPDepthQTBT )
+#else
   if ( pps.getUseDQP() && uiDepth <= pps.getMaxCuDQPDepth() )
+#endif
   {
+#if JVET_C0024_DELTA_QP_FIX
+    const UInt numValidComp = pcCU->getPic()->getNumberValidComponents();
+    if( pcCU->getSlice()->isIntra() )
+    {
+      if ( ( pcCU->getTextType() == CHANNEL_TYPE_LUMA && pcCU->getCbf(0, COMPONENT_Y) )
+        || ( pcCU->getTextType() == CHANNEL_TYPE_CHROMA && ( ( numValidComp>COMPONENT_Cb && pcCU->getCbf( 0, COMPONENT_Cb ) ) || ( numValidComp>COMPONENT_Cr && pcCU->getCbf( 0, COMPONENT_Cr) ) ) ) 
+        )
+      {
+        m_pcEntropyCoder->resetBits();
+        m_pcEntropyCoder->encodeQP( pcCU, 0, false );
+        pcCU->getTotalBits() += m_pcEntropyCoder->getNumberOfWrittenBits(); // dQP bits
+        pcCU->getTotalBins() += ((TEncBinCABAC *)((TEncSbac*)m_pcEntropyCoder->m_pcEntropyCoderIf)->getEncBinIf())->getBinsCoded();
+        pcCU->getTotalCost() = m_pcRdCost->calcRdCost( pcCU->getTotalBits(), pcCU->getTotalDistortion() );
+      }
+      else
+      {
+        pcCU->setQPSubParts( pcCU->getRefQP( 0 ), 0, pcCU->getWidth(0), pcCU->getHeight(0) ); // set QP to default QP
+      }
+    }
+    else
+    {
+#endif
     if ( pcCU->getQtRootCbf( 0) )
     {
       m_pcEntropyCoder->resetBits();
@@ -4267,8 +4444,15 @@ Void TEncCu::xCheckDQP( TComDataCU* pcCU )
     }
     else
     {
+#if JVET_C0024_DELTA_QP_FIX
+      pcCU->setQPSubParts( pcCU->getRefQP( 0 ), 0, pcCU->getWidth(0), pcCU->getHeight(0) ); // set QP to default QP
+#else
       pcCU->setQPSubParts( pcCU->getRefQP( 0 ), 0, uiDepth ); // set QP to default QP
+#endif
     }
+#if JVET_C0024_DELTA_QP_FIX
+    }
+#endif
   }
 }
 
