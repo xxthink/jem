@@ -1758,7 +1758,11 @@ Void TDecSbac::parseDeltaQP( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
     qp = pcCU->getRefQP(uiAbsPartIdx);
   }
 
+#if JVET_C0024_DELTA_QP_FIX
+  pcCU->setQPSubParts(qp, uiAbsPartIdx, pcCU->getWidth(uiAbsPartIdx), pcCU->getHeight(uiAbsPartIdx));
+#else
   pcCU->setQPSubParts(qp, uiAbsPartIdx, uiDepth);
+#endif
   pcCU->setCodedQP(qp);
 }
 

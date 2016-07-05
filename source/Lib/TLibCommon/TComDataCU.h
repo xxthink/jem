@@ -141,7 +141,11 @@ private:
   Char*          m_pePredMode;         ///< array of prediction modes
   Char*          m_crossComponentPredictionAlpha[MAX_NUM_COMPONENT]; ///< array of cross-component prediction alpha values
   Bool*          m_CUTransquantBypass;   ///< array of cu_transquant_bypass flags
+#if JVET_C0024_DELTA_QP_FIX
+  Char*          m_phQP[MAX_NUM_CHANNEL_TYPE]; ///< array of QP values       0-> Luma, 1-> Chroma
+#else
   Char*          m_phQP;               ///< array of QP values
+#endif
   UChar*         m_ChromaQpAdj;        ///< array of chroma QP adjustments (indexed). when value = 0, cu_chroma_qp_offset_flag=0; when value>0, indicates cu_chroma_qp_offset_flag=1 and cu_chroma_qp_offset_idx=value-1
   UInt           m_codedChromaQpAdj;
 #if !JVET_C0024_QTBT
@@ -447,13 +451,32 @@ public:
 
   Void          setSizeSubParts       ( UInt uiWidth, UInt uiHeight, UInt uiAbsPartIdx, UInt uiDepth );
 
+#if JVET_C0024_DELTA_QP_FIX
+  Char*         getQP                 ( const ChannelType channelType ) { return m_phQP[channelType]; }
+  Char*         getQP                 () { return m_phQP[getTextType()]; }
+  Char          getQP                 ( UInt uiIdx ) const      
+  { 
+    if( !getSlice()->isIntra() )
+    {
+      assert( getTextType() == CHANNEL_TYPE_LUMA );
+    }
+    return m_phQP[getTextType()][uiIdx];       
+  }
+  //Void          setQP                 ( UInt uiIdx, Char value ){ m_phQP[getTextType()][uiIdx] =  value;     }
+  Void          setQPSubParts         ( Int qp,   UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight );
+#else
   Char*         getQP                 ()                        { return m_phQP;              }
   Char          getQP                 ( UInt uiIdx ) const      { return m_phQP[uiIdx];       }
   Void          setQP                 ( UInt uiIdx, Char value ){ m_phQP[uiIdx] =  value;     }
   Void          setQPSubParts         ( Int qp,   UInt uiAbsPartIdx, UInt uiDepth );
+#endif
   Int           getLastValidPartIdx   ( Int iAbsPartIdx );
   Char          getLastCodedQP        ( UInt uiAbsPartIdx );
+#if JVET_C0024_DELTA_QP_FIX
+  Void          setQPSubCUs           ( Int qp, UInt absPartIdx, UInt depth, UInt uiWidth, UInt uiHeight, UInt& ruiFirstNonZeroPartIdx, Bool &foundNonZeroCbf );
+#else
   Void          setQPSubCUs           ( Int qp, UInt absPartIdx, UInt depth, Bool &foundNonZeroCbf );
+#endif
   Void          setCodedQP            ( Char qp )               { m_codedQP = qp;             }
   Char          getCodedQP            ()                        { return m_codedQP;           }
 

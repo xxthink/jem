@@ -4687,11 +4687,19 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
   //===== set QP and clear Cbf =====
   if ( pps.getUseDQP() == true)
   {
+#if JVET_C0024_DELTA_QP_FIX
+    pcCU->setQPSubParts( pcCU->getQP(0), 0, pcCU->getWidth(0), pcCU->getHeight(0) );
+#else
     pcCU->setQPSubParts( pcCU->getQP(0), 0, uiDepth );
+#endif
   }
   else
   {
+#if JVET_C0024_DELTA_QP_FIX
+    pcCU->setQPSubParts( pcCU->getSlice()->getSliceQp(), 0, pcCU->getWidth(0), pcCU->getHeight(0) );
+#else
     pcCU->setQPSubParts( pcCU->getSlice()->getSliceQp(), 0, uiDepth );
+#endif
   }
 
 #if COM16_C806_EMT
