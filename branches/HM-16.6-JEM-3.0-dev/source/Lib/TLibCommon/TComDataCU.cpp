@@ -2984,7 +2984,7 @@ TComDataCU* TComDataCU::getQpMinCuAbove( UInt& uiAPartUnitIdx, UInt uiCurrAbsIdx
 */
 Char TComDataCU::getRefQP( UInt uiCurrAbsIdxInCtu )
 {
-#if JVET_C0024_DELTA_QP_FIX
+#if JVET_C0024_DELTA_QP_FIX_BT_DIFF
   if( 0 != getBTSplitMode(uiCurrAbsIdxInCtu) && getDepth(uiCurrAbsIdxInCtu) < m_pcPic->getPicSym()->getPPS().getMaxCuDQPDepth() )
   {
     return getSlice()->getSliceQp();
