@@ -69,6 +69,9 @@
 #define JVET_C0024_CTU_256                                0  ///< support CTU 256 for QTBT, force QT split for CU 256x256 
 #define JVET_C0024_ENCODER_OVERFLOW_FIX                   1  ///< fix the encoder overflow in the case of very high QP
 #define JVET_C0024_DELTA_QP_FIX                           1  ///< support delta QP signaling in QTBT
+#if JVET_C0024_DELTA_QP_FIX
+#define JVET_C0024_DELTA_QP_FIX_BT_DIFF                   1
+#endif
 
 // for fast algorithms
 #define JVET_C0024_AMAX_BT                                1  ///< slice level adaptive maximum BT size (encoder only)
