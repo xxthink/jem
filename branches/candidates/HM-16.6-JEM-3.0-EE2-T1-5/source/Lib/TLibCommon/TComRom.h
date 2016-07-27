@@ -164,6 +164,17 @@ extern const TMatrixCoeff g_as_DST_MAT_4 [TRANSFORM_NUMBER_OF_DIRECTIONS][4][4];
 #if COM16_C806_EMT
 extern Int g_aiTrSubsetIntra[3][2];
 extern Int g_aiTrSubsetInter[4];
+
+#if C0022_MODIF_EMT
+#if EE2_Q1
+extern const UChar g_aucTrSet[4][NUM_INTRA_MODE-1][4][2];
+#else
+extern const UChar g_aucIpmToTrSet[5][35];
+extern const UChar g_aucTrSet[7][4][2];
+extern const Int   g_aiIdLut[3][3];
+#endif //EE_Q
+#endif // C0022
+
 #if VCEG_AZ07_INTRA_65ANG_MODES
 extern const UChar g_aucTrSetVert[NUM_INTRA_MODE-1];
 extern const UChar g_aucTrSetHorz[NUM_INTRA_MODE-1];
