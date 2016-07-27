@@ -319,6 +319,19 @@ Void initROM()
         // DST-VII
         v = sin(PI*(k+0.5)*(n+1)/(c+0.5)) * sqrt(2.0/(c+0.5));
         iT[DST7*c*c + k*c + n] = (Short) ( s * v + ( v > 0 ? 0.5 : -0.5) );
+
+#if C0022_MODIF_EMT
+        //DST4
+        v = sin(PI*(k+0.5)*(n+0.5)/c) * sqrt(2.0/c);
+        iT[DST4*c*c + k*c + n] = (Short) ( s * v + ( v > 0 ? 0.5 : -0.5) );
+          
+        //ID
+        if (k == n) {
+            iT[ID*c*c + k*c + n] = (Short) ( s + ( s > 0 ? 0.5 : -0.5) );
+            } else {
+            iT[ID*c*c + k*c + n] = 0;
+        }
+#endif
       }
     }
     c <<= 1;
@@ -664,8 +677,323 @@ const Int g_invQuantScales[SCALING_LIST_REM_NUM] =
 }
 
 #if COM16_C806_EMT
-Int g_aiTrSubsetIntra[3][2] = { {DST7, DCT8}, {DST7, DST1}, {DST7, DCT5} };
-Int g_aiTrSubsetInter   [4] =   {DCT8, DST7};
+
+#if C0022_MODIF_EMT
+#if VCEG_AZ07_INTRA_65ANG_MODES
+    
+#if EE2_Q1    
+    const UChar g_aucTrSet[4][NUM_INTRA_MODE-1][4][2] =
+    {
+        {
+            {{DCT5, DCT5}, {DST4, DCT5}, {DST1, DST4}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST4, DST1}, {DST1, DST4}},
+            {{DCT5, DCT5}, {DCT8, DCT8}, {DST4, DST4}, {DCT8, DCT5}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST4, DST4}, {DST4, DST1}},
+            {{DST4, DCT5}, {DCT8, DCT8}, {DCT5, DCT2}, {DCT8, DCT5}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DST1, DST1}, {DST4, DST1}},
+            {{DCT5, DCT5}, {DCT8, DCT8}, {DCT8, DCT5}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST4, DST4}, {DST4, DST1}},
+            {{DST4, DCT5}, {DCT8, DCT8}, {DCT8, DCT5}, {DCT5, DST4}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST4, DST4}, {DST1, DST4}},
+            {{DST4, DCT5}, {DCT8, DCT8}, {DCT8, DCT5}, {DCT5, DST4}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST4, DST4}, {DST1, DST4}},
+            {{DST4, DCT5}, {DCT8, DCT8}, {DCT8, DCT5}, {DCT5, DST4}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST4, DCT5}, {DST1, DST4}},
+            {{DCT5, DCT5}, {DCT8, DCT5}, {DST4, DCT5}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT8, DCT5}, {DST4, DCT5}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT8, DCT5}, {DST4, DCT5}, {DST4, DST4}},
+            {{DST4, DCT5}, {DCT8, DCT5}, {DCT5, DCT5}, {DST4, DST4}},
+            {{DST4, DCT5}, {DCT8, DCT5}, {DCT8, DST4}, {DST4, DST4}},
+            {{DST4, DCT5}, {DCT8, DCT5}, {DCT5, DCT5}, {DCT8, DST4}},
+            {{DCT5, DCT5}, {DCT8, DCT5}, {DST4, DCT5}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT8, DCT5}, {DST4, DCT5}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT8, DCT5}, {DST4, DCT5}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DST4, DST1}, {DST1, DST4}, {DST1, DST1}},
+            {{DCT5, DCT5}, {DST4, DCT8}, {DCT8, DCT8}, {DCT8, DST4}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST4, DST1}, {DST1, DST4}},
+            {{DCT5, DCT5}, {DST4, DCT8}, {DCT8, DCT8}, {DCT8, DST4}},
+            {{DCT5, DCT5}, {DST4, DST1}, {DST1, DST4}, {DST1, DST1}},
+            {{DCT5, DCT5}, {DCT8, DST4}, {DST4, DCT8}, {DCT8, DCT8}},
+            {{DCT5, DCT5}, {DST4, DCT5}, {DST1, DST1}, {DST1, DST4}},
+            {{DCT5, DCT5}, {DCT8, DCT5}, {DCT8, DCT8}, {DST4, DCT8}},
+            {{DCT5, DCT5}, {DST1, DST4}, {DST4, DST1}, {DST1, DST1}},
+            {{DCT5, DCT5}, {DCT8, DCT5}, {DCT8, DCT8}, {DST4, DCT8}},
+            {{DCT5, DCT5}, {DST1, DST4}, {DST4, DST1}, {DST1, DST1}},
+            {{DCT5, DCT5}, {DCT8, DCT8}, {DCT8, DST4}, {DST4, DCT8}},
+            {{DCT5, DCT5}, {DST4, DST1}, {DST1, DST4}, {DST1, DST1}},
+            {{DCT5, DCT5}, {DCT8, DCT8}, {DST4, DCT8}, {DCT8, DST4}},
+            {{DCT5, DCT5}, {DST4, DST1}, {DST1, DST4}, {DST1, DST1}},
+            {{DCT5, DCT5}, {DCT5, DCT8}, {DCT8, DCT8}, {DCT8, DST4}},
+            {{DCT5, DST4}, {DST4, DST1}, {DST1, DST1}, {DCT2, DCT5}},
+            {{DCT5, DST4}, {DCT8, DCT5}, {DST4, DCT8}, {DCT8, DCT8}},
+            {{DCT5, DCT5}, {DST1, DST4}, {DST1, DST1}, {DST4, DST1}},
+            {{DCT5, DCT5}, {DCT8, DCT5}, {DCT8, DCT8}, {DST4, DCT8}},
+            {{DCT5, DCT5}, {DST1, DST4}, {DST1, DST1}, {DST4, DST1}},
+            {{DCT5, DCT5}, {DCT8, DST4}, {DCT8, DCT8}, {DST4, DCT8}},
+            {{DCT5, DCT5}, {DST1, DST4}, {DST1, DST1}, {DST4, DST1}},
+            {{DCT5, DCT5}, {DCT5, DCT8}, {DCT5, DST4}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT5, DCT8}, {DCT5, DST4}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT5, DCT8}, {DCT5, DST4}, {DST4, DST4}},
+            {{DCT5, DST4}, {DCT5, DCT8}, {DST4, DCT5}, {DST4, DCT8}},
+            {{DCT5, DST4}, {DCT5, DCT8}, {DST4, DST4}, {DST4, DST1}},
+            {{DCT5, DST4}, {DCT5, DCT8}, {DCT5, DCT5}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT5, DCT8}, {DCT5, DST4}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT5, DCT8}, {DCT5, DST4}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT5, DCT8}, {DCT5, DST4}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT5, DST4}, {DST1, DST1}, {DST4, DST1}},
+            {{DCT5, DST4}, {DCT8, DCT8}, {DCT5, DCT8}, {DST4, DCT5}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST4, DST4}, {DST4, DST1}},
+            {{DCT5, DCT5}, {DCT8, DCT8}, {DCT5, DCT8}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST4, DST4}, {DST4, DST1}},
+            {{DCT5, DCT5}, {DCT8, DCT8}, {DST4, DST4}, {DCT5, DCT8}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DST1, DST1}, {DST1, DST4}},
+            {{DCT5, DCT5}, {DCT8, DCT8}, {DCT8, DCT5}, {DST4, DST4}},
+            {{DST4, DST4}, {DCT5, DCT2}, {DST1, DST1}, {DST1, DST4}},
+            {{DCT2, DCT5}, {DST4, DST4}, {DCT8, DCT8}, {DCT5, DCT8}},
+            {{DST4, DST4}, {DST1, DST1}, {DCT5, DCT5}, {DST1, DST4}},
+            {{DCT5, DCT5}, {DCT8, DCT8}, {DST4, DST4}, {DCT8, DCT5}},
+        },
+        
+        {
+            {{DCT5, DCT5}, {DST4, DCT5}, {DCT5, DST4}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST1, DST4}, {DST4, DST1}},
+            {{DCT5, DCT5}, {DCT8, DCT8}, {DCT8, DST4}, {DCT5, DCT8}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST1, DST4}, {DST4, DST1}},
+            {{DCT5, DCT5}, {DCT8, DCT8}, {DCT8, DST4}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST1, DST4}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT8, DCT8}, {DCT8, DST4}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST1, DST4}, {DST4, DST1}},
+            {{DCT5, DCT5}, {DCT8, DCT8}, {DCT8, DST4}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST1, DST4}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT8, DST4}, {DCT8, DCT8}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST1, DST4}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT8, DST4}, {DST4, DST4}, {DCT8, DCT8}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST1, DST4}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT8, DCT5}, {DCT8, DST4}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT8, DCT5}, {DCT8, DST4}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT8, DCT5}, {DCT8, DST4}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT8, DCT5}, {DCT8, DST4}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT8, DCT5}, {DCT8, DST4}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT8, DCT5}, {DCT8, DST4}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT8, DCT5}, {DCT8, DST4}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT8, DCT5}, {DCT8, DST4}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT8, DCT5}, {DCT8, DST4}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DST1, DST4}, {DST1, DST1}, {DST4, DST1}},
+            {{DCT5, DCT5}, {DCT8, DST4}, {DCT8, DCT8}, {DST4, DCT8}},
+            {{DCT5, DCT5}, {DST1, DST4}, {DST1, DST1}, {DST4, DST1}},
+            {{DCT5, DCT5}, {DCT8, DST4}, {DCT8, DCT8}, {DST4, DCT8}},
+            {{DCT5, DCT5}, {DST1, DST4}, {DST1, DST1}, {DST4, DST1}},
+            {{DCT5, DCT5}, {DCT8, DST4}, {DCT8, DCT8}, {DST4, DCT8}},
+            {{DST4, DCT5}, {DST1, DST1}, {DST1, DST4}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT8, DST4}, {DST4, DCT8}, {DCT8, DCT8}},
+            {{DCT5, DCT5}, {DST1, DST4}, {DST1, DST1}, {DST4, DST1}},
+            {{DCT5, DCT5}, {DCT8, DST4}, {DST4, DCT8}, {DCT8, DCT8}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST1, DST4}, {DST4, DST1}},
+            {{DCT5, DCT5}, {DCT8, DCT8}, {DCT8, DST4}, {DST4, DCT8}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST4, DST1}, {DST1, DST4}},
+            {{DCT5, DCT5}, {DCT8, DST4}, {DST4, DCT8}, {DST1, DST1}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST4, DST1}, {DST1, DST4}},
+            {{DCT5, DCT5}, {DST4, DCT8}, {DCT8, DST4}, {DCT8, DCT8}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST4, DST1}, {DST1, DST4}},
+            {{DCT5, DCT5}, {DST4, DCT8}, {DCT8, DST4}, {DCT8, DCT8}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST4, DST1}, {DST1, DST4}},
+            {{DCT5, DCT5}, {DST4, DCT8}, {DCT8, DCT8}, {DCT8, DST4}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST4, DST1}, {DST1, DST4}},
+            {{DCT5, DCT5}, {DST4, DCT8}, {DCT8, DCT8}, {DCT8, DST4}},
+            {{DCT5, DCT5}, {DST4, DST1}, {DST1, DST1}, {DST1, DST4}},
+            {{DCT5, DCT5}, {DCT5, DCT8}, {DST4, DCT8}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT5, DCT8}, {DST4, DCT8}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT5, DCT8}, {DST4, DCT8}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT5, DST4}, {DCT5, DCT8}, {DST4, DCT8}},
+            {{DCT5, DCT5}, {DCT5, DCT8}, {DCT5, DST4}, {DST4, DCT8}},
+            {{DCT5, DCT5}, {DCT5, DST4}, {DCT5, DCT8}, {DST4, DCT8}},
+            {{DCT5, DCT5}, {DCT5, DCT8}, {DST4, DST4}, {DST4, DCT8}},
+            {{DCT5, DCT5}, {DCT5, DCT8}, {DST4, DCT8}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT5, DCT8}, {DST4, DCT8}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST4, DST1}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DST4, DCT8}, {DCT8, DCT8}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST4, DST1}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT8, DCT8}, {DST4, DCT8}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST4, DST1}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT8, DCT8}, {DST4, DCT8}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST4, DST1}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT8, DCT8}, {DST4, DCT8}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST4, DST1}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT8, DCT8}, {DST4, DST4}, {DST1, DST1}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST4, DST1}, {DST1, DST4}},
+            {{DCT5, DCT5}, {DCT8, DCT8}, {DST4, DCT8}, {DCT8, DST4}},
+        },
+        
+        {
+            {{DCT5, DCT5}, {DCT5, DST4}, {DST4, DCT5}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST1, DST4}, {DST4, DST1}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT8, DST4}, {DCT8, DCT8}},
+            {{DCT5, DCT5}, {DST1, DST4}, {DST1, DST1}, {DST4, DST1}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT8, DST4}, {DCT8, DCT8}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST1, DST4}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT8, DST4}, {DCT8, DCT8}},
+            {{DCT5, DCT5}, {DST1, DST4}, {DST1, DST1}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT8, DST4}, {DCT8, DCT8}},
+            {{DCT5, DCT5}, {DST1, DST4}, {DST4, DST4}, {DST1, DST1}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT8, DST4}, {DCT8, DCT8}},
+            {{DCT5, DCT5}, {DST1, DST4}, {DST4, DST4}, {DST1, DST1}},
+            {{DCT5, DCT5}, {DCT8, DST4}, {DST4, DST4}, {DCT8, DCT5}},
+            {{DCT5, DCT5}, {DST1, DST4}, {DST4, DST4}, {DST1, DST1}},
+            {{DCT5, DCT5}, {DCT8, DCT5}, {DCT8, DST4}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT8, DCT5}, {DCT8, DST4}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT8, DCT5}, {DST4, DST4}, {DCT8, DST4}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT8, DST4}, {DCT8, DCT5}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT8, DCT5}, {DCT8, DST4}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT8, DST4}, {DCT8, DCT5}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT8, DST4}, {DCT8, DCT5}},
+            {{DCT5, DCT5}, {DCT8, DCT5}, {DCT8, DST4}, {DST4, DST4}},
+            {{DCT5, DCT5}, {DCT8, DCT5}, {DST4, DST4}, {DCT8, DST4}},
+            {{DCT5, DCT5}, {DST1, DST4}, {DST4, DST4}, {DST1, DST1}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT8, DST4}, {DST1, DCT5}},
+            {{DCT5, DCT5}, {DST1, DST4}, {DST4, DST4}, {DST1, DST1}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT8, DST4}, {DST1, DCT5}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DST1, DST4}, {DST1, DST1}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT8, DST4}, {DST4, DCT8}},
+            {{DST4, DCT5}, {DCT5, DST4}, {DST1, DST4}, {DST1, DST1}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT8, DST4}, {DST4, DCT8}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DST1, DST4}, {DST1, DST1}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT8, DST4}, {DST4, DCT8}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DST1, DST4}, {DST1, DST1}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT8, DST4}, {DST4, DCT8}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DST1, DST4}, {DST4, DST1}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT8, DST4}, {DST4, DCT8}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DST4, DST1}, {DST1, DST4}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT8, DST4}, {DST4, DCT8}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DST4, DST1}, {DST1, DST1}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DST4, DCT8}, {DCT8, DST4}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DST4, DST1}, {DST1, DST1}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DST4, DCT8}, {DCT8, DST4}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DST4, DST1}, {DST1, DST1}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DST4, DCT8}, {DCT8, DCT8}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DST4, DST1}, {DST1, DST1}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT5, DCT8}, {DST4, DCT8}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT5, DCT8}, {DST4, DCT8}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT5, DCT8}, {DST4, DCT8}},
+            {{DCT5, DCT5}, {DCT5, DST4}, {DST4, DST4}, {DST4, DCT8}},
+            {{DCT5, DCT5}, {DCT5, DST4}, {DST4, DST4}, {DCT5, DCT8}},
+            {{DCT5, DCT5}, {DCT5, DST4}, {DST4, DST4}, {DST4, DCT8}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT5, DCT8}, {DST4, DCT8}},
+            {{DCT5, DCT5}, {DCT5, DCT8}, {DST4, DST4}, {DST4, DCT8}},
+            {{DCT5, DCT5}, {DCT5, DCT8}, {DST4, DST4}, {DST4, DCT8}},
+            {{DCT5, DCT5}, {DST4, DST1}, {DST4, DST4}, {DST1, DST1}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DST4, DCT8}, {DCT8, DCT8}},
+            {{DCT5, DCT5}, {DST4, DST1}, {DST4, DST4}, {DST1, DST1}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DST4, DCT8}, {DCT8, DCT8}},
+            {{DCT5, DCT5}, {DST4, DST1}, {DST4, DST4}, {DST1, DST1}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DST4, DCT8}, {DCT8, DCT8}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST4, DST4}, {DST4, DST1}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT8, DCT8}, {DST4, DCT8}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST4, DST4}, {DST4, DST1}},
+            {{DCT5, DCT5}, {DST4, DCT5}, {DST4, DST4}, {DCT8, DCT8}},
+            {{DCT5, DCT5}, {DST1, DST1}, {DST4, DST1}, {DST1, DST4}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT8, DCT8}, {DST4, DCT8}},
+            
+        },
+        
+        {
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT5, DST4}, {DST4, DCT5}},
+            {{DST4, DST4}, {DST1, DST4}, {DST4, DST1}, {DST1, DST1}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT5, DST4}, {DCT8, DST4}},
+            {{DST4, DST4}, {DCT5, DCT5}, {DST1, DST4}, {DST1, DST1}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT5, DST4}, {DCT8, DST4}},
+            {{DST4, DST4}, {DCT5, DST4}, {DCT5, DCT5}, {DST1, DST4}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT5, DST4}, {DCT8, DST4}},
+            {{DST4, DST4}, {DCT5, DCT5}, {DST1, DST4}, {DST1, DST1}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT5, DST4}, {DCT8, DST4}},
+            {{DST4, DST4}, {DCT5, DCT5}, {DST1, DST4}, {DST1, DST1}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT5, DST4}, {DCT8, DST4}},
+            {{DST4, DST4}, {DST1, DST4}, {DCT5, DCT5}, {DST1, DST1}},
+            {{DCT2, DCT5}, {DST4, DST4}, {DCT5, DST4}, {DCT8, DST4}},
+            {{DST4, DST4}, {DCT5, DST4}, {DST1, DST4}, {DST1, DCT5}},
+            {{DCT2, DCT5}, {DST4, DST4}, {DCT5, DST4}, {DCT8, DST4}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT8, DST4}, {DCT8, DCT5}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT8, DST4}, {DCT8, DCT5}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT8, DST4}, {DCT8, DCT5}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT8, DST4}, {DST4, DCT5}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT8, DST4}, {DCT8, DCT5}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT8, DST4}, {DST1, DST4}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT8, DST4}, {DST1, DST4}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DST4, DCT5}, {DCT8, DST4}},
+            {{DST4, DCT5}, {DST4, DST4}, {DST1, DST4}, {DCT5, DST4}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT5, DST4}, {DCT8, DST4}},
+            {{DST4, DST4}, {DST1, DST4}, {DCT5, DST4}, {DST4, DCT5}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT5, DST4}, {DCT8, DST4}},
+            {{DST4, DST4}, {DST1, DST4}, {DCT5, DCT5}, {DST1, DST1}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DST4, DCT5}, {DCT8, DST4}},
+            {{DST4, DST4}, {DST4, DCT5}, {DCT5, DST4}, {DST1, DST4}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT5, DST4}, {DST4, DCT5}},
+            {{DST4, DST4}, {DST4, DCT5}, {DCT5, DCT5}, {DST1, DST4}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DST4, DCT5}, {DCT2, DST4}},
+            {{DST4, DST4}, {DCT5, DCT5}, {DST1, DST4}, {DST4, DST1}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT5, DST4}, {DST4, DCT5}},
+            {{DST4, DST4}, {DCT5, DCT5}, {DST1, DST4}, {DST4, DST1}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT5, DST4}, {DST4, DCT5}},
+            {{DST4, DST4}, {DCT5, DCT5}, {DST4, DST1}, {DST1, DST4}},
+            {{DCT5, DST4}, {DST4, DST4}, {DST4, DCT5}, {DST4, DCT8}},
+            {{DST4, DST4}, {DCT5, DST4}, {DST4, DCT5}, {DST4, DST1}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DST4, DCT5}, {DCT5, DST4}},
+            {{DST4, DST4}, {DCT5, DST4}, {DST4, DCT5}, {DST4, DST1}},
+            {{DCT5, DST4}, {DST4, DST4}, {DST4, DCT5}, {DST4, DCT8}},
+            {{DST4, DST4}, {DST4, DCT5}, {DCT5, DST4}, {DST4, DST1}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DST4, DCT5}, {DCT5, DST4}},
+            {{DST4, DST4}, {DST4, DST1}, {DST4, DCT5}, {DCT5, DST4}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT5, DST4}, {DST4, DCT8}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT5, DST4}, {DST4, DCT8}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT5, DST4}, {DST4, DCT8}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT5, DST4}, {DST4, DCT8}},
+            {{DCT5, DCT5}, {DCT5, DST4}, {DST4, DST4}, {DST4, DCT8}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DCT5, DST4}, {DST4, DCT8}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DST4, DCT8}, {DCT5, DCT8}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DST4, DCT8}, {DCT5, DCT8}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DST4, DCT2}, {DST4, DCT8}},
+            {{DST4, DST4}, {DST4, DST1}, {DST4, DCT5}, {DCT5, DCT5}},
+            {{DCT5, DCT2}, {DST4, DST4}, {DST4, DCT5}, {DST4, DCT8}},
+            {{DST4, DST4}, {DST4, DCT5}, {DST4, DST1}, {DCT5, DCT5}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DST4, DCT5}, {DST4, DCT8}},
+            {{DST4, DST4}, {DST4, DCT5}, {DCT5, DCT5}, {DST4, DST1}},
+            {{DST4, DCT5}, {DST4, DST4}, {DCT5, DCT5}, {DCT5, DCT8}},
+            {{DST4, DST4}, {DST4, DCT5}, {DCT5, DCT5}, {DST4, DST1}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DST4, DCT5}, {DST4, DCT8}},
+            {{DST4, DST4}, {DST4, DCT5}, {DCT5, DCT5}, {DST1, DST1}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DST4, DCT5}, {DCT5, DST4}},
+            {{DST4, DST4}, {DST4, DCT5}, {DCT5, DCT5}, {DST1, DST1}},
+            {{DCT5, DCT5}, {DST4, DST4}, {DST4, DCT5}, {DCT2, DST4}},
+        },
+    };
+#else
+    const UChar g_aucIpmToTrSet[5][35] =
+    {
+  //0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34
+  { 0, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3 },
+  { 1, 2, 5, 5, 5, 5, 5, 5, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5 },
+  { 1, 2, 6, 6, 6, 6, 6, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6 },
+  { 1, 2, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6 },
+  { 1, 2, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6 },
+    };
+    const UChar g_aucTrSet[7][4][2] =
+    {
+  { {DST4, DST4}, {DST7, DST7}, {DST4, DCT8}, {DCT8, DST4} }, // 0
+  { {DST7, DST7}, {DST7, DCT5}, {DCT5, DST7}, {DST1, DCT5} }, // 1
+  { {DST7, DST7}, {DST7, DCT8}, {DCT8, DST7}, {DCT5, DCT5} }, // 2
+  { {DST4, DST4}, {DST4, DCT5}, {DCT8, DST4}, {DST1, DST7} }, // 3
+  { {DST4, DST7}, {DST7, DCT5}, {DCT8, DST7}, {DST1, DST7} }, // 4
+  { {DST7, DST7}, {DST7, DCT5}, {DCT8, DST7}, {DST1, DST7} }, // 5
+  { {DST7, DST7}, {DST7, DCT5}, {DCT5, DST7}, {DST1, DST7} }, // 6
+    };
+    const Int g_aiIdLut[3][3] = 
+    {
+  {8, 6, 4}, {8, 8, 6}, {4, 2, -1}
+    };
+#endif // EE2_Q
+#endif
+#endif
+    Int g_aiTrSubsetIntra[3][2] = { {DST7, DCT8}, {DST7, DST1}, {DST7, DCT5} };
+    Int g_aiTrSubsetInter   [4] =   {DCT8, DST7};
 
 #if VCEG_AZ07_INTRA_65ANG_MODES
 const UChar g_aucTrSetVert[NUM_INTRA_MODE-1] =
