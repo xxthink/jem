@@ -147,6 +147,33 @@
 
 #define COM16_C806_EMT                                    1  ///< Explicit multiple core transform
 
+#if COM16_C806_EMT
+#define C0022_MODIF_EMT                                   1
+
+#ifndef EE2_Q1
+#define EE2_Q1                                              0
+#endif
+
+#ifndef EE2_Q2
+#define EE2_Q2                                            0
+#endif
+
+#ifndef EE2_Q3 // Also implements EE2_Q5
+#define EE2_Q3                                            1
+#endif
+
+#ifndef EE2_Q4
+#define EE2_Q4                                            0
+#endif
+
+
+#if JVET_C0024_QTBT
+#define C0022_MINCUSIZE                                   4  ///< Minimum CU size on which modified EMT are applied
+#define C0022_MAXCUSIZE                                   32  ///< Maximum CU size on which modified EMT are applied
+
+#endif
+#endif
+
 #define COM16_C806_T64                                    1  ///< 64x64 transform
 
 #if COM16_C806_EMT || COM16_C806_T64
@@ -682,7 +709,11 @@ enum COEFF_SCAN_TYPE
 #if COM16_C806_EMT || COM16_C806_T64
 enum TRANS_TYPE
 {
-  DCT2, DCT5, DCT8, DST1, DST7, NUM_TRANS_TYPE,
+  DCT2, DCT5, DCT8, DST1, DST7,
+#if C0022_MODIF_EMT
+    DST4, ID,
+#endif
+  NUM_TRANS_TYPE,
   DCT2_HEVC, DCT2_EMT
 };
 #endif
