@@ -966,6 +966,13 @@ Void TEncSbac::codeROTIdxChroma ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDep
     && !pcCU->getCUTransquantBypass(uiAbsPartIdx)
     )  iNumberOfPassesROT = 4;
 
+#if COM16_C806_LMCHROMA && JVET_C0053_C0063_NSST_LM
+  if( iNumberOfPassesROT!=1 && pcCU->getIntraDir( CHANNEL_TYPE_CHROMA, uiAbsPartIdx ) == LM_CHROMA_IDX )
+  {
+    iNumberOfPassesROT = 1;
+  }
+#endif
+
 #if COM16_C1044_NSST
   if( iNumberOfPassesROT==4 )
   {
