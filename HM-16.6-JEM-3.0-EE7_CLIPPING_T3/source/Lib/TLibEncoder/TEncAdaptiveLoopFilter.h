@@ -223,6 +223,7 @@ public:
                                      ,imgpel* ImgOrg, imgpel* ImgDec, Int Stride, Bool* forceCoeff0, Double errorForce0CoeffTab[m_NO_VAR_BINS][2], Char* usePrevFiltBest, Bool*  codedVarBins, Int sqrFiltLength, Int fl );
   Void xfindBestFilterVarPred(Double **ySym, Double ***ESym, Int filtNo, Int *filters_per_fr_best, imgpel *imgY_rec,                               
                                imgpel *imgY_pad, Double lambda_val, const TComSlice * pSlice, imgpel* ImgOrg, Int Stride, Double **y_temp);
+
   Int  xFilterPixel(imgpel *imgY_rec, Int* varIndBeforeMapping,  Int **filterCoeffSym, Int *pattern, Int i, Int j, Int fl, Int Stride, Int filtNo);
   UInt xcodeFiltCoeff(Int **filterCoeffSymQuant, Int filtNo, Int varIndTab[], Int filters_per_fr_best, Int frNo, ALFParam* ALFp, const TComSlice * pSlice, Char PrevFiltIdx[], Bool forcedCoeff0, Bool codedVarBins[]);
   Double xTestFixedFilterFast(Double ***A, Double **b, Double *pixAcc, Double *filterCoeffSym, Double *filterCoeffDefault, Int varInd);

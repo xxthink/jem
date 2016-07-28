@@ -6978,7 +6978,9 @@ Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,
             invTransformNxN(rTu, compID, pResi, uiStride, pcCoeff, cQP, useKLT DEBUG_STRING_PASS_INTO(psDebug));
             if (compID == COMPONENT_Y)
             {
+#if !EE7_ADAPTIVE_CLIP
                 const Int clipbd = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
+#endif
 #if O0043_BEST_EFFORT_DECODING
                 const Int bitDepthDelta = pcCU->getSlice()->getSPS()->getStreamBitDepth(toChannelType(compID)) - clipbd;
 #endif
@@ -6997,7 +6999,11 @@ Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,
 #if O0043_BEST_EFFORT_DECODING
                         piReco[uiX] = ClipBD(rightShiftEvenRounding<Pel>(piPred[uiX] + piResi[uiX], bitDepthDelta), clipbd);
 #else
+#if EE7_ADAPTIVE_CLIP
+                        piReco[uiX] = ClipA(piPred[uiX] + piResi[uiX], compID);
+#else
                         piReco[uiX] = ClipBD(piPred[uiX] + piResi[uiX], clipbd);
+#endif
 #endif
 
                     }

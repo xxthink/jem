@@ -52,6 +52,227 @@
 #include <deque>
 using namespace std;
 
+#if EE7_ADAPTIVE_CLIP
+namespace {
+// simulate a coding decoding of the Intra(intrinsic) prms: to be sync with real encoding
+Bound encodeDecodeBoundIntra(Bound b,Int n,Int bd) {
+    b.m=b.m-0;
+    b.m>>=TchClipParam::cquantiz;
+    b.m=std::min((1<<(n-TchClipParam::cquantiz))-1,b.m);
+    b.m<<=TchClipParam::cquantiz;
+    b.m=Clip3(0,(1<<bd)-1,b.m);
+
+    b.M=(1<<bd)-b.M; //  to have exact coding in 10bits mode
+    b.M>>=TchClipParam::cquantiz;
+    b.M=std::min((1<<(n-TchClipParam::cquantiz))-1,b.M);
+    b.M<<=TchClipParam::cquantiz;
+    b.M=(1<<bd)-b.M;
+    b.M=Clip3(0,(1<<bd)-1,b.M);
+
+    return b;
+}
+
+TchClipParam encodeDecodeClipPrmIntra(const TchClipParam &prm) {
+    TchClipParam prm2;
+
+    prm2.isActive=prm.isActive;
+    prm2.isChromaActive=prm.isChromaActive;
+    prm2.intratype=true;
+    prm2.Y()=encodeDecodeBoundIntra(prm.Y(),TchClipParam::nbBitsY,TchClipParam::ibdLuma);
+    prm2.U()=encodeDecodeBoundIntra(prm.U(),TchClipParam::nbBitsUV,TchClipParam::ibdChroma);
+    prm2.V()=encodeDecodeBoundIntra(prm.V(),TchClipParam::nbBitsUV,TchClipParam::ibdChroma);
+
+    return prm2;
+}
+
+Bound encodeBoundInter(Bound b,const Bound &ref,Int bd) {
+    const Int roundUp=(1<<TchClipParam::cquantiz)-1;
+
+    Int x=b.m-ref.m;
+    Int sign=(x<0)?-1:1;
+    x=abs(x);
+    if (sign==1) x>>=TchClipParam::cquantiz;
+    else         x=(x+roundUp)>>TchClipParam::cquantiz;
+    b.m=x*sign;
+
+    x=b.M-ref.M;
+    sign=(x<0)?-1:1;
+    x=abs(x);
+    if (sign==-1) x>>=TchClipParam::cquantiz;
+    else          x=(x+roundUp)>>TchClipParam::cquantiz;
+    b.M=x*sign;
+
+    return b;
+}
+
+Bound decodeBoundInter(Bound b,const Bound &ref,Int bd) {
+
+    b.m<<=TchClipParam::cquantiz;
+    b.m+=ref.m;
+    b.m=Clip3(0,(1<<bd)-1,b.m);
+
+    b.M<<=TchClipParam::cquantiz;
+    b.M+=ref.M;
+    b.M=Clip3(0,(1<<bd)-1,b.M);
+
+    return b;
+}
+
+
+TchClipParam encodeClipPrmInter(const TchClipParam &prm,const TchClipParam &prmintra) {
+    TchClipParam prm2;
+
+    prm2.isActive=prm.isActive;
+    prm2.isChromaActive=prm.isChromaActive;
+    prm2.intratype=false;
+    prm2.Y()=encodeBoundInter(prm.Y(),prmintra.Y(),TchClipParam::ibdLuma);
+    prm2.U()=encodeBoundInter(prm.U(),prmintra.U(),TchClipParam::ibdChroma);
+    prm2.V()=encodeBoundInter(prm.V(),prmintra.V(),TchClipParam::ibdChroma);
+
+    return prm2;
+}
+
+TchClipParam decodeClipPrmInter(const TchClipParam &prm,const TchClipParam &prmintra) {
+    TchClipParam prm2;
+
+    prm2.isActive=prm.isActive;
+    prm2.isChromaActive=prm.isChromaActive;
+    prm2.intratype=false;
+    prm2.Y()=decodeBoundInter(prm.Y(),prmintra.Y(),TchClipParam::ibdLuma);
+    prm2.U()=decodeBoundInter(prm.U(),prmintra.U(),TchClipParam::ibdChroma);
+    prm2.V()=decodeBoundInter(prm.V(),prmintra.V(),TchClipParam::ibdChroma);
+
+    return prm2;
+}
+
+
+TchClipParam encodeDecodeClipPrmInter(const TchClipParam &prm,const TchClipParam &prmintra) { return decodeClipPrmInter(encodeClipPrmInter(prm,prmintra),prmintra); }
+
+
+Int vlcCost(Int x) {
+   UInt uiCode=( x<= 0) ? -x<<1 : (x<<1)-1;
+   UInt uiLength = 1;
+   UInt uiTemp = ++uiCode;
+
+   while( 1 != uiTemp )
+   {
+     uiTemp >>= 1;
+     uiLength += 2;
+   }
+   return (uiLength >> 1)+((uiLength+1) >> 1);
+}
+
+// return delta cost luma, delta cost chroma
+std::pair<Int,Int> deltaCodingCost(const TchClipParam &prm,const TchClipParam &prmintra,bool sliceintra) {
+    std::pair<Int,Int> cost(0,0);
+    cost.first+=1; // flag on/off
+
+    if (prm.intratype) { // fixed length
+        if (!sliceintra) cost.first+=1; // intra flag
+        cost.first+=(TchClipParam::nbBitsY -TchClipParam::cquantiz)*2; // Y:m and M
+        cost.first+=1;
+        cost.second+=(TchClipParam::nbBitsUV-TchClipParam::cquantiz)*2*2; // U V: m and M
+    } else {
+        cost.first+=1; // intra flag
+        TchClipParam prm2=encodeClipPrmInter(prm,prmintra);
+
+        cost.first+=vlcCost(prm2.Y().m);
+        cost.first+=vlcCost(prm2.Y().M);
+        cost.first+=1;
+        cost.second+=vlcCost(prm2.U().m);
+        cost.second+=vlcCost(prm2.U().M);
+        cost.second+=vlcCost(prm2.V().m);
+        cost.second+=vlcCost(prm2.V().M);
+    }
+    // cost off=1
+    cost.first-=1;
+
+    return cost;
+}
+
+TchClipParam codingChoice(const TchClipParam &prm_tocode,
+                          const TchClipParam &prm_ref,
+                          Int tbd,
+                          Int delta_disto_luma,Int delta_disto_chroma
+                          ,Double lambda_luma,Double lambda_chroma
+                          )
+{
+    TchClipParam prm[2];
+    std::pair<Int,Int> dR[2]; // delta cost
+
+    // intra coding
+    prm[0]=encodeDecodeClipPrmIntra(prm_tocode);
+    dR[0]=deltaCodingCost(prm[0],prm_ref,tbd==-1);
+
+    if (tbd==-1 || !prm_ref.isActive) // if intra slice or never coded
+    {
+        // no second choices
+        dR[1].first =dR[0].first+1;
+        dR[1].second=dR[0].second+1;
+    } else {
+        // second choices as inter
+        prm[1]=encodeDecodeClipPrmInter(prm_tocode,prm_ref);
+        dR[1]=deltaCodingCost(prm[1],prm_ref,false);
+    }
+
+    int best_choice;
+
+    const double lambda_coef=2.;
+    // chroma are set for L2 norm -> use sqrt to correct for L0/L1
+    lambda_luma=lambda_coef*sqrt(lambda_luma);
+    lambda_chroma=lambda_coef*sqrt(lambda_chroma);
+
+    // then rdo
+    // D_on+lamda*R_on < D_off+lamda*R_off -> (D_on-D_off)+lambda*dR<0 -> -dD + lambda * dR <0
+
+    // only luma 0
+    best_choice=0;
+    Bool best_chroma=false;
+    Double best_rd  =-delta_disto_luma  +lambda_luma   *dR[0].first;
+
+    // add chroma
+    Double rd=-delta_disto_luma  +lambda_luma   *dR[0].first-delta_disto_chroma+lambda_chroma*dR[0].second;
+    if (rd<best_rd) {
+        best_rd=rd;
+        best_chroma=true;
+    }
+    // luma 1
+    rd=-delta_disto_luma  +lambda_luma   *dR[1].first;
+    if (rd<best_rd) {
+        best_rd=rd;
+        best_choice=1;
+        best_chroma=false;
+    }
+    // luma1 +chroma1
+    rd=-delta_disto_luma  +lambda_luma   *dR[1].first-delta_disto_chroma+lambda_chroma*dR[1].second;
+    if (rd<best_rd) {
+        best_rd=rd;
+        best_choice=1;
+        best_chroma=true;
+    }
+
+    if (best_rd>0.) {
+        prm[best_choice].isActive=false;
+    } else {
+        prm[best_choice].isChromaActive=best_chroma;
+        if (!best_chroma) { // replace chroma by value of the ref
+            if (best_choice==0) { // intra -> default bounds
+                prm[best_choice].U().m=0; prm[best_choice].U().M=(1<<TchClipParam::ibdChroma)-1;
+                prm[best_choice].V()=prm[best_choice].U();
+            } else {
+                prm[best_choice].U()=prm_ref.U();
+                prm[best_choice].V()=prm_ref.V();
+            }
+        }
+    }
+
+   return prm[best_choice];
+
+}
+
+
+}
+#endif
 //! \ingroup TLibEncoder
 //! \{
 
@@ -1543,6 +1764,40 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     }
 #endif
 
+#if EE7_ADAPTIVE_CLIP
+  // set adaptive clipping bounds for current slice
+  if (m_pcCfg->getTchClipParam().isActive ) {
+
+    Int tbd;
+    if (pcSlice->getSliceType() == I_SLICE) tbd=-1;
+    else                                    tbd=pcSlice->getDepth();
+    Int delta_disto_luma,delta_disto_chroma;
+    TchClipParam prm=pcPic->computeTchClipParam(delta_disto_luma,delta_disto_chroma);
+    const TchClipParam prmRef=pcSlice->getClipPrmRef();
+
+    prm=codingChoice(prm,prmRef,tbd,
+                     delta_disto_luma,delta_disto_chroma
+                     ,pcPic->getSlice(0)->getLambdas()[0],pcPic->getSlice(0)->getLambdas()[1]);
+    if (prm.isActive) {
+        pcPic->m_aclip_prm     = prm;
+        pcPic->m_aclip_prm_ref = prmRef;
+    } else {
+        setOff(pcPic->m_aclip_prm);
+        pcPic->m_aclip_prm_ref.isActive   =false;  // just in case
+    }
+  } else {
+      setOff(pcPic->m_aclip_prm); // OFF with defaults val
+      pcPic->m_aclip_prm_ref.isActive=false; // just in case
+  }
+#if EE7_ADAPTIVE_CLIP_TEST3
+  setOff(g_TchClipParam); // set the global for access from clipBD
+#else
+  g_TchClipParam =pcPic->m_aclip_prm; // set the global for access from clipBD
+#endif
+  // DEBUG
+  // END
+
+#endif
     // now compress (trial encode) the various slice segments (slices, and dependent slices)
     {
       const UInt numberOfCtusInFrame=pcPic->getPicSym()->getNumberOfCtusInFrame();
@@ -2222,14 +2477,26 @@ Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const Acces
     const Int   iHeight = pcPicD->getHeight(ch) - ((m_pcEncTop->getPad(1) >> (pcPic->isField()?1:0)) >> pcPic->getComponentScaleY(ch));
 
     Int   iSize   = iWidth*iHeight;
-
+#if EE7_ADAPTIVE_CLIP_TEST3
+    int m=0,M=1023;
+    if (pcPic->m_aclip_prm.isActive) {
+        if (chan==0) { m=pcPic->m_aclip_prm.Y().m; M=pcPic->m_aclip_prm.Y().M; }
+        if (chan==1) { m=pcPic->m_aclip_prm.U().m; M=pcPic->m_aclip_prm.U().M; }
+        if (chan==2) { m=pcPic->m_aclip_prm.V().m; M=pcPic->m_aclip_prm.V().M; }
+    }
+#endif
     UInt64 uiSSDtemp=0;
     for(Int y = 0; y < iHeight; y++ )
     {
       for(Int x = 0; x < iWidth; x++ )
       {
-        Intermediate_Int iDiff = (Intermediate_Int)( pOrg[x] - pRec[x] );
-        uiSSDtemp   += iDiff * iDiff;
+#if EE7_ADAPTIVE_CLIP_TEST3
+          const Int xx=Clip3(m,M,(int)pRec[x]);
+          Intermediate_Int iDiff = (Intermediate_Int)( pOrg[x] - xx );
+#else
+          Intermediate_Int iDiff = (Intermediate_Int)( pOrg[x] - pRec[x] );
+#endif
+          uiSSDtemp   += iDiff * iDiff;
       }
       pOrg += iOrgStride;
       pRec += iRecStride;

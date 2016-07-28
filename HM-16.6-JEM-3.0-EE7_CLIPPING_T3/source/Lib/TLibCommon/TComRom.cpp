@@ -1762,6 +1762,14 @@ const UInt g_scalingListSizeX  [SCALING_LIST_SIZE_NUM] = { 4, 8, 16,  32
 };
 #endif
 
+#if EE7_ADAPTIVE_CLIP
+TchClipParam g_TchClipParam;
+Int TchClipParam::nbBitsY;
+Int TchClipParam::nbBitsUV;
+Int TchClipParam::ibdLuma;
+Int TchClipParam::ibdChroma;
+Int TchClipParam::cquantiz;
+#endif
 #if COM16_C1046_PDPC_INTRA
 #if JVET_C0024_QTBT // lossless change, just remove unused entries from the table
 const Int g_pdpc_pred_param[5][35][6] = {
