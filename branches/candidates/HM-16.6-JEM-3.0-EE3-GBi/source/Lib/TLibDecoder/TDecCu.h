@@ -93,6 +93,9 @@ private:
   TComMvField*        m_pMvFieldSP[2];
   UChar*              m_phInterDirSP[2];
 #endif
+#if IDCC_GENERALIZED_BI_PRED
+  UChar*              m_phGbiIdxSP;
+#endif
 #endif
 
 public:

@@ -128,6 +128,9 @@ private:
   TComMvField   * m_pMvFieldSP[2];
   UChar         * m_phInterDirSP[2];
 #endif
+#if IDCC_GENERALIZED_BI_PRED
+  UChar         * m_puhGbiIdxSP_srch;
+#endif
 #endif
 #if VCEG_AZ07_FRUC_MERGE
   TComMvField   * m_pMvFieldFRUC;
@@ -151,6 +154,10 @@ private:
   Double*         m_tmpDerivate[2];
 #endif
 
+#if IDCC_GENERALIZED_BI_PRED
+  UInt                     m_auiEstWeightIdxBits[GBI_NUM];
+  TComUniMotionParameters  m_cUniMotions;
+#endif
 protected:
   // interface to option
   TEncCfg*        m_pcEncCfg;
@@ -501,6 +508,9 @@ protected:
                                     TComMvField* cMvFieldNeighbours,
                                     UChar*       uhInterDirNeighbours,
                                     Int&         numValidMergeCand
+#if IDCC_GENERALIZED_BI_PRED
+                                    , UChar*       puhGbiIdx
+#endif
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
                                   , UChar*      pMergeTypeNeighbor
 #if JVET_C0035_ATMVP_SIMPLIFICATION
@@ -509,6 +519,9 @@ protected:
 #else
                                   , TComMvField*    pcMvFieldSP[2]
                                   , UChar*          puhInterDirSP[2]
+#endif
+#if IDCC_GENERALIZED_BI_PRED
+                                  , UChar*          puhGbiIdxSP
 #endif
 #endif
                                    );
@@ -611,7 +624,13 @@ protected:
                                   Int         iPartIdx,
                                   UInt&       ruiLastMode,
                                   Distortion& ruiAffineCost,
-                                  TComMv      cHevcMv[2][33] );
+                                  TComMv      cHevcMv[2][33] 
+#if IDCC_GENERALIZED_BI_PRED
+                                , UChar       uhGbiIdx
+                                , Bool        bEnforceGBiPred
+                                , UInt        uiGbiIdxBits
+#endif
+  );
 
   Void xAffineMotionEstimation  ( TComDataCU*   pcCU,
                                   TComYuv*      pcYuvOrg,
@@ -654,6 +673,19 @@ protected:
                                   Int&        riMVPIdx,
                                   UInt&       ruiBits,
                                   Distortion& ruiCost );
+#endif
+
+#if IDCC_GENERALIZED_BI_PRED
+  Double xGetMEDistortionWeight  ( UChar uhGbiIdx, RefPicList eRefPicList );
+  Bool   xReadBufferedUniMv      ( TComDataCU* pcCU, Int iPartIdx, RefPicList eRefPicList, Int iRefIdx, TComMv* pcMvPred, TComMv& rcMv, UInt& ruiBits, Distortion& ruiCost );
+  Bool   xReadBufferedAffineUniMv( TComDataCU* pcCU, Int iPartIdx, RefPicList eRefPicList, Int iRefIdx, TComMv acMvPred[3], TComMv acMv[3], UInt& ruiBits, Distortion& ruiCost );
+
+public:
+  Void   resetBufferedUniMotions () { m_cUniMotions.reset(); }
+  UInt   getWeightIdxBits        ( UChar uhGbiIdx ) { return m_auiEstWeightIdxBits[uhGbiIdx]; }
+  Void   initWeightIdxBits       ();
+
+protected:
 #endif
 
   Void xExtDIFUpSamplingH( TComPattern* pcPattern );

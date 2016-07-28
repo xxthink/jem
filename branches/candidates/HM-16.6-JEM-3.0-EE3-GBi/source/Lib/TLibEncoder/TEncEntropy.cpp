@@ -187,6 +187,18 @@ Void TEncEntropy::encodeICFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
 }
 #endif
 
+#if IDCC_GENERALIZED_BI_PRED
+Void TEncEntropy::encodeGbiInfo( TComDataCU* pcCU, UInt uiAbsPartIdx )
+{
+  if( !pcCU->isGbiFlagCoded( uiAbsPartIdx ) )
+  {
+    return;
+  }
+
+  m_pcEntropyCoderIf->codeGbiIdx( pcCU, uiAbsPartIdx );
+}
+#endif
+
 #if VCEG_AZ05_INTRA_MPI
 Void TEncEntropy::encodeMPIIdx(TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD)
 {
@@ -721,6 +733,9 @@ Void TEncEntropy::encodePredInfo( TComDataCU* pcCU, UInt uiAbsPartIdx )
   else                                                                // if it is Inter mode, encode motion vector and reference index
   {
     encodePUWise( pcCU, uiAbsPartIdx );
+#if IDCC_GENERALIZED_BI_PRED
+    encodeGbiInfo( pcCU, uiAbsPartIdx );
+#endif
   }
 }
 

@@ -198,6 +198,58 @@ public:
   Void compress(Char* pePredMode, Int scale);
 };
 
+#if IDCC_GENERALIZED_BI_PRED
+class TComUniMotionParameters
+{
+  Bool       m_aaabReadOnly[JVET_C0024_QTBT?1:4][2][33]; // 4 PUs, 2 RefLists, 33 RefFrams
+  TComMv     m_aaacMv      [JVET_C0024_QTBT?1:4][2][33]; // 4 PUs, 2 RefLists, 33 RefFrams
+  Distortion m_aaauiDist   [JVET_C0024_QTBT?1:4][2][33]; // 4 PUs, 2 RefLists, 33 RefFrams
+#if JVET_C0024_QTBT
+  Bool       m_aaabReadOnlyAffine[1][2][33];
+#endif
+  TComMv     m_aaaacMvAffine  [JVET_C0024_QTBT?1:4][2][33][3]; // 4 PUs, 2 RefLists, 33 RefFrams
+  Distortion m_aaauiDistAffine[JVET_C0024_QTBT?1:4][2][33];    // 4 PUs, 2 RefLists, 33 RefFrams
+
+public:
+
+  Void     reset        ();
+  Void     setReadMode  ( Bool b, UInt uiPUIdx, UInt uiRefList, UInt uiRefIdx ) { m_aaabReadOnly[uiPUIdx][uiRefList][uiRefIdx] = b;    }
+  Bool     isReadMode   ( UInt uiPUIdx, UInt uiRefList, UInt uiRefIdx )         { return m_aaabReadOnly[uiPUIdx][uiRefList][uiRefIdx]; }
+#if JVET_C0024_QTBT
+  Void     setReadModeAffine ( Bool b, UInt uiPUIdx, UInt uiRefList, UInt uiRefIdx ) { m_aaabReadOnlyAffine[uiPUIdx][uiRefList][uiRefIdx] = b;    }
+  Bool     isReadModeAffine  ( UInt uiPUIdx, UInt uiRefList, UInt uiRefIdx )         { return m_aaabReadOnlyAffine[uiPUIdx][uiRefList][uiRefIdx]; }
+#endif
+  TComMv&  getMv        ( UInt uiPUIdx, UInt uiRefList, UInt uiRefIdx )         { return m_aaacMv[uiPUIdx][uiRefList][uiRefIdx];       }
+  
+  Void     copyFrom ( TComMv& rcMv, Distortion uiDist, UInt uiPUIdx, UInt uiRefList, UInt uiRefIdx )
+  {
+    m_aaacMv   [uiPUIdx][uiRefList][uiRefIdx] = rcMv;
+    m_aaauiDist[uiPUIdx][uiRefList][uiRefIdx] = uiDist;
+  }
+
+  Void     copyTo   ( TComMv& rcMv, Distortion& ruiDist, UInt uiPUIdx, UInt uiRefList, UInt uiRefIdx )
+  {
+    rcMv    = m_aaacMv   [uiPUIdx][uiRefList][uiRefIdx];
+    ruiDist = m_aaauiDist[uiPUIdx][uiRefList][uiRefIdx];
+  }
+
+  TComMv&  getAffineMv      ( UInt uiPUIdx, UInt uiRefList, UInt uiRefIdx, UInt uiAffineMvIdx ) { return m_aaaacMvAffine[uiPUIdx][uiRefList][uiRefIdx][uiAffineMvIdx];       }
+
+  Void     copyAffineMvFrom ( TComMv (&racAffineMvs)[3], Distortion uiDist, UInt uiPUIdx, UInt uiRefList, UInt uiRefIdx )
+  {
+    memcpy( m_aaaacMvAffine[uiPUIdx][uiRefList][uiRefIdx], racAffineMvs, 3 * sizeof(TComMv) );
+    m_aaauiDistAffine[uiPUIdx][uiRefList][uiRefIdx] = uiDist;
+  }
+
+  Void     copyAffineMvTo   ( TComMv acAffineMvs[3], Distortion& ruiDist, UInt uiPUIdx, UInt uiRefList, UInt uiRefIdx )
+  {
+    memcpy( acAffineMvs, m_aaaacMvAffine[uiPUIdx][uiRefList][uiRefIdx], 3 * sizeof(TComMv) );
+    ruiDist = m_aaauiDistAffine[uiPUIdx][uiRefList][uiRefIdx];
+  }
+
+};
+#endif
+
 //! \}
 
 #endif // __TCOMMOTIONINFO__

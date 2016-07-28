@@ -151,10 +151,23 @@ public:
     , bool bBIOapplied
 #endif
 );
+#if IDCC_GENERALIZED_BI_PRED
+  Void         addWeightedAvg             ( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const UInt iPartUnitIdx, const UInt uiWidth, const UInt uiHeight, const BitDepths &clipBitDepths, const UChar uhGbiIdx
+#if VCEG_AZ05_BIO
+                                          , const Bool bBIOapplied
+#endif
+                                          );
+#endif
 
   Void         removeHighFreq             ( const TComYuv* pcYuvSrc, const UInt uiPartIdx, const UInt uiWidth, const UInt uiHeight
                                           , const Int bitDepths[MAX_NUM_CHANNEL_TYPE], const Bool bClipToBitDepths
+#if IDCC_GENERALIZED_BI_PRED
+                                          , const Char iGbiWeight
+#endif
                                           );
+#if IDCC_GENERALIZED_BI_PRED
+  Void         removeWeightedHighFreq     ( const TComYuv* pcYuvSrc, const UInt uiPartIdx, const UInt uiWidth, const UInt uiHeight, const Char iGbiWeight );
+#endif
 
   // ------------------------------------------------------------------------------------------------------------------
   //  Access function for YUV buffer
@@ -221,6 +234,7 @@ public:
   Void         setWidth                   (UInt uiWidth) { m_iWidth = uiWidth;}
   Void         setHeight                  (UInt uiHeight) { m_iHeight = uiHeight;}
 #endif
+
 };// END CLASS DEFINITION TComYuv
 
 //! \}

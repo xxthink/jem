@@ -95,6 +95,9 @@ public:
 #if VCEG_AZ06_IC
   Void  parseICFlag         ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
+#if IDCC_GENERALIZED_BI_PRED
+  Void  parseGbiIdx         ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UChar& ruhGbiIdx ) { assert(0); }
+#endif
   Void parseCUTransquantBypassFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #if VCEG_AZ05_INTRA_MPI
   Void parseMPIIdx          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );

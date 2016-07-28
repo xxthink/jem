@@ -102,6 +102,9 @@ public:
 #if VCEG_AZ06_IC
   virtual Void codeICFlag        ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
 #endif
+#if IDCC_GENERALIZED_BI_PRED
+  virtual Void codeGbiIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
+#endif
   virtual Void codeMergeFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
   virtual Void codeMergeIndex    ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
 #if VCEG_AZ07_FRUC_MERGE
@@ -249,6 +252,9 @@ public:
 #endif
 #if VCEG_AZ06_IC
   Void encodeICFlag            ( TComDataCU* pcCU, UInt uiAbsPartIdx );
+#endif
+#if IDCC_GENERALIZED_BI_PRED
+  Void encodeGbiInfo           ( TComDataCU* pcCU, UInt uiAbsPartIdx );
 #endif
   Void encodePUWise       ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void encodeInterDirPU   ( TComDataCU* pcSubCU, UInt uiAbsPartIdx  );

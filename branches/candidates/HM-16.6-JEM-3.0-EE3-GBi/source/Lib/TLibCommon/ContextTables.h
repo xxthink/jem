@@ -94,6 +94,9 @@
 #if VCEG_AZ06_IC
 #define NUM_IC_FLAG_CTX               1       ///< number of context models for illumination compensation flag
 #endif
+#if IDCC_GENERALIZED_BI_PRED
+#define NUM_GBI_IDX_CTX     (GBI_NUM+2)       ///< number of context models for generalized bi-prediction
+#endif
 
 #define NUM_PART_SIZE_CTX             4       ///< number of context models for partition size
 #define NUM_PRED_MODE_CTX             1       ///< number of context models for prediction mode
@@ -417,6 +420,27 @@ INIT_IC_FLAG[NUMBER_OF_SLICE_TYPES][NUM_IC_FLAG_CTX] =
   { 154 },
   { 154 },
   { CNU },
+};
+#endif
+
+#if IDCC_GENERALIZED_BI_PRED
+static const UChar
+INIT_GBI_IDX[NUMBER_OF_SLICE_TYPES][NUM_GBI_IDX_CTX] =
+{
+  // 4 ctx for 1st bin; 1 ctx for each of rest bins
+#if IDCC_GENERALIZED_BI_PRED == 1
+  {  95,   79,   63,   31,  31, },
+  {  95,   79,   63,   31,  31, },
+  { CNU,  CNU,  CNU,  CNU, CNU, },
+#elif IDCC_GENERALIZED_BI_PRED == 2
+  {  95,   79,   63,   31,  31,  31,  31, },
+  {  95,   79,   63,   31,  31,  31,  31, },
+  { CNU,  CNU,  CNU,  CNU, CNU, CNU, CNU, },
+#else
+  {  95,   79,   63,   31,  31,  31,  31,  31,  31, },
+  {  95,   79,   63,   31,  31,  31,  31,  31,  31, },
+  { CNU,  CNU,  CNU,  CNU, CNU, CNU, CNU, CNU, CNU, },
+#endif
 };
 #endif
 

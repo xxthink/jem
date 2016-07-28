@@ -143,6 +143,9 @@ TComPrediction::TComPrediction()
 #if VCEG_AZ07_FRUC_MERGE && COM16_C806_VCEG_AZ10_SUB_PU_TMVP
   memset( m_cMvFieldSP , 0 , sizeof( m_cMvFieldSP ) );
   memset( m_uhInterDirSP , 0 , sizeof( m_uhInterDirSP ) );
+#if IDCC_GENERALIZED_BI_PRED
+  m_puhGbiIdxSP = NULL;
+#endif
 #endif
   for(UInt ch=0; ch<MAX_NUM_COMPONENT; ch++)
   {
@@ -252,6 +255,13 @@ Void TComPrediction::destroy()
       m_uhInterDirSP[ui] = NULL;
     }
   }
+#if IDCC_GENERALIZED_BI_PRED
+  if( m_puhGbiIdxSP != NULL )
+  {
+    delete [] m_puhGbiIdxSP;
+    m_puhGbiIdxSP = NULL;
+  }
+#endif
 #endif
 #endif
 
@@ -370,6 +380,9 @@ Void TComPrediction::initTempBuff(ChromaFormat chromaFormatIDC
     m_cMvFieldSP[1] = new TComMvField[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH*2];
     m_uhInterDirSP[0] = new UChar[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
     m_uhInterDirSP[1] = new UChar[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
+#endif
+#if IDCC_GENERALIZED_BI_PRED
+    m_puhGbiIdxSP     = new UChar[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
 #endif
   }
 #endif
@@ -1568,7 +1581,11 @@ Void TComPrediction::xPredInterBi ( TComDataCU* pcCU, UInt uiPartAddr, Int iWidt
 #endif
     if( pcCU->isBIOLDB( uiPartAddr ) )
     {
+#if IDCC_GENERALIZED_BI_PRED
+      bBIOapplied = ( pcCU->getGbiIdx( uiPartAddr) == GBI_DEFAULT );
+#else
       bBIOapplied = true;
+#endif
     }
 #else
 #if VCEG_AZ07_FRUC_MERGE 
@@ -1667,6 +1684,9 @@ Void TComPrediction::xPredInterBi ( TComDataCU* pcCU, UInt uiPartAddr, Int iWidt
 #endif
 #if COM16_C1045_BIO_HARMO_IMPROV || JVET_C0027_BIO
       , pcCU 
+#endif
+#if IDCC_GENERALIZED_BI_PRED
+      , pcCU->getGbiIdx( uiPartAddr )
 #endif
       );
   }
@@ -2155,7 +2175,11 @@ Pel optical_flow_averaging( Int64 s1,Int64 s2,Int64 s3,Int64 s5,Int64 s6,
   Pel pSrcY0Temp, Pel pSrcY1Temp, 
   const int shiftNum , const int  offset     , const Int64 limit ,   
   const Int64 denom_min_1 ,   const Int64 denom_min_2,    
-  const Int bitDepth)
+  const Int bitDepth
+#if IDCC_GENERALIZED_BI_PRED
+  , const UChar uhGbiIdx
+#endif
+  )
 {
   Int64 vx = 0;  Int64 vy = 0;
   Int64 b=0;
@@ -2172,8 +2196,30 @@ Pel optical_flow_averaging( Int64 s1,Int64 s2,Int64 s3,Int64 s5,Int64 s6,
   }
 
   b = vx * (pGradX0 - pGradX1) +vy * (pGradY0 - pGradY1);       
+#if IDCC_GENERALIZED_BI_PRED
+  if( uhGbiIdx == GBI_DEFAULT )
+  {
+#endif
   b = (b>0)?((b +32)>> 6):(-((-b+32) >> 6));
   return( ClipBD((Short)((pSrcY0Temp + pSrcY1Temp + b +offset) >> shiftNum),bitDepth));
+#if IDCC_GENERALIZED_BI_PRED
+  }
+  else
+  {
+    const Char w0 = getGbiWeight( uhGbiIdx, REF_PIC_LIST_0 );
+    const Char w1 = getGbiWeight( uhGbiIdx, REF_PIC_LIST_1 );
+    const Char iLog2WeightBase = g_iGbiLog2WeightBase;
+
+    Int (*pMulW0)(Pel) = GET_INT_MULTIPLIER( w0 );
+    Int (*pMulW1)(Pel) = GET_INT_MULTIPLIER( w1 );
+
+    Bool bSign = ( b >= 0 );
+    b   = ( bSign ? b : 0 - b );
+    b   = ( ( b << iLog2WeightBase ) + 64 ) >> 7;
+    b   = ( bSign ? b : 0 - b );
+    return ClipBD( (Pel)( ( (Int64)pMulW0(pSrcY0Temp) + (Int64)pMulW1(pSrcY1Temp) + b + (Int64)offset ) >> shiftNum ), bitDepth );
+  }
+#endif
 }
 #endif
 
@@ -2184,10 +2230,21 @@ Void TComPrediction::xWeightedAverage( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, I
 #if COM16_C1045_BIO_HARMO_IMPROV || JVET_C0027_BIO
   , TComDataCU * pCu
 #endif
+#if IDCC_GENERALIZED_BI_PRED
+  , UChar uhGbiIdx
+#endif
 )
 {
   if( iRefIdx0 >= 0 && iRefIdx1 >= 0 )
   {
+#if IDCC_GENERALIZED_BI_PRED && !VCEG_AZ05_BIO
+    if( uhGbiIdx != GBI_DEFAULT )
+    {
+      pcYuvDst->addWeightedAvg( pcYuvSrc0, pcYuvSrc1, uiPartIdx, iWidth, iHeight, clipBitDepths, uhGbiIdx );
+      return;
+    }
+#endif
+
 #if VCEG_AZ05_BIO 
     if (bBIOapplied)
     {
@@ -2248,8 +2305,14 @@ Void TComPrediction::xWeightedAverage( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, I
 #endif
 
       static const int  bitDepth =clipBitDepths.recon[toChannelType(COMPONENT_Y)];
+#if IDCC_GENERALIZED_BI_PRED
+      const Char iLog2WeightBase = g_iGbiLog2WeightBase;
+      const Int  shiftNum    = IF_INTERNAL_PREC + ( uhGbiIdx != GBI_DEFAULT ? iLog2WeightBase : 1 ) - bitDepth;
+      const Int  offset      = ( 1 << ( shiftNum - 1 ) ) + ( uhGbiIdx != GBI_DEFAULT ? ( IF_INTERNAL_OFFS << iLog2WeightBase ) : 2 * IF_INTERNAL_OFFS );
+#else
       static const int  shiftNum    = IF_INTERNAL_PREC + 1 - bitDepth;
       static const int  offset      = ( 1 << ( shiftNum - 1 ) ) + 2 * IF_INTERNAL_OFFS;
+#endif
 #if JVET_C0027_BIO
       static const bool bShortRefMV =  (pCu->getSlice()->getCheckLDC()
 #if COM16_C1045_BIO_HARMO_IMPROV
@@ -2348,7 +2411,11 @@ Void TComPrediction::xWeightedAverage( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, I
         pDstY[x]=optical_flow_averaging(
           m_piSS1loc[x],m_piSS2loc[x],m_piSS3loc[x],m_piSS5loc[x],m_piSS6loc[x],
           pGradX0[x] , pGradX1[x],pGradY0[x] , pGradY1[x],pSrcY0Temp[x ], pSrcY1Temp[x ]
-        ,  shiftNum ,  offset , limit, denom_min_1, denom_min_2,bitDepth);
+        ,  shiftNum ,  offset , limit, denom_min_1, denom_min_2,bitDepth
+#if IDCC_GENERALIZED_BI_PRED
+          , uhGbiIdx
+#endif
+          );
       }
       m_pS1loc2+=iWidthG;m_pS2loc2+=iWidthG;m_pS3loc2+=iWidthG;m_pS5loc2+=iWidthG;m_pS6loc2+=iWidthG;
       pDstY += iDstStride;pSrcY0Temp+=iSrc0Stride;pSrcY1Temp+=iSrc1Stride;pGradX0+=iWidthG;pGradX1+=iWidthG;pGradY0+=iWidthG;pGradY1+=iWidthG;
@@ -2368,7 +2435,11 @@ Void TComPrediction::xWeightedAverage( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, I
 
           pDstY[x]=optical_flow_averaging(m_piSS1loc[x],m_piSS2loc[x],m_piSS3loc[x],m_piSS5loc[x],m_piSS6loc[x],
             pGradX0[x] , pGradX1[x],pGradY0[x] , pGradY1[x],pSrcY0Temp[x ], pSrcY1Temp[x ]
-          ,  shiftNum,  offset, limit, denom_min_1, denom_min_2 ,bitDepth);
+          ,  shiftNum,  offset, limit, denom_min_1, denom_min_2 ,bitDepth
+#if IDCC_GENERALIZED_BI_PRED
+            , uhGbiIdx
+#endif
+            );
         }
 
         m_piSS1loc_1=m_piSS1loc;m_piSS2loc_1=m_piSS2loc;m_piSS3loc_1=m_piSS3loc;m_piSS5loc_1=m_piSS5loc;m_piSS6loc_1=m_piSS6loc;
@@ -2379,6 +2450,13 @@ Void TComPrediction::xWeightedAverage( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, I
         pGradX0+=iWidthG;pGradX1+=iWidthG;pGradY0+=iWidthG;pGradY1+=iWidthG;
       }
     } //bBIOapplied
+#if IDCC_GENERALIZED_BI_PRED
+    if( uhGbiIdx != GBI_DEFAULT )
+    {
+      pcYuvDst->addWeightedAvg( pcYuvSrc0, pcYuvSrc1, uiPartIdx, iWidth, iHeight, clipBitDepths, uhGbiIdx, bBIOapplied );
+      return;
+    }
+#endif
     pcYuvDst->addAvg( pcYuvSrc0, pcYuvSrc1, uiPartIdx, iWidth, iHeight, clipBitDepths, bBIOapplied);    
 #else
     pcYuvDst->addAvg( pcYuvSrc0, pcYuvSrc1, uiPartIdx, iWidth, iHeight, clipBitDepths );
@@ -3196,6 +3274,10 @@ Void TComPrediction::subBlockOBMC( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv
   Bool bCurrMotStored = false, bDiffMot[4]= { false, false, false, false };
 #endif
   TComMvField cCurMvField[2], cNeigMvField[2];
+#if IDCC_GENERALIZED_BI_PRED
+  UChar uhCurGbiIdx  = GBI_DEFAULT;
+  UChar uhNeigGbiIdx = GBI_DEFAULT;
+#endif
 
   Int maxDir = bNormal2Nx2N ? 2 : 4;
   for( Int iSubX = 0; iSubX < uiWidthInBlock; iSubX += uiStep )
@@ -3291,9 +3373,17 @@ Void TComPrediction::subBlockOBMC( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv
         bSubBlockOBMCSimp |= ( bOBMCSimp || pcCU->getAffineFlag( uiSubPartIdx ) );
 #endif
 #if JVET_C0024_QTBT
+#if IDCC_GENERALIZED_BI_PRED
+        if( pcCU->getNeigMotion( uiSubPartIdx, cNeigMvField, iNeigPredDir, uhNeigGbiIdx, iDir, cCurMvField, iCurPredDir, uhCurGbiIdx, uiZeroIdx, bCurrMotStored ) )
+#else
         if( pcCU->getNeigMotion( uiSubPartIdx, cNeigMvField, iNeigPredDir, iDir, cCurMvField, iCurPredDir, uiZeroIdx, bCurrMotStored ) )
+#endif
+#else
+#if IDCC_GENERALIZED_BI_PRED
+        if( ( bCurSubBkFetched && bDiffMot[iDir] ) || pcCU->getNeigMotion( uiSubPartIdx, cNeigMvField, iNeigPredDir, uhNeigGbiIdx, iDir, cCurMvField, iCurPredDir, uhCurGbiIdx, uiZeroIdx, bCurrMotStored ) )
 #else
         if( ( bCurSubBkFetched && bDiffMot[iDir] ) || pcCU->getNeigMotion( uiSubPartIdx, cNeigMvField, iNeigPredDir, iDir, cCurMvField, iCurPredDir, uiZeroIdx, bCurrMotStored ) )
+#endif
 #endif
         {
 #if JVET_C0024_QTBT
@@ -3307,6 +3397,9 @@ Void TComPrediction::subBlockOBMC( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv
           pcCU->getCUMvField( REF_PIC_LIST_1 )->setMv(cNeigMvField[1].getMv(), uiSubPartIdx);
           pcCU->getCUMvField( REF_PIC_LIST_1 )->setRefIdx(cNeigMvField[1].getRefIdx(), uiSubPartIdx);
           pcCU->setInterDir(uiSubPartIdx, iNeigPredDir);
+#if IDCC_GENERALIZED_BI_PRED
+          pcCU->setGbiIdx( uiSubPartIdx, uhNeigGbiIdx );
+#endif
 
           //motion compensation and OBMC
           xSubBlockMotionCompensation( pcCU, pcYuvTmpPred1, uiSubPartIdx, uiOBMCBlkSize, uiOBMCBlkSize );
@@ -3330,6 +3423,9 @@ Void TComPrediction::subBlockOBMC( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv
           pcCU->getCUMvField( REF_PIC_LIST_1 )->setMv(cCurMvField[1].getMv(), uiSubPartIdx);
           pcCU->getCUMvField( REF_PIC_LIST_1 )->setRefIdx(cCurMvField[1].getRefIdx(), uiSubPartIdx);
           pcCU->setInterDir(uiSubPartIdx, iCurPredDir);
+#if IDCC_GENERALIZED_BI_PRED
+          pcCU->setGbiIdx( uiSubPartIdx, uhCurGbiIdx );
+#endif
 
 #else
           Bool bFeAllSubBkIn1Line = false; //Fetch all sub-blocks in one row/column
@@ -3340,6 +3436,9 @@ Void TComPrediction::subBlockOBMC( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv
             pcCU->getCUMvField( REF_PIC_LIST_0 )->setAllMvField( cNeigMvField[0], SIZE_2Nx2N, uiSubPartIdx, uiDepth, 0 );
             pcCU->getCUMvField( REF_PIC_LIST_1 )->setAllMvField( cNeigMvField[1], SIZE_2Nx2N, uiSubPartIdx, uiDepth, 0 );
             pcCU->setInterDirSubParts( iNeigPredDir, uiSubPartIdx, 0, uiMaxCUDepth );
+#if IDCC_GENERALIZED_BI_PRED
+            pcCU->setGbiIdxSubParts( uhNeigGbiIdx, uiSubPartIdx, 0, uiMaxCUDepth );
+#endif
             if( bNormalTwoPUs )
             {
               bFeAllSubBkIn1Line = ( bHorPUBound || bVerPUBound );
@@ -3373,6 +3472,9 @@ Void TComPrediction::subBlockOBMC( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv
             pcCU->getCUMvField( REF_PIC_LIST_0 )->setAllMvField( cCurMvField[0], SIZE_2Nx2N, uiSubPartIdx, uiDepth, 0 );
             pcCU->getCUMvField( REF_PIC_LIST_1 )->setAllMvField( cCurMvField[1], SIZE_2Nx2N, uiSubPartIdx, uiDepth, 0 );
             pcCU->setInterDirSubParts( iCurPredDir, uiSubPartIdx, 0, uiMaxCUDepth );
+#if IDCC_GENERALIZED_BI_PRED
+            pcCU->setGbiIdxSubParts( uhCurGbiIdx, uiSubPartIdx, 0, uiMaxCUDepth );
+#endif
             pcCU->setPartSizeSubParts( ePartSize, uiSubPartIdx,      uiMaxCUDepth );
           }
 #endif
@@ -4231,13 +4333,22 @@ Void TComPrediction::xFrucCollectBlkStartMv( TComDataCU * pCU , UInt uiPUIdx , R
 #if VCEG_AZ06_IC
   Bool abICFlag[MRG_MAX_NUM_CANDS];
 #endif
+#if IDCC_GENERALIZED_BI_PRED
+  UChar auhGbiIdx[MRG_MAX_NUM_CANDS];
+#endif
   pCU->getPartIndexAndSize( uiPUIdx , uiAddrOffset , nWidth , nHeight );
   pCU->getInterMergeCandidates( uiAddrOffset, uiPUIdx, cMvFieldNeighbours, uhInterDirNeighbours, numValidMergeCand 
+#if IDCC_GENERALIZED_BI_PRED
+    , auhGbiIdx
+#endif
 #if VCEG_AZ06_IC
     , abICFlag
 #endif
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
     , m_eMergeCandTypeNieghors , m_cMvFieldSP , m_uhInterDirSP 
+#if IDCC_GENERALIZED_BI_PRED
+    , m_puhGbiIdxSP
+#endif
 #endif
     );
 

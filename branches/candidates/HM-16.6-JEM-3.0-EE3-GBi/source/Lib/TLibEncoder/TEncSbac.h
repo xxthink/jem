@@ -159,6 +159,9 @@ public:
 #if VCEG_AZ06_IC
   Void codeICFlag        ( TComDataCU* pcCU, UInt uiAbsPartIdx );
 #endif 
+#if IDCC_GENERALIZED_BI_PRED
+  Void codeGbiIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx );
+#endif
   Void codeMergeFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeMergeIndex    ( TComDataCU* pcCU, UInt uiAbsPartIdx );
 #if VCEG_AZ07_FRUC_MERGE
@@ -323,6 +326,9 @@ private:
 #endif
 #if VCEG_AZ06_IC
   ContextModel3DBuffer m_cCUICFlagSCModel;
+#endif
+#if IDCC_GENERALIZED_BI_PRED
+  ContextModel3DBuffer m_cCUGbiIdxSCModel;
 #endif
 #if ALF_HM3_REFACTOR
   Bool          m_bAlfCtrl;

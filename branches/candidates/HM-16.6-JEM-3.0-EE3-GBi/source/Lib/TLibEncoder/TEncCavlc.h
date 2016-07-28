@@ -124,6 +124,9 @@ public:
 #if VCEG_AZ06_IC
   Void codeICFlag        ( TComDataCU* pcCU, UInt uiAbsPartIdx );
 #endif
+#if IDCC_GENERALIZED_BI_PRED
+  Void codeGbiIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx ) { assert(0); }
+#endif
   Void codeMergeFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeMergeIndex    ( TComDataCU* pcCU, UInt uiAbsPartIdx );
 #if VCEG_AZ07_FRUC_MERGE

@@ -270,6 +270,10 @@ Void TEncCu::create(UChar uhTotalDepth, UInt uiMaxWidth, UInt uiMaxHeight, Chrom
   assert( m_pMvFieldSP[0] != NULL && m_phInterDirSP[0] != NULL );
   assert( m_pMvFieldSP[1] != NULL && m_phInterDirSP[1] != NULL );
 #endif
+#if IDCC_GENERALIZED_BI_PRED
+  m_puhGbiIdxSP = new UChar[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
+  assert( m_puhGbiIdxSP != NULL );
+#endif
 #endif
 
   m_bEncodeDQP                     = false;
@@ -567,6 +571,13 @@ Void TEncCu::destroy()
       m_phInterDirSP[ui] = NULL;
     }
   }
+#if IDCC_GENERALIZED_BI_PRED
+  if( m_puhGbiIdxSP != NULL )
+  {
+    delete [] m_puhGbiIdxSP;
+    m_puhGbiIdxSP = NULL;
+  }
+#endif
 #endif
 
 #else
@@ -703,6 +714,13 @@ Void TEncCu::destroy()
       m_phInterDirSP[ui] = NULL;
     }
   }
+#if IDCC_GENERALIZED_BI_PRED
+  if( m_puhGbiIdxSP != NULL )
+  {
+    delete [] m_puhGbiIdxSP;
+    m_puhGbiIdxSP = NULL;
+  }
+#endif
 #endif
 
 #if VCEG_AZ07_FRUC_MERGE
@@ -3098,6 +3116,9 @@ Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTem
   UChar  eMergeCandTypeNieghors[MRG_MAX_NUM_CANDS];
   memset ( eMergeCandTypeNieghors, MGR_TYPE_DEFAULT_N, sizeof(UChar)*MRG_MAX_NUM_CANDS );
 #endif
+#if IDCC_GENERALIZED_BI_PRED
+  UChar auhGbiIdx[MRG_MAX_NUM_CANDS];
+#endif
 #if VCEG_AZ06_IC
   Bool abICFlag[MRG_MAX_NUM_CANDS];
 #endif
@@ -3133,6 +3154,9 @@ Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTem
 #endif
 
   rpcTempCU->getInterMergeCandidates( 0, 0, cMvFieldNeighbours,uhInterDirNeighbours, numValidMergeCand
+#if IDCC_GENERALIZED_BI_PRED
+    , auhGbiIdx
+#endif
 #if VCEG_AZ06_IC
     , abICFlag
 #endif
@@ -3140,6 +3164,9 @@ Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTem
     , eMergeCandTypeNieghors
     , m_pMvFieldSP
     , m_phInterDirSP
+#if IDCC_GENERALIZED_BI_PRED
+    , m_puhGbiIdxSP
+#endif
 #endif
     );
 
@@ -3179,6 +3206,9 @@ Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTem
 #if VCEG_AZ06_IC
       rpcTempCU->setICFlagSubParts( rpcTempCU->getSlice()->getApplyIC() ? abICFlag[uiMergeCand] : 0, 0, uhDepth );
 #endif
+#if IDCC_GENERALIZED_BI_PRED
+      rpcTempCU->setGbiIdxSubParts( auhGbiIdx[uiMergeCand], 0, 0, (UInt)uhDepth );
+#endif
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
       rpcTempCU->setMergeTypeSubParts(eMergeCandTypeNieghors[uiMergeCand] , 0, 0, uhDepth ); 
       if( eMergeCandTypeNieghors[uiMergeCand])
@@ -3201,6 +3231,16 @@ Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTem
           rpcTempCU->setInterDirSP(m_phInterDirSP[uiSPListIndex][iPartitionIdx], uiSPAddr, iSPWidth, iSPHeight);
           rpcTempCU->getCUMvField( REF_PIC_LIST_0 )->setMvFieldSP(rpcTempCU, uiSPAddr, m_pMvFieldSP[uiSPListIndex][2*iPartitionIdx], iSPWidth, iSPHeight);
           rpcTempCU->getCUMvField( REF_PIC_LIST_1 )->setMvFieldSP(rpcTempCU, uiSPAddr, m_pMvFieldSP[uiSPListIndex][2*iPartitionIdx + 1], iSPWidth, iSPHeight);
+#if IDCC_GENERALIZED_BI_PRED
+#if JVET_C0035_ATMVP_SIMPLIFICATION
+          if( uiSPListIndex == MGR_TYPE_SUBPU_ATMVP )
+#else
+          if( uiSPListIndex == 0 )
+#endif
+          {
+            rpcTempCU->setGbiIdxSP(m_puhGbiIdxSP[iPartitionIdx], uiSPAddr, iSPWidth, iSPHeight);
+          }
+#endif
         }
       }
       else
@@ -3294,6 +3334,9 @@ Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTem
 #if VCEG_AZ06_IC
           rpcTempCU->setICFlagSubParts( rpcTempCU->getSlice()->getApplyIC() ? abICFlag[uiMergeCand] : 0, 0, uhDepth );
 #endif
+#if IDCC_GENERALIZED_BI_PRED
+          rpcTempCU->setGbiIdxSubParts( auhGbiIdx[uiMergeCand], 0, 0, (UInt)uhDepth );
+#endif
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
           rpcTempCU->setMergeTypeSubParts(eMergeCandTypeNieghors[uiMergeCand] , 0, 0, uhDepth ); 
           if( eMergeCandTypeNieghors[uiMergeCand])
@@ -3316,6 +3359,16 @@ Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTem
               rpcTempCU->setInterDirSP(m_phInterDirSP[uiSPListIndex][iPartitionIdx], uiSPAddr, iSPWidth, iSPHeight);
               rpcTempCU->getCUMvField( REF_PIC_LIST_0 )->setMvFieldSP(rpcTempCU, uiSPAddr, m_pMvFieldSP[uiSPListIndex][2*iPartitionIdx], iSPWidth, iSPHeight);
               rpcTempCU->getCUMvField( REF_PIC_LIST_1 )->setMvFieldSP(rpcTempCU, uiSPAddr, m_pMvFieldSP[uiSPListIndex][2*iPartitionIdx + 1], iSPWidth, iSPHeight);
+#if IDCC_GENERALIZED_BI_PRED
+#if JVET_C0035_ATMVP_SIMPLIFICATION
+              if( uiSPListIndex == MGR_TYPE_SUBPU_ATMVP )
+#else
+              if( uiSPListIndex == 0 )
+#endif
+              {
+                rpcTempCU->setGbiIdxSP(m_puhGbiIdxSP[iPartitionIdx], uiSPAddr, iSPWidth, iSPHeight);
+              }
+#endif
             }
           }
           else
@@ -3584,6 +3637,25 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
   }
 #endif
 
+#if IDCC_GENERALIZED_BI_PRED
+  m_pcPredSearch->resetBufferedUniMotions();
+#if VCEG_AZ06_IC
+  Bool  bICFlagX = rpcTempCU->getICFlag( 0 );
+#endif
+
+  UChar uhGbiLoopNum = ( rpcTempCU->getSlice()->isInterB() ? GBI_NUM : 1 );
+#if VCEG_AZ07_IMV
+  uhGbiLoopNum = ( bIMV && pcCUInfo2Reuse != NULL ? 1 : uhGbiLoopNum );
+#endif
+
+  for( UChar uhGbiLoopIdx = 0; uhGbiLoopIdx < uhGbiLoopNum; uhGbiLoopIdx++ )
+  {
+    rpcTempCU->setGbiIdxSubParts( g_aiGbiSearchOrder[uhGbiLoopIdx], 0, uhDepth, true );
+#if VCEG_AZ06_IC
+    rpcTempCU->setICFlagSubParts( bICFlagX,     0, uhDepth );
+#endif
+#endif
+
 #if !JVET_C0024_QTBT
   rpcTempCU->setPartSizeSubParts  ( ePartSize,  0, uhDepth );
 #endif
@@ -3594,6 +3666,10 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
 #endif
 #if VCEG_AZ06_IC
   Bool bICFlag = rpcTempCU->getICFlag( 0 );
+#endif
+#if IDCC_GENERALIZED_BI_PRED
+  UChar uhGbiIdx = rpcTempCU->getGbiIdx( 0 );
+  Bool  bTestGbi = ( uhGbiIdx != GBI_DEFAULT );
 #endif
 #if VCEG_AZ07_IMV
   rpcTempCU->setiMVFlagSubParts( bIMV,  0, uhDepth );
@@ -3621,6 +3697,10 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
     }
     else
     {
+#if IDCC_GENERALIZED_BI_PRED
+      uhGbiIdx = rpcTempCU->getFirstAvailableSearchedGbiIdx( 0 );
+      bTestGbi = ( uhGbiIdx != GBI_DEFAULT );
+#endif
 #if JVET_C0024_QTBT
       m_pcPredSearch->motionCompensation( rpcTempCU , m_pppcPredYuvTemp[uiWIdx][uiHIdx] );
 #if COM16_C806_OBMC
@@ -3673,15 +3753,33 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
   }
 #endif
 
+#if IDCC_GENERALIZED_BI_PRED
+  uhGbiIdx = rpcTempCU->getFirstAvailableSearchedGbiIdx( 0 );
+#endif
+
 #if VCEG_AZ07_IMV
   if( bIMV )
   {
     if( !rpcTempCU->hasSubCUNonZeroMVd() )
     {
+#if IDCC_GENERALIZED_BI_PRED
+      rpcTempCU->initEstData( uhDepth, rpcTempCU->getQP( 0 ), rpcTempCU->getCUTransquantBypass( 0 ) );
+      continue;
+#else
       return;
+#endif
     }
   }
   }
+#endif
+
+#if IDCC_GENERALIZED_BI_PRED
+  if( bTestGbi && uhGbiIdx == GBI_DEFAULT )
+  {
+    rpcTempCU->initEstData( uhDepth, rpcTempCU->getQP( 0 ), rpcTempCU->getCUTransquantBypass( 0 ) );
+    continue;  // None of the PUs performs normal bi-prediction search with Gbi, so there is no need to continue.
+  }
+  assert( bTestGbi || ( !bTestGbi && uhGbiIdx == GBI_DEFAULT ) );
 #endif
 
 #if COM16_C806_OBMC
@@ -3775,6 +3873,10 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
   xCheckDQP( rpcTempCU );
   xCheckBestMode(rpcBestCU, rpcTempCU, uhDepth DEBUG_STRING_PASS_INTO(sDebug) DEBUG_STRING_PASS_INTO(sTest));
 #if COM16_C806_OBMC
+  rpcTempCU->initEstData( uhDepth, rpcTempCU->getQP( 0 ), rpcTempCU->getCUTransquantBypass( 0 ) );
+  }
+#endif
+#if IDCC_GENERALIZED_BI_PRED
   rpcTempCU->initEstData( uhDepth, rpcTempCU->getQP( 0 ), rpcTempCU->getCUTransquantBypass( 0 ) );
   }
 #endif
@@ -4457,6 +4559,9 @@ Void TEncCu::xCheckRDCostAffineMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& 
 
   TComMvField cAffineMvField[2][3];
   UChar uhInterDirNeighbours[1] = {0};
+#if IDCC_GENERALIZED_BI_PRED
+  UChar auhGbiIdx[1] = { GBI_DEFAULT };
+#endif
   Int numValidMergeCand = 0;
   const Bool bTransquantBypassFlag = rpcTempCU->getCUTransquantBypass(0);
 
@@ -4472,7 +4577,11 @@ Void TEncCu::xCheckRDCostAffineMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& 
   rpcTempCU->setPartSizeSubParts( SIZE_2Nx2N, 0, uhDepth );
 #endif
 
+#if IDCC_GENERALIZED_BI_PRED
+  rpcTempCU->getAffineMergeCandidates( 0, 0, cAffineMvField, uhInterDirNeighbours, auhGbiIdx, numValidMergeCand );
+#else
   rpcTempCU->getAffineMergeCandidates( 0, 0, cAffineMvField, uhInterDirNeighbours, numValidMergeCand );
+#endif
   if ( numValidMergeCand == -1 )
   {
     return;
@@ -4511,6 +4620,9 @@ Void TEncCu::xCheckRDCostAffineMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& 
 
 #if COM16_C806_OBMC
         rpcTempCU->setOBMCFlagSubParts( true, 0, uhDepth );
+#endif
+#if IDCC_GENERALIZED_BI_PRED
+        rpcTempCU->setGbiIdxSubParts( auhGbiIdx[uiMergeCand], 0, 0, (UInt)uhDepth );
 #endif
 
         // do MC

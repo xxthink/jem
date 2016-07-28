@@ -135,6 +135,9 @@ public:
 #if VCEG_AZ06_IC
   Void parseICFlag        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
+#if IDCC_GENERALIZED_BI_PRED
+  Void parseGbiIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UChar& ruhGbiIdx );
+#endif
   Void parseCUTransquantBypassFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   Void parseSplitFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #if JVET_C0024_QTBT
@@ -297,6 +300,9 @@ private:
 #endif
 #if VCEG_AZ06_IC
   ContextModel3DBuffer m_cCUICFlagSCModel;
+#endif
+#if IDCC_GENERALIZED_BI_PRED
+  ContextModel3DBuffer m_cCUGbiIdxSCModel;
 #endif
 #if ALF_HM3_REFACTOR
   ContextModel3DBuffer m_cCUAlfCtrlFlagSCModel;

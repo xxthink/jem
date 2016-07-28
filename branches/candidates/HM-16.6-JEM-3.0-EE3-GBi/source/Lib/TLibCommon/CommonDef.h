@@ -440,6 +440,18 @@ static const Int    MIN_BT_SIZE_INTER  =                            4;      ///<
 
 #endif
 
+#if IDCC_GENERALIZED_BI_PRED
+
+#if IDCC_GENERALIZED_BI_PRED == 1
+#define GBI_NUM                                                     3  ///< The numver of weight options (Note: always remember to modify INIT_GBI_IDX when GBI_NUM is changed)
+#elif IDCC_GENERALIZED_BI_PRED == 2
+#define GBI_NUM                                                     5  ///< The numver of weight options (Note: always remember to modify INIT_GBI_IDX when GBI_NUM is changed)
+#else
+#define GBI_NUM                                                     7  ///< The numver of weight options (Note: always remember to modify INIT_GBI_IDX when GBI_NUM is changed)
+#endif
+#define GBI_DEFAULT                             ((UChar)(GBI_NUM>>1))  ///< Default weighting index representing for w=0.5
+#endif
+
 // ====================================================================================================================
 // Macro functions
 // ====================================================================================================================

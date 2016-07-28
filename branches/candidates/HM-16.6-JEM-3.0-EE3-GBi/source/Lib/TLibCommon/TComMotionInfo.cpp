@@ -476,5 +476,23 @@ Void TComCUMvField::setMvFieldSP( TComDataCU* pcCU, UInt uiAbsPartIdx, TComMvFie
   }
 }
 #endif
+#if IDCC_GENERALIZED_BI_PRED
+Void TComUniMotionParameters::reset()
+{
+  TComMv* pMv = &(m_aaacMv[0][0][0]);
+  for( UInt ui=0 ; ui < (JVET_C0024_QTBT?1:4)*2*33 ; ++ui, ++pMv )
+  {
+    pMv->set( std::numeric_limits<Short>::max(), std::numeric_limits<Short>::max() );
+  }
+
+  memset( m_aaabReadOnly, false, (JVET_C0024_QTBT?1:4) * 2 * 33     * sizeof(Bool)       );
+  memset( m_aaauiDist,    -1,    (JVET_C0024_QTBT?1:4) * 2 * 33     * sizeof(Distortion) );
+#if JVET_C0024_QTBT
+  memset( m_aaabReadOnlyAffine , false,                  2 * 33     * sizeof(Bool)       );
+#endif
+  memset( m_aaaacMvAffine,    0, (JVET_C0024_QTBT?1:4) * 2 * 33 * 3 * sizeof(TComMv)     );
+  memset( m_aaauiDistAffine, -1, (JVET_C0024_QTBT?1:4) * 2 * 33     * sizeof(Distortion) );
+}
+#endif
 
 //! \}
