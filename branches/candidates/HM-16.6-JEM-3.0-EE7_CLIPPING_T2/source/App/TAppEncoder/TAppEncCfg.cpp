@@ -42,6 +42,9 @@
 #include <string>
 #include <limits>
 #include "TLibCommon/TComRom.h"
+#if EE7_ADAPTIVE_CLIP
+#include "TLibCommon/CommonDef.h"
+#endif
 #include "TAppEncCfg.h"
 #include "TAppCommon/program_options_lite.h"
 #include "TLibEncoder/TEncRateCtrl.h"
@@ -1177,6 +1180,9 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 #if COM16_C983_RSAF
   ("RSAF",                                       m_useRSAF,         true, "Enable reference sample adaptive filter")
 #endif
+#if EE7_ADAPTIVE_CLIP
+  ("TCHClip,-tch_clip", m_tchClipParam.isActive, true, "Slice Level Adpative Clipping (Automated by default)")
+#endif
   ;
 
   for(Int i=1; i<MAX_GOP+1; i++)
@@ -1317,7 +1323,22 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 
   m_InputChromaFormatIDC = numberToChromaFormat(tmpInputChromaFormat);
   m_chromaFormatIDC      = ((tmpChromaFormat == 0) ? (m_InputChromaFormatIDC) : (numberToChromaFormat(tmpChromaFormat)));
+#if EE7_ADAPTIVE_CLIP
+  {
+      // DEFAULT VALUES
+      TchClipParam::ibdLuma=m_internalBitDepth[CHANNEL_TYPE_LUMA];
+      TchClipParam::ibdChroma=m_internalBitDepth[CHANNEL_TYPE_CHROMA];
+      TchClipParam::nbBitsY=TchClipParam::ibdLuma-1;
+      TchClipParam::nbBitsUV=TchClipParam::ibdChroma-1;
 
+      resetBounds(m_tchClipParam);
+
+      const Int bd=max(m_inputBitDepth[CHANNEL_TYPE_LUMA],m_inputBitDepth[CHANNEL_TYPE_CHROMA]);
+      TchClipParam::cquantiz=TchClipParam::ibdLuma-bd; // if ibd=10, input=8 ->2
+      TchClipParam::cquantiz=(TchClipParam::cquantiz/2)*2; // just in case
+      if (TchClipParam::cquantiz>6) TchClipParam::cquantiz=6;
+  }
+#endif
   if (extendedProfile >= 1000 && extendedProfile <= 12316)
   {
     m_profile = Profile::MAINREXT;
@@ -2813,6 +2834,9 @@ Void TAppEncCfg::xPrintParameter()
 #endif
 #if COM16_C983_RSAF
   printf("RSAF:%d ", m_useRSAF);
+#endif
+#if EE7_ADAPTIVE_CLIP
+  printf("TCH_CLIP:%d ",m_tchClipParam.isActive?1:0);
 #endif
     printf("\n\n");
 

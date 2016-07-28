@@ -470,6 +470,9 @@ Void TAppEncTop::xInitLibCfg()
 #if COM16_C983_RSAF
   m_cTEncTop.setUseRSAF                         ( m_useRSAF );
 #endif
+#if EE7_ADAPTIVE_CLIP
+    m_cTEncTop.setTchClipParam(m_tchClipParam);
+#endif
   m_cTEncTop.setSummaryOutFilename                                ( m_summaryOutFilename );
   m_cTEncTop.setSummaryPicFilenameBase                            ( m_summaryPicFilenameBase );
   m_cTEncTop.setSummaryVerboseness                                ( m_summaryVerboseness );
@@ -588,11 +591,11 @@ Void TAppEncTop::encode()
   while ( !bEos )
   {
     // get buffers
-    xGetBuffer(pcPicYuvRec);
+    xGetBuffer(pcPicYuvRec
+      );
 
     // read input YUV file
     m_cTVideoIOYuvInputFile.read( pcPicYuvOrg, &cPicYuvTrueOrg, ipCSC, m_aiPad, m_InputChromaFormatIDC, m_bClipInputVideoToRec709Range );
-
     // increase number of received frames
     m_iFrameRcvd++;
 
@@ -612,17 +615,21 @@ Void TAppEncTop::encode()
     if ( m_isField )
     {
 #if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
-      m_cTEncTop.encode( bEos, flush ? 0 : pcPicYuvOrg, flush ? 0 : &cPicYuvTrueOrg, snrCSC, m_cListPicYuvRec, outputAccessUnits, iNumEncoded, m_isTopFieldFirst, m_apcStats);
+      m_cTEncTop.encode( bEos, flush ? 0 : pcPicYuvOrg, flush ? 0 : &cPicYuvTrueOrg, snrCSC, m_cListPicYuvRec, 
+        outputAccessUnits, iNumEncoded, m_isTopFieldFirst, m_apcStats);
 #else
-      m_cTEncTop.encode( bEos, flush ? 0 : pcPicYuvOrg, flush ? 0 : &cPicYuvTrueOrg, snrCSC, m_cListPicYuvRec, outputAccessUnits, iNumEncoded, m_isTopFieldFirst );
+      m_cTEncTop.encode( bEos, flush ? 0 : pcPicYuvOrg, flush ? 0 : &cPicYuvTrueOrg, snrCSC, m_cListPicYuvRec, 
+        outputAccessUnits, iNumEncoded, m_isTopFieldFirst );
 #endif
     }
     else
     {
 #if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
-      m_cTEncTop.encode( bEos, flush ? 0 : pcPicYuvOrg, flush ? 0 : &cPicYuvTrueOrg, snrCSC, m_cListPicYuvRec, outputAccessUnits, iNumEncoded, m_apcStats);
+      m_cTEncTop.encode( bEos, flush ? 0 : pcPicYuvOrg, flush ? 0 : &cPicYuvTrueOrg, snrCSC, m_cListPicYuvRec, 
+        outputAccessUnits, iNumEncoded, m_apcStats);
 #else
-      m_cTEncTop.encode( bEos, flush ? 0 : pcPicYuvOrg, flush ? 0 : &cPicYuvTrueOrg, snrCSC, m_cListPicYuvRec, outputAccessUnits, iNumEncoded );
+      m_cTEncTop.encode( bEos, flush ? 0 : pcPicYuvOrg, flush ? 0 : &cPicYuvTrueOrg, snrCSC, m_cListPicYuvRec, 
+        outputAccessUnits, iNumEncoded );
 #endif
     }
 
@@ -670,7 +677,8 @@ Void TAppEncTop::encode()
  - end of the list has the latest picture
  .
  */
-Void TAppEncTop::xGetBuffer( TComPicYuv*& rpcPicYuvRec)
+Void TAppEncTop::xGetBuffer( TComPicYuv*& rpcPicYuvRec
+  )
 {
   assert( m_iGOPSize > 0 );
 
