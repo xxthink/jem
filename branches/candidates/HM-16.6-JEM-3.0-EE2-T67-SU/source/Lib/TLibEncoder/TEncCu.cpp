@@ -284,6 +284,13 @@ Void TEncCu::create(UChar uhTotalDepth, UInt uiMaxWidth, UInt uiMaxHeight, Chrom
 
   // initialize conversion matrix from partition index to pel
   initRasterToPelXY( uiMaxWidth, uiMaxHeight, m_uhTotalDepth );
+
+#if SU_EMT
+  memset( m_suEmtFlag, false, sizeof(m_suEmtFlag) );
+#endif
+#if SU_NSST
+  memset( m_suNsstFlag, false, sizeof(m_suNsstFlag) );
+#endif
 }
 
 Void TEncCu::destroy()
@@ -823,6 +830,13 @@ Void TEncCu::compressCtu( TComDataCU* pCtu )
   // analysis of CU
   DEBUG_STRING_NEW(sDebug)
 
+#if SU_EMT
+  memset( m_suEmtFlag, false, sizeof(m_suEmtFlag) );
+#endif
+#if SU_NSST
+  memset( m_suNsstFlag, false, sizeof(m_suNsstFlag) );
+#endif
+
   xCompressCU( m_pppcBestCU[uiWidthIdx][uiHeightIdx], m_pppcTempCU[uiWidthIdx][uiHeightIdx], 0, uiCTUSize, uiCTUSize, 0 DEBUG_STRING_PASS_INTO(sDebug) );     
 #else
   m_ppcBestCU[0]->initCtu( pCtu->getPic(), pCtu->getCtuRsAddr() );
@@ -888,6 +902,13 @@ Void TEncCu::encodeCtu ( TComDataCU* pCtu )
 
   // Encode CU data
 #if JVET_C0024_QTBT
+#if SU_EMT
+  memset( m_suEmtFlag, false, sizeof(m_suEmtFlag) );
+#endif
+#if SU_NSST
+  memset( m_suNsstFlag, false, sizeof(m_suNsstFlag) );
+#endif
+
   UInt uiCTUSize = pCtu->getSlice()->getSPS()->getCTUSize();
   pCtu->getPic()->setCodedAreaInCTU(0);
   pCtu->getPic()->setCodedBlkInCTU(false, 0, 0, uiCTUSize>>MIN_CU_LOG2, uiCTUSize>>MIN_CU_LOG2); //only used for affine merge code or not
@@ -995,7 +1016,14 @@ Void TEncCu::deriveTestModeAMP (TComDataCU *pcBestCU, PartSize eParentPartSize, 
 */
 #if AMP_ENC_SPEEDUP
 #if JVET_C0024_QTBT
-Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const UInt uiDepth, UInt uiWidth, UInt uiHeight, UInt uiBTSplitMode DEBUG_STRING_FN_DECLARE(sDebug_), UInt uiSplitConstrain )
+Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const UInt uiDepth, UInt uiWidth, UInt uiHeight, UInt uiBTSplitMode DEBUG_STRING_FN_DECLARE(sDebug_), UInt uiSplitConstrain
+#if SU_EMT
+                         , UChar ucParentEmtFlag
+#endif
+#if SU_NSST
+                         , UChar parentNsstIndex
+#endif
+                         )
 #else
 Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const UInt uiDepth DEBUG_STRING_FN_DECLARE(sDebug_), PartSize eParentPartSize )
 #endif
@@ -1130,6 +1158,38 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
   }
 #endif
 
+#if SU_EMT
+  Bool bEmtEnable =  rpcTempCU->getSlice()->getSPS()->getUseIntraEMT()
+                     && uiWidth       <= EMT_INTRA_MAX_CU
+                     && uiHeight      <= EMT_INTRA_MAX_CU
+                     && isLuma( rpcBestCU->getTextType() );
+
+  UInt emtLevel = (uiWidth*uiHeight > pcSlice->getMinEmtFlagSigAreaSize() ? 0 : (uiWidth*uiHeight == pcSlice->getMinEmtFlagSigAreaSize() ? 1 : 2) );
+
+  if( ucParentEmtFlag < 2 )
+  {
+    rpcTempCU->setEmtCuFlagSubParts(ucParentEmtFlag, 0, uiDepth);
+    rpcBestCU->setEmtCuFlagSubParts(ucParentEmtFlag, 0, uiDepth);
+  }
+
+  rpcTempCU->setBTSplitModeSubParts( 0, 0, uiWidth, uiHeight );
+  rpcBestCU->setBTSplitModeSubParts( 0, 0, uiWidth, uiHeight );
+#endif
+
+#if SU_NSST
+  Bool bNsstEnable =  rpcTempCU->getSlice()->getSPS()->getUseNSST() ? ( isChroma(rpcBestCU->getTextType()) ? (uiWidth>=8 && uiHeight>=8) : true ) : false;
+  
+  UInt nsstLevel = uiWidth*uiHeight > pcSlice->getMinNsstFlagSigAreaSize() ? 0 : ( uiWidth*uiHeight == pcSlice->getMinNsstFlagSigAreaSize() ? 1 : 2 );
+
+  if( parentNsstIndex < 4 )
+  {
+    rpcTempCU->setROTIdxSubParts(rpcBestCU->getTextType(), parentNsstIndex, 0, uiDepth);
+    rpcBestCU->setROTIdxSubParts(rpcBestCU->getTextType(), parentNsstIndex, 0, uiDepth);
+  }
+
+  rpcTempCU->setBTSplitModeSubParts( 0, 0, uiWidth, uiHeight );
+  rpcBestCU->setBTSplitModeSubParts( 0, 0, uiWidth, uiHeight );
+#endif
 
 #if JVET_C0024_QTBT
   Bool bBoundary = !( uiRPelX < sps.getPicWidthInLumaSamples() && uiBPelY < sps.getPicHeightInLumaSamples() );
@@ -1636,6 +1696,11 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 
 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if SU_NSST
+          // loop over NSST indices, it is 4 for SU and larger or 1 otherwise.
+          for( Char iROTidx = 0; iROTidx < (( bNsstEnable && nsstLevel < 2 ) ? 4 : 1); iROTidx++) 
+          { 
+#else
    Char iROTidx = 0; Char iNumberOfPassesROT = 4;  
 #if JVET_C0024_QTBT
           if (isChroma(rpcBestCU->getTextType()) && !(uiWidth>=8 && uiHeight>=8))
@@ -1650,6 +1715,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #endif
    for (iROTidx = 0; iROTidx < iNumberOfPassesROT; iROTidx++)
    {
+#endif
 #endif
 #if VCEG_AZ05_INTRA_MPI
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
@@ -1667,18 +1733,30 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
        {
 #endif
 #if COM16_C806_EMT
+#if !SU_EMT
 #if JVET_C0024_QTBT
          UChar ucEmtUsage = (uiWidth > EMT_INTRA_MAX_CU || uiHeight>EMT_INTRA_MAX_CU || (rpcTempCU->getSlice()->getSPS()->getUseIntraEMT() == 0 ) || isChroma(rpcBestCU->getTextType())) ? 1 : 2;
 #else
          UChar ucEmtUsage = ((rpcTempCU->getWidth(0) > EMT_INTRA_MAX_CU) || (rpcTempCU->getSlice()->getSPS()->getUseIntraEMT() == 0)) ? 1 : 2;
 #endif
          for (UChar ucCuFlag = 0; ucCuFlag < ucEmtUsage; ucCuFlag++)
+#else
+         for (UChar ucCuFlag = 0; ucCuFlag < ((bEmtEnable && emtLevel<2) ? 2 : 1); ucCuFlag++)
+#endif
          {
            if (ucCuFlag && bEarlySkipIntra && m_pcEncCfg->getUseFastInterEMT())
            {
              continue;
            }
+#if SU_EMT
+           if (bEmtEnable && emtLevel<2)
+           {
+             assert( ucParentEmtFlag==2 );
+             rpcTempCU->setEmtCuFlagSubParts(ucCuFlag, 0, uiDepth);
+           }
+#else
            rpcTempCU->setEmtCuFlagSubParts(ucCuFlag, 0, uiDepth);
+#endif
 #if VCEG_AZ05_INTRA_MPI
            rpcTempCU->setMPIIdxSubParts(iMPIidx, 0, uiDepth);
 #endif
@@ -1687,6 +1765,11 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #endif
 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if SU_NSST
+           if( bNsstEnable && nsstLevel < 2 )
+           {
+             assert( parentNsstIndex == 4 );
+#endif
 #if JVET_C0024_QTBT
            rpcTempCU->setROTIdxSubParts(rpcTempCU->getTextType(), iROTidx, 0, uiDepth);
            if( !rpcTempCU->getSlice()->isIntra() )
@@ -1695,6 +1778,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
            }
 #else
            rpcTempCU->setROTIdxSubParts(iROTidx, 0, uiDepth);
+#endif
+#if SU_NSST
+           }
 #endif
 #endif
 
@@ -1739,6 +1825,11 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
          rpcTempCU->setPDPCIdxSubParts(iPDPCidx, 0,  uiDepth ); 
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if SU_NSST
+         if (bNsstEnable && nsstLevel<2)
+         {
+           assert( parentNsstIndex==4 );
+#endif
 #if JVET_C0024_QTBT
          rpcTempCU->setROTIdxSubParts(rpcTempCU->getTextType(), iROTidx, 0, uiDepth);
          if( !rpcTempCU->getSlice()->isIntra() )
@@ -1747,6 +1838,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
          }
 #else
          rpcTempCU->setROTIdxSubParts(iROTidx, 0,  uiDepth ); 
+#endif
+#if SU_NSST
+         }
 #endif
 #endif
          xCheckRDCostIntra( rpcBestCU, rpcTempCU, intraCost, SIZE_2Nx2N DEBUG_STRING_PASS_INTO(sDebug)
@@ -2108,6 +2202,31 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
   }
 #endif
 
+#if SU_EMT
+#if SU_EMT_ENC_THRESHOLD
+  Double dCostSplit[3] = { -1.0, -1.0, -1.0 };
+  const Double dSkipEmtThr = 1.20;
+#endif
+
+  for ( UInt uiEmtFlag = 0; uiEmtFlag < ((bEmtEnable && emtLevel==1) ? 2 : 1); uiEmtFlag++ )
+  {
+#if SU_EMT_ENC_THRESHOLD
+    if( 1 == uiEmtFlag && m_pcEncCfg->getUseFastIntraEMT() )
+    {
+      Double dBestCost = rpcBestCU->getTotalCost();
+      bTestHorSplit &= ( dCostSplit[0] < dBestCost*dSkipEmtThr );
+      bTestVerSplit &= ( dCostSplit[1] < dBestCost*dSkipEmtThr );
+      bQTSplit      &= ( dCostSplit[2] < dBestCost*dSkipEmtThr );
+    }
+#endif
+#endif
+
+#if SU_NSST
+  // loop over SU
+  for ( UInt nsstIndex = 0; nsstIndex < ((bNsstEnable && nsstLevel==1) ? 4 : 1); nsstIndex++ )
+  {
+#endif
+
   if (bTestHorSplit) 
   {
     // further split
@@ -2155,7 +2274,14 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
             m_ppppcRDSbacCoder[uiWidthIdx][uiHeightIdx-1][CI_CURR_BEST]->load(m_ppppcRDSbacCoder[uiWidthIdx][uiHeightIdx-1][CI_NEXT_BEST]);
           }
 #if JVET_C0024_BT_RMV_REDUNDANT
-          xCompressCU( pcSubBestPartCU, pcSubTempPartCU, uiDepth, uiWidth, uiHeight>>1, pcSubBestPartCU->getBTSplitMode(0), uiSplitConstrain );
+          xCompressCU( pcSubBestPartCU, pcSubTempPartCU, uiDepth, uiWidth, uiHeight>>1, pcSubBestPartCU->getBTSplitMode(0), uiSplitConstrain
+#if SU_EMT
+              , ( bEmtEnable && emtLevel>=1 ) ? (emtLevel==1 ? uiEmtFlag : ucParentEmtFlag) : 2
+#endif
+#if SU_NSST
+              , ( bNsstEnable && nsstLevel >= 1 ) ? (nsstLevel == 1 ? nsstIndex : parentNsstIndex) : 4
+#endif
+            );
           
           if( uiPartUnitIdx == 0 && pcSubBestPartCU->getBTSplitModeForBTDepth(0, uiBTDepth+1) == 2 && bBTHorRmvEnable )
           {
@@ -2176,6 +2302,26 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
       }
       m_pcEntropyCoder->encodeBTSplitMode(rpcTempCU, 0, uiWidth, uiHeight, true);
 
+#if SU_EMT
+      if( bEmtEnable && emtLevel==1 )
+      {
+        m_pcEntropyCoder->encodeEmtCuFlag(rpcTempCU, 0, uiDepth, true);
+      }
+#endif
+
+#if SU_NSST
+      if( bNsstEnable && nsstLevel == 1 )
+      {
+        if( isLuma(rpcTempCU->getTextType()) )
+        {
+          m_pcEntropyCoder->encodeROTIdx(rpcTempCU, 0, uiDepth, true, true);
+        }
+        else
+        {
+          m_pcEntropyCoder->encodeROTIdxChroma(rpcTempCU, 0, uiDepth, true, true);
+        }
+      }
+#endif
 
       rpcTempCU->getTotalBits() += m_pcEntropyCoder->getNumberOfWrittenBits(); // split bits
       rpcTempCU->getTotalBins() += ((TEncBinCABAC *)((TEncSbac*)m_pcEntropyCoder->m_pcEntropyCoderIf)->getEncBinIf())->getBinsCoded();
@@ -2200,6 +2346,15 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         }
       }
 
+#if SU_EMT_ENC_THRESHOLD
+#if SU_NSST
+      if( !nsstIndex )
+#endif
+      if( uiEmtFlag==0 )
+      {
+        dCostSplit[0] = rpcTempCU->getTotalCost();
+      }
+#endif
 
       xCheckBestMode( rpcBestCU, rpcTempCU, uiDepth, uiWidth, uiHeight);
       rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode, uiWidth, uiHeight, uiBTSplitMode );
@@ -2263,8 +2418,15 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
           }
 
 #if JVET_C0024_BT_RMV_REDUNDANT
-          xCompressCU( pcSubBestPartCU, pcSubTempPartCU, uiDepth, uiWidth>>1, uiHeight, pcSubBestPartCU->getBTSplitMode(0), uiSplitConstrain );
-          
+          xCompressCU( pcSubBestPartCU, pcSubTempPartCU, uiDepth, uiWidth>>1, uiHeight, pcSubBestPartCU->getBTSplitMode(0), uiSplitConstrain
+#if SU_EMT
+              , ( bEmtEnable && emtLevel>=1 ) ? (emtLevel==1 ? uiEmtFlag : ucParentEmtFlag) : 2
+#endif
+#if SU_NSST
+              , ( bNsstEnable && nsstLevel >= 1 ) ? (nsstLevel == 1 ? nsstIndex : parentNsstIndex) : 4
+#endif
+            );
+
           if( uiPartUnitIdx == 0 && pcSubBestPartCU->getBTSplitModeForBTDepth(0, uiBTDepth+1) == 1 && bBTVerRmvEnable )
           {
               uiSplitConstrain = 1;
@@ -2286,6 +2448,25 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
       }
       m_pcEntropyCoder->encodeBTSplitMode(rpcTempCU, 0, uiWidth, uiHeight, true);
 
+#if SU_EMT
+      if( bEmtEnable && emtLevel==1 )
+      {
+        m_pcEntropyCoder->encodeEmtCuFlag(rpcTempCU, 0, uiDepth, true);
+      }
+#endif
+#if SU_NSST
+      if( bNsstEnable && nsstLevel == 1 )
+      {
+        if( isLuma(rpcTempCU->getTextType()) )
+        {
+          m_pcEntropyCoder->encodeROTIdx(rpcTempCU, 0, uiDepth, true, true);
+        }
+        else
+        {
+          m_pcEntropyCoder->encodeROTIdxChroma(rpcTempCU, 0, uiDepth, true, true);
+        }
+      }
+#endif
 
       rpcTempCU->getTotalBits() += m_pcEntropyCoder->getNumberOfWrittenBits(); // split bits
       rpcTempCU->getTotalBins() += ((TEncBinCABAC *)((TEncSbac*)m_pcEntropyCoder->m_pcEntropyCoderIf)->getEncBinIf())->getBinsCoded();
@@ -2310,6 +2491,15 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         }
       }
 
+#if SU_EMT_ENC_THRESHOLD
+#if SU_NSST
+      if( !nsstIndex )
+#endif
+      if( uiEmtFlag==0 )
+      {
+        dCostSplit[1] = rpcTempCU->getTotalCost();
+      }
+#endif
 
       xCheckBestMode( rpcBestCU, rpcTempCU, uiDepth, uiWidth, uiHeight);
       rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode, uiWidth, uiHeight, uiBTSplitMode );
@@ -2407,7 +2597,18 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #if AMP_ENC_SPEEDUP
           DEBUG_STRING_NEW(sChild)
 #if JVET_C0024_QTBT
-              xCompressCU( pcSubBestPartCU, pcSubTempPartCU, uhNextDepth, uiWidth>>1, uiHeight>>1 DEBUG_STRING_PASS_INTO(sChild), SIZE_2Nx2N );
+              xCompressCU( pcSubBestPartCU, pcSubTempPartCU, uhNextDepth, uiWidth>>1, uiHeight>>1 DEBUG_STRING_PASS_INTO(sChild), SIZE_2Nx2N
+#if SU_EMT
+              , 0 
+              , ( bEmtEnable && emtLevel>=1 ) ? (emtLevel==1 ? uiEmtFlag : ucParentEmtFlag) : 2
+#endif
+#if SU_NSST
+#if !SU_EMT
+              , 0
+#endif
+              , ( bNsstEnable && nsstLevel >= 1 ) ? (nsstLevel == 1 ? nsstIndex : parentNsstIndex) : 4
+#endif
+              );
 #else
           if ( !(rpcBestCU->getTotalCost()!=MAX_DOUBLE && rpcBestCU->isInter(0)) )
           {
@@ -2459,6 +2660,26 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         if( !bForceQT )
 #endif
         m_pcEntropyCoder->encodeSplitFlag( rpcTempCU, 0, uiDepth, true );
+
+#if SU_EMT
+        if( bEmtEnable && emtLevel==1 )
+        {
+          m_pcEntropyCoder->encodeEmtCuFlag(rpcTempCU, 0, uiDepth, true);
+        }
+#endif
+#if SU_NSST
+        if( bNsstEnable && nsstLevel == 1 )
+        {
+          if( isLuma(rpcTempCU->getTextType()) )
+          {
+            m_pcEntropyCoder->encodeROTIdx(rpcTempCU, 0, uiDepth, true, true);
+          }
+          else
+          {
+            m_pcEntropyCoder->encodeROTIdxChroma(rpcTempCU, 0, uiDepth, true, true);
+          }
+        }
+#endif
 
         rpcTempCU->getTotalBits() += m_pcEntropyCoder->getNumberOfWrittenBits(); // split bits
         rpcTempCU->getTotalBins() += ((TEncBinCABAC *)((TEncSbac*)m_pcEntropyCoder->m_pcEntropyCoderIf)->getEncBinIf())->getBinsCoded();
@@ -2524,6 +2745,15 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         }
       }
 
+#if SU_EMT_ENC_THRESHOLD
+#if SU_NSST
+      if( !nsstIndex )
+#endif
+      if( uiEmtFlag==0 )
+      {
+        dCostSplit[2] = rpcTempCU->getTotalCost();
+      }
+#endif
 
 #if JVET_C0024_QTBT
         xCheckBestMode( rpcBestCU, rpcTempCU, uiDepth, uiWidth, uiHeight DEBUG_STRING_PASS_INTO(sDebug) DEBUG_STRING_PASS_INTO(sTempDebug) DEBUG_STRING_PASS_INTO(false) ); // RD compare current larger prediction
@@ -2535,6 +2765,13 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         // with sub partitioned prediction.
     }
   }
+
+#if SU_NSST
+  }
+#endif
+#if SU_EMT
+  }
+#endif
 
   DEBUG_STRING_APPEND(sDebug_, sDebug);
 
@@ -2661,6 +2898,18 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
   const UInt uiBPelY   = uiTPelY + (maxCUHeight>>uiDepth) - 1;
 #endif
 
+#if SU_EMT
+  Bool bEmtEnable =  ( pcCU->getSlice()->getSPS()->getUseIntraEMT() || pcCU->getSlice()->getSPS()->getUseInterEMT() )
+                     && uiWidth       <= EMT_INTRA_MAX_CU
+                     && uiHeight      <= EMT_INTRA_MAX_CU
+                     && isLuma( pcCU->getTextType() );
+  UInt uiCuArea   = uiWidth*uiHeight;
+#endif
+
+#if SU_NSST
+  Bool bNsstEnable = pcCU->getSlice()->getSPS()->getUseNSST() ? ( isChroma(pcCU->getTextType()) ? (uiWidth>=8 && uiHeight>=8) : true ) : false;
+  UInt suSize = uiWidth*uiHeight;
+#endif
 
 #if JVET_C0024_QTBT
   Bool bForceQT = uiWidth > MAX_TU_SIZE;
@@ -2718,6 +2967,27 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
       setCodeChromaQpAdjFlag(true);
     }
 
+#if SU_EMT //SU signalling QT
+    if( uiCuArea==pcSlice->getMinEmtFlagSigAreaSize() && bEmtEnable )
+    {
+      m_suEmtFlag[COMPONENT_Y] = true;
+    }
+#endif
+
+#if SU_NSST //SU signalling QT
+    if( suSize == pcSlice->getMinNsstFlagSigAreaSize() && bNsstEnable )
+    {
+      if( isLuma(pcCU->getTextType()) )
+      {
+        m_suNsstFlag[COMPONENT_Y] = true;
+      }
+      else
+      {
+        m_suNsstFlag[COMPONENT_Cb] = true;
+      }
+    }
+#endif
+
     for ( UInt uiPartUnitIdx = 0; uiPartUnitIdx < 4; uiPartUnitIdx++, uiAbsPartIdx+=uiQNumParts )
     {
       uiLPelX   = pcCU->getCUPelX() + g_auiRasterToPelX[ g_auiZscanToRaster[uiAbsPartIdx] ];
@@ -2773,6 +3043,25 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
     m_pcEntropyCoder->encodeBTSplitMode(pcCU, uiAbsPartIdx, uiWidth, uiHeight);
     if (pcCU->getBTSplitModeForBTDepth(uiAbsPartIdx, uiBTDepth)==1)
     {
+#if SU_EMT //SU signalling BT
+      if( uiCuArea==pcSlice->getMinEmtFlagSigAreaSize() && bEmtEnable )
+      {
+        m_suEmtFlag[COMPONENT_Y] = true;
+      }
+#endif
+#if SU_NSST //SU signalling BT
+      if( suSize == pcSlice->getMinNsstFlagSigAreaSize() && bNsstEnable )
+      {
+        if( isLuma(pcCU->getTextType()) )
+        {
+          m_suNsstFlag[COMPONENT_Y] = true;
+        }
+        else
+        {
+          m_suNsstFlag[COMPONENT_Cb] = true;
+        }
+      }
+#endif
       for ( UInt uiPartUnitIdx = 0; uiPartUnitIdx < 2; uiPartUnitIdx++ )
       {
         if (uiPartUnitIdx==1)
@@ -2794,6 +3083,25 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
     }
     else if (pcCU->getBTSplitModeForBTDepth(uiAbsPartIdx, uiBTDepth)==2)
     {
+#if SU_EMT //SU signalling BT
+      if( uiCuArea==pcSlice->getMinEmtFlagSigAreaSize() && bEmtEnable )
+      {
+        m_suEmtFlag[COMPONENT_Y] = true;
+      }
+#endif
+#if SU_NSST //SU signalling BT
+      if( suSize == pcSlice->getMinNsstFlagSigAreaSize() && bNsstEnable )
+      {
+        if( isLuma(pcCU->getTextType()) )
+        {
+          m_suNsstFlag[COMPONENT_Y] = true;
+        }
+        else
+        {
+          m_suNsstFlag[COMPONENT_Cb] = true;
+        }
+      }
+#endif
       for ( UInt uiPartUnitIdx = 0; uiPartUnitIdx < 2; uiPartUnitIdx++ )
       {
         if (uiPartUnitIdx==1)
@@ -2937,6 +3245,12 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 #endif
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
     , iNonZeroCoeffNonTs
+#endif
+#if SU_EMT
+    , m_suEmtFlag
+#endif
+#if SU_NSST
+    , m_suNsstFlag
 #endif
     );
   setCodeChromaQpAdjFlag( codeChromaQpAdj );
@@ -3274,6 +3588,7 @@ Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTem
     for( UInt uiMergeCand = 0; uiMergeCand < numValidMergeCand; ++uiMergeCand )
     {
 #endif
+
       if(!(uiNoResidual==1 && mergeCandBuffer[uiMergeCand]==1))
       {
         if( !(bestIsSkip && uiNoResidual == 0) )
@@ -3445,6 +3760,7 @@ Void TEncCu::xCheckRDCostMerge2Nx2NFRUC( TComDataCU*& rpcBestCU, TComDataCU*& rp
   UInt uiWIdx = g_aucConvertToBit[rpcBestCU->getWidth(0)];
   UInt uiHIdx = g_aucConvertToBit[rpcBestCU->getHeight(0)];
 #endif
+
   UChar uhDepth = rpcTempCU->getDepth( 0 );
   const UChar uhFRUCME[2] = { FRUC_MERGE_BILATERALMV , FRUC_MERGE_TEMPLATE };
 #if VCEG_AZ06_IC
@@ -3547,6 +3863,7 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
   )
 #endif
 {
+
 #if JVET_C0024_QTBT
   UInt uiWIdx = g_aucConvertToBit[rpcBestCU->getWidth(0)];
   UInt uiHIdx = g_aucConvertToBit[rpcBestCU->getHeight(0)];
@@ -4059,6 +4376,12 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
     , iNonZeroCoeffNonTs
 #endif
+#if SU_EMT
+    , m_suEmtFlag
+#endif
+#if SU_NSST
+    , m_suNsstFlag
+#endif
     );
   setCodeChromaQpAdjFlag( codeChromaQpAdjFlag );
   setdQPFlag( bCodeDQP );
@@ -4074,7 +4397,16 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
   rpcTempCU->getTotalCost() = m_pcRdCost->calcRdCost( rpcTempCU->getTotalBits(), rpcTempCU->getTotalDistortion() );
 
 #if QTBT_NSST
+#if SU_NSST_THRESHOLD
+  Int iNonZeroCoeffThr = isLuma(rpcTempCU->getTextType()) ? NSST_SIG_NZ_LUMA + (rpcTempCU->getSlice()->isIntra() ? 0 : NSST_SIG_NZ_CHROMA) : NSST_SIG_NZ_CHROMA;
+
+  if( rpcTempCU->getWidth(0) * rpcTempCU->getHeight(0) < rpcTempCU->getSlice()->getMinNsstFlagSigAreaSize() )
+  {
+    iNonZeroCoeffThr = Int(SU_NSST_THRESHOLD) - 2;
+  }
+#else
   const Int iNonZeroCoeffThr = isLuma(rpcTempCU->getTextType()) ? NSST_SIG_NZ_LUMA + (rpcTempCU->getSlice()->isIntra() ? 0 : NSST_SIG_NZ_CHROMA) : NSST_SIG_NZ_CHROMA;
+#endif
 
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
   if ( ucNsstIdx && iNonZeroCoeffNonTs <= iNonZeroCoeffThr && iNonZeroCoeffNonTs>0 )
@@ -4082,7 +4414,12 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
   if ( ucNsstIdx && bNonZeroCoeff <= iNonZeroCoeffThr && bNonZeroCoeff>0 )
 #endif
   {
+#if SU_NSST
+    rpcTempCU->getTotalCost() = MAX_DOUBLE / 4;
+    rpcTempCU->getTotalDistortion() = MAX_UINT / 4;
+#else
     rpcTempCU->getTotalCost() = MAX_DOUBLE;
+#endif
   }
 #endif
 

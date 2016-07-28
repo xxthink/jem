@@ -4710,12 +4710,23 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
   // 1: EMT can be applied for current CU, and DCT2 is being checked
   // 2: EMT is being checked for current CU. Stored results of DCT2 can be utilized for speedup
 #if JVET_C0024_QTBT
+#if SU_EMT
+  Bool bEmtEnable =  pcCU->getSlice()->getSPS()->getUseIntraEMT()
+                     && uiWidth       <= EMT_INTRA_MAX_CU
+                     && uiHeight      <= EMT_INTRA_MAX_CU;
+
+  UInt emtLevel = (uiWidth*uiHeight>pcCU->getSlice()->getMinEmtFlagSigAreaSize() ? 0 : (uiWidth*uiHeight==pcCU->getSlice()->getMinEmtFlagSigAreaSize() ? 1 : 2) );
+
+  UChar ucEmtUsageFlag = ( bEmtEnable && emtLevel<=1 ) ? ( pcCU->getEmtCuFlag(0)==1 ? 2 : 1 ) : 0;
+#else
   UChar ucEmtUsageFlag = ( (uiWidth <= EMT_INTRA_MAX_CU && uiHeight <= EMT_INTRA_MAX_CU) ? ( pcCU->getEmtCuFlag(0)==1 ? 2 : 1 ) : 0 );
+#endif
 #else
   UChar ucEmtUsageFlag = ( pcCU->getWidth(0) <= EMT_INTRA_MAX_CU ? ( pcCU->getEmtCuFlag(0)==1 ? 2 : 1 ) : 0 );
 #endif
   Bool  bAllIntra = (m_pcEncCfg->getIntraPeriod()==1);
 
+#if !SU_EMT
 #if JVET_C0024_QTBT
   if (uiWidth*uiHeight<64 && !bAllIntra)
 #else
@@ -4724,6 +4735,7 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
   {
     ucEmtUsageFlag = 0;
   }
+#endif
 #endif
 
   //===== loop over partitions =====
@@ -4828,7 +4840,11 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         if( pcCU->getPartitionSize(0)==SIZE_2Nx2N )
 #endif
         {
+#if SU_NSST
+          const Int iNumberOfPassesROT = ( uiMode<=DC_IDX && pcCU->getWidth(uiAbsPartIdx) * pcCU->getHeight(uiAbsPartIdx) >= pcCU->getSlice()->getMinNsstFlagSigAreaSize() ) ? 3 : 4;
+#else
           const Int iNumberOfPassesROT = ( uiMode<=DC_IDX ) ? 3 : 4;
+#endif
 #if JVET_C0024_QTBT
           if( iNumberOfPassesROT <= pcCU->getROTIdx(CHANNEL_TYPE_LUMA, 0) )
 #else
@@ -4917,7 +4933,11 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
             if( pcCU->getPartitionSize(0)==SIZE_2Nx2N )
 #endif
             {
+#if SU_NSST
+              const Int iNumberOfPassesROT = ( uiMode<=DC_IDX && pcCU->getWidth(uiAbsPartIdx) * pcCU->getHeight(uiAbsPartIdx) >= pcCU->getSlice()->getMinNsstFlagSigAreaSize() ) ? 3 : 4;
+#else
               const Int iNumberOfPassesROT = ( uiMode<=DC_IDX ) ? 3 : 4;
+#endif
 #if JVET_C0024_QTBT
               if( iNumberOfPassesROT <= pcCU->getROTIdx(CHANNEL_TYPE_LUMA, 0) )
 #else
@@ -4998,7 +5018,11 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
           if( pcCU->getPartitionSize(0)==SIZE_2Nx2N )
 #endif
           {
+#if SU_NSST
+            const Int iNumberOfPassesROT = ( mostProbableMode<=DC_IDX && pcCU->getWidth(uiAbsPartIdx) * pcCU->getHeight(uiAbsPartIdx) >= pcCU->getSlice()->getMinNsstFlagSigAreaSize() ) ? 3 : 4;
+#else
             const Int iNumberOfPassesROT = ( mostProbableMode<=DC_IDX ) ? 3 : 4;
+#endif
 #if JVET_C0024_QTBT
             if( iNumberOfPassesROT <= pcCU->getROTIdx(CHANNEL_TYPE_LUMA, 0) )
 #else
@@ -5745,7 +5769,12 @@ TEncSearch::estIntraPredChromaQT(TComDataCU* pcCU,
               uiIntraMode = PLANAR_IDX;
             }
 #endif
+
+#if SU_NSST
+            const Int iNumberOfPassesROT = ( uiIntraMode<=DC_IDX && pcCU->getWidth(0) * pcCU->getHeight(0) >= pcCU->getSlice()->getMinNsstFlagSigAreaSize() ) ? 3 : 4;
+#else
             const Int iNumberOfPassesROT = ( uiIntraMode<=DC_IDX ) ? 3 : 4;
+#endif
             if( iNumberOfPassesROT <= pcCU->getROTIdx(CHANNEL_TYPE_CHROMA, uiPartOffset) )
             {
               continue;
@@ -8144,10 +8173,20 @@ Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg,
 #if COM16_C806_EMT
   Bool bestIsSkip = false;
   UChar ucBestCuFlag = 0;
+#if !SU_EMT
 #if JVET_C0024_QTBT
   UChar ucEmtUsage = ( ( cuWidthPixels> EMT_INTER_MAX_CU || cuHeightPixels > EMT_INTER_MAX_CU ) || ( pcCU->getSlice()->getSPS()->getUseInterEMT()==0 ) ) ? 1 : 2;
 #else
   UChar ucEmtUsage = ( ( cuWidthPixels > EMT_INTER_MAX_CU ) || ( pcCU->getSlice()->getSPS()->getUseInterEMT()==0 ) ) ? 1 : 2;
+#endif
+#else
+  Bool bEmtEnable =  pcCU->getSlice()->getSPS()->getUseInterEMT()
+                     && cuWidthPixels       <= EMT_INTRA_MAX_CU
+                     && cuHeightPixels      <= EMT_INTRA_MAX_CU
+                     && isLuma( pcCU->getTextType() );
+
+  UInt emtLevel = (cuWidthPixels*cuHeightPixels>pcCU->getSlice()->getMinEmtFlagSigAreaSize() ? 0 : (cuWidthPixels*cuHeightPixels==pcCU->getSlice()->getMinEmtFlagSigAreaSize() ? 1 : 2) );
+  UChar ucEmtUsage = ((bEmtEnable && emtLevel<2) ? 2 : 1);
 #endif
 
 #if COM16_C806_OBMC 
@@ -8176,7 +8215,14 @@ Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg,
     {
       break;
     }
+#if SU_EMT
+    if (bEmtEnable && emtLevel<2)
+    {
+      pcCU->setEmtCuFlagSubParts(ucCuFlag, 0, pcCU->getDepth(0));
+    }
+#else
     pcCU->setEmtCuFlagSubParts(ucCuFlag, 0, pcCU->getDepth(0));
+#endif
     pcCU->setSkipFlagSubParts(false, 0, pcCU->getDepth(0));
 #endif
 
@@ -8344,7 +8390,14 @@ Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg,
 #endif
 
 #if COM16_C806_EMT
+#if SU_EMT
+    if (bEmtEnable && emtLevel<2)
+    {
+      pcCU->setEmtCuFlagSubParts(ucBestCuFlag, 0, pcCU->getDepth(0));
+    }
+#else
   pcCU->setEmtCuFlagSubParts( ucBestCuFlag, 0, pcCU->getDepth(0) );
+#endif
   pcCU->setSkipFlagSubParts( bestIsSkip, 0, pcCU->getDepth(0) );
   if( ucBestCuFlag < (ucEmtUsage-1) )
   {
@@ -9806,6 +9859,13 @@ Void  TEncSearch::xAddSymbolBitsInter( TComDataCU* pcCU, UInt& ruiBits )
 #endif
     Bool codeDeltaQp = false;
     Bool codeChromaQpAdj = false;
+#if SU_EMT
+    Bool suEmtFlag[] = {false, false, false};
+#endif
+#if SU_NSST
+    Bool suNsstFlag[] = {false, false, false};
+#endif
+
 #if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
     Int bNonZeroCoeff = false;
 #endif
@@ -9818,6 +9878,12 @@ Void  TEncSearch::xAddSymbolBitsInter( TComDataCU* pcCU, UInt& ruiBits )
 #endif
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
       , iNonZeroCoeffNonTs
+#endif
+#if SU_EMT
+    , suEmtFlag
+#endif
+#if SU_NSST
+    , suNsstFlag
 #endif
       );
 

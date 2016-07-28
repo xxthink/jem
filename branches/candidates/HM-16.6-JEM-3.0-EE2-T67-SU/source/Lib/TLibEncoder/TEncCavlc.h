@@ -110,9 +110,15 @@ public:
   Void codePDPCIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx);
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if SU_NSST
+  Void codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, ChannelType ch, Bool suFlag ) {assert(0);}
+#elif NSST_INDEX
+  Void codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, ChannelType ch ) {assert(0);}
+#else
   Void codeROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth );
 #if JVET_C0024_QTBT
   Void codeROTIdxChroma ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth );
+#endif
 #endif
 #endif
 #if VCEG_AZ07_IMV

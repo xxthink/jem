@@ -300,6 +300,13 @@ Void TDecCu::decodeCtu( TComDataCU* pCtu, Bool& isLastCtuOfSliceSegment )
   pCtu->getPic()->setCodedAreaInCTU(0);
   pCtu->getPic()->setCodedBlkInCTU(false, 0, 0, uiCTUSize>>MIN_CU_LOG2, uiCTUSize>>MIN_CU_LOG2);  //only used for affine merge code or not
 
+#if SU_EMT
+  memset( m_suEmtFlag, 0, sizeof(m_suEmtFlag) );
+#endif
+#if SU_NSST
+  memset( m_suNsstFlag, 0, sizeof(m_suNsstFlag) );
+#endif
+
   xDecodeCU( pCtu, 0, 0, uiCTUSize, uiCTUSize, isLastCtuOfSliceSegment);
 #else
   xDecodeCU( pCtu, 0, 0, isLastCtuOfSliceSegment);
@@ -398,6 +405,18 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
   UInt uiBPelY   = uiTPelY + (maxCuHeight>>uiDepth) - 1;
 #endif
 
+#if SU_EMT
+  Bool bEmtEnable =  ( pcCU->getSlice()->getSPS()->getUseIntraEMT() || pcCU->getSlice()->getSPS()->getUseInterEMT() )
+                     && uiWidth       <= EMT_INTRA_MAX_CU
+                     && uiHeight      <= EMT_INTRA_MAX_CU
+                     && isLuma( pcCU->getTextType() );
+  UInt uiCuArea   = uiWidth*uiHeight;
+#endif
+
+#if SU_NSST
+  Bool bNsstEnable = pcCU->getSlice()->getSPS()->getUseNSST() ? ( isChroma(pcCU->getTextType()) ? (uiWidth>=8 && uiHeight>=8) : true ) : false;
+  UInt suSize = uiWidth*uiHeight;
+#endif
 
 #if JVET_C0024_BT_RMV_REDUNDANT
   pcCU->setSplitConstrain( uiSplitConstrain );
@@ -405,6 +424,10 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
 #endif
 
 #if JVET_C0024_QTBT
+#if SU_NSST
+  pcCU->setSizeSubParts( uiWidth, uiHeight, uiAbsPartIdx, uiDepth );
+#endif
+
   Bool bForceQT = uiWidth > MAX_TU_SIZE;
   if( bForceQT )
   {
@@ -458,6 +481,28 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
     {
       setIsChromaQpAdjCoded(true);
     }
+
+#if SU_EMT //SU signalling QT
+    if( uiCuArea==pcCU->getSlice()->getMinEmtFlagSigAreaSize() && bEmtEnable )
+    {
+      m_suEmtFlag[COMPONENT_Y] = 1;
+    }
+#endif
+
+#if SU_NSST //SU signalling QT
+    if( suSize == pcCU->getSlice()->getMinNsstFlagSigAreaSize() && bNsstEnable )
+    {
+      pcCU->setSizeSubParts( uiWidth, uiHeight, uiAbsPartIdx, uiDepth );
+      if( isLuma(pcCU->getTextType()) )
+      {
+        m_suNsstFlag[COMPONENT_Y] = 1;
+      }
+      else
+      {
+        m_suNsstFlag[COMPONENT_Cb] = 1;
+      }
+    }
+#endif
 
     for ( UInt uiPartUnitIdx = 0; uiPartUnitIdx < 4; uiPartUnitIdx++ )
     {
@@ -527,6 +572,28 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
 #endif
     if (pcCU->getBTSplitModeForBTDepth(uiAbsPartIdx, uiBTDepth)==1)
     {
+#if SU_EMT //SU signalling BT
+      if( uiCuArea==pcCU->getSlice()->getMinEmtFlagSigAreaSize() && bEmtEnable )
+      {
+        m_suEmtFlag[COMPONENT_Y] = 1;
+      }
+#endif
+
+#if SU_NSST //SU signalling BT
+      if( suSize == pcCU->getSlice()->getMinNsstFlagSigAreaSize() && bNsstEnable )
+      {
+        pcCU->setSizeSubParts( uiWidth, uiHeight, uiAbsPartIdx, uiDepth );
+        if( isLuma(pcCU->getTextType()) )
+        {
+          m_suNsstFlag[COMPONENT_Y] = 1;
+        }
+        else
+        {
+          m_suNsstFlag[COMPONENT_Cb] = 1;
+        }
+      }
+#endif
+
       for ( UInt uiPartUnitIdx = 0; uiPartUnitIdx < 2; uiPartUnitIdx++ )
       {
         if (uiPartUnitIdx==1)
@@ -548,6 +615,28 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
     }
     else if (pcCU->getBTSplitModeForBTDepth(uiAbsPartIdx, uiBTDepth)==2)
     {
+#if SU_EMT //SU signalling BT
+      if( uiCuArea==pcCU->getSlice()->getMinEmtFlagSigAreaSize() && bEmtEnable )
+      {
+        m_suEmtFlag[COMPONENT_Y] = 1;
+      }
+#endif
+
+#if SU_NSST //SU signalling BT
+      if( suSize == pcCU->getSlice()->getMinNsstFlagSigAreaSize() && bNsstEnable )
+      {
+        pcCU->setSizeSubParts( uiWidth, uiHeight, uiAbsPartIdx, uiDepth );
+        if( isLuma(pcCU->getTextType()) )
+        {
+          m_suNsstFlag[COMPONENT_Y] = 1;
+        }
+        else
+        {
+          m_suNsstFlag[COMPONENT_Cb] = 1;
+        }
+      }
+#endif
+
       for ( UInt uiPartUnitIdx = 0; uiPartUnitIdx < 2; uiPartUnitIdx++ )
       {
         if (uiPartUnitIdx==1)
@@ -814,7 +903,14 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
   // Coefficient decoding
   Bool bCodeDQP = getdQPFlag();
   Bool isChromaQpAdjCoded = getIsChromaQpAdjCoded();
-  m_pcEntropyDecoder->decodeCoeff( pcCU, uiAbsPartIdx, uiDepth, bCodeDQP, isChromaQpAdjCoded );
+  m_pcEntropyDecoder->decodeCoeff( pcCU, uiAbsPartIdx, uiDepth, bCodeDQP, isChromaQpAdjCoded
+#if SU_EMT
+    , m_suEmtFlag
+#endif
+#if SU_NSST
+    , m_suNsstFlag
+#endif
+    );
   setIsChromaQpAdjCoded( isChromaQpAdjCoded );
   setdQPFlag( bCodeDQP );
 

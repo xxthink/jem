@@ -47,6 +47,21 @@
 //! \ingroup TLibCommon
 //! \{
 
+#define SU_EMT                                            1  // Signalling unit (SU) for EMT
+#if SU_EMT
+#define SU_EMT_ENC_THRESHOLD                              1  // Fast SU EMT encoder
+#define EMT_FLAG_SIG_MIN_AREA                            64  // Min SU area size for signlaing EMT flag
+#endif
+
+#define SU_NSST                                           0  // Signalling unit (SU) for NSST
+#if SU_NSST
+#define SU_NSST_THRESHOLD                                 1  // threshold = SU_NSST_THRESHOLD - 2
+#define NSST_INDEX                                        1  // Code simplificaiton and clean up, lossless change
+#define NSST_FLAG_SIG_MIN_AREA                           64  // Min SU area size for signlaing NSST index
+#endif
+
+#define SU_FIXED_SIZE                                     0  // use fixed SU size without signalling
+
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////

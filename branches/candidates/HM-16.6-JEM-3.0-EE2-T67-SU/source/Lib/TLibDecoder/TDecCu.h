@@ -95,6 +95,13 @@ private:
 #endif
 #endif
 
+#if SU_EMT
+  UChar               m_suEmtFlag[MAX_NUM_COMPONENT];
+#endif
+#if SU_NSST
+  UChar               m_suNsstFlag[MAX_NUM_COMPONENT];
+#endif
+
 public:
   TDecCu();
   virtual ~TDecCu();

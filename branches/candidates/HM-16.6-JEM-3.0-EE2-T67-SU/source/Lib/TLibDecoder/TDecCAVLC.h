@@ -104,9 +104,15 @@ public:
 #endif
 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if SU_NSST
+  Void parseROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, ChannelType ch, Bool suFlag ) {assert(0);}
+#elif NSST_INDEX
+  Void parseROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, ChannelType ch ) {assert(0);}
+#else
   Void parseROTIdx       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #if JVET_C0024_QTBT
   Void parseROTIdxChroma ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
 #endif
 #endif
   Void parseMergeFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx );

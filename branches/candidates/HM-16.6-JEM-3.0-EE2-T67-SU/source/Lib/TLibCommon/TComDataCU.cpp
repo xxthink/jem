@@ -1066,6 +1066,7 @@ Void TComDataCU::initEstData( const UInt uiDepth, const Int qp, const Bool bTran
     m_PDPCIdx[ui]       = 0;
 #endif
 
+#if !SU_NSST
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 #if JVET_C0024_QTBT
     for( UInt i = 0; i < MAX_NUM_CHANNEL_TYPE; i++ )
@@ -1074,6 +1075,7 @@ Void TComDataCU::initEstData( const UInt uiDepth, const Int qp, const Bool bTran
     }
 #else
     m_ROTIdx[ui] = 0;
+#endif
 #endif
 #endif
 #if !JVET_C0024_QTBT
@@ -1111,7 +1113,9 @@ Void TComDataCU::initEstData( const UInt uiDepth, const Int qp, const Bool bTran
 #endif
 #if COM16_C806_EMT
     m_puhEmtTuIdx [ui]  = 0;
+#if !SU_EMT
     m_puhEmtCuFlag[ui]  = 0;
+#endif
 #endif
 #if COM16_C1016_AFFINE
     m_affineFlag[ui]    = false;

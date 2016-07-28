@@ -211,6 +211,45 @@ Void TEncEntropy::encodePDPCIdx(TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD)
 #endif
 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if NSST_INDEX || SU_NSST
+Void TEncEntropy::encodeROTIdx( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bRD
+#if SU_NSST
+  , Bool suFlag
+#endif
+  )
+{ 
+  if( bRD )
+  {
+    uiAbsPartIdx = 0;
+  }
+
+  m_pcEntropyCoderIf->codeROTIdx( pcCU, uiAbsPartIdx, uiDepth, CHANNEL_TYPE_LUMA
+#if SU_NSST
+   , suFlag
+#endif
+   );
+}
+
+#if JVET_C0024_QTBT
+Void TEncEntropy::encodeROTIdxChroma( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth, Bool bRD
+#if SU_NSST
+  , Bool suFlag
+#endif
+  )
+{ 
+  if( bRD )
+  {
+    uiAbsPartIdx = 0;
+  }
+
+  m_pcEntropyCoderIf->codeROTIdx( pcCU, uiAbsPartIdx, uiDepth, CHANNEL_TYPE_CHROMA
+#if SU_NSST
+   , suFlag
+#endif
+   );
+}
+#endif
+#else
 Void TEncEntropy::encodeROTIdx( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth, Bool bRD )
 { 
 
@@ -235,6 +274,8 @@ Void TEncEntropy::encodeROTIdxChroma( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt u
 }
 #endif
 #endif
+#endif
+
 //! encode merge flag
 Void TEncEntropy::encodeMergeFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
 {
@@ -345,7 +386,11 @@ Void TEncEntropy::encodeIPCMInfo( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD 
 }
 
 #if JVET_C0024_QTBT
-Void TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComTU &rTu, ComponentID compID)
+Void TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComTU &rTu, ComponentID compID
+#if SU_EMT
+    , Bool* suEmtFlag
+#endif
+  )
 {
   TComDataCU *pcCU=rTu.getCU();
   const UInt uiAbsPartIdx=rTu.GetAbsPartIdxTU();
@@ -355,6 +400,16 @@ Void TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComT
 #endif
   assert(rTu.GetTransformDepthRel()==0);
 
+#if SU_EMT
+  const TComRectangle &tuRect=rTu.getRect(compID);
+  const UInt uiWidth=tuRect.width;
+  const UInt uiHeight=tuRect.height;
+  Bool bEmtEnable =  ( pcCU->isIntra(uiAbsPartIdx) ? pcCU->getSlice()->getSPS()->getUseIntraEMT() : pcCU->getSlice()->getSPS()->getUseInterEMT() )
+    && uiWidth       <= EMT_INTRA_MAX_CU
+    && uiHeight      <= EMT_INTRA_MAX_CU
+    && isLuma(compID);
+  UInt uiCuArea = uiWidth*uiHeight;
+#endif
 
   if( !pcCU->isIntra(uiAbsPartIdx) && isLuma(compID) && (!bChroma || (!pcCU->getCbf( uiAbsPartIdx, COMPONENT_Cb, 0 ) && !pcCU->getCbf( uiAbsPartIdx, COMPONENT_Cr, 0 ) ) ) )
   {
@@ -371,9 +426,17 @@ Void TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComT
   if (cbf)
   {
 #if COM16_C806_EMT
+#if SU_EMT
+    if (bEmtEnable && ( uiCuArea>=pcCU->getSlice()->getMinEmtFlagSigAreaSize() || suEmtFlag[compID] ) )
+#else
     if (compID == COMPONENT_Y)
+#endif
     {
       m_pcEntropyCoderIf->codeEmtCuFlag( pcCU, uiAbsPartIdx, uiDepth, true );
+
+#if SU_EMT
+      suEmtFlag[compID] = false;
+#endif
     }
 #endif
 #if  VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
@@ -966,6 +1029,12 @@ Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
   , Int& iNonZeroCoeffNonTs
 #endif
+#if SU_EMT
+    , Bool* suEmtFlag
+#endif
+#if SU_NSST
+    , Bool* suNsstFlag
+#endif
   )
 {
 #if ENVIRONMENT_VARIABLE_DEBUG_AND_TEST
@@ -1006,6 +1075,16 @@ Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
   }
 #endif
 
+#if SU_NSST
+  //const TComRectangle &tuRect=tuRecurse.getRect(isLuma(pcCU->getTextType()) ? COMPONENT_Y : COMPONENT_Cb);
+  //const UInt width=tuRect.width;
+  //const UInt height=tuRect.height;
+  const UInt width = pcCU->getWidth( uiAbsPartIdx );
+  const UInt height = pcCU->getHeight( uiAbsPartIdx );
+  Bool bNsstEnable =  pcCU->getSlice()->getSPS()->getUseNSST() ? ( isChroma(pcCU->getTextType()) ? (width>=8 && height>=8) : true ) : false;
+  UInt suSize = width*height;
+#endif
+
 #if JVET_C0024_QTBT
   if (isChroma(pcCU->getTextType()) || !pcCU->getSlice()->isIntra())
   {
@@ -1013,12 +1092,20 @@ Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
     for(UInt ch=COMPONENT_Cb; ch<numValidComponent; ch++)
     {
       const ComponentID compID=ComponentID(ch);
+#if SU_EMT
+      xEncodeTransform( bCodeDQP, codeChromaQpAdj, tuRecurse, compID, suEmtFlag);
+#else
       xEncodeTransform( bCodeDQP, codeChromaQpAdj, tuRecurse, compID);
+#endif
     }
   }
   if (isLuma(pcCU->getTextType()))
   {
+#if SU_EMT
+    xEncodeTransform( bCodeDQP, codeChromaQpAdj, tuRecurse, COMPONENT_Y, suEmtFlag);
+#else
     xEncodeTransform( bCodeDQP, codeChromaQpAdj, tuRecurse, COMPONENT_Y);
+#endif
   }
 #if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
 #if !QTBT_NSST
@@ -1031,7 +1118,16 @@ Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
 #endif
   const UInt uiFirstComp = isLuma(pcCU->getTextType()) ? COMPONENT_Y : COMPONENT_Cb;
   const UInt uiLastComp  = isLuma(pcCU->getTextType()) && pcCU->getSlice()->isIntra() ? COMPONENT_Y : pcCU->getPic()->getNumberValidComponents()-1;
+#if SU_NSST_THRESHOLD
+  Int iNonZeroCoeffThr = isLuma(pcCU->getTextType()) ? NSST_SIG_NZ_LUMA + (pcCU->getSlice()->isIntra() ? 0 : NSST_SIG_NZ_CHROMA) : NSST_SIG_NZ_CHROMA;
+
+  if( suNsstFlag[isChroma(pcCU->getTextType())] || suSize < pcCU->getSlice()->getMinNsstFlagSigAreaSize() )
+  {
+    iNonZeroCoeffThr = Int(SU_NSST_THRESHOLD) - 2;
+  }
+#else
   const Int iNonZeroCoeffThr = isLuma(pcCU->getTextType()) ? NSST_SIG_NZ_LUMA + (pcCU->getSlice()->isIntra() ? 0 : NSST_SIG_NZ_CHROMA) : NSST_SIG_NZ_CHROMA;
+#endif
   for(UInt ch= uiFirstComp; ch<=uiLastComp; ch++)
   {
     const ComponentID compID   = ComponentID(ch);
@@ -1073,8 +1169,33 @@ Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
 #endif
 #endif
 
+#if SU_NSST 
+  DTRACE_CABAC_VL( g_nSymbolCounter++ );
+  DTRACE_CABAC_T( "\tcompID: " );
+  DTRACE_CABAC_V( uiFirstComp );
+  DTRACE_CABAC_T( "\tnumNonZeroCoeff: " );
+#if JVET_C0045_C0053_NO_NSST_FOR_TS
+  DTRACE_CABAC_V( iNonZeroCoeffNonTs );
+#else
+  DTRACE_CABAC_V( bNonZeroCoeff );
+#endif
+  DTRACE_CABAC_T( "\tisNsstEnabled: " );
+  DTRACE_CABAC_V( bNsstEnable );
+  DTRACE_CABAC_T( "\tsuSize: " );
+  DTRACE_CABAC_V( suSize );
+  DTRACE_CABAC_T( "\tAddress: " );
+  DTRACE_CABAC_V( pcCU->getCtuRsAddr() );
+  DTRACE_CABAC_T( "\tuiAbsPartIdx: " );
+  DTRACE_CABAC_V( uiAbsPartIdx );
+  DTRACE_CABAC_T( "\n" );
+#endif
+
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   /// put conditions if sometimes flag is not encoded
+#if SU_NSST
+  if( bNsstEnable )
+  {
+#endif
 #if JVET_C0024_QTBT
   if (
 #if QTBT_NSST
@@ -1086,9 +1207,16 @@ Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
 #else
     bCbfCU 
 #endif
+#if SU_NSST
+    && ( suNsstFlag[COMPONENT_Y] || suSize >= pcCU->getSlice()->getMinNsstFlagSigAreaSize() )
+#endif
     && isLuma(pcCU->getTextType()))
   {
     encodeROTIdx( pcCU, uiAbsPartIdx, uiDepth );
+
+#if SU_NSST
+    suNsstFlag[COMPONENT_Y] = false;
+#endif
   }
   else if(
 #if QTBT_NSST
@@ -1100,10 +1228,17 @@ Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
 #else
     bCbfCU 
 #endif
+#if SU_NSST
+    && ( suNsstFlag[COMPONENT_Cb] || suSize >= pcCU->getSlice()->getMinNsstFlagSigAreaSize() )
+#endif
      && isChroma(pcCU->getTextType()) && pcCU->getWidth(uiAbsPartIdx) >= 8 && pcCU->getHeight(uiAbsPartIdx) >= 8 )
   {
     assert( pcCU->getSlice()->isIntra() );
     encodeROTIdxChroma( pcCU, uiAbsPartIdx, uiDepth );
+
+#if SU_NSST
+    suNsstFlag[COMPONENT_Cb] = false;
+#endif
   }
 #else
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
@@ -1112,6 +1247,9 @@ Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
   if (bCbfCU  )
 #endif
     encodeROTIdx( pcCU, uiAbsPartIdx, uiDepth );
+#endif
+#if SU_NSST
+  }
 #endif
 #endif 
 }

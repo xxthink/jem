@@ -793,8 +793,105 @@ Void TDecSbac::parsePDPCIdx(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth)
 }
 #endif
 
+#if NSST_INDEX
+Void TDecSbac::parseROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, ChannelType ch
+#if SU_NSST
+  , Bool suFlag
+#endif
+  )
+{
+  if( !pcCU->getSlice()->getSPS()->getUseNSST() )
+  {
+    return;
+  }
+
+#if SU_NSST
+  UInt width = pcCU->getWidth(uiAbsPartIdx);
+  UInt height = pcCU->getHeight(uiAbsPartIdx);
+  UInt suSize = width * height;
+
+  Int maxNsstIdx = 0;
+
+  if( suFlag || suSize < pcCU->getSlice()->getMinNsstFlagSigAreaSize() )
+  {
+    maxNsstIdx = 4;
+  }
+  else
+#endif
+  if( !pcCU->isIntra(uiAbsPartIdx) || (isLuma(ch) && pcCU->getPDPCIdx(uiAbsPartIdx)) || pcCU->getCUTransquantBypass(uiAbsPartIdx) )
+  {
+    return;
+  }
+
+#if SU_NSST
+  if( maxNsstIdx != 4 )
+  {
+#endif
+  Int intraMode = pcCU->getIntraDir( ch, uiAbsPartIdx );
+
+  if( isChroma(ch) )
+  {
+    if( intraMode == DM_CHROMA_IDX )
+    {
+      intraMode = pcCU->getPic()->getCtu(pcCU->getCtuRsAddr())->getIntraDir(CHANNEL_TYPE_LUMA, pcCU->getZorderIdxInCtu()+uiAbsPartIdx);
+    }
+#if COM16_C806_LMCHROMA
+    else if( intraMode == LM_CHROMA_IDX )
+    {
+      intraMode = PLANAR_IDX;
+    }
+#endif
+  }
+
+#if SU_NSST
+    maxNsstIdx = intraMode <= DC_IDX ? 3 : 4;
+  }
+#else
+  Int maxNsstIdx = intraMode <= DC_IDX ? 3 : 4;
+#endif
+
+  Int startCtx = maxNsstIdx == 4 ? 0 : 1;
+  UInt nsstIdx = 0, symb = 0;
+
+  m_pcTDecBinIf->decodeBin( symb, m_cROTidxSCModel.get(0,0, startCtx) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG) );
+  nsstIdx += symb;
+
+  if( symb )
+  {
+    m_pcTDecBinIf->decodeBin( symb, m_cROTidxSCModel.get(0,0, startCtx + 2) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG) );
+    nsstIdx += symb;
+
+    if( symb && maxNsstIdx == 4 )
+    {
+      m_pcTDecBinIf->decodeBin( symb, m_cROTidxSCModel.get(0,0, 4) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__ROT_FLAG) );
+      nsstIdx += symb;
+    }
+  }
+
+  pcCU->setROTIdxSubParts( ch, nsstIdx, uiAbsPartIdx, uiDepth ); 
+
+  DTRACE_CABAC_VL( g_nSymbolCounter++ );
+  DTRACE_CABAC_T( "\tComp: " );
+  DTRACE_CABAC_V( isLuma(ch) ? 0 : 1 );
+  DTRACE_CABAC_T( "\tNSST index: " );
+  DTRACE_CABAC_V( nsstIdx );
+  DTRACE_CABAC_T( "\tmax NSST index: " );
+  DTRACE_CABAC_V( maxNsstIdx );
+  DTRACE_CABAC_T( "\tsuFlag: " );
+  DTRACE_CABAC_V( suFlag );
+  DTRACE_CABAC_T( "\tAddress: " );
+  DTRACE_CABAC_V( pcCU->getCtuRsAddr() );
+  DTRACE_CABAC_T( "\tuiAbsPartIdx: " );
+  DTRACE_CABAC_V( uiAbsPartIdx );
+  DTRACE_CABAC_T( "\n" );
+}
+#else
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
-Void TDecSbac::parseROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
+Void TDecSbac::parseROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
+#if SU_NSST
+  , Bool suFlag
+#endif
+  )
 { 
 #if COM16_C1044_NSST
   if (!pcCU->getSlice()->getSPS()->getUseNSST()) 
@@ -810,6 +907,7 @@ Void TDecSbac::parseROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
     return;
   }
   Int iNumberOfPassesROT = 1;
+
   if( pcCU->isIntra(uiAbsPartIdx)
 #if VCEG_AZ05_INTRA_MPI
     && pcCU->getMPIIdx(uiAbsPartIdx) ==0
@@ -901,7 +999,11 @@ Void TDecSbac::parseROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 }
 
 #if JVET_C0024_QTBT
-Void TDecSbac::parseROTIdxChroma ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
+Void TDecSbac::parseROTIdxChroma ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
+#if SU_NSST
+  , Bool suFlag
+#endif
+  )
 { 
 #if COM16_C1044_NSST
   if (!pcCU->getSlice()->getSPS()->getUseNSST()) 
@@ -913,6 +1015,7 @@ Void TDecSbac::parseROTIdxChroma ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiD
     return;
   }
   Int iNumberOfPassesROT = 1;
+
   if( pcCU->isIntra(uiAbsPartIdx)
     && !pcCU->getCUTransquantBypass(uiAbsPartIdx)
     )  iNumberOfPassesROT = 4;
@@ -989,6 +1092,8 @@ UInt uiNSST = 0, idx_ROT=0;
 }
 #endif
 #endif
+#endif
+
 Void TDecSbac::parseMergeIndex ( TComDataCU* pcCU, UInt& ruiMergeIndex )
 {
   UInt uiUnaryIdx = 0;
@@ -2749,7 +2854,11 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
 #if COM16_C806_EMT
   if (!pcCU->getTransformSkip( uiAbsPartIdx, compID) && compID == COMPONENT_Y )
   {
-    if ( pcCU->getEmtCuFlag( uiAbsPartIdx ) && pcCU->isIntra( uiAbsPartIdx ) )
+    if ( pcCU->getEmtCuFlag( uiAbsPartIdx ) && pcCU->isIntra( uiAbsPartIdx )
+#if SU_EMT
+      && pcCU->getSlice()->getSPS()->getUseIntraEMT()
+#endif
+      )
     {
       if( uiNumSig > g_iEmtSigNumThr )
       {
@@ -2760,7 +2869,11 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
         pcCU->setEmtTuIdxSubParts( 0, uiAbsPartIdx, rTu.GetTransformDepthTotal() );
       }
     }
-    if ( pcCU->getEmtCuFlag( uiAbsPartIdx ) && !pcCU->isIntra( uiAbsPartIdx ) )
+    if ( pcCU->getEmtCuFlag( uiAbsPartIdx ) && !pcCU->isIntra( uiAbsPartIdx )
+#if SU_EMT
+      && pcCU->getSlice()->getSPS()->getUseInterEMT()
+#endif
+      )
     {
       parseEmtTuIdx( pcCU, uiAbsPartIdx, rTu.GetTransformDepthTotal() ); 
     }
@@ -3361,22 +3474,37 @@ Void TDecSbac::parseEmtCuFlag  ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDep
   pcCU->setEmtCuFlagSubParts( 0, uiAbsPartIdx, uiDepth );
   pcCU->setEmtTuIdxSubParts( DCT2_EMT, uiAbsPartIdx, uiDepth );
 
+#if SU_EMT
+  if( !bParseCuFlag )
+  {
+    return;
+  }
+#endif
+
+#if !SU_EMT
 #if JVET_C0024_QTBT
   if ( pcCU->isIntra( uiAbsPartIdx ) && bParseCuFlag && pcCU->getWidth(uiAbsPartIdx)<= EMT_INTRA_MAX_CU && pcCU->getHeight(uiAbsPartIdx) <= EMT_INTRA_MAX_CU 
       && pcCU->getSlice()->getSPS()->getUseIntraEMT() )
 #else
   if ( pcCU->isIntra( uiAbsPartIdx ) && bParseCuFlag && pcCU->getWidth(uiAbsPartIdx) <= EMT_INTRA_MAX_CU && pcCU->getSlice()->getSPS()->getUseIntraEMT() )
 #endif
+#else
+  if ( pcCU->isIntra( uiAbsPartIdx ) )
+#endif
   {
     UInt uiCuFlag = 0;
     m_pcTDecBinIf->decodeBin( uiCuFlag, m_cEmtCuFlagSCModel.get(0, 0, uiDepth) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__EMT_CU_FLAG) );
     pcCU->setEmtCuFlagSubParts( uiCuFlag, uiAbsPartIdx, uiDepth );
   }
+#if !SU_EMT
 #if JVET_C0024_QTBT
   if( !pcCU->isIntra( uiAbsPartIdx ) && bParseCuFlag && pcCU->getWidth(uiAbsPartIdx)<= EMT_INTER_MAX_CU && pcCU->getHeight(uiAbsPartIdx) <= EMT_INTER_MAX_CU
       && pcCU->getSlice()->getSPS()->getUseInterEMT() )
 #else
   if( !pcCU->isIntra( uiAbsPartIdx ) && bParseCuFlag && pcCU->getWidth(uiAbsPartIdx) <= EMT_INTER_MAX_CU && pcCU->getSlice()->getSPS()->getUseInterEMT() )
+#endif
+#else
+  if( !pcCU->isIntra( uiAbsPartIdx ) )
 #endif
   {
     UInt uiCuFlag = 0;
