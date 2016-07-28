@@ -1661,7 +1661,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 
 #if COM16_C1046_PDPC_INTRA
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if !JVET_C0042_NSST_PDPC
        if (iROTidx) iNumberOfPassesPDPC = 1;
+#endif
 #endif
        for (iPDPCidx = 0; iPDPCidx < iNumberOfPassesPDPC; iPDPCidx++)
        {
@@ -1800,7 +1802,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
                 iPDPCidx = 0;   iNumberOfPassesPDPC = 2;
                 if (rpcTempCU->getSlice()->getSliceType() != I_SLICE)  iNumberOfPassesPDPC = 2;
                 if (!rpcTempCU->getSlice()->getSPS()->getUsePDPC()) iNumberOfPassesPDPC = 1;
+#if !JVET_C0042_NSST_PDPC                
                 if (iROTidx) iNumberOfPassesPDPC = 1;
+#endif
 #endif
                 for (iPDPCidx = 0; iPDPCidx<iNumberOfPassesPDPC; iPDPCidx++)
                 {

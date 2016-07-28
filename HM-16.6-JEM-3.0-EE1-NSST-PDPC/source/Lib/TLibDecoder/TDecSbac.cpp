@@ -815,10 +815,14 @@ Void TDecSbac::parseROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
     && pcCU->getMPIIdx(uiAbsPartIdx) ==0
 #endif
 #if COM16_C1046_PDPC_INTRA
+#if !JVET_C0042_NSST_PDPC
     && pcCU->getPDPCIdx(uiAbsPartIdx) == 0
+#endif
 #endif
     && !pcCU->getCUTransquantBypass(uiAbsPartIdx)
     )  iNumberOfPassesROT = 4;
+
+
 
 #if COM16_C1044_NSST
 #if JVET_C0024_QTBT
