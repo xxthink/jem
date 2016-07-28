@@ -45,6 +45,28 @@
 
 #include <time.h>
 
+#if EE7_ADAPTIVE_CLIP
+namespace {
+Bound decodeBounds(Bound b,const Bound &ref,int bd) {
+    b.m+=ref.m;
+    b.m=Clip3(0,(1<<bd)-1,b.m);
+    b.M+=ref.M;
+    b.M=Clip3(0,(1<<bd)-1,b.M);
+    return b;
+}
+
+TchClipParam decodeClipPrm(TchClipParam prm,const TchClipParam &ref) {
+    if (prm.intratype) return prm;
+
+    prm.Y()=decodeBounds(prm.Y(),ref.Y(),TchClipParam::ibdLuma);
+    prm.U()=decodeBounds(prm.U(),ref.U(),TchClipParam::ibdChroma);
+    prm.V()=decodeBounds(prm.V(),ref.V(),TchClipParam::ibdChroma);
+    return prm;
+}
+
+
+}
+#endif
 //! \ingroup TLibDecoder
 //! \{
 static Void calcAndPrintHashStatus(TComPicYuv& pic, const SEIDecodedPictureHash* pictureHashSEI, const BitDepths &bitDepths, UInt &numChecksumErrors);
@@ -135,6 +157,18 @@ Void TDecGop::decompressSlice(TComInputBitstream* pcBitstream, TComPic* pcPic
   m_pcEntropyDecoder->setStatsHandle ( m_apcStats );
 #endif
 
+#if EE7_ADAPTIVE_CLIP
+    pcPic->m_aclip_prm_ref=pcSlice->getClipPrmRef();
+    pcPic->m_aclip_prm=decodeClipPrm(pcSlice->m_clip_decoded,pcPic->m_aclip_prm_ref);
+#if EE7_ADAPTIVE_CLIP_TEST3
+    setOff(g_TchClipParam);
+#else
+    g_TchClipParam=pcPic->m_aclip_prm;
+#endif
+    // DEBUG
+    // END DEBUG
+
+#endif
   const UInt uiNumSubstreams = pcSlice->getNumberOfSubstreamSizes()+1;
 
   // init each couple {EntropyDecoder, Substream}

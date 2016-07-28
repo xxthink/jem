@@ -622,6 +622,7 @@ public:
   Void          setLumaIntraFilterHidden (UInt uiIdx, Bool value) const { m_pbFiltFlagHidden[uiIdx] = value; }
 #endif
 
+
 #if COM16_C1045_BIO_HARMO_IMPROV
   Bool          isBIOLDB( UInt uiAbsPartIdx );
 #endif

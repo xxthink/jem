@@ -2041,7 +2041,11 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
       {
         for( UInt uiX = 0; uiX < uiWidth; uiX++ )
         {
+#if EE7_ADAPTIVE_CLIP // encoder intrac rec
+          pReco    [ uiX ] = Pel(ClipA<Int>( Int(pPred[uiX]) + Int(pResi[uiX]),  compID ));
+#else
           pReco    [ uiX ] = Pel(ClipBD<Int>( Int(pPred[uiX]) + Int(pResi[uiX]), bitDepth ));
+#endif
           pRecQt   [ uiX ] = pReco[ uiX ];
           pRecIPred[ uiX ] = pReco[ uiX ];
         }
@@ -8068,7 +8072,18 @@ Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg,
 
     pcYuvResi->clear();
 
+#if EE7_ADAPTIVE_CLIP // encoder, inter, here copy pred in rec , and skip
+    if (g_TchClipParam.isActive)
+    {
+        pcYuvPred->clipToPartYuv(pcYuvRec, 0, pcCU->getSlice()->getSPS()->getBitDepths());
+    }
+    else
+    {
+        pcYuvPred->copyToPartYuv( pcYuvRec, 0 );
+    }
+#else
     pcYuvPred->copyToPartYuv( pcYuvRec, 0 );
+#endif
     Distortion distortion = 0;
 
     for (Int comp=0; comp < numValidComponents; comp++)
