@@ -87,6 +87,10 @@ public:
 #if COM16_C1046_PDPC_INTRA
   virtual Void codePDPCIdx       (TComDataCU* pcCU, UInt uiAbsPartIdx) = 0;
 #endif
+#if DIMD_INTRA_PRED
+  virtual Void codeDIMDFlag      (TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth) = 0;
+  virtual Void codeDIMDNoBTFlag  (TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth) = 0;
+#endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
    virtual Void codeROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth ) = 0;
 #if JVET_C0024_QTBT
@@ -262,6 +266,10 @@ public:
 #endif
 #if COM16_C1046_PDPC_INTRA
   Void encodePDPCIdx      ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false);
+#endif
+#if DIMD_INTRA_PRED
+  Void encodeDIMDFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight, Bool bRD = false);
+  Void encodeDIMDNoBTFlag ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight, Bool bRD = false);
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     Void encodeROTIdx    ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth, Bool bRD = false );

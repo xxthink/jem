@@ -1648,6 +1648,75 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #else
    if (!rpcTempCU->getSlice()->getSPS()->getUseROT()) iNumberOfPassesROT = 1;
 #endif
+
+#if DIMD_INTRA_PRED
+   UInt uiDIMDIntraMode     = DC_IDX;
+#if COM16_C1046_PDPC_INTRA
+   UInt uiDIMDIntraModePDPC = DC_IDX; 
+#endif
+   if(isLuma(rpcBestCU->getTextType())) 
+   {
+     if( !m_pcEncCfg->getUseFastLCTU() || rpcTempCU->getWidth( 0 )*rpcTempCU->getHeight(0) <= 4096 )
+     {
+       if(rpcTempCU->getBTDepth(0) <= MAX_BT_DEPTH_DIMD_SIG_AI || !rpcTempCU->getSlice()->isIntra())
+       {
+       uiDIMDIntraMode =  m_pcPredSearch->deriveNeighborIntraDirs( rpcTempCU, 0 );
+#if COM16_C1046_PDPC_INTRA
+       if(rpcTempCU->getSlice()->getSPS()->getUsePDPC())
+       {
+         rpcTempCU->setPDPCIdxSubParts(1, 0, uiDepth);
+         uiDIMDIntraModePDPC = m_pcPredSearch->deriveNeighborIntraDirs( rpcTempCU, 0 );
+       }
+#endif
+       if(rpcTempCU->getBTDepth(0) == MAX_BT_DEPTH_DIMD_SIG_AI && rpcTempCU->getSlice()->isIntra())
+       {
+         m_pcPredSearch->setParentDIMDIntraMode(uiDIMDIntraMode);
+       }
+       }
+       else
+       {
+         assert(rpcTempCU->getDIMDNoBTLevelFlag(CHANNEL_TYPE_LUMA, 0) == rpcBestCU->getDIMDNoBTLevelFlag(CHANNEL_TYPE_LUMA, 0));
+         if(rpcTempCU->getDIMDNoBTLevelFlag(CHANNEL_TYPE_LUMA, 0))
+         {
+           uiDIMDIntraMode = m_pcPredSearch->getParentDIMDIntraMode();
+#if COM16_C1046_PDPC_INTRA
+           if(rpcTempCU->getSlice()->getSPS()->getUsePDPC())
+           {
+             uiDIMDIntraModePDPC = m_pcPredSearch->getParentDIMDIntraMode();
+           }
+#endif
+         }
+         else
+         {
+           uiDIMDIntraMode =  m_pcPredSearch->deriveNeighborIntraDirs( rpcTempCU, 0 );
+#if COM16_C1046_PDPC_INTRA
+           if(rpcTempCU->getSlice()->getSPS()->getUsePDPC())
+           {
+             rpcTempCU->setPDPCIdxSubParts(1, 0, uiDepth);
+             uiDIMDIntraModePDPC = m_pcPredSearch->deriveNeighborIntraDirs( rpcTempCU, 0 );
+           }
+#endif
+         }
+       }
+     }
+   }
+
+   Bool bTestNonDIMDIntra = true;
+   if(isLuma(rpcTempCU->getTextType()))
+   {
+     if(rpcTempCU->getBTDepth(0) <= MAX_BT_DEPTH_DIMD_SIG_AI || !rpcTempCU->getSlice()->isIntra())
+     {
+       bTestNonDIMDIntra = true;
+     }
+     else
+     {
+       assert(rpcTempCU->getDIMDEnabledFlag(CHANNEL_TYPE_LUMA, 0) == rpcBestCU->getDIMDEnabledFlag(CHANNEL_TYPE_LUMA, 0));
+       bTestNonDIMDIntra = !rpcTempCU->getDIMDEnabledFlag(CHANNEL_TYPE_LUMA, 0);
+     }
+   }
+   if(bTestNonDIMDIntra)
+   {
+#endif
    for (iROTidx = 0; iROTidx < iNumberOfPassesROT; iROTidx++)
    {
 #endif
@@ -1707,12 +1776,26 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
              }
            }
 #endif
-
+#if DIMD_INTRA_PRED
+#if DIMD_NUM_INTRA_DIR_INC
+           UInt uiDIMDDir = iPDPCidx? uiDIMDIntraModePDPC: uiDIMDIntraMode;
+#if VCEG_AZ07_INTRA_65ANG_MODES
+           m_pcPredSearch->setDIMDIntraMode(MAP131TO67(uiDIMDDir));
+#else
+           m_pcPredSearch->setDIMDIntraMode(MAP131TO35(uiDIMDDir));
+#endif
+#else
+           m_pcPredSearch->setDIMDIntraMode(iPDPCidx? uiDIMDIntraModePDPC: uiDIMDIntraMode);
+#endif
+#endif
            xCheckRDCostIntra(rpcBestCU, rpcTempCU, intraCost, SIZE_2Nx2N DEBUG_STRING_PASS_INTO(sDebug)
 #if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
-             , bNonZeroCoeff
+                             , bNonZeroCoeff
 #endif
-             );
+#if DIMD_INTRA_PRED
+                             , 0
+#endif
+                            );
            if (!ucCuFlag && !rpcBestCU->isIntra(0) && m_pcEncCfg->getUseFastInterEMT())
            {
              static const Double thEmtInterFastSkipIntra = 1.4; // Skip checking Intra if "2Nx2N using DCT2" is worse than best Inter mode
@@ -1768,6 +1851,231 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
      if (rpcBestCU->isIntra(0) && !bNonZeroCoeff) break;
      //if (bNonZeroCoeff>rpcTempCU->getWidth(0)*rpcTempCU->getHeight(0) && rpcTempCU->getSlice()->getSliceType() == I_SLICE) break;
    }
+#endif
+#if DIMD_INTRA_PRED
+        }
+
+        Bool bTestDIMDIntra = true;
+        if(isChroma(rpcBestCU->getTextType()))
+        {
+          bTestDIMDIntra = false;
+          assert(bTestNonDIMDIntra);
+        }
+        if(isLuma(rpcTempCU->getTextType()))
+        {
+          if(rpcTempCU->getBTDepth(0) <= MAX_BT_DEPTH_DIMD_SIG_AI || !rpcTempCU->getSlice()->isIntra())
+          {
+            bTestDIMDIntra = true;
+          }
+          else
+          {
+            assert(rpcTempCU->getDIMDEnabledFlag(CHANNEL_TYPE_LUMA, 0) == rpcBestCU->getDIMDEnabledFlag(CHANNEL_TYPE_LUMA, 0));
+            bTestDIMDIntra = rpcTempCU->getDIMDEnabledFlag(CHANNEL_TYPE_LUMA, 0);
+          }
+        }
+        if(bTestDIMDIntra)
+        {
+#if COM16_C1046_PDPC_INTRA
+          iPDPCidx = 0; iNumberOfPassesPDPC = 2;
+          if (rpcTempCU->getSlice()->getSliceType() != I_SLICE)  iNumberOfPassesPDPC = 2;
+          if (!rpcTempCU->getSlice()->getSPS()->getUsePDPC())    iNumberOfPassesPDPC = 1;
+          if (isChroma(rpcBestCU->getTextType())) 
+          {
+            iNumberOfPassesPDPC = 1;
+          }
+#endif
+
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+          iROTidx = 0; iNumberOfPassesROT = 4;
+          if (isChroma(rpcBestCU->getTextType()) && !(uiWidth>=8 && uiHeight>=8))
+          {
+            iNumberOfPassesROT = 1;
+          }
+#if COM16_C1044_NSST
+          if (!rpcTempCU->getSlice()->getSPS()->getUseNSST()) iNumberOfPassesROT = 1;
+#else
+          if (!rpcTempCU->getSlice()->getSPS()->getUseROT()) iNumberOfPassesROT = 1;
+#endif
+          for (iROTidx = 0; iROTidx < iNumberOfPassesROT; iROTidx++)
+          {
+#endif
+#if VCEG_AZ05_INTRA_MPI
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+            if (iROTidx) iNumberOfPassesMPI = 1;
+#endif
+            for (iMPIidx = 0; iMPIidx<iNumberOfPassesMPI; iMPIidx++)
+            {
+#endif
+#if COM16_C1046_PDPC_INTRA
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+              if (iROTidx) iNumberOfPassesPDPC = 1;
+#endif
+              for (iPDPCidx = 0; iPDPCidx < iNumberOfPassesPDPC; iPDPCidx++)
+              {
+#endif
+#if COM16_C806_EMT
+                UChar ucEmtUsage = (uiWidth > EMT_INTRA_MAX_CU || uiHeight > EMT_INTRA_MAX_CU || (rpcTempCU->getSlice()->getSPS()->getUseIntraEMT() == 0 ) || isChroma(rpcBestCU->getTextType())) ? 1 : 2;
+                for (UChar ucCuFlag = 0; ucCuFlag < ucEmtUsage; ucCuFlag++)
+                {
+                  UInt uiIntraMode = DC_IDX;
+                  if(isLuma(rpcTempCU->getTextType()))  // luma of I-slice, and luma and chroma of P/B-slice
+                  {
+                    uiIntraMode = iPDPCidx? uiDIMDIntraModePDPC: uiDIMDIntraMode;
+                  }
+                  else                                  // chroma 
+                  {
+                    assert(0);
+                  }
+#if DIMD_NUM_INTRA_DIR_INC
+#if VCEG_AZ07_INTRA_65ANG_MODES
+                  UInt uiNumberOfPassesROT = ( MAP131TO67(uiIntraMode) <= DC_IDX ) ? 3 : 4;
+#else
+                  UInt uiNumberOfPassesROT = ( MAP131TO35(uiIntraMode) <= DC_IDX ) ? 3 : 4;
+#endif
+#else
+                  UInt uiNumberOfPassesROT = ( uiIntraMode <= DC_IDX ) ? 3 : 4;
+#endif
+                  if(iROTidx >= uiNumberOfPassesROT)
+                  {
+                    continue; 
+                  }
+                  if(rpcTempCU->getSlice()->isIntra())
+                  {
+#if DIMD_NUM_INTRA_DIR_INC
+                    rpcTempCU->setExtIntraDirSubParts(rpcTempCU->getTextType(), uiIntraMode, 0, uiDepth); 
+#if VCEG_AZ07_INTRA_65ANG_MODES
+                    rpcTempCU->setIntraDirSubParts(rpcTempCU->getTextType(), (rpcTempCU->getTextType() == CHANNEL_TYPE_LUMA)? MAP131TO67(uiIntraMode): DM_CHROMA_IDX, 0, uiDepth);
+#else
+                    rpcTempCU->setIntraDirSubParts(rpcTempCU->getTextType(), (rpcTempCU->getTextType() == CHANNEL_TYPE_LUMA)? MAP131TO35(uiIntraMode): DM_CHROMA_IDX, 0, uiDepth);
+#endif
+#else
+                    rpcTempCU->setIntraDirSubParts(rpcTempCU->getTextType(), (rpcTempCU->getTextType() == CHANNEL_TYPE_LUMA)? uiIntraMode: DM_CHROMA_IDX, 0, uiDepth);          
+#endif
+                  }
+                  else
+                  {
+#if DIMD_NUM_INTRA_DIR_INC
+                    rpcTempCU->setExtIntraDirSubParts(CHANNEL_TYPE_LUMA,   uiIntraMode, 0, uiDepth);
+                    rpcTempCU->setExtIntraDirSubParts(CHANNEL_TYPE_CHROMA, uiIntraMode, 0, uiDepth);
+#if VCEG_AZ07_INTRA_65ANG_MODES
+                    rpcTempCU->setIntraDirSubParts(CHANNEL_TYPE_LUMA, MAP131TO67(uiIntraMode), 0, uiDepth);
+#else
+                    rpcTempCU->setIntraDirSubParts(CHANNEL_TYPE_LUMA, MAP131TO35(uiIntraMode), 0, uiDepth);
+#endif
+#else
+                    rpcTempCU->setIntraDirSubParts(CHANNEL_TYPE_LUMA,   uiIntraMode,   0, uiDepth);
+#endif
+                    rpcTempCU->setIntraDirSubParts(CHANNEL_TYPE_CHROMA, DM_CHROMA_IDX, 0, uiDepth);
+                  }
+                  rpcTempCU->setEmtCuFlagSubParts(ucCuFlag, 0, uiDepth);
+#if VCEG_AZ05_INTRA_MPI
+                  rpcTempCU->setMPIIdxSubParts(iMPIidx, 0, uiDepth);
+#endif
+#if COM16_C1046_PDPC_INTRA
+                  rpcTempCU->setPDPCIdxSubParts(iPDPCidx, 0, uiDepth);
+#endif
+
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+                  rpcTempCU->setROTIdxSubParts(rpcTempCU->getTextType(), iROTidx, 0, uiDepth);
+                  if( !rpcTempCU->getSlice()->isIntra() )
+                  {
+                    rpcTempCU->setROTIdxSubParts(CHANNEL_TYPE_CHROMA, iROTidx, 0, uiDepth);
+                  }
+#endif
+                  xCheckRDCostIntra(rpcBestCU, rpcTempCU, intraCost, SIZE_2Nx2N DEBUG_STRING_PASS_INTO(sDebug)
+#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+                                    , bNonZeroCoeff
+#endif
+                                    , 1
+                                   );
+                  rpcTempCU->initEstData(uiDepth, iQP, bIsLosslessMode);
+                }
+#else
+                UInt uiIntraMode = DC_IDX;
+                if(isLuma(rpcTempCU->getTextType()))  // luma of I-slice, and luma and chroma of P/B-slice
+                {
+                  uiIntraMode = iPDPCidx? uiDIMDIntraModePDPC: uiDIMDIntraMode;
+                }
+                else                                  // chroma 
+                {
+                  assert(0);  
+                }
+#if DIMD_NUM_INTRA_DIR_INC
+#if VCEG_AZ07_INTRA_65ANG_MODES
+                UInt uiNumberOfPassesROT = ( MAP131TO67(uiIntraMode) <= DC_IDX ) ? 3 : 4;
+#else
+                UInt uiNumberOfPassesROT = ( MAP131TO35(uiIntraMode) <= DC_IDX ) ? 3 : 4;
+#endif
+#else
+                UInt uiNumberOfPassesROT = ( uiIntraMode <= DC_IDX ) ? 3 : 4;
+#endif
+                if(iROTidx >= uiNumberOfPassesROT)
+                {
+                  continue; 
+                }
+
+                if(rpcTempCU->getSlice()->isIntra())
+                {
+#if DIMD_NUM_INTRA_DIR_INC
+                  rpcTempCU->setExtIntraDirSubParts(rpcTempCU->getTextType(), uiIntraMode, 0, uiDepth); 
+#if VCEG_AZ07_INTRA_65ANG_MODES
+                  rpcTempCU->setIntraDirSubParts(rpcTempCU->getTextType(), (rpcTempCU->getTextType() == CHANNEL_TYPE_LUMA)? MAP131TO67(uiIntraMode): DM_CHROMA_IDX, 0, uiDepth);
+#else
+                  rpcTempCU->setIntraDirSubParts(rpcTempCU->getTextType(), (rpcTempCU->getTextType() == CHANNEL_TYPE_LUMA)? MAP131TO35(uiIntraMode): DM_CHROMA_IDX, 0, uiDepth);
+#endif
+#else
+                  rpcTempCU->setIntraDirSubParts(rpcTempCU->getTextType(), (rpcTempCU->getTextType() == CHANNEL_TYPE_LUMA)? uiIntraMode: DM_CHROMA_IDX, 0, uiDepth);          
+#endif
+                }
+                else
+                {
+#if DIMD_NUM_INTRA_DIR_INC
+                  rpcTempCU->setExtIntraDirSubParts(CHANNEL_TYPE_LUMA,   uiIntraMode, 0, uiDepth);
+                  rpcTempCU->setExtIntraDirSubParts(CHANNEL_TYPE_CHROMA, uiIntraMode, 0, uiDepth);
+#if VCEG_AZ07_INTRA_65ANG_MODES
+                  rpcTempCU->setIntraDirSubParts(CHANNEL_TYPE_LUMA, MAP131TO67(uiIntraMode), 0, uiDepth);
+#else
+                  rpcTempCU->setIntraDirSubParts(CHANNEL_TYPE_LUMA, MAP131TO35(uiIntraMode), 0, uiDepth);
+#endif
+#else
+                  rpcTempCU->setIntraDirSubParts(CHANNEL_TYPE_LUMA,   uiIntraMode,   0, uiDepth);
+#endif
+                  rpcTempCU->setIntraDirSubParts(CHANNEL_TYPE_CHROMA, DM_CHROMA_IDX, 0, uiDepth);
+                }
+#if VCEG_AZ05_INTRA_MPI
+                rpcTempCU->setMPIIdxSubParts(iMPIidx, 0,  uiDepth ); 
+#endif
+#if COM16_C1046_PDPC_INTRA
+                rpcTempCU->setPDPCIdxSubParts(iPDPCidx, 0,  uiDepth ); 
+#endif
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+                rpcTempCU->setROTIdxSubParts(rpcTempCU->getTextType(), iROTidx, 0, uiDepth);
+                if( !rpcTempCU->getSlice()->isIntra() )
+                {
+                  rpcTempCU->setROTIdxSubParts(CHANNEL_TYPE_CHROMA, iROTidx, 0, uiDepth);
+                }
+#endif
+                xCheckRDCostIntra( rpcBestCU, rpcTempCU, intraCost, SIZE_2Nx2N DEBUG_STRING_PASS_INTO(sDebug)
+#if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
+                                   , bNonZeroCoeff
+#endif
+                                   , 1
+                  );
+                rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
+#endif
+#if VCEG_AZ05_INTRA_MPI
+                if (rpcBestCU->isIntra(0) && !bNonZeroCoeff) break;
+              }
+#endif
+#if COM16_C1046_PDPC_INTRA
+              if (rpcBestCU->isIntra(0) && !bNonZeroCoeff) break;
+            }
+#endif
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+            if (rpcBestCU->isIntra(0) && !bNonZeroCoeff) break;
+          }
+#endif
+        }
 #endif
 
 #if !JVET_C0024_QTBT
@@ -2113,6 +2421,50 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
     // further split
     for (Int iQP=iMinQP; iQP<=iMaxQP; iQP++)
     {
+#if DIMD_INTRA_PRED
+      UInt uiStartDIMDId = 0, uiEndStartDIMDId = 0;
+      Bool bIsBTDepthSigDIMDFlag = false;
+      if(isLuma(rpcTempCU->getTextType()))
+      {
+        if(rpcTempCU->getBTDepth(0) < MAX_BT_DEPTH_DIMD_SIG_AI || !rpcTempCU->getSlice()->isIntra())
+        {
+          uiStartDIMDId    = 0;
+          uiEndStartDIMDId = 0;
+        }
+        else if(rpcTempCU->getBTDepth(0) == MAX_BT_DEPTH_DIMD_SIG_AI && rpcTempCU->getSlice()->isIntra())
+        {
+          uiStartDIMDId         = 0;
+          uiEndStartDIMDId      = 1;
+          bIsBTDepthSigDIMDFlag = true;
+        }
+        else
+        {
+          assert(rpcTempCU->getDIMDEnabledFlag(CHANNEL_TYPE_LUMA, 0) == rpcBestCU->getDIMDEnabledFlag(CHANNEL_TYPE_LUMA, 0));
+          uiStartDIMDId = uiEndStartDIMDId = rpcTempCU->getDIMDEnabledFlag(CHANNEL_TYPE_LUMA, 0);
+        }
+      }
+      for(UInt uiDIMDModeId = uiStartDIMDId; uiDIMDModeId <= uiEndStartDIMDId; uiDIMDModeId ++)
+      {
+        UInt uiStartDIMDNoBTId = 0, uiEndDIMDNoBTId = 0;
+        Bool bIsBTDepthSigDIMDNoBTLevelFlag = false;
+        if(isLuma(rpcTempCU->getTextType()) && uiDIMDModeId == 1 )
+        {
+          assert(rpcTempCU->getBTDepth(0) >= MAX_BT_DEPTH_DIMD_SIG_AI && rpcTempCU->getSlice()->isIntra());
+          if(rpcTempCU->getBTDepth(0) == MAX_BT_DEPTH_DIMD_SIG_AI)
+          {
+            uiStartDIMDNoBTId = 0;
+            uiEndDIMDNoBTId   = 1;
+            bIsBTDepthSigDIMDNoBTLevelFlag = true;
+          }
+          else
+          {
+            assert(rpcTempCU->getDIMDNoBTLevelFlag(CHANNEL_TYPE_LUMA, 0) == rpcBestCU->getDIMDNoBTLevelFlag(CHANNEL_TYPE_LUMA, 0));
+            uiStartDIMDNoBTId = uiEndDIMDNoBTId = rpcTempCU->getDIMDNoBTLevelFlag(CHANNEL_TYPE_LUMA, 0);
+          }
+        }
+        for(UInt uiDIMDNoBTId = uiStartDIMDNoBTId; uiDIMDNoBTId <= uiEndDIMDNoBTId; uiDIMDNoBTId ++) 
+        {
+#endif
       const Bool bIsLosslessMode = false; // False at this level. Next level down may set it to true.
 
       rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
@@ -2154,6 +2506,18 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
           {
             m_ppppcRDSbacCoder[uiWidthIdx][uiHeightIdx-1][CI_CURR_BEST]->load(m_ppppcRDSbacCoder[uiWidthIdx][uiHeightIdx-1][CI_NEXT_BEST]);
           }
+#if DIMD_INTRA_PRED
+          if(isLuma(rpcTempCU->getTextType()))
+          {
+            if(pcSubTempPartCU->getBTDepth(0) > MAX_BT_DEPTH_DIMD_SIG_AI && pcSubTempPartCU->getSlice()->isIntra())
+            {
+              pcSubBestPartCU->setDIMDEnabledFlagSubParts(CHANNEL_TYPE_LUMA, uiDIMDModeId, 0, uiDepth);
+              pcSubTempPartCU->setDIMDEnabledFlagSubParts(CHANNEL_TYPE_LUMA, uiDIMDModeId, 0, uiDepth);
+              pcSubBestPartCU->setDIMDNoBTLevelFlagSubParts(CHANNEL_TYPE_LUMA, uiDIMDNoBTId, 0, uiDepth);
+              pcSubTempPartCU->setDIMDNoBTLevelFlagSubParts(CHANNEL_TYPE_LUMA, uiDIMDNoBTId, 0, uiDepth);
+            }
+          } 
+#endif
 #if JVET_C0024_BT_RMV_REDUNDANT
           xCompressCU( pcSubBestPartCU, pcSubTempPartCU, uiDepth, uiWidth, uiHeight>>1, pcSubBestPartCU->getBTSplitMode(0), uiSplitConstrain );
           
@@ -2175,7 +2539,16 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         m_pcEntropyCoder->encodeSplitFlag( rpcTempCU, 0, uiDepth, true );
       }
       m_pcEntropyCoder->encodeBTSplitMode(rpcTempCU, 0, uiWidth, uiHeight, true);
-
+#if DIMD_INTRA_PRED
+      if(isLuma(rpcTempCU->getTextType()) && bIsBTDepthSigDIMDFlag)
+      {
+        m_pcEntropyCoder->encodeDIMDFlag(rpcTempCU, 0, uiDepth, uiWidth, uiHeight, true);
+      }
+      if(isLuma(rpcTempCU->getTextType()) && bIsBTDepthSigDIMDNoBTLevelFlag)
+      {
+        m_pcEntropyCoder->encodeDIMDNoBTFlag(rpcTempCU, 0, uiDepth, uiWidth, uiHeight, true); 
+      }
+#endif
 
       rpcTempCU->getTotalBits() += m_pcEntropyCoder->getNumberOfWrittenBits(); // split bits
       rpcTempCU->getTotalBins() += ((TEncBinCABAC *)((TEncSbac*)m_pcEntropyCoder->m_pcEntropyCoderIf)->getEncBinIf())->getBinsCoded();
@@ -2206,6 +2579,10 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 
       rpcBestCU->getPic()->setCodedBlkInCTU(false, uiPelXInCTU>> MIN_CU_LOG2, uiPelYInCTU>> MIN_CU_LOG2, uiWidth>> MIN_CU_LOG2, uiHeight>> MIN_CU_LOG2 );  
       rpcBestCU->getPic()->addCodedAreaInCTU(-(Int)uiWidth*uiHeight);
+#if DIMD_INTRA_PRED
+      }
+    }
+#endif
     }
   }
 
@@ -2220,6 +2597,50 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
     // further split
     for (Int iQP=iMinQP; iQP<=iMaxQP; iQP++)
     {
+#if DIMD_INTRA_PRED
+      UInt uiStartDIMDId = 0, uiEndStartDIMDId = 0;
+      Bool bIsBTDepthSigDIMDFlag = false;
+      if(isLuma(rpcTempCU->getTextType()))
+      {
+        if(rpcTempCU->getBTDepth(0) < MAX_BT_DEPTH_DIMD_SIG_AI || !rpcTempCU->getSlice()->isIntra())
+        {
+          uiStartDIMDId    = 0;
+          uiEndStartDIMDId = 0;
+        }
+        else if(rpcTempCU->getBTDepth(0) == MAX_BT_DEPTH_DIMD_SIG_AI && rpcTempCU->getSlice()->isIntra()) 
+        {
+          uiStartDIMDId         = 0;
+          uiEndStartDIMDId      = 1;
+          bIsBTDepthSigDIMDFlag = true;
+        }
+        else
+        {
+          assert(rpcTempCU->getDIMDEnabledFlag(CHANNEL_TYPE_LUMA, 0) == rpcBestCU->getDIMDEnabledFlag(CHANNEL_TYPE_LUMA, 0));
+          uiStartDIMDId = uiEndStartDIMDId = rpcTempCU->getDIMDEnabledFlag(CHANNEL_TYPE_LUMA, 0);
+        }
+      } 
+      for(UInt uiDIMDModeId = uiStartDIMDId; uiDIMDModeId <= uiEndStartDIMDId; uiDIMDModeId ++)
+      {
+        UInt uiStartDIMDNoBTId = 0, uiEndDIMDNoBTId = 0;
+        Bool bIsBTDepthSigDIMDNoBTLevelFlag = false;
+        if(isLuma(rpcTempCU->getTextType()) && uiDIMDModeId == 1 )
+        {
+          assert(rpcTempCU->getBTDepth(0) >= MAX_BT_DEPTH_DIMD_SIG_AI && rpcTempCU->getSlice()->isIntra());
+          if(rpcTempCU->getBTDepth(0) == MAX_BT_DEPTH_DIMD_SIG_AI)
+          {
+            uiStartDIMDNoBTId = 0;
+            uiEndDIMDNoBTId   = 1;
+            bIsBTDepthSigDIMDNoBTLevelFlag = true;
+          }
+          else
+          {
+            assert(rpcTempCU->getDIMDNoBTLevelFlag(CHANNEL_TYPE_LUMA, 0) == rpcBestCU->getDIMDNoBTLevelFlag(CHANNEL_TYPE_LUMA, 0));
+            uiStartDIMDNoBTId = uiEndDIMDNoBTId = rpcTempCU->getDIMDNoBTLevelFlag(CHANNEL_TYPE_LUMA, 0);
+          }
+        }
+        for(UInt uiDIMDNoBTId = uiStartDIMDNoBTId; uiDIMDNoBTId <= uiEndDIMDNoBTId; uiDIMDNoBTId ++) 
+        {
+#endif
       const Bool bIsLosslessMode = false; // False at this level. Next level down may set it to true.
 
       rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
@@ -2262,6 +2683,18 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
             m_ppppcRDSbacCoder[uiWidthIdx-1][uiHeightIdx][CI_CURR_BEST]->load(m_ppppcRDSbacCoder[uiWidthIdx-1][uiHeightIdx][CI_NEXT_BEST]);
           }
 
+#if DIMD_INTRA_PRED
+          if(isLuma(rpcTempCU->getTextType()))
+          {
+            if(pcSubTempPartCU->getBTDepth(0) > MAX_BT_DEPTH_DIMD_SIG_AI && pcSubTempPartCU->getSlice()->isIntra())
+            {
+              pcSubBestPartCU->setDIMDEnabledFlagSubParts(CHANNEL_TYPE_LUMA, uiDIMDModeId, 0, uiDepth);
+              pcSubTempPartCU->setDIMDEnabledFlagSubParts(CHANNEL_TYPE_LUMA, uiDIMDModeId, 0, uiDepth);
+              pcSubBestPartCU->setDIMDNoBTLevelFlagSubParts(CHANNEL_TYPE_LUMA, uiDIMDNoBTId, 0, uiDepth);
+              pcSubTempPartCU->setDIMDNoBTLevelFlagSubParts(CHANNEL_TYPE_LUMA, uiDIMDNoBTId, 0, uiDepth);
+            }
+          }          
+#endif
 #if JVET_C0024_BT_RMV_REDUNDANT
           xCompressCU( pcSubBestPartCU, pcSubTempPartCU, uiDepth, uiWidth>>1, uiHeight, pcSubBestPartCU->getBTSplitMode(0), uiSplitConstrain );
           
@@ -2285,7 +2718,16 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         m_pcEntropyCoder->encodeSplitFlag( rpcTempCU, 0, uiDepth, true );
       }
       m_pcEntropyCoder->encodeBTSplitMode(rpcTempCU, 0, uiWidth, uiHeight, true);
-
+#if DIMD_INTRA_PRED
+      if(isLuma(rpcTempCU->getTextType()) && bIsBTDepthSigDIMDFlag)
+      {
+        m_pcEntropyCoder->encodeDIMDFlag(rpcTempCU, 0, uiDepth, uiWidth, uiHeight, true);
+      }
+      if(isLuma(rpcTempCU->getTextType()) && bIsBTDepthSigDIMDNoBTLevelFlag)
+      {
+        m_pcEntropyCoder->encodeDIMDNoBTFlag(rpcTempCU, 0, uiDepth, uiWidth, uiHeight, true);
+      }
+#endif
 
       rpcTempCU->getTotalBits() += m_pcEntropyCoder->getNumberOfWrittenBits(); // split bits
       rpcTempCU->getTotalBins() += ((TEncBinCABAC *)((TEncSbac*)m_pcEntropyCoder->m_pcEntropyCoderIf)->getEncBinIf())->getBinsCoded();
@@ -2316,6 +2758,10 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 
       rpcBestCU->getPic()->setCodedBlkInCTU(false, uiPelXInCTU>> MIN_CU_LOG2, uiPelYInCTU>> MIN_CU_LOG2, uiWidth>> MIN_CU_LOG2, uiHeight>> MIN_CU_LOG2 );  
       rpcBestCU->getPic()->addCodedAreaInCTU(-(Int)uiWidth*uiHeight);
+#if DIMD_INTRA_PRED
+      }
+    }
+#endif
     }
   }
 
@@ -2773,6 +3219,16 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
     m_pcEntropyCoder->encodeBTSplitMode(pcCU, uiAbsPartIdx, uiWidth, uiHeight);
     if (pcCU->getBTSplitModeForBTDepth(uiAbsPartIdx, uiBTDepth)==1)
     {
+#if DIMD_INTRA_PRED
+      if(isLuma(pcCU->getTextType()) && pcCU->getSlice()->isIntra() && uiBTDepth == MAX_BT_DEPTH_DIMD_SIG_AI)
+      {
+        m_pcEntropyCoder->encodeDIMDFlag(pcCU, uiAbsPartIdx, uiDepth, uiWidth, uiHeight);
+        if(pcCU->getDIMDEnabledFlag(CHANNEL_TYPE_LUMA, uiAbsPartIdx))
+        {
+          m_pcEntropyCoder->encodeDIMDNoBTFlag(pcCU, uiAbsPartIdx, uiDepth, uiWidth, uiHeight);
+        }
+      }
+#endif
       for ( UInt uiPartUnitIdx = 0; uiPartUnitIdx < 2; uiPartUnitIdx++ )
       {
         if (uiPartUnitIdx==1)
@@ -2794,6 +3250,16 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
     }
     else if (pcCU->getBTSplitModeForBTDepth(uiAbsPartIdx, uiBTDepth)==2)
     {
+#if DIMD_INTRA_PRED
+      if(isLuma(pcCU->getTextType()) && pcCU->getSlice()->isIntra() && uiBTDepth == MAX_BT_DEPTH_DIMD_SIG_AI)
+      {
+        m_pcEntropyCoder->encodeDIMDFlag(pcCU, uiAbsPartIdx, uiDepth, uiWidth, uiHeight);
+        if(pcCU->getDIMDEnabledFlag(CHANNEL_TYPE_LUMA, uiAbsPartIdx))
+        {
+          m_pcEntropyCoder->encodeDIMDNoBTFlag(pcCU, uiAbsPartIdx, uiDepth, uiWidth, uiHeight);
+        }
+      }
+#endif
       for ( UInt uiPartUnitIdx = 0; uiPartUnitIdx < 2; uiPartUnitIdx++ )
       {
         if (uiPartUnitIdx==1)
@@ -2880,6 +3346,12 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
   }
 
   m_pcEntropyCoder->encodePredMode( pcCU, uiAbsPartIdx );
+#if DIMD_INTRA_PRED
+  if(isLuma(pcCU->getTextType()) && (uiBTDepth <= MAX_BT_DEPTH_DIMD_SIG_AI || !pcCU->getSlice()->isIntra()))
+  {
+    m_pcEntropyCoder->encodeDIMDFlag(pcCU, uiAbsPartIdx, uiDepth, uiWidth, uiHeight);
+  }
+#endif
 #if JVET_C0024_QTBT
   if (isLuma(pcCU->getTextType()))
   {
@@ -3903,6 +4375,9 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
 #if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
                                 , Int& bNonZeroCoeff
 #endif
+#if DIMD_INTRA_PRED
+                                , UChar ucDIMDIntraRD 
+#endif
                                 )
 {
   DEBUG_STRING_NEW(sTest)
@@ -3944,6 +4419,29 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
   }
 #endif
 
+#if DIMD_INTRA_PRED
+  rpcTempCU->setDIMDEnabledFlagSubParts(rpcTempCU->getTextType(), ucDIMDIntraRD, 0, uiDepth);
+  if( !rpcTempCU->getSlice()->isIntra() )
+  {
+    //assert(rpcTempCU->getTextType() == CHANNEL_TYPE_LUMA);
+    rpcTempCU->setDIMDEnabledFlagSubParts(CHANNEL_TYPE_CHROMA, ucDIMDIntraRD, 0, uiDepth);
+  }
+  if(isLuma(rpcTempCU->getTextType()))
+  {
+    if(rpcTempCU->getBTDepth(0) <= MAX_BT_DEPTH_DIMD_SIG_AI || !rpcTempCU->getSlice()->isIntra())
+    {
+      assert(!rpcTempCU->getDIMDNoBTLevelFlag(CHANNEL_TYPE_LUMA, 0));
+    }
+    if( !rpcTempCU->getSlice()->isIntra() )
+    { 
+      rpcTempCU->setDIMDNoBTLevelFlagSubParts(CHANNEL_TYPE_CHROMA, rpcTempCU->getDIMDNoBTLevelFlag(CHANNEL_TYPE_LUMA, 0), 0, uiDepth);
+    }
+  }
+  else
+  {
+    assert(!rpcTempCU->getDIMDNoBTLevelFlag(CHANNEL_TYPE_CHROMA, 0)); 
+  }
+#endif
   rpcTempCU->setSkipFlagSubParts( false, 0, uiDepth );
 #if COM16_C806_OBMC
   rpcTempCU->setOBMCFlagSubParts( false, 0, uiDepth );
@@ -3961,6 +4459,20 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
 #if JVET_C0024_QTBT
   if (isLuma(rpcBestCU->getTextType()))
   {
+#if DIMD_INTRA_PRED
+    if(rpcTempCU->getDIMDEnabledFlag(CHANNEL_TYPE_LUMA, 0))
+    {
+      m_pcPredSearch->estDIMDIntraPredLumaQT( rpcTempCU, m_pppcOrigYuv[uiWIdx][uiHIdx], m_pppcPredYuvTemp[uiWIdx][uiHIdx], m_pppcResiYuvTemp[uiWIdx][uiHIdx], m_pppcRecoYuvTemp[uiWIdx][uiHIdx],
+#if COM16_C806_LARGE_CTU
+                                              m_resiBuffer 
+#else
+                                              resiLuma 
+#endif
+                                            ); 
+    }
+    else
+    {
+#endif
   m_pcPredSearch->estIntraPredLumaQT( rpcTempCU, m_pppcOrigYuv[uiWIdx][uiHIdx], m_pppcPredYuvTemp[uiWIdx][uiHIdx], m_pppcResiYuvTemp[uiWIdx][uiHIdx], m_pppcRecoYuvTemp[uiWIdx][uiHIdx], 
 #else
   m_pcPredSearch->estIntraPredLumaQT( rpcTempCU, m_ppcOrigYuv[uiDepth], m_ppcPredYuvTemp[uiDepth], m_ppcResiYuvTemp[uiDepth], m_ppcRecoYuvTemp[uiDepth], 
@@ -3978,6 +4490,10 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
     return;
   }
 #endif
+#if DIMD_INTRA_PRED
+    }
+#endif
+
 #if JVET_C0024_QTBT
   if (!rpcBestCU->getSlice()->isIntra())
   {
@@ -3991,6 +4507,20 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
   if (rpcBestCU->getPic()->getChromaFormat()!=CHROMA_400 
     && (isChroma(rpcBestCU->getTextType()) || !rpcBestCU->getSlice()->isIntra()))
   {
+#if DIMD_INTRA_PRED
+    if(rpcTempCU->getDIMDEnabledFlag(CHANNEL_TYPE_CHROMA, 0))
+    {
+      m_pcPredSearch->estDIMDIntraPredChromaQT( rpcTempCU, m_pppcOrigYuv[uiWIdx][uiHIdx], m_pppcPredYuvTemp[uiWIdx][uiHIdx], m_pppcResiYuvTemp[uiWIdx][uiHIdx], m_pppcRecoYuvTemp[uiWIdx][uiHIdx], 
+#if COM16_C806_LARGE_CTU
+                                                m_resiBuffer 
+#else
+                                                resiLuma 
+#endif
+                                              );
+    }
+    else
+    {
+#endif
     m_pcPredSearch->estIntraPredChromaQT( rpcTempCU, m_pppcOrigYuv[uiWIdx][uiHIdx], m_pppcPredYuvTemp[uiWIdx][uiHIdx], m_pppcResiYuvTemp[uiWIdx][uiHIdx], m_pppcRecoYuvTemp[uiWIdx][uiHIdx], 
 #else
   if (rpcBestCU->getPic()->getChromaFormat()!=CHROMA_400)
@@ -4004,6 +4534,9 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
 #endif
       DEBUG_STRING_PASS_INTO(sTest) 
       );
+#if DIMD_INTRA_PRED
+    }    
+#endif
   }
 
   m_pcEntropyCoder->resetBits();
@@ -4015,6 +4548,12 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
 
   m_pcEntropyCoder->encodeSkipFlag ( rpcTempCU, 0,          true );
   m_pcEntropyCoder->encodePredMode( rpcTempCU, 0,          true );
+#if DIMD_INTRA_PRED
+  if (isLuma(rpcTempCU->getTextType()) && (rpcTempCU->getBTDepth(0) <= MAX_BT_DEPTH_DIMD_SIG_AI || !rpcTempCU->getSlice()->isIntra()))
+  {
+    m_pcEntropyCoder->encodeDIMDFlag(rpcTempCU, 0, uiDepth, rpcTempCU->getWidth(0), rpcTempCU->getHeight(0), true);
+  }
+#endif
 #if JVET_C0024_QTBT
   if (isLuma(rpcBestCU->getTextType()))
   {

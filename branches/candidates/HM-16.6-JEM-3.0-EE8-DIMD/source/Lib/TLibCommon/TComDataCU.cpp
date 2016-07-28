@@ -164,6 +164,17 @@ TComDataCU::TComDataCU()
 #endif
 #endif
 
+#if DIMD_INTRA_PRED
+  for(UInt ch = 0; ch < MAX_NUM_CHANNEL_TYPE; ch++)
+  {
+    m_ucDIMDEnabledFlag[ch]  = NULL;
+#if DIMD_NUM_INTRA_DIR_INC
+    m_ucExtIntraDir[ch]      = NULL;
+#endif
+    m_ucDIMDNoBTLevelFlag[ch]= NULL;
+  }
+#endif
+
 #if COM16_C806_EMT
   m_puhEmtTuIdx        = NULL;
   m_puhEmtCuFlag       = NULL;
@@ -201,6 +212,9 @@ Void TComDataCU::create( ChromaFormat chromaFormatIDC, UInt uiNumPartition, UInt
   m_pcSlice            = NULL;
   m_uiNumPartition     = uiNumPartition;
   m_unitSize = unitSize;
+#if DIMD_INTRA_PRED
+  m_ctuRsAddr          = MAX_UINT;
+#endif
 
   if ( !bDecSubCu )
   {
@@ -283,6 +297,17 @@ Void TComDataCU::create( ChromaFormat chromaFormatIDC, UInt uiNumPartition, UInt
 #else
     m_puiAlfCtrlFlag     = (UInt*  )xMalloc(UInt,   uiNumPartition);
 #endif
+#endif
+
+#if DIMD_INTRA_PRED
+    for (UInt ch = 0; ch < MAX_NUM_CHANNEL_TYPE; ch++)
+    {
+      m_ucDIMDEnabledFlag[ch]  = (UChar*)xMalloc(UChar, uiNumPartition);
+#if DIMD_NUM_INTRA_DIR_INC
+      m_ucExtIntraDir[ch]      = (UChar*)xMalloc(UChar, uiNumPartition);
+#endif
+      m_ucDIMDNoBTLevelFlag[ch]= (UChar*)xMalloc(UChar, uiNumPartition);
+    }
 #endif
 
 #if COM16_C806_EMT
@@ -578,6 +603,20 @@ Void TComDataCU::destroy()
       m_puiAlfCtrlFlag = NULL; 
     }
 #endif
+#endif
+
+#if DIMD_INTRA_PRED
+    for( UInt ch = 0; ch < MAX_NUM_CHANNEL_TYPE; ch++ ) 
+    {
+      xFree(m_ucDIMDEnabledFlag[ch]);
+      m_ucDIMDEnabledFlag[ch] = NULL;
+#if DIMD_NUM_INTRA_DIR_INC
+      xFree(m_ucExtIntraDir[ch]);
+      m_ucExtIntraDir[ch] = NULL;
+#endif
+      xFree(m_ucDIMDNoBTLevelFlag[ch]);
+      m_ucDIMDNoBTLevelFlag[ch] = NULL;
+    }
 #endif
 
 #if COM16_C806_EMT
@@ -897,6 +936,17 @@ Void TComDataCU::initCtu( TComPic* pcPic, UInt ctuRsAddr )
 #endif
 #endif
 
+#if DIMD_INTRA_PRED
+  for( UInt ch = 0; ch < MAX_NUM_CHANNEL_TYPE; ch++ )
+  {
+    memset( m_ucDIMDEnabledFlag[ch] , 0,                  m_uiNumPartition * sizeof( *m_ucDIMDEnabledFlag[ch] ) );
+#if DIMD_NUM_INTRA_DIR_INC
+    memset( m_ucExtIntraDir[ch] , ((ch==0) ? DC_IDX : 0), m_uiNumPartition * sizeof( *(m_ucExtIntraDir[ch]) ) );
+#endif
+    memset( m_ucDIMDNoBTLevelFlag[ch], 0,                 m_uiNumPartition * sizeof( *m_ucDIMDNoBTLevelFlag[ch] ) );
+  }
+#endif
+
 #if COM16_C806_EMT
   memset( m_puhEmtTuIdx       , 0,                        m_uiNumPartition * sizeof( *m_puhEmtTuIdx ) );
   memset( m_puhEmtCuFlag      , 0,                        m_uiNumPartition * sizeof( *m_puhEmtCuFlag ) );
@@ -1109,6 +1159,20 @@ Void TComDataCU::initEstData( const UInt uiDepth, const Int qp, const Bool bTran
     m_puiAlfCtrlFlag[ui] = 0;
 #endif
 #endif
+#if DIMD_INTRA_PRED
+    for( UInt ch = 0; ch < MAX_NUM_CHANNEL_TYPE; ch++ )
+    {
+      if(!getSlice()->isIntra() || getBTDepth(0) <= MAX_BT_DEPTH_DIMD_SIG_AI)
+      {
+        m_ucDIMDEnabledFlag[ch][ui] = 0;
+        m_ucDIMDNoBTLevelFlag[ch][ui] = 0;
+      }
+#if DIMD_NUM_INTRA_DIR_INC
+      m_ucExtIntraDir[ch][ui] = ((ch==0) ? DC_IDX : 0);
+#endif
+    }
+#endif
+
 #if COM16_C806_EMT
     m_puhEmtTuIdx [ui]  = 0;
     m_puhEmtCuFlag[ui]  = 0;
@@ -1238,6 +1302,16 @@ Void TComDataCU::initSubBT(TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiCUDepth,
 #else
     memset( m_puiAlfCtrlFlag + uiZorderDst, 0, sizeof(UInt) * uiCurrPartNumb );
 #endif
+#endif
+#if DIMD_INTRA_PRED
+    for( UInt ch = 0; ch < MAX_NUM_CHANNEL_TYPE; ch++ )
+    {
+      memset( m_ucDIMDEnabledFlag[ch] + uiZorderDst, 0, uiCurrPartNumb ); 
+#if DIMD_NUM_INTRA_DIR_INC
+      memset( m_ucExtIntraDir[ch] + uiZorderDst,     ((ch==0) ? DC_IDX : 0), uiCurrPartNumb );
+#endif
+      memset( m_ucDIMDNoBTLevelFlag[ch] + uiZorderDst, 0 , uiCurrPartNumb );
+    }
 #endif
 #if COM16_C806_EMT
     memset( m_puhEmtTuIdx + uiZorderDst, 0, uiCurrPartNumb );
@@ -1401,6 +1475,16 @@ Void TComDataCU::initSubCU( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth, 
 #else
   memset( m_puiAlfCtrlFlag,     0, sizeof( UInt   ) * m_uiNumPartition );
 #endif
+#endif
+#if DIMD_INTRA_PRED
+  for( UInt ch = 0; ch < MAX_NUM_CHANNEL_TYPE; ch++ ) 
+  {
+    memset( m_ucDIMDEnabledFlag[ch],  0, iSizeInUchar );
+#if DIMD_NUM_INTRA_DIR_INC
+    memset( m_ucExtIntraDir[ch],      ((ch==0) ? DC_IDX : 0), iSizeInUchar );
+#endif
+    memset( m_ucDIMDNoBTLevelFlag[ch], 0, iSizeInUchar );
+  }
 #endif
 #if COM16_C806_EMT
   memset( m_puhEmtTuIdx,        0, iSizeInUchar );
@@ -1651,6 +1735,17 @@ Void TComDataCU::copySubCU( TComDataCU* pcCU, UInt uiAbsPartIdx )
   m_puhTrIdx            = pcCU->getTransformIdx()     + uiPart;
 #endif
 
+#if DIMD_INTRA_PRED
+  for (UInt ch=0; ch<MAX_NUM_CHANNEL_TYPE; ch++)
+  {
+    m_ucDIMDEnabledFlag[ch] = pcCU->getDIMDEnabledFlag(ChannelType(ch))  + uiPart;
+#if DIMD_NUM_INTRA_DIR_INC
+    m_ucExtIntraDir[ch]     = pcCU->getExtIntraDir(ChannelType(ch))      + uiPart;
+#endif
+    m_ucDIMDNoBTLevelFlag[ch] = pcCU->getDIMDNoBTLevelFlag(ChannelType(ch)) + uiPart;
+  }
+#endif
+
 #if COM16_C806_EMT
   m_puhEmtTuIdx         = pcCU->getEmtTuIdx()         + uiPart;
   m_puhEmtCuFlag        = pcCU->getEmtCuFlag()        + uiPart;
@@ -1763,6 +1858,16 @@ Void TComDataCU::copyInterPredInfoFrom    ( TComDataCU* pcCU, UInt uiAbsPartIdx,
 #endif
 #if COM16_C1046_PDPC_INTRA
   m_PDPCIdx            = pcCU->getPDPCIdx()               + uiAbsPartIdx;
+#endif
+#if DIMD_INTRA_PRED
+  for( UInt ch = 0; ch < MAX_NUM_CHANNEL_TYPE; ch++ )   
+  {
+    m_ucDIMDEnabledFlag[ch] = pcCU->getDIMDEnabledFlag(ChannelType(ch)) + uiAbsPartIdx;
+#if DIMD_NUM_INTRA_DIR_INC
+    m_ucExtIntraDir[ch]     = pcCU->getExtIntraDir(ChannelType(ch))     + uiAbsPartIdx;
+#endif
+    m_ucDIMDNoBTLevelFlag[ch] = pcCU->getDIMDNoBTLevelFlag(ChannelType(ch)) + uiAbsPartIdx;
+  }
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 #if JVET_C0024_QTBT
@@ -1905,6 +2010,17 @@ Void TComDataCU::copySameSizeCUFrom(TComDataCU* pcCU, UInt uiPartUnitIdx, UInt u
     memcpy(m_puhInterDir + uiOffset, pcCU->getInterDir(), iSizeInUchar);
 #if !JVET_C0024_QTBT
     memcpy(m_puhTrIdx + uiOffset, pcCU->getTransformIdx(), iSizeInUchar);
+#endif
+
+#if DIMD_INTRA_PRED
+    for( UInt ch = 0; ch < numValidChan; ch++ )
+    {
+      memcpy(m_ucDIMDEnabledFlag[ch] + uiOffset, pcCU->getDIMDEnabledFlag(ChannelType(ch)), iSizeInUchar);
+#if DIMD_NUM_INTRA_DIR_INC
+      memcpy(m_ucExtIntraDir[ch]     + uiOffset, pcCU->getExtIntraDir(ChannelType(ch)),     iSizeInUchar );
+#endif
+      memcpy(m_ucDIMDNoBTLevelFlag[ch] + uiOffset, pcCU->getDIMDNoBTLevelFlag(ChannelType(ch)), iSizeInUchar);
+    }
 #endif
 
 #if COM16_C806_EMT
@@ -2090,6 +2206,17 @@ Void TComDataCU::copyPartFrom( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDept
     }
 
     memcpy( m_puhInterDir         + uiZorderDst, pcCU->getInterDir()+uiZorderSrc, uiCurrPartNumb );
+
+#if DIMD_INTRA_PRED
+    for (UInt ch=0; ch<numValidChan; ch++)
+    {
+      memcpy( m_ucDIMDEnabledFlag[ch] + uiZorderDst, pcCU->getDIMDEnabledFlag(ChannelType(ch))+uiZorderSrc, uiCurrPartNumb );   
+#if DIMD_NUM_INTRA_DIR_INC
+      memcpy( m_ucExtIntraDir[ch]     + uiZorderDst, pcCU->getExtIntraDir(ChannelType(ch))+uiZorderSrc,     uiCurrPartNumb );
+#endif
+      memcpy( m_ucDIMDNoBTLevelFlag[ch] + uiZorderDst, pcCU->getDIMDNoBTLevelFlag(ChannelType(ch))+uiZorderSrc, uiCurrPartNumb );
+    }
+#endif
 
 #if COM16_C806_EMT
     memcpy( m_puhEmtTuIdx         + uiZorderDst, pcCU->getEmtTuIdx()+uiZorderSrc, uiCurrPartNumb );
@@ -2376,6 +2503,17 @@ Void TComDataCU::copyToPic( UChar uhDepth )
 
       memcpy( pCtu->getInterDir()          + uiZorderDst, m_puhInterDir + uiZorderSrc,         uiCurrPartNumb );
 
+#if DIMD_INTRA_PRED
+      for (UInt ch=0; ch<numValidChan; ch++)
+      {
+        memcpy( pCtu->getDIMDEnabledFlag(ChannelType(ch)) + uiZorderDst, m_ucDIMDEnabledFlag[ch] + uiZorderSrc,   uiCurrPartNumb );
+#if DIMD_NUM_INTRA_DIR_INC
+        memcpy( pCtu->getExtIntraDir(ChannelType(ch))     + uiZorderDst, m_ucExtIntraDir[ch]     + uiZorderSrc,   uiCurrPartNumb);
+#endif
+        memcpy( pCtu->getDIMDNoBTLevelFlag(ChannelType(ch))+ uiZorderDst, m_ucDIMDNoBTLevelFlag[ch] + uiZorderSrc, uiCurrPartNumb);
+      }
+#endif
+
 #if COM16_C806_EMT
       memcpy( pCtu->getEmtTuIdx()          + uiZorderDst, m_puhEmtTuIdx + uiZorderSrc,         uiCurrPartNumb );
       memcpy( pCtu->getEmtCuFlag()         + uiZorderDst, m_puhEmtCuFlag + uiZorderSrc,        uiCurrPartNumb );
@@ -2443,6 +2581,16 @@ Void TComDataCU::copyToPic( UChar uhDepth )
       {
         memcpy( pCtu->getIntraDir(ChannelType(ch)) + uiZorderDst, m_puhIntraDir[ch] + uiZorderSrc, uiCurrPartNumb);
       }
+#if DIMD_INTRA_PRED
+      for (UInt ch=1; ch<numValidChan; ch++)
+      {
+        memcpy( pCtu->getDIMDEnabledFlag(ChannelType(ch)) + uiZorderDst, m_ucDIMDEnabledFlag[ch] + uiZorderSrc, uiCurrPartNumb);
+#if DIMD_NUM_INTRA_DIR_INC
+        memcpy( pCtu->getExtIntraDir(ChannelType(ch))     + uiZorderDst, m_ucExtIntraDir[ch]     + uiZorderSrc, uiCurrPartNumb);
+#endif
+        memcpy( pCtu->getDIMDNoBTLevelFlag(ChannelType(ch)) + uiZorderDst, m_ucDIMDNoBTLevelFlag[ch] + uiZorderSrc, uiCurrPartNumb);
+      }
+#endif
       for(UInt comp=1; comp<numValidComp; comp++)
       {
         memcpy( pCtu->getCrossComponentPredictionAlpha(ComponentID(comp)) + uiZorderDst, m_crossComponentPredictionAlpha[comp] + uiZorderSrc, uiCurrPartNumb );
@@ -2847,6 +2995,111 @@ TComDataCU* TComDataCU::getPUAboveRight(UInt&  uiARPartUnitIdx, UInt uiCurrPartU
   return m_pCtuAboveRight;
 }
 
+#if DIMD_INTRA_PRED
+TEMPLATE_TYPE TComDataCU::deriveRefRegPosSize( Int iCurX, Int iCurY, UInt uiCurWidth, UInt uiCurHeight, Int iTemplateWidth, Int iTemplateHeight, Int& iRefX, Int& iRefY, UInt& uiRefWidth, UInt& uiRefHeight )
+{
+  //assert(iCurX >= 0 && iCurY >= 0);
+  if(iCurX == 0 && iCurY == 0)
+  {
+    return NO_NEIGHBOR;
+  }
+
+  TEMPLATE_TYPE eTempType = NO_NEIGHBOR;
+  iRefX = iRefY = -1;
+  if(iCurX > 0 && iCurY > 0)
+  {
+    //assert(iCurX >= iTemplateWidth && iCurY >= iTemplateHeight);
+    iRefX       = iCurX - iTemplateWidth;
+    iRefY       = iCurY - iTemplateHeight;
+    uiRefWidth  = uiCurWidth + iTemplateWidth;
+    uiRefHeight = uiCurHeight + iTemplateHeight;
+    eTempType   = LEFT_ABOVE_NEIGHBOR;
+  }
+  else if(iCurX == 0 && iCurY > 0)
+  {
+    //assert(iCurY >= iTemplateHeight);
+    iRefX       = iCurX;
+    iRefY       = iCurY - iTemplateHeight;
+    uiRefWidth  = uiCurWidth;
+    uiRefHeight = uiCurHeight;
+    eTempType   = ABOVE_NEIGHBOR;
+  }
+  else if(iCurX > 0 && iCurY == 0)
+  {
+    //assert(iCurX >= iTemplateWidth);
+    iRefX       = iCurX - iTemplateWidth;
+    iRefY       = iCurY;
+    uiRefWidth  = uiCurWidth;
+    uiRefHeight = uiCurHeight;
+    eTempType   = LEFT_NEIGHBOR;
+  }
+  else
+  {
+    assert(0);
+  }
+  //assert(iRefX >= 0 && iRefY >= 0);
+
+  return eTempType;
+}
+
+TComDataCU* TComDataCU::getOrigRefReg( UInt& uiRefPartUnitIdx, Int iPelX, Int iPelY )
+{
+  UInt uiUnitSize      = getPic()->getMinCUWidth();
+  UInt uiPicWidthInLCU = getPic()->getFrameWidthInCtus();
+  Int  iMaxCUWidth     = getSlice()->getSPS()->getCTUSize();
+  Int  iMaxCUHeight    = getSlice()->getSPS()->getCTUSize();
+
+  if( iPelX < 0 || iPelX >= getSlice()->getSPS()->getPicWidthInLumaSamples() )
+  {
+    return NULL;
+  }
+
+  if( iPelY < 0 || iPelY >= getSlice()->getSPS()->getPicHeightInLumaSamples() )
+  {
+    return NULL;
+  }
+
+  Int iLCUHIdx = iPelX/iMaxCUWidth;
+  Int iLCUVIdx = iPelY/iMaxCUHeight;
+  TComDataCU* pcLCU = getPic()->getCtu(iLCUVIdx*uiPicWidthInLCU + iLCUHIdx);
+  //assert(pcLCU != NULL);
+  //assert(pcLCU->getZorderIdxInCtu() == 0);
+
+  Int iPelXInLCU    = iPelX - iLCUHIdx*iMaxCUWidth;
+  Int iPelYInLCU    = iPelY - iLCUVIdx*iMaxCUHeight;
+  Int iRefRasterIdx = iPelYInLCU/uiUnitSize*(getPic()->getNumPartInCtuWidth()) + (iPelXInLCU/uiUnitSize);
+  uiRefPartUnitIdx  = g_auiRasterToZscan[iRefRasterIdx];
+
+  return pcLCU;
+}
+
+Bool TComDataCU::isReferenceAvailable(TComDataCU* pcCU, UInt uiAbsPartIdx)
+{
+  //assert(pcCU->getCtuRsAddr() != MAX_UINT);
+  if( pcCU->getCtuRsAddr() < m_pcTargetCtu->getCtuRsAddr() )
+  {
+    return true;
+  }
+
+  if( pcCU->getCtuRsAddr() > m_pcTargetCtu->getCtuRsAddr() )
+  {
+    return false;
+  }
+
+  UInt uiRefZOrder = pcCU->getZorderIdxInCtu() + uiAbsPartIdx;
+  UInt uiBlkX = g_auiRasterToPelX[ g_auiZscanToRaster[uiRefZOrder] ] >>MIN_CU_LOG2;
+  UInt uiBlkY = g_auiRasterToPelY[ g_auiZscanToRaster[uiRefZOrder] ] >>MIN_CU_LOG2;
+  if (getPic()->getCodedBlkInCTU(uiBlkX, uiBlkY))
+  {
+    return true;
+  }
+  else
+  {
+    return false;
+  }
+}
+#endif
+
 #if VCEG_AZ07_FRUC_MERGE
 Bool TComDataCU::getBlockBelowRight( UInt uiAbsPartIdx, Int nCurBlkWidth , Int nCurBlkHeight , UInt & rCUAddr , UInt & rBRAbsPartIdx )
 {
@@ -3132,7 +3385,8 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
 #if VCEG_AZ07_INTRA_65ANG_MODES && !JVET_C0055_INTRA_MPM
                                       , Int &iLeftAboveCase
 #endif
-                                      , Int* piMode  )
+                                      , Int* piMode
+                                     )
 {
 #if JVET_C0055_INTRA_MPM
   // This function is not used for chroma texture type.
@@ -4734,6 +4988,23 @@ Void TComDataCU::setMVPNumSubParts( Int iMVPNum, RefPicList eRefPicList, UInt ui
   setSubPart<Char>( iMVPNum, m_apiMVPNum[eRefPicList], uiAbsPartIdx, uiDepth, uiPartIdx );
 #endif
 }
+
+#if DIMD_INTRA_PRED
+Void TComDataCU::setDIMDEnabledFlagSubParts( ChannelType channelType, UChar uc, UInt uiAbsPartIdx, UInt uiDepth )
+{
+  setSubPart<UChar>( uc, m_ucDIMDEnabledFlag[channelType], uiAbsPartIdx, getWidth(uiAbsPartIdx), getHeight(uiAbsPartIdx) );
+}
+#if DIMD_NUM_INTRA_DIR_INC
+Void TComDataCU::setExtIntraDirSubParts( ChannelType channelType, UInt uiDir, UInt uiAbsPartIdx, UInt uiDepth )
+{
+  setSubPart<UChar>( uiDir, m_ucExtIntraDir[channelType], uiAbsPartIdx, getWidth(uiAbsPartIdx), getHeight(uiAbsPartIdx) );
+}
+#endif
+Void TComDataCU::setDIMDNoBTLevelFlagSubParts( ChannelType channelType, UChar uc, UInt uiAbsPartIdx, UInt uiDepth )
+{
+  setSubPart<UChar>( uc, m_ucDIMDNoBTLevelFlag[channelType], uiAbsPartIdx, getWidth(uiAbsPartIdx), getHeight(uiAbsPartIdx) );
+}
+#endif
 
 #if COM16_C806_EMT
 Void TComDataCU::setEmtTuIdxSubParts( UInt uiTrMode, UInt uiAbsPartIdx, UInt uiDepth )
@@ -7817,7 +8088,11 @@ Void TComDataCU::compressMV()
   }
 }
 
+#if DIMD_NUM_INTRA_DIR_INC
+UInt TComDataCU::getCoefScanIdx(const UInt uiAbsPartIdx, const UInt uiWidth, const UInt uiHeight, const ComponentID compID)
+#else
 UInt TComDataCU::getCoefScanIdx(const UInt uiAbsPartIdx, const UInt uiWidth, const UInt uiHeight, const ComponentID compID) const
+#endif
 {
   //------------------------------------------------
 
@@ -7867,6 +8142,27 @@ UInt TComDataCU::getCoefScanIdx(const UInt uiAbsPartIdx, const UInt uiWidth, con
 
   //------------------
 
+#if DIMD_NUM_INTRA_DIR_INC
+  if(getDIMDEnabledFlag(toChannelType(compID), uiAbsPartIdx))
+  {
+    uiDirMode = getExtIntraDir(toChannelType(compID), uiAbsPartIdx);
+    if(abs((Int)uiDirMode - EXT_VER_IDX) <= MDCS_EXT_ANGLE_LIMIT)
+    {
+      return SCAN_HOR;
+    }
+    else if(abs((Int)uiDirMode - EXT_HOR_IDX) <= MDCS_EXT_ANGLE_LIMIT)
+    {
+      return SCAN_VER;
+    }
+    else
+    {
+      return SCAN_DIAG;
+    }
+  }
+  else
+  {
+    assert(uiDirMode >= PLANAR_IDX && uiDirMode < NUM_INTRA_MODE);
+#endif
   if      (abs((Int)uiDirMode - VER_IDX) <= MDCS_ANGLE_LIMIT)
   {
     return SCAN_HOR;
@@ -7879,6 +8175,9 @@ UInt TComDataCU::getCoefScanIdx(const UInt uiAbsPartIdx, const UInt uiWidth, con
   {
     return SCAN_DIAG;
   }
+#if DIMD_NUM_INTRA_DIR_INC
+  }
+#endif
 }
 
 #if ALF_HM3_REFACTOR

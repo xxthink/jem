@@ -1536,6 +1536,9 @@ TEncSearch::xEncIntraHeader( TComDataCU*  pcCU,
 #if COM16_C1046_PDPC_INTRA 
         m_pcEntropyCoder->encodePDPCIdx( pcCU, 0, true);
 #endif
+#if DIMD_INTRA_PRED
+        m_pcEntropyCoder->encodeDIMDFlag( pcCU, 0, pcCU->getDepth(0), pcCU->getWidth(0), pcCU->getHeight(0), true);
+#endif
       }
 #if JVET_C0024_QTBT
       if (pcCU->isIntra(0) )
@@ -1762,6 +1765,9 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
 #if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
                                                                                 , sps.getUseRSAF()
 #endif
+#if DIMD_NUM_INTRA_DIR_INC
+                                                                                , pcCU, uiAbsPartIdx
+#endif
                                                                                  );
       initIntraPatternChType( rTu, compID, bUseFilteredPredictions, (compID==COMPONENT_Y) ? bFilter : false  DEBUG_STRING_PASS_INTO(sDebug) );
       
@@ -1776,7 +1782,11 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
           bUseFilteredPredictions = bFilter; 
         }
 #else
+#if DIMD_NUM_INTRA_DIR_INC
+    const Bool bUseFilteredPredictions=TComPrediction::filteringIntraReferenceSamples(compID, uiChFinalMode, uiWidth, uiHeight, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag(), pcCU, uiAbsPartIdx);
+#else
     const Bool bUseFilteredPredictions=TComPrediction::filteringIntraReferenceSamples(compID, uiChFinalMode, uiWidth, uiHeight, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag());
+#endif
 
     initIntraPatternChType( rTu, compID, bUseFilteredPredictions DEBUG_STRING_PASS_INTO(sDebug) );
 #endif
@@ -3232,6 +3242,9 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
     ucSavedEmtTrIdx   = m_puhQTTempEmtTuIdx[uiAbsPartIdx-uiInitAbsPartIdx];
     bCheckInitTrDepth = true;
   }
+#if DIMD_INTRA_PRED
+  assert(!bCheckInitTrDepth);
+#endif
 #endif
 
 #if JVET_C0024_QTBT
@@ -4850,7 +4863,10 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #endif        
         const Bool bUseFilter=TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, uiMode, puRect.width, puRect.height, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag()
 #if COM16_C983_RSAF_PREVENT_OVERSMOOTHING 
-          , sps.getUseRSAF()
+                                                                             , sps.getUseRSAF()
+#endif
+#if DIMD_NUM_INTRA_DIR_INC
+                                                                             , pcCU, uiAbsPartIdx
 #endif
                                                                             );
 
@@ -4933,7 +4949,10 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
             {
               const Bool bUseFilter=TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, uiMode, puRect.width, puRect.height, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag()
 #if COM16_C983_RSAF_PREVENT_OVERSMOOTHING 
-                , sps.getUseRSAF() 
+                                                                                   , sps.getUseRSAF() 
+#endif
+#if DIMD_NUM_INTRA_DIR_INC
+                                                                                   , pcCU, uiAbsPartIdx
 #endif
                                                                                   );
 
@@ -4985,7 +5004,6 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         Int iMode = -1;
         pcCU->getIntraDirPredictor( uiPartOffset, uiPreds, COMPONENT_Y, &iMode );
 #endif
-
         const Int numCand = ( iMode >= 0 ) ? iMode : Int(NUM_MOST_PROBABLE_MODES);
 
         for( Int j=0; j < numCand; j++)
@@ -5019,6 +5037,28 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
             uiRdModeList[numModesForFullRD++] = mostProbableMode;
           }
         }
+
+#if DIMD_INTRA_PRED
+        {
+          Bool mostProbableModeIncluded = false;
+          UInt uiMostProbMode = getDIMDIntraMode();
+#if COM16_C1044_NSST
+          const Int iNumberOfPassesROT = ( uiMostProbMode <= DC_IDX ) ? 3 : 4;
+          if( iNumberOfPassesROT <= pcCU->getROTIdx(CHANNEL_TYPE_LUMA, 0) )
+          {
+            mostProbableModeIncluded = true;
+          }
+#endif
+          for( Int i=0; i < numModesForFullRD; i++)
+          {
+            mostProbableModeIncluded |= (uiMostProbMode == uiRdModeList[i]);
+          }
+          if (!mostProbableModeIncluded)
+          {
+            uiRdModeList[numModesForFullRD++] = uiMostProbMode;
+          }
+        }
+#endif
       }
     }
     else
@@ -5904,8 +5944,200 @@ TEncSearch::estIntraPredChromaQT(TComDataCU* pcCU,
 #endif
 }
 
+#if DIMD_INTRA_PRED
+Void  TEncSearch::estDIMDIntraPredLumaQT  ( TComDataCU* pcCU,
+                                            TComYuv*    pcOrgYuv,
+                                            TComYuv*    pcPredYuv,
+                                            TComYuv*    pcResiYuv,
+                                            TComYuv*    pcRecoYuv,
+#if COM16_C806_LARGE_CTU
+                                            Pel*        resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES]
+#else
+                                            Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE]
+#endif
+)
+{
+  const UInt    uiInitTrDepth = 0;
+  const UInt    uiDepth       = pcCU->getDepth(0);
+  const UInt    uiWidth       = pcCU->getWidth(0) ;
+  const UInt    uiHeight      = pcCU->getHeight(0) ;
+  const UInt    uiWIdx        = g_aucConvertToBit[uiWidth];
+  const UInt    uiHIdx        = g_aucConvertToBit[uiHeight];
 
+  const TComPPS     &pps                   = *(pcCU->getSlice()->getPPS());
+  Distortion        uiOverallDistY         = 0;
+#if !COM16_C806_LARGE_CTU
+  Pel          resiLumaPU[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE];
+#endif
 
+  Bool    bMaintainResidual[NUMBER_OF_STORED_RESIDUAL_TYPES];
+  for (UInt residualTypeIndex = 0; residualTypeIndex < NUMBER_OF_STORED_RESIDUAL_TYPES; residualTypeIndex++)
+  {
+    bMaintainResidual[residualTypeIndex] = true; //assume true unless specified otherwise
+  }
+
+  bMaintainResidual[RESIDUAL_ENCODER_SIDE] = !(m_pcEncCfg->getUseReconBasedCrossCPredictionEstimate());
+
+  //===== set QP and clear Cbf =====
+  if ( pps.getUseDQP() == true)
+  {
+    pcCU->setQPSubParts( pcCU->getQP(0), 0, uiDepth );
+  }
+  else
+  {
+    pcCU->setQPSubParts( pcCU->getSlice()->getSliceQp(), 0, uiDepth );
+  }
+
+  //===== loop over partitions =====
+  TComTURecurse tuRecurseCU(pcCU, 0);
+  TComTURecurse tuRecurseWithPU(tuRecurseCU, false, (uiInitTrDepth==0)?TComTU::DONT_SPLIT : TComTU::QUAD_SPLIT);
+
+  do
+  {
+    const UInt uiPartOffset = tuRecurseWithPU.GetAbsPartIdxTU();
+    assert(uiPartOffset == 0);
+#if COM16_C1044_NSST
+    const Int iNumberOfPassesROT = ( pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiPartOffset) <= DC_IDX ) ? 3 : 4;
+    assert(pcCU->getROTIdx(CHANNEL_TYPE_LUMA, uiPartOffset) < iNumberOfPassesROT);
+#endif
+#if COM16_C983_RSAF
+    const Bool isRSAFEnabled  = pcCU->getSlice()->getSPS()->getUseRSAF();
+#endif
+
+    // set context models
+    m_pcRDGoOnSbacCoder->load( m_ppppcRDSbacCoder[uiWIdx][uiHIdx][CI_CURR_BEST] );
+
+    // determine residual for partition
+    Distortion uiPUDistY = 0;
+    Double     dPUCost   = 0.0;
+
+#if COM16_C983_RSAF
+    if ( isRSAFEnabled && uiWidth*uiHeight>=64 && uiWidth*uiHeight<=1024 && pcCU->getIntraDir(CHANNEL_TYPE_LUMA, 0) != DC_IDX )
+   {
+#if HHI_RQT_INTRA_SPEEDUP
+      xRecurIntraCodingLumaQT_RSAF( pcOrgYuv, pcPredYuv, pcResiYuv, 
+#if COM16_C806_LARGE_CTU
+                                    m_resiPUBuffer,
+#else
+                                    resiLumaPU, 
+#endif
+                                    uiPUDistY, true, dPUCost, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sMode) );
+#else
+      xRecurIntraCodingLumaQT_RSAF( pcOrgYuv, pcPredYuv, pcResiYuv, 
+#if COM16_C806_LARGE_CTU
+                                    m_resiPUBuffer,
+#else
+                                    resiLumaPU, 
+#endif
+                                   uiPUDistY, dPUCost, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sMode) );
+#endif
+    }
+    else
+    {
+#endif
+#if HHI_RQT_INTRA_SPEEDUP
+      xRecurIntraCodingLumaQT( pcOrgYuv, pcPredYuv, pcResiYuv, 
+#if COM16_C806_LARGE_CTU
+                               m_resiPUBuffer,
+#else
+                               resiLumaPU, 
+#endif
+                               uiPUDistY, true, dPUCost, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sMode) );
+#else
+      xRecurIntraCodingLumaQT( pcOrgYuv, pcPredYuv, pcResiYuv, 
+#if COM16_C806_LARGE_CTU
+                               m_resiPUBuffer,
+#else
+                               resiLumaPU, 
+#endif
+                               uiPUDistY, dPUCost, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sMode) );
+#endif
+#if COM16_C983_RSAF
+    }
+#endif
+
+    xSetIntraResultLumaQT( pcRecoYuv, tuRecurseWithPU );
+
+    if (pps.getPpsRangeExtension().getCrossComponentPredictionEnabledFlag())
+    {
+      const Int xOffset = tuRecurseWithPU.getRect( COMPONENT_Y ).x0;
+      const Int yOffset = tuRecurseWithPU.getRect( COMPONENT_Y ).y0;
+      for (UInt storedResidualIndex = 0; storedResidualIndex < NUMBER_OF_STORED_RESIDUAL_TYPES; storedResidualIndex++)
+      {
+        if (bMaintainResidual[storedResidualIndex])
+        {
+          xStoreCrossComponentPredictionResult(resiLuma[storedResidualIndex], 
+#if COM16_C806_LARGE_CTU
+            m_resiPUBuffer[storedResidualIndex],
+#else
+            resiLumaPU[storedResidualIndex], 
+#endif
+            tuRecurseWithPU, xOffset, yOffset, MAX_CU_SIZE, MAX_CU_SIZE );
+        }
+      }
+    }
+
+    //--- update overall distortion ---
+    uiOverallDistY += uiPUDistY;
+
+    assert(tuRecurseWithPU.IsLastSection());
+  } while (tuRecurseWithPU.nextSection(tuRecurseCU));
+
+  //===== reset context models =====
+  m_pcRDGoOnSbacCoder->load(m_ppppcRDSbacCoder[uiWIdx][uiHIdx][CI_CURR_BEST]);
+
+  //===== set distortion (rate and r-d costs are determined later) =====
+  pcCU->getTotalDistortion() = uiOverallDistY;
+}
+
+Void TEncSearch::estDIMDIntraPredChromaQT( TComDataCU* pcCU,
+                                           TComYuv*    pcOrgYuv,
+                                           TComYuv*    pcPredYuv,
+                                           TComYuv*    pcResiYuv,
+                                           TComYuv*    pcRecoYuv,
+#if COM16_C806_LARGE_CTU
+                                           Pel*        resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES]
+#else
+                                           Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE]
+#endif
+) 
+{
+  const UInt    uiInitTrDepth  =  0;
+  UInt uiWIdx = g_aucConvertToBit[pcCU->getWidth(0)];
+  UInt uiHIdx = g_aucConvertToBit[pcCU->getHeight(0)];
+
+  TComTURecurse tuRecurseCU(pcCU, 0);
+  TComTURecurse tuRecurseWithPU(tuRecurseCU, false, (uiInitTrDepth==0)?TComTU::DONT_SPLIT : TComTU::QUAD_SPLIT);
+
+  do
+  {
+    //----- init mode list -----
+    if (tuRecurseWithPU.ProcessChannelSection(CHANNEL_TYPE_CHROMA))
+    {
+      const UInt  uiPartOffset   = tuRecurseWithPU.GetAbsPartIdxTU();
+      assert(uiPartOffset == 0);
+#if COM16_C1044_NSST
+      UInt uiIntraMode = pcCU->getIntraDir(CHANNEL_TYPE_CHROMA, uiPartOffset);
+      assert(uiIntraMode == DM_CHROMA_IDX);
+      assert(!pcCU->getSlice()->isIntra());
+#endif
+
+      //----- restore context models -----
+      m_pcRDGoOnSbacCoder->load( m_ppppcRDSbacCoder[uiWIdx][uiHIdx][CI_CURR_BEST] );
+
+      //----- chroma coding -----
+      Distortion uiDist = 0;
+      xRecurIntraChromaCodingQT( pcOrgYuv, pcPredYuv, pcResiYuv, resiLuma, uiDist, tuRecurseWithPU );
+      xSetIntraResultChromaQT( pcRecoYuv, tuRecurseWithPU );
+
+      assert(tuRecurseWithPU.IsLastSection());
+      pcCU->getTotalDistortion      () += uiDist;
+    }
+  } while (tuRecurseWithPU.nextSection(tuRecurseCU));
+
+  m_pcRDGoOnSbacCoder->load( m_ppppcRDSbacCoder[uiWIdx][uiHIdx][CI_CURR_BEST] );
+}
+#endif
 
 /** Function for encoding and reconstructing luma/chroma samples of a PCM mode CU.
  * \param pcCU pointer to current CU

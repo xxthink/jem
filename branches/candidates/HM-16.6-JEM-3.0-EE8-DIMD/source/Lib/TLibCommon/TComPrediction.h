@@ -90,6 +90,9 @@ class TComPrediction : public TComWeightPrediction
 {
 private:
   static const UChar m_aucIntraFilter[MAX_NUM_CHANNEL_TYPE][MAX_INTRA_FILTER_DEPTHS];
+#if DIMD_NUM_INTRA_DIR_INC
+  static const UChar m_aucExtIntraFilter[MAX_NUM_CHANNEL_TYPE][MAX_INTRA_FILTER_DEPTHS];
+#endif
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
   UInt*  m_puiW;
   UInt*  m_puiH;
@@ -142,12 +145,15 @@ protected:
 
   Void xPredIntraAng            ( Int bitDepth, const Pel* pSrc, Int srcStride, Pel* pDst, Int dstStride, UInt width, UInt height, ChannelType channelType, UInt dirMode, const Bool bEnableEdgeFilters 
 #if VCEG_AZ07_INTRA_4TAP_FILTER
-    , Bool enable4TapFilter = false
+                                  , Bool enable4TapFilter = false
 #endif
 #if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
-    , Bool enableRSAF = false 
+                                  , Bool enableRSAF = false 
 #endif
-    );
+#if DIMD_NUM_INTRA_DIR_INC
+                                  , Bool bExtIntraDir = false
+#endif
+                                );
   Void xPredIntraPlanar         ( const Pel* pSrc, Int srcStride, Pel* rpDst, Int dstStride, UInt width, UInt height );
 
 #if VCEG_AZ07_FRUC_MERGE
@@ -227,7 +233,11 @@ protected:
 #endif
 
 #if VCEG_AZ07_INTRA_BOUNDARY_FILTER
-  Void xIntraPredFilteringModeDGL( const Pel* pSrc, Int iSrcStride, Pel*& rpDst, Int iDstStride, Int iWidth, Int iHeight, UInt uiMode );
+  Void xIntraPredFilteringModeDGL( const Pel* pSrc, Int iSrcStride, Pel*& rpDst, Int iDstStride, Int iWidth, Int iHeight, UInt uiMode
+#if DIMD_NUM_INTRA_DIR_INC
+                                   , Bool bExtIntraDir
+#endif
+                                 );
   Void xIntraPredFilteringMode34 ( const Pel* pSrc, Int iSrcStride, Pel*& rpDst, Int iDstStride, Int iWidth, Int iHeight);
   Void xIntraPredFilteringMode02 ( const Pel* pSrc, Int iSrcStride, Pel*& rpDst, Int iDstStride, Int iWidth, Int iHeight);
 #endif
@@ -333,6 +343,48 @@ public:
     return m_piYuvExt[compID][bUseFilteredPredictions?PRED_BUF_FILTERED:PRED_BUF_UNFILTERED];
   }
 
+#if DIMD_INTRA_PRED
+  UInt deriveNeighborIntraDirs      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
+  Void initDIMDLumaFlexibleIntraPattern ( TComDataCU* pcCU,
+                                          UInt        uiZorderIdxInPart,
+                                          Int         iRefX,
+                                          Int         iRefY,
+                                          UInt        uiRefWidth,
+                                          UInt        uiRefHeight,
+                                          Bool        bFilterRefSamples
+#if COM16_C983_RSAF
+                                        , Bool        bRSAF = false
+#endif
+                                        );
+  static Bool filteringDIMDIntraReferenceSamples(const ComponentID compID, UInt uiDirMode, UInt uiTuChWidth, UInt uiTuChHeight, const ChromaFormat chFmt, const Bool intraReferenceSmoothingDisabled
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+                                                 , Bool enableRSAF
+#endif
+                                                );
+  Void predDIMDIntraLumaAng(TComDataCU* pcCU, UInt uiDirMode, Pel* piPred, UInt uiStride, Int iWidth, Int iHeight, TEMPLATE_TYPE eTempType, Int iTemplateWidth, Int iTemplateHeight);
+  Void xPredDIMDIntraPlanar(const Pel* pSrc, Int srcStride, Pel* rpDst, Int dstStride, UInt width, UInt height, TEMPLATE_TYPE eTempType, Int iTemplateWidth, Int iTemplateHeight);
+  Void xPredDIMDIntraAng   (Int bitDepth, const Pel* pSrc, Int srcStride, Pel* rpDst, Int dstStride, UInt width, UInt height, ChannelType channelType, UInt dirMode, const Bool bEnableEdgeFilters
+#if VCEG_AZ07_INTRA_4TAP_FILTER
+                            , Bool          enable4TapFilter
+#endif
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+                            , Bool          enableRSAF
+#endif
+                            , TEMPLATE_TYPE eTempType
+                            , Int           iTemplateWidth
+                            , Int           iTemplateHeight
+                           );
+#if COM16_C1046_PDPC_INTRA
+  Void predDIMDIntraLumaPDPC(TComDataCU* pcCU, UInt uiDirMode, Pel* piPred, UInt uiStride, Int iWidth, Int iHeight, TEMPLATE_TYPE eTempType, Int iTemplateWidth, Int iTemplateHeight);
+#endif
+#if VCEG_AZ07_INTRA_BOUNDARY_FILTER
+  Void xDIMDIntraPredFilteringMode34 (const Pel* pSrc, Int iSrcStride, Pel*& rpDst, Int iDstStride, Int iWidth, Int iHeight,              TEMPLATE_TYPE eTempType, Int iTemplateWidth, Int iTemplateHeight);
+  Void xDIMDIntraPredFilteringMode02 (const Pel* pSrc, Int iSrcStride, Pel*& rpDst, Int iDstStride, Int iWidth, Int iHeight,              TEMPLATE_TYPE eTempType, Int iTemplateWidth, Int iTemplateHeight);
+  Void xDIMDIntraPredFilteringModeDGL(const Pel* pSrc, Int iSrcStride, Pel*& rpDst, Int iDstStride, Int iWidth, Int iHeight, UInt uiMode, TEMPLATE_TYPE eTempType, Int iTemplateWidth, Int iTemplateHeight);
+#endif
+  UInt calcTemplateSAD               ( Int bitDepth, Pel* pi0, Int iStride0, Pel* pi1, Int iStride1, Int iWidth, Int iHeight, Bool bBDClip );
+#endif
+
   // This function is actually still in TComPattern.cpp
   /// set parameters from CU data for accessing intra data
   Void initIntraPatternChType ( TComTU &rTu,
@@ -346,6 +398,9 @@ public:
   static Bool filteringIntraReferenceSamples(const ComponentID compID, UInt uiDirMode, UInt uiTuChWidth, UInt uiTuChHeight, const ChromaFormat chFmt, const Bool intraReferenceSmoothingDisabled
 #if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
                                             , Bool enableRSAF
+#endif
+#if DIMD_NUM_INTRA_DIR_INC
+                                            , TComDataCU* pcCU, UInt uiAbsPartIdx
 #endif
                                             );
 

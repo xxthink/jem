@@ -126,7 +126,14 @@ Void TDecSlice::decompressSlice(TComInputBitstream** ppcSubstreams, TComPic* pcP
   }
 
   // for every CTU in the slice segment...
-
+#if DIMD_INTRA_PRED
+  for( UInt ctuTsAddr = startCtuTsAddr; ctuTsAddr < numCtusInFrame; ctuTsAddr++)
+  {
+    const UInt  ctuRsAddr = pcPic->getPicSym()->getCtuTsToRsAddrMap(ctuTsAddr);
+    TComDataCU* pCtu      = pcPic->getCtu( ctuRsAddr );
+    pCtu->initCtu( pcPic, ctuRsAddr );
+  }
+#endif
   Bool isLastCtuOfSliceSegment = false;
   for( UInt ctuTsAddr = startCtuTsAddr; !isLastCtuOfSliceSegment && ctuTsAddr < numCtusInFrame; ctuTsAddr++)
   {
@@ -139,7 +146,9 @@ Void TDecSlice::decompressSlice(TComInputBitstream** ppcSubstreams, TComPic* pcP
     const UInt ctuYPosInCtus  = ctuRsAddr / frameWidthInCtus;
     const UInt uiSubStrm=pcPic->getSubstreamForCtuAddr(ctuRsAddr, true, pcSlice)-subStreamOffset;
     TComDataCU* pCtu = pcPic->getCtu( ctuRsAddr );
+#if !DIMD_INTRA_PRED
     pCtu->initCtu( pcPic, ctuRsAddr );
+#endif
 
     m_pcEntropyDecoder->setBitstream( ppcSubstreams[uiSubStrm] );
 
@@ -232,7 +241,9 @@ Void TDecSlice::decompressSlice(TComInputBitstream** ppcSubstreams, TComPic* pcP
     }
 
     m_pcCuDecoder->decodeCtu     ( pCtu, isLastCtuOfSliceSegment );
+#if !DIMD_INTRA_PRED
     m_pcCuDecoder->decompressCtu ( pCtu );
+#endif
 
 #if ENC_DEC_TRACE
     g_bJustDoIt = g_bEncDecTraceDisable;

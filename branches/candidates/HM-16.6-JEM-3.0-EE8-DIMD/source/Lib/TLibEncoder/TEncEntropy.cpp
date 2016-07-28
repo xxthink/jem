@@ -209,7 +209,33 @@ Void TEncEntropy::encodePDPCIdx(TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD)
   m_pcEntropyCoderIf->codePDPCIdx(pcCU, uiAbsPartIdx);
 }
 #endif
+#if DIMD_INTRA_PRED
+Void TEncEntropy::encodeDIMDFlag(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight, Bool bRD)
+{
+  if(bRD)
+  {
+    uiAbsPartIdx = 0;
+  }
+  //assert(isLuma(pcCU->getTextType()));
+  if(pcCU->getPredictionMode(uiAbsPartIdx) == MODE_INTER)
+  {
+    //assert(!pcCU->getDIMDEnabledFlag(CHANNEL_TYPE_LUMA, uiAbsPartIdx));
+    return;
+  }
 
+  m_pcEntropyCoderIf->codeDIMDFlag(pcCU, uiAbsPartIdx, uiDepth);
+}
+Void TEncEntropy::encodeDIMDNoBTFlag(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight, Bool bRD)
+{
+  if(bRD)
+  {
+    uiAbsPartIdx = 0;
+  }
+  assert(pcCU->getDIMDEnabledFlag(CHANNEL_TYPE_LUMA, uiAbsPartIdx));
+
+  m_pcEntropyCoderIf->codeDIMDNoBTFlag(pcCU, uiAbsPartIdx, uiDepth);
+}
+#endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 Void TEncEntropy::encodeROTIdx( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth, Bool bRD )
 { 
@@ -661,6 +687,12 @@ Void TEncEntropy::encodeIntraDirModeLuma  ( TComDataCU* pcCU, UInt absPartIdx, B
 #endif
                                            )
 {
+#if DIMD_INTRA_PRED
+  if(pcCU->getDIMDEnabledFlag(CHANNEL_TYPE_LUMA, absPartIdx))
+  {
+    return;
+  }
+#endif
   m_pcEntropyCoderIf->codeIntraDirLumaAng( pcCU, absPartIdx , isMultiplePU
 #if VCEG_AZ07_INTRA_65ANG_MODES
     , piModes, iAboveLeftCase
@@ -672,6 +704,12 @@ Void TEncEntropy::encodeIntraDirModeLuma  ( TComDataCU* pcCU, UInt absPartIdx, B
 //! encode intra direction for chroma
 Void TEncEntropy::encodeIntraDirModeChroma( TComDataCU* pcCU, UInt uiAbsPartIdx )
 {
+#if DIMD_INTRA_PRED
+  if(pcCU->getDIMDEnabledFlag(CHANNEL_TYPE_CHROMA, uiAbsPartIdx))
+  {
+    return;
+  }
+#endif
   m_pcEntropyCoderIf->codeIntraDirChroma( pcCU, uiAbsPartIdx );
 
 #if ENVIRONMENT_VARIABLE_DEBUG_AND_TEST

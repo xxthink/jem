@@ -47,6 +47,13 @@
 //! \ingroup TLibCommon
 //! \{
 
+#define DIMD_INTRA_PRED                                   1
+#if DIMD_INTRA_PRED
+#define MAX_TEMP_SIZE                                     4  
+#define MAX_BT_DEPTH_DIMD_SIG_AI                          1
+#define DIMD_NUM_INTRA_DIR_INC                            1
+#endif
+
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////
@@ -684,6 +691,16 @@ enum TRANS_TYPE
 {
   DCT2, DCT5, DCT8, DST1, DST7, NUM_TRANS_TYPE,
   DCT2_HEVC, DCT2_EMT
+};
+#endif
+
+#if DIMD_INTRA_PRED
+enum TEMPLATE_TYPE
+{
+  NO_NEIGHBOR         = 0,
+  LEFT_NEIGHBOR,
+  ABOVE_NEIGHBOR,
+  LEFT_ABOVE_NEIGHBOR
 };
 #endif
 

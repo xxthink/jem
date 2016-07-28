@@ -67,6 +67,10 @@
 #if COM16_C1046_PDPC_INTRA
 #define NUM_PDPC_CTX                  2      /// < number of context models for MPI Idx coding
 #endif
+#if DIMD_INTRA_PRED
+#define NUM_DIMD_CTX                  6
+#define NUM_DIMD_NO_BT_CTX            6
+#endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
  #define NUM_ROT_TR_CTX               7       /// < number of context models for ROT Idx coding
 #endif
@@ -329,6 +333,22 @@ INIT_PDPCIdx_FLAG[NUMBER_OF_SLICE_TYPES][NUM_PDPC_CTX] =
   { 107, 107 },
   { 107, 107 },
   { 139, 139 },
+};
+#endif
+#if DIMD_INTRA_PRED
+static const UChar
+INIT_DIMD_FLAG[NUMBER_OF_SLICE_TYPES][NUM_DIMD_CTX] =
+{
+  { CNU,  CNU, CNU,  CNU, CNU,  CNU },
+  { CNU,  CNU, CNU,  CNU, CNU,  CNU },
+  { CNU,  CNU, CNU,  CNU, CNU,  CNU },
+};
+static const UChar
+INIT_DIMD_NO_BT_FLAG[NUMBER_OF_SLICE_TYPES][NUM_DIMD_NO_BT_CTX] =
+{
+  { CNU,  CNU, CNU,  CNU, CNU,  CNU },
+  { CNU,  CNU, CNU,  CNU, CNU,  CNU },
+  { CNU,  CNU, CNU,  CNU, CNU,  CNU },
 };
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST

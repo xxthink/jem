@@ -2004,6 +2004,17 @@ Void TDecCavlc::parsePDPCIdx(TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /
 }
 #endif
 
+#if DIMD_INTRA_PRED
+Void TDecCavlc::parseDIMDFlag(TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/, UInt /*uiWidth*/, UInt /*uiHeight*/)
+{
+  assert(0);
+}
+Void TDecCavlc::parseDIMDNoBTFlag(TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/, UInt /*uiWidth*/, UInt /*uiHeight*/)
+{
+  assert(0);
+}
+#endif
+
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 Void TDecCavlc::parseROTIdx ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/ )
 {

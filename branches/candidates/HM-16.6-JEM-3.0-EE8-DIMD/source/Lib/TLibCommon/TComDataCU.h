@@ -172,6 +172,9 @@ private:
   TComDataCU*   m_pCtuAboveRight;     ///< pointer of above-right CTU.
   TComDataCU*   m_pCtuAbove;          ///< pointer of above CTU.
   TComDataCU*   m_pCtuLeft;           ///< pointer of left CTU
+#if DIMD_INTRA_PRED
+  TComDataCU*   m_pcTargetCtu;
+#endif
   TComDataCU*   m_apcCUColocated[NUM_REF_PIC_LIST_01];  ///< pointer of temporally colocated CU's for both directions
   TComMvField   m_cMvFieldA;          ///< motion vector of position A
   TComMvField   m_cMvFieldB;          ///< motion vector of position B
@@ -226,6 +229,14 @@ private:
   UInt*         m_puiAlfCtrlFlag;     ///< array of ALF flags
   UInt*         m_puiTmpAlfCtrlFlag;  ///< temporal array of ALF flags
 #endif
+#endif
+
+#if DIMD_INTRA_PRED
+  UChar*        m_ucDIMDEnabledFlag[MAX_NUM_CHANNEL_TYPE];
+#if DIMD_NUM_INTRA_DIR_INC
+  UChar*        m_ucExtIntraDir[MAX_NUM_CHANNEL_TYPE];
+#endif
+  UChar*        m_ucDIMDNoBTLevelFlag[MAX_NUM_CHANNEL_TYPE];
 #endif
 
 #if COM16_C806_EMT
@@ -645,6 +656,22 @@ public:
   UInt          getCtxAlfCtrlFlag               ( UInt   uiAbsPartIdx                                 );
 #endif
 
+#if DIMD_INTRA_PRED
+  UChar*        getDIMDEnabledFlag    (ChannelType channelType)                                { return m_ucDIMDEnabledFlag[channelType];    } 
+  UChar         getDIMDEnabledFlag    (ChannelType channelType, UInt uiAbsPartIdx)             { return m_ucDIMDEnabledFlag[channelType][uiAbsPartIdx]; }
+  Void          setDIMDEnabledFlag    (ChannelType channelType, UInt uiAbsPartIdx, UChar uc)   { m_ucDIMDEnabledFlag[channelType][uiAbsPartIdx] = uc; }
+  Void          setDIMDEnabledFlagSubParts( ChannelType channelType, UChar uc, UInt uiAbsPartIdx, UInt uiDepth );
+#if DIMD_NUM_INTRA_DIR_INC
+  UChar*        getExtIntraDir        ( ChannelType channelType )                              { return m_ucExtIntraDir[channelType]; }
+  UChar         getExtIntraDir        ( ChannelType channelType, UInt uiAbsPartIdx )           { return m_ucExtIntraDir[channelType][uiAbsPartIdx]; }
+  Void          setExtIntraDirSubParts( ChannelType channelType, UInt uiDir, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
+  UChar*        getDIMDNoBTLevelFlag  (ChannelType channelType)                                 { return m_ucDIMDNoBTLevelFlag[channelType]; } 
+  UChar         getDIMDNoBTLevelFlag  (ChannelType channelType, UInt uiAbsPartIdx)              { return m_ucDIMDNoBTLevelFlag[channelType][uiAbsPartIdx]; } 
+  Void          setDIMDNoBTLevelFlag  (ChannelType ChannelType, UInt uiAbsPartIdx, UChar uc)    { m_ucDIMDNoBTLevelFlag[ChannelType][uiAbsPartIdx] = uc; }
+  Void          setDIMDNoBTLevelFlagSubParts( ChannelType channelType, UChar uc, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
+
 #if COM16_C806_EMT
   UChar*        getEmtTuIdx           ()                        { return m_puhEmtTuIdx;          }
   UChar         getEmtTuIdx           ( UInt uiIdx )            { return m_puhEmtTuIdx[uiIdx];   }
@@ -746,6 +773,14 @@ public:
   TComDataCU*   getCtuAbove                 () { return m_pCtuAbove;      }
   TComDataCU*   getCtuAboveLeft             () { return m_pCtuAboveLeft;  }
   TComDataCU*   getCtuAboveRight            () { return m_pCtuAboveRight; }
+#if DIMD_INTRA_PRED
+  Void          setTargetCtu                (TComDataCU* p) {m_pcTargetCtu = p;}
+
+  TEMPLATE_TYPE deriveRefRegPosSize         ( Int iCurX, Int iCurY, UInt uiCurWidth, UInt uiCurHeight, Int iTemplateWidth, Int iTemplateHeight, Int& iRefX, Int& iRefY, UInt& uiRefWidth, UInt& uiRefHeight );
+  TComDataCU*   getOrigRefReg               ( UInt&  uiRefPartUnitIdx, Int iPelX, Int iPelY );
+
+  Bool          isReferenceAvailable        (TComDataCU* pcCU, UInt uiAbsPartIdx);
+#endif
   TComDataCU*   getCUColocated              ( RefPicList eRefPicList ) { return m_apcCUColocated[eRefPicList]; }
   Bool          CUIsFromSameSlice           ( const TComDataCU *pCU /* Can be NULL */) const { return ( pCU!=NULL && pCU->getSlice()->getSliceCurStartCtuTsAddr() == getSlice()->getSliceCurStartCtuTsAddr() ); }
   Bool          CUIsFromSameTile            ( const TComDataCU *pCU /* Can be NULL */) const;
@@ -884,9 +919,10 @@ public:
   Void          getAllowedChromaDir             ( UInt uiAbsPartIdx, UInt* uiModeList );
   Void          getIntraDirPredictor            ( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM_MOST_PROBABLE_MODES], const ComponentID compID
 #if VCEG_AZ07_INTRA_65ANG_MODES && !JVET_C0055_INTRA_MPM
-    , Int &iAboveLeftCase
+                                                  , Int &iAboveLeftCase
 #endif
-    , Int* piMode = NULL );
+                                                  , Int* piMode = NULL
+                                                );
 
   // -------------------------------------------------------------------------------------------------------------------
   // member functions for SBAC context
@@ -930,7 +966,11 @@ public:
   UInt&         getTUSkipWidth(ComponentID compID, UInt uiAbsPartIdx)                { return m_puiSkipWidth[compID][uiAbsPartIdx];}
   UInt&         getTUSkipHeight(ComponentID compID, UInt uiAbsPartIdx)               { return m_puiSkipHeight[compID][uiAbsPartIdx];}
 #endif
+#if DIMD_NUM_INTRA_DIR_INC
+  UInt          getCoefScanIdx(const UInt uiAbsPartIdx, const UInt uiWidth, const UInt uiHeight, const ComponentID compID);
+#else
   UInt          getCoefScanIdx(const UInt uiAbsPartIdx, const UInt uiWidth, const UInt uiHeight, const ComponentID compID) const ;
+#endif
 
 #if VCEG_AZ08_INTER_KLT
   Void          interpolatePic                 ( TComPic* pcPic );

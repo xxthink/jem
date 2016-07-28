@@ -101,6 +101,17 @@ Void TDecEntropy::decodeMPIIdx(TComDataCU* pcSubCU, UInt uiAbsPartIdx, UInt uiDe
 }
 #endif
 
+#if DIMD_INTRA_PRED
+Void TDecEntropy::decodeDIMDFlag(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight)
+{
+  m_pcEntropyDecoderIf->parseDIMDFlag(pcCU, uiAbsPartIdx, uiDepth, uiWidth, uiHeight);
+}
+Void TDecEntropy::decodeDIMDNoBTFlag(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight)
+{
+  m_pcEntropyDecoderIf->parseDIMDNoBTFlag(pcCU, uiAbsPartIdx, uiDepth, uiWidth, uiHeight);
+}
+#endif
+
 #if COM16_C1046_PDPC_INTRA
 Void TDecEntropy::decodePDPCIdx(TComDataCU* pcSubCU, UInt uiAbsPartIdx, UInt uiDepth)
 {
@@ -242,11 +253,23 @@ Void TDecEntropy::decodeIPCMInfo( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDe
 
 Void TDecEntropy::decodeIntraDirModeLuma  ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 {
+#if DIMD_INTRA_PRED
+  if( pcCU->getDIMDEnabledFlag(CHANNEL_TYPE_LUMA, uiAbsPartIdx) )
+  {
+    return;
+  } 
+#endif
   m_pcEntropyDecoderIf->parseIntraDirLumaAng( pcCU, uiAbsPartIdx, uiDepth );
 }
 
 Void TDecEntropy::decodeIntraDirModeChroma( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 {
+#if DIMD_INTRA_PRED
+  if( pcCU->getDIMDEnabledFlag(CHANNEL_TYPE_CHROMA, uiAbsPartIdx) )
+  {
+    return;
+  }
+#endif
   m_pcEntropyDecoderIf->parseIntraDirChroma( pcCU, uiAbsPartIdx, uiDepth );
 #if ENVIRONMENT_VARIABLE_DEBUG_AND_TEST
   if (bDebugPredEnabled)

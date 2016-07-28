@@ -1341,7 +1341,16 @@ Void TEncCavlc::codePDPCIdx(TComDataCU* pcCU, UInt uiAbsPartIdx)
   assert(0);
 }
 #endif
-
+#if DIMD_INTRA_PRED
+Void TEncCavlc::codeDIMDFlag(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth)
+{
+  assert(0);
+}
+Void TEncCavlc::codeDIMDNoBTFlag(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth)
+{
+  assert(0);
+}
+#endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 Void TEncCavlc::codeROTIdx    ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth )
 {
