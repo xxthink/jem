@@ -120,7 +120,6 @@ public:
   Void          setIntra(UInt uiZorder, UInt uiWidth, UInt uiHeight, Bool bIntra);
   Bool          getIntra(UInt uiZorder, UInt uiWidth, UInt uiHeight);
   Void          clearAllIntra();
-
   Void          setIntMv(UInt uiZorder, UInt uiWidth, UInt uiHeight, RefPicList eRefList, UInt uiRefIdx, TComMv cMv);
   TComMv        getIntMv(UInt uiZorder, UInt uiWidth, UInt uiHeight, RefPicList eRefList, UInt uiRefIdx);
   Void          clearAllIntMv();

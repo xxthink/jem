@@ -427,6 +427,1779 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
   DEBUG_STRING_APPEND(sDebug, ss.str())
 }
 
+#if DIMD_INTRA_PRED
+Void TComPrediction::initDIMDLumaFlexibleIntraPattern( TComDataCU* pcCU, UInt uiZorderIdxInPart, Int iRefX, Int iRefY, UInt uiRefWidth, UInt uiRefHeight, Bool bFilterRefSamples
+#if COM16_C983_RSAF
+                                                       , Bool bRSAF 
+#endif
+  )
+{
+  const TComSPS &sps          = *(pcCU->getSlice()->getSPS());
+  const UInt uiTuWidth        = uiRefWidth;
+  const UInt uiTuHeight       = uiRefHeight;
+
+  const UInt uiTuWidth2       = uiTuWidth  + uiTuHeight;
+  const UInt uiTuHeight2      = uiTuHeight + uiTuWidth;
+
+  const UInt uiROIWidth       = uiTuWidth2+1;
+  const UInt uiROIHeight      = uiTuHeight2+1;
+
+  const Int  iUnitSize        = sps.getCTUSize() >> sps.getMaxTotalCUDepth();  // 4
+  //assert(isLuma(pcCU->getTextType()));
+
+  const Int  iTotalSamples    = uiTuWidth2 + uiTuHeight2 + 1;
+  const Int  bitDepthForChannel = sps.getBitDepth(CHANNEL_TYPE_LUMA);
+
+  //assert(pcCU->getZorderIdxInCtu() == 0);
+  Pel *piRoiOrigin = pcCU->getPic()->getPicYuvRec()->getAddr(COMPONENT_Y, pcCU->getCtuRsAddr(), uiZorderIdxInPart);
+  Int  iPicStride  = pcCU->getPic()->getStride(COMPONENT_Y);
+  Int  iOffsetX    = iRefX - (pcCU->getCUPelX() + g_auiRasterToPelX[g_auiZscanToRaster[uiZorderIdxInPart]]);
+  Int  iOffsetY    = iRefY - (pcCU->getCUPelY() + g_auiRasterToPelY[g_auiZscanToRaster[uiZorderIdxInPart]]);
+  piRoiOrigin     += iOffsetY * iPicStride + iOffsetX;
+
+  Pel  piAdiLine        [5*MAX_CU_SIZE];
+  Bool bNeighSampleAvail[5*MAX_CU_SIZE];
+  Int  iDCValue    = 1<<(bitDepthForChannel - 1);
+
+  ///< initialization
+  for (Int i = 0; i < iTotalSamples; i++)
+  {
+    piAdiLine[i]         = iDCValue;
+    bNeighSampleAvail[i] = false;
+  }
+
+  TComDataCU* pcRefCU      = NULL;
+  UInt        uiRefPartIdx = 0;
+  Pel*        piRoiTemp    = piRoiOrigin - iPicStride - 1;
+
+  Int iOrigX                   = iRefX - 1;
+  Int iOrigY                   = iRefY - 1;
+  Int iEndX                    = iOrigX + uiTuWidth2;
+  Int iEndY                    = iOrigY + uiTuHeight2;
+  Int iNumAvailNeighborSamples = 0;
+
+  Pel*  piAdiLineTemp      = piAdiLine + uiTuHeight2;
+  Bool* pbNeighSampleAvail = bNeighSampleAvail + uiTuHeight2;
+
+  // above-left reference pixel
+  pcRefCU = pcCU->getOrigRefReg(uiRefPartIdx, iOrigX, iOrigY);
+  if(pcRefCU != NULL && pcCU->isReferenceAvailable(pcRefCU, uiRefPartIdx))
+  {
+    piAdiLineTemp[0]      = piRoiTemp[0];
+    pbNeighSampleAvail[0] = true;
+    iNumAvailNeighborSamples ++;
+  }
+
+  ///< above reference pixels, width + height
+  Int iScanX = iOrigX + 1;
+  while(iScanX <= iEndX)
+  {
+    Int iSegLength = iUnitSize - (iScanX%iUnitSize);
+    if(iScanX + iSegLength > iEndX)
+    {
+      iSegLength = iEndX - iScanX + 1;
+    }
+    pcRefCU        = pcCU->getOrigRefReg(uiRefPartIdx, iScanX, iOrigY);
+    if(pcRefCU && pcCU->isReferenceAvailable(pcRefCU, uiRefPartIdx))
+    {
+      for(Int iIdx = 0; iIdx < iSegLength; iIdx++)
+      {
+        Int iTempIdx                 = iScanX+iIdx-iOrigX;
+        piAdiLineTemp[iTempIdx]      = piRoiTemp[iTempIdx];
+        pbNeighSampleAvail[iTempIdx] = true;
+      }
+      iNumAvailNeighborSamples += iSegLength;
+    }
+    iScanX += iSegLength;
+  }
+  //assert(iScanX == iEndX+1);
+
+  ///< left reference pixels, width + height
+  Int iScanY = iOrigY + 1;
+  while(iScanY <= iEndY)
+  {
+    Int iSegLength = iUnitSize - (iScanY%iUnitSize);
+    if(iScanY + iSegLength > iEndY)
+    {
+      iSegLength = iEndY - iScanY + 1;
+    }
+    pcRefCU        = pcCU->getOrigRefReg(uiRefPartIdx, iOrigX, iScanY);
+    if(pcRefCU && pcCU->isReferenceAvailable(pcRefCU, uiRefPartIdx))
+    {
+      for(Int iIdx = 0; iIdx < iSegLength; iIdx++)
+      {
+        Int iTempIdx                  = iScanY + iIdx - iOrigY;
+        piAdiLineTemp[-iTempIdx]      = piRoiTemp[iTempIdx*iPicStride];
+        pbNeighSampleAvail[-iTempIdx] = true;
+      }
+      iNumAvailNeighborSamples += iSegLength;
+    }
+    iScanY += iSegLength;
+  }
+  //assert(iScanY = iEndY+1);
+
+  //assert(iNumAvailNeighborSamples <= uiTuWidth2 + uiTuHeight2 + 1);
+  if(iNumAvailNeighborSamples != 0 && iNumAvailNeighborSamples < uiTuWidth2 + uiTuHeight2 + 1)
+  {
+    Int iCurr = 0, iNext = 1;
+    Pel piRef = 0;
+    while(iCurr < iTotalSamples)
+    {
+      if(!bNeighSampleAvail[iCurr])
+      {
+        if(iCurr == 0)
+        {
+          while(iNext < iTotalSamples && !bNeighSampleAvail[iNext])
+          {
+            iNext ++;
+          }
+          //assert(iNext < iTotalSamples);
+          piRef = piAdiLine[iNext];
+
+          while(iCurr < iNext)
+          {
+            piAdiLine[iCurr] = piRef;
+            iCurr ++;
+          }
+        }
+        else
+        {
+          piAdiLine[iCurr] = piAdiLine[iCurr-1];
+          iCurr ++;
+        } 
+      }
+      else
+      {
+        iCurr ++;
+      }
+    }
+  }
+
+  //assert(uiROIWidth*uiROIHeight <= m_iYuvExtSize);
+
+  Pel *piIntraTemp   = m_piYuvExt[COMPONENT_Y][PRED_BUF_UNFILTERED];
+  piAdiLineTemp      = piAdiLine + uiTuHeight2;
+  for(Int i = 0; i < uiROIWidth; i++)
+  {
+    piIntraTemp[i] = piAdiLineTemp[i];
+  }
+  for(Int i = 1; i < uiROIHeight; i++)
+  {
+    piIntraTemp[i*uiROIWidth] = piAdiLineTemp[-i];
+  }
+
+#if !COM16_C983_RSAF
+  if (bFilterRefSamples)
+#else
+  if (bFilterRefSamples || bRSAF)
+#endif
+  {
+    // generate filtered intra prediction samples
+
+    Int          stride     = uiROIWidth;
+    const Pel    *piSrcPtr  = piIntraTemp                                + (stride * uiTuHeight2); // bottom left
+    Pel          *piDestPtr = m_piYuvExt[COMPONENT_Y][PRED_BUF_FILTERED] + (stride * uiTuHeight2); // bottom left
+
+    //------------------------------------------------
+
+    Bool useStrongIntraSmoothing = isLuma(COMPONENT_Y) && sps.getUseStrongIntraSmoothing();
+#if COM16_C983_RSAF
+    if (pcCU->getSlice()->getSPS()->getUseRSAF())
+    {
+      useStrongIntraSmoothing = false;
+    }
+    const Bool bIsWeakSmoothing = !bRSAF || !bFilterRefSamples;
+#endif
+    const Pel bottomLeft = piIntraTemp[stride * uiTuHeight2];
+    const Pel topLeft    = piIntraTemp[0];
+    const Pel topRight   = piIntraTemp[uiTuWidth2];
+
+    if (useStrongIntraSmoothing)
+    {
+      const Int  threshold     = 1 << (bitDepthForChannel - 5);
+      const Bool bilinearLeft  = abs((bottomLeft + topLeft ) - (2 * piIntraTemp[stride * uiTuHeight])) < threshold; //difference between the
+      const Bool bilinearAbove = abs((topLeft    + topRight) - (2 * piIntraTemp[         uiTuWidth ])) < threshold; //ends and the middle
+      if ((uiTuWidth < 32) || (!bilinearLeft) || (!bilinearAbove))
+      {
+        useStrongIntraSmoothing = false;
+      }
+    }
+
+    *piDestPtr = *piSrcPtr; // bottom left is not filtered
+    piDestPtr -= stride;
+    piSrcPtr  -= stride;
+
+    //------------------------------------------------
+    //left column (bottom to top)
+
+    if (useStrongIntraSmoothing)
+    {
+      const Int shift = g_aucConvertToBit[uiTuHeight] + MIN_CU_LOG2 + 1; //log2(uiTuHeight2)    //it is a bug for non-square PU for strong filter, JCA
+
+      for(UInt i=1; i<uiTuHeight2; i++, piDestPtr-=stride)
+      {
+        *piDestPtr = (((uiTuHeight2 - i) * bottomLeft) + (i * topLeft) + uiTuHeight) >> shift;
+      }
+
+      piSrcPtr -= stride * (uiTuHeight2 - 1);
+    }
+    else
+    {
+#if COM16_C983_RSAF
+      //First pixel always use weak smoothing
+      *piDestPtr = lp3tapFilterVer(piSrcPtr, stride);
+      piDestPtr -= stride; 
+      piSrcPtr  -= stride;
+
+      for(UInt i=2; i<uiTuHeight2; i++, piDestPtr-=stride, piSrcPtr-=stride)
+#else
+      for(UInt i=1; i<uiTuHeight2; i++, piDestPtr-=stride, piSrcPtr-=stride)
+#endif
+      {
+#if COM16_C983_RSAF
+        *piDestPtr = ( bIsWeakSmoothing || (i == uiTuHeight2-1) ) ? lp3tapFilterVer(piSrcPtr,stride) : lp5tapFilterVer(piSrcPtr,stride);
+#else
+        *piDestPtr = ( piSrcPtr[stride] + 2*piSrcPtr[0] + piSrcPtr[-stride] + 2 ) >> 2;
+#endif
+      }
+    }
+
+    //------------------------------------------------
+
+    //top-left
+
+    if (useStrongIntraSmoothing)
+    {
+      *piDestPtr = piSrcPtr[0];
+    }
+    else
+    {
+      *piDestPtr = ( piSrcPtr[stride] + 2*piSrcPtr[0] + piSrcPtr[1] + 2 ) >> 2;
+    }
+    piDestPtr += 1;
+    piSrcPtr  += 1;
+
+    //------------------------------------------------
+
+    //top row (left-to-right)
+
+    if (useStrongIntraSmoothing)
+    {
+      const Int shift = g_aucConvertToBit[uiTuWidth] + MIN_CU_LOG2 + 1; //log2(uiTuWidth2)
+
+      for(UInt i=1; i<uiTuWidth2; i++, piDestPtr++)
+      {
+        *piDestPtr = (((uiTuWidth2 - i) * topLeft) + (i * topRight) + uiTuWidth) >> shift;
+      }
+
+      piSrcPtr += uiTuWidth2 - 1;
+    }
+    else
+    {
+#if COM16_C983_RSAF
+      //First pixel always use weak smoothing
+      *piDestPtr = lp3tapFilterHor(piSrcPtr);
+      piDestPtr++; 
+      piSrcPtr++;
+
+      for(UInt i=2; i<uiTuWidth2; i++, piDestPtr++, piSrcPtr++)
+#else
+      for(UInt i=1; i<uiTuWidth2; i++, piDestPtr++, piSrcPtr++)
+#endif
+      {
+#if COM16_C983_RSAF         
+        *piDestPtr = ( bIsWeakSmoothing || (i == uiTuWidth2-1) ) ? lp3tapFilterHor(piSrcPtr) : lp5tapFilterHor(piSrcPtr);
+#else
+        *piDestPtr = ( piSrcPtr[1] + 2*piSrcPtr[0] + piSrcPtr[-1] + 2 ) >> 2;
+#endif
+      }
+    }
+
+    //------------------------------------------------
+
+    *piDestPtr = *piSrcPtr; // far right is not filtered
+  }
+}
+
+Bool TComPrediction::filteringDIMDIntraReferenceSamples( const ComponentID compID, UInt uiDirMode, UInt uiTuChWidth, UInt uiTuChHeight, const ChromaFormat chFmt, const Bool intraReferenceSmoothingDisabled 
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+                                                         , Bool enableRSAF 
+#endif
+                                                       )
+{
+  Bool bFilter;
+
+  if (!filterIntraReferenceSamples(toChannelType(compID), chFmt, intraReferenceSmoothingDisabled))
+  {
+    bFilter = false;
+  }
+  else
+  {
+    //assert(uiTuChWidth >= MIN_PU_SIZE && uiTuChHeight >= MIN_PU_SIZE && uiTuChWidth <= MAX_CU_SIZE+MAX_TEMP_SIZE && uiTuChHeight <= MAX_CU_SIZE+MAX_TEMP_SIZE);
+
+    if (uiDirMode == DC_IDX)
+    {
+      bFilter = false;
+    }
+    else
+    {
+#if DIMD_NUM_INTRA_DIR_INC
+      assert(uiDirMode >= PLANAR_IDX && uiDirMode <= EXT_VDIA_IDX);
+      Int diff = min<Int>(abs((Int) uiDirMode - EXT_HOR_IDX), abs((Int)uiDirMode - EXT_VER_IDX));
+#else
+      Int diff = min<Int>(abs((Int) uiDirMode - HOR_IDX), abs((Int)uiDirMode - VER_IDX));
+#endif
+
+      UInt uiLog2BlkWidthSize = 0, uiLog2BlkHeightSize = 0;
+      while((uiTuChWidth>>uiLog2BlkWidthSize)   > 1) uiLog2BlkWidthSize ++;
+      while((uiTuChHeight>>uiLog2BlkHeightSize) > 1) uiLog2BlkHeightSize ++;
+
+      UInt log2Size = (uiLog2BlkWidthSize + uiLog2BlkHeightSize)>>1;
+      UInt sizeIndex = log2Size - 1;
+      //assert(sizeIndex < MAX_INTRA_FILTER_DEPTHS);
+
+#if DIMD_NUM_INTRA_DIR_INC
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+      bFilter = diff > m_aucExtIntraFilter[toChannelType(compID)][sizeIndex] -   ( (compID==COMPONENT_Y && enableRSAF && sizeIndex==1) ? 4 : 0);
+#else
+      bFilter = diff > m_aucExtIntraFilter[toChannelType(compID)][sizeIndex];
+#endif
+#else
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+      bFilter = diff > m_aucIntraFilter[toChannelType(compID)][sizeIndex] -   ( (compID==COMPONENT_Y && enableRSAF && sizeIndex==1) ? 2 : 0);
+#else
+      bFilter = diff > m_aucIntraFilter[toChannelType(compID)][sizeIndex];
+#endif
+#endif
+    }
+  }
+
+  return bFilter;
+}
+
+Void TComPrediction::predDIMDIntraLumaAng(TComDataCU* pcCU, UInt uiDirMode, Pel* piPred, UInt uiStride, Int iWidth, Int iHeight, TEMPLATE_TYPE eTempType, Int iTemplateWidth, Int iTemplateHeight)
+{
+  const TComSPS &sps           = *(pcCU->getSlice()->getSPS());
+  const ChromaFormat   chFmt   = pcCU->getPic()->getChromaFormat();
+  //assert(isLuma(pcCU->getTextType()));
+
+  Bool bUseFilteredPredictions = TComPrediction::filteringDIMDIntraReferenceSamples(COMPONENT_Y, uiDirMode, iWidth, iHeight, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag()
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+                                                                                    ,sps.getUseRSAF()
+#endif
+                                                                                    );
+
+  const Pel *ptrSrc = getPredictorPtr(COMPONENT_Y, bUseFilteredPredictions);
+  const Int sw      = iWidth + iHeight + 1;
+  Pel *pDst   = piPred;
+
+  if ( uiDirMode == PLANAR_IDX )
+  {
+    xPredDIMDIntraPlanar( ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight, eTempType, iTemplateWidth, iTemplateHeight );
+  }
+  else
+  {
+    const ChannelType    channelType          = toChannelType(COMPONENT_Y);
+    const Bool           enableEdgeFilters    = true;
+    const Int   channelsBitDepthForPrediction = pcCU->getSlice()->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA);
+#if VCEG_AZ07_INTRA_4TAP_FILTER
+    const Bool  enable4TapFilter              = pcCU->getSlice()->getSPS()->getUseIntra4TapFilter();
+#endif
+#if VCEG_AZ07_INTRA_BOUNDARY_FILTER
+    const Bool  enableBoundaryFilter          = pcCU->getSlice()->getSPS()->getUseIntraBoundaryFilter();
+#endif
+
+    xPredDIMDIntraAng( channelsBitDepthForPrediction, ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight, channelType, uiDirMode, enableEdgeFilters 
+#if VCEG_AZ07_INTRA_4TAP_FILTER
+                       ,enable4TapFilter
+#endif
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+                       ,pcCU->getSlice()->getSPS()->getUseRSAF()
+#endif
+                       ,eTempType, iTemplateWidth, iTemplateHeight );
+
+    if ( uiDirMode == DC_IDX )
+    {
+      xDCPredFiltering( ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight, channelType );
+    }
+#if VCEG_AZ07_INTRA_BOUNDARY_FILTER
+    else if( enableBoundaryFilter )    
+    {
+#if DIMD_NUM_INTRA_DIR_INC
+      if( uiDirMode == EXT_VDIA_IDX )
+#else
+#if VCEG_AZ07_INTRA_65ANG_MODES
+      if( uiDirMode == VDIA_IDX )
+#else
+      if( uiDirMode == 34 )
+#endif
+#endif
+      {
+        xDIMDIntraPredFilteringMode34( ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight, eTempType, iTemplateWidth, iTemplateHeight);
+      }
+      else  if( uiDirMode == 2 )
+      {
+        xDIMDIntraPredFilteringMode02( ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight, eTempType, iTemplateWidth, iTemplateHeight);
+      }
+#if DIMD_NUM_INTRA_DIR_INC
+      else if( ( uiDirMode<=18 && uiDirMode>2 ) || ( uiDirMode>=(EXT_VDIA_IDX-16) && uiDirMode<EXT_VDIA_IDX ) )
+#else
+#if VCEG_AZ07_INTRA_65ANG_MODES
+      else if( ( uiDirMode<=10 && uiDirMode>2 ) || ( uiDirMode>=(VDIA_IDX-8) && uiDirMode<VDIA_IDX ) )
+#else
+      else if( ( uiDirMode<=6 && uiDirMode>2 ) || ( uiDirMode>=30 && uiDirMode<34 ) )
+#endif
+#endif
+      {
+        xDIMDIntraPredFilteringModeDGL( ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight, uiDirMode, eTempType, iTemplateWidth, iTemplateHeight );
+      }
+    }
+#endif
+  }
+}
+
+Void TComPrediction::xPredDIMDIntraPlanar(const Pel* pSrc, Int srcStride, Pel* rpDst, Int dstStride, UInt width, UInt height, TEMPLATE_TYPE eTempType, Int iTemplateWidth, Int iTemplateHeight)
+{
+  //assert(width <= MAX_CU_SIZE+MAX_TEMP_SIZE && height <= MAX_CU_SIZE+MAX_TEMP_SIZE);
+  Int leftColumn[MAX_CU_SIZE+MAX_TEMP_SIZE+1], topRow[MAX_CU_SIZE+MAX_TEMP_SIZE+1], bottomRow[MAX_CU_SIZE+MAX_TEMP_SIZE], rightColumn[MAX_CU_SIZE+MAX_TEMP_SIZE];
+  UInt uiDiv1Dhor  = width;
+  UInt uiDiv1Dver  = height;
+  UInt delt        = width * height;
+
+  /*
+  if(eTempType == LEFT_ABOVE_NEIGHBOR)
+  {
+    assert(iTemplateWidth > 0 && iTemplateHeight > 0);
+  }
+  else if(eTempType == LEFT_NEIGHBOR)
+  {
+    assert(iTemplateWidth > 0 && iTemplateHeight == 0);  
+  }
+  else if(eTempType == ABOVE_NEIGHBOR)
+  {
+    assert(iTemplateWidth == 0 && iTemplateHeight > 0);
+  }
+  */
+
+  if(eTempType == LEFT_ABOVE_NEIGHBOR)
+  {
+    for(Int k = 0; k < width; k++)
+    {
+      topRow[k] = pSrc[k-srcStride];
+    }
+
+    for (Int k=0; k < height; k++)
+    {
+      leftColumn[k] = pSrc[k*srcStride-1];
+    }
+
+    Int bottomLeft = pSrc[Int(height)*srcStride-1];
+    Int topRight   = pSrc[Int(width)-srcStride];
+
+    for(Int k = 0; k < width; k++)
+    {
+      bottomRow[k]  = bottomLeft - topRow[k];
+      topRow[k]     *= uiDiv1Dver;
+    }
+
+    for(Int k = 0; k < height; k++)
+    {
+      rightColumn[k]  = topRight - leftColumn[k];
+      leftColumn[k]   *= uiDiv1Dhor;
+    }
+
+    const UInt topRowShift = 0;
+
+    for (Int y = 0; y < height; y++)
+    {
+      Int horPred = leftColumn[y];
+
+      if(y < iTemplateHeight)
+      {
+        for (Int x = 0; x < width; x++)
+        {
+          horPred   += rightColumn[y];
+          topRow[x] += bottomRow[x];
+
+          Int vertPred = ((topRow[x] + topRowShift)>>topRowShift);
+          if(x >= iTemplateWidth)
+          {
+            rpDst[y*dstStride+x] = ((horPred*uiDiv1Dver) + (vertPred*uiDiv1Dhor) + delt) / (uiDiv1Dhor*uiDiv1Dver*2); 
+          }
+        }
+      }
+      else
+      {
+        for (Int x = 0; x < iTemplateWidth; x++)
+        {
+          horPred   += rightColumn[y];
+          topRow[x] += bottomRow[x];
+
+          Int vertPred = ((topRow[x] + topRowShift)>>topRowShift);
+          rpDst[y*dstStride+x] = ((horPred*uiDiv1Dver) + (vertPred*uiDiv1Dhor) + delt) / (uiDiv1Dhor*uiDiv1Dver*2);
+        }
+      }
+    }
+  }
+  else if(eTempType == LEFT_NEIGHBOR)
+  {
+    for (Int k = 0; k < height; k++)
+    {
+      leftColumn[k] = pSrc[k*srcStride-1];
+    }
+    for(Int k = 0; k < iTemplateWidth; k++)
+    {
+      topRow[k] = pSrc[k-srcStride];
+    }
+
+    Int bottomLeft = pSrc[Int(height)*srcStride-1];
+    Int topRight   = pSrc[Int(width)-srcStride];
+
+    for(Int k = 0; k < height; k++)
+    {
+      rightColumn[k]  = topRight - leftColumn[k];
+      leftColumn[k]   *= uiDiv1Dhor;
+    }
+
+    for(Int k = 0; k < iTemplateWidth; k++)
+    {
+      bottomRow[k]  = bottomLeft - topRow[k];
+      topRow[k]     *= uiDiv1Dver;
+    }
+
+    const UInt topRowShift = 0;
+
+    for (Int y = 0; y < height; y++)
+    {
+      Int horPred = leftColumn[y];
+      for (Int x = 0; x < iTemplateWidth; x++)
+      {
+        horPred   += rightColumn[y];
+        topRow[x] += bottomRow[x];
+
+        Int vertPred = ((topRow[x] + topRowShift)>>topRowShift);
+        rpDst[y*dstStride+x] = ((horPred*uiDiv1Dver) + (vertPred*uiDiv1Dhor) + delt) / (uiDiv1Dhor*uiDiv1Dver*2);
+      }
+    }
+  }
+  else if(eTempType == ABOVE_NEIGHBOR)
+  {
+    for(Int k = 0; k < width; k++)
+    {
+      topRow[k] = pSrc[k-srcStride];
+    }
+
+    for (Int k=0; k < iTemplateHeight; k++)
+    {
+      leftColumn[k] = pSrc[k*srcStride-1];
+    }
+
+    Int bottomLeft = pSrc[Int(height)*srcStride-1];
+    Int topRight   = pSrc[Int(width)-srcStride];
+
+    for(Int k=0;k<width;k++)
+    {
+      bottomRow[k]  = bottomLeft - topRow[k];
+      topRow[k]     *= uiDiv1Dver;
+    }
+
+    for(Int k = 0; k < iTemplateHeight; k++)
+    {
+      rightColumn[k]  = topRight - leftColumn[k];
+      leftColumn[k]   *= uiDiv1Dhor;
+    }
+
+    const UInt topRowShift = 0;
+
+    for (Int y = 0; y < iTemplateHeight; y++)
+    {
+      Int horPred = leftColumn[y];
+      for (Int x = 0; x < width; x++)
+      {
+        horPred   += rightColumn[y];
+        topRow[x] += bottomRow[x];
+
+        Int vertPred = ((topRow[x] + topRowShift)>>topRowShift);
+        rpDst[y*dstStride+x] = ((horPred*uiDiv1Dver) + (vertPred*uiDiv1Dhor) + delt) / (uiDiv1Dhor*uiDiv1Dver*2);
+      }
+    }
+  }
+  else
+  {
+    assert(0);
+  }
+}
+
+Void TComPrediction::xPredDIMDIntraAng(Int bitDepth, const Pel* pSrc, Int srcStride, Pel* pTrueDst, Int dstStrideTrue, UInt uiWidth, UInt uiHeight, ChannelType channelType, UInt dirMode, const Bool bEnableEdgeFilters 
+#if VCEG_AZ07_INTRA_4TAP_FILTER
+                                       , Bool enable4TapFilter
+#endif 
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+                                       , Bool enableRSAF 
+#endif
+                                       , TEMPLATE_TYPE eTempType , Int iTemplateWidth , Int iTemplateHeight )
+{
+  Int width=Int(uiWidth);
+  Int height=Int(uiHeight);
+
+  // Map the mode index to main prediction direction and angle
+  //assert( dirMode != PLANAR_IDX ); //no planar
+  const Bool modeDC        = dirMode==DC_IDX;
+
+  /*
+  if(eTempType == LEFT_ABOVE_NEIGHBOR)
+  {
+    assert(iTemplateWidth > 0 && iTemplateHeight > 0);
+  }
+  else if(eTempType == LEFT_NEIGHBOR)
+  {
+    assert(iTemplateWidth > 0 && iTemplateHeight == 0);  
+  }
+  else if(eTempType == ABOVE_NEIGHBOR)
+  {
+    assert(iTemplateWidth == 0 && iTemplateHeight > 0);
+  }
+  */
+
+  // Do the DC prediction
+  if (modeDC)
+  {
+    const Pel dcval = predIntraGetPredValDC(pSrc, srcStride, width, height);
+
+    if(eTempType == LEFT_ABOVE_NEIGHBOR)
+    {
+      for (Int y = 0; y < height; y++,pTrueDst += dstStrideTrue)
+      {
+        if(y < iTemplateHeight)
+        {
+          for (Int x = iTemplateWidth; x < width;)
+          {
+            pTrueDst[x++] = dcval;
+          }
+        }
+        else
+        {
+          for (Int x = 0; x < iTemplateWidth;)
+          {
+            pTrueDst[x++] = dcval;
+          }
+        }
+      }
+    }
+    else if(eTempType == LEFT_NEIGHBOR)
+    {
+      for (Int y = 0; y < height; y++, pTrueDst += dstStrideTrue)
+      {
+        for (Int x = 0; x < iTemplateWidth;)
+        {
+          pTrueDst[x++] = dcval;
+        }
+      }
+    }
+    else if(eTempType == ABOVE_NEIGHBOR)
+    {
+      for (Int y = 0; y < iTemplateHeight; y++, pTrueDst+=dstStrideTrue)
+      {
+        for (Int x = 0; x < width;)
+        {
+          pTrueDst[x++] = dcval;
+        }
+      }
+    }
+    else
+    {
+      assert(0);
+    }
+  }
+  else // Do angular predictions
+  {
+#if DIMD_NUM_INTRA_DIR_INC
+    const Bool       bIsModeVer         = (dirMode >= EXT_DIA_IDX);
+    const Int        intraPredAngleMode = (bIsModeVer) ? (Int)dirMode - EXT_VER_IDX :  -((Int)dirMode - EXT_HOR_IDX);
+#else
+#if VCEG_AZ07_INTRA_65ANG_MODES
+    const Bool       bIsModeVer         = (dirMode >= DIA_IDX);
+#else
+    const Bool       bIsModeVer         = (dirMode >= 18);
+#endif
+    const Int        intraPredAngleMode = (bIsModeVer) ? (Int)dirMode - VER_IDX :  -((Int)dirMode - HOR_IDX);
+#endif
+    const Int        absAngMode         = abs(intraPredAngleMode);
+    const Int        signAng            = intraPredAngleMode < 0 ? -1 : 1;
+    const Bool       edgeFilter         = bEnableEdgeFilters && isLuma(channelType) && (width <= MAXIMUM_INTRA_FILTERED_WIDTH) && (height <= MAXIMUM_INTRA_FILTERED_HEIGHT);
+
+    // Set bitshifts and scale the angle parameter to block size
+#if DIMD_NUM_INTRA_DIR_INC
+    static const Int extAngTable[33]    = {0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 49, 52, 55, 58, 61, 64};   ///< module 64
+    static const Int extInvAngTable[33] = {0, 16384, 8192, 5461, 4096, 3277, 2731, 2048, 1638, 1365, 1170, 1024, 910, 819, 745, 683, 630, 585, 546, 512, 482, 455, 431, 410, 390, 372, 356, 334, 315, 298, 282, 269, 256};   ///< (256 * 64) / Angle
+    Int invAngle                        = extInvAngTable[absAngMode];
+    Int absAng                          = extAngTable[absAngMode];
+#else
+#if VCEG_AZ07_INTRA_65ANG_MODES
+    static const Int angTable[17]    = {0,    1,    2,    3,    5,    7,    9,   11,   13,   15,   17,   19,   21,   23,   26,   29,   32};
+    static const Int invAngTable[17] = {0, 8192, 4096, 2731, 1638, 1170,  910,  745,  630,  546,  482,  431,  390,  356,  315,  282,  256}; // (256 * 32) / Angle
+#else
+    static const Int angTable[9]    = {0,    2,    5,   9,  13,  17,  21,  26,  32};
+    static const Int invAngTable[9] = {0, 4096, 1638, 910, 630, 482, 390, 315, 256}; // (256 * 32) / Angle
+#endif
+    Int invAngle                    = invAngTable[absAngMode];
+    Int absAng                      = angTable[absAngMode];
+#endif
+    Int intraPredAngle              = signAng * absAng;
+
+    Pel* refMain;
+    Pel* refSide;
+
+    //assert(width+height <= 2*MAX_CU_SIZE);
+    Pel  refAbove[2*MAX_CU_SIZE+1];  ///< buffer may not be enough
+    Pel  refLeft[2*MAX_CU_SIZE+1];   ///< buffer may not be enough
+
+    // Initialize the Main and Left reference array.
+    if (intraPredAngle < 0)
+    {
+      const Int refMainOffsetPreScale = (bIsModeVer ? height : width ) - 1;
+      for (Int x = 0; x < width+1; x++)
+      {
+        refAbove[x+height-1] = pSrc[x-srcStride-1];
+      }
+      for (Int y=0;y<height+1;y++)
+      {
+        refLeft[y+width-1] = pSrc[(y-1)*srcStride-1];
+      }
+      refMain = (bIsModeVer ? refAbove + height : refLeft + width)  - 1;
+      refSide = (bIsModeVer ? refLeft + width  : refAbove + height) - 1;
+
+      // Extend the Main reference to the left.
+      Int invAngleSum    = 128;       // rounding for (shift by 8)
+#if DIMD_NUM_INTRA_DIR_INC
+      for (Int k=-1; k>(refMainOffsetPreScale+1)*intraPredAngle>>6; k--)
+#else
+      for (Int k=-1; k>(refMainOffsetPreScale+1)*intraPredAngle>>5; k--)
+#endif
+      {
+        invAngleSum += invAngle;
+        refMain[k] = refSide[invAngleSum>>8];
+      }
+    }
+    else
+    {
+      for (Int x=0;x<width+height+1;x++)
+      {
+        refAbove[x] = pSrc[x-srcStride-1];
+        refLeft[x]  = pSrc[(x-1)*srcStride-1];
+      }
+      refMain = bIsModeVer ? refAbove : refLeft ;
+      refSide = bIsModeVer ? refLeft  : refAbove;
+    }
+
+    // swap width/height if we are doing a horizontal mode:
+    //assert(width <= MAX_CU_SIZE+MAX_TEMP_SIZE && height <= MAX_CU_SIZE+MAX_TEMP_SIZE);
+    Pel tempArray[(MAX_CU_SIZE+MAX_TEMP_SIZE)*(MAX_CU_SIZE+MAX_TEMP_SIZE)];  ///< buffer size may not be big enough
+    const Int dstStride = bIsModeVer ? dstStrideTrue : (MAX_CU_SIZE+MAX_TEMP_SIZE);
+    Pel *pDst = bIsModeVer ? pTrueDst : tempArray;
+    if (!bIsModeVer)
+    {
+      std::swap(width, height);
+      std::swap(iTemplateWidth, iTemplateHeight);
+    }
+
+    if (intraPredAngle == 0)  // pure vertical or pure horizontal
+    {
+      if(eTempType == LEFT_ABOVE_NEIGHBOR)
+      {
+        for (Int y=0;y<height;y++)
+        {
+          if(y < iTemplateHeight)
+          {
+            for (Int x = iTemplateWidth; x < width; x++)
+            {
+              pDst[y*dstStride+x] = refMain[x+1];
+            }
+          }
+          else
+          {
+            for (Int x = 0; x < iTemplateWidth; x++)
+            {
+              pDst[y*dstStride+x] = refMain[x+1];
+            }
+          }
+        }
+
+        if (edgeFilter)
+        {
+          for (Int y = iTemplateHeight; y < height; y++)
+          {
+            pDst[y*dstStride] = Clip3 (0, ((1 << bitDepth) - 1), pDst[y*dstStride] + (( refSide[y+1] - refSide[0] ) >> 1) );
+          }
+        }
+      }
+      else if(eTempType == LEFT_NEIGHBOR || eTempType == ABOVE_NEIGHBOR)
+      {
+        if((eTempType == LEFT_NEIGHBOR && bIsModeVer)||(eTempType == ABOVE_NEIGHBOR && !bIsModeVer))  
+        {
+          for (Int y = 0; y < height; y++)
+          {
+            for (Int x = 0; x < iTemplateWidth; x++)
+            {
+              pDst[y*dstStride+x] = refMain[x+1];
+            }
+          }
+
+          if (edgeFilter)
+          {
+            for (Int y=0;y<height;y++)
+            {
+              pDst[y*dstStride] = Clip3 (0, ((1 << bitDepth) - 1), pDst[y*dstStride] + (( refSide[y+1] - refSide[0] ) >> 1) );
+            }
+          }
+        }
+        else
+        {
+          for (Int y = 0; y < iTemplateHeight; y++)
+          {
+            for (Int x = 0; x < width; x++)
+            {
+              pDst[y*dstStride+x] = refMain[x+1];
+            }
+          }
+
+          if (edgeFilter)
+          {
+            for (Int y = 0; y < iTemplateHeight; y++)
+            {
+              pDst[y*dstStride] = Clip3 (0, ((1 << bitDepth) - 1), pDst[y*dstStride] + (( refSide[y+1] - refSide[0] ) >> 1) );
+            }
+          }  
+        }
+      }
+      else
+      {
+        assert(0);
+      }
+    }
+    else
+    {
+      Pel *pDsty=pDst;
+
+      if(eTempType == LEFT_ABOVE_NEIGHBOR)
+      {
+        for (Int y=0, deltaPos=intraPredAngle; y<height; y++, deltaPos+=intraPredAngle, pDsty+=dstStride)
+        {
+#if DIMD_NUM_INTRA_DIR_INC
+          const Int deltaInt   = deltaPos >> 6;
+          const Int deltaFract = deltaPos & (64 - 1);
+#else
+          const Int deltaInt   = deltaPos >> 5;
+          const Int deltaFract = deltaPos & (32 - 1);
+#endif
+
+          Int iStartIdx, iEndIdx;
+          if(y < iTemplateHeight)
+          {
+            iStartIdx = iTemplateWidth;
+            iEndIdx   = width - 1;
+          }
+          else
+          {
+            iStartIdx = 0;
+            iEndIdx   = iTemplateWidth - 1;
+          }
+
+          if (deltaFract)
+          {
+            // Do linear filtering
+#if VCEG_AZ07_INTRA_4TAP_FILTER
+            if (enable4TapFilter)
+            {
+              Int p[4], x, refMainIndex;
+              const Pel nMin = 0, nMax = (1 << bitDepth) - 1;
+#if DIMD_NUM_INTRA_DIR_INC
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+              Int *f =  ((channelType==CHANNEL_TYPE_LUMA) && enableRSAF) ? g_aiExtIntraCubicFilter[deltaFract] : ( (width < 16) ? g_aiExtIntraCubicFilter[deltaFract] : g_aiExtIntraGaussFilter[deltaFract] );
+#else
+              Int *f = (width < 16) ? g_aiExtIntraCubicFilter[deltaFract] : g_aiExtIntraGaussFilter[deltaFract];
+#endif
+#else
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+              Int *f =  ((channelType==CHANNEL_TYPE_LUMA) && enableRSAF) ? g_aiIntraCubicFilter[deltaFract] : ( (width < 16) ? g_aiIntraCubicFilter[deltaFract] : g_aiIntraGaussFilter[deltaFract] );
+#else
+              Int *f = (width < 16) ? g_aiIntraCubicFilter[deltaFract] : g_aiIntraGaussFilter[deltaFract];
+#endif
+#endif
+
+              for (x = iStartIdx; x <= iEndIdx;x++)
+              {
+                refMainIndex = x+deltaInt+1;
+
+                p[1] = refMain[refMainIndex];
+                p[2] = refMain[refMainIndex+1];
+
+                p[0] = x==0 ? p[1] : refMain[refMainIndex-1];
+                p[3] = x==(width-1) ? p[2] : refMain[refMainIndex+2];
+
+                pDst[y*dstStride+x] =  (Pel)( ( f[0]*p[0] + f[1]*p[1] + f[2]*p[2] + f[3]*p[3] + 128 ) >> 8 );
+
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+                if (enableRSAF || width < 16)
+#else
+                if( width < 16 ) // for blocks larger than 8x8, Gaussian interpolation filter with positive coefficients is used, no Clipping is necessary
+#endif
+                {
+                  pDst[y*dstStride+x] =  Clip3( nMin, nMax, pDst[y*dstStride+x] );
+                }
+              }
+            }
+            else
+            {
+#endif
+              const Pel *pRM=refMain+deltaInt+1+iStartIdx;
+              Int lastRefMainPel=*pRM++;
+              for (Int x=iStartIdx;x<=iEndIdx;pRM++,x++)
+              {
+                Int thisRefMainPel=*pRM;
+#if DIMD_NUM_INTRA_DIR_INC
+                pDsty[x+0] = (Pel) ( ((64-deltaFract)*lastRefMainPel + deltaFract*thisRefMainPel +32) >> 6 );
+#else
+                pDsty[x+0] = (Pel) ( ((32-deltaFract)*lastRefMainPel + deltaFract*thisRefMainPel +16) >> 5 );
+#endif
+                lastRefMainPel=thisRefMainPel;
+              }
+#if VCEG_AZ07_INTRA_4TAP_FILTER
+            }
+#endif
+          }
+          else
+          {
+            // Just copy the integer samples
+            for (Int x=iStartIdx;x<=iEndIdx; x++)
+            {
+              pDsty[x] = refMain[x+deltaInt+1];
+            }
+          }
+        }
+      }
+      else if(eTempType == LEFT_NEIGHBOR || eTempType == ABOVE_NEIGHBOR)
+      {
+        Int iRegionWidth, iRegionHeight;
+        if((eTempType == LEFT_NEIGHBOR && bIsModeVer)||(eTempType == ABOVE_NEIGHBOR && !bIsModeVer))
+        {
+          iRegionWidth  = iTemplateWidth;
+          iRegionHeight = height;
+        }
+        else
+        {
+          iRegionWidth  = width;
+          iRegionHeight = iTemplateHeight;
+        }
+
+        for (Int y=0, deltaPos=intraPredAngle; y<iRegionHeight; y++, deltaPos+=intraPredAngle, pDsty+=dstStride)
+        {
+#if DIMD_NUM_INTRA_DIR_INC
+          const Int deltaInt   = deltaPos >> 6;
+          const Int deltaFract = deltaPos & (64 - 1);
+#else
+          const Int deltaInt   = deltaPos >> 5;
+          const Int deltaFract = deltaPos & (32 - 1);
+#endif
+
+          if (deltaFract)
+          {
+            // Do linear filtering
+#if VCEG_AZ07_INTRA_4TAP_FILTER
+            if (enable4TapFilter)
+            {
+              Int p[4], x, refMainIndex;
+              const Pel nMin = 0, nMax = (1 << bitDepth) - 1;
+#if DIMD_NUM_INTRA_DIR_INC
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+              Int *f =  ((channelType==CHANNEL_TYPE_LUMA) && enableRSAF) ? g_aiExtIntraCubicFilter[deltaFract] : ( (width < 16) ? g_aiExtIntraCubicFilter[deltaFract] : g_aiExtIntraGaussFilter[deltaFract] );
+#else
+              Int *f = (width < 16) ? g_aiExtIntraCubicFilter[deltaFract] : g_aiExtIntraGaussFilter[deltaFract];
+#endif
+#else
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+              Int *f =  ((channelType==CHANNEL_TYPE_LUMA) && enableRSAF) ? g_aiIntraCubicFilter[deltaFract] : ( (width < 16) ? g_aiIntraCubicFilter[deltaFract] : g_aiIntraGaussFilter[deltaFract] );
+#else
+              Int *f = (width < 16) ? g_aiIntraCubicFilter[deltaFract] : g_aiIntraGaussFilter[deltaFract];
+#endif
+#endif
+
+              for (x = 0; x < iRegionWidth; x++)
+              {
+                refMainIndex = x + deltaInt + 1;
+
+                p[1] = refMain[refMainIndex];
+                p[2] = refMain[refMainIndex+1];
+
+                p[0] = x==0 ? p[1] : refMain[refMainIndex-1];
+                p[3] = x==(width-1) ? p[2] : refMain[refMainIndex+2];
+
+                pDst[y*dstStride+x] =  (Pel)( ( f[0]*p[0] + f[1]*p[1] + f[2]*p[2] + f[3]*p[3] + 128 ) >> 8 );
+
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+                if (enableRSAF || width < 16)
+#else
+                if( width < 16 ) // for blocks larger than 8x8, Gaussian interpolation filter with positive coefficients is used, no Clipping is necessary
+#endif
+                {
+                  pDst[y*dstStride+x] =  Clip3( nMin, nMax, pDst[y*dstStride+x] );
+                }
+              }
+            }
+            else
+            {
+#endif
+              const Pel *pRM=refMain+deltaInt+1;
+              Int lastRefMainPel=*pRM++;
+              for (Int x=0;x<iRegionWidth;pRM++,x++)
+              {
+                Int thisRefMainPel=*pRM;
+#if DIMD_NUM_INTRA_DIR_INC
+                pDsty[x+0] = (Pel) ( ((64-deltaFract)*lastRefMainPel + deltaFract*thisRefMainPel +32) >> 6 );
+#else
+                pDsty[x+0] = (Pel) ( ((32-deltaFract)*lastRefMainPel + deltaFract*thisRefMainPel +16) >> 5 );
+#endif
+                lastRefMainPel=thisRefMainPel;
+              }
+#if VCEG_AZ07_INTRA_4TAP_FILTER
+            }
+#endif
+          }
+          else
+          {
+            // Just copy the integer samples
+            for (Int x=0;x<iRegionWidth; x++)
+            {
+              pDsty[x] = refMain[x+deltaInt+1];
+            }
+          }
+        }
+      }
+      else
+      {
+        assert(0);
+      }
+
+#if VCEG_AZ07_INTRA_65ANG_MODES
+#if DIMD_NUM_INTRA_DIR_INC
+      if ( edgeFilter && absAng<=2 ) 
+#else
+      if ( edgeFilter && absAng<=1 )
+#endif
+      {
+        if(eTempType == LEFT_ABOVE_NEIGHBOR)
+        {
+          for (Int y = iTemplateHeight; y < height; y++)
+          {
+            pDst[y*dstStride] = Clip3(0, (1<<bitDepth)-1, pDst[y*dstStride] + (( refSide[y+1] - refSide[0] ) >> 2) );
+          }
+        }        
+        else if(eTempType == LEFT_NEIGHBOR || eTempType == ABOVE_NEIGHBOR)
+        {
+          if((eTempType == LEFT_NEIGHBOR && bIsModeVer)||(eTempType == ABOVE_NEIGHBOR && !bIsModeVer))
+          {
+            for (Int y = 0; y < height; y++)
+            {
+              pDst[y*dstStride] = Clip3(0, (1<<bitDepth)-1, pDst[y*dstStride] + (( refSide[y+1] - refSide[0] ) >> 2) );
+            }
+          }
+          else
+          {
+            for (Int y = 0; y < iTemplateHeight; y++)
+            {
+              pDst[y*dstStride] = Clip3(0, (1<<bitDepth)-1, pDst[y*dstStride] + (( refSide[y+1] - refSide[0] ) >> 2) );
+            }
+          } 
+        }
+        else
+        {
+          assert(0);
+        }
+      }
+#elif DIMD_NUM_INTRA_DIR_INC
+      if ( edgeFilter && absAng<=2 )
+      {
+        if(eTempType == LEFT_ABOVE_NEIGHBOR)
+        {
+          for (Int y = iTemplateHeight; y < height; y++)
+          {
+            pDst[y*dstStride] = Clip3(0, (1<<bitDepth)-1, pDst[y*dstStride] + (( refSide[y+1] - refSide[0] ) >> 2) );
+          }
+        }        
+        else if(eTempType == LEFT_NEIGHBOR || eTempType == ABOVE_NEIGHBOR)
+        {
+          if((eTempType == LEFT_NEIGHBOR && bIsModeVer)||(eTempType == ABOVE_NEIGHBOR && !bIsModeVer))
+          {
+            for (Int y = 0; y < height; y++)
+            {
+              pDst[y*dstStride] = Clip3(0, (1<<bitDepth)-1, pDst[y*dstStride] + (( refSide[y+1] - refSide[0] ) >> 2) );
+            }
+          }
+          else
+          {
+            for (Int y = 0; y < iTemplateHeight; y++)
+            {
+              pDst[y*dstStride] = Clip3(0, (1<<bitDepth)-1, pDst[y*dstStride] + (( refSide[y+1] - refSide[0] ) >> 2) );
+            }
+          } 
+        }
+        else
+        {
+          assert(0);
+        }
+      }
+#endif
+    }
+
+    // Flip the block if this is the horizontal mode
+    if (!bIsModeVer)
+    {
+      if(eTempType == LEFT_ABOVE_NEIGHBOR)
+      {
+        for (Int y = 0; y < height; y++)
+        {
+          Int iStartIdx, iEndIdx;
+          if(y < iTemplateHeight)
+          {
+            iStartIdx = iTemplateWidth; 
+            iEndIdx   = width - 1;
+          }
+          else
+          {
+            iStartIdx = 0;
+            iEndIdx   = iTemplateWidth - 1;
+          }
+
+          for (Int x = iStartIdx; x <= iEndIdx; x++)
+          {
+            pTrueDst[x*dstStrideTrue+y] = pDst[y*dstStride+x];
+          }
+        }
+      }
+      else if(eTempType == LEFT_NEIGHBOR)
+      {
+        for (Int y = 0; y < iTemplateHeight; y++)
+        {
+          for (Int x = 0; x < width; x++)
+          {
+            pTrueDst[x*dstStrideTrue+y] = pDst[y*dstStride+x]; 
+          }
+        }
+      }
+      else if(eTempType == ABOVE_NEIGHBOR)
+      {
+        for (Int y = 0; y < height; y++)
+        {
+          for (Int x = 0; x < iTemplateWidth; x++)
+          {
+            pTrueDst[x*dstStrideTrue+y] = pDst[y*dstStride+x]; 
+          }
+        }
+      }
+      else
+      {
+        assert(0);
+      }
+    }
+  }
+}
+
+Void TComPrediction::xDIMDIntraPredFilteringMode34(const Pel* pSrc, Int iSrcStride, Pel*& rpDst, Int iDstStride, Int iWidth, Int iHeight, TEMPLATE_TYPE eTempType, Int iTemplateWidth, Int iTemplateHeight)
+{
+  Pel* pDst = rpDst;
+  /*
+  if(eTempType == LEFT_ABOVE_NEIGHBOR)
+  {
+    assert(iTemplateWidth > 0 && iTemplateHeight > 0);
+  }
+  else if(eTempType == LEFT_NEIGHBOR)
+  {
+    assert(iTemplateWidth > 0 && iTemplateHeight == 0);  
+  }
+  else if(eTempType == ABOVE_NEIGHBOR)
+  {
+    assert(iTemplateWidth == 0 && iTemplateHeight > 0);
+  }
+  */
+
+  if(eTempType == LEFT_ABOVE_NEIGHBOR)
+  {
+    for ( Int y = 0, iDstStride2 = 0, iSrcStride2 = -1; y < iHeight; y++, iDstStride2+=iDstStride, iSrcStride2+=iSrcStride )
+    {
+#if VCEG_AZ07_INTRA_BOUNDARY_FILTER_MULTI_LINE
+      if(y < iTemplateHeight)
+      {
+        if(iTemplateWidth == 1)
+        {
+          pDst[iDstStride2+1] = ( 12 * pDst[iDstStride2+1] + 4 * pSrc[iSrcStride2+iSrcStride*2] + 8 ) >> 4;     
+          pDst[iDstStride2+2] = ( 14 * pDst[iDstStride2+2] + 2 * pSrc[iSrcStride2+iSrcStride*3] + 8 ) >> 4;    
+          pDst[iDstStride2+3] = ( 15 * pDst[iDstStride2+3] +     pSrc[iSrcStride2+iSrcStride*4] + 8 ) >> 4;
+        }
+        else if(iTemplateWidth == 2)
+        {     
+          pDst[iDstStride2+2] = ( 14 * pDst[iDstStride2+2] + 2 * pSrc[iSrcStride2+iSrcStride*3] + 8 ) >> 4;    
+          pDst[iDstStride2+3] = ( 15 * pDst[iDstStride2+3] +     pSrc[iSrcStride2+iSrcStride*4] + 8 ) >> 4;
+        }
+        else if(iTemplateWidth == 3)
+        {
+          pDst[iDstStride2+3] = ( 15 * pDst[iDstStride2+3] +     pSrc[iSrcStride2+iSrcStride*4] + 8 ) >> 4;
+        }
+      }
+      else
+#endif
+        if(y>= iTemplateHeight)
+        {
+          pDst[iDstStride2  ] = (  8 * pDst[iDstStride2  ] + 8 * pSrc[iSrcStride2+iSrcStride  ] + 8 ) >> 4;
+#if VCEG_AZ07_INTRA_BOUNDARY_FILTER_MULTI_LINE
+          if(iTemplateWidth > 1)
+          {
+            pDst[iDstStride2+1] = ( 12 * pDst[iDstStride2+1] + 4 * pSrc[iSrcStride2+iSrcStride*2] + 8 ) >> 4;
+          }
+          if(iTemplateWidth > 2)
+          {     
+            pDst[iDstStride2+2] = ( 14 * pDst[iDstStride2+2] + 2 * pSrc[iSrcStride2+iSrcStride*3] + 8 ) >> 4;
+          }
+          if(iTemplateWidth > 3)
+          {    
+            pDst[iDstStride2+3] = ( 15 * pDst[iDstStride2+3] +     pSrc[iSrcStride2+iSrcStride*4] + 8 ) >> 4;
+          }
+#endif
+        } 
+    }
+  }
+  else if(eTempType == LEFT_NEIGHBOR)
+  {
+    for ( Int y = 0, iDstStride2 = 0, iSrcStride2 = -1; y < iHeight; y++, iDstStride2+=iDstStride, iSrcStride2+=iSrcStride )
+    {
+      pDst[iDstStride2  ] = (  8 * pDst[iDstStride2  ] + 8 * pSrc[iSrcStride2+iSrcStride  ] + 8 ) >> 4;
+#if VCEG_AZ07_INTRA_BOUNDARY_FILTER_MULTI_LINE
+      if(iTemplateWidth > 1)
+      {
+        pDst[iDstStride2+1] = ( 12 * pDst[iDstStride2+1] + 4 * pSrc[iSrcStride2+iSrcStride*2] + 8 ) >> 4;
+      }
+      if(iTemplateWidth > 2)
+      {     
+        pDst[iDstStride2+2] = ( 14 * pDst[iDstStride2+2] + 2 * pSrc[iSrcStride2+iSrcStride*3] + 8 ) >> 4;
+      }
+      if(iTemplateWidth > 3)
+      {    
+        pDst[iDstStride2+3] = ( 15 * pDst[iDstStride2+3] +     pSrc[iSrcStride2+iSrcStride*4] + 8 ) >> 4;
+      }
+#endif
+    }
+  }
+  else if(eTempType == ABOVE_NEIGHBOR)
+  {
+    //assert(iWidth >= 4);    
+    for ( Int y = 0, iDstStride2 = 0, iSrcStride2 = -1; y < iTemplateHeight; y++, iDstStride2+=iDstStride, iSrcStride2+=iSrcStride )
+    {
+      pDst[iDstStride2  ] = (  8 * pDst[iDstStride2  ] + 8 * pSrc[iSrcStride2+iSrcStride  ] + 8 ) >> 4;
+#if VCEG_AZ07_INTRA_BOUNDARY_FILTER_MULTI_LINE
+      pDst[iDstStride2+1] = ( 12 * pDst[iDstStride2+1] + 4 * pSrc[iSrcStride2+iSrcStride*2] + 8 ) >> 4;     
+      pDst[iDstStride2+2] = ( 14 * pDst[iDstStride2+2] + 2 * pSrc[iSrcStride2+iSrcStride*3] + 8 ) >> 4;    
+      pDst[iDstStride2+3] = ( 15 * pDst[iDstStride2+3] +     pSrc[iSrcStride2+iSrcStride*4] + 8 ) >> 4;
+#endif
+    }
+  }
+  else
+  {
+    assert(0);
+  }
+
+  return;
+}
+
+Void TComPrediction::xDIMDIntraPredFilteringMode02(const Pel* pSrc, Int iSrcStride, Pel*& rpDst, Int iDstStride, Int iWidth, Int iHeight, TEMPLATE_TYPE eTempType, Int iTemplateWidth, Int iTemplateHeight)
+{
+  Pel* pDst = rpDst;
+  /*
+  if(eTempType == LEFT_ABOVE_NEIGHBOR)
+  {
+    assert(iTemplateWidth > 0 && iTemplateHeight > 0);
+  }
+  else if(eTempType == LEFT_NEIGHBOR)
+  {
+    assert(iTemplateWidth > 0 && iTemplateHeight == 0);  
+  }
+  else if(eTempType == ABOVE_NEIGHBOR)
+  {
+    assert(iTemplateWidth == 0 && iTemplateHeight > 0);
+  }
+  */
+
+  if(eTempType == LEFT_ABOVE_NEIGHBOR)
+  {
+    for ( Int x = 0; x < iWidth; x++ )
+    {
+#if VCEG_AZ07_INTRA_BOUNDARY_FILTER_MULTI_LINE
+      if(x < iTemplateWidth)
+      {
+        if(iTemplateHeight == 1)
+        {
+          pDst[x+iDstStride  ] = ( 12 * pDst[x+iDstStride  ] + 4 * pSrc[x - iSrcStride + 2] + 8 ) >> 4;
+          pDst[x+iDstStride*2] = ( 14 * pDst[x+iDstStride*2] + 2 * pSrc[x - iSrcStride + 3] + 8 ) >> 4;
+          pDst[x+iDstStride*3] = ( 15 * pDst[x+iDstStride*3] +     pSrc[x - iSrcStride + 4] + 8 ) >> 4;
+        }
+        else if(iTemplateHeight == 2)
+        {
+          pDst[x+iDstStride*2] = ( 14 * pDst[x+iDstStride*2] + 2 * pSrc[x - iSrcStride + 3] + 8 ) >> 4;
+          pDst[x+iDstStride*3] = ( 15 * pDst[x+iDstStride*3] +     pSrc[x - iSrcStride + 4] + 8 ) >> 4;
+        }
+        else if(iTemplateHeight == 3)
+        {
+          pDst[x+iDstStride*3] = ( 15 * pDst[x+iDstStride*3] +     pSrc[x - iSrcStride + 4] + 8 ) >> 4; 
+        }
+      }
+      else
+#endif
+        if(x >= iTemplateWidth)
+        {
+          pDst[x             ] = (  8 * pDst[x             ] + 8 * pSrc[x - iSrcStride + 1] + 8 ) >> 4;
+#if VCEG_AZ07_INTRA_BOUNDARY_FILTER_MULTI_LINE
+          if(iTemplateHeight > 1)
+          {
+            pDst[x+iDstStride  ] = ( 12 * pDst[x+iDstStride  ] + 4 * pSrc[x - iSrcStride + 2] + 8 ) >> 4;
+          }
+          if(iTemplateHeight > 2)
+          {
+            pDst[x+iDstStride*2] = ( 14 * pDst[x+iDstStride*2] + 2 * pSrc[x - iSrcStride + 3] + 8 ) >> 4;
+          }
+          if(iTemplateHeight > 3)
+          {
+            pDst[x+iDstStride*3] = ( 15 * pDst[x+iDstStride*3] +     pSrc[x - iSrcStride + 4] + 8 ) >> 4;
+          } 
+#endif
+        }
+    }
+  }
+  else if(eTempType == LEFT_NEIGHBOR)
+  {
+    //assert(iHeight >= 4);
+    for ( Int x = 0; x < iTemplateWidth; x++ )
+    {
+      pDst[x             ] = (  8 * pDst[x             ] + 8 * pSrc[x - iSrcStride + 1] + 8 ) >> 4;
+#if VCEG_AZ07_INTRA_BOUNDARY_FILTER_MULTI_LINE
+      pDst[x+iDstStride  ] = ( 12 * pDst[x+iDstStride  ] + 4 * pSrc[x - iSrcStride + 2] + 8 ) >> 4;
+      pDst[x+iDstStride*2] = ( 14 * pDst[x+iDstStride*2] + 2 * pSrc[x - iSrcStride + 3] + 8 ) >> 4;
+      pDst[x+iDstStride*3] = ( 15 * pDst[x+iDstStride*3] +     pSrc[x - iSrcStride + 4] + 8 ) >> 4; 
+#endif
+    }
+  }
+  else if(eTempType == ABOVE_NEIGHBOR)
+  {
+    for ( Int x = 0; x < iWidth; x++ )
+    {
+      pDst[x             ] = (  8 * pDst[x             ] + 8 * pSrc[x - iSrcStride + 1] + 8 ) >> 4;
+#if VCEG_AZ07_INTRA_BOUNDARY_FILTER_MULTI_LINE
+      if(iTemplateHeight > 1)
+      {
+        pDst[x+iDstStride  ] = ( 12 * pDst[x+iDstStride  ] + 4 * pSrc[x - iSrcStride + 2] + 8 ) >> 4;
+      }
+      if(iTemplateHeight > 2)
+      { 
+        pDst[x+iDstStride*2] = ( 14 * pDst[x+iDstStride*2] + 2 * pSrc[x - iSrcStride + 3] + 8 ) >> 4;
+      }
+      if(iTemplateHeight > 3)
+      {
+        pDst[x+iDstStride*3] = ( 15 * pDst[x+iDstStride*3] +     pSrc[x - iSrcStride + 4] + 8 ) >> 4;
+      } 
+#endif
+    }
+  }
+  else
+  {
+    assert(0);
+  }
+
+  return;
+}
+
+Void TComPrediction::xDIMDIntraPredFilteringModeDGL(const Pel* pSrc, Int iSrcStride, Pel*& rpDst, Int iDstStride, Int iWidth, Int iHeight, UInt uiMode, TEMPLATE_TYPE eTempType, Int iTemplateWidth, Int iTemplateHeight)
+{
+  Pel* pDst = rpDst;
+
+#if DIMD_NUM_INTRA_DIR_INC
+  const Int aucExtAngPredFilterCoef[16][3] = {
+    { 12, 3, 1 }, ///< 18, 114
+    { 12, 3, 1 }, ///< 17, 115
+    { 12, 3, 1 }, ///< 16, 116
+    { 12, 3, 1 }, ///< 15, 117
+    { 12, 1, 3 }, ///< 14, 118
+    { 12, 1, 3 }, ///< 13, 119
+    { 12, 2, 2 }, ///< 12, 120
+    { 12, 2, 2 }, ///< 11, 121
+    { 12, 2, 2 }, ///< 10, 122
+    { 12, 2, 2 }, ///<  9, 123 
+    { 12, 3, 1 }, ///<  8, 124
+    { 12, 3, 1 }, ///<  7, 125
+    {  8, 6, 2 }, ///<  6, 126
+    {  8, 6, 2 }, ///<  5, 127 
+    {  8, 7, 1 }, ///<  4, 128 
+    {  8, 7, 1 }, ///<  3, 129
+  };
+  const Int aucExtAngPredPosiOffset[16][2] = {
+    { 2, 3 }, ///< 18, 114
+    { 2, 3 }, ///< 17, 115 
+    { 2, 3 }, ///< 16, 116
+    { 2, 3 }, ///< 15, 117 
+    { 1, 2 }, ///< 14, 118 
+    { 1, 2 }, ///< 13, 119
+    { 1, 2 }, ///< 12, 120
+    { 1, 2 }, ///< 11, 121
+    { 1, 2 }, ///< 10, 122
+    { 1, 2 }, ///<  9, 123
+    { 1, 2 }, ///<  8, 124
+    { 1, 2 }, ///<  7, 125
+    { 1, 2 }, ///<  6, 126
+    { 1, 2 }, ///<  5, 127
+    { 1, 2 }, ///<  4, 128
+    { 1, 2 }, ///<  3, 129
+  };
+  assert( ( uiMode>=(EXT_VDIA_IDX-16) && uiMode<EXT_VDIA_IDX ) || ( uiMode>2 && uiMode<=(2+16) ) );
+
+  Bool bHorz = (uiMode < EXT_DIA_IDX);
+  UInt deltaAng = bHorz ? ((2+16)-uiMode): (uiMode-(EXT_VDIA_IDX-16));
+  const Int *offset = aucExtAngPredPosiOffset[deltaAng];
+  const Int *filter = aucExtAngPredFilterCoef[deltaAng];
+#else
+#if VCEG_AZ07_INTRA_65ANG_MODES
+  const Int aucAngPredFilterCoef[8][3] = {
+    { 12, 3, 1 }, 
+    { 12, 3, 1 }, 
+    { 12, 1, 3 }, 
+    { 12, 2, 2 }, 
+    { 12, 2, 2 },
+    { 12, 3, 1 },
+    {  8, 6, 2 },  
+    {  8, 7, 1 },  
+  };
+  const Int aucAngPredPosiOffset[8][2] = {
+    { 2, 3 }, 
+    { 2, 3 }, 
+    { 1, 2 },
+    { 1, 2 },
+    { 1, 2 },
+    { 1, 2 },
+    { 1, 2 },
+    { 1, 2 },
+  };
+  //assert( ( uiMode>=(VDIA_IDX-8) && uiMode<VDIA_IDX ) || ( uiMode>2 && uiMode<=(2+8) ) );
+#else
+  const Int aucAngPredFilterCoef[4][3] = {
+    { 12, 3, 1 }, 
+    { 12, 1, 3 }, 
+    { 12, 2, 2 },
+    {  8, 6, 2 },  
+  };
+  const Int aucAngPredPosiOffset[4][2] = {
+    { 2, 3 }, 
+    { 1, 2 },
+    { 1, 2 },
+    { 1, 2 },
+  };
+  assert( ( uiMode>=30 && uiMode<34 ) || ( uiMode>2 && uiMode<=6 ) );
+#endif
+
+#if VCEG_AZ07_INTRA_65ANG_MODES
+  Bool bHorz = (uiMode < DIA_IDX);
+  UInt deltaAng = bHorz ? ((2+8)-uiMode): (uiMode-(VDIA_IDX-8));
+#else
+  Bool bHorz = (uiMode < 18);
+  UInt deltaAng = bHorz ? (6-uiMode): (uiMode-30);
+#endif
+  const Int *offset = aucAngPredPosiOffset[deltaAng];
+  const Int *filter = aucAngPredFilterCoef[deltaAng];
+#endif
+
+  if(bHorz)
+  {
+    Int iStartIdx, iEndIdx;
+    if(eTempType == LEFT_ABOVE_NEIGHBOR)
+    {
+      iStartIdx = iTemplateWidth;
+      iEndIdx   = iWidth - 1;
+    }
+    else if(eTempType == LEFT_NEIGHBOR)
+    {
+      iStartIdx = 0;
+      iEndIdx   = iTemplateWidth - 1;
+    }
+    else if(eTempType == ABOVE_NEIGHBOR)
+    {
+      iStartIdx = 0;
+      iEndIdx   = iWidth - 1;
+    }
+    else
+    {
+      assert(0);
+    }
+    for ( Int x = iStartIdx; x <= iEndIdx; x++ )
+    {        
+      pDst[x] = ( filter[0] * pDst[x] 
+      + filter[1] * pSrc[x - iSrcStride + offset[0]] 
+      + filter[2] * pSrc[x - iSrcStride + offset[1]] + 8) >> 4;
+    }
+  }
+  else
+  {
+    Int iStartIdx, iEndIdx;
+    if(eTempType == LEFT_ABOVE_NEIGHBOR)
+    {
+      iStartIdx = iTemplateHeight;
+      iEndIdx   = iHeight - 1;
+    }
+    else if(eTempType == LEFT_NEIGHBOR)
+    {
+      iStartIdx = 0;
+      iEndIdx   = iHeight - 1;
+    }
+    else if(eTempType == ABOVE_NEIGHBOR)
+    {
+      iStartIdx = 0;
+      iEndIdx   = iTemplateHeight - 1;
+    }
+    else
+    {
+      assert(0);
+    }
+    for ( Int y = iStartIdx; y <= iEndIdx; y++ )
+    {         
+      pDst[y * iDstStride] = ( filter[0] * pDst[y * iDstStride] 
+      + filter[1] * pSrc[(y + offset[0] ) * iSrcStride -1 ] 
+      + filter[2] * pSrc[(y + offset[1] ) * iSrcStride -1 ] + 8) >> 4;        
+    }
+  }
+
+  return;
+}
+
+#if COM16_C1046_PDPC_INTRA
+Void TComPrediction::predDIMDIntraLumaPDPC(TComDataCU* pcCU, UInt uiDirMode, Pel* piPred, UInt uiStride, Int iWidth, Int iHeight, TEMPLATE_TYPE eTempType, Int iTemplateWidth, Int iTemplateHeight)
+{
+  /*
+  if(eTempType == LEFT_ABOVE_NEIGHBOR)
+  {
+    assert(iTemplateWidth > 0 && iTemplateHeight > 0);
+  }
+  else if(eTempType == LEFT_NEIGHBOR)
+  {
+    assert(iTemplateWidth > 0 && iTemplateHeight == 0);  
+  }
+  else if(eTempType == ABOVE_NEIGHBOR)
+  {
+    assert(iTemplateWidth == 0 && iTemplateHeight > 0);
+  }
+  assert(iWidth >= MIN_PU_SIZE && iHeight >= MIN_PU_SIZE && iWidth <= MAX_CU_SIZE+MAX_TEMP_SIZE && iHeight <= MAX_CU_SIZE+MAX_TEMP_SIZE);
+  assert(isLuma(pcCU->getTextType()));
+  */
+
+  Int iLog2Width = 0, iLog2Height = 0;
+  while((iWidth>>iLog2Width)   > 1) iLog2Width ++;
+  while((iHeight>>iLog2Height) > 1) iLog2Height++;
+
+  Int blkSizeGroup[2] = { std::min(4, 1 + iLog2Width - 2), std::min(4, 1 + iLog2Height - 2) };
+
+  Pel *ptrSrc           = getPredictorPtr(COMPONENT_Y, false);
+  Pel *pDst             = piPred;
+  const Int channelsBitDepthForPrediction = pcCU->getSlice()->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA);
+  const Int iSrcStride  = iWidth + iHeight + 1;
+  const Int sw          = iSrcStride;
+  const Int iDoubleSize = iWidth + iHeight;
+
+#if DIMD_NUM_INTRA_DIR_INC
+  Int iSelMode            = (uiDirMode > 1 ? 18 + ((Int(uiDirMode)-66)>>2) : uiDirMode);
+  const Int *pdpcParam[2] = { g_pdpc_pred_param[blkSizeGroup[0]][iSelMode], g_pdpc_pred_param[blkSizeGroup[1]][iSelMode] };
+  const Int *pPdpcPar     = pdpcParam[iWidth < iHeight];
+#else
+#if VCEG_AZ07_INTRA_65ANG_MODES
+  Int   iSelMode          = (uiDirMode > 1 ? 18 + ((Int(uiDirMode) - 34)>>1) : uiDirMode);
+  const Int *pdpcParam[2] = { g_pdpc_pred_param[blkSizeGroup[0]][iSelMode], g_pdpc_pred_param[blkSizeGroup[1]][iSelMode] };
+  const Int *pPdpcPar     = pdpcParam[iWidth < iHeight];
+#else
+  const Int *pdpcParam[2] = { g_pdpc_pred_param[blkSizeGroup[0]][uiDirMode], g_pdpc_pred_param[blkSizeGroup[1]][uiDirMode] };
+  const Int *pPdpcPar     = pdpcParam[iWidth < iHeight];
+#endif
+#endif
+
+  Int * piRefVector = piTempRef + iDoubleSize;
+  Int * piLowpRefer = piFiltRef + iDoubleSize;
+
+  //unfiltered reference
+  for (Int j = 0; j <= iDoubleSize; j++)
+  {
+    piRefVector[j] = ptrSrc[j];
+  }
+
+  for (Int i = 1; i <= iDoubleSize; i++)
+  {
+    piRefVector[-i] = ptrSrc[i*iSrcStride];
+  }
+
+  if (pPdpcPar[5] != 0) 
+  {
+    // filter reference samples
+    xReferenceFilter(iDoubleSize, pPdpcPar[4], pPdpcPar[5], piRefVector, piLowpRefer);
+    for (Int j = 0; j <= iDoubleSize; j++)
+    {
+      ptrSrc[j] = piLowpRefer[j];
+    }
+    for (Int i = 1; i <= iDoubleSize; i++)
+    {
+      ptrSrc[i*iSrcStride] = piLowpRefer[-i];
+    }
+  }
+
+  if (uiDirMode == PLANAR_IDX)
+  {
+    xPredDIMDIntraPlanar( ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight, eTempType, iTemplateWidth, iTemplateHeight );
+  }
+  else
+  {
+    const ChannelType     channelType       = toChannelType(COMPONENT_Y);
+    const Bool            enableEdgeFilters = true;
+
+#if VCEG_AZ07_INTRA_4TAP_FILTER
+    const Bool            enable4TapFilter  = pcCU->getSlice()->getSPS()->getUseIntra4TapFilter();
+#endif
+
+    xPredDIMDIntraAng( channelsBitDepthForPrediction, ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight, channelType, uiDirMode, enableEdgeFilters 
+#if VCEG_AZ07_INTRA_4TAP_FILTER
+                       , enable4TapFilter
+#endif
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+                       , false
+#endif
+                       , eTempType, iTemplateWidth, iTemplateHeight );
+  }
+
+  // use unfiltered reference sample for weighted prediction
+  if (pPdpcPar[5] != 0) 
+  {
+    for (int j = 0; j <= iDoubleSize; j++)
+    {
+      ptrSrc[j] = piRefVector[j];
+    }
+
+    for (int i = 1; i <= iDoubleSize; i++)
+    {
+      ptrSrc[i*iSrcStride] = piRefVector[-i];
+    }
+  }
+
+  Int scale     = ((iLog2Width + iLog2Height) < 10) ? 0: 1;
+  Int ParShift  = 6;
+  Int ParScale  = 1 << ParShift;
+  Int ParOffset = 1 << (ParShift - 1);
+
+  if(eTempType == LEFT_ABOVE_NEIGHBOR)
+  {
+    for (Int row = 0; row < iHeight; row++)
+    {
+      Int iStartCol, iEndCol;
+      if(row < iTemplateHeight)
+      {
+        iStartCol = iTemplateWidth;
+        iEndCol   = iWidth - 1;
+      }
+      else
+      {
+        iStartCol = 0;
+        iEndCol   = iTemplateWidth - 1;
+      }
+
+      Int pos          = row * uiStride;
+      Int shiftRow     = row >> scale;
+      Int Coeff_Top    = pdpcParam[1][2] >> shiftRow;
+      Int Coeff_offset = pdpcParam[1][3] >> shiftRow;
+
+      for (Int col = iStartCol; col <= iEndCol; col++, pos++)
+      {
+        Int shiftCol      = col >> scale;
+        Int Coeff_Left    = pdpcParam[0][0] >> shiftCol;
+        Int Coeff_TopLeft = (pdpcParam[0][1] >> shiftCol) + Coeff_offset;
+        Int Coeff_Cur     = ParScale - Coeff_Left - Coeff_Top + Coeff_TopLeft;
+
+        Int sampleVal = (Coeff_Left* piRefVector[-row - 1] + Coeff_Top * piRefVector[col + 1] - Coeff_TopLeft * piRefVector[0] + Coeff_Cur * pDst[pos] + ParOffset) >> ParShift;
+        pDst[pos] = Clip3(0, ((1 << channelsBitDepthForPrediction) - 1), sampleVal);
+      }
+    }
+  }
+  else if(eTempType == ABOVE_NEIGHBOR)
+  {
+    for (Int row = 0; row < iTemplateHeight; row++)
+    {
+      Int pos          = row * uiStride;
+      Int shiftRow     = row >> scale;
+      Int Coeff_Top    = pdpcParam[1][2] >> shiftRow;
+      Int Coeff_offset = pdpcParam[1][3] >> shiftRow;
+
+      for (Int col = 0; col < iWidth; col++, pos++)
+      {
+        Int shiftCol      = col >> scale;
+        Int Coeff_Left    = pdpcParam[0][0] >> shiftCol;
+        Int Coeff_TopLeft = (pdpcParam[0][1] >> shiftCol) + Coeff_offset;
+        Int Coeff_Cur     = ParScale - Coeff_Left - Coeff_Top + Coeff_TopLeft;
+
+        Int sampleVal = (Coeff_Left* piRefVector[-row - 1] + Coeff_Top * piRefVector[col + 1] - Coeff_TopLeft * piRefVector[0] + Coeff_Cur * pDst[pos] + ParOffset) >> ParShift;
+        pDst[pos] = Clip3(0, ((1 << channelsBitDepthForPrediction) - 1), sampleVal);
+      }
+    }
+  }
+  else if(eTempType == LEFT_NEIGHBOR)
+  {
+    for (Int row = 0; row < iHeight; row++)
+    {
+      Int pos          = row * uiStride;
+      Int shiftRow     = row >> scale;
+      Int Coeff_Top    = pdpcParam[1][2] >> shiftRow;
+      Int Coeff_offset = pdpcParam[1][3] >> shiftRow;
+
+      for (Int col = 0; col < iTemplateWidth; col++, pos++)
+      {
+        Int shiftCol      = col >> scale;
+        Int Coeff_Left    = pdpcParam[0][0] >> shiftCol;
+        Int Coeff_TopLeft = (pdpcParam[0][1] >> shiftCol) + Coeff_offset;
+        Int Coeff_Cur     = ParScale - Coeff_Left - Coeff_Top + Coeff_TopLeft;
+
+        Int sampleVal = (Coeff_Left* piRefVector[-row - 1] + Coeff_Top * piRefVector[col + 1] - Coeff_TopLeft * piRefVector[0] + Coeff_Cur * pDst[pos] + ParOffset) >> ParShift;
+        pDst[pos] = Clip3(0, ((1 << channelsBitDepthForPrediction) - 1), sampleVal);
+      }
+    }
+  }
+  else
+  {
+    assert(0);
+  }
+}
+#endif
+
+UInt TComPrediction::calcTemplateSAD( Int bitDepth, Pel* pi0, Int iStride0, Pel* pi1, Int iStride1, Int iWidth, Int iHeight, Bool bBDClip )
+{
+  Pel* piOrg   = pi0;
+  Pel* piCur   = pi1;
+  UInt uiSum   = 0;
+
+  for(UInt iRow = 0; iRow < iHeight; iRow++)
+  {
+    for(UInt iCol = 0; iCol < iWidth; iCol++)
+    {
+      uiSum += abs( piOrg[iCol] - piCur[iCol] );
+    }
+    piOrg += iStride0;
+    piCur += iStride1;
+  }
+
+  if(!bBDClip)
+  {
+    return uiSum;
+  }
+  else
+  {
+    return uiSum>>DISTORTION_PRECISION_ADJUSTMENT(bitDepth-8);
+  }
+}
+#endif
+
 Void fillReferenceSamples( const Int bitDepth, 
 #if O0043_BEST_EFFORT_DECODING
                            const Int bitDepthDelta, 
@@ -650,6 +2423,9 @@ Bool TComPrediction::filteringIntraReferenceSamples(const ComponentID compID, UI
 #if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
                                                    , Bool enableRSAF
 #endif
+#if DIMD_NUM_INTRA_DIR_INC
+                                                   , TComDataCU* pcCU, UInt uiAbsPartIdx
+#endif
                                                    )
 {
   Bool bFilter;
@@ -666,12 +2442,39 @@ Bool TComPrediction::filteringIntraReferenceSamples(const ComponentID compID, UI
     assert(uiTuChWidth>=4 && uiTuChHeight>=4 && uiTuChWidth<128 && uiTuChHeight<128);
 #endif
 
+#if DIMD_NUM_INTRA_DIR_INC
+    if(pcCU->getDIMDEnabledFlag(toChannelType(compID), uiAbsPartIdx))
+    {
+      uiDirMode = pcCU->getExtIntraDir(toChannelType(compID), uiAbsPartIdx);
+      assert(uiDirMode >= PLANAR_IDX && uiDirMode <= EXT_VDIA_IDX);
+    }
+    else
+    {
+      assert(uiDirMode >= PLANAR_IDX && uiDirMode < NUM_INTRA_MODE);
+    }  
+#endif
     if (uiDirMode == DC_IDX)
     {
       bFilter=false; //no smoothing for DC or LM chroma
     }
     else
     {
+#if DIMD_NUM_INTRA_DIR_INC
+      if(pcCU->getDIMDEnabledFlag(toChannelType(compID), uiAbsPartIdx)) 
+      {
+        Int diff = min<Int>(abs((Int) uiDirMode - EXT_HOR_IDX), abs((Int)uiDirMode - EXT_VER_IDX));
+        UInt log2Size=((g_aucConvertToBit[uiTuChWidth]+g_aucConvertToBit[uiTuChHeight])>>1) + MIN_CU_LOG2;
+        UInt sizeIndex = log2Size - 1;
+        assert(sizeIndex < MAX_INTRA_FILTER_DEPTHS);
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+        bFilter = diff > m_aucExtIntraFilter[toChannelType(compID)][sizeIndex] -   ( (compID==COMPONENT_Y && enableRSAF && sizeIndex==1) ? 4 : 0);
+#else
+        bFilter = diff > m_aucExtIntraFilter[toChannelType(compID)][sizeIndex];
+#endif
+      }
+      else
+      {
+#endif
       Int diff = min<Int>(abs((Int) uiDirMode - HOR_IDX), abs((Int)uiDirMode - VER_IDX));
 #if JVET_C0024_QTBT
       UInt log2Size=((g_aucConvertToBit[uiTuChWidth]+g_aucConvertToBit[uiTuChHeight])>>1) + MIN_CU_LOG2;
@@ -684,6 +2487,9 @@ Bool TComPrediction::filteringIntraReferenceSamples(const ComponentID compID, UI
       bFilter = diff > m_aucIntraFilter[toChannelType(compID)][sizeIndex] -   ( (compID==COMPONENT_Y && enableRSAF && sizeIndex==1) ? 2 : 0);
 #else
       bFilter = diff > m_aucIntraFilter[toChannelType(compID)][sizeIndex];
+#endif
+#if DIMD_NUM_INTRA_DIR_INC
+      }
 #endif
     }
   }

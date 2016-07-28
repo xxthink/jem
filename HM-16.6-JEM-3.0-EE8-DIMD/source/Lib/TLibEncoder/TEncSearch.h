@@ -151,6 +151,11 @@ private:
   Double*         m_tmpDerivate[2];
 #endif
 
+#if DIMD_INTRA_PRED
+  UChar           m_ucDIMDIntraMode;
+  UChar           m_ucParentDIMDIntraMode;
+#endif
+
 protected:
   // interface to option
   TEncCfg*        m_pcEncCfg;
@@ -217,6 +222,12 @@ public:
             TEncSbac*     pcRDGoOnSbacCoder );
 
   Void destroy();
+#if DIMD_INTRA_PRED
+  UChar getDIMDIntraMode()           {return m_ucDIMDIntraMode;}
+  Void  setDIMDIntraMode(UChar uc)   {m_ucDIMDIntraMode = uc;}
+  UChar getParentDIMDIntraMode()             {return m_ucParentDIMDIntraMode;}
+  Void  setParentDIMDIntraMode(UChar uc)     {m_ucParentDIMDIntraMode = uc;}
+#endif
 
 protected:
 
@@ -270,6 +281,32 @@ public:
                                   Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE]
 #endif
                                   DEBUG_STRING_FN_DECLARE(sDebug));
+
+#if DIMD_INTRA_PRED
+  Void  estDIMDIntraPredLumaQT  ( TComDataCU* pcCU,
+                                  TComYuv*    pcOrgYuv,
+                                  TComYuv*    pcPredYuv,
+                                  TComYuv*    pcResiYuv,
+                                  TComYuv*    pcRecoYuv,
+#if COM16_C806_LARGE_CTU
+                                  Pel*        resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES]
+#else
+                                  Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE]
+#endif
+                                );
+
+  Void  estDIMDIntraPredChromaQT  ( TComDataCU* pcCU,
+                                    TComYuv*    pcOrgYuv,
+                                    TComYuv*    pcPredYuv,
+                                    TComYuv*    pcResiYuv,
+                                    TComYuv*    pcRecoYuv,
+#if COM16_C806_LARGE_CTU
+                                    Pel*        resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES]
+#else
+                                    Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE]
+#endif
+                                  );
+#endif
 
   /// encoder estimation - inter prediction (non-skip)
   Void predInterSearch          ( TComDataCU* pcCU,

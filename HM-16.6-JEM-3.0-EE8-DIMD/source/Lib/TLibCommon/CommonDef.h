@@ -269,6 +269,20 @@ static const Int NUM_CHROMA_MODE =                                  5; ///< tota
 static const Int DM_CHROMA_IDX =                                   36; ///< chroma mode index for derived from luma intra mode
 #endif
 
+#if DIMD_NUM_INTRA_DIR_INC
+static const Int EXT_HOR_IDX =                                     34;
+static const Int EXT_DIA_IDX =                                     66;
+static const Int EXT_VER_IDX =                                     98;
+static const Int EXT_VDIA_IDX =                                   130;
+#if VCEG_AZ07_INTRA_65ANG_MODES
+#define MAP131TO67( mode )                 (mode<2?mode:((mode>>1)+1))
+#define MAP67TO131( mode )                 (mode<2?mode:((mode<<1)-2))
+#else
+#define MAP131TO35( mode )       (mode<2?mode:(MAP131TO67(mode)>>1)+1)
+#define MAP35TO131( mode )       MAP67TO131( (mode<2?mode:((mode<<1)-2)) )
+#endif
+#endif
+
 #if COM16_C806_EMT
 static const UChar INTER_MODE_IDX =                               255; ///< index for inter modes
 #if JVET_C0024_QTBT
@@ -284,6 +298,9 @@ static const UInt  EMT_INTER_MAX_CU =                              32; ///< Max 
 static const Int MDCS_ANGLE_LIMIT =                                 9; ///< 0 = Horizontal/vertical only, 1 = Horizontal/vertical +/- 1, 2 = Horizontal/vertical +/- 2 etc...
 #else
 static const Int MDCS_ANGLE_LIMIT =                                 4; ///< 0 = Horizontal/vertical only, 1 = Horizontal/vertical +/- 1, 2 = Horizontal/vertical +/- 2 etc...
+#endif
+#if DIMD_NUM_INTRA_DIR_INC
+static const Int MDCS_EXT_ANGLE_LIMIT =                            19;
 #endif
 static const Int MDCS_MAXIMUM_WIDTH =                               8; ///< (measured in pixels) TUs with width greater than this can only use diagonal scan
 static const Int MDCS_MAXIMUM_HEIGHT =                              8; ///< (measured in pixels) TUs with height greater than this can only use diagonal scan

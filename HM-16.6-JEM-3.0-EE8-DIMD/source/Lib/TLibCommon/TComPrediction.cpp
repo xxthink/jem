@@ -111,6 +111,30 @@ const UChar TComPrediction::m_aucIntraFilter[MAX_NUM_CHANNEL_TYPE][MAX_INTRA_FIL
   }
 };
 
+#if DIMD_NUM_INTRA_DIR_INC
+const UChar TComPrediction::m_aucExtIntraFilter[MAX_NUM_CHANNEL_TYPE][MAX_INTRA_FILTER_DEPTHS] =
+{
+  { // Luma
+    40, //2x2
+    40, //4x4
+    28, //8x8
+    4,  //16x16
+    0,  //32x32
+    40, //64x64
+    0, //128x128
+  },
+  { // Chroma
+    40, //2x2
+    40, //4xn
+    28, //8xn
+    4,  //16xn
+    0,  //32xn
+    40, //64xn
+    0, //128xn
+  }
+};
+#endif
+
 // ====================================================================================================================
 // Constructor / destructor / initialize
 // ====================================================================================================================
@@ -130,9 +154,15 @@ TComPrediction::TComPrediction()
   iRefListIdx = -1;  
 #endif
 #if COM16_C1046_PDPC_INTRA
+#if DIMD_INTRA_PRED
+  piTempRef = new Int[4 * (MAX_CU_SIZE + MAX_TEMP_SIZE) + 1];
+  piFiltRef = new Int[4 * (MAX_CU_SIZE + MAX_TEMP_SIZE) + 1];
+  piBinBuff = new Int[4 * (MAX_CU_SIZE + MAX_TEMP_SIZE) + 9];
+#else
   piTempRef = new Int[4 * MAX_CU_SIZE + 1];
   piFiltRef = new Int[4 * MAX_CU_SIZE + 1];
   piBinBuff = new Int[4 * MAX_CU_SIZE + 9];
+#endif
 #endif
 
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
@@ -303,7 +333,11 @@ Void TComPrediction::initTempBuff(ChromaFormat chromaFormatIDC
       }
     }
 
+#if DIMD_INTRA_PRED
+    m_iYuvExtSize = ((MAX_CU_SIZE+MAX_TEMP_SIZE)*2+1) * ((MAX_CU_SIZE+MAX_TEMP_SIZE)*2+1);
+#else
     m_iYuvExtSize = (MAX_CU_SIZE*2+1) * (MAX_CU_SIZE*2+1);
+#endif
     for(UInt ch=0; ch<MAX_NUM_COMPONENT; ch++)
     {
       for(UInt buf=0; buf<NUM_PRED_BUF; buf++)
@@ -463,6 +497,9 @@ Void TComPrediction::xPredIntraAng(       Int bitDepth,
 #if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
                                           , Bool enableRSAF
 #endif
+#if DIMD_NUM_INTRA_DIR_INC
+                                          , Bool bExtIntraDir
+#endif
                                           )
 {
   Int width=Int(uiWidth);
@@ -488,11 +525,23 @@ Void TComPrediction::xPredIntraAng(       Int bitDepth,
   else // Do angular predictions
   {
 #if VCEG_AZ07_INTRA_65ANG_MODES
+#if DIMD_NUM_INTRA_DIR_INC
+    const Bool       bIsModeVer         = bExtIntraDir? (dirMode >= EXT_DIA_IDX): (dirMode >= DIA_IDX);
+#else
     const Bool       bIsModeVer         = (dirMode >= DIA_IDX);
+#endif
+#else
+#if DIMD_NUM_INTRA_DIR_INC
+   const Bool       bIsModeVer         = bExtIntraDir? (dirMode >= EXT_DIA_IDX): (dirMode >= 18);
 #else
     const Bool       bIsModeVer         = (dirMode >= 18);
 #endif
+#endif
+#if DIMD_NUM_INTRA_DIR_INC
+    const Int        intraPredAngleMode = bExtIntraDir? ((bIsModeVer) ? ((Int)dirMode - EXT_VER_IDX) :  -((Int)dirMode - EXT_HOR_IDX)) : ((bIsModeVer) ? ((Int)dirMode - VER_IDX) :  -((Int)dirMode - HOR_IDX));
+#else
     const Int        intraPredAngleMode = (bIsModeVer) ? (Int)dirMode - VER_IDX :  -((Int)dirMode - HOR_IDX);
+#endif
     const Int        absAngMode         = abs(intraPredAngleMode);
     const Int        signAng            = intraPredAngleMode < 0 ? -1 : 1;
     const Bool       edgeFilter         = bEnableEdgeFilters && isLuma(channelType) && (width <= MAXIMUM_INTRA_FILTERED_WIDTH) && (height <= MAXIMUM_INTRA_FILTERED_HEIGHT);
@@ -505,8 +554,15 @@ Void TComPrediction::xPredIntraAng(       Int bitDepth,
     static const Int angTable[9]    = {0,    2,    5,   9,  13,  17,  21,  26,  32};
     static const Int invAngTable[9] = {0, 4096, 1638, 910, 630, 482, 390, 315, 256}; // (256 * 32) / Angle
 #endif
+#if DIMD_NUM_INTRA_DIR_INC
+    static const Int extAngTable[33]    = {0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 49, 52, 55, 58, 61, 64};   ///< module 64
+    static const Int extInvAngTable[33] = {0, 16384, 8192, 5461, 4096, 3277, 2731, 2048, 1638, 1365, 1170, 1024, 910, 819, 745, 683, 630, 585, 546, 512, 482, 455, 431, 410, 390, 372, 356, 334, 315, 298, 282, 269, 256};   ///< (256 * 64) / Angle
+    Int invAngle                        = bExtIntraDir? extInvAngTable[absAngMode]: invAngTable[absAngMode];
+    Int absAng                          = bExtIntraDir? extAngTable   [absAngMode]: angTable   [absAngMode];    
+#else
     Int invAngle                    = invAngTable[absAngMode];
     Int absAng                      = angTable[absAngMode];
+#endif
     Int intraPredAngle              = signAng * absAng;
 
     Pel* refMain;
@@ -548,7 +604,11 @@ Void TComPrediction::xPredIntraAng(       Int bitDepth,
 
       // Extend the Main reference to the left.
       Int invAngleSum    = 128;       // rounding for (shift by 8)
+#if DIMD_NUM_INTRA_DIR_INC
+      for (Int k=-1; k>(refMainOffsetPreScale+1)*intraPredAngle>>(bExtIntraDir? 6: 5); k--)
+#else
       for (Int k=-1; k>(refMainOffsetPreScale+1)*intraPredAngle>>5; k--)
+#endif
       {
         invAngleSum += invAngle;
         refMain[k] = refSide[invAngleSum>>8];
@@ -610,8 +670,13 @@ Void TComPrediction::xPredIntraAng(       Int bitDepth,
 
       for (Int y=0, deltaPos=intraPredAngle; y<height; y++, deltaPos+=intraPredAngle, pDsty+=dstStride)
       {
+#if DIMD_NUM_INTRA_DIR_INC
+        const Int deltaInt   = bExtIntraDir? (deltaPos>>6): (deltaPos>>5);
+        const Int deltaFract = bExtIntraDir? (deltaPos & (64 - 1)): (deltaPos & (32 - 1));
+#else
         const Int deltaInt   = deltaPos >> 5;
         const Int deltaFract = deltaPos & (32 - 1);
+#endif
 
         if (deltaFract)
         {
@@ -621,12 +686,31 @@ Void TComPrediction::xPredIntraAng(       Int bitDepth,
           {
             Int p[4], x, refMainIndex;
             const Pel nMin = 0, nMax = (1 << bitDepth) - 1;
+#if DIMD_NUM_INTRA_DIR_INC
+            Int *f;
+            if(bExtIntraDir)
+            {
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+              f =  ((channelType==CHANNEL_TYPE_LUMA) && enableRSAF) ? g_aiExtIntraCubicFilter[deltaFract] : ( (width<=8) ? g_aiExtIntraCubicFilter[deltaFract] : g_aiExtIntraGaussFilter[deltaFract] );
+#else
+              f = (width<=8) ? g_aiExtIntraCubicFilter[deltaFract] : g_aiExtIntraGaussFilter[deltaFract];
+#endif
+            }
+            else
+            {
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+              f =  ((channelType==CHANNEL_TYPE_LUMA) && enableRSAF) ? g_aiIntraCubicFilter[deltaFract] : ( (width<=8) ? g_aiIntraCubicFilter[deltaFract] : g_aiIntraGaussFilter[deltaFract] );
+#else
+              f = (width<=8) ? g_aiIntraCubicFilter[deltaFract] : g_aiIntraGaussFilter[deltaFract];
+#endif
+            }
+#else
 #if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
             Int *f =  ((channelType==CHANNEL_TYPE_LUMA) && enableRSAF) ? g_aiIntraCubicFilter[deltaFract] : ( (width<=8) ? g_aiIntraCubicFilter[deltaFract] : g_aiIntraGaussFilter[deltaFract] );
 #else
             Int *f = (width<=8) ? g_aiIntraCubicFilter[deltaFract] : g_aiIntraGaussFilter[deltaFract];
 #endif
-
+#endif
             
             for (x=0;x<width;x++)
             {
@@ -658,7 +742,18 @@ Void TComPrediction::xPredIntraAng(       Int bitDepth,
           for (Int x=0;x<width;pRM++,x++)
           {
             Int thisRefMainPel=*pRM;
+#if DIMD_NUM_INTRA_DIR_INC
+            if(bExtIntraDir)
+            {
+              pDsty[x+0] = (Pel) ( ((64-deltaFract)*lastRefMainPel + deltaFract*thisRefMainPel +32) >> 6 );
+            }
+            else
+            {
+              pDsty[x+0] = (Pel) ( ((32-deltaFract)*lastRefMainPel + deltaFract*thisRefMainPel +16) >> 5 );
+            }
+#else
             pDsty[x+0] = (Pel) ( ((32-deltaFract)*lastRefMainPel + deltaFract*thisRefMainPel +16) >> 5 );
+#endif
             lastRefMainPel=thisRefMainPel;
           }
 #if VCEG_AZ07_INTRA_4TAP_FILTER
@@ -675,7 +770,19 @@ Void TComPrediction::xPredIntraAng(       Int bitDepth,
         }
       }
 #if VCEG_AZ07_INTRA_65ANG_MODES
+#if DIMD_NUM_INTRA_DIR_INC
+      if ( edgeFilter && ( (absAng<=1 && !bExtIntraDir) || (absAng<=2 && bExtIntraDir) ) )
+#else
       if ( edgeFilter && absAng<=1 )
+#endif
+      {
+        for (Int y=0;y<height;y++)
+        {
+          pDst[y*dstStride] = Clip3(0, (1<<bitDepth)-1, pDst[y*dstStride] + (( refSide[y+1] - refSide[0] ) >> 2) );
+        }
+      }
+#elif DIMD_NUM_INTRA_DIR_INC
+      if ( edgeFilter && (absAng<=2 && bExtIntraDir) )
       {
         for (Int y=0;y<height;y++)
         {
@@ -730,9 +837,21 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
   const Int sw = (2 * iWidth + 1);
 #endif
 
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA || DIMD_NUM_INTRA_DIR_INC
   TComDataCU *const pcCU = rTu.getCU();
   const UInt uiAbsPartIdx = rTu.GetAbsPartIdxTU();
+#endif
+
+#if DIMD_NUM_INTRA_DIR_INC
+  if(pcCU->getDIMDEnabledFlag(channelType, uiAbsPartIdx))
+  {
+    uiDirMode = pcCU->getExtIntraDir(toChannelType(compID), uiAbsPartIdx);
+    //assert(uiDirMode >= PLANAR_IDX && uiDirMode <= EXT_VDIA_IDX);
+  }
+  //else
+  //{
+    //assert(uiDirMode >= PLANAR_IDX && uiDirMode < NUM_INTRA_MODE - 1);
+  //}  
 #endif
 
   if ( bUseLosslessDPCM )
@@ -838,6 +957,23 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
       const Int iDoubleWidth = iWidth<<1;
 #endif
 
+#if DIMD_NUM_INTRA_DIR_INC
+      Int iSelMode;
+      if(pcCU->getDIMDEnabledFlag(channelType, uiAbsPartIdx))
+      {
+        iSelMode = (uiDirMode > 1 ? 18 + ((Int(uiDirMode) - 66)>>2) : uiDirMode);
+      }
+      else
+      {
+#if VCEG_AZ07_INTRA_65ANG_MODES
+        iSelMode = (uiDirMode > 1 ? 18 + ((Int(uiDirMode) - 34)>>1) : uiDirMode);
+#else
+        iSelMode = uiDirMode;
+#endif
+      }
+      const Int *pdpcParam[2] = { g_pdpc_pred_param[blkSizeGroup[0]][iSelMode], g_pdpc_pred_param[blkSizeGroup[1]][iSelMode] };
+      const Int *pPdpcPar = pdpcParam[iWidth < iHeight];
+#else
 #if VCEG_AZ07_INTRA_65ANG_MODES
       Int   iSelMode = (uiDirMode > 1 ? 18 + ((Int(uiDirMode) - 34)>>1) : uiDirMode);
 #if JVET_C0024_QTBT
@@ -852,6 +988,7 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
       const Int *pPdpcPar = pdpcParam[iWidth < iHeight];
 #else
       const Int * pPdpcPar = g_pdpc_pred_param[iBlkSizeGrp][iPdpcIdx][uiDirMode];
+#endif
 #endif
 #endif
 
@@ -913,9 +1050,15 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 
         xPredIntraAng(channelsBitDepthForPrediction, ptrSrc + sw + 1, sw, pDst, uiStride, iWidth, iHeight, channelType, uiDirMode, enableEdgeFilters
 #if VCEG_AZ07_INTRA_4TAP_FILTER
-          , enable4TapFilter
+                      , enable4TapFilter
 #endif
-          );
+#if DIMD_NUM_INTRA_DIR_INC
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+                      , false
+#endif
+                      , pcCU->getDIMDEnabledFlag(channelType, uiAbsPartIdx)
+#endif
+                     );
       }
 
       //use unfiltered reference sample for weighted prediction
@@ -1003,7 +1146,7 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
     else
     {
       // Create the prediction
-#if !VCEG_AZ05_INTRA_MPI && !COM16_C1046_PDPC_INTRA
+#if !VCEG_AZ05_INTRA_MPI && !COM16_C1046_PDPC_INTRA && !DIMD_NUM_INTRA_DIR_INC
       TComDataCU *const pcCU = rTu.getCU();
       const UInt              uiAbsPartIdx      = rTu.GetAbsPartIdxTU();
 #endif
@@ -1036,12 +1179,15 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 #endif
       xPredIntraAng( channelsBitDepthForPrediction, ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight, channelType, uiDirMode, enableEdgeFilters 
 #if VCEG_AZ07_INTRA_4TAP_FILTER
-        , enable4TapFilter
+                     , enable4TapFilter
 #endif
 #if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
-        , pcCU->getSlice()->getSPS()->getUseRSAF()
+                     , pcCU->getSlice()->getSPS()->getUseRSAF()
 #endif
-        );
+#if DIMD_NUM_INTRA_DIR_INC
+                     , pcCU->getDIMDEnabledFlag(channelType, uiAbsPartIdx)
+#endif
+                   );
 
 #if VCEG_AZ05_INTRA_MPI
 #if JVET_C0024_QTBT
@@ -1063,9 +1209,17 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 #endif
       {
 #if VCEG_AZ07_INTRA_65ANG_MODES
+#if DIMD_NUM_INTRA_DIR_INC
+        if( (uiDirMode == VDIA_IDX && !pcCU->getDIMDEnabledFlag(channelType, uiAbsPartIdx)) || (uiDirMode == EXT_VDIA_IDX && pcCU->getDIMDEnabledFlag(channelType, uiAbsPartIdx)) )
+#else
         if( uiDirMode == VDIA_IDX )
+#endif
+#else
+#if DIMD_NUM_INTRA_DIR_INC
+        if( (uiDirMode == 34 && !pcCU->getDIMDEnabledFlag(channelType, uiAbsPartIdx)) || (uiDirMode == EXT_VDIA_IDX && pcCU->getDIMDEnabledFlag(channelType, uiAbsPartIdx)) )
 #else
         if( uiDirMode == 34 )
+#endif
 #endif
         {
           xIntraPredFilteringMode34( ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight);
@@ -1075,12 +1229,28 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
           xIntraPredFilteringMode02( ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight);
         }
 #if VCEG_AZ07_INTRA_65ANG_MODES
+#if DIMD_NUM_INTRA_DIR_INC
+        else if( ((( uiDirMode<=10 && uiDirMode>2 ) || ( uiDirMode>=(VDIA_IDX-8) && uiDirMode<VDIA_IDX ))          && !pcCU->getDIMDEnabledFlag(channelType, uiAbsPartIdx)) || 
+                 ((( uiDirMode<=18 && uiDirMode>2 ) || ( uiDirMode>=(EXT_VDIA_IDX-16) && uiDirMode<EXT_VDIA_IDX )) &&  pcCU->getDIMDEnabledFlag(channelType, uiAbsPartIdx))
+               )
+#else
         else if( ( uiDirMode<=10 && uiDirMode>2 ) || ( uiDirMode>=(VDIA_IDX-8) && uiDirMode<VDIA_IDX ) )
+#endif
+#else
+#if DIMD_NUM_INTRA_DIR_INC
+        else if( ((( uiDirMode<=6  && uiDirMode>2 ) || ( uiDirMode>=30 && uiDirMode<34 ))                          && !pcCU->getDIMDEnabledFlag(channelType, uiAbsPartIdx)) || 
+                 ((( uiDirMode<=18 && uiDirMode>2 ) || ( uiDirMode>=(EXT_VDIA_IDX-16) && uiDirMode<EXT_VDIA_IDX )) &&  pcCU->getDIMDEnabledFlag(channelType, uiAbsPartIdx))
+               )
 #else
         else if( ( uiDirMode<=6 && uiDirMode>2 ) || ( uiDirMode>=30 && uiDirMode<34 ) )
 #endif
+#endif
         {
+#if DIMD_NUM_INTRA_DIR_INC
+          xIntraPredFilteringModeDGL( ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight, uiDirMode, pcCU->getDIMDEnabledFlag(channelType, uiAbsPartIdx) );
+#else
           xIntraPredFilteringModeDGL( ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight, uiDirMode );
+#endif
         }
       }
 #endif
@@ -1109,10 +1279,289 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
       xMPIredFiltering(pRec, iStrideRec, pDst, uiStride, iWidth, iHeight, idexMPI);
     }
 #endif
+  }
+}
 
+#if DIMD_INTRA_PRED
+UInt TComPrediction::deriveNeighborIntraDirs( TComDataCU* pcCU, UInt uiAbsPartIdx )
+{
+  Int     channelBitDepth = pcCU->getSlice()->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA);  
+  UInt    uiWidth = pcCU->getWidth(uiAbsPartIdx);    // BT width
+  UInt    uiHeight = pcCU->getHeight(uiAbsPartIdx);  // BT height
+
+  static Pel PredLuma[(MAX_CU_SIZE + MAX_TEMP_SIZE) * (MAX_CU_SIZE + MAX_TEMP_SIZE)];
+  Pel*       piPred = PredLuma;
+  UInt       uiPredStride = MAX_CU_SIZE + MAX_TEMP_SIZE;  
+
+  Int  iCurX  = pcCU->getCUPelX() + g_auiRasterToPelX[g_auiZscanToRaster[uiAbsPartIdx]];
+  Int  iCurY  = pcCU->getCUPelY() + g_auiRasterToPelY[g_auiZscanToRaster[uiAbsPartIdx]];
+  Int  iRefX  = -1, iRefY = -1;
+  UInt uiRefWidth = 0, uiRefHeight = 0;
+
+  Int iTempWidth = 4, iTempHeight = 4;
+  if(uiWidth <= 8)
+  {
+    iTempWidth = 2;
+  }
+  if(uiHeight <= 8)
+  {
+    iTempHeight = 2;
   }
 
+  TEMPLATE_TYPE eTempType = pcCU->deriveRefRegPosSize(iCurX, iCurY, uiWidth, uiHeight, iTempWidth, iTempHeight, iRefX, iRefY, uiRefWidth, uiRefHeight);
+  if(eTempType != NO_NEIGHBOR)
+  {
+    TComDataCU* pcNeighborCU      = NULL;
+    UInt        uiNeighborPartIdx = 0;
+    pcNeighborCU      = pcCU->getOrigRefReg(uiNeighborPartIdx, iRefX, iRefY);
+
+    pcNeighborCU->setTargetCtu(pcCU);
+
+    Pel* piOrg       = pcNeighborCU->getPic()->getPicYuvRec()->getAddr(COMPONENT_Y, pcNeighborCU->getCtuRsAddr(), pcNeighborCU->getZorderIdxInCtu()+uiNeighborPartIdx);
+    UInt uiOrgStride = pcNeighborCU->getPic()->getPicYuvRec()->getStride(COMPONENT_Y);
+    Int iOffsetX     = iRefX - ( pcNeighborCU->getCUPelX() + g_auiRasterToPelX[g_auiZscanToRaster[uiNeighborPartIdx]] );
+    Int iOffsetY     = iRefY - ( pcNeighborCU->getCUPelY() + g_auiRasterToPelY[g_auiZscanToRaster[uiNeighborPartIdx]] );
+    piOrg           += iOffsetY * uiOrgStride + iOffsetX;
+
+    initDIMDLumaFlexibleIntraPattern(pcNeighborCU, uiNeighborPartIdx, iRefX, iRefY, uiRefWidth, uiRefHeight, true
+#if COM16_C983_RSAF
+                                     ,false
+#endif
+                                    );  // filtered reference samples are generated by HEVC 3-tap filter
+
+    UInt uiIntraDirNeighbor[5], modeIdx = 0, partIdx;
+    Bool includedMode[EXT_VDIA_IDX+1];
+    memset( includedMode, false, sizeof(includedMode) );
+    UInt partIdxLT = pcCU->getZorderIdxInCtu() + uiAbsPartIdx;
+    UInt partIdxRT = g_auiRasterToZscan [g_auiZscanToRaster[ partIdxLT ] + uiWidth / pcCU->getPic()->getMinCUWidth() - 1 ];
+    UInt partIdxLB = g_auiRasterToZscan [g_auiZscanToRaster[ partIdxLT ] + ( (uiHeight / pcCU->getPic()->getMinCUHeight()) - 1 ) * pcCU->getPic()->getNumPartInCtuWidth()];
+
+    // left
+    TComDataCU *cu = pcCU->getPULeft( partIdx, partIdxLB );
+    if( cu && cu->isIntra(partIdx) )
+    {
+      uiIntraDirNeighbor[modeIdx] = MAP67TO131(cu->getIntraDir( CHANNEL_TYPE_LUMA, partIdx ));
+      if( !includedMode[uiIntraDirNeighbor[modeIdx]] )
+      {
+        includedMode[uiIntraDirNeighbor[modeIdx]] = true;
+        modeIdx++;
+      }   
+    }
+
+    // above
+    cu = pcCU->getPUAbove( partIdx, partIdxRT );
+    if( cu && cu->isIntra(partIdx) )
+    {
+      uiIntraDirNeighbor[modeIdx] = MAP67TO131(cu->getIntraDir( CHANNEL_TYPE_LUMA, partIdx ));
+      if( !includedMode[uiIntraDirNeighbor[modeIdx]] )
+      {
+        includedMode[uiIntraDirNeighbor[modeIdx]] = true;
+        modeIdx++;
+      }   
+    } 
+
+    // below left
+    cu = pcCU->getPUBelowLeft( partIdx, partIdxLB );
+    if( cu && cu->isIntra(partIdx) )
+    {
+      uiIntraDirNeighbor[modeIdx] = MAP67TO131(cu->getIntraDir( CHANNEL_TYPE_LUMA, partIdx ));
+      if( !includedMode[uiIntraDirNeighbor[modeIdx]] )
+      {
+        includedMode[uiIntraDirNeighbor[modeIdx]] = true;
+        modeIdx++;
+      }
+    }
+
+    // above right
+    cu = pcCU->getPUAboveRight( partIdx, partIdxRT );
+    if( cu && cu->isIntra(partIdx) )
+    {
+      uiIntraDirNeighbor[modeIdx] = MAP67TO131(cu->getIntraDir( CHANNEL_TYPE_LUMA, partIdx ));
+      if( !includedMode[uiIntraDirNeighbor[modeIdx]] )
+      {
+        includedMode[uiIntraDirNeighbor[modeIdx]] = true;
+        modeIdx++;
+      }
+    }
+
+    //above left
+    cu = pcCU->getPUAboveLeft( partIdx, partIdxLT );
+    if( cu && cu->isIntra(partIdx) )
+    {
+      uiIntraDirNeighbor[modeIdx] = MAP67TO131(cu->getIntraDir( CHANNEL_TYPE_LUMA, partIdx ));
+      if( !includedMode[uiIntraDirNeighbor[modeIdx]] )
+      {
+        includedMode[uiIntraDirNeighbor[modeIdx]] = true;
+        modeIdx++;
+      }
+    }
+
+    Bool bNoAngular = false;
+    if(modeIdx >= 2)
+    {
+      bNoAngular = true;
+      for(UInt i = 0; i < modeIdx; i++)
+      {
+        if(uiIntraDirNeighbor[i] > DC_IDX)
+        {
+          bNoAngular = false;
+          break;
+        }
+      }
+    }
+
+#if DIMD_NUM_INTRA_DIR_INC
+    UInt uiNumModesAvailable = EXT_VDIA_IDX + 1;
+#else
+    UInt uiNumModesAvailable = NUM_INTRA_MODE - 1;
+#endif
+    UInt uiBestMode          = uiNumModesAvailable;
+    UInt uiBestSad           = MAX_UINT;
+
+    UInt uiStartMode         = PLANAR_IDX;
+    UInt uiEndMode           = bNoAngular? DC_IDX : uiNumModesAvailable - 1;
+
+    Bool bIntraDirTested[EXT_VDIA_IDX + 1];
+    memset(bIntraDirTested, false, sizeof(Bool)*(EXT_VDIA_IDX + 1));
+#if DIMD_NUM_INTRA_DIR_INC
+    UInt uiSearchInv = 16;
+#else
+    UInt uiSearchInv = 8;
+#endif
+    for(UInt uiMode = uiStartMode; uiMode <= uiEndMode; uiMode ++)
+    {
+      if( uiMode > DC_IDX && (uiMode-2)%uiSearchInv != 0 )
+      {
+        continue;
+      }
+      bIntraDirTested[uiMode] = true;
+#if COM16_C1046_PDPC_INTRA
+      if(pcCU->getPDPCIdx(uiAbsPartIdx) && pcCU->getSlice()->getSPS()->getUsePDPC())
+      {
+        predDIMDIntraLumaPDPC( pcCU, uiMode, piPred, uiPredStride, uiRefWidth, uiRefHeight, eTempType, (eTempType == ABOVE_NEIGHBOR)? 0: iTempWidth, (eTempType == LEFT_NEIGHBOR)? 0: iTempHeight );
+      }
+      else
+      {
+#endif
+        predDIMDIntraLumaAng( pcCU, uiMode, piPred, uiPredStride, uiRefWidth, uiRefHeight, eTempType, (eTempType == ABOVE_NEIGHBOR)? 0: iTempWidth, (eTempType == LEFT_NEIGHBOR)? 0: iTempHeight );
+#if COM16_C1046_PDPC_INTRA
+      } 
+#endif
+
+      UInt uiSad = 0;
+      if(eTempType == LEFT_ABOVE_NEIGHBOR)
+      {
+        uiSad += calcTemplateSAD(channelBitDepth, piOrg+iTempWidth,              uiOrgStride, piPred+iTempWidth,               uiPredStride, uiWidth,              iTempHeight, false );
+        uiSad += calcTemplateSAD(channelBitDepth, piOrg+iTempHeight*uiOrgStride, uiOrgStride, piPred+iTempHeight*uiPredStride, uiPredStride, iTempWidth,           uiHeight,    false );
+      }
+      else if(eTempType == LEFT_NEIGHBOR)
+      {
+        uiSad  = calcTemplateSAD(channelBitDepth, piOrg,                         uiOrgStride, piPred,                          uiPredStride, iTempWidth,           uiHeight, false);
+      }
+      else if(eTempType == ABOVE_NEIGHBOR)
+      {
+        uiSad  = calcTemplateSAD(channelBitDepth, piOrg,                         uiOrgStride, piPred,                           uiPredStride, uiWidth,              iTempHeight, false);
+      }
+      else
+      {
+        assert(0);
+      }
+
+      if( uiSad < uiBestSad )
+      {
+        uiBestSad  = uiSad;
+        uiBestMode = uiMode;
+      }
+      if(uiBestSad == 0)
+      {
+        break; 
+      }
+    }
+
+    if(bNoAngular)
+    {
+      assert(uiBestMode <= DC_IDX); 
+    }
+  
+    if(uiBestMode > DC_IDX && uiBestSad != 0)
+    {
+      Int iSearchInv = uiSearchInv>>1;
+      while(iSearchInv >= 1)
+      {
+        if(uiBestSad == 0)
+        {
+          break; 
+        }
+
+        Int iSearCenter = uiBestMode;
+#if DIMD_NUM_INTRA_DIR_INC
+        for(Int iMode = max<Int>(2, Int(iSearCenter)-iSearchInv); iMode <= min<Int>(EXT_VDIA_IDX, Int(iSearCenter)+iSearchInv); iMode += iSearchInv)
+#else
+        for(Int iMode = max<Int>(2, Int(iSearCenter)-iSearchInv); iMode <= min<Int>(VDIA_IDX, Int(iSearCenter)+iSearchInv); iMode += iSearchInv)
+#endif
+        {
+          UInt uiMode = iMode;
+          if(bIntraDirTested[uiMode])
+          {
+            continue;
+          }
+          bIntraDirTested[uiMode] = true;
+
+#if COM16_C1046_PDPC_INTRA
+          if(pcCU->getPDPCIdx(uiAbsPartIdx) && pcCU->getSlice()->getSPS()->getUsePDPC())
+          {
+            predDIMDIntraLumaPDPC( pcCU, uiMode, piPred, uiPredStride, uiRefWidth, uiRefHeight, eTempType, (eTempType == ABOVE_NEIGHBOR)? 0: iTempWidth, (eTempType == LEFT_NEIGHBOR)? 0: iTempHeight );
+          }
+          else
+          {
+#endif
+            predDIMDIntraLumaAng( pcCU, uiMode, piPred, uiPredStride, uiRefWidth, uiRefHeight, eTempType, (eTempType == ABOVE_NEIGHBOR)? 0: iTempWidth, (eTempType == LEFT_NEIGHBOR)? 0: iTempHeight );
+#if COM16_C1046_PDPC_INTRA
+          } 
+#endif
+
+          UInt uiSad = 0;
+          if(eTempType == LEFT_ABOVE_NEIGHBOR)
+          {
+            uiSad += calcTemplateSAD(channelBitDepth, piOrg+iTempWidth,              uiOrgStride, piPred+iTempWidth,               uiPredStride, uiWidth,              iTempHeight, false );
+            uiSad += calcTemplateSAD(channelBitDepth, piOrg+iTempHeight*uiOrgStride, uiOrgStride, piPred+iTempHeight*uiPredStride, uiPredStride, iTempWidth,           uiHeight,    false );
+          }
+          else if(eTempType == LEFT_NEIGHBOR)
+          {
+            uiSad  = calcTemplateSAD(channelBitDepth, piOrg,                         uiOrgStride, piPred,                          uiPredStride, iTempWidth,           uiHeight, false);
+          }
+          else if(eTempType == ABOVE_NEIGHBOR)
+          {
+            uiSad  = calcTemplateSAD(channelBitDepth, piOrg,                         uiOrgStride, piPred,                           uiPredStride, uiWidth,              iTempHeight, false);
+          }
+          else
+          {
+            assert(0);
+          }
+
+          if( uiSad < uiBestSad )
+          {
+            uiBestSad  = uiSad;
+            uiBestMode = uiMode;
+          }
+
+          if(uiBestSad == 0)
+          {
+            break; 
+          }
+        }
+        iSearchInv = iSearchInv>>1;
+      }
+      assert(iSearchInv == 0 || uiBestSad == 0); 
+    }
+    return uiBestMode;
+  }
+  else
+  {
+    return PLANAR_IDX;
+  }
 }
+#endif
 
 /** Check for identical motion in both motion vector direction of a bi-directional predicted CU
   * \returns true, if motion vectors and reference pictures match
@@ -2883,10 +3332,18 @@ Void TComPrediction::xIntraPredFilteringMode02( const Pel* pSrc, Int iSrcStride,
   return;
 }
 
+#if DIMD_NUM_INTRA_DIR_INC
+Void TComPrediction::xIntraPredFilteringModeDGL( const Pel* pSrc, Int iSrcStride, Pel*& rpDst, Int iDstStride, Int iWidth, Int iHeight, UInt uiMode, Bool bExtIntraDir )
+#else
 Void TComPrediction::xIntraPredFilteringModeDGL( const Pel* pSrc, Int iSrcStride, Pel*& rpDst, Int iDstStride, Int iWidth, Int iHeight, UInt uiMode )
+#endif
 {
   Pel* pDst = rpDst;
 
+#if DIMD_NUM_INTRA_DIR_INC
+  if(!bExtIntraDir)
+  { 
+#endif
 #if VCEG_AZ07_INTRA_65ANG_MODES
   const Int aucAngPredFilterCoef[8][3] = {
     { 12, 3, 1 }, { 12, 3, 1 }, 
@@ -2946,6 +3403,73 @@ Void TComPrediction::xIntraPredFilteringModeDGL( const Pel* pSrc, Int iSrcStride
       + filter[2] * pSrc[(y + offset[1] ) * iSrcStride -1 ] + 8) >> 4;        
     }
   }
+#if DIMD_NUM_INTRA_DIR_INC
+  }
+  else
+  {
+    const Int aucExtAngPredFilterCoef[16][3] = {
+      { 12, 3, 1 }, ///< 18, 114
+      { 12, 3, 1 }, ///< 17, 115
+      { 12, 3, 1 }, ///< 16, 116
+      { 12, 3, 1 }, ///< 15, 117
+      { 12, 1, 3 }, ///< 14, 118
+      { 12, 1, 3 }, ///< 13, 119
+      { 12, 2, 2 }, ///< 12, 120
+      { 12, 2, 2 }, ///< 11, 121
+      { 12, 2, 2 }, ///< 10, 122
+      { 12, 2, 2 }, ///<  9, 123 
+      { 12, 3, 1 }, ///<  8, 124
+      { 12, 3, 1 }, ///<  7, 125
+      {  8, 6, 2 }, ///<  6, 126
+      {  8, 6, 2 }, ///<  5, 127 
+      {  8, 7, 1 }, ///<  4, 128 
+      {  8, 7, 1 }, ///<  3, 129
+    };
+    const Int aucExtAngPredPosiOffset[16][2] = {
+      { 2, 3 }, ///< 18, 114
+      { 2, 3 }, ///< 17, 115 
+      { 2, 3 }, ///< 16, 116
+      { 2, 3 }, ///< 15, 117 
+      { 1, 2 }, ///< 14, 118 
+      { 1, 2 }, ///< 13, 119
+      { 1, 2 }, ///< 12, 120
+      { 1, 2 }, ///< 11, 121
+      { 1, 2 }, ///< 10, 122
+      { 1, 2 }, ///<  9, 123
+      { 1, 2 }, ///<  8, 124
+      { 1, 2 }, ///<  7, 125
+      { 1, 2 }, ///<  6, 126
+      { 1, 2 }, ///<  5, 127
+      { 1, 2 }, ///<  4, 128
+      { 1, 2 }, ///<  3, 129
+    };
+    assert( ( uiMode>=(EXT_VDIA_IDX-16) && uiMode<EXT_VDIA_IDX ) || ( uiMode>2 && uiMode<=(2+16) ) );
+
+    Bool bHorz = (uiMode < EXT_DIA_IDX);
+    UInt deltaAng = bHorz ? ((2+16)-uiMode): (uiMode-(EXT_VDIA_IDX-16));
+    const Int *offset = aucExtAngPredPosiOffset[deltaAng];
+    const Int *filter = aucExtAngPredFilterCoef[deltaAng];
+
+    if(bHorz)
+    {
+      for ( Int x = 0; x < iWidth; x++ )
+      {
+        pDst[x] = ( filter[0] * pDst[x] 
+        + filter[1] * pSrc[x - iSrcStride + offset[0]] 
+        + filter[2] * pSrc[x - iSrcStride + offset[1]] + 8) >> 4;
+      }
+    }
+    else
+    {
+      for ( Int y = 0; y < iHeight; y++ )
+      {         
+        pDst[y * iDstStride] = ( filter[0] * pDst[y * iDstStride] 
+        + filter[1] * pSrc[(y + offset[0] ) * iSrcStride -1 ] 
+        + filter[2] * pSrc[(y + offset[1] ) * iSrcStride -1 ] + 8) >> 4;        
+      }
+    }
+  }
+#endif
 
   return;
 }
@@ -5682,7 +6206,11 @@ void TComPrediction::xReferenceFilter(Int iBlkSize, Int iOrigWeight, Int iFilter
 #if !JVET_C0024_QTBT
   const Int iDoubleSize = 2 * iBlkSize;                   // symmetric representation
 #endif
+#if DIMD_INTRA_PRED
+  Int * piTmp = &piBinBuff[2 * (MAX_CU_SIZE + MAX_TEMP_SIZE) + 4];   // to  use negative indexes
+#else
   Int * piTmp = &piBinBuff[2 * MAX_CU_SIZE + 4];   // to  use negative indexes
+#endif
   Int * piDat = piRefrVector;
   Int * piRes = piLowPassRef;
   

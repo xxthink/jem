@@ -75,6 +75,10 @@ TDecSbac::TDecSbac()
 #if COM16_C1046_PDPC_INTRA
 , m_cPDPCIdxSCModel                          ( 1,             1,                      NUM_PDPC_CTX                         , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
+#if DIMD_INTRA_PRED
+, m_cDIMDEnabledSCModel                      ( 1,             1,                      NUM_DIMD_CTX                         , m_contextModels + m_numContextModels, m_numContextModels)
+, m_cDIMDNoBTFlagSCModel                     ( 1,             1,                      NUM_DIMD_NO_BT_CTX                   , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 , m_cROTidxSCModel                           ( 1,             1,                      NUM_ROT_TR_CTX               , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
@@ -199,6 +203,10 @@ Void TDecSbac::resetEntropy(TComSlice* pSlice)
 #endif
 #if COM16_C1046_PDPC_INTRA
   m_cPDPCIdxSCModel.initBuffer                    ( sliceType, qp, (UChar*)INIT_PDPCIdx_FLAG);
+#endif
+#if DIMD_INTRA_PRED
+  m_cDIMDEnabledSCModel.initBuffer                ( sliceType, qp, (UChar*)INIT_DIMD_FLAG);
+  m_cDIMDNoBTFlagSCModel.initBuffer               ( sliceType, qp, (UChar*)INIT_DIMD_NO_BT_FLAG);
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   m_cROTidxSCModel.initBuffer        ( sliceType, qp, (UChar*)INIT_ROT_TR_IDX );
@@ -793,6 +801,79 @@ Void TDecSbac::parsePDPCIdx(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth)
 }
 #endif
 
+#if DIMD_INTRA_PRED
+Void TDecSbac::parseDIMDFlag(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight)
+{
+  UInt uiShort, uiLong, uiStride;
+  UInt uiRaster = g_auiZscanToRaster[pcCU->getZorderIdxInCtu()+uiAbsPartIdx];
+  if (uiHeight > uiWidth)
+  {
+    uiShort  = uiWidth;
+    uiLong   = uiHeight;
+    uiStride = pcCU->getPic()->getNumPartInCtuWidth();
+  }
+  else
+  {
+    uiShort  = uiHeight;
+    uiLong   = uiWidth;
+    uiStride = 1;
+  }
+
+  UInt uiShortDepth     = g_aucConvertToBit[pcCU->getSlice()->getSPS()->getCTUSize()] - g_aucConvertToBit[uiShort];
+  UInt uiCurrPartNumb   = (pcCU->getPic()->getNumPartitionsInCtu()>>(uiShortDepth<<1));
+  UInt uiNumPartInShort = (pcCU->getPic()->getNumPartInCtuWidth()>>uiShortDepth);
+
+  //assert(isLuma(pcCU->getTextType()));
+  if (pcCU->getPredictionMode(uiAbsPartIdx) == MODE_INTER)
+  {
+    for (UInt i = 0; i < uiLong; i += uiShort)
+    {
+      memset(pcCU->getDIMDEnabledFlag(CHANNEL_TYPE_LUMA) + g_auiRasterToZscan[uiRaster] - pcCU->getZorderIdxInCtu(), 0, uiCurrPartNumb );
+      uiRaster += uiNumPartInShort * uiStride;
+    }
+    return;
+  }
+
+  UInt uiSymbol = 0;
+  m_pcTDecBinIf->decodeBin( uiSymbol, m_cDIMDEnabledSCModel.get(0, 0, uiDepth) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__DIMD_FLAG) );
+  for (UInt i = 0; i < uiLong; i += uiShort)
+  {
+    memset(pcCU->getDIMDEnabledFlag(CHANNEL_TYPE_LUMA) + g_auiRasterToZscan[uiRaster] - pcCU->getZorderIdxInCtu(), uiSymbol, uiCurrPartNumb );
+    uiRaster += uiNumPartInShort * uiStride;
+  }
+}
+Void TDecSbac::parseDIMDNoBTFlag(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight)
+{
+  assert(pcCU->getDIMDEnabledFlag(CHANNEL_TYPE_LUMA, uiAbsPartIdx));
+  UInt uiShort, uiLong, uiStride;
+  UInt uiRaster = g_auiZscanToRaster[pcCU->getZorderIdxInCtu()+uiAbsPartIdx];
+  if (uiHeight > uiWidth)
+  {
+    uiShort  = uiWidth;
+    uiLong   = uiHeight;
+    uiStride = pcCU->getPic()->getNumPartInCtuWidth();
+  }
+  else
+  {
+    uiShort  = uiHeight;
+    uiLong   = uiWidth;
+    uiStride = 1;
+  }
+
+  UInt uiShortDepth     = g_aucConvertToBit[pcCU->getSlice()->getSPS()->getCTUSize()] - g_aucConvertToBit[uiShort];
+  UInt uiCurrPartNumb   = (pcCU->getPic()->getNumPartitionsInCtu()>>(uiShortDepth<<1));
+  UInt uiNumPartInShort = (pcCU->getPic()->getNumPartInCtuWidth()>>uiShortDepth);
+
+  UInt uiSymbol = 0;
+  m_pcTDecBinIf->decodeBin( uiSymbol, m_cDIMDNoBTFlagSCModel.get(0, 0, uiDepth) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__DIMD_FLAG) );
+  for (UInt i = 0; i < uiLong; i += uiShort)
+  {
+    memset(pcCU->getDIMDNoBTLevelFlag(CHANNEL_TYPE_LUMA) + g_auiRasterToZscan[uiRaster] - pcCU->getZorderIdxInCtu(), uiSymbol, uiCurrPartNumb );
+    uiRaster += uiNumPartInShort * uiStride;
+  }
+}
+#endif
+
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 Void TDecSbac::parseROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 { 
@@ -903,6 +984,9 @@ Void TDecSbac::parseROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 #if JVET_C0024_QTBT
 Void TDecSbac::parseROTIdxChroma ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 { 
+#if DIMD_INTRA_PRED
+  assert(!pcCU->getDIMDEnabledFlag(CHANNEL_TYPE_CHROMA, uiAbsPartIdx));
+#endif
 #if COM16_C1044_NSST
   if (!pcCU->getSlice()->getSPS()->getUseNSST()) 
 #else

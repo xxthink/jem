@@ -110,6 +110,10 @@ public:
 #if COM16_C1046_PDPC_INTRA
   virtual Void parsePDPCIdx       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth) = 0;
 #endif
+#if DIMD_INTRA_PRED
+  virtual Void parseDIMDFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight) = 0;
+  virtual Void parseDIMDNoBTFlag  ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight) = 0;
+#endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   virtual Void parseROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
 #if JVET_C0024_QTBT
@@ -266,7 +270,10 @@ public:
 #if COM16_C1046_PDPC_INTRA
   Void decodePDPCIdx           ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth);
 #endif
-
+#if DIMD_INTRA_PRED
+  Void decodeDIMDFlag          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight);
+  Void decodeDIMDNoBTFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight);
+#endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Void decodeROTIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #if JVET_C0024_QTBT

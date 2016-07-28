@@ -143,7 +143,10 @@ public:
 #if COM16_C1046_PDPC_INTRA
   Void codePDPCIdx       ( TComDataCU* pcCU, UInt uiAbsPartIdx);
 #endif
-
+#if DIMD_INTRA_PRED
+  Void codeDIMDFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth);
+  Void codeDIMDNoBTFlag  ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth);
+#endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   Void codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  );
 #if JVET_C0024_QTBT
@@ -269,7 +272,10 @@ private:
 #if COM16_C1046_PDPC_INTRA
   ContextModel3DBuffer m_cPDPCIdxSCModel;
 #endif
-
+#if DIMD_INTRA_PRED
+  ContextModel3DBuffer m_cDIMDEnabledSCModel;
+  ContextModel3DBuffer m_cDIMDNoBTFlagSCModel;
+#endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   ContextModel3DBuffer m_cROTidxSCModel;
 #endif

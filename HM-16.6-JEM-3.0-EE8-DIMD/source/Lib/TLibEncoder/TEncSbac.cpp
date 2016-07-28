@@ -73,6 +73,10 @@ TEncSbac::TEncSbac()
 #if COM16_C1046_PDPC_INTRA
  , m_cPDPCIdxSCModel                   (1,              1,                      NUM_PDPC_CTX                         , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
+#if DIMD_INTRA_PRED
+ , m_cDIMDEnabledSCModel                (1,              1,                      NUM_DIMD_CTX                         , m_contextModels + m_numContextModels, m_numContextModels)
+ , m_cDIMDNoBTFlagSCModel               (1,              1,                      NUM_DIMD_NO_BT_CTX                   , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 , m_cROTidxSCModel           ( 1,             1,               NUM_ROT_TR_CTX             , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
@@ -175,6 +179,10 @@ Void TEncSbac::resetEntropy           (const TComSlice *pSlice)
 #endif 
 #if COM16_C1046_PDPC_INTRA
   m_cPDPCIdxSCModel.initBuffer                    ( eSliceType, iQp, (UChar*)INIT_PDPCIdx_FLAG);
+#endif
+#if DIMD_INTRA_PRED
+  m_cDIMDEnabledSCModel.initBuffer                ( eSliceType, iQp, (UChar*)INIT_DIMD_FLAG);
+  m_cDIMDNoBTFlagSCModel.initBuffer               ( eSliceType, iQp, (UChar*)INIT_DIMD_NO_BT_FLAG);
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
   m_cROTidxSCModel.initBuffer        ( eSliceType, iQp, (UChar*)INIT_ROT_TR_IDX );
@@ -285,6 +293,10 @@ SliceType TEncSbac::determineCabacInitIdx(const TComSlice *pSlice)
 #endif
 #if COM16_C1046_PDPC_INTRA
       curCost += m_cPDPCIdxSCModel.calcCost                    ( curSliceType, qp, (UChar*)INIT_PDPCIdx_FLAG);
+#endif
+#if DIMD_INTRA_PRED
+      curCost += m_cDIMDEnabledSCModel.calcCost                ( curSliceType, qp, (UChar*)INIT_DIMD_FLAG);
+      curCost += m_cDIMDNoBTFlagSCModel.calcCost               ( curSliceType, qp, (UChar*)INIT_DIMD_NO_BT_FLAG);
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
       curCost += m_cROTidxSCModel.calcCost        ( curSliceType, qp, (UChar*)INIT_ROT_TR_IDX );
@@ -865,7 +877,18 @@ Void TEncSbac::codeMPIIdx(TComDataCU* pcCU, UInt uiAbsPartIdx)
    }
  }
 #endif
-
+#if DIMD_INTRA_PRED
+Void TEncSbac::codeDIMDFlag(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth)
+{
+  UChar ucDIMDFlag = pcCU->getDIMDEnabledFlag( CHANNEL_TYPE_LUMA, uiAbsPartIdx );
+  m_pcBinIf->encodeBin( ucDIMDFlag, m_cDIMDEnabledSCModel.get(0, 0, uiDepth));
+}
+Void TEncSbac::codeDIMDNoBTFlag(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth)
+{
+  UChar ucDIMDNoBTFlag = pcCU->getDIMDNoBTLevelFlag( CHANNEL_TYPE_LUMA, uiAbsPartIdx );
+  m_pcBinIf->encodeBin( ucDIMDNoBTFlag, m_cDIMDNoBTFlagSCModel.get(0, 0, uiDepth));
+}
+#endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 Void TEncSbac::codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
 {
@@ -893,7 +916,7 @@ Void TEncSbac::codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
 #endif
   {
     iNumberOfPassesROT = pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) <= DC_IDX ? 3 : 4;
-  }
+ }
 
   if( iNumberOfPassesROT==3 )
   {
@@ -954,6 +977,9 @@ Void TEncSbac::codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
 #if JVET_C0024_QTBT
 Void TEncSbac::codeROTIdxChroma ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
 {
+#if DIMD_INTRA_PRED
+  assert(!pcCU->getDIMDEnabledFlag(CHANNEL_TYPE_CHROMA, uiAbsPartIdx));
+#endif
 #if COM16_C1044_NSST
   if (!pcCU->getSlice()->getSPS()->getUseNSST()) return;
 #else
