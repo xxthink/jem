@@ -48,6 +48,18 @@
 //! \{
 
 ///////////////////////////////////////////////////////////
+// Adaptive Clipping Test 2 tools
+///////////////////////////////////////////////////////////
+
+// TCH adaptive clipping in the whole coding/decoding pipeline.
+// Clipping Bounds are computed and transmitted on the Slice Level
+#define EE7_ADAPTIVE_CLIP              1 // 1111110 10010
+#if EE7_ADAPTIVE_CLIP
+#define EE7_ADAPTIVE_CLIP_EM           1 // encoding method (res. smoothing)
+#define EE7_ADAPTIVE_CLIP_EM_2         1 // on other res (crosscomp etc.)
+#endif
+
+///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////
 #define JVET_C0024_QTBT                                   1
