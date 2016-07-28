@@ -245,6 +245,16 @@
 #define JVET_C0045_C0053_NO_NSST_FOR_TS                   1  ///< JVET-C0045/C0053: Disable NSST for TS coded blocks 
 #endif
 
+#if COM16_C1044_NSST
+#define JVET_C0053_C0063_NSST_IMPROVEMENTS                0 ///< JVET-C0053/C0063: NSST improvements using HyGT and 8x8 NSST 
+#if JVET_C0053_C0063_NSST_IMPROVEMENTS
+#define JVET_C0053_C0063_USE_8x8_NSST                     0 ///< 1: Enable 8x8 NSST, 0: Disable 8x8 NSST
+#endif
+#define JVET_C0053_C0063_NSST_LM                          0 ///< 1: Disable NSST for LM mode, 0: Enable NSST for LM mode
+#endif
+
+#define JVET_C0042_NSST_PDPC 1       // NSST is enabled regardless of the value of PDPC index 
+
 #define COM16_C1046_PDPC_INTRA                            1  ///< Position dependent intra prediction combination
 #if COM16_C1046_PDPC_INTRA && COM16_C983_RSAF                
 #define COM16_C1046_PDPC_RSAF_HARMONIZATION               1  ///< Harmonization between PDPC and RSAF
@@ -262,7 +272,7 @@
 
 #define JVET_B0039_QP_FIX                                 1  ///< Recalcualtes QP to align with a HM lambda (same relation as for all intra coding is used)
 #define JVET_B0039_INC_NUM_QP_PROB                        7  ///< Number of context is increased when more QPs are used
-#define JVET_C0042_NSST_PDPC 1       // NSST is enabled regardless of the value of PDPC index 
+
 ///////////////////////////////////////////////////////////
 // KTA tools section end
 ///////////////////////////////////////////////////////////
