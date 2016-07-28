@@ -1,8 +1,20 @@
-This software package is the reference software for Rec. ITU-T H.265 | ISO/IEC 23008-2 High efficiency video coding (HEVC). The reference software includes both encoder and decoder functionality.
+This software package is for testing EE1 on harmonization between NSST and PDPC. 
+The corresponding proposal found in JVETC0042.
 
-Reference software is useful in aiding users of a video coding standard to establish and test conformance and interoperability, and to educate users and demonstrate the capabilities of the standard. For these purposes, this software is provided as an aid for the study and implementation of Rec. ITU-T H.265 | ISO/IEC 23008-2 High efficiency video coding.
+Modification: NSST index is coded/sent regardless of PDPC index
 
-The software has been jointly developed by the ITU-T Video Coding Experts Group (VCEG, Question 6 of ITU-T Study Group 16) and the ISO/IEC Moving Picture Experts Group (MPEG, Working Group 11 of Subcommittee 29 of ISO/IEC Joint Technical Committee 1).
+The following macro settings are used for testing.
 
-A software manual, which contains usage instructions, can be found in the "doc" subdirectory of this software package.
+EE1- Test4 macro setting (NSST and PDPC are appropriately decoupled w/o 2nd transform kernel modification)
 
+#define JVET_C0042_NSST_PDPC                              1
+#define JVET_C0053_C0063_NSST_IMPROVEMENTS                0 
+#define JVET_C0053_C0063_USE_8x8_NSST                     0        
+#define JVET_C0053_C0063_NSST_LM                          0
+
+EE1- Test5 macro setting (NSST and PDPC are appropriately decoupled with new transform kernels)
+
+#define JVET_C0042_NSST_PDPC                              1
+#define JVET_C0053_C0063_NSST_IMPROVEMENTS                1 
+#define JVET_C0053_C0063_USE_8x8_NSST                     1        
+#define JVET_C0053_C0063_NSST_LM                          0
