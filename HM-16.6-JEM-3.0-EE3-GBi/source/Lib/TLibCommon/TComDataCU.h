@@ -209,6 +209,9 @@ private:
 #if VCEG_AZ06_IC
   Bool*         m_pbICFlag;           ///< array of IC flags
 #endif
+#if IDCC_GENERALIZED_BI_PRED
+  UChar*        m_puhGbiIdx;          ///< array of Gbi indices
+#endif
 #if AMP_MRG && !JVET_C0024_QTBT
   Bool          m_bIsMergeAMP;
 #endif
@@ -265,9 +268,17 @@ protected:
 
   Void          deriveRightBottomIdx        ( UInt uiPartIdx, UInt& ruiPartIdxRB );
 #if VCEG_AZ06_IC
-  Bool          xGetColMVP( RefPicList eRefPicList, Int ctuRsAddr, Int uiPartUnitIdx, TComMv& rcMv, Int& riRefIdx, Bool* bICFlag = NULL );
+  Bool          xGetColMVP( RefPicList eRefPicList, Int ctuRsAddr, Int uiPartUnitIdx, TComMv& rcMv, Int& riRefIdx, Bool* bICFlag = NULL 
+#if IDCC_GENERALIZED_BI_PRED
+                          , UChar* puhTMvpGbiIdx = NULL
+#endif
+    );
 #else
-  Bool          xGetColMVP( RefPicList eRefPicList, Int ctuRsAddr, Int uiPartUnitIdx, TComMv& rcMv, Int& riRefIdx );
+  Bool          xGetColMVP( RefPicList eRefPicList, Int ctuRsAddr, Int uiPartUnitIdx, TComMv& rcMv, Int& riRefIdx 
+#if IDCC_GENERALIZED_BI_PRED
+                          , UChar* puhTMvpGbiIdx = NULL
+#endif
+    );
 #endif
   /// compute scaling factor from POC difference
   Int           xGetDistScaleFactor   ( Int iCurrPOC, Int iCurrRefPOC, Int iColPOC, Int iColRefPOC );
@@ -574,7 +585,11 @@ public:
   Void          setOBMCFlag          ( UInt idx, Bool OBMC )   { m_OBMCFlag[idx] = OBMC;     }
   Void          setOBMCFlagSubParts  ( Bool OBMC, UInt absPartIdx, UInt depth );
   Bool          isOBMCFlagCoded      ( UInt uiAbsPartIdx );
+#if IDCC_GENERALIZED_BI_PRED
+  Bool          getNeigMotion( UInt uiAbsPartIdx, TComMvField cNeigMvField[2], Int &irNeigPredDir, UChar &ruhNeigGbiIdx, Int iDir, TComMvField cCurMvField[2], Int &iCurrDir, UChar &ruhCurGbiIdx, UInt uiZeroIdx, Bool &bTobeStored );
+#else
   Bool          getNeigMotion( UInt uiAbsPartIdx, TComMvField cNeigMvField[2], Int &irNeigPredDir, Int iDir, TComMvField cCurMvField[2], Int &iCurrDir, UInt uiZeroIdx, Bool &bTobeStored);
+#endif
 #endif
 #if VCEG_AZ06_IC
   Bool*         getICFlag            ()                        { return m_pbICFlag;               }
@@ -583,6 +598,19 @@ public:
   Void          setICFlagSubParts    ( Bool bICFlag,  UInt uiAbsPartIdx, UInt uiDepth );
   Bool          isICFlagCoded        ( UInt uiAbsPartIdx );
 #endif
+
+#if IDCC_GENERALIZED_BI_PRED
+  UChar*        getGbiIdx            ()                        { return m_puhGbiIdx;              }
+  UChar         getGbiIdx            ( UInt uiIdx )            { return m_puhGbiIdx[uiIdx];       }
+  Void          setGbiIdx            ( UInt uiIdx, UChar uh )  { m_puhGbiIdx[uiIdx] = uh;         }
+  Void          setGbiIdxSubParts    ( UChar uh, UInt uiAbsPartIdx, UInt uiDepth,   Bool bSetAll );
+  Void          setGbiIdxSubParts    ( UChar uh, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth );
+
+  Bool          isGbiFlagCoded                   ( UInt uiAbsPartIdx );
+  UChar         getFirstAvailableSearchedGbiIdx  ( UInt uiAbsPartIdx ); // Get the first available GbiIdx within a CU, if exists; otherwise, return default GbiIdx
+  UChar         deriveGbiIdx                     ( UChar uhGbiLO, UChar uhGbiL1 );
+#endif
+
   template <typename T>
 #if JVET_C0024_QTBT
   Void          setSubPart            ( T bParameter, T* pbBaseCtu, UInt uiCUAddr, UInt uiWidth, UInt uiHeight );
@@ -686,7 +714,11 @@ public:
   Bool         isValidAffineCandidate ( UInt uiAbsPartIdx, UInt uiPUIdx, TComMv cMv0, TComMv cMv1, TComMv cMv2, Int& riDV );
 
   // construct affine merge candidate list
+#if IDCC_GENERALIZED_BI_PRED
+  Void         getAffineMergeCandidates ( UInt uiAbsPartIdx, UInt uiPuIdx, TComMvField (*pcMFieldNeighbours)[3], UChar* puhInterDirNeighbours, UChar* puhGbiIdx, Int& numValidMergeCand, Int mrgCandIdx = -1 );
+#else
   Void         getAffineMergeCandidates ( UInt uiAbsPartIdx, UInt uiPuIdx, TComMvField (*pcMFieldNeighbours)[3], UChar* puhInterDirNeighbours, Int& numValidMergeCand, Int mrgCandIdx = -1 );
+#endif
   Bool         isAffineMrgFlagCoded     ( UInt uiAbsPartIdx, UInt uiPUIdx );
 #endif
 
@@ -779,6 +811,9 @@ public:
 
   Bool          hasEqualMotion              ( UInt uiAbsPartIdx, TComDataCU* pcCandCU, UInt uiCandAbsPartIdx );
   Void          getInterMergeCandidates       ( UInt uiAbsPartIdx, UInt uiPUIdx, TComMvField* pcMFieldNeighbours, UChar* puhInterDirNeighbours, Int& numValidMergeCand
+#if IDCC_GENERALIZED_BI_PRED
+    , UChar*        puhGbiIdx
+#endif
 #if VCEG_AZ06_IC
     , Bool*         pbICFlag
 #endif
@@ -791,6 +826,9 @@ public:
   , TComMvField*    pcMvFieldSP[2]
   , UChar*          puhInterDirSP[2]
 #endif
+#if IDCC_GENERALIZED_BI_PRED
+  , UChar*          puhGbiIdxSP
+#endif
   , UInt            uiDecCurrAbsPartIdx = 0
   , TComDataCU*     pDecCurrCU = NULL
 #endif
@@ -800,10 +838,17 @@ public:
   Void          getSPPara(Int iPUWidth, Int iPUHeight, Int& iNumSP, Int& iNumSPInOneLine, Int& iSPWidth, Int& iSPHeight);
   Void          getSPAbsPartIdx(UInt uiBaseAbsPartIdx, Int iWidth, Int iHeight, Int iPartIdx, Int iNumPartLine, UInt& ruiPartAddr );
   Void          setInterDirSP( UInt uiDir, UInt uiAbsPartIdx, Int iWidth, Int iHeight );
+#if IDCC_GENERALIZED_BI_PRED
+  Void          setGbiIdxSP( UInt uiGbiIdx, UInt uiAbsPartIdx, Int iWidth, Int iHeight );
+#endif
 
 #if JVET_C0035_ATMVP_SIMPLIFICATION
   Bool          getInterMergeSubPUTmvpCandidate ( UInt uiAbsPartIdx, UInt uiPUIdx,UInt uiCount,TComMvField* pcMvFieldNeighbours, UChar* puhInterDirNeighbours,
                                                    TComMvField* pcMvFieldSP, UChar* puhInterDirSP, TComMvField* pcMvFieldDefault, UChar* pcInterDirDefault, Bool bMrgIdxMatchATMVPCan, 
+#if IDCC_GENERALIZED_BI_PRED
+    UChar& ruhGbiIdx,
+    UChar* puhGbiIdxSP,
+#endif
 #if VCEG_AZ06_IC
     Bool& rbICFlag,
 #endif
@@ -811,6 +856,10 @@ public:
 #else
   Void          get1stTvFromSpatialNeighbor ( UInt uiAbsPartIdx, UInt uiPUIdx, Bool &bTvAva, Int &iPOC, TComMv &rcMv);
   Bool          getInterMergeSubPUTmvpCandidate ( UInt uiPUIdx,  TComMvField* pcMvFieldSP, UChar* puhInterDirSP, TComMvField* pcMvFieldDefault, UChar* pcInterDirDefault, TComMv cTMv, Bool bMrgIdxMatchATMVPCan, 
+#if IDCC_GENERALIZED_BI_PRED
+    UChar& ruhGbiIdx,
+    UChar* puhGbiIdxSP,
+#endif
 #if VCEG_AZ06_IC
     Bool& rbICFlag,
 #endif

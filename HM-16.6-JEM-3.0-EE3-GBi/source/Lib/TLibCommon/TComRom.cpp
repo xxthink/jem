@@ -2313,6 +2313,115 @@ const Int g_pdpc_pred_param[5][2][35][7] =
 
 #endif
 
+#if IDCC_GENERALIZED_BI_PRED
+const Char g_iGbiLog2WeightBase = 3;
+const Char g_iGbiWeightBase     = ( 1 << g_iGbiLog2WeightBase );
+#if IDCC_GENERALIZED_BI_PRED == 1
+const Char g_aiGbiWeights     [GBI_NUM] = { 3, 4, 5 };
+const Char g_aiGbiSearchOrder [GBI_NUM] = { GBI_DEFAULT, GBI_DEFAULT-1, GBI_DEFAULT+1 };
+#elif IDCC_GENERALIZED_BI_PRED == 2
+const Char g_aiGbiWeights     [GBI_NUM] = { 2, 3, 4, 5, 6 };
+const Char g_aiGbiSearchOrder [GBI_NUM] = { GBI_DEFAULT, GBI_DEFAULT-2, GBI_DEFAULT+2, GBI_DEFAULT-1, GBI_DEFAULT+1 };
+#else
+const Char g_aiGbiWeights     [GBI_NUM] = { -2, 2, 3, 4, 5, 6, 10 };
+const Char g_aiGbiSearchOrder [GBI_NUM] = { GBI_DEFAULT, GBI_DEFAULT-2, GBI_DEFAULT+2, GBI_DEFAULT-1, GBI_DEFAULT+1, GBI_DEFAULT-3, GBI_DEFAULT+3 };
+#endif
+      Char g_aiGbiCodingOrder [GBI_NUM];
+      Char g_aiGbiParsingOrder[GBI_NUM];
 
+Char getGbiWeight( UChar uhGbiIdx, UChar uhRefFrmList )
+{
+  // Weghts for the model: P0 + w * (P1 - P0) = (1-w) * P0 + w * P1
+  // Retuning  1-w for P0 or w for P1
+  return ( uhRefFrmList == REF_PIC_LIST_0 ? g_iGbiWeightBase - g_aiGbiWeights[uhGbiIdx] : g_aiGbiWeights[uhGbiIdx] );
+}
+
+#include "TComDataCU.h"
+#include "TComPic.h"
+Void resetGbiCodingOrder( Bool bRunDecoding, TComDataCU* pcCU )
+{
+  UChar uhWeightSetIdx = ( !pcCU->getSlice()->getMvdL1ZeroFlag() ? 0 : 1 );
+  UInt  uiQp           = pcCU->getPic()->getSlice(0)->getSliceQp() < 0 ? 0 : ( pcCU->getPic()->getSlice(0)->getSliceQp() > 52 ? 52 : pcCU->getPic()->getSlice(0)->getSliceQp() );
+  resetGbiCodingOrder( bRunDecoding, uhWeightSetIdx, uiQp );
+}
+
+Void resetGbiCodingOrder( Bool bRunDecoding, UChar uhWeightSetIdx, UInt uiQp )
+{
+  // Form parsing order
+  if( uhWeightSetIdx == 0 )
+  { // { GBI_DEFAULT, GBI_DEFAULT+1, GBI_DEFAULT-1, GBI_DEFAULT+2, GBI_DEFAULT-2, ... }
+    g_aiGbiParsingOrder[0] = GBI_DEFAULT;
+    for( UInt i = 1 ; i <= (GBI_NUM>>1) ; ++i )
+    {
+      g_aiGbiParsingOrder[2*i-1] = GBI_DEFAULT + (Char)i;
+      g_aiGbiParsingOrder[2*i  ] = GBI_DEFAULT - (Char)i;
+    }
+  }
+  else if( uhWeightSetIdx == 1 )
+  { // { (GBI_DEFAULT+1), (GBI_DEFAULT+1)-1, (GBI_DEFAULT+1)+1, (GBI_DEFAULT+1)-2, (GBI_DEFAULT+1)+2, ... }
+    g_aiGbiParsingOrder[0] = GBI_DEFAULT + 1;
+    for( UInt i = 1 ; i < (GBI_NUM>>1) ; ++i )
+    {
+      g_aiGbiParsingOrder[2*i-1] = ( GBI_DEFAULT + 1 ) - (Char)i;
+      g_aiGbiParsingOrder[2*i  ] = ( GBI_DEFAULT + 1 ) + (Char)i;
+    }
+    g_aiGbiParsingOrder[GBI_NUM-2] = ( GBI_DEFAULT + 1 ) - (GBI_NUM>>1);
+    g_aiGbiParsingOrder[GBI_NUM-1] = ( GBI_DEFAULT + 1 ) - (GBI_NUM>>1) - 1;
+  }
+  else
+  {
+    assert( 0 );
+  }
+
+  // Form encoding order
+  if( !bRunDecoding )
+  {
+    for( UInt i = 0 ; i < GBI_NUM ; ++i )
+    {
+      g_aiGbiCodingOrder[(UInt)g_aiGbiParsingOrder[i]] = i;
+    }
+  }
+}
+
+UInt deriveWeightIdxBits( UChar uhGbiIdx ) // Note: align this with TEncSbac::codeGbiIdx and TDecSbac::parseGbiIdx
+{
+  UInt uiBits = 1;
+  UChar uhGbiCodingIdx = (UChar)g_aiGbiCodingOrder[uhGbiIdx];
+
+  if( GBI_NUM > 2 && uhGbiCodingIdx != 0 )
+  {
+    UInt  uiPrefixNumBits = GBI_NUM - 2;
+    UInt  uiStep          = 1;
+    UChar uhPrefixSymbol  = uhGbiCodingIdx;
+
+    // Truncated unary code
+    UChar uhIdx = 1;
+    for( UInt ui = 0 ; ui < uiPrefixNumBits ; ++ui )
+    {
+      if( uhPrefixSymbol == uhIdx )
+      {
+        ++uiBits;
+        break;
+      }
+      else
+      {
+        ++uiBits;
+        uhIdx += uiStep;
+      }
+    }
+  }
+
+  return uiBits;
+}
+
+Int (*g_apIntMultiplier[])(Pel) =  // NOTE: Make sure these operators cover all the weights specified in g_aiGbiWeights
+{
+  &integerScalor< -2>, &integerScalor< -1>,
+  &integerScalor<  0>, &integerScalor<  1>, &integerScalor<  2>, &integerScalor<  3>, &integerScalor<  4>,
+  &integerScalor<  5>, &integerScalor<  6>, &integerScalor<  7>, &integerScalor<  8>, &integerScalor<  9>,
+  &integerScalor< 10>
+};
+template<Int n> Int integerScalor( Pel p ) { return p * n; }
+#endif
 
 //! \}

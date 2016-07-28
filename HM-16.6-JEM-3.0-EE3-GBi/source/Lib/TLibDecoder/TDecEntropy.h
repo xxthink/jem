@@ -98,6 +98,9 @@ public:
 #if VCEG_AZ06_IC
   virtual Void parseICFlag        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
 #endif
+#if IDCC_GENERALIZED_BI_PRED
+  virtual Void parseGbiIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UChar& ruhGbiIdx ) = 0;
+#endif
   virtual Void parseCUTransquantBypassFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
   virtual Void parseSplitFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
 #if JVET_C0024_QTBT
@@ -207,6 +210,9 @@ private:
   TComMvField*        m_pMvFieldSP[2];
   UChar*              m_phInterDirSP[2];
 #endif
+#if IDCC_GENERALIZED_BI_PRED
+  UChar*              m_phGbiIdxSP;
+#endif
 #endif
 
 public:
@@ -281,6 +287,9 @@ public:
 #endif
 #if VCEG_AZ06_IC
   Void decodeICFlag            ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
+#if IDCC_GENERALIZED_BI_PRED
+  Void decodeGbiInfo           ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, TComDataCU* pcSubCU );
 #endif
   Void decodeCUTransquantBypassFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   Void decodeMergeFlag         ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPUIdx );

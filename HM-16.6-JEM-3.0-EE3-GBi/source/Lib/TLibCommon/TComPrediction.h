@@ -164,6 +164,9 @@ protected:
   TComMvField *           m_cMvFieldSP[2];
   UChar *                 m_uhInterDirSP[2];
 #endif
+#if IDCC_GENERALIZED_BI_PRED
+  UChar *                 m_puhGbiIdxSP;
+#endif
 #endif
 #endif
 
@@ -213,6 +216,9 @@ protected:
 #endif
 #if COM16_C1045_BIO_HARMO_IMPROV || JVET_C0027_BIO
     , TComDataCU * pCu
+#endif
+#if IDCC_GENERALIZED_BI_PRED
+    , UChar uhGbiIdx
 #endif
     );
 

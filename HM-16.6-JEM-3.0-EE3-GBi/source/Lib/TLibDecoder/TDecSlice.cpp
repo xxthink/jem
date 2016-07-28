@@ -231,6 +231,17 @@ Void TDecSlice::decompressSlice(TComInputBitstream** ppcSubstreams, TComPic* pcP
       }
     }
 
+#if IDCC_GENERALIZED_BI_PRED
+    Bool bUpdateGbiCodingOrder = pCtu->getSlice()->getSliceType() == B_SLICE &&
+                                 ( ctuTsAddr == startCtuTsAddr       ||
+                                   ctuTsAddr == firstCtuRsAddrOfTile ||
+                                   ( ctuXPosInCtus == tileXPosInCtus && wavefrontsEnabled ) );
+    if( bUpdateGbiCodingOrder )
+    {
+      resetGbiCodingOrder( true, pCtu );
+    }
+#endif
+
     m_pcCuDecoder->decodeCtu     ( pCtu, isLastCtuOfSliceSegment );
     m_pcCuDecoder->decompressCtu ( pCtu );
 

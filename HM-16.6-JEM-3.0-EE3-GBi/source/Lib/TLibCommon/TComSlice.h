@@ -1041,6 +1041,7 @@ public:
   Int                    getQpBDOffset(ChannelType type) const                                           { return m_qpBDOffset[type];                                           }
   Void                   setQpBDOffset(ChannelType type, Int i)                                          { m_qpBDOffset[type] = i;                                              }
 
+
   Void                   setUseSAO(Bool bVal)                                                            { m_bUseSAO = bVal;                                                    }
   Bool                   getUseSAO() const                                                               { return m_bUseSAO;                                                    }
 

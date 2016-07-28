@@ -457,14 +457,99 @@ Void TComYuv::addAvg( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const 
   }
 }
 
+#if IDCC_GENERALIZED_BI_PRED
+Void TComYuv::addWeightedAvg( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const UInt iPartUnitIdx, const UInt uiWidth, const UInt uiHeight, const BitDepths &clipBitDepths, const UChar uhGbiIdx
+#if VCEG_AZ05_BIO
+                            , const Bool bBIOapplied
+#endif
+                             )
+{
+  const Char w0 = getGbiWeight( uhGbiIdx, REF_PIC_LIST_0 );
+  const Char w1 = getGbiWeight( uhGbiIdx, REF_PIC_LIST_1 );
+  const Char iLog2WeightBase = g_iGbiLog2WeightBase;
+
+  Int (*pMulW0)(Pel) = GET_INT_MULTIPLIER( w0 );
+  Int (*pMulW1)(Pel) = GET_INT_MULTIPLIER( w1 );
+
+#if VCEG_AZ05_BIO
+  for(Int comp=( bBIOapplied ? COMPONENT_Cb : COMPONENT_Y ); comp<getNumberValidComponents(); comp++)
+#else
+  for(Int comp=0; comp<getNumberValidComponents(); comp++)
+#endif
+  {
+    const ComponentID compID=ComponentID(comp);
+    const Pel* pSrc0  = pcYuvSrc0->getAddr( compID, iPartUnitIdx );
+    const Pel* pSrc1  = pcYuvSrc1->getAddr( compID, iPartUnitIdx );
+          Pel* pDst   =            getAddr( compID, iPartUnitIdx );
+
+    const UInt  iSrc0Stride = pcYuvSrc0->getStride(compID);
+    const UInt  iSrc1Stride = pcYuvSrc1->getStride(compID);
+    const UInt  iDstStride  =            getStride(compID);
+    const Int   clipbd      = clipBitDepths.recon[toChannelType(compID)];
+    const Int   shiftNum    = std::max<Int>(2, (IF_INTERNAL_PREC - clipbd)) + iLog2WeightBase;
+    const Int   offset      = ( 1 << ( shiftNum - 1 ) ) + ( IF_INTERNAL_OFFS << iLog2WeightBase );
+
+    const Int   iWidth      = uiWidth  >> getComponentScaleX(compID);
+    const Int   iHeight     = uiHeight >> getComponentScaleY(compID);
+
+    if (iWidth&1)
+    {
+      assert(0);
+      exit(-1);
+    }
+    else if (iWidth&2)
+    {
+      for ( Int y = 0; y < iHeight; y++ )
+      {
+        for (Int x=0 ; x < iWidth; x+=2 )
+        {
+          pDst[ x + 0 ] = ClipBD( rightShift(( pMulW0(pSrc0[ x + 0 ]) + pMulW1(pSrc1[ x + 0 ]) + offset ), shiftNum), clipbd );
+          pDst[ x + 1 ] = ClipBD( rightShift(( pMulW0(pSrc0[ x + 1 ]) + pMulW1(pSrc1[ x + 1 ]) + offset ), shiftNum), clipbd );
+        }
+        pSrc0 += iSrc0Stride;
+        pSrc1 += iSrc1Stride;
+        pDst  += iDstStride;
+      }
+    }
+    else
+    {
+      for ( Int y = 0; y < iHeight; y++ )
+      {
+        for (Int x=0 ; x < iWidth; x+=4 )
+        {
+          pDst[ x + 0 ] = ClipBD( rightShift(( pMulW0(pSrc0[ x + 0 ]) + pMulW1(pSrc1[ x + 0 ]) + offset ), shiftNum), clipbd );
+          pDst[ x + 1 ] = ClipBD( rightShift(( pMulW0(pSrc0[ x + 1 ]) + pMulW1(pSrc1[ x + 1 ]) + offset ), shiftNum), clipbd );
+          pDst[ x + 2 ] = ClipBD( rightShift(( pMulW0(pSrc0[ x + 2 ]) + pMulW1(pSrc1[ x + 2 ]) + offset ), shiftNum), clipbd );
+          pDst[ x + 3 ] = ClipBD( rightShift(( pMulW0(pSrc0[ x + 3 ]) + pMulW1(pSrc1[ x + 3 ]) + offset ), shiftNum), clipbd );
+        }
+        pSrc0 += iSrc0Stride;
+        pSrc1 += iSrc1Stride;
+        pDst  += iDstStride;
+      }
+    }
+  }
+}
+#endif
+
 Void TComYuv::removeHighFreq( const TComYuv* pcYuvSrc,
                               const UInt uiPartIdx,
                               const UInt uiWidth,
                               const UInt uiHeight,
                               const Int bitDepths[MAX_NUM_CHANNEL_TYPE],
                               const Bool bClipToBitDepths
+#if IDCC_GENERALIZED_BI_PRED
+                            , const Char iGbiWeight
+#endif
                               )
 {
+#if IDCC_GENERALIZED_BI_PRED
+  if( iGbiWeight != g_aiGbiWeights[GBI_DEFAULT] )
+  {
+    removeWeightedHighFreq( pcYuvSrc, uiPartIdx, uiWidth, uiHeight, iGbiWeight );
+    return;
+  }
+#endif
+
   for(Int comp=0; comp<getNumberValidComponents(); comp++)
   {
     const ComponentID compID=ComponentID(comp);
@@ -549,4 +634,44 @@ Void TComPicYuv::fillPicRecBoundary(const BitDepths bitDepths)
     }
 }
 #endif
+
+#if IDCC_GENERALIZED_BI_PRED
+Void TComYuv::removeWeightedHighFreq( const TComYuv* pcYuvSrc,
+                                      const UInt     uiPartIdx,
+                                      const UInt     uiWidth,
+                                      const UInt     uiHeight,
+                                      const Char     iGbiWeight
+                                    )
+{
+  const Char iGbiWeightOther = g_iGbiWeightBase - iGbiWeight;
+  const Char iLog2WeightBase = g_iGbiLog2WeightBase;
+
+  Int    (*pMulW)(Pel)     = GET_INT_MULTIPLIER(iGbiWeightOther);
+  Double dNormalizer       = 1.0 / (Double)iGbiWeight;
+  Int  iNumColorComponents = (Int)getNumberValidComponents();
+  for(Int comp = 0 ; comp < iNumColorComponents ; comp++ )
+  {
+    const ComponentID compID = ComponentID(comp);
+    const Pel*        pSrc   = pcYuvSrc->getAddr(compID, uiPartIdx);
+          Pel*        pDst   = getAddr(compID, uiPartIdx);
+
+    const Int iSrcStride = pcYuvSrc->getStride(compID);
+    const Int iDstStride = getStride(compID);
+    const Int iWidth     = uiWidth >>getComponentScaleX(compID);
+    const Int iHeight    = uiHeight>>getComponentScaleY(compID);
+
+    for ( Int y = iHeight-1; y >= 0; y-- )
+    {
+      for ( Int x = iWidth-1; x >= 0; x-- )
+      {
+        Double dTemp = Double( ( pDst[x] << iLog2WeightBase ) - pMulW(pSrc[x]) );
+        pDst[x] = Pel( dTemp * dNormalizer + 0.5 );
+      }
+      pSrc += iSrcStride;
+      pDst += iDstStride;
+    }
+  }
+}
+#endif
+
 //! \}

@@ -123,6 +123,9 @@ TEncSbac::TEncSbac()
 #if VCEG_AZ06_IC
 , m_cCUICFlagSCModel                   ( 1,             1,                      NUM_IC_FLAG_CTX                      , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
+#if IDCC_GENERALIZED_BI_PRED
+, m_cCUGbiIdxSCModel                   ( 1,             1,                      NUM_GBI_IDX_CTX                      , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 #if ALF_HM3_REFACTOR
 , m_bAlfCtrl                           ( false )
 , m_uiMaxAlfCtrlDepth                  ( 0 )
@@ -225,6 +228,9 @@ Void TEncSbac::resetEntropy           (const TComSlice *pSlice)
 #endif
 #if VCEG_AZ06_IC
   m_cCUICFlagSCModel.initBuffer                   ( eSliceType, iQp, (UChar*)INIT_IC_FLAG );
+#endif
+#if IDCC_GENERALIZED_BI_PRED
+  m_cCUGbiIdxSCModel.initBuffer                   ( eSliceType, iQp, (UChar*)INIT_GBI_IDX );
 #endif
 #if ALF_HM3_REFACTOR
   m_cCUAlfCtrlFlagSCModel.initBuffer              ( eSliceType, iQp, (UChar*)INIT_ALF_CTRL_FLAG );
@@ -339,6 +345,9 @@ SliceType TEncSbac::determineCabacInitIdx(const TComSlice *pSlice)
 #endif
 #if VCEG_AZ06_IC
       curCost += m_cCUICFlagSCModel.calcCost                   ( curSliceType, qp, (UChar*)INIT_IC_FLAG );
+#endif
+#if IDCC_GENERALIZED_BI_PRED
+      curCost += m_cCUGbiIdxSCModel.calcCost                   ( curSliceType, qp, (UChar*)INIT_GBI_IDX );
 #endif
 #if COM16_C1016_AFFINE
       curCost += m_cCUAffineFlagSCModel.calcCost               ( curSliceType, qp, (UChar*)INIT_AFFINE_FLAG );
@@ -783,6 +792,43 @@ Void TEncSbac::codeICFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
   DTRACE_CABAC_T( "\tuiSymbol: ");
   DTRACE_CABAC_V( uiSymbol );
   DTRACE_CABAC_T( "\n");
+}
+#endif
+
+#if IDCC_GENERALIZED_BI_PRED
+Void TEncSbac::codeGbiIdx( TComDataCU* pcCU, UInt uiAbsPartIdx )
+{
+  assert( GBI_NUM > 1 && ( GBI_NUM == 2 || ( GBI_NUM & 0x01 ) == 1 ) );
+  const UChar uhGbiCodingIdx = (UChar)g_aiGbiCodingOrder[pcCU->getFirstAvailableSearchedGbiIdx( uiAbsPartIdx )];
+
+  const UInt uiCtx = pcCU->getCtxInterDir( uiAbsPartIdx );
+  ContextModel *pCtx = m_cCUGbiIdxSCModel.get( 0 );
+  m_pcBinIf->encodeBin( ( uhGbiCodingIdx == 0 ? 1 : 0 ), *( pCtx + uiCtx ) );
+
+  if( GBI_NUM > 2 && uhGbiCodingIdx != 0 )
+  {
+    UInt  uiPrefixNumBits = GBI_NUM - 2;
+    UInt  uiStep          = 1;
+    UChar uhPrefixSymbol  = uhGbiCodingIdx;
+
+    // Truncated unary code
+    pCtx += 4;
+    UChar uhIdx = 1;
+    for( UInt ui = 0 ; ui < uiPrefixNumBits ; ++ui )
+    {
+      if( uhPrefixSymbol == uhIdx )
+      {
+        m_pcBinIf->encodeBin( 1, *pCtx );
+        break;
+      }
+      else
+      {
+        m_pcBinIf->encodeBin( 0, *pCtx );
+        pCtx  += uiStep;
+        uhIdx += uiStep;
+      }
+    }
+  }
 }
 #endif
 

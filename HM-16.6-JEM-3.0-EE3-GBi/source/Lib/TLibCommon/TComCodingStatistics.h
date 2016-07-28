@@ -107,6 +107,9 @@ enum TComCodingStatisticsType
 #if VCEG_AZ06_IC
   STATS__CABAC_BITS__IC_FLAG,
 #endif
+#if IDCC_GENERALIZED_BI_PRED
+  STATS__CABAC_BITS__GBI_IDX,
+#endif
 #if ALF_HM3_REFACTOR
   STATS__CABAC_BITS__ALF_CTRL_DEPTH,
   STATS__CABAC_BITS__ALF_CTRL_FLAG,
@@ -199,6 +202,9 @@ static inline const Char* getName(TComCodingStatisticsType name)
 #endif
 #if VCEG_AZ06_IC
     "CABAC_BITS__IC_FLAG",
+#endif
+#if IDCC_GENERALIZED_BI_PRED
+    "CABAC_BITS__GBI_IDX",
 #endif
 #if ALF_HM3_REFACTOR
     "CABAC_BITS__ALF_CTRL_DEPTH",

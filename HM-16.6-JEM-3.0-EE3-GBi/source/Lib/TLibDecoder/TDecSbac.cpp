@@ -125,6 +125,9 @@ TDecSbac::TDecSbac()
 #if VCEG_AZ06_IC
 , m_cCUICFlagSCModel                         ( 1,             1,                      NUM_IC_FLAG_CTX                      , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
+#if IDCC_GENERALIZED_BI_PRED
+, m_cCUGbiIdxSCModel                         ( 1,             1,                      NUM_GBI_IDX_CTX                      , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 #if ALF_HM3_REFACTOR
 , m_cCUAlfCtrlFlagSCModel                    ( 1,             1,                      NUM_ALF_CTRL_FLAG_CTX                , m_contextModels + m_numContextModels, m_numContextModels)
 #if !JVET_C0038_GALF
@@ -250,6 +253,9 @@ Void TDecSbac::resetEntropy(TComSlice* pSlice)
 #if VCEG_AZ06_IC
   m_cCUICFlagSCModel.initBuffer                   ( sliceType, qp, (UChar*)INIT_IC_FLAG );
 #endif  
+#if IDCC_GENERALIZED_BI_PRED
+  m_cCUGbiIdxSCModel.initBuffer                   ( sliceType, qp, (UChar*)INIT_GBI_IDX );
+#endif
 #if ALF_HM3_REFACTOR
   m_cCUAlfCtrlFlagSCModel.initBuffer              ( sliceType, qp, (UChar*)INIT_ALF_CTRL_FLAG );
 #if !JVET_C0038_GALF
@@ -688,6 +694,50 @@ Void TDecSbac::parseICFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
   DTRACE_CABAC_T( "\n");
 
   pcCU->setICFlagSubParts( uiSymbol ? true : false , uiAbsPartIdx, uiDepth );
+}
+#endif
+
+#if IDCC_GENERALIZED_BI_PRED
+Void TDecSbac::parseGbiIdx( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UChar& ruhGbiIdx )
+{
+  assert( GBI_NUM > 1 && ( GBI_NUM == 2 || ( GBI_NUM & 0x01 ) == 1 ) );
+
+  const UInt uiCtx = pcCU->getCtxInterDir( uiAbsPartIdx );
+  ContextModel *pCtx = m_cCUGbiIdxSCModel.get( 0 );
+
+  UInt uiIdx = 0;
+  UInt uiSymbol;
+  m_pcTDecBinIf->decodeBin( uiSymbol, *( pCtx + uiCtx ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__GBI_IDX) );
+
+  if( GBI_NUM == 2 )
+  {
+    uiIdx = 1 - uiSymbol;
+  }
+  else // that is, GBI_NUM > 2
+  {
+    if( uiSymbol == 0 )
+    {
+      UInt uiPrefixNumBits = GBI_NUM - 2;
+      UInt uiStep          = 1;
+
+      // Truncated unary code
+      pCtx += 4;
+      uiIdx = 1;
+      for( UInt ui = 0 ; ui < uiPrefixNumBits ; ++ui )
+      {
+        m_pcTDecBinIf->decodeBin( uiSymbol, *pCtx RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__GBI_IDX) );
+
+        if( uiSymbol == 1 )
+        {
+          break;
+        }
+        pCtx  += uiStep;
+        uiIdx += uiStep;
+      }
+    }
+  }
+
+  ruhGbiIdx = (UChar)g_aiGbiParsingOrder[uiIdx];
 }
 #endif
 

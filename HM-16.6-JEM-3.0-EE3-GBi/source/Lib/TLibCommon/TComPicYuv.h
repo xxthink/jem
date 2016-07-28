@@ -166,6 +166,7 @@ public:
 
   // Set border extension flag
   Void          setBorderExtension(Bool b) { m_bIsBorderExtended = b; }
+
 };// END CLASS DEFINITION TComPicYuv
 
 

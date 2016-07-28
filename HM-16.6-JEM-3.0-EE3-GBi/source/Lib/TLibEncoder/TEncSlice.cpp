@@ -900,6 +900,18 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
 #endif
     }
 
+#if IDCC_GENERALIZED_BI_PRED
+    Bool bUpdateGbiCodingOrder = pCtu->getSlice()->getSliceType() == B_SLICE &&
+                                 ( ctuTsAddr == startCtuTsAddr       ||
+                                   ctuTsAddr == firstCtuRsAddrOfTile ||
+                                   ( ctuXPosInCtus == tileXPosInCtus && m_pcCfg->getWaveFrontsynchro() ) );
+    if( bUpdateGbiCodingOrder )
+    {
+      resetGbiCodingOrder( false, pCtu );
+      m_pcPredSearch->initWeightIdxBits();
+    }
+#endif
+
     // run CTU trial encoder
     m_pcCuEncoder->compressCtu( pCtu );
 
@@ -1202,6 +1214,17 @@ Void TEncSlice::encodeSlice   ( TComPic* pcPic, TComOutputBitstream* pcSubstream
         m_pcEntropyCoder->encodeSAOBlkParam(saoblkParam, pcPic->getPicSym()->getSPS().getBitDepths(), sliceEnabled, leftMergeAvail, aboveMergeAvail);
       }
     }
+
+#if IDCC_GENERALIZED_BI_PRED
+    Bool bUpdateGbiCodingOrder = pCtu->getSlice()->getSliceType() == B_SLICE &&
+                                 ( ctuTsAddr == startCtuTsAddr       ||
+                                   ctuTsAddr == firstCtuRsAddrOfTile ||
+                                   ( ctuXPosInCtus == tileXPosInCtus && wavefrontsEnabled ) );
+    if( bUpdateGbiCodingOrder )
+    {
+      resetGbiCodingOrder( false, pCtu );
+    }
+#endif
 
 #if ENC_DEC_TRACE
     g_bJustDoIt = g_bEncDecTraceEnable;

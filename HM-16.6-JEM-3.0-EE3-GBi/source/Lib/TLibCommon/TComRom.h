@@ -260,6 +260,26 @@ extern const Int g_pdpc_pred_param[5][2][35][7];
 #endif
 #endif
 
+#if IDCC_GENERALIZED_BI_PRED
+extern const Char g_iGbiLog2WeightBase;
+extern const Char g_iGbiWeightBase;
+extern const Char g_aiGbiWeights     [GBI_NUM];
+extern const Char g_aiGbiSearchOrder [GBI_NUM];
+extern       Char g_aiGbiCodingOrder [GBI_NUM];
+extern       Char g_aiGbiParsingOrder[GBI_NUM];
+Char getGbiWeight( UChar uhGbiIdx, UChar uhRefFrmList );
+
+class TComDataCU;
+Void resetGbiCodingOrder( Bool bRunDecoding, TComDataCU* pcCU );
+Void resetGbiCodingOrder( Bool bRunDecoding, UChar uhWeightSetIdx, UInt uiQp );
+UInt deriveWeightIdxBits( UChar uhGbiIdx );
+
+template<Int n> Int integerScalor( Pel p );
+extern Int (*g_apIntMultiplier[])(Pel);
+#define GET_INT_MULTIPLIER(w)  (*( g_apIntMultiplier - (-2) + (w) ))   // Make sure -2 is the minimal weight values defined in g_apIntMultiplier
+
+#endif // End of IDCC_GENERALIZED_BI_PRED
+
 //! \}
 
 #endif  //__TCOMROM__

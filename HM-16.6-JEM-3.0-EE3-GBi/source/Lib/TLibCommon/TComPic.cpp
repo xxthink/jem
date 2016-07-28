@@ -166,6 +166,7 @@ Void TComPic::destroy()
       }
   }
 #endif
+
   deleteSEIs(m_SEIs);
 }
 
