@@ -449,6 +449,104 @@ static const Int    MIN_BT_SIZE_INTER  =                            4;      ///<
 #endif
 
 template <typename T> inline T Clip3 (const T minVal, const T maxVal, const T a) { return std::min<T> (std::max<T> (minVal, a) , maxVal); }  ///< general min/max clip
+#if EE7_ADAPTIVE_CLIP
+struct Bound { Int m,M; };
+struct TchClipParam{
+    static Int nbBitsY;
+    static Int nbBitsUV;
+    static Int ibdLuma;
+    static Int ibdChroma;
+    static Int cquantiz;
+    Bool isActive;
+#if EE7_ADAPTIVE_CLIP_TEST1
+    static const Bool intratype=true;
+#else
+    Bool intratype;
+#endif
+    Bool isChromaActive;
+    Int max(ComponentID c) const {
+        switch(c) {
+        case COMPONENT_Y: return Y().M; break;
+        case COMPONENT_Cb: return U().M; break;
+        case COMPONENT_Cr: return V().M; break;
+        default: assert(false); return 0;
+        }
+    }
+    Int min(ComponentID c) const {
+        switch(c) {
+        case COMPONENT_Y: return Y().m; break;
+        case COMPONENT_Cb: return U().m; break;
+        case COMPONENT_Cr: return V().m; break;
+        default: assert(false); return 0;
+        }
+    }
+    Bound Y()  const { return Y_;  }
+    Bound &Y()       { return Y_; }
+
+    Bound Y_;
+
+    Bound U()  const { return U_; }
+    Bound &U()       { return U_; }
+    Bound V()  const { return V_; }
+    Bound &V()       { return V_; }
+    Bound U_;
+    Bound V_;
+
+
+    void setInvalid() { Y_.m=Y_.M=0; U_=V_=Y_; }
+    Int operator[](int idx) const {
+        switch(idx) {
+        case 0: return Y_.m; break;
+        case 1: return Y_.M; break;
+        case 2: return U_.m; break;
+        case 3: return U_.M; break;
+        case 4: return V_.m; break;
+        default: return V_.M; break;
+        }
+    }
+    Int &operator[](int idx) {
+        switch(idx) {
+        case 0: return Y_.m; break;
+        case 1: return Y_.M; break;
+        case 2: return U_.m; break;
+        case 3: return U_.M; break;
+        case 4: return V_.m; break;
+        default: return V_.M; break;
+        }
+    }
+};
+
+
+
+inline void resetBounds(TchClipParam &prm) {
+    prm.Y().m = 0;
+    prm.Y().M = (1<<TchClipParam::ibdLuma)-1; // (1<<BD)-1
+    prm.U().m = 0;
+    prm.U().M = (1<<TchClipParam::ibdChroma)-1;; // (1<<BD)-1
+    prm.V()=prm.U();
+}
+
+inline void setOff(TchClipParam &prm) {
+    resetBounds(prm);
+#if !EE7_ADAPTIVE_CLIP_TEST1
+    prm.intratype=true;
+#endif
+    prm.isActive=false;
+    prm.isChromaActive=false;
+}
+
+extern TchClipParam g_TchClipParam;
+
+template <typename T> T ClipA(const T x, const ComponentID compID)
+{
+    switch(compID) {
+    case COMPONENT_Y:    return Clip3((T)g_TchClipParam.Y().m,(T)g_TchClipParam.Y().M,x); break;  // passcheck126
+    case COMPONENT_Cb:   return Clip3((T)g_TchClipParam.U().m,(T)g_TchClipParam.U().M,x); break;  // passcheck126
+    case COMPONENT_Cr:   return Clip3((T)g_TchClipParam.V().m,(T)g_TchClipParam.V().M,x); break;  // passcheck126
+    default: std::cout << "ClipA: Invalid compID value " << compID << " . Exiting." << std::endl; assert(false); exit(0);  return 0;
+    }
+}
+#endif
 template <typename T> inline T ClipBD(const T x, const Int bitDepth)             { return Clip3(T(0), T((1 << bitDepth)-1), x);           }
 
 template <typename T> inline Void Check3( T minVal, T maxVal, T a)

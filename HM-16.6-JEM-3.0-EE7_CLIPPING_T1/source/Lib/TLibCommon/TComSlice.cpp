@@ -378,6 +378,9 @@ Void TComSlice::setRefPicList( TComList<TComPic*>& rcListPic, Bool checkNumPocTo
   UInt NumPicLtCurr = 0;
   Int i;
 
+#if EE7_ADAPTIVE_CLIP
+      m_TchClipParamRefList.clear();
+#endif
   for(i=0; i < m_pRPS->getNumberOfNegativePictures(); i++)
   {
     if(m_pRPS->getUsed(i))
@@ -388,6 +391,9 @@ Void TComSlice::setRefPicList( TComList<TComPic*>& rcListPic, Bool checkNumPocTo
       RefPicSetStCurr0[NumPicStCurr0] = pcRefPic;
       NumPicStCurr0++;
       pcRefPic->setCheckLTMSBPresent(false);
+#if EE7_ADAPTIVE_CLIP
+      m_TchClipParamRefList.push_back(std::make_pair(pcRefPic->getPOC(),pcRefPic->m_aclip_prm));
+#endif
     }
   }
 
@@ -401,6 +407,9 @@ Void TComSlice::setRefPicList( TComList<TComPic*>& rcListPic, Bool checkNumPocTo
       RefPicSetStCurr1[NumPicStCurr1] = pcRefPic;
       NumPicStCurr1++;
       pcRefPic->setCheckLTMSBPresent(false);
+#if EE7_ADAPTIVE_CLIP
+      m_TchClipParamRefList.push_back(std::make_pair(pcRefPic->getPOC(),pcRefPic->m_aclip_prm));
+#endif
     }
   }
 
@@ -2517,4 +2526,32 @@ Void TComSlice::updateStatsGlobal()
 #endif
 #endif
 
+#if EE7_ADAPTIVE_CLIP
+TchClipParam TComSlice::getClipPrmRef() const {
+
+    const TComReferencePictureSet &rps=*m_pRPS;
+    TchClipParam prm;
+    setOff(prm);
+    const int N=rps.getNumberOfPictures();
+
+    if (N==0) return prm; // default
+
+    int bestdeltapoc=-numeric_limits<int>::max();
+    for(int i=0;i<N;++i) {
+        if (rps.getUsed(i)) {
+            const Int deltapoc=rps.getDeltaPOC(i);
+            if (abs(deltapoc)<abs(bestdeltapoc)||(abs(deltapoc)==abs(bestdeltapoc)&&deltapoc>0)) { // smaller deltapoc or equal but in the future
+                const Int poc=deltapoc+getPOC();
+                for(int k=0;k<(int)m_TchClipParamRefList.size();++k) {
+                    if (m_TchClipParamRefList[k].first==poc&&m_TchClipParamRefList[k].second.isActive) {
+                        bestdeltapoc=deltapoc;
+                        prm=m_TchClipParamRefList[k].second;
+                    }
+                }
+            }
+        }
+    }
+    return prm;
+}
+#endif
 //! \}

@@ -110,6 +110,14 @@ public:
   Void         copyFromPicYuv             ( const TComPicYuv* pcPicYuvSrc, const  UInt ctuRsAddr, const UInt uiAbsZorderIdx );
   Void         copyFromPicComponent       ( const ComponentID id, const TComPicYuv* pcPicYuvSrc, const UInt iCtuRsAddr, const UInt uiAbsZorderIdx );
 
+#if EE7_ADAPTIVE_CLIP
+  Void clipToPartYuv(TComYuv* pcYuvDst, const UInt uiDstPartIdx, const BitDepths &bitDepths) const;
+  Void clipToPartComponent(const ComponentID compID, TComYuv* pcYuvDst, const UInt uiDstPartIdx) const;
+  Void clipToPicYuv   ( TComPicYuv* pcPicYuvDst, const UInt ctuRsAddr, const UInt uiAbsZorderIdx, const UInt uiPartDepth = 0, const UInt uiPartIdx = 0 ) const ;
+  Void clipToPicComponent   ( const ComponentID id, TComPicYuv* pcPicYuvDst, const UInt iCtuRsAddr, const UInt uiAbsZorderIdx, const UInt uiPartDepth = 0, const UInt uiPartIdx = 0 ) const ;
+  Void clipPartToPartYuv(TComYuv* pcYuvDst, const UInt uiPartIdx, const UInt iWidth, const UInt iHeight) const;
+  Void clipPartToPartComponent(const ComponentID compID, TComYuv* pcYuvDst, const UInt uiPartIdx, const UInt iWidthComponent, const UInt iHeightComponent) const;
+#endif
   //  Copy Small YUV buffer to the part of other Big YUV buffer
   Void         copyToPartYuv              ( TComYuv*    pcYuvDst,    const UInt uiDstPartIdx ) const ;
   Void         copyToPartComponent        ( const ComponentID id, TComYuv*    pcYuvDst,    const UInt uiDstPartIdx ) const ;

@@ -96,19 +96,40 @@ class TComInterpolationFilter
   static const Short m_chromaFilterAffine[(NFRACS_CHROMA_AFFINE)*NTAPS_CHROMA];
 #endif
 #endif
-
+#if EE7_ADAPTIVE_CLIP
+  static Void filterCopy(Int bitDepth, const Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Bool isFirst, Bool isLast, ComponentID compID);
+  template<Int N, Bool isVertical, Bool isFirst, Bool isLast>
+  static Void filter(Int bitDepth, Pel const *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, TFilterCoeff const *coeff, ComponentID compID);
+#else
   static Void filterCopy(Int bitDepth, const Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Bool isFirst, Bool isLast);
 
   template<Int N, Bool isVertical, Bool isFirst, Bool isLast>
   static Void filter(Int bitDepth, Pel const *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, TFilterCoeff const *coeff);
+#endif
 
+#if EE7_ADAPTIVE_CLIP
+ template<Int N>
+  static Void filterHor(Int bitDepth, Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height,               Bool isLast, TFilterCoeff const *coeff, ComponentID compID);
+  template<Int N>
+  static Void filterVer(Int bitDepth, Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Bool isFirst, Bool isLast, TFilterCoeff const *coeff, ComponentID compID);
+#else
   template<Int N>
   static Void filterHor(Int bitDepth, Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height,               Bool isLast, TFilterCoeff const *coeff);
   template<Int N>
   static Void filterVer(Int bitDepth, Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Bool isFirst, Bool isLast, TFilterCoeff const *coeff);
+#endif
 
 #if COM16_C1016_AFFINE
 #if !JVET_C0025_AFFINE_FILTER_SIMPLIFICATION
+#if EE7_ADAPTIVE_CLIP
+template<Int N, Bool isVertical, Bool isFirst, Bool isLast>
+  static Void filterAffine(Int bitDepth, Pel const *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height, Short const *coeff,ComponentID compID);
+
+  template<Int N>
+  static Void filterHorAffine(Int bitDepth, Pel *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height,               Bool isLast, Short const *coeff, ComponentID compID);
+  template<Int N>
+  static Void filterVerAffine(Int bitDepth, Pel *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height, Bool isFirst, Bool isLast, Short const *coeff, ComponentID compID);
+#else
   template<Int N, Bool isVertical, Bool isFirst, Bool isLast>
   static Void filterAffine(Int bitDepth, Pel const *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height, Short const *coeff);
 
@@ -116,6 +137,7 @@ class TComInterpolationFilter
   static Void filterHorAffine(Int bitDepth, Pel *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height,               Bool isLast, Short const *coeff);
   template<Int N>
   static Void filterVerAffine(Int bitDepth, Pel *src, Int srcStride, Short *dst, Int dstStride, Int width, Int height, Bool isFirst, Bool isLast, Short const *coeff);
+#endif
 #endif
 #endif
 

@@ -470,6 +470,9 @@ Void TAppEncTop::xInitLibCfg()
 #if COM16_C983_RSAF
   m_cTEncTop.setUseRSAF                         ( m_useRSAF );
 #endif
+#if EE7_ADAPTIVE_CLIP
+    m_cTEncTop.setTchClipParam(m_tchClipParam);
+#endif
   m_cTEncTop.setSummaryOutFilename                                ( m_summaryOutFilename );
   m_cTEncTop.setSummaryPicFilenameBase                            ( m_summaryPicFilenameBase );
   m_cTEncTop.setSummaryVerboseness                                ( m_summaryVerboseness );
@@ -592,7 +595,6 @@ Void TAppEncTop::encode()
 
     // read input YUV file
     m_cTVideoIOYuvInputFile.read( pcPicYuvOrg, &cPicYuvTrueOrg, ipCSC, m_aiPad, m_InputChromaFormatIDC, m_bClipInputVideoToRec709Range );
-
     // increase number of received frames
     m_iFrameRcvd++;
 

@@ -47,6 +47,14 @@
 //! \ingroup TLibCommon
 //! \{
 
+// Clipping Bounds are computed and transmitted on the Slice Level
+// Adaptive Clipping Test 1 tools
+#define EE7_ADAPTIVE_CLIP              1
+#if EE7_ADAPTIVE_CLIP
+#define EE7_ADAPTIVE_CLIP_TEST1        1
+#define EE7_ADAPTIVE_CLIP_EM           0
+#endif
+
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////

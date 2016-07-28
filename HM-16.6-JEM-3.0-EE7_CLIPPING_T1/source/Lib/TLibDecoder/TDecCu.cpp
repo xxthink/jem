@@ -1081,7 +1081,18 @@ Void TDecCu::xReconInter( TComDataCU* pcCU, UInt uiDepth )
 #if !JVET_C0024_QTBT
   else
   {
+#if EE7_ADAPTIVE_CLIP // decoder, inter no res
+      if (g_TchClipParam.isActive)
+      {
+          m_ppcYuvReco[uiDepth]->clipPartToPartYuv( m_ppcYuvReco[uiDepth], 0, pcCU->getWidth(0), pcCU->getHeight(0), pcCU->getSlice()->getSPS()->getBitDepths() );
+      } 
+      else 
+      {
     m_ppcYuvReco[uiDepth]->copyPartToPartYuv( m_ppcYuvReco[uiDepth],0, pcCU->getWidth( 0 ),pcCU->getHeight( 0 ));
+  }
+#else
+    m_ppcYuvReco[uiDepth]->copyPartToPartYuv( m_ppcYuvReco[uiDepth],0, pcCU->getWidth( 0 ),pcCU->getHeight( 0 ));
+#endif
   }
 #endif
 #if DEBUG_STRING
@@ -1092,7 +1103,11 @@ Void TDecCu::xReconInter( TComDataCU* pcCU, UInt uiDepth )
 #endif
 
 #if JVET_C0024_QTBT
+#if EE7_ADAPTIVE_CLIP
+  m_pppcYuvReco[uiWidthIdx][uiHeightIdx]->clipToPicYuv(pcCU->getPic()->getPicYuvRec(), pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu());
+#else
   m_pppcYuvReco[uiWidthIdx][uiHeightIdx]->copyToPicYuv(pcCU->getPic()->getPicYuvRec(), pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu());
+#endif
 #endif
 }
 
@@ -1286,7 +1301,9 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
   }
 #endif
 
+#if !EE7_ADAPTIVE_CLIP
   const Int clipbd = sps.getBitDepth(toChannelType(compID));
+#endif
 #if O0043_BEST_EFFORT_DECODING
   const Int bitDepthDelta = sps.getStreamBitDepth(toChannelType(compID)) - clipbd;
 #endif
@@ -1327,9 +1344,18 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
       }
 #endif
 #if O0043_BEST_EFFORT_DECODING
+#if EE7_ADAPTIVE_CLIP
+      pReco    [ uiX ] = ClipA( rightShiftEvenRounding<Pel>(pPred[ uiX ] + pResi[ uiX ], bitDepthDelta),  compID);
+#else
       pReco    [ uiX ] = ClipBD( rightShiftEvenRounding<Pel>(pPred[ uiX ] + pResi[ uiX ], bitDepthDelta), clipbd );
+#endif
+#else
+
+#if EE7_ADAPTIVE_CLIP // decoder intra rec
+      pReco    [ uiX ] = ClipA(pPred[ uiX ] + pResi[ uiX ], compID);
 #else
       pReco    [ uiX ] = ClipBD( pPred[ uiX ] + pResi[ uiX ], clipbd );
+#endif
 #endif
       pRecIPred[ uiX ] = pReco[ uiX ];
     }

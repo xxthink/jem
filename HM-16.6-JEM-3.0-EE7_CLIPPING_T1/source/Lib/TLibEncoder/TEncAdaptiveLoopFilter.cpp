@@ -2315,8 +2315,11 @@ Double TEncAdaptiveLoopFilter::xTestFixedFilter(imgpel *imgY_Rec, imgpel *imgY_o
         varInd = m_varImg[(i-fl)][(j-fl)];
         pixelInt = xFilterPixel (imgY_append, &varInd,  m_filterCoeffFinal, NULL, i, j, fl, Stride, filtNo);
         pixelInt= ((pixelInt+offset) >> (m_NUM_BITS - 1));
+#if EE7_ADAPTIVE_CLIP
+        pixelInt = ClipA(pixelInt, COMPONENT_Y); // always on luma
+#else
         pixelInt = Clip3(0, m_nIBDIMax, pixelInt);
-
+#endif
         Int iOffset     = (i-fl)*Stride + (j-fl);
         temp            = pixelInt-imgY_org[iOffset];
         seFilt[varInd] += temp*temp;
@@ -2361,8 +2364,12 @@ void TEncAdaptiveLoopFilter::xPreFilterFr(Int** imgY_preFilter, imgpel* imgY_rec
       if (m_maskImg[i-fl][j-fl] && usePrevFilt[varIndAfterMapping] > 0)
       {
         pixelInt = xFilterPixel(imgY_append, &varInd, m_filterCoeffFinal, NULL, i, j, fl, Stride, filtNo);
-        pixelInt= ((pixelInt+offset) >> (m_NUM_BITS - 1));        
+        pixelInt= ((pixelInt+offset) >> (m_NUM_BITS - 1));
+#if EE7_ADAPTIVE_CLIP
+        imgY_preFilter[(i-fl)][(j-fl)] = ClipA(pixelInt,COMPONENT_Y) ; // always luma
+#else
         imgY_preFilter[(i-fl)][(j-fl)] = Clip3(0, m_nIBDIMax, pixelInt) ;
+#endif
       }
       else
       {
@@ -3385,13 +3392,17 @@ Void TEncAdaptiveLoopFilter::xfilterFrame_en(imgpel* ImgDec, imgpel* ImgRest,int
       }
 #endif
       pixelInt=(int)((pixelInt+offset) >> (m_NUM_BITS - 1));
+#if EE7_ADAPTIVE_CLIP
+      ImgRest[y*Stride + x] = ClipA(pixelInt, COMPONENT_Y); // always luma here
+#else
       ImgRest[y*Stride + x] = Clip3(0, m_nIBDIMax, pixelInt);
+#endif
     }
   }
 }
 #if JVET_C0038_GALF
 Void TEncAdaptiveLoopFilter::xfindBestFilterPredictor(Double ***E_temp, Double**y_temp, Double *pixAcc_temp, Int filtNo, const TComSlice * pSlice
-                                     ,imgpel* ImgOrg, imgpel* ImgDec, Int Stride, Bool* forceCoeff0, Double errorForce0CoeffTab[m_NO_VAR_BINS][2], Char* usePrevFiltBest, Bool*  codedVarBins, Int sqrFiltLength, Int fl )
+                                     ,imgpel* ImgOrg, imgpel* ImgDec, Int Stride, Bool* forceCoeff0, Double errorForce0CoeffTab[m_NO_VAR_BINS][2], Char* usePrevFiltBest, Bool*  codedVarBins, Int sqrFiltLength, Int fl)
 {
   Int    varInd, i, j, k, yLocal, filterNo;
   Int    ELocal[m_MAX_SQR_FILT_LENGTH];

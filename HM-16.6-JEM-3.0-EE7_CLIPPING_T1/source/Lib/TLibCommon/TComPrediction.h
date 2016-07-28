@@ -140,7 +140,13 @@ protected:
   TComPicYuv* m_tempPicYuv;
 #endif
 
-  Void xPredIntraAng            ( Int bitDepth, const Pel* pSrc, Int srcStride, Pel* pDst, Int dstStride, UInt width, UInt height, ChannelType channelType, UInt dirMode, const Bool bEnableEdgeFilters 
+    Void xPredIntraAng            ( Int bitDepth, const Pel* pSrc, Int srcStride, Pel* pDst, Int dstStride, UInt width, UInt height,
+#if EE7_ADAPTIVE_CLIP
+                                    ComponentID compID,
+#else
+                                    ChannelType channelType,
+                                #endif
+                                    UInt dirMode, const Bool bEnableEdgeFilters
 #if VCEG_AZ07_INTRA_4TAP_FILTER
     , Bool enable4TapFilter = false
 #endif

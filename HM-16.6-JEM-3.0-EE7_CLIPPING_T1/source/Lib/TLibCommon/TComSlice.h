@@ -1480,6 +1480,9 @@ public:
   // WAS: getSaoOffsetBitShift and setSaoOffsetBitShift
   // Now: getPpsRangeExtension().getLog2SaoOffsetScale and getPpsRangeExtension().setLog2SaoOffsetScale
 
+#if EE7_ADAPTIVE_CLIP
+  Bool m_clip_enabled;
+#endif
 };
 
 struct WPScalingParam
@@ -1886,6 +1889,12 @@ public:
 #endif
 #endif
 
+#if EE7_ADAPTIVE_CLIP
+  TchClipParam computeTchClipParam(Int &cnt);
+  std::vector<std::pair<Int,TchClipParam> > m_TchClipParamRefList;
+  TchClipParam m_clip_decoded;
+  TchClipParam getClipPrmRef() const;
+#endif
 
 #if JVET_C0024_QTBT
   ChannelType   getTextType() const {return m_eType;}
