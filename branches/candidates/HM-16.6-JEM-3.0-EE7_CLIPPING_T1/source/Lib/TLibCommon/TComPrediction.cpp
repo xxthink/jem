@@ -455,7 +455,12 @@ Pel TComPrediction::predIntraGetPredValDC( const Pel* pSrc, Int iSrcStride, UInt
 Void TComPrediction::xPredIntraAng(       Int bitDepth,
                                     const Pel* pSrc,     Int srcStride,
                                           Pel* pTrueDst, Int dstStrideTrue,
-                                          UInt uiWidth, UInt uiHeight, ChannelType channelType,
+                                          UInt uiWidth, UInt uiHeight,
+#if EE7_ADAPTIVE_CLIP
+                                          ComponentID compID,
+#else
+                                          ChannelType channelType,
+#endif
                                           UInt dirMode, const Bool bEnableEdgeFilters
 #if VCEG_AZ07_INTRA_4TAP_FILTER
                                           , Bool enable4TapFilter
@@ -468,6 +473,9 @@ Void TComPrediction::xPredIntraAng(       Int bitDepth,
   Int width=Int(uiWidth);
   Int height=Int(uiHeight);
 
+#if EE7_ADAPTIVE_CLIP
+    const ChannelType channelType=toChannelType(compID);
+#endif
   // Map the mode index to main prediction direction and angle
   assert( dirMode != PLANAR_IDX ); //no planar
   const Bool modeDC        = dirMode==DC_IDX;
@@ -600,7 +608,11 @@ Void TComPrediction::xPredIntraAng(       Int bitDepth,
       {
         for (Int y=0;y<height;y++)
         {
-          pDst[y*dstStride] = Clip3 (0, ((1 << bitDepth) - 1), pDst[y*dstStride] + (( refSide[y+1] - refSide[0] ) >> 1) );
+#if EE7_ADAPTIVE_CLIP
+            pDst[y*dstStride] = ClipA (pDst[y*dstStride] + (( refSide[y+1] - refSide[0] ) >> 1) ,compID);
+#else
+            pDst[y*dstStride] = Clip3 (0, ((1 << bitDepth) - 1), pDst[y*dstStride] + (( refSide[y+1] - refSide[0] ) >> 1) );
+#endif
         }
       }
     }
@@ -620,7 +632,9 @@ Void TComPrediction::xPredIntraAng(       Int bitDepth,
           if (enable4TapFilter)
           {
             Int p[4], x, refMainIndex;
+#if !EE7_ADAPTIVE_CLIP
             const Pel nMin = 0, nMax = (1 << bitDepth) - 1;
+#endif
 #if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
             Int *f =  ((channelType==CHANNEL_TYPE_LUMA) && enableRSAF) ? g_aiIntraCubicFilter[deltaFract] : ( (width<=8) ? g_aiIntraCubicFilter[deltaFract] : g_aiIntraGaussFilter[deltaFract] );
 #else
@@ -646,7 +660,11 @@ Void TComPrediction::xPredIntraAng(       Int bitDepth,
               if( width<=8 ) // for blocks larger than 8x8, Gaussian interpolation filter with positive coefficients is used, no Clipping is necessary
 #endif
               {
-                pDst[y*dstStride+x] =  Clip3( nMin, nMax, pDst[y*dstStride+x] );
+#if EE7_ADAPTIVE_CLIP
+                  pDst[y*dstStride+x] =  ClipA( pDst[y*dstStride+x],compID );
+#else
+                  pDst[y*dstStride+x] =  Clip3( nMin, nMax, pDst[y*dstStride+x] );
+#endif
               }
             }
           }
@@ -679,7 +697,11 @@ Void TComPrediction::xPredIntraAng(       Int bitDepth,
       {
         for (Int y=0;y<height;y++)
         {
-          pDst[y*dstStride] = Clip3(0, (1<<bitDepth)-1, pDst[y*dstStride] + (( refSide[y+1] - refSide[0] ) >> 2) );
+#if EE7_ADAPTIVE_CLIP
+            pDst[y*dstStride] = ClipA(pDst[y*dstStride] + (( refSide[y+1] - refSide[0] ) >> 2) ,compID);
+#else
+            pDst[y*dstStride] = Clip3(0, (1<<bitDepth)-1, pDst[y*dstStride] + (( refSide[y+1] - refSide[0] ) >> 2) );
+#endif
         }
       }
 #endif
@@ -911,7 +933,14 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
         const Bool             enable4TapFilter = pcCU->getSlice()->getSPS()->getUseIntra4TapFilter();
 #endif
 
-        xPredIntraAng(channelsBitDepthForPrediction, ptrSrc + sw + 1, sw, pDst, uiStride, iWidth, iHeight, channelType, uiDirMode, enableEdgeFilters
+                xPredIntraAng(channelsBitDepthForPrediction, ptrSrc + sw + 1, sw, pDst, uiStride,
+                              iWidth, iHeight,
+#if EE7_ADAPTIVE_CLIP
+                              compID,
+              #else
+                              channelType,
+              #endif
+                              uiDirMode, enableEdgeFilters
 #if VCEG_AZ07_INTRA_4TAP_FILTER
           , enable4TapFilter
 #endif
@@ -941,7 +970,9 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 #else
       Int scale = (iBlkSize < 32 ? 0 : 1);
 #endif
+#if !EE7_ADAPTIVE_CLIP
       Int bitDepth = rTu.getCU()->getSlice()->getSPS()->getBitDepth(channelType);
+#endif
       Int ParShift = 6; //normalization factor
       Int ParScale = 1 << ParShift;
       Int ParOffset = 1 << (ParShift - 1);
@@ -979,7 +1010,11 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
           Int Coeff_Cur     = ParScale - Coeff_Left - Coeff_Top + Coeff_TopLeft;
 
           Int sampleVal = (Coeff_Left* piRefVector[-row - 1] + Coeff_Top * piRefVector[col + 1] - Coeff_TopLeft * piRefVector[0] + Coeff_Cur * pDst[pos] + ParOffset) >> ParShift;
+#if EE7_ADAPTIVE_CLIP
+          pDst[pos] = ClipA(sampleVal,compID);
+#else
           pDst[pos] = Clip3(0, ((1 << bitDepth) - 1), sampleVal);
+#endif
         }
       }
       return; //terminate the prediction process
@@ -1034,7 +1069,13 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 #endif
 
 #endif
-      xPredIntraAng( channelsBitDepthForPrediction, ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight, channelType, uiDirMode, enableEdgeFilters 
+        xPredIntraAng( channelsBitDepthForPrediction, ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight,
+#if EE7_ADAPTIVE_CLIP
+             compID,
+#else
+             channelType,
+#endif
+        uiDirMode, enableEdgeFilters
 #if VCEG_AZ07_INTRA_4TAP_FILTER
         , enable4TapFilter
 #endif
@@ -1887,7 +1928,11 @@ Void TComPrediction::xPredInterBlk(const ComponentID compID, TComDataCU *cu, TCo
     {
       for ( j = 0; j < cxWidth; j++ )
       {
-        dst[j] = Clip3( 0, ( 1 << bitDepth ) - 1, ( ( a*dst[j] ) >> iShift ) + b );
+#if EE7_ADAPTIVE_CLIP
+          dst[j] = ClipA( ( ( a*dst[j] ) >> iShift ) + b ,  compID);
+#else
+          dst[j] = Clip3( 0, ( 1 << bitDepth ) - 1, ( ( a*dst[j] ) >> iShift ) + b );
+#endif
       }
       dst += dstStride;
     }
@@ -2173,7 +2218,11 @@ Pel optical_flow_averaging( Int64 s1,Int64 s2,Int64 s3,Int64 s5,Int64 s6,
 
   b = vx * (pGradX0 - pGradX1) +vy * (pGradY0 - pGradY1);       
   b = (b>0)?((b +32)>> 6):(-((-b+32) >> 6));
+#if EE7_ADAPTIVE_CLIP
+  return( ClipA((Short)((pSrcY0Temp + pSrcY1Temp + b +offset) >> shiftNum),COMPONENT_Y) );
+#else
   return( ClipBD((Short)((pSrcY0Temp + pSrcY1Temp + b +offset) >> shiftNum),bitDepth));
+#endif
 }
 #endif
 
@@ -2386,11 +2435,19 @@ Void TComPrediction::xWeightedAverage( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, I
   }
   else if ( iRefIdx0 >= 0 && iRefIdx1 <  0 )
   {
-    pcYuvSrc0->copyPartToPartYuv( pcYuvDst, uiPartIdx, iWidth, iHeight );
+#if EE7_ADAPTIVE_CLIP
+      pcYuvSrc0->clipPartToPartYuv( pcYuvDst, uiPartIdx, iWidth, iHeight );
+#else
+      pcYuvSrc0->copyPartToPartYuv( pcYuvDst, uiPartIdx, iWidth, iHeight );
+#endif
   }
   else if ( iRefIdx0 <  0 && iRefIdx1 >= 0 )
   {
+#if EE7_ADAPTIVE_CLIP
+    pcYuvSrc1->clipPartToPartYuv(pcYuvDst, uiPartIdx, iWidth, iHeight );
+#else
     pcYuvSrc1->copyPartToPartYuv( pcYuvDst, uiPartIdx, iWidth, iHeight );
+#endif
   }
 }
 
@@ -4909,14 +4966,20 @@ Void TComPrediction::predLMIntraChroma( TComTU& rTu, const ComponentID compID, P
   Int  iLumaStride = m_iLumaRecStride;
   Pel  *pLuma = m_pLumaRecBuffer + iLumaStride + 1;
 
+#if !EE7_ADAPTIVE_CLIP
   const TComSPS &sps = *(rTu.getCU()->getSlice()->getSPS());
   Int maxV = (1 << sps.getBitDepth(CHANNEL_TYPE_CHROMA)) - 1;
+#endif
 
   for( Int i = 0; i < uiCHeight; i++ )
   {
     for( Int j = 0; j < uiCWidth; j++ )
     {
-      pPred[j] = Clip3(0, maxV, ( ( a * pLuma[j] ) >> iShift ) + b );
+#if EE7_ADAPTIVE_CLIP
+        pPred[j] = ClipA(( ( a * pLuma[j] ) >> iShift ) + b ,  compID);
+#else
+        pPred[j] = Clip3(0, maxV, ( ( a * pLuma[j] ) >> iShift ) + b );
+#endif
     }
 
     pPred += uiPredStride;
@@ -5059,8 +5122,10 @@ Void TComPrediction::addCrossColorResi( TComTU& rTu, const ComponentID compID, P
     return;
   }
 
+#if !EE7_ADAPTIVE_CLIP
   const TComSPS &sps = *(rTu.getCU()->getSlice()->getSPS());
   Int maxV = (1 << sps.getBitDepth(CHANNEL_TYPE_CHROMA)) - 1;
+#endif
 
   Pel*  pPred   = piPred;
   Pel*  pResi   = piResi;
@@ -5069,7 +5134,11 @@ Void TComPrediction::addCrossColorResi( TComTU& rTu, const ComponentID compID, P
   {
     for( UInt uiX = 0; uiX < uiWidth; uiX++ )
     {
-      pPred[ uiX ] = Clip3(0, maxV, pPred[ uiX ] + (( pResi[ uiX ] * a + offset) >> iShift  ) );
+#if EE7_ADAPTIVE_CLIP
+        pPred[ uiX ] = ClipA(pPred[ uiX ] + (( pResi[ uiX ] * a + offset) >> iShift  ) ,  compID);
+#else
+        pPred[ uiX ] = Clip3(0, maxV, pPred[ uiX ] + (( pResi[ uiX ] * a + offset) >> iShift  ) );
+#endif
     }
     pPred += uiPredStride;
     pResi += uiResiStride;
