@@ -323,7 +323,11 @@ Void TComSampleAdaptiveOffset::reconstructBlkSAOParams(TComPic* pic, SAOBlkParam
 
 Void TComSampleAdaptiveOffset::offsetBlock(const Int channelBitDepth, Int typeIdx, Int* offset
                                           , Pel* srcBlk, Pel* resBlk, Int srcStride, Int resStride,  Int width, Int height
-                                          , Bool isLeftAvail,  Bool isRightAvail, Bool isAboveAvail, Bool isBelowAvail, Bool isAboveLeftAvail, Bool isAboveRightAvail, Bool isBelowLeftAvail, Bool isBelowRightAvail)
+                                          , Bool isLeftAvail,  Bool isRightAvail, Bool isAboveAvail, Bool isBelowAvail, Bool isAboveLeftAvail, Bool isAboveRightAvail, Bool isBelowLeftAvail, Bool isBelowRightAvail
+#if EE7_ADAPTIVE_CLIP
+                                           , ComponentID compID
+#endif
+                                          )
 {
 #if JVET_C0024_QTBT
   if(m_lineBufWidth != m_CTUSize)
@@ -350,7 +354,9 @@ Void TComSampleAdaptiveOffset::offsetBlock(const Int channelBitDepth, Int typeId
     m_signLineBuf2 = new Char[m_lineBufWidth+1];
   }
 
+#if !EE7_ADAPTIVE_CLIP
   const Int maxSampleValueIncl = (1<< channelBitDepth )-1;
+#endif
 
   Int x,y, startX, startY, endX, endY, edgeType;
   Int firstLineStartX, firstLineEndX, lastLineStartX, lastLineEndX;
@@ -375,7 +381,11 @@ Void TComSampleAdaptiveOffset::offsetBlock(const Int channelBitDepth, Int typeId
           edgeType =  signRight + signLeft;
           signLeft  = -signRight;
 
+#if EE7_ADAPTIVE_CLIP
+                resLine[x] = ClipA(srcLine[x] + offset[edgeType],compID);
+#else
           resLine[x] = Clip3<Int>(0, maxSampleValueIncl, srcLine[x] + offset[edgeType]);
+#endif
         }
         srcLine  += srcStride;
         resLine += resStride;
@@ -413,7 +423,11 @@ Void TComSampleAdaptiveOffset::offsetBlock(const Int channelBitDepth, Int typeId
           edgeType = signDown + signUpLine[x];
           signUpLine[x]= -signDown;
 
+#if EE7_ADAPTIVE_CLIP
+                resLine[x] = ClipA(srcLine[x] + offset[edgeType],compID);
+#else
           resLine[x] = Clip3<Int>(0, maxSampleValueIncl, srcLine[x] + offset[edgeType]);
+#endif
         }
         srcLine += srcStride;
         resLine += resStride;
@@ -447,7 +461,11 @@ Void TComSampleAdaptiveOffset::offsetBlock(const Int channelBitDepth, Int typeId
       {
         edgeType  =  sgn(srcLine[x] - srcLineAbove[x- 1]) - signUpLine[x+1];
 
+#if EE7_ADAPTIVE_CLIP
+            resLine[x] = ClipA(srcLine[x] + offset[edgeType],compID);
+#else
         resLine[x] = Clip3<Int>(0, maxSampleValueIncl, srcLine[x] + offset[edgeType]);
+#endif
       }
       srcLine  += srcStride;
       resLine  += resStride;
@@ -462,8 +480,12 @@ Void TComSampleAdaptiveOffset::offsetBlock(const Int channelBitDepth, Int typeId
         {
           signDown =  (Char)sgn(srcLine[x] - srcLineBelow[x+ 1]);
           edgeType =  signDown + signUpLine[x];
+#if EE7_ADAPTIVE_CLIP
+                resLine[x] = ClipA(srcLine[x] + offset[edgeType],compID);
+#else
           resLine[x] = Clip3<Int>(0, maxSampleValueIncl, srcLine[x] + offset[edgeType]);
 
+#endif
           signDownLine[x+1] = -signDown;
         }
         signDownLine[startX] = (Char)sgn(srcLineBelow[startX] - srcLine[startX-1]);
@@ -483,8 +505,12 @@ Void TComSampleAdaptiveOffset::offsetBlock(const Int channelBitDepth, Int typeId
       for(x= lastLineStartX; x< lastLineEndX; x++)
       {
         edgeType =  sgn(srcLine[x] - srcLineBelow[x+ 1]) + signUpLine[x];
+#if EE7_ADAPTIVE_CLIP
+            resLine[x] = ClipA(srcLine[x] + offset[edgeType],compID);
+#else
         resLine[x] = Clip3<Int>(0, maxSampleValueIncl, srcLine[x] + offset[edgeType]);
 
+#endif
       }
     }
     break;
@@ -511,7 +537,11 @@ Void TComSampleAdaptiveOffset::offsetBlock(const Int channelBitDepth, Int typeId
       for(x= firstLineStartX; x< firstLineEndX; x++)
       {
         edgeType = sgn(srcLine[x] - srcLineAbove[x+1]) -signUpLine[x-1];
+#if EE7_ADAPTIVE_CLIP
+            resLine[x] = ClipA(srcLine[x] + offset[edgeType],compID);
+#else
         resLine[x] = Clip3<Int>(0, maxSampleValueIncl, srcLine[x] + offset[edgeType]);
+#endif
       }
       srcLine += srcStride;
       resLine += resStride;
@@ -525,7 +555,11 @@ Void TComSampleAdaptiveOffset::offsetBlock(const Int channelBitDepth, Int typeId
         {
           signDown =  (Char)sgn(srcLine[x] - srcLineBelow[x-1]);
           edgeType =  signDown + signUpLine[x];
+#if EE7_ADAPTIVE_CLIP
+                resLine[x] = ClipA(srcLine[x] + offset[edgeType],compID);
+#else
           resLine[x] = Clip3<Int>(0, maxSampleValueIncl, srcLine[x] + offset[edgeType]);
+#endif
           signUpLine[x-1] = -signDown;
         }
         signUpLine[endX-1] = (Char)sgn(srcLineBelow[endX-1] - srcLine[endX]);
@@ -540,8 +574,12 @@ Void TComSampleAdaptiveOffset::offsetBlock(const Int channelBitDepth, Int typeId
       for(x= lastLineStartX; x< lastLineEndX; x++)
       {
         edgeType = sgn(srcLine[x] - srcLineBelow[x-1]) + signUpLine[x];
+#if EE7_ADAPTIVE_CLIP
+            resLine[x] = ClipA(srcLine[x] + offset[edgeType],compID);
+#else
         resLine[x] = Clip3<Int>(0, maxSampleValueIncl, srcLine[x] + offset[edgeType]);
 
+#endif
       }
     }
     break;
@@ -552,7 +590,11 @@ Void TComSampleAdaptiveOffset::offsetBlock(const Int channelBitDepth, Int typeId
       {
         for (x=0; x< width; x++)
         {
+#if EE7_ADAPTIVE_CLIP
+                resLine[x] = ClipA(srcLine[x] + offset[srcLine[x] >> shiftBits],compID);
+#else
           resLine[x] = Clip3<Int>(0, maxSampleValueIncl, srcLine[x] + offset[srcLine[x] >> shiftBits] );
+#endif
         }
         srcLine += srcStride;
         resLine += resStride;
@@ -628,6 +670,9 @@ Void TComSampleAdaptiveOffset::offsetCTU(Int ctuRsAddr, TComPicYuv* srcYuv, TCom
                   , isAboveAvail, isBelowAvail
                   , isAboveLeftAvail, isAboveRightAvail
                   , isBelowLeftAvail, isBelowRightAvail
+             #if EE7_ADAPTIVE_CLIP
+                         , component
+             #endif
                   );
     }
   } //compIdx

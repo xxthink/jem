@@ -43,6 +43,17 @@
 #include "TLibCommon/TComCodingStatistics.h"
 #endif
 
+#if EE7_ADAPTIVE_CLIP
+namespace {
+Int decodeOffset(Int x) {
+    Int sign=(x<0)?-1:1;
+    x=abs(x);
+    x=(x<<TchClipParam::cquantiz);
+    x*=sign;
+    return x;
+}
+}
+#endif
 //! \ingroup TLibDecoder
 //! \{
 
@@ -324,6 +335,14 @@ Void TDecCavlc::parsePPS(TComPPS* pcPPS)
   READ_FLAG( uiCode, "slice_segment_header_extension_present_flag");
   pcPPS->setSliceHeaderExtensionPresentFlag(uiCode);
 
+#if EE7_ADAPTIVE_CLIP
+  READ_FLAG( uiCode, "tch clip param enabled_flag");
+  pcPPS->m_clip_enabled=uiCode;
+  if (pcPPS->m_clip_enabled) {
+      READ_CODE( 2,uiCode,"tch clip param quantiz");
+      TchClipParam::cquantiz=2*uiCode;
+  }
+#endif
   READ_FLAG( uiCode, "pps_extension_present_flag");
   if (uiCode)
   {
@@ -663,6 +682,13 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
   pcSPS->setQpBDOffset(CHANNEL_TYPE_CHROMA,  (Int) (6*(pcSPS->getStreamBitDepth(CHANNEL_TYPE_CHROMA)-8)) );
 #else
   pcSPS->setQpBDOffset(CHANNEL_TYPE_CHROMA,  (Int) (6*uiCode) );
+#endif
+
+#if EE7_ADAPTIVE_CLIP
+    TchClipParam::ibdLuma=pcSPS->getBitDepth(CHANNEL_TYPE_LUMA);
+    TchClipParam::ibdChroma=pcSPS->getBitDepth(CHANNEL_TYPE_CHROMA);
+    TchClipParam::nbBitsY=TchClipParam::ibdLuma-1;
+    TchClipParam::nbBitsUV=TchClipParam::ibdChroma-1;
 #endif
 
   READ_UVLC( uiCode,    "log2_max_pic_order_cnt_lsb_minus4" );   pcSPS->setBitsForPOC( 4 + uiCode );
@@ -1617,6 +1643,77 @@ Void TDecCavlc::parseSliceHeader (TComSlice* pcSlice, ParameterSetManager *param
     }
   }
 
+#if EE7_ADAPTIVE_CLIP
+  if (firstSliceSegmentInPic) {
+      if (pps->m_clip_enabled)
+      {
+          cout<<"Clip ON"<<endl;
+          // default
+          TchClipParam prm;
+          setOff(prm);
+
+          READ_FLAG(uiCode, "TchClipAdaptive_flag");
+          prm.isActive = (uiCode == 1) ? true : false;
+          if (prm.isActive)
+          {
+              if (pcSlice->getSliceType()!=I_SLICE) {
+                  READ_FLAG(uiCode, "TchClipAdaptive_flag_intra");
+                  prm.intratype = (uiCode == 1) ? true : false;
+              } else {
+                  prm.intratype = true;
+              }
+
+              if (prm.intratype) {
+                  READ_CODE(TchClipParam::nbBitsY-TchClipParam::cquantiz, uiCode, "TchClipAdaptive_Y_MIN");
+                  prm.Y().m = (uiCode<<TchClipParam::cquantiz);
+
+                  READ_CODE(TchClipParam::nbBitsY-TchClipParam::cquantiz, uiCode, "TchClipAdaptive_Y_MAX");
+                  prm.Y().M = std::min((1<<TchClipParam::ibdLuma)-1,(1<<TchClipParam::ibdLuma) -(int)(uiCode<<TchClipParam::cquantiz));
+                  READ_FLAG(uiCode, "TchClipAdaptive_flag_chroma");
+                  prm.isChromaActive = (uiCode == 1) ? true : false;
+                  if (prm.isChromaActive)
+                  {
+                      READ_CODE(TchClipParam::nbBitsUV-TchClipParam::cquantiz, uiCode, "TchClipAdaptive_C_MIN");
+                      prm.U().m = (uiCode<<TchClipParam::cquantiz);
+
+                      READ_CODE(TchClipParam::nbBitsUV-TchClipParam::cquantiz, uiCode, "TchClipAdaptive_C_MAX");
+                      prm.U().M = std::min((1<<TchClipParam::ibdChroma)-1,(1<<TchClipParam::ibdChroma) -(int)(uiCode<<TchClipParam::cquantiz));
+
+                      READ_CODE(TchClipParam::nbBitsUV-TchClipParam::cquantiz, uiCode, "TchClipAdaptive_C1_MIN");
+                      prm.V().m = (uiCode<<TchClipParam::cquantiz);
+
+                      READ_CODE(TchClipParam::nbBitsUV-TchClipParam::cquantiz, uiCode, "TchClipAdaptive_C1_MAX");
+                      prm.V().M = std::min((1<<TchClipParam::ibdChroma)-1,(1<<TchClipParam::ibdChroma) -(int)(uiCode<<TchClipParam::cquantiz));
+                  } // else use default
+              } else {
+                  READ_SVLC(iCode, "TchClipAdaptive_Y_MIN");
+                  prm.Y().m = decodeOffset(iCode);
+                  READ_SVLC(iCode, "TchClipAdaptive_Y_MAX");
+                  prm.Y().M = decodeOffset(iCode);
+                  READ_FLAG(uiCode, "TchClipAdaptive_flag_chroma");
+                  prm.isChromaActive = (uiCode == 1) ? true : false;
+                  if (prm.isChromaActive)
+                  {
+                      READ_SVLC(iCode, "TchClipAdaptive_C_MIN");
+                      prm.U().m = decodeOffset(iCode);
+                      READ_SVLC(iCode, "TchClipAdaptive_C_MAX");
+                      prm.U().M = decodeOffset(iCode);
+                      READ_SVLC(iCode, "TchClipAdaptive_C1_MIN");
+                      prm.V().m = decodeOffset(iCode);
+                      READ_SVLC(iCode, "TchClipAdaptive_C1_MAX");
+                      prm.V().M = decodeOffset(iCode);
+                  }
+                  else {
+                      prm.U().m = prm.U().M=prm.V().m=prm.V().M=0; // set delta to 0 to be used as a reference later
+                  }
+              }
+          }
+          pcSlice->m_clip_decoded=prm; //
+      } else {
+          setOff(pcSlice->m_clip_decoded);
+      }
+  }
+#endif
   if(pps->getSliceHeaderExtensionPresentFlag())
   {
     READ_UVLC(uiCode,"slice_segment_header_extension_length");

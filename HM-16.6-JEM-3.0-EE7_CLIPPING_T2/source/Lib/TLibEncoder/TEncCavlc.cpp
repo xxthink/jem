@@ -42,6 +42,27 @@
 //! \ingroup TLibEncoder
 //! \{
 
+#if EE7_ADAPTIVE_CLIP // check
+namespace {
+Int shiftForMin(Int x) {
+    Int sign=(x<0)?-1:1;
+    x=abs(x);
+    if (sign==1) x=x>>TchClipParam::cquantiz;
+    else         x=(x+((1<<TchClipParam::cquantiz)-1))>>TchClipParam::cquantiz;
+    x*=sign;
+    return x;
+}
+Int shiftForMax(Int x) {
+    Int sign=(x<0)?-1:1;
+    x=abs(x);
+    if (sign==-1) x=x>>TchClipParam::cquantiz;
+    else          x=(x+((1<<TchClipParam::cquantiz)-1))>>TchClipParam::cquantiz;
+    x*=sign;
+    return x;
+}
+
+}
+#endif
 #if ENC_DEC_TRACE
 
 Void  xTraceVPSHeader ()
@@ -228,6 +249,13 @@ Void TEncCavlc::codePPS( const TComPPS* pcPPS )
   WRITE_FLAG( pcPPS->getListsModificationPresentFlag(), "lists_modification_present_flag");
   WRITE_UVLC( pcPPS->getLog2ParallelMergeLevelMinus2(), "log2_parallel_merge_level_minus2");
   WRITE_FLAG( pcPPS->getSliceHeaderExtensionPresentFlag() ? 1 : 0, "slice_segment_header_extension_present_flag");
+#if EE7_ADAPTIVE_CLIP
+  WRITE_FLAG( pcPPS->m_clip_enabled, "tch clip param enabled_flag");
+  if (pcPPS->m_clip_enabled) {
+     assert(TchClipParam::cquantiz/2<4);
+     WRITE_CODE( (TchClipParam::cquantiz/2), 2,"tch clip param quantiz");
+  }
+#endif
 
   Bool pps_extension_present_flag=false;
   Bool pps_extension_flags[NUM_PPS_EXTENSION_FLAGS]={false};
@@ -1164,6 +1192,82 @@ Void TEncCavlc::codeSliceHeader         ( TComSlice* pcSlice )
       WRITE_FLAG(pcSlice->getLFCrossSliceBoundaryFlag()?1:0, "slice_loop_filter_across_slices_enabled_flag");
     }
   }
+#if EE7_ADAPTIVE_CLIP
+  if (sliceSegmentRsAddress==0&&pcSlice->getPPS()->m_clip_enabled) { // only for first header and when ON
+      WRITE_FLAG(pcSlice->getPic()->m_aclip_prm.isActive?1:0, "TchClipAdaptive_flag");
+
+      if (pcSlice->getPic()->m_aclip_prm.isActive)
+      {
+          const TchClipParam &prm=pcSlice->getPic()->m_aclip_prm;
+          if (pcSlice->getSliceType() != I_SLICE) {
+              // do not write if intra slice because always intra clip bouds coding
+              WRITE_FLAG(prm.intratype?1:0, "TchClipAdaptive_flag_intra");
+          }
+
+          if (prm.intratype) {
+              Int code,scode;
+
+              scode=(prm.Y().m-0);
+              code=shiftForMin(scode);
+              assert(code<(1<<(TchClipParam::nbBitsY-TchClipParam::cquantiz)));
+              WRITE_CODE(code, TchClipParam::nbBitsY-TchClipParam::cquantiz, "TchClipAdaptive_Y_MIN");
+
+
+              scode=((1<<TchClipParam::ibdLuma)-prm.Y().M);
+              code=shiftForMin(scode);
+              assert(code<(1<<(TchClipParam::nbBitsY-TchClipParam::cquantiz)));
+              WRITE_CODE(code, TchClipParam::nbBitsY-TchClipParam::cquantiz, "TchClipAdaptive_Y_MAX");
+              WRITE_FLAG(prm.isChromaActive?1:0, "TchClipAdaptive_flag_chroma");
+              if (prm.isChromaActive)
+              {
+                  scode=prm.U().m-0;
+                  code=shiftForMin(scode);
+                  assert(code<(1<<(TchClipParam::nbBitsUV-TchClipParam::cquantiz)));
+                  WRITE_CODE(code, TchClipParam::nbBitsUV-TchClipParam::cquantiz, "TchClipAdaptive_C_MIN");
+
+                  scode=(1<<TchClipParam::ibdChroma)-prm.U().M;
+                  code=shiftForMin(scode);
+                  assert(code<(1<<(TchClipParam::nbBitsUV-TchClipParam::cquantiz)));
+                  WRITE_CODE(code, TchClipParam::nbBitsUV-TchClipParam::cquantiz, "TchClipAdaptive_C_MAX");
+
+                  scode=prm.V().m-0;
+                  code=shiftForMin(scode);
+                  assert(code<(1<<(TchClipParam::nbBitsUV-TchClipParam::cquantiz)));
+                  WRITE_CODE(code, TchClipParam::nbBitsUV-TchClipParam::cquantiz, "TchClipAdaptive_C_MIN");
+
+                  scode=(1<<TchClipParam::ibdChroma)-prm.V().M;
+                  code=shiftForMin(scode);
+                  assert(code<(1<<(TchClipParam::nbBitsUV-TchClipParam::cquantiz)));
+                  WRITE_CODE(code, TchClipParam::nbBitsUV-TchClipParam::cquantiz, "TchClipAdaptive_C1_MAX");
+              }
+          } else {
+              const TchClipParam &prmref=pcSlice->getPic()->m_aclip_prm_ref;
+              TchClipParam prm_offset;
+
+              prm_offset.Y().m=shiftForMin(prm.Y().m-prmref.Y().m);
+              prm_offset.Y().M=shiftForMax(prm.Y().M-prmref.Y().M);
+              WRITE_SVLC(prm_offset.Y().m, "TchClipAdaptive_dY_MIN");
+              WRITE_SVLC(prm_offset.Y().M, "TchClipAdaptive_dY_MAX");
+
+              WRITE_FLAG(prm.isChromaActive?1:0, "TchClipAdaptive_flag_chroma");
+              if (prm.isChromaActive)
+              {
+                  prm_offset.U().m=shiftForMin(prm.U().m-prmref.U().m);
+                  prm_offset.U().M=shiftForMax(prm.U().M-prmref.U().M);
+                  prm_offset.V().m=shiftForMin(prm.V().m-prmref.V().m);
+                  prm_offset.V().M=shiftForMax(prm.V().M-prmref.V().M);
+
+                  WRITE_SVLC(prm_offset.U().m, "TchClipAdaptive_dC_MIN");
+                  WRITE_SVLC(prm_offset.U().M, "TchClipAdaptive_dC_MAX");
+                  WRITE_SVLC(prm_offset.V().m, "TchClipAdaptive_dC1_MIN");
+                  WRITE_SVLC(prm_offset.V().M, "TchClipAdaptive_dC1_MAX");
+              }
+          }
+      }
+      // DEBUG
+      // END
+  }
+#endif
   if(pcSlice->getPPS()->getSliceHeaderExtensionPresentFlag())
   {
     WRITE_UVLC(0,"slice_segment_header_extension_length");

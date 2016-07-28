@@ -51,7 +51,7 @@ ContextModel3DBuffer::ContextModel3DBuffer( UInt uiSizeZ, UInt uiSizeY, UInt uiS
 {
   // allocate 3D buffer
   m_contextModel = basePtr;
-#if VCEG_AZ07_BAC_ADAPT_WDOW 
+#if VCEG_AZ07_BAC_ADAPT_WDOW
   for(Int i = 0; i < uiSizeZ; i ++)
   {
     for(Int j = 0; j < uiSizeY; j ++)

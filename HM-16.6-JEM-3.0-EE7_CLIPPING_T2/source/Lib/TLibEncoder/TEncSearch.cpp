@@ -52,6 +52,121 @@
 extern short **g_ppsEigenVector[USE_MORE_BLOCKSIZE_DEPTH_MAX];
 #endif
 
+#if EE7_ADAPTIVE_CLIP_EM
+namespace {
+
+template <int N>
+Int average(const std::vector<Pel> &r,Int i0,Int j0,Int uiHeight,Int uiWidth) {
+    Int s=0,n=0;
+    for(int i=-N/2+i0;i<=N/2+i0;++i)
+        for(int j=-N/2+j0;j<=N/2+j0;++j) {
+            const int ii=(i+uiHeight)%uiHeight;
+            const int jj=(j+uiWidth)%uiWidth;
+//            if (i>=0&&i<uiHeight&&j>=0&&j<uiWidth) {
+//                s+=r[i*uiWidth+j];
+//                ++n;
+//            }
+            s+=r[ii*uiWidth+jj];
+            ++n;
+        }
+    assert(n>0);
+    return (s+n/2)/n;
+}
+
+void smoothResidual(const Bound prm,const std::vector<Pel> &org,std::vector<Pel> &res,UInt uiHeight,UInt uiWidth) {
+    // find boundaries of the res
+    static std::vector<char> bmM;
+    static std::vector<Pel> r;
+    r=res;
+    bmM.resize(uiHeight*uiWidth); // avoir realloc
+
+    for(int k=0;k<(int)org.size();++k) {
+        if (org[k]<=prm.m)      bmM[k]=-1;
+        else if (org[k]>=prm.M) bmM[k]=+1;
+        else                    bmM[k]=0;
+    }
+
+    const int cptmax=4;
+    int cpt=0;
+    bool cont=true;
+    while(cpt<cptmax&&cont) {
+        cont=false;
+        for(int i=0;i<(int)uiHeight;++i)
+            for(int j=0;j<(int)uiWidth;++j) {
+                if (bmM[i*uiWidth+j]==-1) { // we can lower the res
+                    Int s=average<3>(res,i,j,uiHeight,uiWidth);
+                    if (s<res[i*uiWidth+j]) r[i*uiWidth+j]=s;
+                    cont=true;
+                } else if (bmM[i*uiWidth+j]==1) { // we can inc the res
+                    Int s=average<3>(res,i,j,uiHeight,uiWidth);
+                    if (s>res[i*uiWidth+j]) r[i*uiWidth+j]=s;
+                    cont=true;
+                }
+            }
+        ++cpt;
+        std::copy(r.begin(),r.end(),res.begin());
+    }
+}
+
+void smoothResidual(const ComponentID compID,const Pel *piOrg,Pel *piResi,UInt uiHeight,UInt uiWidth,UInt uiStrideOrg,UInt uiStrideRes) {
+
+    Bound prm;
+    switch(compID) {
+    case COMPONENT_Y:    prm=g_TchClipParam.Y(); break;
+    case COMPONENT_Cb:   prm=g_TchClipParam.U(); break;
+    case COMPONENT_Cr:   prm=g_TchClipParam.V(); break;
+    default: assert(false);
+    }
+
+    static std::vector<Pel> org; // avoid realloc
+    org.resize(uiHeight*uiWidth);
+
+    Bool activate=false;
+    for(Int i=0,k=0;i<uiHeight;++i)
+        for(Int j=0;j<uiWidth;++j,++k) {
+            org[k]=piOrg[i*uiStrideOrg+j];
+            if (org[k]<=prm.m||org[k]>=prm.M) activate=true;
+        }
+
+
+    if (activate) {
+        static std::vector<Pel> r; // avoid realloc
+        r.resize(uiHeight*uiWidth);
+        for(Int i=0,k=0;i<uiHeight;++i)
+            for(Int j=0;j<uiWidth;++j,++k) {
+                r[k]=piResi[i*uiStrideRes+j];
+            }
+        smoothResidual(prm,org,r,uiHeight,uiWidth);
+        // copy back
+        for(Int i=0,k=0;i<uiHeight;++i)
+            for(Int j=0;j<uiWidth;++j,++k) {
+                piResi[i*uiStrideRes+j]=r[k];
+            }
+    }
+}
+
+void smoothResidual(const TComYuv* pcYuvOrg, TComYuv *pcYuvRes, const UInt uiTrUnitIdx, const UInt uiHeight,const UInt uiWidth) {
+
+    for(Int comp=0; comp<pcYuvRes->getNumberValidComponents(); ++comp) {
+        const ComponentID compID=ComponentID(comp);
+
+        const Int uiPartWidth =(uiWidth>>pcYuvRes->getComponentScaleX(compID));
+        const Int uiPartHeight=(uiHeight>>pcYuvRes->getComponentScaleY(compID));
+
+        const Pel* pOrg = pcYuvOrg->getAddr( compID, uiTrUnitIdx, uiPartWidth );
+        const Int  iOrgStride = pcYuvOrg->getStride(compID);
+
+        Pel* pRes = pcYuvRes->getAddr( compID, uiTrUnitIdx, uiPartWidth );
+        const Int  iResStride = pcYuvRes->getStride(compID);
+
+        smoothResidual(compID,pOrg,pRes,uiPartHeight,uiPartWidth,iOrgStride,iResStride);
+    }
+}
+
+} // anom
+
+
+#endif
 static const TComMv s_acMvRefineH[9] =
 {
   TComMv(  0,  0 ), // 0
@@ -1910,6 +2025,9 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
   }
 #endif
 
+#if EE7_ADAPTIVE_CLIP_EM
+    smoothResidual(compID,piOrg,piResi,uiHeight,uiWidth,uiStride,uiStride);
+#endif
   m_pcTrQuant->transformNxN     ( rTu, compID, piResi, uiStride, pcCoeff,
 #if ADAPTIVE_QP_SELECTION
     pcArlCoeff,
@@ -2041,7 +2159,11 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
       {
         for( UInt uiX = 0; uiX < uiWidth; uiX++ )
         {
+#if EE7_ADAPTIVE_CLIP // encoder intrac rec
+          pReco    [ uiX ] = Pel(ClipA<Int>( Int(pPred[uiX]) + Int(pResi[uiX]),  compID ));
+#else
           pReco    [ uiX ] = Pel(ClipBD<Int>( Int(pPred[uiX]) + Int(pResi[uiX]), bitDepth ));
+#endif
           pRecQt   [ uiX ] = pReco[ uiX ];
           pRecIPred[ uiX ] = pReco[ uiX ];
         }
@@ -3971,7 +4093,8 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
 
 
 Void
-TEncSearch::xSetIntraResultLumaQT(TComYuv* pcRecoYuv, TComTU &rTu)
+TEncSearch::xSetIntraResultLumaQT(TComYuv* pcRecoYuv,
+TComTU &rTu)
 {
   TComDataCU *pcCU        = rTu.getCU();
   const UInt uiTrDepth    = rTu.GetTransformDepthRel();
@@ -4546,7 +4669,8 @@ TEncSearch::xRecurIntraChromaCodingQT(TComYuv*    pcOrgYuv,
 
 
 Void
-TEncSearch::xSetIntraResultChromaQT(TComYuv*    pcRecoYuv, TComTU &rTu)
+TEncSearch::xSetIntraResultChromaQT(TComYuv*    pcRecoYuv, 
+TComTU &rTu)
 {
   if (!rTu.ProcessChannelSection(CHANNEL_TYPE_CHROMA))
   {
@@ -5279,7 +5403,8 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         }
 #endif
 
-        xSetIntraResultLumaQT( pcRecoYuv, tuRecurseWithPU );
+        xSetIntraResultLumaQT( pcRecoYuv, 
+          tuRecurseWithPU );
 
         if (pps.getPpsRangeExtension().getCrossComponentPredictionEnabledFlag())
         {
@@ -5785,7 +5910,8 @@ TEncSearch::estIntraPredChromaQT(TComDataCU* pcCU,
             uiBestDist  = uiDist;
             uiBestMode  = uiModeList[uiMode];
 
-            xSetIntraResultChromaQT( pcRecoYuv, tuRecurseWithPU );
+            xSetIntraResultChromaQT( pcRecoYuv, 
+              tuRecurseWithPU );
 #if JVET_C0024_QTBT            
             UInt uiRaster = g_auiZscanToRaster[pcCU->getZorderIdxInCtu()];
             for (UInt i=0; i<uiLong; i+=uiShort)
@@ -7336,8 +7462,8 @@ Void TEncSearch::xMotionEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPa
     TComYuv*  pcYuvOther = &m_acYuvPred[1-(Int)eRefPicList];
     pcYuv                = &m_cYuvPredTemp;
 
-    pcYuvOrg->copyPartToPartYuv( pcYuv, uiPartAddr, iRoiWidth, iRoiHeight );
 
+    pcYuvOrg->copyPartToPartYuv( pcYuv, uiPartAddr, iRoiWidth, iRoiHeight );
     pcYuv->removeHighFreq( pcYuvOther, uiPartAddr, iRoiWidth, iRoiHeight, pcCU->getSlice()->getSPS()->getBitDepths().recon, m_pcEncCfg->getClipForBiPredMeEnabled() );
 
     fWeight = 0.5;
@@ -8068,7 +8194,18 @@ Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg,
 
     pcYuvResi->clear();
 
+#if EE7_ADAPTIVE_CLIP // encoder, inter, here copy pred in rec , and skip
+    if (g_TchClipParam.isActive)
+    {
+        pcYuvPred->clipToPartYuv(pcYuvRec, 0, pcCU->getSlice()->getSPS()->getBitDepths());
+    }
+    else
+    {
+        pcYuvPred->copyToPartYuv( pcYuvRec, 0 );
+    }
+#else
     pcYuvPred->copyToPartYuv( pcYuvRec, 0 );
+#endif
     Distortion distortion = 0;
 
     for (Int comp=0; comp < numValidComponents; comp++)
@@ -8140,6 +8277,9 @@ Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg,
 #else
    pcYuvResi->subtract( pcYuvOrg, pcYuvPred, 0, cuWidthPixels );
 #endif
+#if EE7_ADAPTIVE_CLIP_EM
+   smoothResidual(pcYuvOrg,pcYuvResi,0,cuHeightPixels,cuWidthPixels);
+#endif
 
 #if COM16_C806_EMT
   Bool bestIsSkip = false;
@@ -8194,9 +8334,17 @@ Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg,
 #endif
 
 #if VCEG_AZ08_INTER_KLT
-  xEstimateInterResidualQT(pcYuvResi, nonZeroCost, nonZeroBits, nonZeroDistortion, &zeroDistortion, tuLevel0, pcYuvPred DEBUG_STRING_PASS_INTO(sDebug));
+  xEstimateInterResidualQT(pcYuvResi, nonZeroCost, nonZeroBits, nonZeroDistortion, &zeroDistortion, tuLevel0, pcYuvPred
+                         #if EE7_ADAPTIVE_CLIP_EM_2
+                           ,pcYuvOrg
+                         #endif
+                           DEBUG_STRING_PASS_INTO(sDebug));
 #else
-  xEstimateInterResidualQT( pcYuvResi,  nonZeroCost, nonZeroBits, nonZeroDistortion, &zeroDistortion, tuLevel0 DEBUG_STRING_PASS_INTO(sDebug) );
+  xEstimateInterResidualQT( pcYuvResi,  nonZeroCost, nonZeroBits, nonZeroDistortion, &zeroDistortion, tuLevel0
+                          #if EE7_ADAPTIVE_CLIP_EM_2
+                            ,pcYuvOrg
+                          #endif
+                            DEBUG_STRING_PASS_INTO(sDebug) );
 #endif
   // -------------------------------------------------------
   // set the coefficients in the pcCU, and also calculates the residual data.
@@ -8438,6 +8586,9 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
 #if VCEG_AZ08_INTER_KLT
                                            ,TComYuv* pcPred
 #endif
+                                           #if EE7_ADAPTIVE_CLIP_EM_2
+                                           ,TComYuv*    pcOrgYuv
+                                           #endif
                                            DEBUG_STRING_FN_DECLARE(sDebug) 
                                            )
 {
@@ -8771,7 +8922,16 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
                                   pcResi->getStride(compID),
                                   tuCompRect.width,
                                   false);
-
+#if EE7_ADAPTIVE_CLIP_EM_2
+                              {
+                                  const TComRectangle &rect             = TUIterator.getRect(compID);
+                                  const UInt           uiWidth          = rect.width;
+                                  const UInt           uiHeight         = rect.height;
+                                  const UInt           uiStride         = pcOrgYuv ->getStride (compID);
+                                  Pel           *piOrg            = pcOrgYuv ->getAddr( compID, uiAbsPartIdx );
+                                  smoothResidual(compID,piOrg,crossCPredictedResidualBuffer,uiHeight,uiWidth,uiStride,tuCompRect.width); // rTu, compID, piResi, uiStride, pcCoeff,
+                              }
+#endif
                               m_pcTrQuant->transformNxN(TUIterator, compID, crossCPredictedResidualBuffer, tuCompRect.width, currentCoefficients,
 #if ADAPTIVE_QP_SELECTION
                                   currentARLCoefficients,
@@ -9283,9 +9443,17 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
     {
       DEBUG_STRING_NEW(childString)
 #if VCEG_AZ08_INTER_KLT
-      xEstimateInterResidualQT(pcResi, dSubdivCost, uiSubdivBits, uiSubdivDist, bCheckFull ? NULL : puiZeroDist, tuRecurseChild, pcPred DEBUG_STRING_PASS_INTO(childString));
+      xEstimateInterResidualQT(pcResi, dSubdivCost, uiSubdivBits, uiSubdivDist, bCheckFull ? NULL : puiZeroDist, tuRecurseChild, pcPred
+                         #if EE7_ADAPTIVE_CLIP_EM_2
+                           ,pcYuvOrg
+                         #endif
+                               DEBUG_STRING_PASS_INTO(childString));
 #else
-      xEstimateInterResidualQT( pcResi, dSubdivCost, uiSubdivBits, uiSubdivDist, bCheckFull ? NULL : puiZeroDist,  tuRecurseChild DEBUG_STRING_PASS_INTO(childString));
+      xEstimateInterResidualQT( pcResi, dSubdivCost, uiSubdivBits, uiSubdivDist, bCheckFull ? NULL : puiZeroDist,  tuRecurseChild
+                          #if EE7_ADAPTIVE_CLIP_EM_2
+                            ,pcYuvOrg
+                          #endif
+                                DEBUG_STRING_PASS_INTO(childString));
 #endif
 #if DEBUG_STRING
       // split the string by component and append to the relevant output (because decoder decodes in channel order, whereas this search searches by TU-order)

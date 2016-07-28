@@ -436,7 +436,8 @@ protected:
                                     TComTU      &rTu
                                     DEBUG_STRING_FN_DECLARE(sDebug));
 
-  Void  xSetIntraResultChromaQT   ( TComYuv*    pcRecoYuv, TComTU &rTu);
+  Void  xSetIntraResultChromaQT   ( TComYuv*    pcRecoYuv, 
+    TComTU &rTu);
 
 #if COM16_C806_LMCHROMA
   Void  xStoreIntraResultQT       ( const ComponentID compID, TComTU &rTu, TComYuv* pcResiYuv = NULL);
@@ -670,6 +671,9 @@ protected:
 #if VCEG_AZ08_INTER_KLT
       , TComYuv* pcPred
 #endif
+                               #if EE7_ADAPTIVE_CLIP_EM_2
+                                 ,TComYuv*    pcOrgYuv
+                               #endif
       DEBUG_STRING_FN_DECLARE(sDebug) );
   Void xSetInterResidualQTData( TComYuv* pcResi, Bool bSpatial, TComTU &rTu  );
 

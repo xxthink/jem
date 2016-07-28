@@ -80,7 +80,8 @@ protected:
   Void  xDestroyLib       ();                               ///< destroy encoder class
 
   /// obtain required buffers
-  Void xGetBuffer(TComPicYuv*& rpcPicYuvRec);
+  Void xGetBuffer(TComPicYuv*& rpcPicYuvRec
+    );
 
   /// delete allocated buffers
   Void  xDeleteBuffer     ();
