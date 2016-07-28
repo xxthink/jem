@@ -188,9 +188,30 @@ extern TMatrixCoeff g_aiTr64[NUM_TRANS_TYPE][64][64];
 
 #if COM16_C1044_NSST
 extern const UChar g_NsstLut[NUM_INTRA_MODE-1];
+#if JVET_C0053_C0063_NSST_IMPROVEMENTS
+const  int HyGT_PTS = 1 << 8;
+struct HyGT_SC { int c, s; };
+extern HyGT_SC g_HyGTscTable[HyGT_PTS]; 
+extern const int HyGT_NSST_Rounds_4x4;
+extern const int g_NsstSrt4x4[35][3][16];
+extern const int g_NsstHyGTPar4x4[35][3][64];
+#if JVET_C0053_C0063_USE_8x8_NSST
+extern const int HyGT_NSST_Rounds_8x8;
+extern const int g_NsstSrt8x8[35][3][64];
+extern const int g_NsstHyGTPar8x8[35][3][768];
+#endif
+#else
 extern const Int   g_aiNsst4x4[12][3][16][16];
+#endif
 #if VCEG_AZ07_CTX_RESIDUALCODING
 extern const UInt  g_auiCoefScanFirstCG8x8[3][16];
+#endif
+#if JVET_C0053_C0063_USE_8x8_NSST
+#if JVET_C0024_QTBT
+extern const UInt g_auiCoefTopLeftDiagScan8x8[5][64];
+#else
+extern const UInt g_auiCoefTopLeftDiagScan8x8[3][64];
+#endif
 #endif
 #endif
 
