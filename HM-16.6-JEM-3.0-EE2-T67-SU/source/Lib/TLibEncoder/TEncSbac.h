@@ -145,9 +145,15 @@ public:
 #endif
 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if SU_NSST
+  Void codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, ChannelType ch, Bool suFlag );
+#elif NSST_INDEX
+  Void codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, ChannelType ch );
+#else
   Void codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  );
 #if JVET_C0024_QTBT
   Void codeROTIdxChroma ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  );
+#endif
 #endif
 #endif
 #if COM16_C806_OBMC

@@ -1633,6 +1633,13 @@ private:
   ChannelType                m_eType;             ///< The channelType current CTB is coding
 #endif
 
+#if SU_EMT
+  UInt                       m_uiMinEmtFlagSigAreaSize;
+#endif
+#if SU_NSST
+  UInt                       m_uiMinNsstFlagSigAreaSize;
+#endif
+
 public:
                               TComSlice();
   virtual                     ~TComSlice();
@@ -1891,6 +1898,16 @@ public:
   ChannelType   getTextType() const {return m_eType;}
   Void          setTextType(ChannelType eCType) { m_eType = eCType;}
 #endif
+
+#if SU_EMT
+  Void                        setMinEmtFlagSigAreaSize(Int i)                        { m_uiMinEmtFlagSigAreaSize = i; }
+  UInt                        getMinEmtFlagSigAreaSize()                             { return m_uiMinEmtFlagSigAreaSize; }
+#endif
+#if SU_NSST
+  Void                        setMinNsstFlagSigAreaSize(Int i)                        { m_uiMinNsstFlagSigAreaSize = i; }
+  UInt                        getMinNsstFlagSigAreaSize()                             { return m_uiMinNsstFlagSigAreaSize; }
+#endif
+
 protected:
   TComPic*                    xGetRefPic        (TComList<TComPic*>& rcListPic, Int poc);
   TComPic*                    xGetLongTermRefPic(TComList<TComPic*>& rcListPic, Int poc, Bool pocHasMsb);

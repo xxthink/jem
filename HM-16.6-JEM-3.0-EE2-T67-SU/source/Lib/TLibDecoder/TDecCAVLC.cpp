@@ -1498,6 +1498,22 @@ Void TDecCavlc::parseSliceHeader (TComSlice* pcSlice, ParameterSetManager *param
       pcSlice->setMaxBTSize(MAX_BT_SIZE);
     }
 #endif
+#if SU_EMT
+#if SU_FIXED_SIZE
+    uiCode = g_aucConvertToBit[EMT_FLAG_SIG_MIN_AREA];
+#else
+    READ_UVLC(uiCode, "min_emt_sig_area_size_log2_minus2");
+#endif
+    pcSlice->setMinEmtFlagSigAreaSize(4<<uiCode);
+#endif
+#if SU_NSST
+#if SU_FIXED_SIZE
+    uiCode = g_aucConvertToBit[NSST_FLAG_SIG_MIN_AREA];
+#else
+    READ_UVLC(uiCode, "min_nsst_sig_area_size_log2_minus2");
+#endif
+    pcSlice->setMinNsstFlagSigAreaSize(4<<uiCode);
+#endif
     if (!pcSlice->isIntra())
     {
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
@@ -2004,6 +2020,7 @@ Void TDecCavlc::parsePDPCIdx(TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /
 }
 #endif
 
+#if !SU_NSST && !NSST_INDEX
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 Void TDecCavlc::parseROTIdx ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/ )
 {
@@ -2017,6 +2034,8 @@ Void TDecCavlc::parseROTIdxChroma ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/,
 }
 #endif
 #endif
+#endif
+
 Void TDecCavlc::parseMergeIndex ( TComDataCU* /*pcCU*/, UInt& /*ruiMergeIndex*/ )
 {
   assert(0);
@@ -2492,6 +2511,7 @@ Void TDecCavlc::parseEmtTuIdx( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt
 {
   assert(0);
 }
+
 Void TDecCavlc::parseEmtCuFlag( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/, Bool /*bRootCbf*/ )
 {
   assert(0);

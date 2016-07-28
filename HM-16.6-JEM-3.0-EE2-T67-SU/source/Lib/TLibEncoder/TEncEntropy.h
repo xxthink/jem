@@ -88,9 +88,15 @@ public:
   virtual Void codePDPCIdx       (TComDataCU* pcCU, UInt uiAbsPartIdx) = 0;
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if SU_NSST
+  virtual Void codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, ChannelType ch, Bool suFlag ) = 0;
+#elif NSST_INDEX
+  virtual Void codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, ChannelType ch ) = 0;
+#else
    virtual Void codeROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth ) = 0;
 #if JVET_C0024_QTBT
    virtual Void codeROTIdxChroma ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth ) = 0;
+#endif
 #endif
 #endif
 #if VCEG_AZ07_IMV
@@ -264,9 +270,16 @@ public:
   Void encodePDPCIdx      ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false);
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if SU_NSST
+    Void encodeROTIdx    ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth, Bool bRD = false, Bool suFlag = false );
+#if JVET_C0024_QTBT
+    Void encodeROTIdxChroma( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth, Bool bRD = false, Bool suFlag = false );
+#endif
+#else
     Void encodeROTIdx    ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth, Bool bRD = false );
 #if JVET_C0024_QTBT
     Void encodeROTIdxChroma( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth, Bool bRD = false );
+#endif
 #endif
 #endif
 #if VCEG_AZ07_FRUC_MERGE
@@ -299,7 +312,11 @@ public:
 
 private:
 #if JVET_C0024_QTBT
-  Void xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComTU &rTu, ComponentID compID);
+  Void xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComTU &rTu, ComponentID compID
+#if SU_EMT
+    , Bool* suEmtFlag
+#endif
+    );
 #else
   Void xEncodeTransform        ( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComTU &rTu
 #if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
@@ -318,6 +335,12 @@ public:
 #endif
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
     , Int& iNonZeroCoeffNonTs
+#endif
+#if SU_EMT
+    , Bool* suEmtFlag
+#endif
+#if SU_NSST
+    , Bool* suNsstFlag
 #endif
     );
 

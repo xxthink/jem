@@ -111,9 +111,15 @@ public:
   virtual Void parsePDPCIdx       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth) = 0;
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if SU_NSST
+  virtual Void parseROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, ChannelType ch, Bool suFlag ) = 0;
+#elif NSST_INDEX
+  virtual Void parseROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, ChannelType ch ) = 0;
+#else
   virtual Void parseROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
 #if JVET_C0024_QTBT
   virtual Void parseROTIdxChroma( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
+#endif
 #endif
 #endif
   virtual Void parseMergeIndex    ( TComDataCU* pcCU, UInt& ruiMergeIndex ) = 0;
@@ -268,9 +274,16 @@ public:
 #endif
 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+#if SU_NSST
+  Void decodeROTIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool suFlag = false );
+#if JVET_C0024_QTBT
+  Void decodeROTIdxChroma  ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool suFlag = false );
+#endif
+#else
   Void decodeROTIdx        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #if JVET_C0024_QTBT
   Void decodeROTIdxChroma  ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
+#endif
 #endif
 #endif
 #if COM16_C806_OBMC
@@ -293,6 +306,13 @@ public:
   Void decodePartSize          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
 
+#if SU_EMT
+  Void decodeEmtFlag           ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bParseEmtFlag );
+#endif
+#if SU_NSST
+  Void decodeNsstFlag          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool bParseNsstFlag );
+#endif
+
   Void decodeIPCMInfo          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 
   Void decodePredInfo          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, TComDataCU* pcSubCU );
@@ -305,7 +325,11 @@ public:
 
 private:
 #if JVET_C0024_QTBT
-  Void xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjCoded, TComTU &rTu, ComponentID compID);
+  Void xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjCoded, TComTU &rTu, ComponentID compID
+#if SU_EMT
+    , UChar* suEmtFlag
+#endif
+    );
 #else
   Void xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjCoded, TComTU &rTu, const Int quadtreeTULog2MinSizeInCU 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
@@ -319,7 +343,14 @@ private:
 
 public:
 
-  Void decodeCoeff             ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool& bCodeDQP, Bool& isChromaQpAdjCoded );
+  Void decodeCoeff             ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool& bCodeDQP, Bool& isChromaQpAdjCoded
+#if SU_EMT
+    , UChar* suEmtFlag
+#endif
+#if SU_NSST
+    , UChar* suNsstFlag
+#endif
+    );
 
 #if QTBT_NSST
   Int countNonZeroCoeffs       ( TCoeff* pcCoef, UInt uiSize );

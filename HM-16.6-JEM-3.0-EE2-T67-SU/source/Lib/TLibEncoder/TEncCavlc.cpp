@@ -1106,6 +1106,34 @@ Void TEncCavlc::codeSliceHeader         ( TComSlice* pcSlice )
         WRITE_UVLC(0, "max_binary_tree_unit_size");
     }
 #endif
+#if SU_EMT && !SU_FIXED_SIZE
+    assert(pcSlice->getMinEmtFlagSigAreaSize()<1024);
+    Char ucCode;
+    if(pcSlice->getMinEmtFlagSigAreaSize()>128)
+    {
+      ucCode = g_aucConvertToBit[pcSlice->getMinEmtFlagSigAreaSize()>>6]+6;
+    }
+    else
+    {
+      ucCode = g_aucConvertToBit[pcSlice->getMinEmtFlagSigAreaSize()];
+    }
+    WRITE_UVLC(ucCode, "min_emt_sig_area_size_log2_minus2");
+#endif
+#if SU_NSST && !SU_FIXED_SIZE
+      assert(pcSlice->getMinNsstFlagSigAreaSize()<1024);
+#if !SU_EMT
+      Char ucCode;
+#endif
+      if(pcSlice->getMinNsstFlagSigAreaSize()>128)
+      {
+        ucCode = g_aucConvertToBit[pcSlice->getMinNsstFlagSigAreaSize()>>6]+6;
+      }
+      else
+      {
+        ucCode = g_aucConvertToBit[pcSlice->getMinNsstFlagSigAreaSize()];
+      }
+      WRITE_UVLC(ucCode, "min_nsst_sig_area_size_log2_minus2");
+#endif
     if (!pcSlice->isIntra())
     {
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
@@ -1342,6 +1370,7 @@ Void TEncCavlc::codePDPCIdx(TComDataCU* pcCU, UInt uiAbsPartIdx)
 }
 #endif
 
+#if !NSST_INDEX
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 Void TEncCavlc::codeROTIdx    ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth )
 {
@@ -1355,6 +1384,8 @@ Void TEncCavlc::codeROTIdxChroma( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDep
 }
 #endif
 #endif
+#endif
+
 #if VCEG_AZ07_FRUC_MERGE
 Void TEncCavlc::codeFRUCMgrMode  ( TComDataCU* pcCU, UInt uiAbsPartIdx , UInt uiPUIdx )
 {

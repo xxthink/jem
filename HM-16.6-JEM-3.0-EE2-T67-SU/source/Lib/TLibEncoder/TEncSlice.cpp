@@ -481,6 +481,12 @@ Void TEncSlice::initEncSlice( TComPic* pcPic, Int pocLast, Int pocCurr, Int iGOP
 #if JVET_C0024_QTBT
   rpcSlice->setMaxBTSize(rpcSlice->isIntra() ? MAX_BT_SIZE: MAX_BT_SIZE_INTER);
 #endif
+#if SU_EMT
+  rpcSlice->setMinEmtFlagSigAreaSize(EMT_FLAG_SIG_MIN_AREA);
+#endif
+#if SU_NSST
+  rpcSlice->setMinNsstFlagSigAreaSize(NSST_FLAG_SIG_MIN_AREA);
+#endif
 }
 
 Void TEncSlice::resetQP( TComPic* pic, Int sliceQP, Double lambda )

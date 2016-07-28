@@ -165,6 +165,13 @@ private:
 #endif
 #endif
 
+#if SU_EMT
+  Bool                    m_suEmtFlag[MAX_NUM_COMPONENT];
+#endif
+#if SU_NSST
+  Bool                    m_suNsstFlag[MAX_NUM_COMPONENT];
+#endif
+
 public:
   /// copy parameters from encoder class
   Void  init                ( TEncTop* pcEncTop );
@@ -189,7 +196,14 @@ protected:
   Void  finishCU            ( TComDataCU*  pcCU, UInt uiAbsPartIdx );
 #if AMP_ENC_SPEEDUP
 #if JVET_C0024_QTBT
-  Void  xCompressCU         ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const UInt uiDepth, UInt uiWidth, UInt uiHeight, UInt uiBTSplitMode DEBUG_STRING_FN_DECLARE(sDebug), UInt uiSplitConstrain=0 );
+  Void  xCompressCU         ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const UInt uiDepth, UInt uiWidth, UInt uiHeight, UInt uiBTSplitMode DEBUG_STRING_FN_DECLARE(sDebug), UInt uiSplitConstrain=0
+#if SU_EMT
+    , UChar uiParentEmtFlag = 2
+#endif
+#if SU_NSST
+    , UChar uiParentNsstFlag = 4
+#endif
+    );
 #else
   Void  xCompressCU         ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const UInt uiDepth DEBUG_STRING_FN_DECLARE(sDebug), PartSize eParentPartSize = NUMBER_OF_PART_SIZES );
 #endif

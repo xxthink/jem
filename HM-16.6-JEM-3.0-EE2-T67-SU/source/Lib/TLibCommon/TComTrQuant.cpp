@@ -6346,6 +6346,14 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
 #elif COM16_C1044_NSST
 #if JVET_C0024_QTBT
     Char ucNsstIdx = pcCU->getROTIdx(toChannelType(compID), uiAbsPartIdx) ;
+
+#if SU_NSST
+    if( pcCU->isInter( uiAbsPartIdx ) )
+    {
+      ucNsstIdx = 0;
+    }
+#endif
+
     if (ucNsstIdx && uiWidth>=4 && uiHeight>=4
 #if  JVET_C0045_C0053_NO_NSST_FOR_TS
       && !pcCU->getTransformSkip(uiAbsPartIdx, compID)
@@ -6419,7 +6427,12 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
         }
 
         assert( uiIntraMode<NUM_INTRA_MODE-1 );
+#if SU_NSST
+        //const Int iNsstCandNum = ( uiIntraMode <= DC_IDX && pcCU->getWidth(uiAbsPartIdx) * pcCU->getHeight(uiAbsPartIdx) >= pcCU->getSlice()->getMinNsstFlagSigAreaSize() ) ? 3 : 4;
+        const Int iNsstCandNum = 4;
+#else
         const Int iNsstCandNum = ( uiIntraMode<=DC_IDX ) ? 3 : 4;
+#endif
 
 #if JVET_C0024_QTBT
         if( iNsstCandNum > ucNsstIdx )
@@ -6637,6 +6650,14 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
 #elif COM16_C1044_NSST
 #if JVET_C0024_QTBT
     Char ucNsstIdx = pcCU->getROTIdx(toChannelType(compID), uiAbsPartIdx) ;
+
+#if SU_NSST
+    if( pcCU->isInter( uiAbsPartIdx ) )
+    {
+      ucNsstIdx = 0;
+    }
+#endif
+
     if (ucNsstIdx && uiWidth>=4 && uiHeight>=4
 #if  JVET_C0045_C0053_NO_NSST_FOR_TS
       && !pcCU->getTransformSkip(uiAbsPartIdx, compID)
@@ -6714,7 +6735,12 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
       }
 
       assert( uiIntraMode<NUM_INTRA_MODE-1 );
+#if SU_NSST
+      //const Int iNsstCandNum = ( uiIntraMode <= DC_IDX && pcCU->getWidth(uiAbsPartIdx) * pcCU->getHeight(uiAbsPartIdx) >= pcCU->getSlice()->getMinNsstFlagSigAreaSize() ) ? 3 : 4;
+      const Int iNsstCandNum = 4;
+#else
       const Int iNsstCandNum = ( uiIntraMode<=DC_IDX ) ? 3 : 4;
+#endif
 
       if( iNsstCandNum > ucNsstIdx )
       {
