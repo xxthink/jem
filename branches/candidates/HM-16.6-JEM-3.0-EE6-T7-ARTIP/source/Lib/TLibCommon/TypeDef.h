@@ -47,6 +47,13 @@
 //! \ingroup TLibCommon
 //! \{
 
+#define EXTEND_REF_LINE                                   1
+#define EE_TEST_3                                         0
+
+#if EXTEND_REF_LINE
+#define REF_LINE_NUM                                      4
+#endif
+
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////

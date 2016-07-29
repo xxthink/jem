@@ -62,7 +62,12 @@ Void fillReferenceSamples( const Int bitDepth,
                            const Int iLeftUnits,
                            const UInt uiWidth, 
                            const UInt uiHeight, 
-                           const Int iPicStride );
+                           const Int iPicStride 
+#if EXTEND_REF_LINE
+                           , UInt ExternRefNum
+                           , Pel* piSecondIntraTemp
+#endif
+                           );
 
 /// constrained intra prediction
 Bool  isAboveLeftAvailable  ( TComDataCU* pcCU, UInt uiPartIdxLT );
@@ -173,6 +178,12 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
   const UInt uiTuHeight2      = uiTuHeight << 1;
 #endif
 
+#if EXTEND_REF_LINE
+  UInt ExternRefNum = pcCU->getExternRef(chType, uiZorderIdxInPart);
+  if (ExternRefNum > 1 && compID != COMPONENT_Y)
+      ExternRefNum = 1;
+#endif
+
 #if JVET_C0024_QTBT
   assert(uiZorderIdxInPart==0);
   const Int  iBaseUnitSize    = sps.getCTUSize() >> sps.getMaxTotalCUDepth();
@@ -229,6 +240,9 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
 
   {
     Pel *piIntraTemp   = m_piYuvExt[compID][PRED_BUF_UNFILTERED];
+#if EXTEND_REF_LINE
+    Pel *piSecondIntraTemp = m_piSecondYuvExt[compID][PRED_BUF_UNFILTERED];
+#endif
     Pel *piRoiOrigin = pcCU->getPic()->getPicYuvRec()->getAddr(compID, pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu()+uiZorderIdxInPart);
 #if O0043_BEST_EFFORT_DECODING
     const Int  bitDepthForChannelInStream = sps.getStreamBitDepth(chType);
@@ -237,7 +251,12 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
     fillReferenceSamples (bitDepthForChannel,
 #endif
                           piRoiOrigin, piIntraTemp, bNeighborFlags, iNumIntraNeighbor,  iUnitWidth, iUnitHeight, iAboveUnits, iLeftUnits,
-                          uiROIWidth, uiROIHeight, iPicStride);
+                          uiROIWidth, uiROIHeight, iPicStride
+#if EXTEND_REF_LINE
+                          , ExternRefNum
+                          , piSecondIntraTemp
+#endif
+                          );
 
 #if DEBUG_STRING
     if (DebugOptionList::DebugString_Pred.getInt()&DebugStringGetPredModeMask(MODE_INTRA))
@@ -271,6 +290,12 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
       const Pel         *piSrcPtr  = piIntraTemp                           + (stride * uiTuHeight2); // bottom left
             Pel         *piDestPtr = m_piYuvExt[compID][PRED_BUF_FILTERED] + (stride * uiTuHeight2); // bottom left
 
+#if EXTEND_REF_LINE
+            Int         Secondstride = uiROIWidth + ExternRefNum;
+            const Pel   *piSecondSrcPtr = piSecondIntraTemp + (Secondstride * (uiTuHeight2 + ExternRefNum));
+            Pel         *piSecondDestPtr = m_piSecondYuvExt[compID][PRED_BUF_FILTERED] + (Secondstride * (uiTuHeight2 + ExternRefNum));
+#endif
+
       //------------------------------------------------
 
       Bool useStrongIntraSmoothing = isLuma(chType) && sps.getUseStrongIntraSmoothing();
@@ -285,6 +310,15 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
       const Pel topLeft    = piIntraTemp[0];
       const Pel topRight   = piIntraTemp[uiTuWidth2];
 
+#if EXTEND_REF_LINE
+      const Pel SecondbottomLeft = piSecondIntraTemp[Secondstride * (uiTuHeight2 + ExternRefNum)];
+      const Pel SecondtopLeft = piSecondIntraTemp[0];
+      const Pel SecondtopRight = piSecondIntraTemp[uiTuWidth2 + ExternRefNum];
+      Bool SeconduseStrongIntraSmoothing = useStrongIntraSmoothing;
+      const Bool bIsSecondWeakSmoothing = bIsWeakSmoothing;
+
+#endif
+
       if (useStrongIntraSmoothing)
       {
 #if O0043_BEST_EFFORT_DECODING
@@ -298,11 +332,26 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
         {
           useStrongIntraSmoothing = false;
         }
+
+#if EXTEND_REF_LINE
+        const Bool SecondbilinearLeft = abs((SecondbottomLeft + SecondtopLeft) - (2 * piSecondIntraTemp[Secondstride * uiTuHeight])) < threshold; //difference between the
+        const Bool SecondbilinearAbove = abs((SecondtopLeft + SecondtopRight) - (2 * piSecondIntraTemp[uiTuWidth])) < threshold; //ends and the middle
+        if ((uiTuWidth < 32) || (!SecondbilinearLeft) || (!SecondbilinearAbove))
+        {
+            SeconduseStrongIntraSmoothing = false;
+        }
+#endif
       }
 
       *piDestPtr = *piSrcPtr; // bottom left is not filtered
       piDestPtr -= stride;
       piSrcPtr  -= stride;
+
+#if EXTEND_REF_LINE
+      *piSecondDestPtr = *piSecondSrcPtr; // bottom left is not filtered
+      piSecondDestPtr -= Secondstride;
+      piSecondSrcPtr -= Secondstride;
+#endif
 
       //------------------------------------------------
 
@@ -344,6 +393,40 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
         }
       }
 
+#if EXTEND_REF_LINE
+      if (SeconduseStrongIntraSmoothing)
+      {
+          const Int shift = g_aucConvertToBit[uiTuHeight] + 3; //log2(uiTuHeight2)
+
+          for (UInt i = 1; i<uiTuHeight2 + ExternRefNum; i++, piSecondDestPtr -= Secondstride)
+          {
+              *piSecondDestPtr = (((uiTuHeight2 + ExternRefNum - i) * SecondbottomLeft) + (i * SecondtopLeft) + uiTuHeight) >> shift;
+          }
+
+          piSecondSrcPtr -= Secondstride * (uiTuHeight2 - 1 + ExternRefNum);
+      }
+      else
+      {
+#if COM16_C983_RSAF
+          //First pixel always use weak smoothing
+          *piSecondDestPtr = lp3tapFilterVer(piSecondSrcPtr, Secondstride);
+          piSecondDestPtr -= Secondstride;
+          piSecondSrcPtr -= Secondstride;
+
+          for (UInt i = 2; i<uiTuHeight2 + ExternRefNum; i++, piSecondDestPtr -= Secondstride, piSecondSrcPtr -= Secondstride)
+#else
+          for (UInt i = 1; i<uiTuHeight2; i++, piDestPtr -= stride, piSrcPtr -= stride)
+#endif
+          {
+#if COM16_C983_RSAF
+              *piSecondDestPtr = (bIsSecondWeakSmoothing || (i == (uiTuHeight2 - 1 + ExternRefNum))) ? lp3tapFilterVer(piSecondSrcPtr, Secondstride) : lp5tapFilterVer(piSecondSrcPtr, Secondstride);
+#else
+              *piSecondDestPtr = (piSecondSrcPtr[Secondstride] + 2 * piSecondSrcPtr[0] + piSecondSrcPtr[-Secondstride] + 2) >> 2;
+#endif
+          }
+      }
+#endif
+
       //------------------------------------------------
 
       //top-left
@@ -358,6 +441,19 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
       }
       piDestPtr += 1;
       piSrcPtr  += 1;
+
+#if EXTEND_REF_LINE
+      if (SeconduseStrongIntraSmoothing)
+      {
+          *piSecondDestPtr = piSecondSrcPtr[0];
+      }
+      else
+      {
+          *piSecondDestPtr = (piSecondSrcPtr[Secondstride] + 2 * piSecondSrcPtr[0] + piSecondSrcPtr[1] + 2) >> 2;
+      }
+      piSecondDestPtr += 1;
+      piSecondSrcPtr += 1;
+#endif
 
       //------------------------------------------------
 
@@ -399,9 +495,47 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
         }
       }
 
+#if EXTEND_REF_LINE
+      if (SeconduseStrongIntraSmoothing)
+      {
+          const Int shift = g_aucConvertToBit[uiTuWidth] + 3; //log2(uiTuWidth2)
+
+          for (UInt i = 1; i<uiTuWidth2 + ExternRefNum; i++, piSecondDestPtr++)
+          {
+              *piSecondDestPtr = (((uiTuWidth2 + ExternRefNum - i) * SecondtopLeft) + (i * SecondtopRight) + uiTuWidth) >> shift;
+          }
+
+          piSecondSrcPtr += uiTuWidth2 - 1;
+      }
+      else
+      {
+#if COM16_C983_RSAF
+          //First pixel always use weak smoothing
+          *piSecondDestPtr = lp3tapFilterHor(piSecondSrcPtr);
+          piSecondDestPtr++;
+          piSecondSrcPtr++;
+
+          for (UInt i = 2; i<uiTuWidth2 + ExternRefNum; i++, piSecondDestPtr++, piSecondSrcPtr++)
+#else
+          for (UInt i = 1; i<uiTuWidth2; i++, piDestPtr++, piSrcPtr++)
+#endif
+          {
+#if COM16_C983_RSAF         
+              *piSecondDestPtr = (bIsSecondWeakSmoothing || (i == (uiTuWidth2 - 1 + ExternRefNum))) ? lp3tapFilterHor(piSecondSrcPtr) : lp5tapFilterHor(piSecondSrcPtr);
+#else
+              *piSecondDestPtr = (piSecondSrcPtr[1] + 2 * piSecondSrcPtr[0] + piSecondSrcPtr[-1] + 2) >> 2;
+#endif
+          }
+      }
+#endif
+
       //------------------------------------------------
 
       *piDestPtr=*piSrcPtr; // far right is not filtered
+
+#if EXTEND_REF_LINE
+      *piSecondDestPtr = *piSecondSrcPtr;
+#endif
 
 #if DEBUG_STRING
     if (DebugOptionList::DebugString_Pred.getInt()&DebugStringGetPredModeMask(MODE_INTRA))
@@ -441,9 +575,26 @@ Void fillReferenceSamples( const Int bitDepth,
                            const Int iLeftUnits,
                            const UInt uiWidth, 
                            const UInt uiHeight, 
-                           const Int iPicStride )
+                           const Int iPicStride 
+#if EXTEND_REF_LINE
+                           , UInt ExternRefNum
+                           , Pel* piSecondIntraTemp
+#endif
+                           )
 {
   const Pel* piRoiTemp;
+#if EXTEND_REF_LINE
+  const Pel* piSecondRoiTemp;
+  UInt ExternUnit = ((2 * ExternRefNum + 1) / unitWidth) + 1;
+  const Int iTotalSecondUnits = iAboveUnits + iLeftUnits + ExternUnit;
+  Bool bSecondNeighborFlags[4 * MAX_NUM_PART_IDXS_IN_CTU_WIDTH + 10];
+  for (Int i = 0; i < iLeftUnits; i++)
+      bSecondNeighborFlags[i] = bNeighborFlags[i];
+  for (Int i = iLeftUnits; i < iLeftUnits + ExternUnit; i++)
+      bSecondNeighborFlags[i] = bNeighborFlags[iLeftUnits];
+  for (Int i = iLeftUnits + ExternUnit; i < iTotalSecondUnits; i++)
+      bSecondNeighborFlags[i] = bNeighborFlags[i - ExternUnit + 1];
+#endif
   Int  i, j;
   Int  iDCValue = 1 << (bitDepth - 1);
   const Int iTotalUnits = iAboveUnits + iLeftUnits + 1; //+1 for top-left
@@ -459,6 +610,17 @@ Void fillReferenceSamples( const Int bitDepth,
     {
       piIntraTemp[i*uiWidth] = iDCValue;
     }
+
+#if EXTEND_REF_LINE
+    for (i = 0; i<uiWidth + ExternRefNum; i++)
+    {
+        piSecondIntraTemp[i] = iDCValue;
+    }
+    for (i = 1; i<uiHeight + ExternRefNum; i++)
+    {
+        piSecondIntraTemp[i*(uiWidth + ExternRefNum)] = iDCValue;
+    }
+#endif
   }
   else if (iNumIntraNeighbor == iTotalUnits)
   {
@@ -486,6 +648,33 @@ Void fillReferenceSamples( const Int bitDepth,
 #endif
       piRoiTemp += iPicStride;
     }
+
+#if EXTEND_REF_LINE
+    // Fill top-left border and top and top right with rec. samples
+    piRoiTemp = piRoiOrigin - (ExternRefNum + 1) * iPicStride - (ExternRefNum + 1);
+
+    for (i = 0; i<uiWidth + ExternRefNum; i++)
+    {
+#if O0043_BEST_EFFORT_DECODING
+        piSecondIntraTemp[i] = piRoiTemp[i] << bitDepthDelta;
+#else
+        piSecondIntraTemp[i] = piRoiTemp[i];
+#endif
+    }
+
+    // Fill left and below left border with rec. samples
+    piRoiTemp = piRoiOrigin - (ExternRefNum + 1) - ExternRefNum * iPicStride;
+
+    for (i = 1; i<uiHeight + ExternRefNum; i++)
+    {
+#if O0043_BEST_EFFORT_DECODING
+        piSecondIntraTemp[i*uiWidth] = (*(piRoiTemp)) << bitDepthDelta;
+#else
+        piSecondIntraTemp[i*(uiWidth + ExternRefNum)] = *(piRoiTemp);
+#endif
+        piRoiTemp += iPicStride;
+    }
+#endif
   }
   else // reference samples are partially available
   {
@@ -495,6 +684,12 @@ Void fillReferenceSamples( const Int bitDepth,
     Pel  *piIntraLineTemp;
     const Bool *pbNeighborFlags;
 
+#if EXTEND_REF_LINE
+    const Int iTotalSecondSamples = (iLeftUnits * unitHeight) + ((iAboveUnits + ExternUnit) * unitWidth);
+    Pel  piIntraSecondLine[5 * MAX_CU_SIZE];
+    Pel  *piIntraSecondLineTemp;
+#endif
+
 
     // Initialize
     for (i=0; i<iTotalSamples; i++)
@@ -502,10 +697,23 @@ Void fillReferenceSamples( const Int bitDepth,
       piIntraLine[i] = iDCValue;
     }
 
+#if EXTEND_REF_LINE
+    for (i = 0; i<iTotalSecondSamples; i++)
+    {
+        piIntraSecondLine[i] = iDCValue;
+    }
+#endif
+
     // Fill top-left sample
     piRoiTemp = piRoiOrigin - iPicStride - 1;
     piIntraLineTemp = piIntraLine + (iLeftUnits * unitHeight);
     pbNeighborFlags = bNeighborFlags + iLeftUnits;
+
+#if EXTEND_REF_LINE
+    piSecondRoiTemp = piRoiOrigin - (ExternRefNum + 1) * iPicStride - (ExternRefNum + 1);
+    piIntraSecondLineTemp = piIntraSecondLine + (iLeftUnits * unitHeight);
+#endif
+
     if (*pbNeighborFlags)
     {
 #if O0043_BEST_EFFORT_DECODING
@@ -517,12 +725,30 @@ Void fillReferenceSamples( const Int bitDepth,
       {
         piIntraLineTemp[i] = topLeftVal;
       }
+
+#if EXTEND_REF_LINE
+      for (i = 0; i<ExternRefNum; i++)
+          piIntraSecondLineTemp[i] = piSecondRoiTemp[iPicStride * (ExternRefNum - i)];
+      piIntraSecondLineTemp[ExternRefNum] = piSecondRoiTemp[0];
+      for (i = 1; i<ExternRefNum; i++)
+          piIntraSecondLineTemp[ExternRefNum + i] = piSecondRoiTemp[i];
+      Pel topLeftSecondVal = piSecondRoiTemp[ExternRefNum];
+      for (i = 2 * ExternRefNum; i<ExternUnit*unitWidth; i++)
+      {
+          piIntraSecondLineTemp[i] = topLeftSecondVal;
+      }
+#endif
     }
 
     // Fill left & below-left samples (downwards)
     piRoiTemp += iPicStride;
     piIntraLineTemp--;
     pbNeighborFlags--;
+
+#if EXTEND_REF_LINE
+    piSecondRoiTemp += (ExternRefNum + 1) * iPicStride;
+    piIntraSecondLineTemp--;
+#endif
 
     for (j=0; j<iLeftUnits; j++)
     {
@@ -535,10 +761,17 @@ Void fillReferenceSamples( const Int bitDepth,
 #else
           piIntraLineTemp[-i] = piRoiTemp[i*iPicStride];
 #endif
+#if EXTEND_REF_LINE
+          piIntraSecondLineTemp[-i] = piSecondRoiTemp[i*iPicStride];
+#endif
         }
       }
       piRoiTemp += unitHeight*iPicStride;
       piIntraLineTemp -= unitHeight;
+#if EXTEND_REF_LINE
+      piSecondRoiTemp += unitHeight*iPicStride;
+      piIntraSecondLineTemp -= unitHeight;
+#endif
       pbNeighborFlags--;
     }
 
@@ -546,6 +779,10 @@ Void fillReferenceSamples( const Int bitDepth,
     piRoiTemp = piRoiOrigin - iPicStride;
     // offset line buffer by iNumUints2*unitHeight (for left/below-left) + unitWidth (for above-left)
     piIntraLineTemp = piIntraLine + (iLeftUnits * unitHeight) + unitWidth;
+#if EXTEND_REF_LINE
+    piSecondRoiTemp = piRoiOrigin - (ExternRefNum + 1) * iPicStride;
+    piIntraSecondLineTemp = piIntraSecondLine + (iLeftUnits * unitHeight) + ExternUnit*unitWidth;
+#endif
     pbNeighborFlags = bNeighborFlags + iLeftUnits + 1;
     for (j=0; j<iAboveUnits; j++)
     {
@@ -558,10 +795,17 @@ Void fillReferenceSamples( const Int bitDepth,
 #else
           piIntraLineTemp[i] = piRoiTemp[i];
 #endif
+#if EXTEND_REF_LINE
+          piIntraSecondLineTemp[i] = piSecondRoiTemp[i];
+#endif
         }
       }
       piRoiTemp += unitWidth;
       piIntraLineTemp += unitWidth;
+#if EXTEND_REF_LINE
+      piSecondRoiTemp += unitWidth;
+      piIntraSecondLineTemp += unitWidth;
+#endif
       pbNeighborFlags++;
     }
 
@@ -569,6 +813,10 @@ Void fillReferenceSamples( const Int bitDepth,
     Int iCurrJnit = 0;
     Pel  *piIntraLineCur   = piIntraLine;
     const UInt piIntraLineTopRowOffset = iLeftUnits * (unitHeight - unitWidth);
+#if EXTEND_REF_LINE
+    Int iSecondCurrJnit = 0;
+    Pel  *piIntraSecondLineCur = piIntraSecondLine;
+#endif
 
     if (!bNeighborFlags[0])
     {
@@ -604,6 +852,42 @@ Void fillReferenceSamples( const Int bitDepth,
           iCurrJnit++;
         }
       }
+
+
+#if EXTEND_REF_LINE
+    {
+        Int iSecondNext = 1;
+        while (iSecondNext < iTotalSecondUnits && !bSecondNeighborFlags[iSecondNext])
+        {
+            iSecondNext++;
+        }
+        Pel *piIntraSecondLineNext = piIntraSecondLine + ((iSecondNext < iLeftUnits) ? (iSecondNext * unitHeight) : (piIntraLineTopRowOffset + (iSecondNext * unitWidth)));
+        const Pel refSecondSample = *piIntraSecondLineNext;
+
+        // Pad unavailable samples with new value
+        Int iNextOrTop = std::min<Int>(iSecondNext, iLeftUnits);
+        // fill left column
+        while (iSecondCurrJnit < iNextOrTop)
+        {
+            for (i = 0; i<unitHeight; i++)
+            {
+                piIntraSecondLineCur[i] = refSecondSample;
+            }
+            piIntraSecondLineCur += unitHeight;
+            iSecondCurrJnit++;
+        }
+        // fill top row
+        while (iSecondCurrJnit < iSecondNext)
+        {
+            for (i = 0; i<unitWidth; i++)
+            {
+                piIntraSecondLineCur[i] = refSecondSample;
+            }
+            piIntraSecondLineCur += unitWidth;
+            iSecondCurrJnit++;
+        }
+    }
+#endif
     }
 
     // pad all other reference samples.
@@ -629,6 +913,31 @@ Void fillReferenceSamples( const Int bitDepth,
       }
     }
 
+#if EXTEND_REF_LINE
+    while (iSecondCurrJnit < iTotalSecondUnits)
+    {
+        if (!bSecondNeighborFlags[iSecondCurrJnit]) // samples not available
+        {
+            {
+                const Int numSamplesInCurrUnit = (iSecondCurrJnit >= iLeftUnits) ? unitWidth : unitHeight;
+                const Pel refSecondSample = *(piIntraSecondLineCur - 1);
+
+                for (i = 0; i<numSamplesInCurrUnit; i++)
+                {
+                    piIntraSecondLineCur[i] = refSecondSample;
+                }
+                piIntraSecondLineCur += numSamplesInCurrUnit;
+                iSecondCurrJnit++;
+            }
+        }
+        else
+        {
+            piIntraSecondLineCur += (iSecondCurrJnit >= iLeftUnits) ? unitWidth : unitHeight;
+            iSecondCurrJnit++;
+        }
+    }
+#endif
+
     // Copy processed samples
 
     piIntraLineTemp = piIntraLine + uiHeight + unitWidth - 2;
@@ -643,6 +952,28 @@ Void fillReferenceSamples( const Int bitDepth,
     {
       piIntraTemp[i*uiWidth] = piIntraLineTemp[-i];
     }
+
+#if EXTEND_REF_LINE
+    piIntraSecondLineTemp = piIntraSecondLine + (iLeftUnits * unitHeight);
+    for (i = 0; i<ExternRefNum; i++)
+        piSecondIntraTemp[(ExternRefNum - i)*(uiWidth + ExternRefNum)] = piIntraSecondLineTemp[i];
+    piSecondIntraTemp[0] = piIntraSecondLineTemp[ExternRefNum];
+    for (i = 0; i<ExternRefNum; i++)
+        piSecondIntraTemp[1 + i] = piIntraSecondLineTemp[ExternRefNum + i + 1];
+
+    piIntraSecondLineTemp = piIntraSecondLine + (iLeftUnits * unitHeight) + ExternUnit * unitWidth - 1;
+    // top left, top and top right samples
+    for (i = 1; i<uiWidth; i++)
+    {
+        piSecondIntraTemp[i + ExternRefNum] = piIntraSecondLineTemp[i];
+    }
+
+    piIntraSecondLineTemp = piIntraSecondLine + uiHeight - 1;
+    for (i = 1; i<uiHeight; i++)
+    {
+        piSecondIntraTemp[(i + ExternRefNum)*(uiWidth + ExternRefNum)] = piIntraSecondLineTemp[-i];
+    }
+#endif
   }
 }
 

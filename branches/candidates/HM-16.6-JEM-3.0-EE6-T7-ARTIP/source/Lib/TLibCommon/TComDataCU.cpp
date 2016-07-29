@@ -101,6 +101,9 @@ TComDataCU::TComDataCU()
   for(UInt i=0; i<MAX_NUM_CHANNEL_TYPE; i++)
   {
     m_puhIntraDir[i]     = NULL;
+#if EXTEND_REF_LINE
+    m_puhExternRef[i] = NULL;
+#endif
   }
   m_puhInterDir        = NULL;
 #if !JVET_C0024_QTBT
@@ -297,6 +300,9 @@ Void TComDataCU::create( ChromaFormat chromaFormatIDC, UInt uiNumPartition, UInt
     for (UInt ch=0; ch<MAX_NUM_CHANNEL_TYPE; ch++)
     {
       m_puhIntraDir[ch] = (UChar* )xMalloc(UChar,  uiNumPartition);
+#if EXTEND_REF_LINE
+      m_puhExternRef[ch] = (UChar*)xMalloc(UChar, uiNumPartition);
+#endif
     }
     m_puhInterDir        = (UChar* )xMalloc(UChar,  uiNumPartition);
 
@@ -599,6 +605,14 @@ Void TComDataCU::destroy()
     {
       xFree(m_affineFlag);
       m_affineFlag        = NULL;
+    }
+#endif
+
+#if EXTEND_REF_LINE
+    for (UInt ch = 0; ch<MAX_NUM_CHANNEL_TYPE; ch++)
+    {
+        xFree(m_puhExternRef[ch]);
+        m_puhExternRef[ch] = NULL;
     }
 #endif
 
@@ -909,6 +923,9 @@ Void TComDataCU::initCtu( TComPic* pcPic, UInt ctuRsAddr )
   for (UInt ch=0; ch<MAX_NUM_CHANNEL_TYPE; ch++)
   {
     memset( m_puhIntraDir[ch] , ((ch==0) ? DC_IDX : 0),   m_uiNumPartition * sizeof( *(m_puhIntraDir[ch]) ) );
+#if EXTEND_REF_LINE
+    memset(m_puhExternRef[ch], 0, m_uiNumPartition * sizeof(*(m_puhExternRef[ch])));
+#endif
   }
   memset( m_puhInterDir       , 0,                        m_uiNumPartition * sizeof( *m_puhInterDir ) );
   memset( m_pbIPCMFlag        , false,                    m_uiNumPartition * sizeof( *m_pbIPCMFlag ) );
@@ -1119,6 +1136,9 @@ Void TComDataCU::initEstData( const UInt uiDepth, const Int qp, const Bool bTran
     for (UInt ch=0; ch<MAX_NUM_CHANNEL_TYPE; ch++)
     {
       m_puhIntraDir[ch][ui] = ((ch==0) ? DC_IDX : 0);
+#if EXTEND_REF_LINE
+      m_puhExternRef[ch][ui] = 0;
+#endif
     }
 
     m_puhInterDir[ui] = 0;
@@ -1271,6 +1291,9 @@ Void TComDataCU::initSubBT(TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiCUDepth,
     for (UInt ch=0; ch<MAX_NUM_CHANNEL_TYPE; ch++)
     {
       memset( m_puhIntraDir[ch] + uiZorderDst,  ((ch==0) ? DC_IDX : 0), uiCurrPartNumb );
+#if EXTEND_REF_LINE
+      memset(m_puhExternRef[ch] + uiZorderDst, 0, uiCurrPartNumb);
+#endif
     }
     memset(m_puhInterDir + uiZorderDst, 0, uiCurrPartNumb );
     memset(m_skipFlag + uiZorderDst, false, uiCurrPartNumb );
@@ -1418,6 +1441,9 @@ Void TComDataCU::initSubCU( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth, 
   for (UInt ch=0; ch<MAX_NUM_CHANNEL_TYPE; ch++)
   {
     memset( m_puhIntraDir[ch],  ((ch==0) ? DC_IDX : 0), iSizeInUchar );
+#if EXTEND_REF_LINE
+    memset(m_puhExternRef[ch], 0, iSizeInUchar);
+#endif
   }
 
   memset( m_puhInterDir,        0, iSizeInUchar );
@@ -1644,6 +1670,9 @@ Void TComDataCU::copySubCU( TComDataCU* pcCU, UInt uiAbsPartIdx )
   for (UInt ch=0; ch<MAX_NUM_CHANNEL_TYPE; ch++)
   {
     m_puhIntraDir[ch]   = pcCU->getIntraDir(ChannelType(ch)) + uiPart;
+#if EXTEND_REF_LINE
+    m_puhExternRef[ch] = pcCU->getExternRef(ChannelType(ch)) + uiPart;
+#endif
   }
 
   m_puhInterDir         = pcCU->getInterDir()         + uiPart;
@@ -1900,6 +1929,9 @@ Void TComDataCU::copySameSizeCUFrom(TComDataCU* pcCU, UInt uiPartUnitIdx, UInt u
     for (UInt ch = 0; ch<numValidChan; ch++)
     {
         memcpy(m_puhIntraDir[ch] + uiOffset, pcCU->getIntraDir(ChannelType(ch)), iSizeInUchar);
+#if EXTEND_REF_LINE
+        memcpy(m_puhExternRef[ch] + uiOffset, pcCU->getExternRef(ChannelType(ch)), iSizeInUchar);
+#endif
     }
 
     memcpy(m_puhInterDir + uiOffset, pcCU->getInterDir(), iSizeInUchar);
@@ -2087,6 +2119,9 @@ Void TComDataCU::copyPartFrom( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDept
     for (UInt ch=0; ch<numValidChan; ch++)
     {
       memcpy( m_puhIntraDir[ch]   + uiZorderDst, pcCU->getIntraDir(ChannelType(ch))+uiZorderSrc, uiCurrPartNumb );
+#if EXTEND_REF_LINE
+      memcpy(m_puhExternRef[ch] + uiZorderDst, pcCU->getExternRef(ChannelType(ch)) + uiZorderSrc, uiCurrPartNumb);
+#endif
     }
 
     memcpy( m_puhInterDir         + uiZorderDst, pcCU->getInterDir()+uiZorderSrc, uiCurrPartNumb );
@@ -2193,6 +2228,9 @@ Void TComDataCU::copyPartFrom( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDept
   for (UInt ch=0; ch<numValidChan; ch++)
   {
     memcpy( m_puhIntraDir[ch]   + uiOffset, pcCU->getIntraDir(ChannelType(ch)), iSizeInUchar );
+#if EXTEND_REF_LINE
+    memcpy(m_puhExternRef[ch] + uiOffset, pcCU->getExternRef(ChannelType(ch)), iSizeInUchar);
+#endif
   }
 
   memcpy( m_puhInterDir         + uiOffset, pcCU->getInterDir(),          iSizeInUchar );
@@ -2372,6 +2410,9 @@ Void TComDataCU::copyToPic( UChar uhDepth )
       for (UInt ch=0; ch<numValidChan; ch++)
       {
         memcpy( pCtu->getIntraDir(ChannelType(ch)) + uiZorderDst, m_puhIntraDir[ch] + uiZorderSrc, uiCurrPartNumb);
+#if EXTEND_REF_LINE
+        memcpy(pCtu->getExternRef(ChannelType(ch)) + uiZorderDst, m_puhExternRef[ch] + uiZorderSrc, uiCurrPartNumb);
+#endif
       }
 
       memcpy( pCtu->getInterDir()          + uiZorderDst, m_puhInterDir + uiZorderSrc,         uiCurrPartNumb );
@@ -2534,6 +2575,9 @@ Void TComDataCU::copyToPic( UChar uhDepth )
   for (UInt ch=0; ch<numValidChan; ch++)
   {
     memcpy( pCtu->getIntraDir(ChannelType(ch)) + m_absZIdxInCtu, m_puhIntraDir[ch], iSizeInUchar);
+#if EXTEND_REF_LINE
+    memcpy(pCtu->getExternRef(ChannelType(ch)) + m_absZIdxInCtu, m_puhExternRef[ch], iSizeInUchar);
+#endif
   }
 
   memcpy( pCtu->getInterDir()          + m_absZIdxInCtu, m_puhInterDir,         iSizeInUchar );
@@ -3132,6 +3176,9 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
 #if VCEG_AZ07_INTRA_65ANG_MODES && !JVET_C0055_INTRA_MPM
                                       , Int &iLeftAboveCase
 #endif
+#if EXTEND_REF_LINE
+                                      , Int ExternRef
+#endif
                                       , Int* piMode  )
 {
 #if JVET_C0055_INTRA_MPM
@@ -3163,7 +3210,11 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
   if( cu && cu->isIntra(partIdx) )
   {
     uiIntraDirPred[modeIdx] = cu->getIntraDir( chType, partIdx );
-    if( !includedMode[uiIntraDirPred[modeIdx]] )
+    if( !includedMode[uiIntraDirPred[modeIdx]] 
+#if EXTEND_REF_LINE
+        && !(ExternRef && uiIntraDirPred[modeIdx] <= DC_IDX)
+#endif
+        )
     {
       includedMode[uiIntraDirPred[modeIdx]] = true;
       modeIdx++;
@@ -3175,7 +3226,11 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
   if( cu && cu->isIntra(partIdx) )
   {
     uiIntraDirPred[modeIdx] = cu->getIntraDir( chType, partIdx );
-    if( !includedMode[uiIntraDirPred[modeIdx]] )
+    if( !includedMode[uiIntraDirPred[modeIdx]] 
+#if EXTEND_REF_LINE
+        && !(ExternRef && uiIntraDirPred[modeIdx] <= DC_IDX)
+#endif
+        )
     {
       includedMode[uiIntraDirPred[modeIdx]] = true;
       modeIdx++;
@@ -3188,6 +3243,9 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
   }
 
   // PLANAR mode
+#if EXTEND_REF_LINE
+  if (ExternRef == 0){
+#endif
   uiIntraDirPred[modeIdx] = PLANAR_IDX;
   if( !includedMode[uiIntraDirPred[modeIdx]] )
   {
@@ -3207,6 +3265,9 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
       modeIdx++;
     }
   }
+#if EXTEND_REF_LINE
+  }
+#endif
 
   // below left
 #if !VCEG_AZ07_INTRA_65ANG_MODES
@@ -3217,7 +3278,11 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
     if( cu && cu->isIntra(partIdx) )
     {
       uiIntraDirPred[modeIdx] = cu->getIntraDir( chType, partIdx );
-      if( !includedMode[uiIntraDirPred[modeIdx]] )
+      if( !includedMode[uiIntraDirPred[modeIdx]] 
+#if EXTEND_REF_LINE
+          && !(ExternRef && uiIntraDirPred[modeIdx] <= DC_IDX)
+#endif
+          )
       {
         includedMode[uiIntraDirPred[modeIdx]] = true;
         modeIdx++;
@@ -3234,7 +3299,11 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
     if( cu && cu->isIntra(partIdx) )
     {
       uiIntraDirPred[modeIdx] = cu->getIntraDir( chType, partIdx );
-      if( !includedMode[uiIntraDirPred[modeIdx]] )
+      if( !includedMode[uiIntraDirPred[modeIdx]] 
+#if EXTEND_REF_LINE
+          && !(ExternRef && uiIntraDirPred[modeIdx] <= DC_IDX)
+#endif
+          )
       {
         includedMode[uiIntraDirPred[modeIdx]] = true;
         modeIdx++;
@@ -3249,7 +3318,11 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
     if( cu && cu->isIntra(partIdx) )
     {
       uiIntraDirPred[modeIdx] = cu->getIntraDir( chType, partIdx );
-      if( !includedMode[uiIntraDirPred[modeIdx]] )
+      if( !includedMode[uiIntraDirPred[modeIdx]] 
+#if EXTEND_REF_LINE
+          && !(ExternRef && uiIntraDirPred[modeIdx] <= DC_IDX)
+#endif
+          )
       {
         includedMode[uiIntraDirPred[modeIdx]] = true;
         modeIdx++;
@@ -3296,6 +3369,9 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
 
   // default modes
   UInt defaultIntraModes[] = {PLANAR_IDX, DC_IDX, VER_IDX, HOR_IDX, 2, DIA_IDX};
+#if EXTEND_REF_LINE
+  if (ExternRef == 0)
+#endif
   assert( modeIdx > 1 );
 
   for( UInt idx = 2; idx < NUM_MOST_PROBABLE_MODES && modeIdx < NUM_MOST_PROBABLE_MODES; idx++ )
@@ -3307,6 +3383,21 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
       modeIdx++;
     }
   }
+
+#if EXTEND_REF_LINE
+  if (ExternRef && modeIdx < NUM_MOST_PROBABLE_MODES){
+      UInt mode[] = { 10, 66, 26, 42, 30, 38 };
+      for (UInt i = 0; i < NUM_MOST_PROBABLE_MODES && modeIdx < NUM_MOST_PROBABLE_MODES; i++){
+          uiIntraDirPred[modeIdx] = mode[i];
+          if (!includedMode[uiIntraDirPred[modeIdx]])
+          {
+              includedMode[uiIntraDirPred[modeIdx]] = true;
+              modeIdx++;
+          }
+      }
+  }
+
+#endif
 
   assert( modeIdx == NUM_MOST_PROBABLE_MODES );
 #else
@@ -4526,6 +4617,18 @@ Void TComDataCU::setIntraDirSubParts( const ChannelType channelType, const UInt 
   memset( m_puhIntraDir[channelType] + absPartIdx, dir,sizeof(UChar)*numPart );
 #endif
 }
+
+#if EXTEND_REF_LINE
+Void TComDataCU::setExternRefSubParts(const ChannelType channelType, const UInt dir, const UInt absPartIdx, const UInt depth)
+{
+#if JVET_C0024_QTBT
+    setSubPart<UChar>(dir, m_puhExternRef[channelType], absPartIdx, getWidth(absPartIdx), getHeight(absPartIdx));
+#else
+    UInt numPart = m_pcPic->getNumPartitionsInCtu() >> (depth << 1);
+    memset(m_puhExternRef + absPartIdx, dir, sizeof(UChar)*numPart);
+#endif
+}
+#endif
 
 template<typename T>
 #if JVET_C0024_QTBT

@@ -85,6 +85,9 @@ TEncSbac::TEncSbac()
 , m_cCUPartSizeSCModel                 ( 1,             1,                      NUM_PART_SIZE_CTX                    , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUPredModeSCModel                 ( 1,             1,                      NUM_PRED_MODE_CTX                    , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUIntraPredSCModel                ( 1,             1,                      NUM_INTRA_PREDICT_CTX                , m_contextModels + m_numContextModels, m_numContextModels)
+#if EXTEND_REF_LINE
+, m_cCUExternRefSCModel(1, 1, NUM_EXTERN_REF_CTX, m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 , m_cCUChromaPredSCModel               ( 1,             1,                      NUM_CHROMA_PRED_CTX                  , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUDeltaQpSCModel                  ( 1,             1,                      NUM_DELTA_QP_CTX                     , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUInterDirSCModel                 ( 1,             1,                      NUM_INTER_DIR_CTX                    , m_contextModels + m_numContextModels, m_numContextModels)
@@ -188,6 +191,9 @@ Void TEncSbac::resetEntropy           (const TComSlice *pSlice)
   m_cCUPartSizeSCModel.initBuffer                 ( eSliceType, iQp, (UChar*)INIT_PART_SIZE );
   m_cCUPredModeSCModel.initBuffer                 ( eSliceType, iQp, (UChar*)INIT_PRED_MODE );
   m_cCUIntraPredSCModel.initBuffer                ( eSliceType, iQp, (UChar*)INIT_INTRA_PRED_MODE );
+#if EXTEND_REF_LINE
+  m_cCUExternRefSCModel.initBuffer(eSliceType, iQp, (UChar*)INIT_EXTERN_REF);
+#endif
   m_cCUChromaPredSCModel.initBuffer               ( eSliceType, iQp, (UChar*)INIT_CHROMA_PRED_MODE );
   m_cCUInterDirSCModel.initBuffer                 ( eSliceType, iQp, (UChar*)INIT_INTER_DIR );
   m_cCUMvdSCModel.initBuffer                      ( eSliceType, iQp, (UChar*)INIT_MVD );
@@ -298,6 +304,9 @@ SliceType TEncSbac::determineCabacInitIdx(const TComSlice *pSlice)
       curCost += m_cCUPartSizeSCModel.calcCost                 ( curSliceType, qp, (UChar*)INIT_PART_SIZE );
       curCost += m_cCUPredModeSCModel.calcCost                 ( curSliceType, qp, (UChar*)INIT_PRED_MODE );
       curCost += m_cCUIntraPredSCModel.calcCost                ( curSliceType, qp, (UChar*)INIT_INTRA_PRED_MODE );
+#if EXTEND_REF_LINE
+      curCost += m_cCUExternRefSCModel.calcCost(curSliceType, qp, (UChar*)INIT_EXTERN_REF);
+#endif
       curCost += m_cCUChromaPredSCModel.calcCost               ( curSliceType, qp, (UChar*)INIT_CHROMA_PRED_MODE );
       curCost += m_cCUInterDirSCModel.calcCost                 ( curSliceType, qp, (UChar*)INIT_INTER_DIR );
       curCost += m_cCUMvdSCModel.calcCost                      ( curSliceType, qp, (UChar*)INIT_MVD );
@@ -883,6 +892,9 @@ Void TEncSbac::codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
     && pcCU->getPDPCIdx(uiAbsPartIdx) == 0
 #endif  
     && !pcCU->getCUTransquantBypass(uiAbsPartIdx)
+#if EXTEND_REF_LINE
+    && pcCU->getExternRef(CHANNEL_TYPE_LUMA, uiAbsPartIdx) < 2
+#endif
     )  iNumberOfPassesROT = 4;
 
 #if COM16_C1044_NSST
@@ -1223,6 +1235,21 @@ Void TEncSbac::codeIntraDirLumaAng( TComDataCU* pcCU, UInt absPartIdx, Bool isMu
   Int aiCase[4]={0,0,0,0};
 #endif
 
+#if EXTEND_REF_LINE
+  UInt ExternRef = pcCU->getExternRef(CHANNEL_TYPE_LUMA, absPartIdx);
+
+  m_pcBinIf->encodeBin((ExternRef>0), m_cCUExternRefSCModel.get(0, 0, 0));
+#if REF_LINE_NUM > 2
+  if (ExternRef){
+      m_pcBinIf->encodeBin((ExternRef-1>0), m_cCUExternRefSCModel.get(0, 0, 1));
+#if REF_LINE_NUM > 3
+      if (ExternRef - 1)
+          m_pcBinIf->encodeBin(ExternRef - 2, m_cCUExternRefSCModel.get(0, 0, 2));
+#endif
+  }
+#endif
+#endif
+
   for (j=0;j<partNum;j++)
   {
     dir[j] = pcCU->getIntraDir( CHANNEL_TYPE_LUMA, absPartIdx+partOffset*j );
@@ -1240,6 +1267,9 @@ Void TEncSbac::codeIntraDirLumaAng( TComDataCU* pcCU, UInt absPartIdx, Bool isMu
     pcCU->getIntraDirPredictor(absPartIdx+partOffset*j, preds[j], COMPONENT_Y
 #if VCEG_AZ07_INTRA_65ANG_MODES && !JVET_C0055_INTRA_MPM
     , aiCase[j]
+#endif
+#if EXTEND_REF_LINE
+    , ExternRef
 #endif
     );
     for(UInt i = 0; i < NUM_MOST_PROBABLE_MODES; i++)
@@ -1313,6 +1343,10 @@ Void TEncSbac::codeIntraDirLumaAng( TComDataCU* pcCU, UInt absPartIdx, Bool isMu
       {
         dir[j] = dir[j] > preds[j][i] ? dir[j] - 1 : dir[j];
       }
+#if EXTEND_REF_LINE
+      if (ExternRef)
+          dir[j] -= 2;
+#endif
 #if VCEG_AZ07_INTRA_65ANG_MODES
       assert( dir[j]<(NUM_INTRA_MODE-7) );
 
@@ -1324,13 +1358,21 @@ Void TEncSbac::codeIntraDirLumaAng( TComDataCU* pcCU, UInt absPartIdx, Bool isMu
 #endif
       if(dir[j] %4 ==0) 
       {
+#if EXTEND_REF_LINE
+          xWriteTruncBinCode(dir[j] >> 2, 16 - (ExternRef > 0));
+#else
         m_pcBinIf->encodeBinsEP( dir[j]>>2, 4 );  // selected mode is 4-bit FLC coded
+#endif
       }
       else
       {
         dir[j] -= dir[j]>>2 ;
         dir[j] --;     
+#if EXTEND_REF_LINE
+        xWriteTruncBinCode(dir[j], 45 - (ExternRef > 0));
+#else
         xWriteTruncBinCode(dir[j] , 45);  // Non-selected mode is truncated binary coded
+#endif
       }
 #else
       if( dir[j]>=(NUM_INTRA_MODE-8) )

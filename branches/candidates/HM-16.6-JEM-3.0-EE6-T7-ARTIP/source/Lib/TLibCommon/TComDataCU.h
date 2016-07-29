@@ -213,6 +213,9 @@ private:
   Bool          m_bIsMergeAMP;
 #endif
   UChar*        m_puhIntraDir[MAX_NUM_CHANNEL_TYPE]; // 0-> Luma, 1-> Chroma
+#if EXTEND_REF_LINE
+  UChar*        m_puhExternRef[MAX_NUM_CHANNEL_TYPE];
+#endif
   UChar*        m_puhInterDir;        ///< array of inter directions
   Char*         m_apiMVPIdx[NUM_REF_PIC_LIST_01];       ///< array of motion vector predictor candidates
   Char*         m_apiMVPNum[NUM_REF_PIC_LIST_01];       ///< array of number of possible motion vectors predictors
@@ -603,6 +606,16 @@ public:
                                       const UInt uiAbsPartIdx,
                                       const UInt uiDepth );
 
+#if EXTEND_REF_LINE
+  UChar*        getExternRef(const ChannelType channelType)                   const { return m_puhExternRef[channelType]; }
+  UChar         getExternRef(const ChannelType channelType, const UInt uiIdx) const { return m_puhExternRef[channelType][uiIdx]; }
+
+  Void         setExternRefSubParts(const ChannelType channelType,
+      const UInt uiDir,
+      const UInt uiAbsPartIdx,
+      const UInt uiDepth);
+#endif
+
   UChar*        getInterDir           ()                        { return m_puhInterDir;               }
   UChar         getInterDir           ( UInt uiIdx )            { return m_puhInterDir[uiIdx];        }
   Void          setInterDir           ( UInt uiIdx, UChar  uh ) { m_puhInterDir[uiIdx] = uh;          }
@@ -885,6 +898,9 @@ public:
   Void          getIntraDirPredictor            ( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM_MOST_PROBABLE_MODES], const ComponentID compID
 #if VCEG_AZ07_INTRA_65ANG_MODES && !JVET_C0055_INTRA_MPM
     , Int &iAboveLeftCase
+#endif
+#if EXTEND_REF_LINE
+    , Int ExternRef
 #endif
     , Int* piMode = NULL );
 
