@@ -807,6 +807,18 @@ Void TEncCu::compressCtu( TComDataCU* pCtu )
 
   m_pppcBestCU[uiWidthIdx][uiHeightIdx]->initCtu( pCtu->getPic(), pCtu->getCtuRsAddr() );
   m_pppcTempCU[uiWidthIdx][uiHeightIdx]->initCtu( pCtu->getPic(), pCtu->getCtuRsAddr() );
+#if JVET_C0024_DELTA_QP_FIX_R1
+  if (pCtu->getSlice()->getPPS()->getUseDQP())
+  {
+    Char qp = pCtu->getCtuLastCodedQP();
+    m_pppcBestCU[uiWidthIdx][uiHeightIdx]->setCodedQP( qp );
+    m_pppcTempCU[uiWidthIdx][uiHeightIdx]->setCodedQP( qp );
+    m_pppcBestCU[uiWidthIdx][uiHeightIdx]->setQuLastCodedQP( qp );
+    m_pppcTempCU[uiWidthIdx][uiHeightIdx]->setQuLastCodedQP( qp );
+    m_pppcBestCU[uiWidthIdx][uiHeightIdx]->setQuPartIdx(0); // init current quantization unit partition index
+    m_pppcTempCU[uiWidthIdx][uiHeightIdx]->setQuPartIdx(0); // init current quantization unit partition index
+  }
+#endif
 
 #if VCEG_AZ07_IMV && !JVET_C0024_QTBT
   for( Int size = 0 ; size < NUMBER_OF_PART_SIZES ; size++ )
@@ -854,6 +866,18 @@ Void TEncCu::compressCtu( TComDataCU* pCtu )
       pCtu->getPic()->setCodedAreaInCTU(0);
       m_pppcBestCU[uiWidthIdx][uiHeightIdx]->initCtu( pCtu->getPic(), pCtu->getCtuRsAddr() );
       m_pppcTempCU[uiWidthIdx][uiHeightIdx]->initCtu( pCtu->getPic(), pCtu->getCtuRsAddr() );
+#if JVET_C0024_DELTA_QP_FIX_R1
+      if (pCtu->getSlice()->getPPS()->getUseDQP())
+      {
+        Char qp = pCtu->getCtuLastCodedQP();
+        m_pppcBestCU[uiWidthIdx][uiHeightIdx]->setCodedQP( qp );
+        m_pppcTempCU[uiWidthIdx][uiHeightIdx]->setCodedQP( qp );
+        m_pppcBestCU[uiWidthIdx][uiHeightIdx]->setQuLastCodedQP( qp );
+        m_pppcTempCU[uiWidthIdx][uiHeightIdx]->setQuLastCodedQP( qp );
+        m_pppcBestCU[uiWidthIdx][uiHeightIdx]->setQuPartIdx(0); // init current quantization unit partition index
+        m_pppcTempCU[uiWidthIdx][uiHeightIdx]->setQuPartIdx(0); // init current quantization unit partition index
+      }
+#endif
 
       xCompressCU( m_pppcBestCU[uiWidthIdx][uiHeightIdx], m_pppcTempCU[uiWidthIdx][uiHeightIdx], 0, uiCTUSize, uiCTUSize, 0 DEBUG_STRING_PASS_INTO(sDebug) );
     }
@@ -879,6 +903,12 @@ Void TEncCu::encodeCtu ( TComDataCU* pCtu )
   if (pCtu->getSlice()->getPPS()->getUseDQP())
   {
     setdQPFlag(true);
+#if JVET_C0024_DELTA_QP_FIX_R1
+    Char qp = pCtu->getCtuLastCodedQP();
+    pCtu->setQuPartIdx(0); 
+    pCtu->setQuLastCodedQP( qp );
+    pCtu->setCodedQP( qp );
+#endif
   }
 
   if ( pCtu->getSlice()->getUseChromaQpAdj() )
@@ -907,6 +937,12 @@ Void TEncCu::encodeCtu ( TComDataCU* pCtu )
     if (pCtu->getSlice()->getPPS()->getUseDQP())
     {
       setdQPFlag(true);
+#if JVET_C0024_DELTA_QP_FIX_R1
+      Char qp = pCtu->getCtuLastCodedQP();
+      pCtu->setQuPartIdx(0); 
+      pCtu->setQuLastCodedQP( qp );
+      pCtu->setCodedQP( qp );
+#endif
     }
 #endif
 
@@ -1081,6 +1117,10 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #endif
 #endif
 
+#if JVET_C0024_DELTA_QP_FIX_R1
+  const Char lastCodedQP = rpcBestCU->getCodedQP(); 
+#endif
+
   const UInt numberValidComponents = rpcBestCU->getPic()->getNumberValidComponents();
 #if VCEG_AZ08_INTER_KLT
   g_bEnableCheck = false;
@@ -1094,6 +1134,16 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
     Int idQP = m_pcEncCfg->getMaxDeltaQP();
     iMinQP = Clip3( -sps.getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, iBaseQP-idQP );
     iMaxQP = Clip3( -sps.getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, iBaseQP+idQP );
+#if JVET_C0024_DELTA_QP_FIX_R1
+    if( pps.getUseDQP() )
+    {
+      UInt uiCurrPartIdxInCtu = rpcBestCU->getZorderIdxInCtu();
+      rpcBestCU->setQuPartIdx( uiCurrPartIdxInCtu );
+      rpcTempCU->setQuPartIdx( uiCurrPartIdxInCtu );
+      rpcBestCU->setQuLastCodedQP( lastCodedQP );
+      rpcTempCU->setQuLastCodedQP( lastCodedQP );
+    }
+#endif
   }
   else
   {
@@ -1987,6 +2037,12 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
       m_pcRDGoOnSbacCoder->store(m_pppcRDSbacCoder[uiDepth][CI_NEXT_BEST]);
 #endif
     }
+#if JVET_C0024_DELTA_QP_FIX_R1
+    if( pps.getUseDQP() )
+    {
+      rpcBestCU->setCodedQP( rpcBestCU->getQP(0) );
+    }
+#endif
   }
 
 #if JVET_C0024_QTBT && COM16_C806_LARGE_CTU
@@ -2154,6 +2210,19 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #if JVET_C0024_BT_RMV_REDUNDANT
       uiSplitConstrain = 0;
 #endif
+#if JVET_C0024_DELTA_QP_FIX_R1
+      if( pps.getUseDQP() ) // inherit quantization group info. from parent CU.
+      {
+        pcSubBestPartCU->initSubBT( rpcTempCU, 0, uiDepth, uiWidth, uiHeight>>1, 1, iQP );           
+        pcSubTempPartCU->initSubBT( rpcTempCU, 0, uiDepth, uiWidth, uiHeight>>1, 1, iQP );           // clear sub partition datas or init.
+        pcSubBestPartCU->setCodedQP( lastCodedQP );
+        pcSubTempPartCU->setCodedQP( lastCodedQP );
+        pcSubBestPartCU->setQuPartIdx( rpcTempCU->getQuPartIdx() );
+        pcSubTempPartCU->setQuPartIdx( rpcTempCU->getQuPartIdx() );
+        pcSubBestPartCU->setQuLastCodedQP( rpcTempCU->getQuLastCodedQP() );
+        pcSubTempPartCU->setQuLastCodedQP( rpcTempCU->getQuLastCodedQP() );
+      }
+#endif
 
       for ( UInt uiPartUnitIdx = 0; uiPartUnitIdx < 2; uiPartUnitIdx++ )
       {
@@ -2193,6 +2262,14 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
           xCompressCU( pcSubBestPartCU, pcSubTempPartCU, uiDepth, uiWidth, uiHeight>>1, pcSubBestPartCU->getBTSplitMode(0) );
 #endif
           rpcTempCU->copyPartFrom( pcSubBestPartCU, uiPartUnitIdx, uhNextDepth, uiWidth, uiHeight>>1 );         // Keep best part data to current temporary data.
+#if JVET_C0024_DELTA_QP_FIX_R1
+          if( pps.getUseDQP() ) // update coded QP
+          { 
+            rpcTempCU->setCodedQP( pcSubBestPartCU->getCodedQP() ); 
+            pcSubBestPartCU->setCodedQP( rpcTempCU->getCodedQP() );
+            pcSubTempPartCU->setCodedQP( rpcTempCU->getCodedQP() );
+          }
+#endif
           xCopyYuv2Tmp( pcSubBestPartCU->getZorderIdxInCtu()-rpcTempCU->getZorderIdxInCtu(), uiWidth, uiHeight, 1 );
         }
       }
@@ -2226,6 +2303,12 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         else
         {
           rpcTempCU->setQPSubParts( rpcTempCU->getRefQP( 0 ), 0, uiWidth, uiHeight ); // set QP to default QP
+#if JVET_C0024_DELTA_QP_FIX_R1
+          if( pps.getUseDQP() ) // update coded QP
+          { 
+            rpcTempCU->setCodedQP( rpcTempCU->getQP( 0 ) ); 
+          }
+#endif
         }
       }
 #endif
@@ -2280,6 +2363,19 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #if JVET_C0024_BT_RMV_REDUNDANT
       uiSplitConstrain = 0;
 #endif
+#if JVET_C0024_DELTA_QP_FIX_R1 // inherit quantization group info. from parent CU.
+      if( pps.getUseDQP() )
+      {
+        pcSubBestPartCU->initSubBT( rpcTempCU, 0, uiDepth, uiWidth>>1, uiHeight, 2, iQP );           
+        pcSubTempPartCU->initSubBT( rpcTempCU, 0, uiDepth, uiWidth>>1, uiHeight, 2, iQP );           // clear sub partition datas or init.
+        pcSubBestPartCU->setCodedQP( lastCodedQP );
+        pcSubTempPartCU->setCodedQP( lastCodedQP );
+        pcSubBestPartCU->setQuPartIdx( rpcTempCU->getQuPartIdx() );
+        pcSubTempPartCU->setQuPartIdx( rpcTempCU->getQuPartIdx() );
+        pcSubBestPartCU->setQuLastCodedQP( rpcTempCU->getQuLastCodedQP() );
+        pcSubTempPartCU->setQuLastCodedQP( rpcTempCU->getQuLastCodedQP() );
+      }
+#endif
 
       for ( UInt uiPartUnitIdx = 0; uiPartUnitIdx < 2; uiPartUnitIdx++ )
       {
@@ -2321,6 +2417,14 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #endif
 
           rpcTempCU->copyPartFrom( pcSubBestPartCU, uiPartUnitIdx, uhNextDepth, uiWidth>>1, uiHeight );         // Keep best part data to current temporary data.
+#if JVET_C0024_DELTA_QP_FIX_R1
+          if( pps.getUseDQP() )  // update coded QP
+          { 
+            rpcTempCU->setCodedQP( pcSubBestPartCU->getCodedQP() ); 
+            pcSubBestPartCU->setCodedQP( rpcTempCU->getCodedQP() );
+            pcSubTempPartCU->setCodedQP( rpcTempCU->getCodedQP() );
+          }
+#endif
           xCopyYuv2Tmp( pcSubBestPartCU->getZorderIdxInCtu()-rpcTempCU->getZorderIdxInCtu(), uiWidth, uiHeight, 2 );
         }
       }
@@ -2355,6 +2459,12 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         else
         {
           rpcTempCU->setQPSubParts( rpcTempCU->getRefQP( 0 ), 0, uiWidth, uiHeight ); // set QP to default QP
+#if JVET_C0024_DELTA_QP_FIX_R1
+          if( pps.getUseDQP() ) // update coded QP
+          { 
+            rpcTempCU->setCodedQP( rpcTempCU->getQP( 0 ) ); 
+          }
+#endif
         }
       }
 #endif
@@ -2419,6 +2529,19 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
       TComDataCU* pcSubTempPartCU     = m_ppcTempCU[uhNextDepth];
 #endif
       DEBUG_STRING_NEW(sTempDebug)
+#if JVET_C0024_DELTA_QP_FIX_R1 // inherit quantization group info. from parent CU.
+      if( pps.getUseDQP() )
+      {
+        pcSubBestPartCU->initSubCU( rpcTempCU, 0, uhNextDepth, iQP );           // clear sub partition datas or init.
+        pcSubTempPartCU->initSubCU( rpcTempCU, 0, uhNextDepth, iQP );           // clear sub partition datas or init.
+        pcSubBestPartCU->setCodedQP( lastCodedQP );
+        pcSubTempPartCU->setCodedQP( lastCodedQP );
+        pcSubBestPartCU->setQuPartIdx( rpcTempCU->getQuPartIdx() );
+        pcSubTempPartCU->setQuPartIdx( rpcTempCU->getQuPartIdx() );
+        pcSubBestPartCU->setQuLastCodedQP( rpcTempCU->getQuLastCodedQP() );
+        pcSubTempPartCU->setQuLastCodedQP( rpcTempCU->getQuLastCodedQP() );
+      }
+#endif
 
       for ( UInt uiPartUnitIdx = 0; uiPartUnitIdx < 4; uiPartUnitIdx++ )
       {
@@ -2492,6 +2615,14 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 
 #if JVET_C0024_QTBT
             rpcTempCU->copyPartFrom( pcSubBestPartCU, uiPartUnitIdx, uhNextDepth, uiWidth>>1, uiHeight>>1 );         // Keep best part data to current temporary data.
+#if JVET_C0024_DELTA_QP_FIX_R1
+            if( pps.getUseDQP() )  // update coded QP
+            { 
+              rpcTempCU->setCodedQP( pcSubBestPartCU->getCodedQP() ); 
+              pcSubBestPartCU->setCodedQP( rpcTempCU->getCodedQP() );
+              pcSubTempPartCU->setCodedQP( rpcTempCU->getCodedQP() );
+            }
+#endif
             assert(pcSubBestPartCU->getTotalNumPart()*uiPartUnitIdx == pcSubBestPartCU->getZorderIdxInCtu()-rpcTempCU->getZorderIdxInCtu());       
             xCopyYuv2Tmp( pcSubBestPartCU->getTotalNumPart()*uiPartUnitIdx, uiWidth, uiHeight );
 #else
@@ -2601,6 +2732,12 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
           rpcTempCU->setQPSubParts( rpcTempCU->getRefQP( 0 ), 0, uiWidth, uiHeight ); // set QP to default QP
 #else
           rpcTempCU->setQPSubParts( rpcTempCU->getRefQP( 0 ), 0, uiDepth ); // set QP to default QP
+#endif
+#if JVET_C0024_DELTA_QP_FIX_R1
+          if( pps.getUseDQP() ) // update coded QP
+          { 
+            rpcTempCU->setCodedQP( rpcTempCU->getQP( 0 ) ); 
+          }
 #endif
         }
       }
@@ -2829,6 +2966,10 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 #endif
     {
       setdQPFlag(true);
+#if JVET_C0024_DELTA_QP_FIX_R1
+      pcCU->setQuPartIdx( uiAbsPartIdx );
+      pcCU->setQuLastCodedQP( pcCU->getCodedQP() );
+#endif
     }
 
     if( uiDepth == pps.getPpsRangeExtension().getDiffCuChromaQpOffsetDepth() && pcSlice->getUseChromaQpAdj())
@@ -2895,6 +3036,10 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
       if( uiQTBTDepth == uiMaxDQPDepthQTBT && pps.getUseDQP())
       {
         setdQPFlag(true);
+#if JVET_C0024_DELTA_QP_FIX_R1
+        pcCU->setQuPartIdx( uiAbsPartIdx );
+        pcCU->setQuLastCodedQP( pcCU->getCodedQP() );
+#endif
       }
 #endif
       for ( UInt uiPartUnitIdx = 0; uiPartUnitIdx < 2; uiPartUnitIdx++ )
@@ -2922,6 +3067,10 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
       if( uiQTBTDepth == uiMaxDQPDepthQTBT && pps.getUseDQP())
       {
         setdQPFlag(true);
+#if JVET_C0024_DELTA_QP_FIX_R1
+        pcCU->setQuPartIdx( uiAbsPartIdx );
+        pcCU->setQuLastCodedQP( pcCU->getCodedQP() );
+#endif
       }
 #endif
       for ( UInt uiPartUnitIdx = 0; uiPartUnitIdx < 2; uiPartUnitIdx++ )
@@ -2966,6 +3115,10 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 #endif
   {
     setdQPFlag(true);
+#if JVET_C0024_DELTA_QP_FIX_R1
+    pcCU->setQuPartIdx( uiAbsPartIdx );
+    pcCU->setQuLastCodedQP( pcCU->getCodedQP() );
+#endif
   }
 
   if( uiDepth <= pps.getPpsRangeExtension().getDiffCuChromaQpOffsetDepth() && pcSlice->getUseChromaQpAdj())
@@ -3010,6 +3163,12 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 #if !JVET_C0024_QTBT
     finishCU(pcCU,uiAbsPartIdx);
 #endif
+#if JVET_C0024_DELTA_QP_FIX_R1
+    if( pps.getUseDQP() )
+    { 
+      pcCU->setCodedQP( pcCU->getQP(uiAbsPartIdx) );
+    }
+#endif
     return;
   }
 
@@ -3044,6 +3203,12 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
       // Encode slice finish
       finishCU(pcCU,uiAbsPartIdx);
 #endif
+#if JVET_C0024_DELTA_QP_FIX_R1
+      if( pps.getUseDQP() )
+      { 
+        pcCU->setCodedQP( pcCU->getQP(uiAbsPartIdx) );
+      }
+#endif
       return;
     }
   }
@@ -3075,6 +3240,12 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
     );
   setCodeChromaQpAdjFlag( codeChromaQpAdj );
   setdQPFlag( bCodeDQP );
+#if JVET_C0024_DELTA_QP_FIX_R1
+  if( pps.getUseDQP() )
+  { 
+    pcCU->setCodedQP( pcCU->getQP(uiAbsPartIdx) );
+  }
+#endif
 
 #if !JVET_C0024_QTBT
   // --- write terminating bit ---

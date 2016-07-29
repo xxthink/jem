@@ -250,7 +250,13 @@ private:
   Distortion    m_uiTotalDistortion;  ///< sum of partition distortion
   UInt          m_uiTotalBits;        ///< sum of partition bits
   UInt          m_uiTotalBins;        ///< sum of partition bins
+#if JVET_C0024_DELTA_QP_FIX_R1
+  UInt          m_uiQuPartIdx;
+  Char          m_QuLastCodedQP;
+  Char          m_codedQP[MAX_NUM_CHANNEL_TYPE];
+#else
   Char          m_codedQP;
+#endif
   UChar*        m_explicitRdpcmMode[MAX_NUM_COMPONENT]; ///< Stores the explicit RDPCM mode for all TUs belonging to this CU
 
 protected:
@@ -470,15 +476,28 @@ public:
   Void          setQP                 ( UInt uiIdx, Char value ){ m_phQP[uiIdx] =  value;     }
   Void          setQPSubParts         ( Int qp,   UInt uiAbsPartIdx, UInt uiDepth );
 #endif
+#if JVET_C0024_DELTA_QP_FIX_R1
+  Char          getCtuLastCodedQP     (  );
+#else
   Int           getLastValidPartIdx   ( Int iAbsPartIdx );
   Char          getLastCodedQP        ( UInt uiAbsPartIdx );
+#endif
 #if JVET_C0024_DELTA_QP_FIX
   Void          setQPSubCUs           ( Int qp, UInt absPartIdx, UInt depth, UInt uiWidth, UInt uiHeight, UInt& ruiFirstNonZeroPartIdx, Bool &foundNonZeroCbf );
 #else
   Void          setQPSubCUs           ( Int qp, UInt absPartIdx, UInt depth, Bool &foundNonZeroCbf );
 #endif
+#if JVET_C0024_DELTA_QP_FIX_R1
+  Void          setQuLastCodedQP      ( Char qp )               { m_QuLastCodedQP = qp;       }
+  Char          getQuLastCodedQP      ()                        { return m_QuLastCodedQP;     }
+  Void          setQuPartIdx          ( UInt uiPartIdx )        { m_uiQuPartIdx = uiPartIdx;  }
+  UInt          getQuPartIdx          ()                        { return m_uiQuPartIdx;       }
+  Void          setCodedQP            ( Char qp )               { m_codedQP[getTextType()] = qp;   }
+  Char          getCodedQP            ()                        { return m_codedQP[getTextType()]; }
+#else
   Void          setCodedQP            ( Char qp )               { m_codedQP = qp;             }
   Char          getCodedQP            ()                        { return m_codedQP;           }
+#endif
 
   UChar*        getChromaQpAdj        ()                        { return m_ChromaQpAdj;       } ///< array of chroma QP adjustments (indexed). when value = 0, cu_chroma_qp_offset_flag=0; when value>0, indicates cu_chroma_qp_offset_flag=1 and cu_chroma_qp_offset_idx=value-1
   UChar         getChromaQpAdj        (Int idx)           const { return m_ChromaQpAdj[idx];  } ///< When value = 0, cu_chroma_qp_offset_flag=0; when value>0, indicates cu_chroma_qp_offset_flag=1 and cu_chroma_qp_offset_idx=value-1
