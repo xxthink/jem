@@ -200,21 +200,21 @@ public:
   virtual ~TEncSearch();
 
   Void init(TEncCfg*      pcEncCfg,
-            TComTrQuant*  pcTrQuant,
-            Int           iSearchRange,
-            Int           bipredSearchRange,
-            Int           iFastSearch,
-            const UInt    maxCUWidth,
-            const UInt    maxCUHeight,
-            const UInt    maxTotalCUDepth,
-            TEncEntropy*  pcEntropyCoder,
-            TComRdCost*   pcRdCost,
+    TComTrQuant*  pcTrQuant,
+    Int           iSearchRange,
+    Int           bipredSearchRange,
+    Int           iFastSearch,
+    const UInt    maxCUWidth,
+    const UInt    maxCUHeight,
+    const UInt    maxTotalCUDepth,
+    TEncEntropy*  pcEntropyCoder,
+    TComRdCost*   pcRdCost,
 #if JVET_C0024_QTBT
-            TEncSbac****  ppppcRDSbacCoder,
+    TEncSbac****  ppppcRDSbacCoder,
 #else
-            TEncSbac***   pppcRDSbacCoder,
+    TEncSbac***   pppcRDSbacCoder,
 #endif
-            TEncSbac*     pcRDGoOnSbacCoder );
+    TEncSbac*     pcRDGoOnSbacCoder );
 
   Void destroy();
 
@@ -222,9 +222,13 @@ protected:
 
   /// sub-function for motion vector refinement used in fractional-pel accuracy
   Distortion  xPatternRefinement( TComPattern* pcPatternKey,
-                                  TComMv baseRefMv,
-                                  Int iFrac, TComMv& rcMvFrac, Bool bAllowUseOfHadamard
-                                 );
+    TComMv baseRefMv,
+    Int iFrac, TComMv& rcMvFrac, Bool bAllowUseOfHadamard
+#if JVET_C0068_MVR
+    , Int iMvpIdx
+    , TComMv& rcMvp
+#endif
+    );
 
   typedef struct
   {
@@ -248,59 +252,76 @@ protected:
 
 public:
   Void  estIntraPredLumaQT      ( TComDataCU* pcCU,
-                                  TComYuv*    pcOrgYuv,
-                                  TComYuv*    pcPredYuv,
-                                  TComYuv*    pcResiYuv,
-                                  TComYuv*    pcRecoYuv,
+    TComYuv*    pcOrgYuv,
+    TComYuv*    pcPredYuv,
+    TComYuv*    pcResiYuv,
+    TComYuv*    pcRecoYuv,
 #if COM16_C806_LARGE_CTU
-                                  Pel*        resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES]
+    Pel*        resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES]
 #else
-                                  Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE]
+    Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE]
 #endif
-                                  DEBUG_STRING_FN_DECLARE(sDebug));
+  DEBUG_STRING_FN_DECLARE(sDebug));
 
   Void  estIntraPredChromaQT    ( TComDataCU* pcCU,
-                                  TComYuv*    pcOrgYuv,
-                                  TComYuv*    pcPredYuv,
-                                  TComYuv*    pcResiYuv,
-                                  TComYuv*    pcRecoYuv,
+    TComYuv*    pcOrgYuv,
+    TComYuv*    pcPredYuv,
+    TComYuv*    pcResiYuv,
+    TComYuv*    pcRecoYuv,
 #if COM16_C806_LARGE_CTU
-                                  Pel*        resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES]
+    Pel*        resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES]
 #else
-                                  Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE]
+    Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE]
 #endif
-                                  DEBUG_STRING_FN_DECLARE(sDebug));
+  DEBUG_STRING_FN_DECLARE(sDebug));
 
   /// encoder estimation - inter prediction (non-skip)
   Void predInterSearch          ( TComDataCU* pcCU,
-                                  TComYuv*    pcOrgYuv,
-                                  TComYuv*    pcPredYuv,
-                                  TComYuv*    pcResiYuv,
-                                  TComYuv*    pcRecoYuv
-                                  DEBUG_STRING_FN_DECLARE(sDebug),
+    TComYuv*    pcOrgYuv,
+    TComYuv*    pcPredYuv,
+    TComYuv*    pcResiYuv,
+    TComYuv*    pcRecoYuv
+    DEBUG_STRING_FN_DECLARE(sDebug),
 #if COM16_C806_OBMC
-                                  TComYuv*    pcPredYuvWoOBMC, 
-                                  TComYuv*    pcTmpYuv1,
-                                  TComYuv*    pcTmpYuv2,
+    TComYuv*    pcPredYuvWoOBMC, 
+    TComYuv*    pcTmpYuv1,
+    TComYuv*    pcTmpYuv2,
 #endif
-                                  Bool        bUseRes = false
+    Bool        bUseRes = false
 #if AMP_MRG
-                                 ,Bool        bUseMRG = false
+    ,Bool        bUseMRG = false
 #endif
-                                );
-
+    );
+#if JVET_C0068_MVR
+  Void predInterSearchTwice    ( TComDataCU* pcCU,
+    TComYuv*    pcOrgYuv,
+    TComYuv*    pcPredYuv,
+    TComYuv*    pcResiYuv,
+    TComYuv*    pcRecoYuv
+    DEBUG_STRING_FN_DECLARE(sDebug),
+#if COM16_C806_OBMC
+    TComYuv*    pcPredYuvWoOBMC, 
+    TComYuv*    pcTmpYuv1,
+    TComYuv*    pcTmpYuv2,
+#endif
+    Bool        bUseRes = false
+#if AMP_MRG
+    ,Bool        bUseMRG = false
+#endif
+    );
+#endif
   /// encode residual and compute rd-cost for inter mode
   Void encodeResAndCalcRdInterCU( TComDataCU* pcCU,
-                                  TComYuv*    pcYuvOrg,
-                                  TComYuv*    pcYuvPred,
-                                  TComYuv*    pcYuvResi,
-                                  TComYuv*    pcYuvResiBest,
-                                  TComYuv*    pcYuvRec,
-                                  Bool        bSkipResidual
+    TComYuv*    pcYuvOrg,
+    TComYuv*    pcYuvPred,
+    TComYuv*    pcYuvResi,
+    TComYuv*    pcYuvResiBest,
+    TComYuv*    pcYuvRec,
+    Bool        bSkipResidual
 #if COM16_C806_EMT
-                                  , Double dBestCost
+    , Double dBestCost
 #endif
-                                  DEBUG_STRING_FN_DECLARE(sDebug) );
+    DEBUG_STRING_FN_DECLARE(sDebug) );
 
   /// set ME search range
   Void setAdaptiveSearchRange   ( Int iDir, Int iRefIdx, Int iSearchRange) { assert(iDir < MAX_NUM_REF_LIST_ADAPT_SR && iRefIdx<Int(MAX_IDX_ADAPT_SR)); m_aaiAdaptSR[iDir][iRefIdx] = iSearchRange; }
@@ -317,124 +338,124 @@ protected:
   // -------------------------------------------------------------------------------------------------------------------
 
   Void  xEncSubdivCbfQT           ( TComTU      &rTu,
-                                    Bool         bLuma,
-                                    Bool         bChroma );
+    Bool         bLuma,
+    Bool         bChroma );
 
   Void  xEncCoeffQT               ( TComTU &rTu,
-                                    ComponentID  component,
-                                    Bool         bRealCoeff );
+    ComponentID  component,
+    Bool         bRealCoeff );
   Void  xEncIntraHeader           ( TComDataCU*  pcCU,
-                                    UInt         uiTrDepth,
-                                    UInt         uiAbsPartIdx,
-                                    Bool         bLuma,
-                                    Bool         bChroma );
+    UInt         uiTrDepth,
+    UInt         uiAbsPartIdx,
+    Bool         bLuma,
+    Bool         bChroma );
   UInt  xGetIntraBitsQT           ( TComTU &rTu,
-                                    Bool         bLuma,
-                                    Bool         bChroma,
-                                    Bool         bRealCoeff );
+    Bool         bLuma,
+    Bool         bChroma,
+    Bool         bRealCoeff );
 
   UInt  xGetIntraBitsQTChroma    ( TComTU &rTu,
-                                   ComponentID compID,
-                                   Bool          bRealCoeff );
+    ComponentID compID,
+    Bool          bRealCoeff );
 
   Void  xIntraCodingTUBlock       (       TComYuv*      pcOrgYuv,
-                                          TComYuv*      pcPredYuv,
-                                          TComYuv*      pcResiYuv,
+    TComYuv*      pcPredYuv,
+    TComYuv*      pcResiYuv,
 #if COM16_C806_LARGE_CTU
-                                          Pel*          resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES],
+    Pel*          resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES],
 #else
-                                          Pel           resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE],
+    Pel           resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE],
 #endif
-                                    const Bool          checkCrossCPrediction,
-                                          Distortion&   ruiDist,
-                                    const ComponentID   compID,
-                                          TComTU        &rTu
-                                    DEBUG_STRING_FN_DECLARE(sTest)
-                                         ,Int           default0Save1Load2 = 0
+    const Bool          checkCrossCPrediction,
+    Distortion&   ruiDist,
+    const ComponentID   compID,
+    TComTU        &rTu
+    DEBUG_STRING_FN_DECLARE(sTest)
+    ,Int           default0Save1Load2 = 0
 #if COM16_C806_EMT
-                                         ,UInt*         puiSigNum = NULL
+    ,UInt*         puiSigNum = NULL
 #endif
-                                   );
+    );
 #if VCEG_AZ08_INTRA_KLT
   Bool xIntraCodingTUBlockTM(TComYuv*    pcOrgYuv,
-                                      TComYuv*    pcPredYuv,
-                                      TComYuv*    pcResiYuv,
-                                      Distortion& ruiDist,
-                                      const ComponentID compID,
-                                      TComTU&     rTu
-                                      DEBUG_STRING_FN_DECLARE(sDebug)
+    TComYuv*    pcPredYuv,
+    TComYuv*    pcResiYuv,
+    Distortion& ruiDist,
+    const ComponentID compID,
+    TComTU&     rTu
+    DEBUG_STRING_FN_DECLARE(sDebug)
 #if COM16_C806_EMT
-                                      , UInt*      puiSigNum
+    , UInt*      puiSigNum
 #endif
-                                      , Int tmpred0_tmpredklt1_ori2
-                                      );
+    , Int tmpred0_tmpredklt1_ori2
+    );
 #endif
 
   Void  xRecurIntraCodingLumaQT   ( TComYuv*    pcOrgYuv,
-                                    TComYuv*    pcPredYuv,
-                                    TComYuv*    pcResiYuv,
+    TComYuv*    pcPredYuv,
+    TComYuv*    pcResiYuv,
 #if COM16_C806_LARGE_CTU
-                                    Pel*        resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES],
+    Pel*        resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES],
 #else
-                                    Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE],
+    Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE],
 #endif
-                                    Distortion& ruiDistY,
+    Distortion& ruiDistY,
 #if HHI_RQT_INTRA_SPEEDUP
-                                    Bool         bCheckFirst,
+    Bool         bCheckFirst,
 #endif
-                                    Double&      dRDCost,
-                                    TComTU      &rTu
-                                    DEBUG_STRING_FN_DECLARE(sDebug));
+    Double&      dRDCost,
+    TComTU      &rTu
+    DEBUG_STRING_FN_DECLARE(sDebug));
 
 #if COM16_C983_RSAF
   Void  xRecurIntraCodingLumaQT_RSAF (TComYuv*    pcOrgYuv,
-                                      TComYuv*    pcPredYuv,
-                                      TComYuv*    pcResiYuv,
+    TComYuv*    pcPredYuv,
+    TComYuv*    pcResiYuv,
 #if COM16_C806_LARGE_CTU
-                                      Pel*        resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES],
+    Pel*        resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES],
 #else
-                                      Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE],
+    Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE],
 #endif
-                                      Distortion& ruiDistY,
+    Distortion& ruiDistY,
 #if HHI_RQT_INTRA_SPEEDUP
-                                      Bool         bCheckFirst,
+    Bool         bCheckFirst,
 #endif
-                                      Double&      dRDCost,
-                                      TComTU      &rTu
-                                      DEBUG_STRING_FN_DECLARE(sDebug));
+    Double&      dRDCost,
+    TComTU      &rTu
+    DEBUG_STRING_FN_DECLARE(sDebug));
 #endif
 
   Void  xSetIntraResultLumaQT     ( TComYuv*     pcRecoYuv,
-                                    TComTU &rTu);
+    TComTU &rTu);
 
   Void xStoreCrossComponentPredictionResult  (       Pel    *pResiLuma,
-                                               const Pel    *pBestLuma,
-                                                     TComTU &rTu,
-                                               const Int     xOffset,
-                                               const Int     yOffset,
-                                               const Int     strideResi,
-                                               const Int     strideBest );
+    const Pel    *pBestLuma,
+    TComTU &rTu,
+    const Int     xOffset,
+    const Int     yOffset,
+    const Int     strideResi,
+    const Int     strideBest );
 
   Char xCalcCrossComponentPredictionAlpha    (       TComTU &rTu,
-                                               const ComponentID compID,
-                                               const Pel*        piResiL,
-                                               const Pel*        piResiC,
-                                               const Int         width,
-                                               const Int         height,
-                                               const Int         strideL,
-                                               const Int         strideC );
+    const ComponentID compID,
+    const Pel*        piResiL,
+    const Pel*        piResiC,
+    const Int         width,
+    const Int         height,
+    const Int         strideL,
+    const Int         strideC );
 
   Void  xRecurIntraChromaCodingQT ( TComYuv*    pcOrgYuv,
-                                    TComYuv*    pcPredYuv,
-                                    TComYuv*    pcResiYuv,
+    TComYuv*    pcPredYuv,
+    TComYuv*    pcResiYuv,
 #if COM16_C806_LARGE_CTU
-                                    Pel*        resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES],
+    Pel*        resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES],
 #else
-                                    Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE],
+    Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE],
 #endif
-                                    Distortion& ruiDist,
-                                    TComTU      &rTu
-                                    DEBUG_STRING_FN_DECLARE(sDebug));
+    Distortion& ruiDist,
+    TComTU      &rTu
+    DEBUG_STRING_FN_DECLARE(sDebug));
 
   Void  xSetIntraResultChromaQT   ( TComYuv*    pcRecoYuv, TComTU &rTu);
 
@@ -450,41 +471,76 @@ protected:
   // -------------------------------------------------------------------------------------------------------------------
   // Inter search (AMP)
   // -------------------------------------------------------------------------------------------------------------------
-
-  Void xEstimateMvPredAMVP        ( TComDataCU* pcCU,
-                                    TComYuv*    pcOrgYuv,
-                                    UInt        uiPartIdx,
-                                    RefPicList  eRefPicList,
-                                    Int         iRefIdx,
-                                    TComMv&     rcMvPred,
-                                    Bool        bFilled = false
-                                  , Distortion* puiDistBiP = NULL
-                                     );
-
-  Void xCheckBestMVP              ( TComDataCU* pcCU,
-                                    RefPicList  eRefPicList,
-                                    TComMv      cMv,
-                                    TComMv&     rcMvPred,
-                                    Int&        riMVPIdx,
-                                    UInt&       ruiBits,
-                                    Distortion& ruiCost 
-#if VCEG_AZ07_IMV
-                                    , UInt uiPartAddr
+#if JVET_C0068_MVR
+  Void xFetchMvPredAMVP           ( TComDataCU* pcCU,
+    TComYuv*    pcOrgYuv,
+    UInt        uiPartIdx,
+    RefPicList  eRefPicList,
+    Int         iRefIdx,
+    TComMv&     rcMvPred,
+    Int         iMvpIdx,
+    Bool        bFilled,
+    UInt*       puiDistBiP );
 #endif
-                                    );
+  Void xEstimateMvPredAMVP        ( TComDataCU* pcCU,
+    TComYuv*    pcOrgYuv,
+    UInt        uiPartIdx,
+    RefPicList  eRefPicList,
+    Int         iRefIdx,
+    TComMv&     rcMvPred,
+    Bool        bFilled = false
+    , Distortion* puiDistBiP = NULL
+    );
+
+#if JVET_C0068_SDH
+  Void xXneiborSearchForMvdSdh    ( TComDataCU*  pcCU,
+    RefPicList   eRefPicList,
+    TComMv&      cMv,
+    TComMv&      rcMvPred,
+    Int&         riMVPIdx,
+    UInt&        ruiBits,
+    UInt&        ruiMvBits,
+    UInt&        ruiCost,
+    TComYuv*     pcOrgYuv,
+    UInt         uiPartIdx,
+    Int          iRefIdx,
+    Bool         isBi,
+    Int          signPattern );
+#endif
+  Void xCheckBestMVP              ( TComDataCU* pcCU,
+    RefPicList  eRefPicList,
+#if JVET_C0068_SDH
+    TComMv&     cMv,
+#else
+    TComMv      cMv,
+#endif
+    TComMv&     rcMvPred,
+    Int&        riMVPIdx,
+    UInt&       ruiBits,
+    Distortion& ruiCost
+#if JVET_C0068_SDH
+    , TComYuv*  pcOrgYuv
+    , UInt      uiPartIdx
+    , Int       iRefIdx
+    , Bool      isBi
+#endif
+#if VCEG_AZ07_IMV
+    , UInt uiPartAddr
+#endif
+    );
 
   Distortion xGetTemplateCost    ( TComDataCU*  pcCU,
-                                    UInt        uiPartAddr,
-                                    TComYuv*    pcOrgYuv,
-                                    TComYuv*    pcTemplateCand,
-                                    TComMv      cMvCand,
-                                    Int         iMVPIdx,
-                                    Int         iMVPNum,
-                                    RefPicList  eRefPicList,
-                                    Int         iRefIdx,
-                                    Int         iSizeX,
-                                    Int         iSizeY
-                                   );
+    UInt        uiPartAddr,
+    TComYuv*    pcOrgYuv,
+    TComYuv*    pcTemplateCand,
+    TComMv      cMvCand,
+    Int         iMVPIdx,
+    Int         iMVPNum,
+    RefPicList  eRefPicList,
+    Int         iRefIdx,
+    Int         iSizeX,
+    Int         iSizeY
+    );
 
 
   Void xCopyAMVPInfo              ( AMVPInfo*   pSrc, AMVPInfo* pDst );
@@ -492,44 +548,44 @@ protected:
   Void xGetBlkBits                ( PartSize  eCUMode, Bool bPSlice, Int iPartIdx,  UInt uiLastMode, UInt uiBlkBit[3]);
 
   Void xMergeEstimation           ( TComDataCU*  pcCU,
-                                    TComYuv*     pcYuvOrg,
-                                    Int          iPartIdx,
-                                    UInt&        uiInterDir,
-                                    TComMvField* pacMvField,
-                                    UInt&        uiMergeIndex,
-                                    Distortion&  ruiCost,
-                                    TComMvField* cMvFieldNeighbours,
-                                    UChar*       uhInterDirNeighbours,
-                                    Int&         numValidMergeCand
+    TComYuv*     pcYuvOrg,
+    Int          iPartIdx,
+    UInt&        uiInterDir,
+    TComMvField* pacMvField,
+    UInt&        uiMergeIndex,
+    Distortion&  ruiCost,
+    TComMvField* cMvFieldNeighbours,
+    UChar*       uhInterDirNeighbours,
+    Int&         numValidMergeCand
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
-                                  , UChar*      pMergeTypeNeighbor
+    , UChar*      pMergeTypeNeighbor
 #if JVET_C0035_ATMVP_SIMPLIFICATION
-                                  , TComMvField*    pcMvFieldSP[NUM_MGR_TYPE]
-                                  , UChar*          puhInterDirSP[NUM_MGR_TYPE]
+    , TComMvField*    pcMvFieldSP[NUM_MGR_TYPE]
+  , UChar*          puhInterDirSP[NUM_MGR_TYPE]
 #else
-                                  , TComMvField*    pcMvFieldSP[2]
-                                  , UChar*          puhInterDirSP[2]
+    , TComMvField*    pcMvFieldSP[2]
+  , UChar*          puhInterDirSP[2]
 #endif
 #endif
-                                   );
+  );
 
 #if VCEG_AZ07_FRUC_MERGE
   Void xFRUCMgrEstimation         ( TComDataCU* pcCU, 
-                                    TComYuv* pcYuvOrg, 
-                                    Int iPUIdx, 
-                                    TComMvField* pacMvField, 
-                                    UChar * phInterDir , 
-                                    UChar ** phFRUCRefineDist , 
-                                    UChar ** phFRUCSBlkRefineDist ,
-                                    UInt& ruiMinCost , 
-                                    UChar & ruhFRUCMode );
+    TComYuv* pcYuvOrg, 
+    Int iPUIdx, 
+    TComMvField* pacMvField, 
+    UChar * phInterDir , 
+    UChar ** phFRUCRefineDist , 
+    UChar ** phFRUCSBlkRefineDist ,
+    UInt& ruiMinCost , 
+    UChar & ruhFRUCMode );
 #endif
 
   Void xRestrictBipredMergeCand   ( TComDataCU*     pcCU,
-                                    UInt            puIdx,
-                                    TComMvField*    mvFieldNeighbours,
-                                    UChar*          interDirNeighbours,
-                                    Int             numValidMergeCand );
+    UInt            puIdx,
+    TComMvField*    mvFieldNeighbours,
+    UChar*          interDirNeighbours,
+    Int             numValidMergeCand );
 
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -537,123 +593,130 @@ protected:
   // -------------------------------------------------------------------------------------------------------------------
 
   Void xMotionEstimation          ( TComDataCU*  pcCU,
-                                    TComYuv*     pcYuvOrg,
-                                    Int          iPartIdx,
-                                    RefPicList   eRefPicList,
-                                    TComMv*      pcMvPred,
-                                    Int          iRefIdxPred,
-                                    TComMv&      rcMv,
-                                    UInt&        ruiBits,
-                                    Distortion&  ruiCost,
-                                    Bool         bBi = false  );
+    TComYuv*     pcYuvOrg,
+    Int          iPartIdx,
+    RefPicList   eRefPicList,
+#if JVET_C0068_MVR
+    Int           iMvpIdx,
+#endif
+    TComMv*      pcMvPred,
+    Int          iRefIdxPred,
+    TComMv&      rcMv,
+    UInt&        ruiBits,
+    Distortion&  ruiCost,
+    Bool         bBi = false  );
 
   Void xTZSearch                  ( TComDataCU*  pcCU,
-                                    TComPattern* pcPatternKey,
-                                    Pel*         piRefY,
-                                    Int          iRefStride,
-                                    TComMv*      pcMvSrchRngLT,
-                                    TComMv*      pcMvSrchRngRB,
-                                    TComMv&      rcMv,
-                                    Distortion&  ruiSAD,
-                                    const TComMv *pIntegerMv2Nx2NPred
-                                    );
+    TComPattern* pcPatternKey,
+    Pel*         piRefY,
+    Int          iRefStride,
+    TComMv*      pcMvSrchRngLT,
+    TComMv*      pcMvSrchRngRB,
+    TComMv&      rcMv,
+    Distortion&  ruiSAD,
+    const TComMv *pIntegerMv2Nx2NPred
+    );
 
   Void xTZSearchSelective         ( TComDataCU*  pcCU,
-                                    TComPattern* pcPatternKey,
-                                    Pel*         piRefY,
-                                    Int          iRefStride,
-                                    TComMv*      pcMvSrchRngLT,
-                                    TComMv*      pcMvSrchRngRB,
-                                    TComMv&      rcMv,
-                                    Distortion&  ruiSAD,
-                                    const TComMv *pIntegerMv2Nx2NPred
-                                    );
+    TComPattern* pcPatternKey,
+    Pel*         piRefY,
+    Int          iRefStride,
+    TComMv*      pcMvSrchRngLT,
+    TComMv*      pcMvSrchRngRB,
+    TComMv&      rcMv,
+    Distortion&  ruiSAD,
+    const TComMv *pIntegerMv2Nx2NPred
+    );
 
   Void xSetSearchRange            ( TComDataCU*  pcCU,
-                                    TComMv&      cMvPred,
-                                    Int          iSrchRng,
-                                    TComMv&      rcMvSrchRngLT,
-                                    TComMv&      rcMvSrchRngRB );
+    TComMv&      cMvPred,
+    Int          iSrchRng,
+    TComMv&      rcMvSrchRngLT,
+    TComMv&      rcMvSrchRngRB );
 
   Void xPatternSearchFast         ( TComDataCU*  pcCU,
-                                    TComPattern* pcPatternKey,
-                                    Pel*         piRefY,
-                                    Int          iRefStride,
-                                    TComMv*      pcMvSrchRngLT,
-                                    TComMv*      pcMvSrchRngRB,
-                                    TComMv&      rcMv,
-                                    Distortion&  ruiSAD,
-                                    const TComMv* pIntegerMv2Nx2NPred
-                                  );
+    TComPattern* pcPatternKey,
+    Pel*         piRefY,
+    Int          iRefStride,
+    TComMv*      pcMvSrchRngLT,
+    TComMv*      pcMvSrchRngRB,
+    TComMv&      rcMv,
+    Distortion&  ruiSAD,
+    const TComMv* pIntegerMv2Nx2NPred
+    );
 
   Void xPatternSearch             ( TComPattern* pcPatternKey,
-                                    Pel*         piRefY,
-                                    Int          iRefStride,
-                                    TComMv*      pcMvSrchRngLT,
-                                    TComMv*      pcMvSrchRngRB,
-                                    TComMv&      rcMv,
-                                    Distortion&  ruiSAD );
+    Pel*         piRefY,
+    Int          iRefStride,
+    TComMv*      pcMvSrchRngLT,
+    TComMv*      pcMvSrchRngRB,
+    TComMv&      rcMv,
+    Distortion&  ruiSAD );
 
   Void xPatternSearchFracDIF      (
-                                    Bool         bIsLosslessCoded,
-                                    TComPattern* pcPatternKey,
-                                    Pel*         piRefY,
-                                    Int          iRefStride,
-                                    TComMv*      pcMvInt,
-                                    TComMv&      rcMvHalf,
-                                    TComMv&      rcMvQter,
-                                    Distortion&  ruiCost
-                                   );
+    Bool         bIsLosslessCoded,
+    TComPattern* pcPatternKey,
+    Pel*         piRefY,
+    Int          iRefStride,
+    TComMv*      pcMvInt,
+    TComMv&      rcMvHalf,
+    TComMv&      rcMvQter,
+    Distortion&  ruiCost
+#if JVET_C0068_MVR
+    ,Int           iMvpIdx
+    ,TComMv&       rcMvp
+#endif
+    );
 
   #if COM16_C1016_AFFINE
   Void predAffineInterSearch    ( TComDataCU* pcCU,
-                                  TComYuv*    pcOrgYuv,
-                                  Int         iPartIdx,
-                                  UInt&       ruiLastMode,
-                                  Distortion& ruiAffineCost,
-                                  TComMv      cHevcMv[2][33] );
+    TComYuv*    pcOrgYuv,
+    Int         iPartIdx,
+    UInt&       ruiLastMode,
+    Distortion& ruiAffineCost,
+    TComMv      cHevcMv[2][33] );
 
   Void xAffineMotionEstimation  ( TComDataCU*   pcCU,
-                                  TComYuv*      pcYuvOrg,
-                                  Int           iPartIdx,
-                                  RefPicList    eRefPicList,
-                                  TComMv        acMvPred[3],
-                                  Int           iRefIdxPred,
-                                  TComMv        acMv[3],
-                                  UInt&         ruiBits,
-                                  Distortion&   ruiCost,
-                                  Bool          bBi = false  );
+    TComYuv*      pcYuvOrg,
+    Int           iPartIdx,
+    RefPicList    eRefPicList,
+    TComMv        acMvPred[3],
+    Int           iRefIdxPred,
+    TComMv        acMv[3],
+    UInt&         ruiBits,
+    Distortion&   ruiCost,
+    Bool          bBi = false  );
   
   Bool xEstimateAffineAMVP      ( TComDataCU*   pcCU, 
-                                  TComYuv*      pcOrgYuv, 
-                                  UInt          uiPartIdx, 
-                                  RefPicList    eRefPicList, 
-                                  Int           iRefIdx,
-                                  TComMv        acMvPred[3], 
-                                  Distortion*   puiDistBiP );
+    TComYuv*      pcOrgYuv, 
+    UInt          uiPartIdx, 
+    RefPicList    eRefPicList, 
+    Int           iRefIdx,
+    TComMv        acMvPred[3], 
+    Distortion*   puiDistBiP );
 
   Distortion xGetAffineTemplateCost ( TComDataCU* pcCU,
-                                      UInt        uiPartAddr,
-                                      TComYuv*    pcOrgYuv,
-                                      TComYuv*    pcTemplateCand,
-                                      TComMv      acMvCand[3],
-                                      Int         iMVPIdx,
-                                      Int         iMVPNum,
-                                      RefPicList  eRefPicList,
-                                      Int         iRefIdx,
-                                      Int         iSizeX,
-                                      Int         iSizeY );
+    UInt        uiPartAddr,
+    TComYuv*    pcOrgYuv,
+    TComYuv*    pcTemplateCand,
+    TComMv      acMvCand[3],
+    Int         iMVPIdx,
+    Int         iMVPNum,
+    RefPicList  eRefPicList,
+    Int         iRefIdx,
+    Int         iSizeX,
+    Int         iSizeY );
 
   Void xCopyAffineAMVPInfo     ( AffineAMVPInfo* pSrc, AffineAMVPInfo* pDst );
 
   Void solveEqual( Double** dEqualCoeff, Int iOrder, Double* dAffinePara );
 
   Void xCheckBestAffineMVP      ( TComDataCU* pcCU,
-                                  RefPicList  eRefPicList,
-                                  TComMv acMv[3], TComMv acMvPred[3],
-                                  Int&        riMVPIdx,
-                                  UInt&       ruiBits,
-                                  Distortion& ruiCost );
+    RefPicList  eRefPicList,
+    TComMv acMv[3], TComMv acMvPred[3],
+    Int&        riMVPIdx,
+    UInt&       ruiBits,
+    Distortion& ruiCost );
 #endif
 
   Void xExtDIFUpSamplingH( TComPattern* pcPattern );
@@ -668,9 +731,9 @@ protected:
 #endif  
   Void xEstimateInterResidualQT( TComYuv* pcResi, Double &rdCost, UInt &ruiBits, Distortion &ruiDist, Distortion *puiZeroDist, TComTU &rTu 
 #if VCEG_AZ08_INTER_KLT
-      , TComYuv* pcPred
+    , TComYuv* pcPred
 #endif
-      DEBUG_STRING_FN_DECLARE(sDebug) );
+    DEBUG_STRING_FN_DECLARE(sDebug) );
   Void xSetInterResidualQTData( TComYuv* pcResi, Bool bSpatial, TComTU &rTu  );
 
   UInt  xModeBitsIntra ( TComDataCU* pcCU, UInt uiMode, UInt uiPartOffset, UInt uiDepth, const ChannelType compID 
@@ -688,7 +751,7 @@ protected:
   // -------------------------------------------------------------------------------------------------------------------
 
   Void xAddSymbolBitsInter       ( TComDataCU*   pcCU,
-                                   UInt&         ruiBits);
+    UInt&         ruiBits);
 
   Void  setWpScalingDistParam( TComDataCU* pcCU, Int iRefIdx, RefPicList eRefPicListCur );
   inline  Void  setDistParamComp( ComponentID compIdx )  { m_cDistParam.compIdx = compIdx; }

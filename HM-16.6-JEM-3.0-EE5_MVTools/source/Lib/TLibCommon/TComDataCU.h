@@ -706,6 +706,13 @@ public:
   // -------------------------------------------------------------------------------------------------------------------
   // member functions for motion vector
   // -------------------------------------------------------------------------------------------------------------------
+#if JVET_C0068_MVR
+  Bool          xAddList0Cand         ( TComMv cMvL0, TComMv& cMvL1Pred, Int iRefIdxL0, Int iRefIdxL1, UInt uPartIdx, Int iMvpIdx );
+  Bool          xAddList1Cand         ( TComMv cMvL1, TComMv& cMvL0Pred, Int iRefIdxL0, Int iRefIdxL1, UInt uPartIdx, Int iMvpIdx );
+#else
+  Bool          xAddList0Cand         ( TComMv cMvL0, TComMv& cMvL1Pred, Int iRefIdxL0, Int iRefIdxL1, UInt uPartIdx );
+  Bool          xAddList1Cand         ( TComMv cMvL1, TComMv& cMvL0Pred, Int iRefIdxL0, Int iRefIdxL1, UInt uPartIdx );
+#endif
 
   Void          getMvField            ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefPicList, TComMvField& rcMvField );
 
@@ -839,6 +846,191 @@ public:
 #endif
   Int iCount );
 #endif
+
+#if JVET_C0068_MVR
+  Void          xRoundMvp2HalfPel ( TComMv & rMv )
+  {
+    Int iMVx = rMv.getHor();
+    Int iMVy = rMv.getVer();
+
+    Int iMVxAbs = std::abs(iMVx);
+    Int iMVyAbs = std::abs(iMVy);
+
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+    if ( ((iMVxAbs >> (VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE)) & 0x3) != 0x2)
+    {
+      iMVxAbs   += (2 << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE) ;
+      iMVxAbs  >>= (2 + VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE );
+      iMVxAbs  <<= (2 + VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE );
+      rMv.setHor( iMVx >= 0 ? iMVxAbs : -iMVxAbs );
+    }
+
+    if ( ((iMVyAbs >> (VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE)) & 0x3) != 0x2)
+    {
+      iMVyAbs   += (2 << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE) ;
+      iMVyAbs  >>= (2 + VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE );
+      iMVyAbs  <<= (2 + VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE );
+      rMv.setVer( iMVy >= 0 ? iMVyAbs : -iMVyAbs );
+    }
+#else
+    if ( ( iMVxAbs & 0x3) != 0x2 )
+    {
+      iMVxAbs   += 2 ;
+      iMVxAbs  >>= 2;
+      iMVxAbs  <<= 2;
+      rMv.setHor( iMVx >= 0 ? iMVxAbs : -iMVxAbs );
+    }
+
+    if ( ( iMVyAbs & 0x3) != 0x2 )
+    {
+      iMVyAbs   += 2 ;
+      iMVyAbs  >>= 2;
+      iMVyAbs  <<= 2;
+      rMv.setVer( iMVy >= 0 ? iMVyAbs : -iMVyAbs );
+    }
+#endif
+  }
+
+  Void          xRoundMV2HalfPel( TComMv & rMV, Int iPredMvX = 0, Int iPredMvY = 0, Bool bAdjust = false) 
+  {
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+    rMV.roundMV2SignalPrecision();
+#endif
+
+    if ( bAdjust == false )
+    {
+      assert(0); // currently MVs are all rounded according to MVPs
+      Int iMVx = rMV.getHor();
+      Int iMVy = rMV.getVer();
+
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+      Int iMVxAbs = (std::abs(iMVx) >> (VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE + 2)) << (VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE + 2);
+      Int iMVyAbs = (std::abs(iMVy) >> (VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE + 2)) << (VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE + 2);
+
+      Int iMVxN = iMVxAbs + (2 << (VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE));
+      Int iMVyN = iMVyAbs + (2 << (VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE));
+#else
+      Int iMVxAbs = (std::abs(iMVx) >> 2) << 2;
+      Int iMVyAbs = (std::abs(iMVy) >> 2) << 2;
+
+      Int iMVxN = iMVxAbs + 2;
+      Int iMVyN = iMVyAbs + 2;
+#endif
+      rMV.setHor( iMVx >= 0 ? iMVxN : -iMVxN );
+      rMV.setVer( iMVy >= 0 ? iMVyN : -iMVyN );
+    }
+    else
+    {
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+      assert( (((std::abs(iPredMvX) >> (VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE)) & 0x3) == 0x2) ||
+              (((std::abs(iPredMvX) >> (VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE)) & 0x3) == 0x0) );
+
+      assert( (((std::abs(iPredMvY) >> (VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE)) & 0x3) == 0x2) ||
+              (((std::abs(iPredMvY) >> (VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE)) & 0x3) == 0x0) );
+#endif
+
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+      Bool iPredXisHalf = (((std::abs(iPredMvX) >> (VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE)) & 0x3) == 0x2) ? true : false;
+      Bool iPredYisHalf = (((std::abs(iPredMvY) >> (VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE)) & 0x3) == 0x2) ? true : false;
+#else
+      Bool iPredXisHalf = ((std::abs(iPredMvX) & 0x3) == 0x2) ? true : false;
+      Bool iPredYisHalf = ((std::abs(iPredMvY) & 0x3) == 0x2) ? true : false;
+#endif
+      if (iPredXisHalf)
+      {
+         Int  iMvAbsX  = std::abs( rMV.getHor() );
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+         Bool iXisHalf = (((iMvAbsX >> (VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE)) & 0x3) == 0x2) ? true : false;
+#else
+         Bool iXisHalf = ((iMvAbsX & 0x3) == 0x2) ? true : false;
+#endif
+         if (iXisHalf)
+         {
+           // do nothing
+         }
+         else
+         {
+           Int iMvdx     = rMV.getHor() - iPredMvX;
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+           Int iMVdxAbs  = (std::abs(iMvdx) >> (VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE + 2)) << (VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE + 2);
+#else
+           Int iMVdxAbs  = (std::abs(iMvdx) >> 2) << 2;
+#endif
+           Int iNewMvdx = (iMvdx >= 0) ? iMVdxAbs : -iMVdxAbs;
+           rMV.setHor( iPredMvX + iNewMvdx );
+         }
+      }
+      else
+      {
+        Int iMvX = rMV.getHor();
+        Int iMvXAbs = std::abs(iMvX);
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+        iMvXAbs +=  ( 2 << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE);
+        iMvXAbs >>= ( 2 + VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE );
+        iMvXAbs <<= ( 2 + VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE );
+#else
+        iMvXAbs += 2;
+        iMvXAbs >>= 2;
+        iMvXAbs <<= 2;
+#endif
+        rMV.setHor( iMvX >= 0 ? iMvXAbs : -iMvXAbs );
+      }
+
+      if (iPredYisHalf)
+      {
+         Int  iMvAbsY  = std::abs( rMV.getVer() );
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+         Bool iYisHalf = (((iMvAbsY >> (VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE)) & 0x3) == 0x2) ? true : false;
+#else
+         Bool iYisHalf = ((iMvAbsY & 0x3) == 0x2) ? true : false;
+#endif
+         if ( iYisHalf )
+         {
+           // do nothing
+         }
+         else
+         {
+           Int iMvdy     = rMV.getVer() - iPredMvY;
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+           Int iMVdyAbs  = (std::abs(iMvdy) >> (VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE + 2)) << (VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE + 2);
+#else
+           Int iMVdyAbs  = (std::abs(iMvdy) >> 2) << 2;
+#endif
+           Int iNewMvdy = (iMvdy >= 0) ? iMVdyAbs : -iMVdyAbs;
+           rMV.setVer( iPredMvY + iNewMvdy );
+         }
+      }
+      else
+      {
+        Int iMvY = rMV.getVer();
+        Int iMvYAbs = std::abs(iMvY);
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+        iMvYAbs += (2 << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE);
+        iMvYAbs >>= ( 2 + VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE );
+        iMvYAbs <<= ( 2 + VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE );
+#else
+        iMvYAbs += 2;
+        iMvYAbs >>= 2;
+        iMvYAbs <<= 2;
+#endif
+        rMV.setVer( iMvY >= 0 ? iMvYAbs : -iMvYAbs );
+      }
+    }
+
+    // checks
+    Int iMvdxTest = rMV.getHor() - iPredMvX;
+    Int iMvdyTest = rMV.getVer() - iPredMvY;
+
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+    assert(((iMvdxTest >> (VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE)) & 0x3) == 0);
+    assert(((iMvdyTest >> (VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE)) & 0x3) == 0);
+#else
+    assert((iMvdxTest & 0x3) == 0);
+    assert((iMvdyTest & 0x3) == 0);
+#endif
+  }
+#endif
+
 #if VCEG_AZ07_IMV
 #if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
   Void          xRoundMV( TComMv & rMV ) 

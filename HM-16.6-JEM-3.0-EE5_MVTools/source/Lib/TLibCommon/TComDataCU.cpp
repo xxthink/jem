@@ -3754,6 +3754,22 @@ Bool TComDataCU::resetMVDandMV2Int( UInt uiAbsPartIdx , UInt uiPartIdx , Bool bR
 
   if( !getMergeFlag( uiAbsPartIdx ) )
   {
+#if JVET_C0068_PBL
+    Int  predDir = DIR_NONE;
+    {
+      if( getCUMvField( REF_PIC_LIST_1 )->getRefIdx( uiAbsPartIdx ) >= 0 && getCUMvField( REF_PIC_LIST_0 )->getRefIdx( uiAbsPartIdx ) >= 0 )
+      {
+        AMVPInfo cAMVPInfoL1;
+        fillMvpCand( uiPartIdx , uiAbsPartIdx , REF_PIC_LIST_1 , getCUMvField( REF_PIC_LIST_1 )->getRefIdx( uiAbsPartIdx ) , &cAMVPInfoL1 
+#if VCEG_AZ07_FRUC_MERGE
+                    , pPred
+#endif
+                   );
+
+        predDir = (cAMVPInfoL1.isScaled[0] == HIGH_PRIO || cAMVPInfoL1.isScaled[1] == HIGH_PRIO) ? DIR_L1toL0 : DIR_L0toL1;
+      }
+    }
+#endif
     for( RefPicList eRefPicList = REF_PIC_LIST_0 ; eRefPicList <= REF_PIC_LIST_1 ; eRefPicList = ( RefPicList )( ( Int )eRefPicList + 1 ) )
     {
       TComCUMvField * pMVField = getCUMvField( eRefPicList );
@@ -3768,13 +3784,109 @@ Bool TComDataCU::resetMVDandMV2Int( UInt uiAbsPartIdx , UInt uiPartIdx , Bool bR
           , pPred
 #endif
           );
-
-        mvPred = pcAMVPInfo->m_acMvCand[getMVPIdx(eRefPicList , uiAbsPartIdx)];
-
-        if( bResetMV )
+#if JVET_C0068_PBL
+        if ( predDir == DIR_L1toL0 && eRefPicList == REF_PIC_LIST_0 && getCUMvField( REF_PIC_LIST_1 )->getRefIdx( uiAbsPartIdx ) >= 0 && getSlice()->getMvdL1ZeroFlag() == false )
         {
-          xRoundMV( mv );
+          TComMv cMvL1  = getCUMvField( REF_PIC_LIST_1 )->getMv( uiAbsPartIdx );
+          Int    iRefL1 = getCUMvField( REF_PIC_LIST_1 )->getRefIdx( uiAbsPartIdx );
+
+          if (bResetMV)
+#if JVET_C0068_MVR
+          {
+            AMVPInfo cAMVPInfoL1;
+            fillMvpCand( uiPartIdx , uiAbsPartIdx , REF_PIC_LIST_1 , getCUMvField( REF_PIC_LIST_1 )->getRefIdx( uiAbsPartIdx ) , &cAMVPInfoL1 
+#if VCEG_AZ07_FRUC_MERGE
+                        , pPred
+#endif
+              );
+            Int iMvpIdxL1 = getMVPIdx(REF_PIC_LIST_1 , uiAbsPartIdx);
+            if ( iMvpIdxL1 != 0 )
+            {
+              xRoundMV2HalfPel(cMvL1, cAMVPInfoL1.m_acMvCand[iMvpIdxL1].getHor(), cAMVPInfoL1.m_acMvCand[iMvpIdxL1].getVer(), true);
+            }
+            else
+            {
+              xRoundMV(cMvL1);
+            }
+          }
+#else
+            xRoundMV(cMvL1);
+#endif
+
+          Bool hasScaled         = false;
+          Int  firstHasScaledIdx = -1;
+
+          for (Int iMvpIdx = 0; iMvpIdx < pcAMVPInfo->iN; iMvpIdx++)
+          {
+            if (pcAMVPInfo->isScaled[iMvpIdx] == LOW_PRIO)
+            {
+              hasScaled         = true;
+              firstHasScaledIdx = iMvpIdx;
+              break;
+            }
+          }
+
+          TComMv cMvPredFromL1;
+          Bool   hasMvPredFromL1 = false;
+          hasMvPredFromL1 = xAddList1Cand(cMvL1, cMvPredFromL1, pMVField->getRefIdx( uiAbsPartIdx ), iRefL1, uiAbsPartIdx
+#if JVET_C0068_MVR
+                                         ,firstHasScaledIdx
+#endif
+                                         );
+
+          if ( hasScaled && hasMvPredFromL1 )
+          {
+            pcAMVPInfo->m_acMvCand[ firstHasScaledIdx ] = cMvPredFromL1;
+          }
         }
+        if ( predDir == DIR_L0toL1 && eRefPicList == REF_PIC_LIST_1 && getCUMvField( REF_PIC_LIST_0 )->getRefIdx( uiAbsPartIdx ) >= 0 && getSlice()->getMvdL1ZeroFlag() == false )
+        {
+          TComMv cMvL0  = getCUMvField( REF_PIC_LIST_0 )->getMv( uiAbsPartIdx );
+          Int    iRefL0 = getCUMvField( REF_PIC_LIST_0 )->getRefIdx( uiAbsPartIdx );
+
+          Bool hasScaled         = false;
+          Int  firstHasScaledIdx = -1;
+
+          for (Int iMvpIdx = 0; iMvpIdx < pcAMVPInfo->iN; iMvpIdx++)
+          {
+            if (pcAMVPInfo->isScaled[iMvpIdx] == LOW_PRIO)
+            {
+              hasScaled         = true;
+              firstHasScaledIdx = iMvpIdx;
+              break;
+            }
+          }
+
+          TComMv cMvPredFromL0;
+          Bool   hasMvPredFromL0 = false;
+          hasMvPredFromL0 = xAddList0Cand(cMvL0, cMvPredFromL0, iRefL0, pMVField->getRefIdx( uiAbsPartIdx ), uiAbsPartIdx
+#if JVET_C0068_MVR
+                                          , firstHasScaledIdx
+#endif
+                                          );
+
+
+          if ( hasScaled && hasMvPredFromL0 )
+          {
+            pcAMVPInfo->m_acMvCand[ firstHasScaledIdx ] = cMvPredFromL0;
+          }
+        }
+#endif
+        mvPred = pcAMVPInfo->m_acMvCand[getMVPIdx(eRefPicList , uiAbsPartIdx)];
+#if JVET_C0068_MVR
+        assert( bResetMV == getiMVFlag( uiAbsPartIdx ));
+#endif
+        if( bResetMV )
+#if JVET_C0068_MVR
+        {
+          if ( getMVPIdx(eRefPicList , uiAbsPartIdx) != 0 )
+            xRoundMV2HalfPel( mv, mvPred.getHor(), mvPred.getVer(), true );
+          else
+            xRoundMV( mv );
+        }
+#else
+          xRoundMV( mv );
+#endif
 
         TComMv mvDiff = mv - mvPred;
         if( getSlice()->getMvdL1ZeroFlag() && eRefPicList == REF_PIC_LIST_1 && getInterDir( uiAbsPartIdx ) == 3 )
@@ -7106,6 +7218,9 @@ Void TComDataCU::fillMvpCand ( UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefP
     }
     if ( ctuRsAddr >= 0 && xGetColMVP( eRefPicList, ctuRsAddr, uiAbsPartAddr, cColMv, iRefIdx_Col ) )
     {
+#if JVET_C0068_PBL
+      pInfo->isScaled[ pInfo->iN ]   = LOW_PRIO;
+#endif
       pInfo->m_acMvCand[pInfo->iN++] = cColMv;
     }
     else
@@ -7114,6 +7229,9 @@ Void TComDataCU::fillMvpCand ( UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefP
       xDeriveCenterIdx( uiPartIdx, uiPartIdxCenter );
       if (xGetColMVP( eRefPicList, getCtuRsAddr(), uiPartIdxCenter,  cColMv, iRefIdx_Col ))
       {
+#if JVET_C0068_PBL
+        pInfo->isScaled[ pInfo->iN ]   = LOW_PRIO;
+#endif
         pInfo->m_acMvCand[pInfo->iN++] = cColMv;
       }
     }
@@ -7128,6 +7246,9 @@ Void TComDataCU::fillMvpCand ( UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefP
       const TComMv & rMV = getCUMvField( eRefPicList )->getMv( uiPartAddr );
       if( pInfo->iN == 0 )
       {
+#if JVET_C0068_PBL
+        pInfo->isScaled[0]   = HIGH_PRIO;
+#endif
         pInfo->m_acMvCand[0] = rMV;
         pInfo->iN++;
       }
@@ -7136,12 +7257,26 @@ Void TComDataCU::fillMvpCand ( UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefP
         for( Int n = min( pInfo->iN , AMVP_MAX_NUM_CANDS - 1 ) ; n > 0 ; n-- )
         {
           pInfo->m_acMvCand[n] = pInfo->m_acMvCand[n-1];
+#if JVET_C0068_PBL
+          pInfo->isScaled[n]   = pInfo->isScaled[n-1];
+#endif
         }
         pInfo->m_acMvCand[0] = rMV;
+#if JVET_C0068_PBL
+        pInfo->isScaled[0]   = HIGH_PRIO;
+#endif
         pInfo->iN = min( pInfo->iN + 1 , AMVP_MAX_NUM_CANDS );
       }
+#if JVET_C0068_PBL
+      else if( pInfo->m_acMvCand[0] == rMV )
+      {
+        pInfo->isScaled[0]   = HIGH_PRIO;
+#endif
     }
   }
+#if JVET_C0068_PBL
+  }
+#endif
 #endif
 
   if (pInfo->iN > AMVP_MAX_NUM_CANDS)
@@ -7151,6 +7286,9 @@ Void TComDataCU::fillMvpCand ( UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefP
 
   while (pInfo->iN < AMVP_MAX_NUM_CANDS)
   {
+#if JVET_C0068_PBL
+    pInfo->isScaled[pInfo->iN] = LOW_PRIO;
+#endif
     pInfo->m_acMvCand[pInfo->iN].set(0,0);
     pInfo->iN++;
   }
@@ -7167,6 +7305,11 @@ Void TComDataCU::fillMvpCand ( UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefP
   {
     for( Int i = 0 ; i < pInfo->iN ; i++ )
     {
+#if JVET_C0068_MVR
+      if (i != 0 )
+        xRoundMvp2HalfPel( pInfo->m_acMvCand[i] );
+      else
+#endif
       xRoundMV( pInfo->m_acMvCand[i] );
     }
   }
@@ -7344,6 +7487,269 @@ Bool TComDataCU::isSkipped( UInt uiPartIdx )
 // ====================================================================================================================
 // Protected member functions
 // ====================================================================================================================
+Bool TComDataCU::xAddList0Cand( TComMv cMvL0, TComMv& cMvL1Pred, Int iRefIdxL0, Int iRefIdxL1, UInt uPartIdx
+#if JVET_C0068_MVR
+                               , Int iMvpIdx
+#endif
+                               )
+{
+  if ( iRefIdxL0 < 0 )
+  {
+    assert(0);
+    return false;
+  }
+
+  if ( m_pcSlice->getRefPic( REF_PIC_LIST_0, iRefIdxL0 )->getPOC() == m_pcSlice->getRefPic( REF_PIC_LIST_1, iRefIdxL1 )->getPOC() )
+  {
+    cMvL1Pred = cMvL0;
+#if VCEG_AZ07_IMV
+      if( getiMVFlag( uPartIdx ) && getSlice()->getSPS()->getIMV() )
+      {
+#if JVET_C0068_MVR
+        if (iMvpIdx > 0)
+        {
+          xRoundMvp2HalfPel( cMvL1Pred );
+        }
+        else
+        {
+          xRoundMV( cMvL1Pred );
+        }
+#else
+        xRoundMV( cMvL1Pred );
+#endif
+      }
+#endif
+    return true;
+  }
+
+  Int iCurrPOC    = m_pcSlice->getPOC();
+  Int iCurrRefPOC = m_pcSlice->getRefPic( REF_PIC_LIST_1, iRefIdxL1 )->getPOC();
+
+  Int iNeibPOC    = iCurrPOC;
+  Int iNeibRefPOC = m_pcSlice->getRefPic( REF_PIC_LIST_0, iRefIdxL0 )->getPOC();
+
+  Bool bIsCurrRefLongTerm = m_pcSlice->getRefPic( REF_PIC_LIST_1, iRefIdxL1 )->getIsLongTerm();
+  Bool bIsNeibRefLongTerm = m_pcSlice->getRefPic( REF_PIC_LIST_0, iRefIdxL0 )->getIsLongTerm();
+
+  TComMv cMvPred = cMvL0;
+  TComMv rcMv;
+
+  if ( bIsCurrRefLongTerm == bIsNeibRefLongTerm ) 
+  {
+    if ( bIsCurrRefLongTerm || bIsNeibRefLongTerm )
+    {
+      cMvL1Pred = cMvPred;
+
+#if VCEG_AZ07_IMV
+      if( getiMVFlag( uPartIdx ) && getSlice()->getSPS()->getIMV() )
+      {
+#if JVET_C0068_MVR
+        if (iMvpIdx > 0)
+        {
+          xRoundMvp2HalfPel( cMvL1Pred );
+        }
+        else
+        {
+          xRoundMV( cMvL1Pred );
+        }
+#else
+        xRoundMV( cMvL1Pred );
+#endif
+      }
+#endif
+    }
+    else
+    {
+      Int iScale = xGetDistScaleFactor( iCurrPOC, iCurrRefPOC, iNeibPOC, iNeibRefPOC );
+      if ( iScale == 4096 )
+      {
+        cMvL1Pred = cMvPred;
+
+#if VCEG_AZ07_IMV
+      if( getiMVFlag( uPartIdx ) && getSlice()->getSPS()->getIMV() )
+      {
+#if JVET_C0068_MVR
+        if (iMvpIdx > 0)
+        {
+          xRoundMvp2HalfPel( cMvL1Pred );
+        }
+        else
+        {
+          xRoundMV( cMvL1Pred );
+        }
+#else
+        xRoundMV( cMvL1Pred );
+#endif
+      }
+#endif
+      }
+      else
+      {
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+        cMvL1Pred = cMvPred.scaleMv( iScale );
+        cMvL1Pred.roundMV2SignalPrecision();
+#else
+        cMvL1Pred = cMvPred.scaleMv( iScale );
+
+#endif
+#if VCEG_AZ07_IMV
+      if( getiMVFlag( uPartIdx ) && getSlice()->getSPS()->getIMV() )
+      {
+#if JVET_C0068_MVR
+        if (iMvpIdx > 0)
+        {
+          xRoundMvp2HalfPel( cMvL1Pred );
+        }
+        else
+        {
+          xRoundMV( cMvL1Pred );
+        }
+#else
+        xRoundMV( cMvL1Pred );
+#endif
+      }
+#endif
+      }
+    }
+    return true;
+  }
+  else
+  {
+    assert(0);
+    return false;
+  }
+}
+
+Bool TComDataCU::xAddList1Cand( TComMv cMvL1, TComMv& cMvL0Pred, Int iRefIdxL0, Int iRefIdxL1, UInt uPartIdx
+#if JVET_C0068_MVR
+                               ,Int iMvpIdx
+#endif
+                               )
+{
+  if ( iRefIdxL1 < 0 || iRefIdxL0 < 0)
+  {
+    return false;
+  }
+
+  if ( m_pcSlice->getRefPic( REF_PIC_LIST_0, iRefIdxL0 )->getPOC() == m_pcSlice->getRefPic( REF_PIC_LIST_1, iRefIdxL1 )->getPOC() )
+  {
+    cMvL0Pred = cMvL1;
+#if VCEG_AZ07_IMV
+    if( getiMVFlag( uPartIdx ) && getSlice()->getSPS()->getIMV() )
+    {
+#if JVET_C0068_MVR
+        if (iMvpIdx > 0)
+        {
+          xRoundMvp2HalfPel( cMvL0Pred );
+        }
+        else
+        {
+          xRoundMV( cMvL0Pred );
+        }
+#else
+        xRoundMV( cMvL0Pred );
+#endif
+    }
+#endif
+    return true;
+  }
+
+  Int iCurrPOC    = m_pcSlice->getPOC();
+  Int iCurrRefPOC = m_pcSlice->getRefPic( REF_PIC_LIST_0, iRefIdxL0 )->getPOC();
+
+  Int iNeibPOC    = iCurrPOC;
+  Int iNeibRefPOC = m_pcSlice->getRefPic( REF_PIC_LIST_1, iRefIdxL1 )->getPOC();
+
+  Bool bIsCurrRefLongTerm = m_pcSlice->getRefPic( REF_PIC_LIST_0, iRefIdxL0 )->getIsLongTerm();
+  Bool bIsNeibRefLongTerm = m_pcSlice->getRefPic( REF_PIC_LIST_1, iRefIdxL1 )->getIsLongTerm();
+
+  TComMv cMvPred = cMvL1;
+  TComMv rcMv;
+
+  if ( bIsCurrRefLongTerm == bIsNeibRefLongTerm ) 
+  {
+    if ( bIsCurrRefLongTerm || bIsNeibRefLongTerm )
+    {
+      cMvL0Pred = cMvPred;
+
+#if VCEG_AZ07_IMV
+      if( getiMVFlag( uPartIdx ) && getSlice()->getSPS()->getIMV() )
+      {
+#if JVET_C0068_MVR
+        if (iMvpIdx > 0)
+        {
+          xRoundMvp2HalfPel( cMvL0Pred );
+        }
+        else
+        {
+          xRoundMV( cMvL0Pred );
+        }
+#else
+        xRoundMV( cMvL0Pred );
+#endif
+      }
+#endif
+    }
+    else
+    {
+      Int iScale = xGetDistScaleFactor( iCurrPOC, iCurrRefPOC, iNeibPOC, iNeibRefPOC );
+      if ( iScale == 4096 )
+      {
+        cMvL0Pred = cMvPred;
+
+#if VCEG_AZ07_IMV
+      if( getiMVFlag( uPartIdx ) && getSlice()->getSPS()->getIMV() )
+      {
+#if JVET_C0068_MVR
+        if (iMvpIdx > 0)
+        {
+          xRoundMvp2HalfPel( cMvL0Pred );
+        }
+        else
+        {
+          xRoundMV( cMvL0Pred );
+        }
+#else
+        xRoundMV( cMvL0Pred );
+#endif
+      }
+#endif
+      }
+      else
+      {
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+        cMvL0Pred = cMvPred.scaleMv( iScale );
+        cMvL0Pred.roundMV2SignalPrecision();
+#else
+        cMvL0Pred = cMvPred.scaleMv( iScale );
+
+#endif
+#if VCEG_AZ07_IMV
+      if( getiMVFlag( uPartIdx ) && getSlice()->getSPS()->getIMV() )
+      {
+#if JVET_C0068_MVR
+        if (iMvpIdx > 0)
+        {
+          xRoundMvp2HalfPel( cMvL0Pred );
+        }
+        else
+        {
+          xRoundMV( cMvL0Pred );
+        }
+#else
+        xRoundMV( cMvL0Pred );
+#endif
+      }
+#endif
+      }
+    }
+    return true;
+  }
+  else
+  {
+    return false;
+  }
+}
 
 Bool TComDataCU::xAddMVPCand( AMVPInfo* pInfo, RefPicList eRefPicList, Int iRefIdx, UInt uiPartUnitIdx, MVP_DIR eDir
 #if COM16_C1016_AFFINE
@@ -7407,16 +7813,25 @@ Bool TComDataCU::xAddMVPCand( AMVPInfo* pInfo, RefPicList eRefPicList, Int iRefI
       }
       if ( i == pInfo->iN )
       {
+#if JVET_C0068_PBL
+        pInfo->isScaled[pInfo->iN] = LOW_PRIO;
+#endif
         pInfo->m_acMvCand[pInfo->iN++] = cMvPred;
         return true;
       }
     }
     else
     {
+#if JVET_C0068_PBL
+      pInfo->isScaled[pInfo->iN] = HIGH_PRIO;
+#endif
       pInfo->m_acMvCand[ pInfo->iN++] = cMvPred;
       return true;
     }
 #else
+#if JVET_C0068_PBL
+    pInfo->isScaled[ pInfo->iN  ]   = HIGH_PRIO;
+#endif
     pInfo->m_acMvCand[ pInfo->iN++] = cMvPred;
     return true;
 #endif
@@ -7456,16 +7871,25 @@ Bool TComDataCU::xAddMVPCand( AMVPInfo* pInfo, RefPicList eRefPicList, Int iRefI
         }
         if ( i == pInfo->iN )
         {
+#if JVET_C0068_PBL
+          pInfo->isScaled[pInfo->iN] = LOW_PRIO;
+#endif
           pInfo->m_acMvCand[pInfo->iN++] = cMvPred;
           return true;
         }
       }
       else
       {
+#if JVET_C0068_PBL
+        pInfo->isScaled[pInfo->iN] = HIGH_PRIO;
+#endif
         pInfo->m_acMvCand[ pInfo->iN++] = cMvPred;
         return true;
       }
 #else
+#if JVET_C0068_PBL
+      pInfo->isScaled[pInfo->iN] = HIGH_PRIO;
+#endif
       pInfo->m_acMvCand[ pInfo->iN++] = cMvPred;
       return true;
 #endif
@@ -7571,7 +7995,9 @@ Bool TComDataCU::xAddMVPCandOrder( AMVPInfo* pInfo, RefPicList eRefPicList, Int 
           rcMv = cMvPred.scaleMv( iScale );
         }
       }
-
+#if JVET_C0068_PBL
+      pInfo->isScaled[pInfo->iN] = LOW_PRIO;
+#endif
 #if COM16_C1016_AFFINE
       // Unique
       if ( bAffine )
@@ -7625,7 +8051,9 @@ Bool TComDataCU::xAddMVPCandOrder( AMVPInfo* pInfo, RefPicList eRefPicList, Int 
           rcMv = cMvPred.scaleMv( iScale );
         }
       }
-
+#if JVET_C0068_PBL
+      pInfo->isScaled[pInfo->iN] = LOW_PRIO;
+#endif
 #if COM16_C1016_AFFINE
       // Unique
       if ( bAffine )

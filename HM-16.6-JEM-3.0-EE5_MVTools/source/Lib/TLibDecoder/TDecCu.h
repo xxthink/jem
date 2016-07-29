@@ -158,8 +158,12 @@ protected:
 
   Void xFillPCMBuffer           (TComDataCU* pCU, UInt depth);
 
-#if VCEG_AZ07_FRUC_MERGE || JVET_C0024_QTBT
+#if VCEG_AZ07_FRUC_MERGE || JVET_C0024_QTBT 
   Void xDeriveCUMV              ( TComDataCU * pcCU , UInt uiAbsPartIdx , UInt uiDepth );
+#endif
+
+#if !VCEG_AZ07_FRUC_MERGE && JVET_C0068_PBL
+  Void xDeriveCUMV_NoFRUC( TComDataCU * pcCU , UInt uiAbsPartIdx , UInt uiDepth );
 #endif
 };
 
