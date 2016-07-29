@@ -114,6 +114,10 @@ protected:
 #endif
   Pel*      m_piYuvExt[MAX_NUM_COMPONENT][NUM_PRED_BUF];
   Int       m_iYuvExtSize;
+#if EXTEND_REF_LINE
+  Pel*      m_piSecondYuvExt[MAX_NUM_COMPONENT][NUM_PRED_BUF];
+  Int       m_iSecondYuvExtSize;
+#endif
 
   TComYuv   m_acYuvPred[NUM_REF_PIC_LIST_01];
   TComYuv   m_cYuvPredTemp;
@@ -141,6 +145,9 @@ protected:
 #endif
 
   Void xPredIntraAng            ( Int bitDepth, const Pel* pSrc, Int srcStride, Pel* pDst, Int dstStride, UInt width, UInt height, ChannelType channelType, UInt dirMode, const Bool bEnableEdgeFilters 
+#if EXTEND_REF_LINE
+      , UInt ExternRef
+#endif
 #if VCEG_AZ07_INTRA_4TAP_FILTER
     , Bool enable4TapFilter = false
 #endif
@@ -332,6 +339,13 @@ public:
   {
     return m_piYuvExt[compID][bUseFilteredPredictions?PRED_BUF_FILTERED:PRED_BUF_UNFILTERED];
   }
+
+#if EXTEND_REF_LINE
+  Pel*  getSecondPredictorPtr(const ComponentID compID, const Bool bUseFilteredPredictions)
+  {
+       return m_piSecondYuvExt[compID][bUseFilteredPredictions ? PRED_BUF_FILTERED : PRED_BUF_UNFILTERED];
+  }
+#endif
 
   // This function is actually still in TComPattern.cpp
   /// set parameters from CU data for accessing intra data

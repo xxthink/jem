@@ -98,6 +98,10 @@
 #define NUM_PART_SIZE_CTX             4       ///< number of context models for partition size
 #define NUM_PRED_MODE_CTX             1       ///< number of context models for prediction mode
 
+#if EXTEND_REF_LINE
+#define NUM_EXTERN_REF_CTX            3
+#endif
+
 #if VCEG_AZ07_INTRA_65ANG_MODES
 #if JVET_B0051_NON_MPM_MODE
 #define NUM_INTRA_PREDICT_CTX         12       ///< number of context models for intra prediction
@@ -435,6 +439,16 @@ INIT_PRED_MODE[NUMBER_OF_SLICE_TYPES][NUM_PRED_MODE_CTX] =
   { 149, },
   { CNU, },
 };
+
+#if EXTEND_REF_LINE
+static const UChar
+INIT_EXTERN_REF[NUMBER_OF_SLICE_TYPES][NUM_EXTERN_REF_CTX] =
+{
+  { 154, 154, 154 },
+  { 154, 154, 154 },
+  { CNU, CNU, CNU },
+};
+#endif
 
 static const UChar
 INIT_INTRA_PRED_MODE[NUMBER_OF_SLICE_TYPES][NUM_INTRA_PREDICT_CTX] =

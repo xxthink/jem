@@ -873,6 +873,7 @@ Void TEncCu::compressCtu( TComDataCU* pCtu )
  */
 Void TEncCu::encodeCtu ( TComDataCU* pCtu )
 {
+
 #if JVET_C0024_QTBT
   pCtu->getSlice()->setTextType(CHANNEL_TYPE_LUMA);
 #endif
@@ -1685,6 +1686,12 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #if COM16_C1046_PDPC_INTRA
            rpcTempCU->setPDPCIdxSubParts(iPDPCidx, 0, uiDepth);
 #endif
+#if EXTEND_REF_LINE
+           if (isLuma(rpcTempCU->getTextType()))
+               rpcTempCU->setExternRefSubParts(CHANNEL_TYPE_LUMA, 0, 0, uiDepth);
+           else
+               rpcTempCU->setExternRefSubParts(CHANNEL_TYPE_CHROMA, 0, 0, uiDepth);
+#endif
 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 #if JVET_C0024_QTBT
@@ -1737,6 +1744,10 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #endif
 #if COM16_C1046_PDPC_INTRA
          rpcTempCU->setPDPCIdxSubParts(iPDPCidx, 0,  uiDepth ); 
+#endif
+#if EXTEND_REF_LINE
+         rpcTempCU->setExternRefSubParts(CHANNEL_TYPE_LUMA, 0, 0, uiDepth);
+         rpcTempCU->setExternRefSubParts(CHANNEL_TYPE_CHROMA, 0, 0, uiDepth);
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 #if JVET_C0024_QTBT
@@ -1827,6 +1838,10 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #if COM16_C1046_PDPC_INTRA
                       rpcTempCU->setPDPCIdxSubParts(iPDPCidx, 0, uiDepth);
 #endif
+#if EXTEND_REF_LINE
+                      rpcTempCU->setExternRefSubParts(CHANNEL_TYPE_LUMA, 0, 0, uiDepth);
+                      rpcTempCU->setExternRefSubParts(CHANNEL_TYPE_CHROMA, 0, 0, uiDepth);
+#endif
 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
                       rpcTempCU->setROTIdxSubParts(iROTidx, 0, uiDepth);
@@ -1849,6 +1864,10 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #endif
 #if COM16_C1046_PDPC_INTRA
                     rpcTempCU->setPDPCIdxSubParts(iPDPCidx, 0,  uiDepth ); 
+#endif
+#if EXTEND_REF_LINE
+                    rpcTempCU->setExternRefSubParts(CHANNEL_TYPE_LUMA, 0, 0, uiDepth);
+                    rpcTempCU->setExternRefSubParts(CHANNEL_TYPE_CHROMA, 0, 0, uiDepth);
 #endif
 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
@@ -1878,6 +1897,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
           }
 #endif //#if !JVET_C0024_QTBT
         }
+
 
         // test PCM
         if(sps.getUsePCM()

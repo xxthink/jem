@@ -87,6 +87,9 @@ TDecSbac::TDecSbac()
 , m_cCUPartSizeSCModel                       ( 1,             1,                      NUM_PART_SIZE_CTX                    , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUPredModeSCModel                       ( 1,             1,                      NUM_PRED_MODE_CTX                    , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUIntraPredSCModel                      ( 1,             1,                      NUM_INTRA_PREDICT_CTX                , m_contextModels + m_numContextModels, m_numContextModels)
+#if EXTEND_REF_LINE
+, m_cCUExternRefSCModel(1, 1, NUM_EXTERN_REF_CTX, m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 , m_cCUChromaPredSCModel                     ( 1,             1,                      NUM_CHROMA_PRED_CTX                  , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUDeltaQpSCModel                        ( 1,             1,                      NUM_DELTA_QP_CTX                     , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUInterDirSCModel                       ( 1,             1,                      NUM_INTER_DIR_CTX                    , m_contextModels + m_numContextModels, m_numContextModels)
@@ -212,6 +215,9 @@ Void TDecSbac::resetEntropy(TComSlice* pSlice)
   m_cCUPartSizeSCModel.initBuffer                 ( sliceType, qp, (UChar*)INIT_PART_SIZE );
   m_cCUPredModeSCModel.initBuffer                 ( sliceType, qp, (UChar*)INIT_PRED_MODE );
   m_cCUIntraPredSCModel.initBuffer                ( sliceType, qp, (UChar*)INIT_INTRA_PRED_MODE );
+#if EXTEND_REF_LINE
+  m_cCUExternRefSCModel.initBuffer(sliceType, qp, (UChar*)INIT_EXTERN_REF);
+#endif
   m_cCUChromaPredSCModel.initBuffer               ( sliceType, qp, (UChar*)INIT_CHROMA_PRED_MODE );
   m_cCUInterDirSCModel.initBuffer                 ( sliceType, qp, (UChar*)INIT_INTER_DIR );
   m_cCUMvdSCModel.initBuffer                      ( sliceType, qp, (UChar*)INIT_MVD );
@@ -818,6 +824,9 @@ Void TDecSbac::parseROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
     && pcCU->getPDPCIdx(uiAbsPartIdx) == 0
 #endif
     && !pcCU->getCUTransquantBypass(uiAbsPartIdx)
+#if EXTEND_REF_LINE
+    && pcCU->getExternRef(CHANNEL_TYPE_LUMA, uiAbsPartIdx) < 2
+#endif
     )  iNumberOfPassesROT = 4;
 
 #if COM16_C1044_NSST
@@ -1280,17 +1289,52 @@ Void TDecSbac::parseIntraDirLumaAng  ( TComDataCU* pcCU, UInt absPartIdx, UInt d
   const UInt uiContextMPM2[4] = { 7, 7, 8, 7 };
 #endif
 
+#if EXTEND_REF_LINE
+#if RExt__DECODER_DEBUG_BIT_STATISTICS
+#if JVET_C0024_QTBT
+  const TComCodingStatisticsClassType ctype(STATS__CABAC_BITS__INTRA_DIR_ANG, g_aucConvertToBit[pcCU->getSlice()->getSPS()->getCTUSize()>>depth]+2, CHANNEL_TYPE_LUMA);
+#else
+  const TComCodingStatisticsClassType ctype(STATS__CABAC_BITS__INTRA_DIR_ANG, g_aucConvertToBit[pcCU->getSlice()->getSPS()->getMaxCUWidth() >> depth] + 2, CHANNEL_TYPE_LUMA);
+#endif
+#endif
+  UInt refflag = 0;
+  {
+
+#if REF_LINE_NUM > 2
+      m_pcTDecBinIf->decodeBin(symbol, m_cCUExternRefSCModel.get(0, 0, 0) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype));
+      if (symbol){
+          m_pcTDecBinIf->decodeBin(symbol, m_cCUExternRefSCModel.get(0, 0, 1) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype));
+#if REF_LINE_NUM > 3
+          if (symbol){
+              m_pcTDecBinIf->decodeBin(symbol, m_cCUExternRefSCModel.get(0, 0, 2) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype));
+              symbol++;
+          }
+#endif
+          symbol++;
+      }
+      refflag = symbol;
+#else
+      m_pcTDecBinIf->decodeBin(symbol, m_cCUExternRefSCModel.get(0, 0, 0) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype));
+      refflag = symbol;
+#endif
+  }
+  pcCU->setExternRefSubParts(CHANNEL_TYPE_LUMA, refflag, absPartIdx, depth);
+
+#endif
+
 #if !JVET_C0024_QTBT
   if (mode==SIZE_NxN)
   {
     depth++;
   }
 #endif
+#if !EXTEND_REF_LINE
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
 #if JVET_C0024_QTBT
   const TComCodingStatisticsClassType ctype(STATS__CABAC_BITS__INTRA_DIR_ANG, g_aucConvertToBit[pcCU->getSlice()->getSPS()->getCTUSize()>>depth]+2, CHANNEL_TYPE_LUMA);
 #else
   const TComCodingStatisticsClassType ctype(STATS__CABAC_BITS__INTRA_DIR_ANG, g_aucConvertToBit[pcCU->getSlice()->getSPS()->getMaxCUWidth()>>depth]+2, CHANNEL_TYPE_LUMA);
+#endif
 #endif
 #endif
   for (j=0;j<partNum;j++)
@@ -1311,6 +1355,9 @@ Void TDecSbac::parseIntraDirLumaAng  ( TComDataCU* pcCU, UInt absPartIdx, UInt d
     pcCU->getIntraDirPredictor(absPartIdx+partOffset*j, preds, COMPONENT_Y
 #if VCEG_AZ07_INTRA_65ANG_MODES && !JVET_C0055_INTRA_MPM
       , iLeftAboveCase
+#endif
+#if EXTEND_REF_LINE
+      , refflag
 #endif
       );
 
@@ -1369,13 +1416,21 @@ Void TDecSbac::parseIntraDirLumaAng  ( TComDataCU* pcCU, UInt absPartIdx, UInt d
 
       if(!symbol) //Non-selected mode
       {
+#if EXTEND_REF_LINE
+          xReadTruncBinCode(symbol, (45 - (refflag > 0)) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD_EP));
+#else
         xReadTruncBinCode(symbol, 45 RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD_EP) );     
+#endif
         symbol  += (symbol/3) ;
         symbol ++;       
       }
       else // selected mode
       {
+#if EXTEND_REF_LINE
+          xReadTruncBinCode(symbol, (16 - (refflag > 0)) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD_EP));
+#else
         m_pcTDecBinIf->decodeBinsEP( symbol, 4  RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
+#endif
         symbol <<=2;
       }
 
@@ -1398,6 +1453,12 @@ Void TDecSbac::parseIntraDirLumaAng  ( TComDataCU* pcCU, UInt absPartIdx, UInt d
         std::swap(preds[1], preds[2]);
       }
 #endif
+
+#if EXTEND_REF_LINE
+      if (refflag)
+          intraPredMode += 2;
+#endif
+
       for ( UInt i = 0; i < NUM_MOST_PROBABLE_MODES; i++ )
       {
         intraPredMode += ( intraPredMode >= preds[i] );
@@ -1456,6 +1517,13 @@ Void TDecSbac::parseIntraDirChroma( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt ui
 #endif
 #endif
 
+#if EXTEND_REF_LINE
+
+  UInt refflag = 0;
+  pcCU->setExternRefSubParts(CHANNEL_TYPE_CHROMA, refflag, uiAbsPartIdx, uiDepth);
+
+#endif
+
   m_pcTDecBinIf->decodeBin( uiSymbol, m_cCUChromaPredSCModel.get( 0, 0, 0 ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
   if( uiSymbol == 0 )
   {
@@ -1481,7 +1549,12 @@ Void TDecSbac::parseIntraDirChroma( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt ui
     {
 #endif
       UInt uiIPredMode;
-      m_pcTDecBinIf->decodeBinsEP( uiIPredMode, 2 RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
+#if EXTEND_REF_LINE
+      UInt ExternRef = pcCU->getExternRef(CHANNEL_TYPE_CHROMA, uiAbsPartIdx);
+      m_pcTDecBinIf->decodeBinsEP(uiIPredMode, 2 RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype));
+#else
+      m_pcTDecBinIf->decodeBinsEP(uiIPredMode, 2 RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype));
+#endif
       UInt uiAllowedChromaDir[ NUM_CHROMA_MODE ];
       pcCU->getAllowedChromaDir( uiAbsPartIdx, uiAllowedChromaDir );
       uiSymbol = uiAllowedChromaDir[ uiIPredMode ];
