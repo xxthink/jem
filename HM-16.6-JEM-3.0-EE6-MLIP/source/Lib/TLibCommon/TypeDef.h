@@ -46,6 +46,19 @@
 
 //! \ingroup TLibCommon
 //! \{
+#define MULTIPLE_LINE_INTRA 1
+
+#if MULTIPLE_LINE_INTRA
+                                                //Test 3    Test 4    Test5    Test6
+#define USE_FOUR_LINES                     0    // 0         1         0        1
+#define USE_RESIDUE_COMPENSATION           0    // 0         0         1        1
+
+#define USE_FAST_ALGORITHMS                0    // 0         0         0        0
+#if USE_FAST_ALGORITHMS
+#define SKIP_ALL_NON_SQUARE_BLOCK          0    // 0         0         0        0
+#endif
+
+#endif
 
 ///////////////////////////////////////////////////////////
 // KTA tools section start

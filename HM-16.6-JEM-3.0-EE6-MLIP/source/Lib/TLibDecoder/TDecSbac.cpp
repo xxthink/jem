@@ -86,6 +86,9 @@ TDecSbac::TDecSbac()
 #endif
 , m_cCUPartSizeSCModel                       ( 1,             1,                      NUM_PART_SIZE_CTX                    , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUPredModeSCModel                       ( 1,             1,                      NUM_PRED_MODE_CTX                    , m_contextModels + m_numContextModels, m_numContextModels)
+#if MULTIPLE_LINE_INTRA
+, m_cCUIntraRefIndexSCModel                  ( 1,             1,                      NUM_INTRA_REF_INDEX_CTX              , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 , m_cCUIntraPredSCModel                      ( 1,             1,                      NUM_INTRA_PREDICT_CTX                , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUChromaPredSCModel                     ( 1,             1,                      NUM_CHROMA_PRED_CTX                  , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUDeltaQpSCModel                        ( 1,             1,                      NUM_DELTA_QP_CTX                     , m_contextModels + m_numContextModels, m_numContextModels)
@@ -211,6 +214,9 @@ Void TDecSbac::resetEntropy(TComSlice* pSlice)
 #endif
   m_cCUPartSizeSCModel.initBuffer                 ( sliceType, qp, (UChar*)INIT_PART_SIZE );
   m_cCUPredModeSCModel.initBuffer                 ( sliceType, qp, (UChar*)INIT_PRED_MODE );
+#if MULTIPLE_LINE_INTRA
+  m_cCUIntraRefIndexSCModel.initBuffer(sliceType, qp, (UChar*)INIT_INTRA_REF_INDEX);
+#endif
   m_cCUIntraPredSCModel.initBuffer                ( sliceType, qp, (UChar*)INIT_INTRA_PRED_MODE );
   m_cCUChromaPredSCModel.initBuffer               ( sliceType, qp, (UChar*)INIT_CHROMA_PRED_MODE );
   m_cCUInterDirSCModel.initBuffer                 ( sliceType, qp, (UChar*)INIT_INTER_DIR );
@@ -756,6 +762,14 @@ Void TDecSbac::parseMPIIdx(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth)
 #if COM16_C1046_PDPC_INTRA
 Void TDecSbac::parsePDPCIdx(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth)
 {
+#if MULTIPLE_LINE_INTRA
+  if (pcCU->getLineRefIndex(uiAbsPartIdx) != 0)
+  {
+    pcCU->setPDPCIdxSubParts(0, uiAbsPartIdx, uiDepth);
+    return;
+  }
+#endif
+
   if (!pcCU->getSlice()->getSPS()->getUsePDPC())
   {
     pcCU->setPDPCIdxSubParts(0, uiAbsPartIdx, uiDepth);
@@ -1229,7 +1243,51 @@ Void TDecSbac::parsePartSize( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth 
 }
 #endif
 
+#if MULTIPLE_LINE_INTRA
+Void TDecSbac::parseIntraRefIndex(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth)
+{
+#if USE_FAST_ALGORITHMS
+  Int indexHeight = g_aucConvertToBit[(Int)pcCU->getHeight(uiAbsPartIdx)] ;
+  Int indexWidth = g_aucConvertToBit[(Int)pcCU->getWidth(uiAbsPartIdx)] ;
+#if SKIP_ALL_NON_SQUARE_BLOCK
+  if (indexWidth != indexHeight)
+#else
+  if (abs(indexWidth - indexHeight)>1)
+#endif
+  {
+    pcCU->setLineRefIndexSubParts(0, uiAbsPartIdx, uiDepth);
+    return;
+  }
+#endif
 
+  UInt uiSymbol;
+  m_pcTDecBinIf->decodeBin(uiSymbol, m_cCUIntraRefIndexSCModel.get(0, 0, 0) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__REF_FRM_IDX));
+
+  if (uiSymbol == 0)
+  {
+    pcCU->setLineRefIndexSubParts(0, uiAbsPartIdx, uiDepth);
+  }
+  else
+  {
+    m_pcTDecBinIf->decodeBin(uiSymbol, m_cCUIntraRefIndexSCModel.get(0, 0, 1) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__REF_FRM_IDX));
+
+#if USE_FOUR_LINES
+    if (uiSymbol == 0)
+    {
+      pcCU->setLineRefIndexSubParts(1, uiAbsPartIdx, uiDepth);
+    }
+    else
+    {
+      m_pcTDecBinIf->decodeBin(uiSymbol, m_cCUIntraRefIndexSCModel.get(0, 0, 2));
+      pcCU->setLineRefIndexSubParts(uiSymbol == 0 ? 2 : 3, uiAbsPartIdx, uiDepth);
+    }
+#else
+    pcCU->setLineRefIndexSubParts(uiSymbol == 0 ? 1 : 3, uiAbsPartIdx, uiDepth);
+#endif
+  }
+}
+
+#endif
 /** parse prediction mode
  * \param pcCU
  * \param uiAbsPartIdx
@@ -2520,6 +2578,12 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
      Bool signHidden = ( lastNZPosInCG - firstNZPosInCG >= SBH_THRESHOLD );
 #if COM16_C983_RSAF
       bCheckBH |= signHidden; 
+#if MULTIPLE_LINE_INTRA
+      if (pcCU->getLineRefIndex(uiAbsPartIdx) != 0)
+      {
+        bCheckBH = false;
+      }
+#endif
 #endif
       absSum = 0;
 #if VCEG_AZ07_CTX_RESIDUALCODING

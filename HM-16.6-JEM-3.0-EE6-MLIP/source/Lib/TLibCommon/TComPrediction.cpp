@@ -149,8 +149,16 @@ TComPrediction::TComPrediction()
     for(UInt buf=0; buf<2; buf++)
     {
       m_piYuvExt[ch][buf] = NULL;
+#if MULTIPLE_LINE_INTRA
+      m_piYuvExtend[ch][buf] = NULL;
+#endif
     }
   }
+
+#if MULTIPLE_LINE_INTRA
+  resiRef = new Pel[(2 * MAX_CU_SIZE + 1)*(2 * MAX_CU_SIZE + 1)];
+#endif
+
 #if VCEG_AZ07_FRUC_MERGE
   m_cFRUCRDCost.init();
 #endif
@@ -205,8 +213,15 @@ Void TComPrediction::destroy()
     {
       delete [] m_piYuvExt[ch][buf];
       m_piYuvExt[ch][buf] = NULL;
+#if MULTIPLE_LINE_INTRA
+      delete[] m_piYuvExtend[ch][buf];
+      m_piYuvExtend[ch][buf] = NULL;
+#endif
     }
   }
+#if MULTIPLE_LINE_INTRA
+  delete[] resiRef;
+#endif
 
   for(UInt i=0; i<NUM_REF_PIC_LIST_01; i++)
   {
@@ -304,11 +319,19 @@ Void TComPrediction::initTempBuff(ChromaFormat chromaFormatIDC
     }
 
     m_iYuvExtSize = (MAX_CU_SIZE*2+1) * (MAX_CU_SIZE*2+1);
+
+#if MULTIPLE_LINE_INTRA
+    m_iYuvExtendSize = (MAX_CU_SIZE * 2 + 7) * (MAX_CU_SIZE * 2 + 7);
+#endif
+
     for(UInt ch=0; ch<MAX_NUM_COMPONENT; ch++)
     {
       for(UInt buf=0; buf<NUM_PRED_BUF; buf++)
       {
         m_piYuvExt[ch][buf] = new Pel[ m_iYuvExtSize ];
+#if MULTIPLE_LINE_INTRA
+        m_piYuvExtend[ch][buf] = new Pel[m_iYuvExtendSize];
+#endif
       }
     }
 
@@ -776,6 +799,15 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
   }
   else
   {
+#if MULTIPLE_LINE_INTRA
+    //only luma now
+    if (pcCU->getLineRefIndex(uiAbsPartIdx)!=0&&compID==COMPONENT_Y)
+    {
+      predExtendIntra(compID, uiDirMode, piPred, uiStride, rTu, bUseFilteredPredSamples);
+      return;
+    }
+#endif
+
 #if COM16_C1046_PDPC_INTRA
 #if !COM16_C1046_PDPC_RSAF_HARMONIZATION
     Pel *ptrSrc = getPredictorPtr(compID, false);
@@ -1040,6 +1072,9 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 #endif
 #if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
         , pcCU->getSlice()->getSPS()->getUseRSAF()
+#if MULTIPLE_LINE_INTRA
+        && (pcCU->getLineRefIndex(uiAbsPartIdx) == 0)
+#endif
 #endif
         );
 
@@ -1113,6 +1148,475 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
   }
 
 }
+
+#if MULTIPLE_LINE_INTRA
+Void TComPrediction::predExtendIntra(const ComponentID compID, UInt uiDirMode, Pel* piPred, UInt uiStride, TComTU &rTu, const Bool bUseFilteredPredSamples)
+{
+
+  const ChannelType    channelType = toChannelType(compID);
+  const TComRectangle &rect = rTu.getRect(isLuma(compID) ? COMPONENT_Y : COMPONENT_Cb);
+
+  TComDataCU *const pcCU = rTu.getCU();
+  const UInt              uiAbsPartIdx = rTu.GetAbsPartIdxTU();
+  const Int channelsBitDepthForPrediction = pcCU->getSlice()->getSPS()->getBitDepth(channelType);
+  Int MaxPelValue = (1 << channelsBitDepthForPrediction) - 1;
+
+  Int offset = pcCU->getLineRefIndex(uiAbsPartIdx);
+
+
+  const Int blockWidth = rect.width + offset;
+  const Int blockHeight = rect.height + offset;
+
+  Pel pDst[(MAX_CU_SIZE + 3)*(MAX_CU_SIZE + 3)];
+
+  // get starting pixel in block
+  const Int sw = (blockHeight+blockWidth+ 1);
+  const Pel *ptrSrc = getExtendedPredictorPtr(compID, bUseFilteredPredSamples);
+
+
+
+  if (uiDirMode == PLANAR_IDX)
+  {
+    xPredIntraPlanarPure(ptrSrc + sw + 1, sw, pDst, blockWidth, blockWidth, blockHeight, offset);
+  }
+  else
+  {
+
+    xPredIntraAngPure(channelsBitDepthForPrediction, ptrSrc + sw + 1, sw, pDst, blockWidth, blockWidth, blockHeight, channelType, uiDirMode, true,true, offset,false);
+  }
+
+
+#if  USE_RESIDUE_COMPENSATION
+    xPostFilterBasedOnResi(compID, pDst,  rTu, bUseFilteredPredSamples, uiDirMode, channelsBitDepthForPrediction, offset);
+#endif  
+
+
+
+  //copy
+  for (Int j = 0; j < rect.height; j++)
+  {
+    for (Int i = 0; i < rect.width; i++)
+    {
+      piPred[j*uiStride + i] = pDst[(j + offset)*blockWidth + i + offset];
+    }
+  }
+}
+
+Void TComPrediction::xPostFilterBasedOnResi(const ComponentID compID, Pel* pDst, TComTU &rTu, const Bool bUseFilteredPredSamples, Int uiDirMode, Int bitDepth, Int offset)
+{
+  Int MaxPelValue = (1 << bitDepth) - 1;
+  const Int numFiltered = 3;
+
+  const Pel *NearestRefRec = getPredictorPtr(compID, false);
+  const Int RectWidth = rTu.getRect(compID).width;
+  const Int RectHeight = rTu.getRect(compID).height;
+  const Int swNearestRefRec = RectWidth + RectHeight + 1;
+
+  const Int blockWidth = RectWidth + offset;
+  const Int blockHeigh = RectHeight + offset;
+
+
+  if (uiDirMode == DC_IDX || uiDirMode == PLANAR_IDX)
+  {
+    for (Int m = 0; m < numFiltered; m++)
+    {
+      for (Int k = offset; k < blockWidth; k++)
+      {
+        pDst[(offset + m)*blockWidth + k] = Clip3(0, MaxPelValue, (pDst[(offset + m)*blockWidth + k] + (((numFiltered - m) *(NearestRefRec[1 + k - offset] - pDst[(offset - 1)*blockWidth + k]) + 2) >> 2)));
+      }
+      for (Int k = offset; k < blockHeigh; k++)
+      {
+        pDst[k*blockWidth + offset + m] = Clip3(0, MaxPelValue, (pDst[k*blockWidth + offset + m] + (((numFiltered - m) * (NearestRefRec[(1 + k - offset)*swNearestRefRec] - pDst[k*blockWidth + offset - 1]) + 2) >> 2)));
+      }
+    }
+  }
+  else
+  {
+    for (Int k = 0; k < RectWidth + 1; k++)
+    {
+      resiRef[k] = NearestRefRec[k] - pDst[(offset - 1)*blockWidth + offset - 1 + k];
+    }
+    for (Int k = 0; k < RectHeight + 1; k++)
+    {
+      resiRef[k*swNearestRefRec] = NearestRefRec[k*swNearestRefRec] - pDst[(offset - 1 + k)*blockWidth + offset - 1];
+    }
+
+
+    //orthometric compensation
+    if ((uiDirMode >= 11 && uiDirMode <= 25))  //vertical residue compensation
+    {
+      //compensation
+      for (Int j = 0; j < 1; j++)
+      {
+        for (Int i = 0; i < RectWidth; i++)
+        {
+          pDst[(offset + j)*blockWidth + offset + i] = Clip3(0, MaxPelValue, (pDst[(offset + j)*blockWidth + offset + i] + (((14 - abs(uiDirMode - HOR_IDX) / 2)*(numFiltered - j) * resiRef[1 + i] + 32) >> 6)));
+        }
+      }
+    }
+    else if ((uiDirMode >= 43 && uiDirMode <= 57))//horzontal residue compensation
+    {
+      //compensation
+      for (Int j = 0; j < RectHeight; j++)
+      {
+        for (Int i = 0; i < 1; i++)
+        {
+          pDst[(offset + j)*blockWidth + offset + i] = Clip3(0, MaxPelValue, (pDst[(offset + j)*blockWidth + offset + i] + (((14 - abs(uiDirMode - VER_IDX) / 2)*(numFiltered - i)  * resiRef[(j + 1)*swNearestRefRec] + 32) >> 6)));
+        }
+      }
+    }
+    else  if ((uiDirMode >= 26 && uiDirMode <= 42))   //parallel compensation
+    {
+      Pel residue[MAX_CU_SIZE * MAX_CU_SIZE];
+
+      xPredIntraAngPure(bitDepth, resiRef + swNearestRefRec + 1, swNearestRefRec, residue, RectWidth, RectWidth, RectHeight, CHANNEL_TYPE_LUMA, uiDirMode, false, false, 0, true);
+
+      //compensation
+      for (Int j = 0; j < RectHeight; j++)
+      {
+        for (Int i = 0; i < RectWidth; i++)
+        {
+          Int minDistance = i < j ? i : j;
+
+          if (minDistance < numFiltered)
+          {
+            pDst[(offset + j)*blockWidth + offset + i] = Clip3(0, MaxPelValue, (pDst[(offset + j)*blockWidth + offset + i] + (((numFiltered - minDistance) * residue[j*RectWidth + i] + 2) >> 2)));
+          }
+        }
+      }
+    }
+    else if (uiDirMode == 2 || uiDirMode == VDIA_IDX) //inverse parallel compensation
+    {
+      //the some above-right part need padding
+      for (Int k = 0; k < numFiltered; k++)
+      {
+        resiRef[RectWidth + 1 + k] = resiRef[RectWidth];
+      }
+
+      //the some below left part need padding
+      for (Int k = 0; k < numFiltered; k++)
+      {
+        resiRef[(RectHeight + 1 + k)*swNearestRefRec] = resiRef[RectHeight*swNearestRefRec];
+      }
+
+      for (Int j = 0; j < numFiltered; j++)
+      {
+        for (Int i = 0; i < RectWidth; i++)
+        {
+          pDst[(offset + j)*blockWidth + offset + i] = Clip3(0, MaxPelValue, (pDst[(offset + j)*blockWidth + offset + i] + (((numFiltered - j) * resiRef[1 + i + 1 + j] + 2) >> 2)));
+        }
+      }
+      for (Int j = 0; j < RectHeight; j++)
+      {
+        for (Int i = 0; i < numFiltered; i++)
+        {
+
+          pDst[(offset + j)*blockWidth + offset + i] = Clip3(0, MaxPelValue, (pDst[(offset + j)*blockWidth + offset + i] + (((numFiltered - i) * resiRef[(1 + j + 1 + i)*swNearestRefRec] + 2) >> 2)));
+        }
+      }
+    }
+  }
+}
+
+Void TComPrediction::xPredIntraPlanarPure(const Pel* pSrc, Int srcStride, Pel* rpDst, Int dstStride, UInt width, UInt height, Int offset)
+{
+
+
+  Int leftColumn[MAX_CU_SIZE + 4], topRow[MAX_CU_SIZE + 4], bottomRow[MAX_CU_SIZE + 3], rightColumn[MAX_CU_SIZE + 3];
+
+  Int startPoint = offset > 1 ? offset - 1 : 0;
+  // Get left and above reference column and row
+  Int k;
+  for (k = startPoint; k<width + 1; k++)
+  {
+    topRow[k] = pSrc[k - srcStride];
+  }
+  for (k = startPoint; k < height + 1; k++)
+  {
+    leftColumn[k] = pSrc[k*srcStride - 1];
+  }
+
+  // Prepare intermediate variables used in interpolation
+  Int bottomLeft = leftColumn[height];
+  Int topRight = topRow[width];
+
+  for (k = startPoint; k<width; k++)
+  {
+    bottomRow[k] = bottomLeft - topRow[k];
+    topRow[k] = topRow[k] * height + startPoint*bottomRow[k];
+  }
+
+  for (k = startPoint; k<height; k++)
+  {
+    rightColumn[k] = topRight - leftColumn[k];
+    leftColumn[k] = leftColumn[k] * width + startPoint*  rightColumn[k];
+  }
+
+  //need to check again
+
+  // Generate prediction signal
+  for (Int y = startPoint; y<height; y++)
+  {
+    Int horPred = leftColumn[y];
+    for (Int x = startPoint; x<width; x++)
+    {
+      horPred += rightColumn[y];
+      topRow[x] += bottomRow[x];
+
+      Int vertPred = topRow[x];
+      rpDst[y*dstStride + x] = (horPred*height + vertPred*width+width*height) / (width*height * 2);
+    }
+  }
+
+}
+
+Void TComPrediction::xPredIntraAngPure(Int bitDepth,
+  const Pel* pSrc, Int srcStride,
+  Pel* pTrueDst, Int dstStrideTrue,
+  UInt uiWidth, UInt uiHeight, ChannelType channelType,
+  UInt dirMode, Bool enable4TapFilter, const Bool enableRSAF, Int offset, Bool CurIsResi
+  )
+{
+
+  const Int startPoint = offset > 1 ? offset - 1 : 0;
+
+  Int width = Int(uiWidth);
+  Int height = Int(uiHeight);
+
+  // Map the mode index to main prediction direction and angle
+  assert(dirMode != PLANAR_IDX); //no planar
+  const Bool modeDC = dirMode == DC_IDX;
+
+
+  // Do the DC prediction
+  if (modeDC)
+  {
+    const Pel dcval = predIntraGetPredValDC(pSrc, srcStride, width, height);
+
+    for (Int y = startPoint; y <height; y++)
+    {
+      for (Int x = startPoint; x < width; x++)
+      {
+        pTrueDst[y*dstStrideTrue + x] = dcval;
+      }
+    }
+  }
+  else // Do angular predictions
+  {
+#if VCEG_AZ07_INTRA_65ANG_MODES
+    const Bool       bIsModeVer = (dirMode >= DIA_IDX);
+#else
+    const Bool       bIsModeVer = (dirMode >= 18);
+#endif
+    const Int        intraPredAngleMode = (bIsModeVer) ? (Int)dirMode - VER_IDX : -((Int)dirMode - HOR_IDX);
+    const Int        absAngMode = abs(intraPredAngleMode);
+    const Int        signAng = intraPredAngleMode < 0 ? -1 : 1;
+
+    // Set bitshifts and scale the angle parameter to block size
+#if VCEG_AZ07_INTRA_65ANG_MODES
+    static const Int angTable[17] = { 0, 1, 2, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 26, 29, 32 };
+    static const Int invAngTable[17] = { 0, 8192, 4096, 2731, 1638, 1170, 910, 745, 630, 546, 482, 431, 390, 356, 315, 282, 256 }; // (256 * 32) / Angle
+#else
+    static const Int angTable[9] = { 0, 2, 5, 9, 13, 17, 21, 26, 32 };
+    static const Int invAngTable[9] = { 0, 4096, 1638, 910, 630, 482, 390, 315, 256 }; // (256 * 32) / Angle
+#endif
+    Int invAngle = invAngTable[absAngMode];
+    Int absAng = angTable[absAngMode];
+    Int intraPredAngle = signAng * absAng;
+
+    Pel* refMain;
+    Pel* refSide;
+
+    Pel  refAbove[2 * MAX_CU_SIZE + 7];
+    Pel  refLeft[2 * MAX_CU_SIZE + 7];
+
+    // Initialize the Main and Left reference array.
+    if (intraPredAngle < 0)
+    {
+      const Int refMainOffsetPreScale = (bIsModeVer ? height : width) - 1;
+#if !JVET_C0024_QTBT
+      const Int refMainOffset = height - 1;
+#endif
+      for (Int x = 0; x<width + 1; x++)
+      {
+#if JVET_C0024_QTBT
+        refAbove[x + height - 1] = pSrc[x - srcStride - 1];
+#else
+        refAbove[x + refMainOffset] = pSrc[x - srcStride - 1];
+#endif
+      }
+      for (Int y = 0; y<height + 1; y++)
+      {
+#if JVET_C0024_QTBT
+        refLeft[y + width - 1] = pSrc[(y - 1)*srcStride - 1];
+#else
+        refLeft[y + refMainOffset] = pSrc[(y - 1)*srcStride - 1];
+#endif
+      }
+#if JVET_C0024_QTBT
+      refMain = (bIsModeVer ? refAbove + height : refLeft + width) - 1;
+      refSide = (bIsModeVer ? refLeft + width : refAbove + height) - 1;
+#else
+      refMain = (bIsModeVer ? refAbove : refLeft) + refMainOffset;
+      refSide = (bIsModeVer ? refLeft : refAbove) + refMainOffset;
+#endif
+
+      // Extend the Main reference to the left.
+      Int invAngleSum = 128;       // rounding for (shift by 8)
+      for (Int k = -1; k>(refMainOffsetPreScale + 1)*intraPredAngle >> 5; k--)
+      {
+        invAngleSum += invAngle;
+        refMain[k] = refSide[invAngleSum >> 8];
+      }
+    }
+    else
+    {
+#if JVET_C0024_QTBT
+      for (Int x = 0; x<width + height + 1; x++)
+#else
+      for (Int x = 0; x<2 * width + 1; x++)
+#endif
+      {
+        refAbove[x] = pSrc[x - srcStride - 1];
+#if JVET_C0024_QTBT
+        refLeft[x] = pSrc[(x - 1)*srcStride - 1];
+#endif
+      }
+#if !JVET_C0024_QTBT
+      for (Int y = 0; y<2 * height + 1; y++)
+      {
+        refLeft[y] = pSrc[(y - 1)*srcStride - 1];
+      }
+#endif
+      refMain = bIsModeVer ? refAbove : refLeft;
+      refSide = bIsModeVer ? refLeft : refAbove;
+    }
+
+    // swap width/height if we are doing a horizontal mode:
+    Pel tempArray[(MAX_CU_SIZE + 3)*(MAX_CU_SIZE + 3)];
+    const Int dstStride = bIsModeVer ? dstStrideTrue : (MAX_CU_SIZE + 3);
+
+    Pel *pDst = bIsModeVer ? pTrueDst : tempArray;
+    if (!bIsModeVer)
+    {
+      std::swap(width, height);
+    }
+
+    if (intraPredAngle == 0)  // pure vertical or pure horizontal
+    {
+      for (Int y = startPoint; y<height; y++)
+      {
+        for (Int x = startPoint; x<width; x++)
+        {
+          pDst[y*dstStride + x] = refMain[x + 1];
+        }
+      }
+
+    }
+    else
+    {
+      Pel *pDsty = pDst;
+
+      pDsty += dstStride*startPoint;
+      for (Int y = startPoint, deltaPos = intraPredAngle + startPoint*intraPredAngle; y<height; y++, deltaPos += intraPredAngle, pDsty += dstStride)
+      {
+        const Int deltaInt = deltaPos >> 5;
+        const Int deltaFract = deltaPos & (32 - 1);
+
+        if (deltaFract)
+        {
+          // Do linear filtering
+#if VCEG_AZ07_INTRA_4TAP_FILTER
+          if (enable4TapFilter)
+          {
+            Int p[4], x, refMainIndex;
+            const Pel nMin = 0, nMax = (1 << bitDepth) - 1;
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+            Int *f = ((channelType == CHANNEL_TYPE_LUMA) && enableRSAF) ? g_aiIntraCubicFilter[deltaFract] : ((width <= 8) ? g_aiIntraCubicFilter[deltaFract] : g_aiIntraGaussFilter[deltaFract]);
+#else
+            Int *f = (width <= 8) ? g_aiIntraCubicFilter[deltaFract] : g_aiIntraGaussFilter[deltaFract];
+#endif
+
+
+            for (x = startPoint; x<width; x++)
+            {
+              if (CurIsResi&&x>2 && y>2)
+              {
+                continue;
+              }
+
+
+              refMainIndex = x + deltaInt + 1;
+
+              p[1] = refMain[refMainIndex];
+              p[2] = refMain[refMainIndex + 1];
+
+              p[0] = x == 0 ? p[1] : refMain[refMainIndex - 1];
+              p[3] = x == (width - 1) ? p[2] : refMain[refMainIndex + 2];
+
+              pDst[y*dstStride + x] = (Pel)((f[0] * p[0] + f[1] * p[1] + f[2] * p[2] + f[3] * p[3] + 128) >> 8);
+
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+              if (enableRSAF || width <= 8)
+#else
+              if (width <= 8) // for blocks larger than 8x8, Gaussian interpolation filter with positive coefficients is used, no Clipping is necessary
+#endif
+              {
+                pDst[y*dstStride + x] = Clip3(nMin, nMax, pDst[y*dstStride + x]);
+              }
+            }
+          }
+          else
+          {
+#endif
+            const Pel *pRM = refMain + deltaInt + 1+startPoint;
+            Int lastRefMainPel = *pRM++;
+            for (Int x = startPoint; x<width; pRM++, x++)
+            {
+
+              if (CurIsResi&&x>2 && y>2)
+              {
+                continue;
+              }
+
+
+              Int thisRefMainPel = *pRM;
+              pDsty[x + 0] = (Pel)(((32 - deltaFract)*lastRefMainPel + deltaFract*thisRefMainPel + 16) >> 5);
+              lastRefMainPel = thisRefMainPel;
+            }
+#if VCEG_AZ07_INTRA_4TAP_FILTER
+          }
+#endif
+        }
+        else
+        {
+          // Just copy the integer samples
+          for (Int x = startPoint; x<width; x++)
+          {
+            pDsty[x] = refMain[x + deltaInt + 1];
+          }
+        }
+      }
+    }
+
+    // Flip the block if this is the horizontal mode
+    if (!bIsModeVer)
+    {
+      pTrueDst += startPoint;
+      pDst += dstStride*startPoint;
+      for (Int y = startPoint; y<height; y++)
+      {
+        for (Int x = startPoint; x<width; x++)
+        {
+          pTrueDst[x*dstStrideTrue] = pDst[x];
+        }
+        pTrueDst++;
+        pDst += dstStride;
+      }
+    }
+  }
+}
+#endif
 
 /** Check for identical motion in both motion vector direction of a bi-directional predicted CU
   * \returns true, if motion vectors and reference pictures match

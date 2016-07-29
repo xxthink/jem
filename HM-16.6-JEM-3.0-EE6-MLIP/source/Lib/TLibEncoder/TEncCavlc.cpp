@@ -1318,6 +1318,12 @@ Void TEncCavlc::codePredMode( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/ )
 {
   assert(0);
 }
+#if MULTIPLE_LINE_INTRA
+Void TEncCavlc::codeIntraRefIndex(TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/)
+{
+  assert(0);
+}
+#endif
 
 Void TEncCavlc::codeMergeFlag    ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/ )
 {

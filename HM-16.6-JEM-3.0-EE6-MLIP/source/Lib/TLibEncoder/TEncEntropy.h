@@ -114,7 +114,9 @@ public:
   virtual Void codePartSize      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
 #endif
   virtual Void codePredMode      ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
-
+#if MULTIPLE_LINE_INTRA
+  virtual Void codeIntraRefIndex(TComDataCU* pcCU, UInt uiAbsPartIdx) = 0;
+#endif
   virtual Void codeIPCMInfo      ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
 
   virtual Void codeTransformSubdivFlag( UInt uiSymbol, UInt uiCtx ) = 0;

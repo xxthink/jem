@@ -115,6 +115,12 @@ protected:
   Pel*      m_piYuvExt[MAX_NUM_COMPONENT][NUM_PRED_BUF];
   Int       m_iYuvExtSize;
 
+#if MULTIPLE_LINE_INTRA
+  Pel*      m_piYuvExtend[MAX_NUM_COMPONENT][NUM_PRED_BUF];
+  Int       m_iYuvExtendSize;
+  Pel* resiRef;
+#endif
+
   TComYuv   m_acYuvPred[NUM_REF_PIC_LIST_01];
   TComYuv   m_cYuvPredTemp;
   TComYuv m_filteredBlock[LUMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS][LUMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS];
@@ -149,6 +155,12 @@ protected:
 #endif
     );
   Void xPredIntraPlanar         ( const Pel* pSrc, Int srcStride, Pel* rpDst, Int dstStride, UInt width, UInt height );
+
+#if MULTIPLE_LINE_INTRA
+  Void xPredIntraAngPure(Int bitDepth, const Pel* pSrc, Int srcStride, Pel* pDst, Int dstStride, UInt width, UInt height, ChannelType channelType, UInt dirMode, Bool enable4TapFilter,const Bool enableRSAF, Int offset,Bool CurIsResi);
+  Void xPredIntraPlanarPure(const Pel* pSrc, Int srcStride, Pel* rpDst, Int dstStride, UInt width, UInt height, Int offset);
+  Void xPostFilterBasedOnResi(const ComponentID compID, Pel* pDst, TComTU &rTu, const Bool bUseFilteredPredSamples, Int uiDirMode, Int bitDepth, Int offset);
+#endif
 
 #if VCEG_AZ07_FRUC_MERGE
   TComRdCost              m_cFRUCRDCost;
@@ -327,6 +339,18 @@ public:
 #endif
 
   Pel  predIntraGetPredValDC      ( const Pel* pSrc, Int iSrcStride, UInt iWidth, UInt iHeight);
+
+#if MULTIPLE_LINE_INTRA
+  Void predExtendIntra(const ComponentID compID, UInt uiDirMode, Pel* piPred, UInt uiStride, TComTU &rTu, const Bool bUseFilteredPredSamples);
+
+  Void initExtendIntraPatternChType(TComTU &rTu,
+    const ComponentID compID, const Bool bFilterRefSamples);
+
+  Pel*  getExtendedPredictorPtr(const ComponentID compID, const Bool bUseFilteredPredictions)
+  {
+    return m_piYuvExtend[compID][bUseFilteredPredictions ? PRED_BUF_FILTERED : PRED_BUF_UNFILTERED];
+  }
+#endif
 
   Pel*  getPredictorPtr           ( const ComponentID compID, const Bool bUseFilteredPredictions )
   {

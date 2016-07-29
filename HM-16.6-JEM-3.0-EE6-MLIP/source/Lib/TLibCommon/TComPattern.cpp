@@ -64,6 +64,26 @@ Void fillReferenceSamples( const Int bitDepth,
                            const UInt uiHeight, 
                            const Int iPicStride );
 
+#if MULTIPLE_LINE_INTRA
+Void fillExtendedReferenceSamples(
+  const Int offset,
+  const Int bitDepth,
+  const Pel* piRoiOrigin,
+  Pel* piIntraTemp,
+  const Bool* bNeighborFlags,
+  const Int iNumIntraNeighbor,
+  const Int unitWidth,
+  const Int unitHeight,
+  const Int iAboveUnits,
+  const Int iLeftUnits,
+  const UInt uiWidth,
+  const UInt uiHeight,
+  const Int iPicStride,
+  const Bool IsAboveRightSpecialAvailable,
+  const Bool IsBelowLeftSpecialAvailable
+  );
+#endif
+
 /// constrained intra prediction
 Bool  isAboveLeftAvailable  ( TComDataCU* pcCU, UInt uiPartIdxLT );
 Int   isAboveAvailable      ( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxRT, Bool* bValidFlags );
@@ -144,6 +164,189 @@ Void TComPattern::initPattern (Pel* piY,
   m_cPatternY. setPatternParamPel( piY,  iRoiWidth, iRoiHeight, iStride, bitDepthLuma);
 }
 
+#if MULTIPLE_LINE_INTRA
+Void TComPrediction::initExtendIntraPatternChType(TComTU &rTu, const ComponentID compID, const Bool bFilterRefSamples DEBUG_STRING_FN_DECLARE(sDebug))
+{
+  TComDataCU *pcCU = rTu.getCU();
+  const UInt uiZorderIdxInPart = rTu.GetAbsPartIdxTU();
+  Int RefIndex = pcCU->getLineRefIndex(uiZorderIdxInPart);
+  if (RefIndex == 0)
+  {
+    return;
+  }
+
+  const ChannelType chType = toChannelType(compID);
+  const TComSPS &sps = *(pcCU->getSlice()->getSPS());
+  const UInt uiTuWidth = rTu.getRect(compID).width;
+  const UInt uiTuHeight = rTu.getRect(compID).height;
+
+  const UInt uiTuWidth2 = uiTuWidth + uiTuHeight;
+  const UInt uiTuHeight2 = uiTuHeight + uiTuWidth;
+  assert(uiZorderIdxInPart == 0);
+  const Int  iBaseUnitSize = sps.getCTUSize() >> sps.getMaxTotalCUDepth();
+
+
+  const Int  iUnitWidth = iBaseUnitSize >> pcCU->getPic()->getPicYuvRec()->getComponentScaleX(compID);
+  const Int  iUnitHeight = iBaseUnitSize >> pcCU->getPic()->getPicYuvRec()->getComponentScaleY(compID);
+  const Int  iTUWidthInUnits = uiTuWidth / iUnitWidth;
+  const Int  iTUHeightInUnits = uiTuHeight / iUnitHeight;
+
+
+  const Int  iAboveUnits = iTUWidthInUnits + iTUHeightInUnits;
+  const Int  iLeftUnits = iTUHeightInUnits + iTUWidthInUnits;
+
+
+  const Int  bitDepthForChannel = sps.getBitDepth(chType);
+  assert(iTUHeightInUnits > 0 && iTUWidthInUnits > 0);
+
+  const Int  iPartIdxStride = pcCU->getPic()->getNumPartInCtuWidth();
+  const UInt uiPartIdxLT = pcCU->getZorderIdxInCtu() + uiZorderIdxInPart;
+  const UInt uiPartIdxRT = g_auiRasterToZscan[g_auiZscanToRaster[uiPartIdxLT] + iTUWidthInUnits - 1];
+  const UInt uiPartIdxLB = g_auiRasterToZscan[g_auiZscanToRaster[uiPartIdxLT] + ((iTUHeightInUnits - 1) * iPartIdxStride)];
+
+  Int   iPicStride = pcCU->getPic()->getStride(compID);
+  Bool  bNeighborFlags[4 * MAX_NUM_PART_IDXS_IN_CTU_WIDTH + 1];
+  Int   iNumIntraNeighbor = 0;
+
+  bNeighborFlags[iLeftUnits] = isAboveLeftAvailable(pcCU, uiPartIdxLT);
+  iNumIntraNeighbor += bNeighborFlags[iLeftUnits] ? 1 : 0;
+  iNumIntraNeighbor += isAboveAvailable(pcCU, uiPartIdxLT, uiPartIdxRT, (bNeighborFlags + iLeftUnits + 1));
+
+  iNumIntraNeighbor += isAboveRightAvailable(pcCU, uiPartIdxRT, iTUHeightInUnits, (bNeighborFlags + iLeftUnits + 1 + iTUWidthInUnits));
+
+  iNumIntraNeighbor += isLeftAvailable(pcCU, uiPartIdxLT, uiPartIdxLB, (bNeighborFlags + iLeftUnits - 1));
+
+  iNumIntraNeighbor += isBelowLeftAvailable(pcCU, uiPartIdxLB, iTUWidthInUnits, (bNeighborFlags + iLeftUnits - 1 - iTUHeightInUnits));
+
+  Bool IsAboveRightSpecialAvailable, IsBelowLeftSpecialAvailable;
+
+  UInt temp;
+  if (pcCU->getPUAboveRight(temp, uiPartIdxRT, iTUHeightInUnits + 1))
+  {
+    IsAboveRightSpecialAvailable = true;
+  }
+  else
+  {
+    IsAboveRightSpecialAvailable = false;
+  }
+  if (pcCU->getPUBelowLeft(temp, uiPartIdxLB, iTUWidthInUnits + 1))
+  {
+    IsBelowLeftSpecialAvailable = true;
+  }
+  else
+  {
+    IsBelowLeftSpecialAvailable = false;
+  }
+  
+  Int offset = RefIndex;
+
+
+  const UInt         uiROIWidth = uiTuWidth2 + offset * 2 + 1;
+  const UInt         uiROIHeight = uiTuHeight2 + offset * 2 + 1;
+
+  assert(uiROIWidth*uiROIHeight <= m_iYuvExtendSize);
+
+  {
+    Pel *piIntraTemp = m_piYuvExtend[compID][PRED_BUF_UNFILTERED];
+    Pel *piRoiOrigin = pcCU->getPic()->getPicYuvRec()->getAddr(compID, pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu() + uiZorderIdxInPart);
+
+
+    fillExtendedReferenceSamples(offset, bitDepthForChannel, piRoiOrigin, piIntraTemp, bNeighborFlags, iNumIntraNeighbor, iUnitWidth, iUnitHeight, iAboveUnits, iLeftUnits, uiROIWidth, uiROIHeight, iPicStride, IsAboveRightSpecialAvailable, IsBelowLeftSpecialAvailable);
+
+    if (bFilterRefSamples)
+    {
+      // generate filtered intra prediction samples
+
+      Int          stride = uiROIWidth;
+      const Pel         *piSrcPtr = piIntraTemp;
+      Pel         *piDestPtr = m_piYuvExtend[compID][PRED_BUF_FILTERED];
+
+      //------------------------------------------------
+
+      Bool useStrongIntraSmoothing = isLuma(chType) && sps.getUseStrongIntraSmoothing();
+
+      const Pel bottomLeft = piSrcPtr[stride *(uiTuHeight2 + 2 * offset)];
+      const Pel topLeft = piSrcPtr[0];
+      const Pel topRight = piSrcPtr[uiTuWidth2 + 2 * offset];
+
+
+      if (useStrongIntraSmoothing)
+      {
+
+        const Int  threshold = 1 << (bitDepthForChannel - 5);
+
+        const Bool bilinearLeft = abs((bottomLeft + topLeft) - (2 * piIntraTemp[stride * (uiTuHeight + offset)])) < threshold; //difference between the
+        const Bool bilinearAbove = abs((topLeft + topRight) - (2 * piIntraTemp[uiTuWidth + offset])) < threshold; //ends and the middle
+        if ((uiTuWidth < 32) || (!bilinearLeft) || (!bilinearAbove))
+        {
+          useStrongIntraSmoothing = false;
+        }
+      }
+
+      piDestPtr[stride *(uiTuHeight2 + 2 * offset)] = piSrcPtr[stride *(uiTuHeight2 + 2 * offset)]; // bottom left is not filtered
+
+
+      //------------------------------------------------
+
+      //left column 
+
+      if (useStrongIntraSmoothing)
+      {
+        for (Int k = 1; k < uiTuHeight2 + 2 * offset; k++)
+        {
+          piDestPtr[stride *k] = (k* bottomLeft + (uiTuHeight2 + 2 * offset - k)*topLeft + uiTuHeight + offset) / (uiTuHeight2 + 2 * offset);
+        }
+
+      }
+      else
+      {
+        for (Int k = 1; k < uiTuHeight2 + 2 * offset; k++)
+        {
+          piDestPtr[stride *k] = (piSrcPtr[stride*(k - 1)] + 2 * piSrcPtr[stride*k] + piSrcPtr[stride*(k + 1)] + 2) >> 2;
+        }
+      }
+
+      //------------------------------------------------
+
+      //top-left
+
+      if (useStrongIntraSmoothing)
+      {
+        piDestPtr[0] = piSrcPtr[0];
+      }
+      else
+      {
+        piDestPtr[0] = (piSrcPtr[stride] + 2 * piSrcPtr[0] + piSrcPtr[1] + 2) >> 2;
+      }
+
+
+      //------------------------------------------------
+
+      //top row (left-to-right)
+
+      if (useStrongIntraSmoothing)
+      {
+        for (Int k = 1; k < uiTuWidth2 + 2 * offset; k++)
+        {
+          piDestPtr[k] = (k* topRight + (uiTuWidth2 + 2 * offset - k)*topLeft + uiTuWidth + offset) / (uiTuWidth2 + 2 * offset);
+        }
+      }
+      else
+      {
+        for (Int k = 1; k < uiTuWidth2 + 2 * offset; k++)
+        {
+          piDestPtr[k] = (piSrcPtr[k - 1] + 2 * piSrcPtr[k] + piSrcPtr[k + 1] + 2) >> 2;
+        }
+      }
+
+      //------------------------------------------------
+
+      piDestPtr[uiTuWidth2 + 2 * offset] = piSrcPtr[uiTuWidth2 + 2 * offset]; // far right is not filtered
+    }
+  }
+}
+
+#endif
 
 
 // TODO: move this function to TComPrediction.cpp.
@@ -259,6 +462,14 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
     }
 #endif
 
+#if MULTIPLE_LINE_INTRA
+    if (pcCU->getLineRefIndex(uiZorderIdxInPart)!=0)
+    {
+      assert(!bRSAF);
+      bRSAF = false;
+    }
+#endif
+
 #if !COM16_C983_RSAF
     if (bFilterRefSamples)
 #else
@@ -275,7 +486,11 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
 
       Bool useStrongIntraSmoothing = isLuma(chType) && sps.getUseStrongIntraSmoothing();
 #if COM16_C983_RSAF
-      if (pcCU->getSlice()->getSPS()->getUseRSAF())
+      if (pcCU->getSlice()->getSPS()->getUseRSAF()
+#if MULTIPLE_LINE_INTRA
+        && (pcCU->getLineRefIndex(uiZorderIdxInPart) == 0)
+#endif
+        )
       {
         useStrongIntraSmoothing = false;
       }
@@ -426,6 +641,316 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
   }
   DEBUG_STRING_APPEND(sDebug, ss.str())
 }
+
+
+#if MULTIPLE_LINE_INTRA
+
+Void fillExtendedReferenceSamples(
+  const Int offset,
+  const Int bitDepth,
+  const Pel* piRoiOrigin,
+  Pel* piIntraTemp,
+  const Bool* bNeighborFlags,
+  const Int iNumIntraNeighbor,
+  const Int unitWidth,
+  const Int unitHeight,
+  const Int iAboveUnits,
+  const Int iLeftUnits,
+  const UInt uiWidth,
+  const UInt uiHeight,
+  const Int iPicStride,
+  const Bool IsAboveRightSpecialAvailable,
+  const Bool IsBelowLeftSpecialAvailable)
+{
+  assert(uiWidth == uiHeight);
+  assert(uiWidth == iAboveUnits*unitWidth + 2 * offset + 1);
+  assert(iAboveUnits == iLeftUnits);
+
+  //assert(unitWidth == 4);
+
+  const Pel* piRoiTemp;
+  Int  i, j;
+  Int  iDCValue = 1 << (bitDepth - 1);
+  const Int iTotalUnits = iAboveUnits + iLeftUnits + 1; //+1 for top-left
+
+  if (iNumIntraNeighbor == 0)
+  {
+    // Fill border with DC value
+    for (i = 0; i<uiWidth; i++)
+    {
+      piIntraTemp[i] = iDCValue;
+    }
+    for (i = 1; i<uiHeight; i++)
+    {
+      piIntraTemp[i*uiWidth] = iDCValue;
+    }
+    return;
+  }
+  else if (iNumIntraNeighbor == iTotalUnits)
+  {
+    
+    piRoiTemp = piRoiOrigin - (offset + 1) * iPicStride - (offset + 1);
+
+    // Fill top-left, Fill  top and top right with rec. samples
+    for (i = 0; i<uiWidth - offset; i++)
+    {
+      piIntraTemp[i] = piRoiTemp[i];
+    }
+
+    // Fill left and below left border with rec. samples
+    for (i = 1; i<uiHeight - offset; i++)
+    {
+      piIntraTemp[i*uiWidth] = piRoiTemp[i*iPicStride];
+    }
+  }
+  else // reference samples are partially available
+  {
+    // all above units have "unitWidth" samples each, all left/below-left units have "unitHeight" samples each
+    const Int NumTopLeft = 2 * offset + 1;
+    const Int  iTotalSamples = (iLeftUnits * unitHeight) + (iAboveUnits  * unitWidth) + NumTopLeft;
+
+    Pel  piIntraLine[5 * MAX_CU_SIZE];
+    assert(iTotalSamples <= 5 * MAX_CU_SIZE);
+
+    Pel  *piIntraLineTemp;
+    const Bool *pbNeighborFlags;
+
+
+    // Initialize
+    for (i = 0; i<iTotalSamples; i++)
+    {
+      piIntraLine[i] = iDCValue;
+    }
+
+
+    // Fill top-left sample
+    piIntraLineTemp = piIntraLine + (iLeftUnits * unitHeight);
+    pbNeighborFlags = bNeighborFlags + iLeftUnits;
+    if (*pbNeighborFlags)
+    {
+      for (i = 0; i < NumTopLeft; i++)
+      {
+        if (i <= offset)
+        {
+          piIntraLineTemp[i] = piRoiOrigin[-(i + 1)*iPicStride - offset - 1];
+        }
+        else
+        {
+          piIntraLineTemp[i] = piRoiOrigin[-(offset + 1)*iPicStride - offset - 1 + (i - offset)];
+        }
+      }
+
+    }
+
+    // Fill left & below-left samples (downwards)
+    piRoiTemp = piRoiOrigin - offset - 1;
+    piIntraLineTemp--;
+    pbNeighborFlags--;
+
+    for (j = 0; j<iLeftUnits; j++)
+    {
+      if (*pbNeighborFlags)
+      {
+        for (i = 0; i<unitHeight; i++)
+        {
+          piIntraLineTemp[-i] = piRoiTemp[i*iPicStride];
+        }
+      }
+      piRoiTemp += unitHeight*iPicStride;
+      piIntraLineTemp -= unitHeight;
+      pbNeighborFlags--;
+    }
+
+    // Fill above & above-right samples (left-to-right) (each unit has "unitWidth" samples)
+    piRoiTemp = piRoiOrigin - (offset + 1)*iPicStride;
+    // offset line buffer by iNumUints2*unitHeight (for left/below-left) + unitWidth (for above-left)
+    piIntraLineTemp = piIntraLine + (iLeftUnits * unitHeight) + NumTopLeft;
+    pbNeighborFlags = bNeighborFlags + iLeftUnits + 1;
+    for (j = 0; j<iAboveUnits; j++)
+    {
+      if (*pbNeighborFlags)
+      {
+        for (i = 0; i<unitWidth; i++)
+        {
+          piIntraLineTemp[i] = piRoiTemp[i];
+        }
+      }
+      piRoiTemp += unitWidth;
+      piIntraLineTemp += unitWidth;
+      pbNeighborFlags++;
+    }
+
+    // Pad reference samples when necessary
+    Int iCurrJnit = 0;
+    Pel  *piIntraLineCur = piIntraLine;
+
+
+    if (!bNeighborFlags[0])
+    {
+      // very bottom unit of bottom-left; at least one unit will be valid.
+      {
+        Int   iNext = 1;
+        while (iNext < iTotalUnits && !bNeighborFlags[iNext])
+        {
+          iNext++;
+        }
+        assert(iNext < iTotalUnits);
+
+        Pel *piIntraLineNext = piIntraLine + ((iNext <= iLeftUnits) ? (iNext * unitHeight) : (iLeftUnits*unitHeight + NumTopLeft + ((iNext - iLeftUnits - 1) * unitWidth)));
+        const Pel refSample = *piIntraLineNext;
+        // Pad unavailable samples with new value
+        Int iNextOrTop = std::min<Int>(iNext, iLeftUnits);
+        // fill left column
+        while (iCurrJnit < iNextOrTop)
+        {
+          for (i = 0; i<unitHeight; i++)
+          {
+            piIntraLineCur[i] = refSample;
+          }
+          piIntraLineCur += unitHeight;
+          iCurrJnit++;
+        }
+        //fill top left
+        if (iCurrJnit<iNext)
+        {
+          assert(iCurrJnit == iLeftUnits);
+
+          for (i = 0; i<NumTopLeft; i++)
+          {
+            piIntraLineCur[i] = refSample;
+          }
+          piIntraLineCur += NumTopLeft;
+          iCurrJnit++;
+        }
+
+        // fill top row
+        while (iCurrJnit < iNext)
+        {
+          for (i = 0; i<unitWidth; i++)
+          {
+            piIntraLineCur[i] = refSample;
+          }
+          piIntraLineCur += unitWidth;
+          iCurrJnit++;
+        }
+      }
+    }
+    assert(bNeighborFlags[iCurrJnit]);
+
+    // pad all other reference samples.
+    while (iCurrJnit < iTotalUnits)
+    {
+      if (!bNeighborFlags[iCurrJnit]) // samples not available
+      {
+        Int numSamplesInCurrUnit;
+        if (iCurrJnit < iLeftUnits)
+        {
+          numSamplesInCurrUnit = unitHeight;
+        }
+        else if (iCurrJnit == iLeftUnits)
+        {
+          numSamplesInCurrUnit = NumTopLeft;
+        }
+        else
+        {
+          numSamplesInCurrUnit = unitWidth;
+        }
+
+        const Pel refSample = *(piIntraLineCur - 1);
+        for (i = 0; i < numSamplesInCurrUnit; i++)
+        {
+          piIntraLineCur[i] = refSample;
+        }
+        piIntraLineCur += numSamplesInCurrUnit;
+        iCurrJnit++;
+
+      }
+      else
+      {
+        if (iCurrJnit < iLeftUnits)
+        {
+          piIntraLineCur += unitHeight;
+        }
+        else if (iCurrJnit == iLeftUnits)
+        {
+          piIntraLineCur += NumTopLeft;
+        }
+        else
+        {
+          piIntraLineCur += unitWidth;
+        }
+        iCurrJnit++;
+      }
+    }
+
+    // Copy processed samples
+    // top left
+    piIntraLineTemp = piIntraLine + (iLeftUnits * unitHeight);
+    for (i = 0; i < NumTopLeft; i++)
+    {
+      if (i <= offset)
+      {
+        piIntraTemp[uiWidth*(offset - i)] = piIntraLineTemp[i];
+      }
+      else
+      {
+        piIntraTemp[(i - offset)] = piIntraLineTemp[i];
+      }
+    }
+    // top and top right samples
+    piIntraLineTemp = piIntraLine + (iLeftUnits * unitHeight) + NumTopLeft;
+
+    for (i = offset + 1; i<uiWidth - offset; i++)
+    {
+      piIntraTemp[i] = piIntraLineTemp[i - (offset + 1)];
+    }
+
+    // left and below left samples
+    piIntraLineTemp = piIntraLine + (iLeftUnits * unitHeight) - 1;
+    for (i = offset + 1; i<uiHeight - offset; i++)
+    {
+      piIntraTemp[i*uiWidth] = piIntraLineTemp[-(i - (offset + 1))];
+    }
+  }
+  // process the two special samples 
+  // above right
+  if (IsAboveRightSpecialAvailable)
+  {
+    piRoiTemp = piRoiOrigin - (offset + 1) * iPicStride + iAboveUnits*unitWidth;
+
+    for (i = 0; i < offset; i++)
+    {
+      piIntraTemp[uiWidth - offset + i] = piRoiTemp[i];
+    }
+  }
+  else
+  {
+    for (i = 0; i < offset; i++)
+    {
+      piIntraTemp[uiWidth - offset + i] = piIntraTemp[uiWidth - offset - 1];
+    }
+
+  }
+  //below left
+  if (IsBelowLeftSpecialAvailable)
+  {
+    piRoiTemp = piRoiOrigin + (iLeftUnits*unitHeight) * iPicStride - (offset + 1);
+    for (i = 0; i < offset; i++)
+    {
+      piIntraTemp[(uiHeight - offset + i)*uiWidth] = piRoiTemp[i*iPicStride];
+    }
+  }
+  else
+  {
+    for (i = 0; i < offset; i++)
+    {
+      piIntraTemp[(uiHeight - offset + i)*uiWidth] = piIntraTemp[(uiHeight - offset - 1)*uiWidth];
+    }
+
+  }
+
+}
+#endif
 
 Void fillReferenceSamples( const Int bitDepth, 
 #if O0043_BEST_EFFORT_DECODING

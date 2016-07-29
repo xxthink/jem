@@ -8119,7 +8119,11 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
 #if COM16_C983_RSAF
 #if COM16_C1046_PDPC_RSAF_HARMONIZATION
 #if JVET_C0024_QTBT
-    if (uiWidth * uiHeight <= 1024 && uiWidth * uiHeight>= 64 && pcCU->getSlice()->getSPS()->getUseRSAF() && pcCU->getPDPCIdx(uiAbsPartIdx) == 0)
+    if (uiWidth * uiHeight <= 1024 && uiWidth * uiHeight>= 64 && pcCU->getSlice()->getSPS()->getUseRSAF() && pcCU->getPDPCIdx(uiAbsPartIdx) == 0
+#if MULTIPLE_LINE_INTRA
+      &&pcCU->getLineRefIndex(uiAbsPartIdx)==0
+#endif
+      )
 #else
     if (uiWidth <= 32 && uiWidth > 4 && pcCU->getSlice()->getSPS()->getUseRSAF() && pcCU->getPDPCIdx(uiAbsPartIdx) == 0)
 #endif

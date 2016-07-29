@@ -184,6 +184,9 @@ private:
   // -------------------------------------------------------------------------------------------------------------------
   // coding tool information
   // -------------------------------------------------------------------------------------------------------------------
+#if MULTIPLE_LINE_INTRA
+  UChar*        m_puhLineRefIndex;
+#endif
 
   Bool*         m_pbMergeFlag;        ///< array of merge flags
   UChar*        m_puhMergeIndex;      ///< array of merge candidate indices
@@ -602,6 +605,12 @@ public:
                                       const UInt uiDir,
                                       const UInt uiAbsPartIdx,
                                       const UInt uiDepth );
+
+#if MULTIPLE_LINE_INTRA
+  UChar*        getLineRefIndex()                        { return m_puhLineRefIndex; }
+  UChar         getLineRefIndex(UInt uiIdx)            { return m_puhLineRefIndex[uiIdx]; }
+  Void          setLineRefIndexSubParts(const UInt index, const UInt absPartIdx, const UInt depth);
+#endif
 
   UChar*        getInterDir           ()                        { return m_puhInterDir;               }
   UChar         getInterDir           ( UInt uiIdx )            { return m_puhInterDir[uiIdx];        }

@@ -124,7 +124,9 @@ public:
   virtual Void parsePartSize      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
 #endif
   virtual Void parsePredMode      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
-
+#if MULTIPLE_LINE_INTRA 
+  virtual Void parseIntraRefIndex(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth) = 0;
+#endif
   virtual Void parseIntraDirLumaAng( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
   virtual Void parseIntraDirChroma( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth ) = 0;
 

@@ -205,6 +205,9 @@ Void TEncEntropy::encodePDPCIdx(TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD)
   {
     uiAbsPartIdx = 0;
   }
+#if MULTIPLE_LINE_INTRA
+  m_pcEntropyCoderIf->codeIntraRefIndex(pcCU, uiAbsPartIdx);
+#endif
   // at least one merge candidate existsput return when not encoded
   m_pcEntropyCoderIf->codePDPCIdx(pcCU, uiAbsPartIdx);
 }

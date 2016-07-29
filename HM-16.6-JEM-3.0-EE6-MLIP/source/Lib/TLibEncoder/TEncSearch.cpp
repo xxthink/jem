@@ -1758,15 +1758,34 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
   {
 #if COM16_C983_RSAF
     Bool bFilter = pcCU->getLumaIntraFilter(uiAbsPartIdx);
+
+#if MULTIPLE_LINE_INTRA
+    if (pcCU->getLineRefIndex(uiAbsPartIdx) != 0)
+    {
+      bFilter = false;
+    }
+#endif
+
     Bool bUseFilteredPredictions=TComPrediction::filteringIntraReferenceSamples(compID, uiChFinalMode, uiWidth, uiHeight, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag()
 #if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
                                                                                 , sps.getUseRSAF()
+#if MULTIPLE_LINE_INTRA
+                                                                                && (pcCU->getLineRefIndex(uiAbsPartIdx) == 0)
+#endif
 #endif
                                                                                  );
       initIntraPatternChType( rTu, compID, bUseFilteredPredictions, (compID==COMPONENT_Y) ? bFilter : false  DEBUG_STRING_PASS_INTO(sDebug) );
       
+#if MULTIPLE_LINE_INTRA
+      initExtendIntraPatternChType(rTu, compID, bUseFilteredPredictions);
+#endif
+
       //tell predIntraAng to select the correct prediction buffer in getPredictorPtr()
-      if (pcCU->getSlice()->getSPS()->getUseRSAF())
+      if (pcCU->getSlice()->getSPS()->getUseRSAF()
+#if MULTIPLE_LINE_INTRA
+        && (pcCU->getLineRefIndex(uiAbsPartIdx) == 0)
+#endif
+        )
 #if JVET_C0024_QTBT
         if (compID==COMPONENT_Y)
 #else
@@ -2072,6 +2091,9 @@ Bool TEncSearch::xIntraCodingTUBlockTM(TComYuv*    pcOrgYuv,
     , Int tmpred0_tmpredklt1_ori2
     )
 {
+#if MULTIPLE_LINE_INTRA
+  assert(0);
+#endif
     if (!rTu.ProcessComponentSection(compID))
     {
         return false; 
@@ -2389,6 +2411,14 @@ TEncSearch::xRecurIntraCodingLumaQT_RSAF(TComYuv*    pcOrgYuv,
   const UInt    uiAbsPartIdx  = rTu.GetAbsPartIdxTU();
   const UInt    uiFullDepth   = rTu.GetTransformDepthTotal();
   const UInt    uiTrDepth     = rTu.GetTransformDepthRel();
+
+#if MULTIPLE_LINE_INTRA  
+  if (pcCU->getLineRefIndex(uiAbsPartIdx) != 0)
+  {
+    assert(0);
+  }
+#endif
+
 #if JVET_C0024_QTBT
   Bool bCheckFull = true;
   Bool bCheckSplit = false;
@@ -3276,6 +3306,14 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
 #else
   Bool checkTM = (bCheckFirst == false);
 #endif
+
+#if MULTIPLE_LINE_INTRA
+  if (pcCU->getLineRefIndex(uiAbsPartIdx) != 0)
+  {
+    checkTM = false;
+  }
+#endif
+
   if (checkTM)
   {
       UInt uiMaxTrWidth = g_uiDepth2Width[USE_MORE_BLOCKSIZE_DEPTH_MAX - 1];
@@ -4730,6 +4768,11 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
   TComTURecurse tuRecurseCU(pcCU, 0);
   TComTURecurse tuRecurseWithPU(tuRecurseCU, false, (uiInitTrDepth==0)?TComTU::DONT_SPLIT : TComTU::QUAD_SPLIT);
 
+#if  MULTIPLE_LINE_INTRA
+  const Int refIndex = pcCU->getLineRefIndex(0);
+
+#endif
+
 #if COM16_C806_EMT
   UInt uiPU = 0;
 #endif
@@ -4778,6 +4821,10 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
     // this should always be true
     assert (tuRecurseWithPU.ProcessComponentSection(COMPONENT_Y));
     initIntraPatternChType( tuRecurseWithPU, COMPONENT_Y, true DEBUG_STRING_PASS_INTO(sTemp2) );
+
+#if MULTIPLE_LINE_INTRA
+    initExtendIntraPatternChType(tuRecurseWithPU, COMPONENT_Y, true);
+#endif
 
     Bool doFastSearch = (numModesForFullRD != numModesAvailable);
     if (doFastSearch)
@@ -4851,6 +4898,9 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         const Bool bUseFilter=TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, uiMode, puRect.width, puRect.height, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag()
 #if COM16_C983_RSAF_PREVENT_OVERSMOOTHING 
           , sps.getUseRSAF()
+#if MULTIPLE_LINE_INTRA
+          && (pcCU->getLineRefIndex(uiAbsPartIdx) == 0)
+#endif
 #endif
                                                                             );
 
@@ -4934,6 +4984,9 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
               const Bool bUseFilter=TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, uiMode, puRect.width, puRect.height, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag()
 #if COM16_C983_RSAF_PREVENT_OVERSMOOTHING 
                 , sps.getUseRSAF() 
+#if MULTIPLE_LINE_INTRA
+                && (pcCU->getLineRefIndex(uiAbsPartIdx) == 0)
+#endif
 #endif
                                                                                   );
 
@@ -5132,7 +5185,11 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #endif
 
 #if COM16_C983_RSAF 
-    const Bool isRSAFEnabled  = pcCU->getSlice()->getSPS()->getUseRSAF();
+    const Bool isRSAFEnabled  = pcCU->getSlice()->getSPS()->getUseRSAF()
+#if MULTIPLE_LINE_INTRA
+      && (pcCU->getLineRefIndex(uiPartOffset) == 0)
+#endif
+      ;
 #if !JVET_C0024_QTBT
     Bool isBestRSAF = false;
 #endif

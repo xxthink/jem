@@ -84,6 +84,9 @@ TEncSbac::TEncSbac()
 #endif
 , m_cCUPartSizeSCModel                 ( 1,             1,                      NUM_PART_SIZE_CTX                    , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUPredModeSCModel                 ( 1,             1,                      NUM_PRED_MODE_CTX                    , m_contextModels + m_numContextModels, m_numContextModels)
+#if MULTIPLE_LINE_INTRA
+, m_cCUIntraRefIndexSCModel            ( 1,             1,                      NUM_INTRA_REF_INDEX_CTX              , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 , m_cCUIntraPredSCModel                ( 1,             1,                      NUM_INTRA_PREDICT_CTX                , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUChromaPredSCModel               ( 1,             1,                      NUM_CHROMA_PRED_CTX                  , m_contextModels + m_numContextModels, m_numContextModels)
 , m_cCUDeltaQpSCModel                  ( 1,             1,                      NUM_DELTA_QP_CTX                     , m_contextModels + m_numContextModels, m_numContextModels)
@@ -187,6 +190,9 @@ Void TEncSbac::resetEntropy           (const TComSlice *pSlice)
 #endif
   m_cCUPartSizeSCModel.initBuffer                 ( eSliceType, iQp, (UChar*)INIT_PART_SIZE );
   m_cCUPredModeSCModel.initBuffer                 ( eSliceType, iQp, (UChar*)INIT_PRED_MODE );
+#if MULTIPLE_LINE_INTRA
+  m_cCUIntraRefIndexSCModel.initBuffer(eSliceType, iQp, (UChar*)INIT_INTRA_REF_INDEX);
+#endif
   m_cCUIntraPredSCModel.initBuffer                ( eSliceType, iQp, (UChar*)INIT_INTRA_PRED_MODE );
   m_cCUChromaPredSCModel.initBuffer               ( eSliceType, iQp, (UChar*)INIT_CHROMA_PRED_MODE );
   m_cCUInterDirSCModel.initBuffer                 ( eSliceType, iQp, (UChar*)INIT_INTER_DIR );
@@ -297,6 +303,9 @@ SliceType TEncSbac::determineCabacInitIdx(const TComSlice *pSlice)
 #endif
       curCost += m_cCUPartSizeSCModel.calcCost                 ( curSliceType, qp, (UChar*)INIT_PART_SIZE );
       curCost += m_cCUPredModeSCModel.calcCost                 ( curSliceType, qp, (UChar*)INIT_PRED_MODE );
+#if MULTIPLE_LINE_INTRA
+      curCost += m_cCUIntraRefIndexSCModel.calcCost(curSliceType, qp, (UChar*)INIT_PRED_MODE);
+#endif
       curCost += m_cCUIntraPredSCModel.calcCost                ( curSliceType, qp, (UChar*)INIT_INTRA_PRED_MODE );
       curCost += m_cCUChromaPredSCModel.calcCost               ( curSliceType, qp, (UChar*)INIT_CHROMA_PRED_MODE );
       curCost += m_cCUInterDirSCModel.calcCost                 ( curSliceType, qp, (UChar*)INIT_INTER_DIR );
@@ -715,7 +724,39 @@ Void TEncSbac::codePartSize( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 }
 #endif
 
+#if MULTIPLE_LINE_INTRA
+Void TEncSbac::codeIntraRefIndex(TComDataCU* pcCU, UInt uiAbsPartIdx)
+{
+#if USE_FAST_ALGORITHMS
+  Int indexHeight = g_aucConvertToBit[(Int)pcCU->getHeight(uiAbsPartIdx)] ;
+  Int indexWidth = g_aucConvertToBit[(Int)pcCU->getWidth(uiAbsPartIdx)] ;
+#if SKIP_ALL_NON_SQUARE_BLOCK
+  if (indexWidth != indexHeight)
+#else
+  if (abs(indexWidth - indexHeight)>1)
+#endif
+  {
+    return;
+  }
+#endif
 
+  m_pcBinIf->encodeBin(pcCU->getLineRefIndex(uiAbsPartIdx) == 0 ? 0 : 1, m_cCUIntraRefIndexSCModel.get(0, 0, 0));
+
+  if (pcCU->getLineRefIndex(uiAbsPartIdx) != 0)
+  {
+
+    m_pcBinIf->encodeBin(pcCU->getLineRefIndex(uiAbsPartIdx) == 1 ? 0 : 1, m_cCUIntraRefIndexSCModel.get(0, 0, 1));
+
+#if USE_FOUR_LINES
+    if (pcCU->getLineRefIndex(uiAbsPartIdx) != 1)
+    {
+      m_pcBinIf->encodeBin(pcCU->getLineRefIndex(uiAbsPartIdx) == 2 ? 0 : 1, m_cCUIntraRefIndexSCModel.get(0, 0, 2));
+    }
+#endif
+
+  }
+}
+#endif
 /** code prediction mode
  * \param pcCU
  * \param uiAbsPartIdx
@@ -838,6 +879,14 @@ Void TEncSbac::codeMPIIdx(TComDataCU* pcCU, UInt uiAbsPartIdx)
 #if COM16_C1046_PDPC_INTRA
  Void TEncSbac::codePDPCIdx(TComDataCU* pcCU, UInt uiAbsPartIdx)
  {
+#if MULTIPLE_LINE_INTRA
+   if (pcCU->getLineRefIndex(uiAbsPartIdx) != 0)
+   {
+     assert(pcCU->getPDPCIdx(uiAbsPartIdx) == 0);
+     return;
+   }
+#endif
+
   if (!pcCU->getSlice()->getSPS()->getUsePDPC()) return;
   if (pcCU->getPredictionMode(uiAbsPartIdx) == MODE_INTER)
   {

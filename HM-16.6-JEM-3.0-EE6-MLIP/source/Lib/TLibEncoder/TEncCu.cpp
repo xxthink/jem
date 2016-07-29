@@ -1678,58 +1678,113 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
            {
              continue;
            }
-           rpcTempCU->setEmtCuFlagSubParts(ucCuFlag, 0, uiDepth);
+
+#if MULTIPLE_LINE_INTRA
+
+           Int numOfMultiLine = 4;
+
+#if USE_FAST_ALGORITHMS
+           Int indexHeight = g_aucConvertToBit[(Int)rpcTempCU->getHeight(0)] ;
+           Int indexWidth = g_aucConvertToBit[(Int)rpcTempCU->getWidth(0)] ;
+#if SKIP_ALL_NON_SQUARE_BLOCK
+           if (indexWidth != indexHeight)
+#else
+           if (abs(indexWidth - indexHeight)>1)
+#endif
+           {
+             numOfMultiLine = 1;
+           }
+           Double RDCostRefLine0 = MAX_DOUBLE;
+#endif
+          
+
+           if (iPDPCidx || isChroma(rpcBestCU->getTextType()))
+           {
+             numOfMultiLine = 1;
+           }
+           for (Int lineIndex = 0; lineIndex < numOfMultiLine; lineIndex++)
+           {
+#if !USE_FOUR_LINES
+             if (lineIndex == 2)
+             {
+               continue;
+             }
+#endif
+
+             rpcTempCU->setLineRefIndexSubParts(lineIndex, 0, uiDepth);
+#endif
+
+
+             rpcTempCU->setEmtCuFlagSubParts(ucCuFlag, 0, uiDepth);
 #if VCEG_AZ05_INTRA_MPI
-           rpcTempCU->setMPIIdxSubParts(iMPIidx, 0, uiDepth);
+             rpcTempCU->setMPIIdxSubParts(iMPIidx, 0, uiDepth);
 #endif
 #if COM16_C1046_PDPC_INTRA
-           rpcTempCU->setPDPCIdxSubParts(iPDPCidx, 0, uiDepth);
+             rpcTempCU->setPDPCIdxSubParts(iPDPCidx, 0, uiDepth);
 #endif
 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 #if JVET_C0024_QTBT
-           rpcTempCU->setROTIdxSubParts(rpcTempCU->getTextType(), iROTidx, 0, uiDepth);
-           if( !rpcTempCU->getSlice()->isIntra() )
-           {
-             rpcTempCU->setROTIdxSubParts(CHANNEL_TYPE_CHROMA, iROTidx, 0, uiDepth);
-           }
+             rpcTempCU->setROTIdxSubParts(rpcTempCU->getTextType(), iROTidx, 0, uiDepth);
+             if (!rpcTempCU->getSlice()->isIntra())
+             {
+               rpcTempCU->setROTIdxSubParts(CHANNEL_TYPE_CHROMA, iROTidx, 0, uiDepth);
+             }
 #else
-           rpcTempCU->setROTIdxSubParts(iROTidx, 0, uiDepth);
+             rpcTempCU->setROTIdxSubParts(iROTidx, 0, uiDepth);
 #endif
 #endif
 
 #if JVET_C0024_PBINTRA_FAST
-           if (rpcBestCU->getPredictionMode(0)==MODE_INTER && !rpcBestCU->getSlice()->isIntra())
-           {
-             if (rpcTempCU->getInterHAD()==0)
+             if (rpcBestCU->getPredictionMode(0) == MODE_INTER && !rpcBestCU->getSlice()->isIntra())
              {
-               continue;  //has calculated the best intra HAD much larger than that of inter; so skip intra mode RDO
+               if (rpcTempCU->getInterHAD() == 0)
+               {
+                 continue;  //has calculated the best intra HAD much larger than that of inter; so skip intra mode RDO
+               }
              }
-           }
 #endif
 
-           xCheckRDCostIntra(rpcBestCU, rpcTempCU, intraCost, SIZE_2Nx2N DEBUG_STRING_PASS_INTO(sDebug)
+             xCheckRDCostIntra(rpcBestCU, rpcTempCU, intraCost, SIZE_2Nx2N DEBUG_STRING_PASS_INTO(sDebug)
 #if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
-             , bNonZeroCoeff
+               , bNonZeroCoeff
 #endif
-             );
-           if (!ucCuFlag && !rpcBestCU->isIntra(0) && m_pcEncCfg->getUseFastInterEMT())
-           {
-             static const Double thEmtInterFastSkipIntra = 1.4; // Skip checking Intra if "2Nx2N using DCT2" is worse than best Inter mode
-             if (rpcTempCU->getTotalCost() > thEmtInterFastSkipIntra*dBestInterCost)
+               );
+
+             if (!ucCuFlag && !rpcBestCU->isIntra(0) && m_pcEncCfg->getUseFastInterEMT())
              {
-               bEarlySkipIntra = true;
+               static const Double thEmtInterFastSkipIntra = 1.4; // Skip checking Intra if "2Nx2N using DCT2" is worse than best Inter mode
+               if (rpcTempCU->getTotalCost() > thEmtInterFastSkipIntra*dBestInterCost)
+               {
+                 bEarlySkipIntra = true;
+               }
              }
-           }
-           if (!ucCuFlag && m_pcEncCfg->getUseFastIntraEMT())
-           {
+             if (!ucCuFlag && m_pcEncCfg->getUseFastIntraEMT())
+             {
 #if JVET_C0024_QTBT
-             //dIntra2Nx2NCost = rpcBestCU->isIntra(0) ? rpcBestCU->getTotalCost() : rpcTempCU->getTotalCost();
+               //dIntra2Nx2NCost = rpcBestCU->isIntra(0) ? rpcBestCU->getTotalCost() : rpcTempCU->getTotalCost();
 #else
-             dIntra2Nx2NCost = (rpcBestCU->isIntra(0) && rpcBestCU->getPartitionSize(0) == SIZE_2Nx2N) ? rpcBestCU->getTotalCost() : rpcTempCU->getTotalCost();
+               dIntra2Nx2NCost = (rpcBestCU->isIntra(0) && rpcBestCU->getPartitionSize(0) == SIZE_2Nx2N) ? rpcBestCU->getTotalCost() : rpcTempCU->getTotalCost();
 #endif
+             }
+             rpcTempCU->initEstData(uiDepth, iQP, bIsLosslessMode);
+
+#if USE_FAST_ALGORITHMS 
+             if (lineIndex == 0)
+             {
+               RDCostRefLine0 = intraCost;
+             }
+             else  if (lineIndex == 1)
+             {
+               if (intraCost>1.03*RDCostRefLine0)
+               {
+                 break;
+               }
+             }
+#endif
+#if MULTIPLE_LINE_INTRA
            }
-           rpcTempCU->initEstData(uiDepth, iQP, bIsLosslessMode);
+#endif
          }
 #else
 #if VCEG_AZ05_INTRA_MPI
@@ -4156,6 +4211,7 @@ Void TEncCu::xCheckIntraPCM( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU )
   }
 
   m_pcEntropyCoder->encodeSkipFlag ( rpcTempCU, 0,          true );
+
   m_pcEntropyCoder->encodePredMode ( rpcTempCU, 0,          true );
 #if !JVET_C0024_QTBT
   m_pcEntropyCoder->encodePartSize ( rpcTempCU, 0, uiDepth, true );

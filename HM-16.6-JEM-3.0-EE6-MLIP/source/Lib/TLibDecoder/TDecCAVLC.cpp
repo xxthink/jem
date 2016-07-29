@@ -1876,6 +1876,12 @@ Void TDecCavlc::parsePredMode( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt
 {
   assert(0);
 }
+#if MULTIPLE_LINE_INTRA 
+Void TDecCavlc::parseIntraRefIndex(TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/)
+{
+  assert(0);
+}
+#endif
 
 /** Parse I_PCM information.
 * \param pcCU pointer to CU

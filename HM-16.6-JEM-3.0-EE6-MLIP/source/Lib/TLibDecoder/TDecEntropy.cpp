@@ -104,6 +104,9 @@ Void TDecEntropy::decodeMPIIdx(TComDataCU* pcSubCU, UInt uiAbsPartIdx, UInt uiDe
 #if COM16_C1046_PDPC_INTRA
 Void TDecEntropy::decodePDPCIdx(TComDataCU* pcSubCU, UInt uiAbsPartIdx, UInt uiDepth)
 {
+#if MULTIPLE_LINE_INTRA
+  m_pcEntropyDecoderIf->parseIntraRefIndex(pcSubCU, uiAbsPartIdx, uiDepth);
+#endif
   m_pcEntropyDecoderIf->parsePDPCIdx(pcSubCU, uiAbsPartIdx, uiDepth);
 }
 #endif
