@@ -3242,9 +3242,18 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
 
   UInt width  = getWidth(uiAbsPartIdx);
   UInt height = getHeight(uiAbsPartIdx);
+
+#if !JVET_C0024_QTBT
+  if( getPartitionSize(uiAbsPartIdx) == SIZE_NxN )
+  {
+    width  >>= 1;
+    height >>= 1;
+  }
+#endif
+
   UInt partIdxLT = m_absZIdxInCtu + uiAbsPartIdx;
-  UInt partIdxRT = g_auiRasterToZscan [g_auiZscanToRaster[ partIdxLT ] + width / m_pcPic->getMinCUWidth() - 1 ];
-  UInt partIdxLB = g_auiRasterToZscan [g_auiZscanToRaster[ partIdxLT ] + ( (height / m_pcPic->getMinCUHeight()) - 1 ) * m_pcPic->getNumPartInCtuWidth()];
+  UInt partIdxRT = g_auiRasterToZscan[ g_auiZscanToRaster[ partIdxLT ] + width / m_pcPic->getMinCUWidth() - 1 ];
+  UInt partIdxLB = g_auiRasterToZscan[ g_auiZscanToRaster[ partIdxLT ] + ( (height / m_pcPic->getMinCUHeight()) - 1 ) * m_pcPic->getNumPartInCtuWidth() ];
 
   // left
   TComDataCU *cu = getPULeft( partIdx, partIdxLB );
