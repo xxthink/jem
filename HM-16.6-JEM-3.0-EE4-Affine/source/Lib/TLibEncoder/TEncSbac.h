@@ -254,6 +254,9 @@ public:
 #if COM16_C1016_AFFINE
   Void codeAffineFlag    ( TComDataCU* pcCU, UInt uiAbsPartIdx );
 #endif
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  Void codeAffineParamFlag(TComDataCU* pcCU, UInt uiAbsPartIdx);
+#endif
 
 private:
   ContextModel         m_contextModels[MAX_NUM_CTX_MOD];
@@ -344,6 +347,9 @@ private:
 
 #if COM16_C1016_AFFINE
   ContextModel3DBuffer m_cCUAffineFlagSCModel;
+#endif
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  ContextModel3DBuffer m_cCUAffineParamFlagSCModel;
 #endif
 
   UInt m_golombRiceAdaptationStatistics[RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS];

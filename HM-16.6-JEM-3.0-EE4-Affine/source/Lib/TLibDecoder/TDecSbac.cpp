@@ -142,6 +142,9 @@ TDecSbac::TDecSbac()
 #if COM16_C1016_AFFINE
 , m_cCUAffineFlagSCModel                     ( 1,             1,               NUM_AFFINE_FLAG_CTX                  , m_contextModels + m_numContextModels,          m_numContextModels)
 #endif
+#if JVECT_C0062_AFFINE_SIX_PARAM
+, m_cCUAffineParamFlagSCModel                ( 1,             1,               NUM_AFFINE_FLAG_CTX                  , m_contextModels + m_numContextModels,        m_numContextModels)
+#endif
 {
   assert( m_numContextModels <= MAX_NUM_CTX_MOD );
 }
@@ -267,7 +270,9 @@ Void TDecSbac::resetEntropy(TComSlice* pSlice)
 #if COM16_C1016_AFFINE
   m_cCUAffineFlagSCModel.initBuffer               ( sliceType, qp, (UChar*)INIT_AFFINE_FLAG );
 #endif
-
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  m_cCUAffineParamFlagSCModel.initBuffer          (sliceType, qp, (UChar*)INIT_AFFINE_FLAG);
+#endif
   for (UInt statisticIndex = 0; statisticIndex < RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS ; statisticIndex++)
   {
     m_golombRiceAdaptationStatistics[statisticIndex] = 0;
@@ -3451,13 +3456,55 @@ Void TDecSbac::parseAffineFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDept
   DTRACE_CABAC_T( "\n");
 
   pcCU->setAffineFlagSubParts( uiSymbol ? true : false, uiAbsPartIdx, uiPuIdx, uiDepth );
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  pcCU->setAffineParamFlagSubParts(false, uiAbsPartIdx, uiPuIdx, uiDepth);
+#endif
 }
+#if JVECT_C0062_AFFINE_SIX_PARAM
+Void TDecSbac::parseAffineParamFlag(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPuIdx)
+{
+  if (pcCU->getSlice()->isIntra())
+  {
+    return;
+  }
 
+
+  UInt uiSymbol = 0;
+
+  UInt uiCtxAffineParam = pcCU->getCtxAffineParamFlag(uiAbsPartIdx);
+
+  m_pcTDecBinIf->decodeBin(uiSymbol, m_cCUAffineParamFlagSCModel.get(0, 0, uiCtxAffineParam) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__AFFINE_FLAG));
+
+
+
+  DTRACE_CABAC_VL(g_nSymbolCounter++);
+  DTRACE_CABAC_T("\tAffineFlag");
+  DTRACE_CABAC_T("\tuiCtxAffine: ");
+  DTRACE_CABAC_V(uiCtxAffine);
+  DTRACE_CABAC_T("\tuiSymbol: ");
+  DTRACE_CABAC_V(uiSymbol);
+  DTRACE_CABAC_T("\n");
+
+  pcCU->setAffineParamFlagSubParts(uiSymbol ? true : false, uiAbsPartIdx, uiPuIdx, uiDepth);
+}
+#endif
 Void TDecSbac::parseAffineMvd( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList )
 {
   TComMv acMvd[3];
 
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  Int width = pcCU->getWidth(uiAbsPartIdx);
+  Int height = pcCU->getHeight(uiAbsPartIdx);
+  Bool bRecShape = (height/width >= 2); 
+#endif
+
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  Bool b6Param = pcCU->getAffineParamFlag(uiAbsPartIdx);
+  Int iVerIdx = b6Param ? 3 : 2;
+  for (Int i = 0; i < iVerIdx; i++)
+#else
   for ( Int i=0; i<2; i++ )
+#endif
   {
     UInt uiSymbol;
     UInt uiHorAbs;
@@ -3521,7 +3568,12 @@ Void TDecSbac::parseAffineMvd( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiPartI
 #else
     const TComMv cMv( uiHorSign ? -Int( uiHorAbs ): uiHorAbs, uiVerSign ? -Int( uiVerAbs ) : uiVerAbs );
 #endif
+#if JVECT_C0062_AFFINE_SIX_PARAM
+    acMvd[(bRecShape && i == 1 && b6Param == 0) ? (i + 1) : i] = cMv;
+#else
     acMvd[i] = cMv;
+#endif
+
   }
 
   pcCU->setAllAffineMvd( uiAbsPartIdx, uiPartIdx, acMvd, eRefList, uiDepth );

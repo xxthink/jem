@@ -191,6 +191,9 @@ public:
 #if COM16_C1016_AFFINE
   Void  parseAffineFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPuIdx );
   Void  parseAffineMvd      ( TComDataCU* pcCU, UInt uiAbsPartAddr, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList );
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  Void  parseAffineParamFlag(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPuIdx);
+#endif
 #endif
 
 protected:

@@ -193,6 +193,9 @@ public:
 #if COM16_C1016_AFFINE
   virtual Void codeAffineFlag    ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
 #endif
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  virtual Void codeAffineParamFlag(TComDataCU* pcCU, UInt uiAbsPartIdx) = 0;
+#endif
 };
 
 /// entropy encoder class
@@ -378,6 +381,9 @@ public:
 
 #if COM16_C1016_AFFINE
   Void encodeAffineFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiPuIdx );
+#endif
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  Void encodeAffineParamFlag(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiPuIdx);
 #endif
 };// END CLASS DEFINITION TEncEntropy
 

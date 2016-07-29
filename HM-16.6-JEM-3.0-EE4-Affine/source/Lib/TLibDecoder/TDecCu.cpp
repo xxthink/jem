@@ -659,19 +659,64 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
     m_pcEntropyDecoder->decodeMergeIndex( pcCU, 0, uiAbsPartIdx, uiDepth );
 #endif
 
+#if JVECT_C0062_AFFINE_SIX_PARAM && VCEG_AZ07_FRUC_MERGE
+    if (pcCU->isAffine(uiAbsPartIdx))
+    {
+      TComMvField cAffineMvField[2][3]; // double length for mv of both lists, 3 mv for affine
+      UChar uhInterDirNeighbours[MRG_MAX_NUM_CANDS];
+      Int numValidMergeCand = 0;
+      UInt neighborAffineParam = 0;
+#if JVET_C0024_QTBT
+      for (UInt ui = 0; ui < m_pppcCU[uiWidthIdx][uiHeightIdx]->getSlice()->getMaxNumMergeCand(); ++ui)
+#else
+      for (UInt ui = 0; ui < m_ppcCU[uiDepth]->getSlice()->getMaxNumMergeCand(); ++ui)
+#endif
+      {
+        uhInterDirNeighbours[ui] = 0;
+      }
+#if JVET_C0024_QTBT
+      m_pppcCU[uiWidthIdx][uiHeightIdx]->getAffineMergeCandidates(0, 0, cAffineMvField, uhInterDirNeighbours, numValidMergeCand, neighborAffineParam);
+#else
+      m_ppcCU[uiDepth]->getAffineMergeCandidates(0, 0, cAffineMvField, uhInterDirNeighbours, numValidMergeCand, neighborAffineParam);
+#endif
+      assert(neighborAffineParam == 0 || neighborAffineParam == 1);
+      pcCU->setAffineParamFlagSubParts( neighborAffineParam, uiAbsPartIdx, 0, uiDepth );
+    }
+#endif
+
+
+
 #if !VCEG_AZ07_FRUC_MERGE && !JVET_C0024_QTBT
     UInt uiMergeIndex = pcCU->getMergeIndex(uiAbsPartIdx);
 
 #if COM16_C1016_AFFINE
     if ( pcCU->isAffine( uiAbsPartIdx ) )
     {
+
+#if JVECT_C0062_AFFINE_SIX_PARAM
+      UInt neighborAffineParam = 0;
+#if JVET_C0024_QTBT
+      m_pppcCU[uiWidthIdx][uiHeightIdx]->getAffineMergeCandidates( 0, 0, cAffineMvField, uhInterDirNeighbours, numValidMergeCand, neighborAffineParam );
+#else
+      m_ppcCU[uiDepth]->getAffineMergeCandidates(0, 0, cAffineMvField, uhInterDirNeighbours, numValidMergeCand, neighborAffineParam);
+#endif
+      assert(neighborAffineParam == 0 || neighborAffineParam == 1);
+      pcCU->setAffineParamFlagSubParts( neighborAffineParam, uiAbsPartIdx, 0, uiDepth );
+#else
 #if JVET_C0024_QTBT
       m_pppcCU[uiWidthIdx][uiHeightIdx]->getAffineMergeCandidates( 0, 0, cAffineMvField, uhInterDirNeighbours, numValidMergeCand );
 #else
       m_ppcCU[uiDepth]->getAffineMergeCandidates( 0, 0, cAffineMvField, uhInterDirNeighbours, numValidMergeCand );
 #endif
-      pcCU->setInterDirSubParts( uhInterDirNeighbours[uiMergeIndex], uiAbsPartIdx, 0, uiDepth );
+#endif
 
+
+
+
+      pcCU->setInterDirSubParts( uhInterDirNeighbours[uiMergeIndex], uiAbsPartIdx, 0, uiDepth );
+#if JVECT_C0062_AFFINE_SIX_PARAM
+      Bool b6Param = neighborAffineParam;//ZF
+#endif
       TComMv cTmpMv( 0, 0 );
       for ( UInt uiRefListIdx = 0; uiRefListIdx < 2; uiRefListIdx++ )
       {
@@ -682,7 +727,11 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
           pcCU->setMVPIdxSubParts( 0, RefPicList( uiRefListIdx ), uiAbsPartIdx, 0, uiDepth);
           pcCU->setMVPNumSubParts( 0, RefPicList( uiRefListIdx ), uiAbsPartIdx, 0, uiDepth);
           pcCU->getCUMvField( RefPicList( uiRefListIdx ) )->setAllMvd( cTmpMv, SIZE_2Nx2N, uiAbsPartIdx, uiDepth );
+#if JVECT_C0062_AFFINE_SIX_PARAM 
+          pcCU->setAllAffineMvField(uiAbsPartIdx, 0, pcMvField, RefPicList(uiRefListIdx), uiDepth, b6Param);
+#else
           pcCU->setAllAffineMvField( uiAbsPartIdx, 0, pcMvField, RefPicList(uiRefListIdx), uiDepth );
+#endif
         }
       }
       xFinishDecodeCU( pcCU, uiAbsPartIdx, uiDepth, isLastCtuOfSliceSegment );
@@ -883,6 +932,8 @@ Void TDecCu::xDecompressCU( TComDataCU* pCtu, UInt uiAbsPartIdx,  UInt uiDepth )
   UInt uiBPelY   = uiTPelY + (sps.getMaxCUHeight()>>uiDepth) - 1;
 #endif
 
+
+
   if( ( uiRPelX >= sps.getPicWidthInLumaSamples() ) || ( uiBPelY >= sps.getPicHeightInLumaSamples() ) )
   {
 #if JVET_C0024_QTBT
@@ -928,6 +979,7 @@ Void TDecCu::xDecompressCU( TComDataCU* pCtu, UInt uiAbsPartIdx,  UInt uiDepth )
 
 #if JVET_C0024_QTBT
   }
+
   UInt uiBTDepth = pCtu->getBTDepth(uiAbsPartIdx, uiWidth, uiHeight);
 
   if (pCtu->getBTSplitModeForBTDepth(uiAbsPartIdx, uiBTDepth)==1)
@@ -1837,6 +1889,7 @@ Void TDecCu::xDeriveCUMV( TComDataCU * pcCU , UInt uiAbsPartIdx , UInt uiDepth )
   {
     if ( pcCU->getMergeFlag( uiSubPartIdx ) )
     {
+
 #if VCEG_AZ07_FRUC_MERGE
       if( pcCU->getFRUCMgrMode( uiSubPartIdx ) )
       {
@@ -1852,10 +1905,20 @@ Void TDecCu::xDeriveCUMV( TComDataCU * pcCU , UInt uiAbsPartIdx , UInt uiDepth )
           TComMvField  cAffineMvField[2][3]; // double length for mv of both lists, 3 mv for affine
           UInt uiMergeIndex = 0;
 
+#if JVECT_C0062_AFFINE_SIX_PARAM
+          UInt neighborAffineParam = 0;
+#if JVET_C0024_QTBT
+          m_pppcCU[uiWidthIdx][uiHeightIdx]->getAffineMergeCandidates(uiSubPartIdx - uiAbsPartIdx, uiPartIdx, cAffineMvField, uhInterDirNeighbours, numValidMergeCand, neighborAffineParam);
+#else
+          m_ppcCU[uiDepth]->getAffineMergeCandidates(uiSubPartIdx - uiAbsPartIdx, uiPartIdx, cAffineMvField, uhInterDirNeighbours, numValidMergeCand, neighborAffineParam);
+#endif
+          pcCU->setAffineParamFlagSubParts(neighborAffineParam, uiSubPartIdx, uiPartIdx, uiDepth);
+#else
 #if JVET_C0024_QTBT
           m_pppcCU[uiWidthIdx][uiHeightIdx]->getAffineMergeCandidates( uiSubPartIdx-uiAbsPartIdx, uiPartIdx,cAffineMvField, uhInterDirNeighbours, numValidMergeCand );
 #else
           m_ppcCU[uiDepth]->getAffineMergeCandidates( uiSubPartIdx-uiAbsPartIdx, uiPartIdx,cAffineMvField, uhInterDirNeighbours, numValidMergeCand );
+#endif
 #endif
           pcCU->setInterDirSubParts( uhInterDirNeighbours[uiMergeIndex], uiSubPartIdx, uiPartIdx, uiDepth );
 
@@ -1869,7 +1932,13 @@ Void TDecCu::xDeriveCUMV( TComDataCU * pcCU , UInt uiAbsPartIdx , UInt uiDepth )
               pcCU->setMVPIdxSubParts( 0, RefPicList( uiRefListIdx ), uiSubPartIdx, uiPartIdx, uiDepth);
               pcCU->setMVPNumSubParts( 0, RefPicList( uiRefListIdx ), uiSubPartIdx , uiPartIdx, uiDepth);
               pcCU->getCUMvField( RefPicList( uiRefListIdx ) )->setAllMvd( cTmpMv, SIZE_2Nx2N, uiSubPartIdx, uiDepth );
+#if JVECT_C0062_AFFINE_SIX_PARAM
+              //pcCU->setAllAffineMvField(uiSubPartIdx, uiPartIdx, pcMvField, RefPicList(uiRefListIdx), uiDepth, neighborAffineParam);
+              m_pppcCU[uiWidthIdx][uiHeightIdx]->setAllAffineMvField(uiSubPartIdx - uiAbsPartIdx, uiPartIdx, pcMvField, RefPicList(uiRefListIdx), uiDepth, neighborAffineParam);
+#else
               pcCU->setAllAffineMvField( uiSubPartIdx , uiPartIdx, pcMvField, RefPicList(uiRefListIdx), uiDepth );
+#endif
+
             }
           }
         }
@@ -1966,6 +2035,7 @@ Void TDecCu::xDeriveCUMV( TComDataCU * pcCU , UInt uiAbsPartIdx , UInt uiDepth )
     }
     else
     {
+
       for ( UInt uiRefListIdx = 0; uiRefListIdx < 2; uiRefListIdx++ )
       {
         RefPicList eRefList = RefPicList( uiRefListIdx );
@@ -1976,32 +2046,107 @@ Void TDecCu::xDeriveCUMV( TComDataCU * pcCU , UInt uiAbsPartIdx , UInt uiDepth )
           {
             TComMv acMv[3];
             memset( acMv, 0, sizeof(TComMv) * 3 );
+
+#if JVECT_C0062_AFFINE_SIX_PARAM
+            Bool b6Param = pcCU->getAffineParamFlag(uiSubPartIdx);
+#endif
+
             UInt uiSubCUPartIdx = uiSubPartIdx - uiAbsPartIdx;
             TComCUMvField* pcSubCUMvField = pcSubCU->getCUMvField( eRefList );
             Int iRefIdx = pcSubCUMvField->getRefIdx( uiSubCUPartIdx ); 
 
+#if JVECT_C0062_AFFINE_SIX_PARAM
+            assert(iRefIdx >= 0);
+            AffineAMVPInfo* pAffineAMVPInfo = pcSubCUMvField->getAffineAMVPInfo(b6Param);
+            pcSubCU->fillAffineMvpCand(uiPartIdx, uiSubCUPartIdx, eRefList, iRefIdx, pAffineAMVPInfo, b6Param);
+            m_pcPrediction->getMvPredAffineAMVP(pcSubCU, uiPartIdx, uiSubCUPartIdx, eRefList, acMv, b6Param);
+#else
             AffineAMVPInfo* pAffineAMVPInfo = pcSubCUMvField->getAffineAMVPInfo();
             pcSubCU->fillAffineMvpCand( uiPartIdx, uiSubCUPartIdx, eRefList, iRefIdx, pAffineAMVPInfo );
             m_pcPrediction->getMvPredAffineAMVP( pcSubCU, uiPartIdx, uiSubCUPartIdx, eRefList, acMv );
+#endif
 
+#if JVECT_C0062_AFFINE_SIX_PARAM
+            UInt uiPartIdxLT, uiPartIdxRT, uiPartIdxLB, uiAbsIndexInLCU;
+            uiAbsIndexInLCU = pcSubCU->getZorderIdxInCtu();
+            pcSubCU->deriveLeftRightTopIdx(uiPartIdx, uiPartIdxLT, uiPartIdxRT);
+            pcSubCU->deriveLeftBottomIdx( uiPartIdx, uiPartIdxLB );
+            if (b6Param)
+            {
+              acMv[0] += pcSubCUMvField->getMvd(uiPartIdxLT - uiAbsIndexInLCU);
+              acMv[1] += pcSubCUMvField->getMvd(uiPartIdxRT - uiAbsIndexInLCU);
+              acMv[2] += pcSubCUMvField->getMvd(uiPartIdxLB - uiAbsIndexInLCU);
+            }
+            else
+            {
+              Int iWidth = pcSubCU->getWidth(uiSubCUPartIdx);
+              Int iHeight = pcSubCU->getHeight(uiSubCUPartIdx);
+
+              Bool bRecShape = (iHeight / iWidth) >= 2;
+              if (bRecShape)
+              {
+                acMv[0] += pcSubCUMvField->getMvd(uiPartIdxLT - uiAbsIndexInLCU);
+                acMv[2] += pcSubCUMvField->getMvd(uiPartIdxLB - uiAbsIndexInLCU);
+                pcSubCU->clipMv(acMv[0]);//ZF
+                pcSubCU->clipMv(acMv[2]);//ZF
+
+                Int vx1 = (acMv[2].getVer() - acMv[0].getVer())*iWidth / iHeight + acMv[0].getHor();
+                Int vy1 = -(acMv[2].getHor() - acMv[0].getHor())*iWidth / iHeight + acMv[0].getVer();
+                acMv[1].set(vx1, vy1);
+              }
+              else
+              {
+                acMv[0] += pcSubCUMvField->getMvd(uiPartIdxLT - uiAbsIndexInLCU);
+                acMv[1] += pcSubCUMvField->getMvd(uiPartIdxRT - uiAbsIndexInLCU);
+
+                pcSubCU->clipMv(acMv[0]);//ZF
+                pcSubCU->clipMv(acMv[1]);//ZF
+
+                Int vx2 = -(acMv[1].getVer() - acMv[0].getVer()) * iHeight / iWidth + acMv[0].getHor();
+                Int vy2 = (acMv[1].getHor() - acMv[0].getHor()) * iHeight / iWidth + acMv[0].getVer();
+                acMv[2].set(vx2, vy2);
+              }
+            }
+#else
             UInt uiPartIdxLT, uiPartIdxRT, uiPartIdxLB, uiAbsIndexInLCU;
             uiAbsIndexInLCU = pcSubCU->getZorderIdxInCtu();
             pcSubCU->deriveLeftRightTopIdx( uiPartIdx, uiPartIdxLT, uiPartIdxRT );
             pcSubCU->deriveLeftBottomIdx( uiPartIdx, uiPartIdxLB );
 
-            acMv[0] += pcSubCUMvField->getMvd( uiPartIdxLT - uiAbsIndexInLCU );
-            acMv[1] += pcSubCUMvField->getMvd( uiPartIdxRT - uiAbsIndexInLCU );
-
+            acMv[0] += pcSubCUMvField->getMvd(uiPartIdxLT - uiAbsIndexInLCU);
+            acMv[1] += pcSubCUMvField->getMvd(uiPartIdxRT - uiAbsIndexInLCU);
+#if JVECT_C0062_AFFINE_SIX_PARAM
+            if (b6Param)
+            {
+              acMv[2] += pcSubCUMvField->getMvd(uiPartIdxLB - uiAbsIndexInLCU);
+            }
+            else
+            {
+              Int iWidth = pcSubCU->getWidth(uiSubCUPartIdx);
+              Int iHeight = pcSubCU->getHeight(uiSubCUPartIdx);
+              Int vx2 = -(acMv[1].getVer() - acMv[0].getVer()) * iHeight / iWidth + acMv[0].getHor();
+              Int vy2 = (acMv[1].getHor() - acMv[0].getHor()) * iHeight / iWidth + acMv[0].getVer();
+              acMv[2].set(vx2, vy2);
+            }
+#else
             Int iWidth = pcSubCU->getWidth(uiSubCUPartIdx);
             Int iHeight = pcSubCU->getHeight(uiSubCUPartIdx);
             Int vx2 =  - ( acMv[1].getVer() - acMv[0].getVer() ) * iHeight / iWidth + acMv[0].getHor();
             Int vy2 =    ( acMv[1].getHor() - acMv[0].getHor() ) * iHeight / iWidth + acMv[0].getVer();
             acMv[2].set( vx2, vy2 );
+#endif
+#endif
 
             pcSubCU->clipMv(acMv[0]);
             pcSubCU->clipMv(acMv[1]);
             pcSubCU->clipMv(acMv[2]);
+
+#if JVECT_C0062_AFFINE_SIX_PARAM
+            pcSubCU->setAllAffineMv(uiSubCUPartIdx, uiPartIdx, acMv, eRefList, 0, b6Param);
+#else
             pcSubCU->setAllAffineMv( uiSubCUPartIdx, uiPartIdx, acMv, eRefList, 0 );
+#endif
+
           }
           else
           {

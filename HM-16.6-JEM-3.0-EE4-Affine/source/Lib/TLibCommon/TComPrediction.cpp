@@ -1378,7 +1378,11 @@ Void TComPrediction::xPredInterUni ( TComDataCU* pcCU, UInt uiPartAddr, Int iWid
     for (UInt comp=COMPONENT_Y; comp<pcYuvPred->getNumberValidComponents(); comp++)
     {
       const ComponentID compID=ComponentID(comp);
+#if JVECT_C0062_AFFINE_SIX_PARAM
+      xPredAffineBlk( compID, pcCU, pcCU->getSlice()->getRefPic(eRefPicList, iRefIdx)->getPicYuvRec(), uiPartAddr, acMv, iWidth, iHeight, pcYuvPred, bi, pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID)), pcCU->getAffineParamFlag(uiPartAddr));
+#else
       xPredAffineBlk( compID, pcCU, pcCU->getSlice()->getRefPic( eRefPicList, iRefIdx )->getPicYuvRec(), uiPartAddr, acMv, iWidth, iHeight, pcYuvPred, bi, pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID)) );
+#endif
     }
 
     return;
@@ -5444,10 +5448,19 @@ Bool TComPrediction::xCheckIdenticalAffineMotion ( TComDataCU* pcCU, UInt PartAd
  * \param bi         Flag indicating whether bipred is used
  * \param  bitDepth  Bit depth
  */
+
+#if JVECT_C0062_AFFINE_SIX_PARAM
+Void TComPrediction::xPredAffineBlk(const ComponentID compID, TComDataCU *cu, TComPicYuv *refPic, UInt partAddr, TComMv acMv[3], Int width, Int height, TComYuv *dstPic, Bool bi, const Int bitDepth, Bool b6Param)
+#else
 Void TComPrediction::xPredAffineBlk(const ComponentID compID, TComDataCU *cu, TComPicYuv *refPic, UInt partAddr, TComMv acMv[3], Int width, Int height, TComYuv *dstPic, Bool bi, const Int bitDepth )
+#endif
 {
 #if COM16_C1016_AFFINE
-  if ( acMv[0] == acMv[1] )
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  if ((b6Param == 0 && acMv[0] == acMv[1]) || (b6Param == 1 && acMv[0] == acMv[1] && acMv[0] == acMv[2]))
+#else
+  if (acMv[0] == acMv[1])
+#endif
   {
     xPredInterBlk( compID, cu, refPic, partAddr, &acMv[0], width, height, dstPic, bi, bitDepth );
     return;
@@ -5502,11 +5515,29 @@ Void TComPrediction::xPredAffineBlk(const ComponentID compID, TComDataCU *cu, TC
 
   // convert to 2^(storeBit + iBit) precision
   Int iBit = 8;
+
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  Int iDMvHorX, iDMvVerX, iDMvHorY, iDMvVerY;
+  if (b6Param)
+  {
+    iDMvHorX = ((acMv[1] - acMv[0]).getHor() << iBit) / cxWidth;  // deltaMvHor
+    iDMvVerX = ((acMv[1] - acMv[0]).getVer() << iBit) / cxWidth;
+    iDMvHorY = ((acMv[2] - acMv[0]).getHor() << iBit) / cxHeight;                                           // deltaMvVer
+    iDMvVerY = ((acMv[2] - acMv[0]).getVer() << iBit) / cxHeight;
+  }
+  else
+  {
+    iDMvHorX = ((acMv[1] - acMv[0]).getHor() << iBit) / cxWidth;  // deltaMvHor
+    iDMvHorY = ((acMv[1] - acMv[0]).getVer() << iBit) / cxWidth;
+    iDMvVerX = -iDMvHorY;                                           // deltaMvVer
+    iDMvVerY = iDMvHorX;
+  }
+#else
   Int iDMvHorX = ( (acMv[1] - acMv[0]).getHor() << iBit ) / cxWidth;  // deltaMvHor
   Int iDMvHorY = ( (acMv[1] - acMv[0]).getVer() << iBit ) / cxWidth;
   Int iDMvVerX = -iDMvHorY;                                           // deltaMvVer
   Int iDMvVerY =  iDMvHorX;
-
+#endif
   Int iMvScaleHor = acMv[0].getHor() << iBit;
   Int iMvScaleVer = acMv[0].getVer() << iBit;
   Int iMvYHor = iMvScaleHor;
@@ -5553,8 +5584,21 @@ Void TComPrediction::xPredAffineBlk(const ComponentID compID, TComDataCU *cu, TC
   {
     for ( Int w = 0; w < cxWidth; w += blockWidth )
     {
+#if JVECT_C0062_AFFINE_SIX_PARAM
+      if (b6Param)
+      {
+        iMvScaleTmpHor = (iMvScaleHor + iDMvHorX * iHalfBW + iDMvHorY * iHalfBH) >> shift;
+        iMvScaleTmpVer = (iMvScaleVer + iDMvVerX * iHalfBW + iDMvVerY * iHalfBH) >> shift;
+      }
+      else
+      {
+        iMvScaleTmpHor = (iMvScaleHor + iDMvHorX * iHalfBW + iDMvVerX * iHalfBH) >> shift;
+        iMvScaleTmpVer = (iMvScaleVer + iDMvHorY * iHalfBW + iDMvVerY * iHalfBH) >> shift;
+      }
+#else
       iMvScaleTmpHor = ( iMvScaleHor + iDMvHorX * iHalfBW + iDMvVerX * iHalfBH ) >> shift;
       iMvScaleTmpVer = ( iMvScaleVer + iDMvHorY * iHalfBW + iDMvVerY * iHalfBH ) >> shift;
+#endif
 
       // clip and scale
 #if JVET_C0025_AFFINE_FILTER_SIMPLIFICATION
@@ -5629,25 +5673,60 @@ Void TComPrediction::xPredAffineBlk(const ComponentID compID, TComDataCU *cu, TC
 #endif
 
       // switch from x to x+AffineBlockSize, add deltaMvHor
+#if JVECT_C0062_AFFINE_SIX_PARAM
+      if (b6Param)
+      {
+        iMvScaleHor += (iDMvHorX*blockWidth);
+        iMvScaleVer += (iDMvVerX*blockWidth);
+      }
+      else
+      {
+        iMvScaleHor += (iDMvHorX*blockWidth);
+        iMvScaleVer += (iDMvHorY*blockWidth);
+      }
+#else
       iMvScaleHor += (iDMvHorX*blockWidth);
       iMvScaleVer += (iDMvHorY*blockWidth);
+#endif
     }
 
     dst     += dstStride*blockHeight;
     refOrg  += refStride*blockHeight;
 
     // switch from y to y+AffineBlockSize add deltaMvVer
+#if JVECT_C0062_AFFINE_SIX_PARAM
+    if (b6Param)
+    {
+      iMvYHor += (iDMvHorY*blockHeight);
+      iMvYVer += (iDMvVerY*blockHeight);
+    }
+    else
+    {
+      iMvYHor += (iDMvVerX*blockHeight);
+      iMvYVer += (iDMvVerY*blockHeight);
+    }
+#else
     iMvYHor += (iDMvVerX*blockHeight);
     iMvYVer += (iDMvVerY*blockHeight);
+#endif
 
     iMvScaleHor = iMvYHor;
     iMvScaleVer = iMvYVer;
   }
 }
 
+
+#if JVECT_C0062_AFFINE_SIX_PARAM
+Void TComPrediction::getMvPredAffineAMVP( TComDataCU* pcCU, UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefPicList, TComMv acMvPred[3], Bool b6Param)
+#else
 Void TComPrediction::getMvPredAffineAMVP( TComDataCU* pcCU, UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefPicList, TComMv acMvPred[3] )
+#endif
 {
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  AffineAMVPInfo* pcInfo = pcCU->getCUMvField(eRefPicList)->getAffineAMVPInfo(b6Param);
+#else
   AffineAMVPInfo* pcInfo = pcCU->getCUMvField(eRefPicList)->getAffineAMVPInfo();
+#endif
 
   if( pcInfo->iN <= 1 )
   {

@@ -1897,5 +1897,11 @@ Void TEncCavlc::codeAffineFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
   assert(0);
 }
 #endif
+#if JVECT_C0062_AFFINE_SIX_PARAM
+Void TEncCavlc::codeAffineParamFlag(TComDataCU* pcCU, UInt uiAbsPartIdx)
+{
+  assert(0);
+}
+#endif
 
 //! \}

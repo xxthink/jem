@@ -172,6 +172,9 @@ TComDataCU::TComDataCU()
 #if COM16_C1016_AFFINE
   m_affineFlag         = NULL;
 #endif
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  m_affineParamFlag = NULL;
+#endif
 #if JVET_C0024_QTBT
   m_acCUMvField[0].setCU(this);
   m_acCUMvField[1].setCU(this);
@@ -292,6 +295,9 @@ Void TComDataCU::create( ChromaFormat chromaFormatIDC, UInt uiNumPartition, UInt
 
 #if COM16_C1016_AFFINE
     m_affineFlag         = (Bool*  )xMalloc(Bool,   uiNumPartition);
+#endif
+#if JVECT_C0062_AFFINE_SIX_PARAM
+    m_affineParamFlag    = (Bool*)xMalloc(Bool, uiNumPartition);
 #endif
 
     for (UInt ch=0; ch<MAX_NUM_CHANNEL_TYPE; ch++)
@@ -601,7 +607,13 @@ Void TComDataCU::destroy()
       m_affineFlag        = NULL;
     }
 #endif
-
+#if JVECT_C0062_AFFINE_SIX_PARAM
+    if (m_affineParamFlag)
+    {
+      xFree(m_affineParamFlag);
+      m_affineParamFlag = NULL;
+    }
+#endif
     for (UInt ch=0; ch<MAX_NUM_CHANNEL_TYPE; ch++)
     {
       xFree(m_puhIntraDir[ch]);
@@ -905,7 +917,9 @@ Void TComDataCU::initCtu( TComPic* pcPic, UInt ctuRsAddr )
 #if COM16_C1016_AFFINE
   memset( m_affineFlag        , 0,                        m_uiNumPartition * sizeof( *m_affineFlag ) );
 #endif
-
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  memset(m_affineParamFlag, 0, m_uiNumPartition * sizeof(*m_affineParamFlag));
+#endif
   for (UInt ch=0; ch<MAX_NUM_CHANNEL_TYPE; ch++)
   {
     memset( m_puhIntraDir[ch] , ((ch==0) ? DC_IDX : 0),   m_uiNumPartition * sizeof( *(m_puhIntraDir[ch]) ) );
@@ -1116,6 +1130,9 @@ Void TComDataCU::initEstData( const UInt uiDepth, const Int qp, const Bool bTran
 #if COM16_C1016_AFFINE
     m_affineFlag[ui]    = false;
 #endif
+#if JVECT_C0062_AFFINE_SIX_PARAM
+    m_affineParamFlag[ui] = false;
+#endif
     for (UInt ch=0; ch<MAX_NUM_CHANNEL_TYPE; ch++)
     {
       m_puhIntraDir[ch][ui] = ((ch==0) ? DC_IDX : 0);
@@ -1245,6 +1262,9 @@ Void TComDataCU::initSubBT(TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiCUDepth,
 #endif
 #if COM16_C1016_AFFINE
     memset( m_affineFlag + uiZorderDst, 0, uiCurrPartNumb  );
+#endif
+#if JVECT_C0062_AFFINE_SIX_PARAM
+    memset(m_affineParamFlag + uiZorderDst, 0, uiCurrPartNumb);
 #endif
 #if COM16_C983_RSAF 
     memset( m_puhIntraFiltFlag + uiZorderDst, 0, uiCurrPartNumb );
@@ -1409,6 +1429,9 @@ Void TComDataCU::initSubCU( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth, 
 #if COM16_C1016_AFFINE
   memset( m_affineFlag,         0, iSizeInBool  );
 #endif
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  memset(m_affineParamFlag, 0, iSizeInBool);
+#endif
 #if COM16_C983_RSAF 
   memset( m_puhIntraFiltFlag     , 0,  sizeof( *m_puhIntraFiltFlag )   * m_uiNumPartition );
   memset( m_pbFiltFlagHidden     , 0,  sizeof( *m_pbFiltFlagHidden )   * m_uiNumPartition ); 
@@ -1489,6 +1512,9 @@ Void TComDataCU::initSubCU( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth, 
 
 #if COM16_C1016_AFFINE
     m_affineFlag[ui] = false;
+#endif
+#if JVECT_C0062_AFFINE_SIX_PARAM
+    m_affineParamFlag[ui] = false;
 #endif
 
 #if !JVET_C0024_QTBT
@@ -1659,6 +1685,9 @@ Void TComDataCU::copySubCU( TComDataCU* pcCU, UInt uiAbsPartIdx )
 #if COM16_C1016_AFFINE
   m_affineFlag          = pcCU->getAffineFlag()       + uiPart;
 #endif
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  m_affineParamFlag = pcCU->getAffineParamFlag() + uiPart;
+#endif
 
   for(UInt comp=0; comp<MAX_NUM_COMPONENT; comp++)
   {
@@ -1815,6 +1844,9 @@ Void TComDataCU::copyInterPredInfoFrom    ( TComDataCU* pcCU, UInt uiAbsPartIdx,
 #if COM16_C1016_AFFINE
   m_affineFlag         = pcCU->getAffineFlag()            + uiAbsPartIdx;
 #endif
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  m_affineParamFlag = pcCU->getAffineParamFlag() + uiAbsPartIdx;
+#endif
 
   m_apiMVPIdx[eRefPicList] = pcCU->getMVPIdx(eRefPicList) + uiAbsPartIdx;
   m_apiMVPNum[eRefPicList] = pcCU->getMVPNum(eRefPicList) + uiAbsPartIdx;
@@ -1914,6 +1946,9 @@ Void TComDataCU::copySameSizeCUFrom(TComDataCU* pcCU, UInt uiPartUnitIdx, UInt u
 
 #if COM16_C1016_AFFINE
     memcpy(m_affineFlag + uiOffset, pcCU->getAffineFlag(), iSizeInBool);
+#endif
+#if JVECT_C0062_AFFINE_SIX_PARAM
+    memcpy(m_affineParamFlag + uiOffset, pcCU->getAffineParamFlag(), iSizeInBool);
 #endif
 
     for (UInt comp = 0; comp<numValidComp; comp++)
@@ -2099,6 +2134,9 @@ Void TComDataCU::copyPartFrom( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDept
 #if COM16_C1016_AFFINE
     memcpy( m_affineFlag          + uiZorderDst, pcCU->getAffineFlag()+uiZorderSrc, uiCurrPartNumb );
 #endif
+#if JVECT_C0062_AFFINE_SIX_PARAM
+    memcpy(m_affineParamFlag      + uiZorderDst, pcCU->getAffineParamFlag() + uiZorderSrc, uiCurrPartNumb);
+#endif
 
     for(UInt comp=0; comp<numValidComp; comp++)
     {
@@ -2208,7 +2246,9 @@ Void TComDataCU::copyPartFrom( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDept
 #if COM16_C1016_AFFINE
   memcpy( m_affineFlag          + uiOffset, pcCU->getAffineFlag(),        iSizeInBool );
 #endif
-
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  memcpy(m_affineParamFlag      + uiOffset, pcCU->getAffineParamFlag(),   iSizeInBool);
+#endif
   for(UInt comp=0; comp<numValidComp; comp++)
   {
     memcpy( m_crossComponentPredictionAlpha[comp] + uiOffset, pcCU->getCrossComponentPredictionAlpha(ComponentID(comp)), iSizeInUchar );
@@ -2394,6 +2434,9 @@ Void TComDataCU::copyToPic( UChar uhDepth )
 #if COM16_C1016_AFFINE
       memcpy( pCtu->getAffineFlag()        + uiZorderDst, m_affineFlag + uiZorderSrc,          uiCurrPartNumb );
 #endif
+#if JVECT_C0062_AFFINE_SIX_PARAM
+      memcpy(pCtu->getAffineParamFlag()    + uiZorderDst, m_affineParamFlag + uiZorderSrc,     uiCurrPartNumb);
+#endif
 
       memcpy( pCtu->getDepth()  + uiZorderDst, m_puhDepth[eCType] + uiZorderSrc,  uiCurrPartNumb );
       memcpy( pCtu->getWidth()  + uiZorderDst, m_puhWidth[eCType] + uiZorderSrc,  uiCurrPartNumb );
@@ -2546,6 +2589,9 @@ Void TComDataCU::copyToPic( UChar uhDepth )
 
 #if COM16_C1016_AFFINE
   memcpy( pCtu->getAffineFlag()        + m_absZIdxInCtu, m_affineFlag,          iSizeInBool );
+#endif
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  memcpy(pCtu->getAffineParamFlag() + m_absZIdxInCtu, m_affineParamFlag, iSizeInBool);
 #endif
 
   for(UInt comp=0; comp<numValidComp; comp++)
@@ -8164,7 +8210,23 @@ UInt TComDataCU::getCtxAffineFlag( UInt uiAbsPartIdx )
 
   return uiCtx;
 }
+#if JVECT_C0062_AFFINE_SIX_PARAM
+UInt TComDataCU::getCtxAffineParamFlag(UInt uiAbsPartIdx)
+{
+  TComDataCU* pcTempCU;
+  UInt        uiTempPartIdx;
+  UInt        uiCtx = 0;
 
+  pcTempCU = getPULeft(uiTempPartIdx, m_absZIdxInCtu + uiAbsPartIdx);
+  uiCtx = (pcTempCU) ? (pcTempCU->isAffine(uiTempPartIdx) && pcTempCU->getAffineParamFlag(uiTempPartIdx)) : 0;
+
+  pcTempCU = getPUAbove(uiTempPartIdx, m_absZIdxInCtu + uiAbsPartIdx);
+  uiCtx += (pcTempCU) ? (pcTempCU->isAffine(uiTempPartIdx) && pcTempCU->getAffineParamFlag(uiTempPartIdx)) : 0;
+
+  return uiCtx;
+}
+
+#endif
 Void TComDataCU::setAffineFlagSubParts( Bool bAffineFlag, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth )
 {
 #if JVET_C0024_QTBT
@@ -8174,7 +8236,23 @@ Void TComDataCU::setAffineFlagSubParts( Bool bAffineFlag, UInt uiAbsPartIdx, UIn
 #endif
 }
 
-Void TComDataCU::setAllAffineMvField( UInt uiAbsPartIdx, UInt uiPuIdx, TComMvField *pcMvField, RefPicList eRefPicList, UInt uiDepth )
+#if JVECT_C0062_AFFINE_SIX_PARAM
+Void TComDataCU::setAffineParamFlagSubParts(Bool bAffineParamFlag, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth)
+{
+#if JVET_C0024_QTBT
+  setSubPart(bAffineParamFlag, m_affineParamFlag, uiAbsPartIdx, getWidth(uiAbsPartIdx), getHeight(uiAbsPartIdx));
+#else
+  setSubPart(bAffineParamFlag, m_affineParamFlag, uiAbsPartIdx, uiDepth, uiPartIdx);
+#endif
+}
+#endif
+
+
+#if JVECT_C0062_AFFINE_SIX_PARAM
+Void TComDataCU::setAllAffineMvField( UInt uiAbsPartIdx, UInt uiPuIdx, TComMvField *pcMvField, RefPicList eRefPicList, UInt uiDepth, Bool b6Param)
+#else
+Void TComDataCU::setAllAffineMvField( UInt uiAbsPartIdx, UInt uiPuIdx, TComMvField *pcMvField, RefPicList eRefPicList, UInt uiDepth)
+#endif
 {
   // Set Mv
   TComMv acMv[3];
@@ -8182,7 +8260,11 @@ Void TComDataCU::setAllAffineMvField( UInt uiAbsPartIdx, UInt uiPuIdx, TComMvFie
   {
     acMv[i] = pcMvField[i].getMv();
   }
-  setAllAffineMv( uiAbsPartIdx, uiPuIdx, acMv, eRefPicList, uiDepth );
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  setAllAffineMv( uiAbsPartIdx, uiPuIdx, acMv, eRefPicList, uiDepth, b6Param);
+#else
+  setAllAffineMv( uiAbsPartIdx, uiPuIdx, acMv, eRefPicList, uiDepth);
+#endif
 
   // Set RefIdx
   assert( pcMvField[0].getRefIdx() == pcMvField[1].getRefIdx() && pcMvField[0].getRefIdx() == pcMvField[2].getRefIdx() );
@@ -8194,12 +8276,23 @@ Void TComDataCU::setAllAffineMvField( UInt uiAbsPartIdx, UInt uiPuIdx, TComMvFie
 #endif
 }
 
+
+#if JVECT_C0062_AFFINE_SIX_PARAM
+Void TComDataCU::setAllAffineMv(UInt uiAbsPartIdx, UInt uiPuIdx, TComMv acMv[3], RefPicList e, UInt uiDepth, Bool b6Param)
+#else
 Void TComDataCU::setAllAffineMv ( UInt uiAbsPartIdx, UInt uiPuIdx, TComMv acMv[3], RefPicList e, UInt uiDepth )
+#endif
 {
   Int iWidth  = getWidth(uiAbsPartIdx);
   Int iHeight = getHeight(uiAbsPartIdx);
   Int iPartW = iWidth/getPic()->getMinCUWidth();
   Int iPartH = iHeight/getPic()->getMinCUHeight();
+
+
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  Bool bRecShape = ((iHeight / iWidth)>= 2);
+#endif
+
 
   // Get partIdx of four corner
   UInt uiPartIdxLT = uiAbsPartIdx + m_absZIdxInCtu;
@@ -8221,10 +8314,50 @@ Void TComDataCU::setAllAffineMv ( UInt uiAbsPartIdx, UInt uiPuIdx, TComMv acMv[3
   Int bitMinH = g_aucConvertToBit[getPic()->getMinCUHeight()] + 2;
 #endif
 
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  Int iDMvHorX, iDMvVerX, iDMvHorY, iDMvVerY;
+  if (b6Param)
+  {
+    iDMvHorX = ((acMv[1] - acMv[0]).getHor() << (iBit + bitMinW)) / iWidth;  // deltaMvHor
+    iDMvVerX = ((acMv[1] - acMv[0]).getVer() << (iBit + bitMinW)) / iWidth;
+    iDMvHorY = ((acMv[2] - acMv[0]).getHor() << (iBit + bitMinH)) / iHeight;  // deltaMvVer
+    iDMvVerY = ((acMv[2] - acMv[0]).getVer() << (iBit + bitMinH)) / iHeight;
+
+  }
+  else
+  {
+#if JVECT_C0062_AFFINE_SIX_PARAM
+    if (bRecShape)
+    {
+      clipMv(acMv[0]);
+      clipMv(acMv[2]);
+      Int vx1 = (acMv[2].getVer() - acMv[0].getVer())*iWidth / iHeight + acMv[0].getHor();
+      Int vy1 = -(acMv[2].getHor() - acMv[0].getHor())*iWidth / iHeight + acMv[0].getVer();
+      acMv[1].set(vx1, vy1);
+      clipMv(acMv[1]);
+    }
+    else
+    {
+      clipMv(acMv[0]);
+      clipMv(acMv[1]);
+      Int vx2 = -(acMv[1].getVer() - acMv[0].getVer()) * iHeight / iWidth + acMv[0].getHor();
+      Int vy2 = (acMv[1].getHor() - acMv[0].getHor()) * iHeight / iWidth + acMv[0].getVer();
+      acMv[2].set(vx2, vy2);
+      clipMv(acMv[2]);
+    }
+#endif
+    iDMvHorX = ((acMv[1] - acMv[0]).getHor() << (iBit + bitMinW)) / iWidth;
+    iDMvHorY = ((acMv[1] - acMv[0]).getVer() << (iBit + bitMinH)) / iWidth;
+    iDMvVerX = -iDMvHorY;
+    iDMvVerY = iDMvHorX;
+  }
+#else
+
   Int iDMvHorX = ( (acMv[1] - acMv[0]).getHor() << (iBit + bitMinW) ) / iWidth;
   Int iDMvHorY = ( (acMv[1] - acMv[0]).getVer() << (iBit + bitMinH) ) / iWidth;
   Int iDMvVerX = -iDMvHorY;
   Int iDMvVerY =  iDMvHorX;
+#endif
 
   Int iMvScaleHor = acMv[0].getHor() << iBit;
   Int iMvScaleVer = acMv[0].getVer() << iBit;
@@ -8237,9 +8370,21 @@ Void TComDataCU::setAllAffineMv ( UInt uiAbsPartIdx, UInt uiPuIdx, TComMv acMv[3
   {
     for ( Int w=0; w<iPartW; w++ )
     {
+#if JVECT_C0062_AFFINE_SIX_PARAM
+      if (b6Param)
+      {
+        iMvScaleTmpHor = iMvScaleHor + (iDMvHorX >> 1) + (iDMvHorY >> 1);
+        iMvScaleTmpVer = iMvScaleVer + (iDMvVerX >> 1) + (iDMvVerY >> 1);
+      }
+      else
+      {
+        iMvScaleTmpHor = iMvScaleHor + (iDMvHorX >> 1) + (iDMvVerX >> 1);
+        iMvScaleTmpVer = iMvScaleVer + (iDMvHorY >> 1) + (iDMvVerY >> 1);
+      }
+#else
       iMvScaleTmpHor = iMvScaleHor + ( iDMvHorX >> 1 ) + ( iDMvVerX >> 1 );
       iMvScaleTmpVer = iMvScaleVer + ( iDMvHorY >> 1 ) + ( iDMvVerY >> 1 );
-
+#endif
       // get the MV in hevc define precision
       Int xHevc, yHevc;
       xHevc  = iMvScaleTmpHor >> iBit;
@@ -8248,35 +8393,73 @@ Void TComDataCU::setAllAffineMv ( UInt uiAbsPartIdx, UInt uiPuIdx, TComMv acMv[3
 
       uiPartIdx = g_auiRasterToZscan[ g_auiZscanToRaster[uiPartIdxLT] + w + h*getPic()->getNumPartInCtuWidth() ] - m_absZIdxInCtu;
 
+#if JVECT_C0062_AFFINE_SIX_PARAM //ZF
+      clipMv(cMvHevc);
+#endif
       getCUMvField(e)->setMv(cMvHevc, uiPartIdx);
 
+#if JVECT_C0062_AFFINE_SIX_PARAM
+      if (b6Param)
+      {
+        iMvScaleHor += iDMvHorX;  // switch from x to x+AffineBlockSize, add deltaMvHor
+        iMvScaleVer += iDMvVerX;
+      }
+      else
+      {
+        iMvScaleHor += iDMvHorX;  // switch from x to x+AffineBlockSize, add deltaMvHor
+        iMvScaleVer += iDMvHorY;
+      }
+#else
       iMvScaleHor += iDMvHorX;  // switch from x to x+AffineBlockSize, add deltaMvHor
       iMvScaleVer += iDMvHorY;
+#endif
     }
+
+#if JVECT_C0062_AFFINE_SIX_PARAM
+    if (b6Param)
+    {
+      iMvYHor += iDMvHorY;        // switch from y to y+AffineBlockSize, add deltaMvVer
+      iMvYVer += iDMvVerY;
+    }
+    else
+    {
+      iMvYHor += iDMvVerX;        // switch from y to y+AffineBlockSize, add deltaMvVer
+      iMvYVer += iDMvVerY;
+    }
+#else
     iMvYHor += iDMvVerX;        // switch from y to y+AffineBlockSize, add deltaMvVer
     iMvYVer += iDMvVerY;
+#endif
 
     iMvScaleHor = iMvYHor;
     iMvScaleVer = iMvYVer;
   }
 
+
   // Set AffineMvField for affine motion compensation LT, RT, LB and RB
   cMv = acMv[1] + acMv[2] - acMv[0];
+
+  clipMv(cMv);//ZF
   getCUMvField(e)->setMv( acMv[0], uiPartIdxLT - m_absZIdxInCtu );
   getCUMvField(e)->setMv( acMv[1], uiPartIdxRT - m_absZIdxInCtu );
   getCUMvField(e)->setMv( acMv[2], uiPartIdxLB - m_absZIdxInCtu );
   getCUMvField(e)->setMv( cMv, uiPartIdxRB - m_absZIdxInCtu );
+
+
 }
 
 Void TComDataCU::setAllAffineMvd( UInt uiAbsPartIdx, UInt uiPuIdx, TComMv acMvd[3], RefPicList e, UInt uiDepth )
 {
   Int iWidth  = getWidth(uiAbsPartIdx);
-#if !JVET_C0024_QTBT
+#if !JVET_C0024_QTBT ||  JVECT_C0062_AFFINE_SIX_PARAM 
   Int iHeight = getHeight(uiAbsPartIdx);
 #endif
   Int iPartW = iWidth/getPic()->getMinCUWidth();
 #if JVET_C0024_QTBT
   PartSize ePartSize = SIZE_2Nx2N;
+#if JVECT_C0062_AFFINE_SIX_PARAM 
+  Int iPartH = iHeight / getPic()->getMinCUHeight();
+#endif
 #else
   Int iPartH = iHeight/getPic()->getMinCUHeight();
   PartSize ePartSize = getPartitionSize(uiAbsPartIdx);
@@ -8285,13 +8468,13 @@ Void TComDataCU::setAllAffineMvd( UInt uiAbsPartIdx, UInt uiPuIdx, TComMv acMvd[
   // Get partIdx of four corner
   UInt uiPartIdxLT = uiAbsPartIdx + m_absZIdxInCtu;
   UInt uiPartIdxRT = g_auiRasterToZscan[ g_auiZscanToRaster[uiPartIdxLT] + iPartW - 1 ];
-#if !JVET_C0024_QTBT
+#if !JVET_C0024_QTBT|| JVECT_C0062_AFFINE_SIX_PARAM 
   UInt uiPartIdxLB = g_auiRasterToZscan[ g_auiZscanToRaster[uiPartIdxLT] + (iPartH-1)*getPic()->getNumPartInCtuWidth() ];
   UInt uiPartIdxRB = g_auiRasterToZscan[ g_auiZscanToRaster[uiPartIdxLT] + iPartW - 1  + (iPartH-1)*getPic()->getNumPartInCtuWidth() ];
 #endif
 
   // Set other position
-#if JVET_C0024_QTBT
+#if JVET_C0024_QTBT&& !JVECT_C0062_AFFINE_SIX_PARAM
   TComMv cMv = acMvd[0] + acMvd[1];
 #else
   TComMv cMv = acMvd[1] + acMvd[2];
@@ -8300,12 +8483,12 @@ Void TComDataCU::setAllAffineMvd( UInt uiAbsPartIdx, UInt uiPuIdx, TComMv acMvd[
   getCUMvField(e)->setAllMvd( cMv, ePartSize, uiAbsPartIdx, uiDepth, uiPuIdx );
 
   // Set LT, RT, LB and RB
-#if !JVET_C0024_QTBT
+#if !JVET_C0024_QTBT|| JVECT_C0062_AFFINE_SIX_PARAM
   cMv = acMvd[1] + acMvd[2] - acMvd[0];
 #endif
   getCUMvField(e)->setMvd( acMvd[0], uiPartIdxLT - m_absZIdxInCtu );
   getCUMvField(e)->setMvd( acMvd[1], uiPartIdxRT - m_absZIdxInCtu );
-#if !JVET_C0024_QTBT
+#if !JVET_C0024_QTBT||JVECT_C0062_AFFINE_SIX_PARAM 
   getCUMvField(e)->setMvd( acMvd[2], uiPartIdxLB - m_absZIdxInCtu );
   getCUMvField(e)->setMvd( cMv, uiPartIdxRB - m_absZIdxInCtu );
 #endif
@@ -8318,7 +8501,11 @@ Void TComDataCU::setAllAffineMvd( UInt uiAbsPartIdx, UInt uiPuIdx, TComMv acMvd[
  * \param iRefIdx
  * \param pInfo
  */
+#if JVECT_C0062_AFFINE_SIX_PARAM
+Void TComDataCU::fillAffineMvpCand(  UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefPicList, Int iRefIdx, AffineAMVPInfo* pInfo, Bool b6Param)
+#else
 Void TComDataCU::fillAffineMvpCand ( UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefPicList, Int iRefIdx, AffineAMVPInfo* pInfo )
+#endif
 {
   TComMv cZeorMv(0, 0);
   pInfo->iN = 0;
@@ -8396,7 +8583,11 @@ Void TComDataCU::fillAffineMvpCand ( UInt uiPartIdx, UInt uiPartAddr, RefPicList
     {
       for ( Int k=0; k<cAMVPInfo2.iN; k++ )
       {
+#if JVECT_C0062_AFFINE_SIX_PARAM
+        Bool bValid = isValidAffineCandidate(uiPartAddr, uiPartIdx, cAMVPInfo0.m_acMvCand[i], cAMVPInfo1.m_acMvCand[j], cAMVPInfo2.m_acMvCand[k], iDV[iCount], b6Param);
+#else
         Bool bValid = isValidAffineCandidate( uiPartAddr, uiPartIdx, cAMVPInfo0.m_acMvCand[i], cAMVPInfo1.m_acMvCand[j], cAMVPInfo2.m_acMvCand[k], iDV[iCount] );
+#endif
         if ( bValid )
         {
           // Sort
@@ -8440,6 +8631,52 @@ Void TComDataCU::fillAffineMvpCand ( UInt uiPartIdx, UInt uiPartAddr, RefPicList
     pInfo->m_acMvCand[i][1] = cAMVPInfo1.m_acMvCand[ iRecord[i][1] ];
     pInfo->m_acMvCand[i][2] = cAMVPInfo2.m_acMvCand[ iRecord[i][2] ];
 
+
+#if JVECT_C0062_AFFINE_SIX_PARAM
+      if (b6Param)
+      {
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+        pInfo->m_acMvCand[i][0].roundMV2SignalPrecision();
+        pInfo->m_acMvCand[i][1].roundMV2SignalPrecision();
+        pInfo->m_acMvCand[i][2].roundMV2SignalPrecision();
+#endif
+        clipMv(pInfo->m_acMvCand[i][0]);
+        clipMv(pInfo->m_acMvCand[i][1]);
+        clipMv(pInfo->m_acMvCand[i][2]);
+      }
+      else
+      { //4 param
+        if (iHeight / iWidth >= 2)
+        {
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+          pInfo->m_acMvCand[i][0].roundMV2SignalPrecision();
+          pInfo->m_acMvCand[i][2].roundMV2SignalPrecision();
+#endif
+          clipMv(pInfo->m_acMvCand[i][0]);
+          clipMv(pInfo->m_acMvCand[i][2]);
+
+          Int vx1 = (pInfo->m_acMvCand[i][2].getVer() - pInfo->m_acMvCand[i][0].getVer())*iWidth / iHeight + pInfo->m_acMvCand[i][0].getHor();
+          Int vy1 = -(pInfo->m_acMvCand[i][2].getHor() - pInfo->m_acMvCand[i][0].getHor())*iWidth / iHeight + pInfo->m_acMvCand[i][0].getVer();
+          pInfo->m_acMvCand[i][1].set(vx1, vy1);
+          clipMv(pInfo->m_acMvCand[i][1]);
+        }
+        else
+        {
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+          pInfo->m_acMvCand[i][0].roundMV2SignalPrecision();
+          pInfo->m_acMvCand[i][1].roundMV2SignalPrecision();
+#endif
+          clipMv(pInfo->m_acMvCand[i][0]);
+          clipMv(pInfo->m_acMvCand[i][1]);
+
+          Int vx2 = -(pInfo->m_acMvCand[i][1].getVer() - pInfo->m_acMvCand[i][0].getVer()) * iHeight / iWidth + pInfo->m_acMvCand[i][0].getHor();
+          Int vy2 = (pInfo->m_acMvCand[i][1].getHor() - pInfo->m_acMvCand[i][0].getHor()) * iHeight / iWidth + pInfo->m_acMvCand[i][0].getVer();
+          pInfo->m_acMvCand[i][2].set(vx2, vy2);
+          clipMv(pInfo->m_acMvCand[i][2]);
+        }  
+      }
+#else
+
 #if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
     pInfo->m_acMvCand[i][0].roundMV2SignalPrecision();
     pInfo->m_acMvCand[i][1].roundMV2SignalPrecision();
@@ -8447,15 +8684,22 @@ Void TComDataCU::fillAffineMvpCand ( UInt uiPartIdx, UInt uiPartAddr, RefPicList
     clipMv(pInfo->m_acMvCand[i][0]);
     clipMv(pInfo->m_acMvCand[i][1]);
 
-    Int vx2 =  - ( pInfo->m_acMvCand[i][1].getVer() - pInfo->m_acMvCand[i][0].getVer() ) * iHeight / iWidth + pInfo->m_acMvCand[i][0].getHor();
-    Int vy2 =    ( pInfo->m_acMvCand[i][1].getHor() - pInfo->m_acMvCand[i][0].getHor() ) * iHeight / iWidth + pInfo->m_acMvCand[i][0].getVer();
-    pInfo->m_acMvCand[i][2].set( vx2, vy2 );
 
-#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE && !JVET_C0024_QTBT  //Affine fix
-    pInfo->m_acMvCand[i][2].roundMV2SignalPrecision();
+      Int vx2 = -(pInfo->m_acMvCand[i][1].getVer() - pInfo->m_acMvCand[i][0].getVer()) * iHeight / iWidth + pInfo->m_acMvCand[i][0].getHor();
+      Int vy2 = (pInfo->m_acMvCand[i][1].getHor() - pInfo->m_acMvCand[i][0].getHor()) * iHeight / iWidth + pInfo->m_acMvCand[i][0].getVer();
+      pInfo->m_acMvCand[i][2].set(vx2, vy2);
+
+
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE && !JVET_C0024_QTBT || JVECT_C0062_AFFINE_SIX_PARAM  //Affine fix
+#if JVECT_C0062_AFFINE_SIX_PARAM
+      if (b6Param == 1)
+#endif
+        pInfo->m_acMvCand[i][2].roundMV2SignalPrecision();
 #endif
 
-    clipMv(pInfo->m_acMvCand[i][2]);
+      clipMv(pInfo->m_acMvCand[i][2]);
+#endif
+
   }
 
   if ( pInfo->iN < 2 )
@@ -8477,16 +8721,32 @@ Void TComDataCU::fillAffineMvpCand ( UInt uiPartIdx, UInt uiPartAddr, RefPicList
   return ;
 }
 
+#if JVECT_C0062_AFFINE_SIX_PARAM
+Bool TComDataCU::isValidAffineCandidate( UInt uiAbsPartIdx, UInt uiPuIdx, TComMv cMv0, TComMv cMv1, TComMv cMv2, Int& riDV, Bool b6Param)
+#else
 Bool TComDataCU::isValidAffineCandidate( UInt uiAbsPartIdx, UInt uiPuIdx, TComMv cMv0, TComMv cMv1, TComMv cMv2, Int& riDV )
+#endif
 {
   TComMv zeroMv(0, 0);
   TComMv deltaHor = cMv1 - cMv0;
   TComMv deltaVer = cMv2 - cMv0;
 
   // same motion vector, translation model
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  if (b6Param)
+  {
+    if (deltaHor == zeroMv && deltaVer == zeroMv)
+      return false;
+  }
+  else
+  {
+    if (deltaHor == zeroMv)
+      return false;
+  }
+#else
   if ( deltaHor == zeroMv )
     return false;
-
+#endif
   // S/8, but the Mv is 4 precision, so change to S/2
   Int width = getWidth(uiAbsPartIdx);
   Int height = getHeight(uiAbsPartIdx);
@@ -8501,7 +8761,11 @@ Bool TComDataCU::isValidAffineCandidate( UInt uiAbsPartIdx, UInt uiPuIdx, TComMv
   return true;
 }
 
+#if JVECT_C0062_AFFINE_SIX_PARAM
+Void TComDataCU::getAffineMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TComMvField(*pcMvFieldNeighbours)[3], UChar* puhInterDirNeighbours, Int& numValidMergeCand, UInt& neighborAffineParam, Int mrgCandIdx)
+#else
 Void TComDataCU::getAffineMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TComMvField (*pcMvFieldNeighbours)[3], UChar* puhInterDirNeighbours, Int& numValidMergeCand, Int mrgCandIdx )
+#endif
 {
   TComMvField affineMvField[2][3];
   UInt uiAbsPartAddr = m_absZIdxInCtu + uiAbsPartIdx;
@@ -8521,6 +8785,50 @@ Void TComDataCU::getAffineMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TCom
   deriveLeftRightTopIdxGeneral( uiAbsPartIdx, uiPUIdx, uiPartIdxLT, uiPartIdxRT );
   deriveLeftBottomIdxGeneral  ( uiAbsPartIdx, uiPUIdx, uiPartIdxLB );
 
+
+#if JVECT_C0062_AFFINE_SIX_PARAM && JVET_C0062_AFFINE_MERGE_CANDIDATE
+  //use neighboring block mv
+  //above
+  pcTempCU = getPUAbove(uiPartIdx, uiPartIdxRT);
+  bAvailable = pcTempCU && pcTempCU->isAffine(uiPartIdx);
+
+  //left
+  if (!bAvailable)
+  {
+    pcTempCU = getPULeft(uiPartIdx, uiPartIdxLB);
+    bAvailable = pcTempCU && pcTempCU->isAffine(uiPartIdx);
+  }
+  //above left
+  if (!bAvailable)
+  {
+    pcTempCU = getPUAboveLeft(uiPartIdx, uiAbsPartAddr);
+    bAvailable = pcTempCU && pcTempCU->isAffine(uiPartIdx);
+  }
+
+  //above right
+  if (!bAvailable)
+  {
+    pcTempCU = getPUAboveRight(uiPartIdx, uiPartIdxRT);
+    bAvailable = pcTempCU && pcTempCU->isAffine(uiPartIdx);
+  }
+  //below left
+  if (!bAvailable)
+  {
+    pcTempCU = getPUBelowLeft(uiPartIdx, uiPartIdxLB);
+    bAvailable = pcTempCU && pcTempCU->isAffine(uiPartIdx);
+  }
+
+  if (!bAvailable)
+  {
+    numValidMergeCand = -1;
+    return;
+  }
+  else
+  {
+    assert(pcTempCU);
+    numValidMergeCand = 1;
+  }
+#else
   // left
   pcTempCU = getPULeft( uiPartIdx, uiPartIdxLB );
   bAvailable = pcTempCU && pcTempCU->isAffine( uiPartIdx );
@@ -8563,6 +8871,7 @@ Void TComDataCU::getAffineMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TCom
     assert( pcTempCU );
     numValidMergeCand = 1;
   }
+#endif
 
   Int width = pcTempCU->getWidth(uiPartIdx);
   Int height = pcTempCU->getHeight(uiPartIdx);
@@ -8631,7 +8940,9 @@ Void TComDataCU::getAffineMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TCom
     vy2 = Int( 1.0 * ( affineMvField[1][2].getVer() - affineMvField[1][0].getVer() ) * getHeight(0) / height + pcMvFieldNeighbours[1][0].getVer() );
     pcMvFieldNeighbours[1][2].setMvField( TComMv(vx2, vy2), affineMvField[1][0].getRefIdx() );
   }
-
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  neighborAffineParam = 1;
+#endif
   puhInterDirNeighbours[0] = pcTempCU->getInterDir( uiPartIdx );
   return;
 }

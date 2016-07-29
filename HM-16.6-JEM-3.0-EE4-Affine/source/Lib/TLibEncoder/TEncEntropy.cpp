@@ -772,6 +772,7 @@ Void TEncEntropy::encodePUWise( TComDataCU* pcCU, UInt uiAbsPartIdx )
         {
           encodeMergeIndex( pcCU, uiSubPartIdx );
         }
+
       }
 #else
       encodeMergeIndex( pcCU, uiSubPartIdx );
@@ -795,6 +796,10 @@ Void TEncEntropy::encodePUWise( TComDataCU* pcCU, UInt uiAbsPartIdx )
 #endif
       {
         encodeAffineFlag( pcCU, uiSubPartIdx, uiPartIdx );
+#if JVECT_C0062_AFFINE_SIX_PARAM
+        if (pcCU->isAffine(uiSubPartIdx))
+          encodeAffineParamFlag(pcCU, uiSubPartIdx, uiPartIdx);
+#endif
       }
 #endif
 
@@ -872,6 +877,12 @@ Void TEncEntropy::encodeMvdPU( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList e
 {
   assert( pcCU->isInter( uiAbsPartIdx ) );
 
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  Int width = pcCU->getWidth(uiAbsPartIdx);
+  Int height = pcCU->getHeight(uiAbsPartIdx);
+  Bool bRecShape = (height /width >=2);
+#endif
+
 #if COM16_C1016_AFFINE
   if ( pcCU->isAffine(uiAbsPartIdx) )
   {
@@ -881,9 +892,43 @@ Void TEncEntropy::encodeMvdPU( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList e
       UInt uiPartIdxLT, uiPartIdxRT, uiAbsIndexInLCU;
       uiAbsIndexInLCU = pcCU->getZorderIdxInCtu();
       pcCU->deriveLeftRightTopIdxGeneral( uiAbsPartIdx, 0, uiPartIdxLT, uiPartIdxRT );
+#if JVECT_C0062_AFFINE_SIX_PARAM 
+      UInt uiPartIdxLB;
+      pcCU->deriveLeftBottomIdxGeneral(uiAbsPartIdx, 0, uiPartIdxLB);
+#endif
 
+#if JVECT_C0062_AFFINE_SIX_PARAM
+      if (pcCU->getAffineParamFlag(uiAbsPartIdx))
+      {
+        m_pcEntropyCoderIf->codeMvd(pcCU, uiPartIdxLT - uiAbsIndexInLCU, eRefList);
+        m_pcEntropyCoderIf->codeMvd(pcCU, uiPartIdxRT - uiAbsIndexInLCU, eRefList);
+        m_pcEntropyCoderIf->codeMvd(pcCU, uiPartIdxLB - uiAbsIndexInLCU, eRefList);
+      }
+      else
+      {
+        if (bRecShape)
+        {
+          m_pcEntropyCoderIf->codeMvd(pcCU, uiPartIdxLT - uiAbsIndexInLCU, eRefList);
+          m_pcEntropyCoderIf->codeMvd(pcCU, uiPartIdxLB - uiAbsIndexInLCU, eRefList);
+        }
+        else
+        {
+          m_pcEntropyCoderIf->codeMvd(pcCU, uiPartIdxLT - uiAbsIndexInLCU, eRefList);
+          m_pcEntropyCoderIf->codeMvd(pcCU, uiPartIdxRT - uiAbsIndexInLCU, eRefList);
+        }    
+      }
+
+#else
       m_pcEntropyCoderIf->codeMvd( pcCU, uiPartIdxLT - uiAbsIndexInLCU, eRefList );
       m_pcEntropyCoderIf->codeMvd( pcCU, uiPartIdxRT - uiAbsIndexInLCU, eRefList );
+#if JVECT_C0062_AFFINE_SIX_PARAM
+      if (pcCU->getAffineParamFlag(uiAbsPartIdx))
+        m_pcEntropyCoderIf->codeMvd(pcCU, uiPartIdxLB - uiAbsIndexInLCU, eRefList);
+#endif
+#endif
+
+
+
     }
     return;
   }
@@ -1822,6 +1867,24 @@ Void TEncEntropy::encodeAffineFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt ui
 
   m_pcEntropyCoderIf->codeAffineFlag( pcCU, uiAbsPartIdx );
 }
+#endif
+
+#if JVECT_C0062_AFFINE_SIX_PARAM
+Void TEncEntropy::encodeAffineParamFlag(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiPuIdx)
+{
+  if (pcCU->getSlice()->isIntra())
+  {
+    return;
+  }
+
+  if (!pcCU->getSlice()->getSPS()->getUseAffine())
+  {
+    return;
+  }
+
+  m_pcEntropyCoderIf->codeAffineParamFlag(pcCU, uiAbsPartIdx);
+}
+
 #endif
 
 //! \}
