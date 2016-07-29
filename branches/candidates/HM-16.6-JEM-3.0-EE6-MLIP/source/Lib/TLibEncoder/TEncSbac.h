@@ -174,6 +174,9 @@ public:
   Void codePartSize      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
   Void codePredMode      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
+#if MULTIPLE_LINE_INTRA
+  Void codeIntraRefIndex(TComDataCU* pcCU, UInt uiAbsPartIdx);
+#endif
   Void codeIPCMInfo      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeTransformSubdivFlag ( UInt uiSymbol, UInt uiCtx );
   Void codeQtCbf               ( TComTU & rTu, const ComponentID compID, const Bool lowestLevel );
@@ -281,6 +284,9 @@ private:
 #endif
   ContextModel3DBuffer m_cCUPartSizeSCModel;
   ContextModel3DBuffer m_cCUPredModeSCModel;
+#if MULTIPLE_LINE_INTRA
+  ContextModel3DBuffer m_cCUIntraRefIndexSCModel;
+#endif
   ContextModel3DBuffer m_cCUIntraPredSCModel;
   ContextModel3DBuffer m_cCUChromaPredSCModel;
   ContextModel3DBuffer m_cCUDeltaQpSCModel;

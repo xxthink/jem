@@ -140,7 +140,9 @@ public:
   Void codePartSize      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
   Void codePredMode      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
-
+#if MULTIPLE_LINE_INTRA
+  Void codeIntraRefIndex(TComDataCU* pcCU, UInt uiAbsPartIdx);
+#endif
   Void codeIPCMInfo      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
 
   Void codeTransformSubdivFlag( UInt uiSymbol, UInt uiCtx );

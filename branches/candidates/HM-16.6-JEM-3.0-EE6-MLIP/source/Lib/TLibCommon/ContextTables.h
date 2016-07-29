@@ -45,6 +45,17 @@
 // ====================================================================================================================
 // Constants
 // ====================================================================================================================
+
+#if MULTIPLE_LINE_INTRA
+
+#if USE_FOUR_LINES
+#define NUM_INTRA_REF_INDEX_CTX             3    
+#else
+#define NUM_INTRA_REF_INDEX_CTX             2    
+#endif
+#endif
+
+
 #if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
 #define MAX_NUM_CTX_MOD             384       ///< number of context models for last coefficient position
 #else
@@ -435,6 +446,24 @@ INIT_PRED_MODE[NUMBER_OF_SLICE_TYPES][NUM_PRED_MODE_CTX] =
   { 149, },
   { CNU, },
 };
+
+#if MULTIPLE_LINE_INTRA
+static const UChar
+INIT_INTRA_REF_INDEX[NUMBER_OF_SLICE_TYPES][NUM_INTRA_REF_INDEX_CTX] =
+#if USE_FOUR_LINES
+{
+  { 154, 154,154, },
+  { 154, 154,154, },
+  { 154, 154,154, },
+};
+#else
+{
+  { 154, 154, },
+  { 154, 154, },
+  { 154, 154, },
+};
+#endif
+#endif
 
 static const UChar
 INIT_INTRA_PRED_MODE[NUMBER_OF_SLICE_TYPES][NUM_INTRA_PREDICT_CTX] =

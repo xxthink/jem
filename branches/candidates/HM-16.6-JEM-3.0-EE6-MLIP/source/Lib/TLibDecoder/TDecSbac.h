@@ -161,7 +161,9 @@ public:
   Void parsePartSize      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 #endif
   Void parsePredMode      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
-
+#if MULTIPLE_LINE_INTRA 
+  Void parseIntraRefIndex(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth);
+#endif
   Void parseIntraDirLumaAng( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   Void parseIntraDirChroma( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
 
@@ -255,6 +257,9 @@ private:
 #endif
   ContextModel3DBuffer m_cCUPartSizeSCModel;
   ContextModel3DBuffer m_cCUPredModeSCModel;
+#if MULTIPLE_LINE_INTRA
+  ContextModel3DBuffer m_cCUIntraRefIndexSCModel;
+#endif
   ContextModel3DBuffer m_cCUIntraPredSCModel;
   ContextModel3DBuffer m_cCUChromaPredSCModel;
   ContextModel3DBuffer m_cCUDeltaQpSCModel;

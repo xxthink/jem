@@ -1164,6 +1164,9 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
                                                                                     pcCU->getSlice()->getSPS()->getSpsRangeExtension().getIntraSmoothingDisabledFlag()
 #if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
                                                                                   , sps.getUseRSAF()
+#if MULTIPLE_LINE_INTRA
+                                                                                  && (pcCU->getLineRefIndex(uiAbsPartIdx) == 0)
+#endif
 #endif
                                                                                    );
 
@@ -1174,7 +1177,11 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
 #if COM16_C983_RSAF
   Bool bFilter = false;
 #if COM16_C1046_PDPC_RSAF_HARMONIZATION
-  if (compID == COMPONENT_Y && sps.getUseRSAF() && pcCU->getPDPCIdx(uiAbsPartIdx) == 0)
+  if (compID == COMPONENT_Y && sps.getUseRSAF() && pcCU->getPDPCIdx(uiAbsPartIdx) == 0
+#if MULTIPLE_LINE_INTRA
+    &&pcCU->getLineRefIndex(uiAbsPartIdx)==0
+#endif
+    )
 #else
   if (compID==COMPONENT_Y && sps.getUseRSAF())
 #endif
@@ -1196,7 +1203,9 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
 #endif
                                           DEBUG_STRING_PASS_INTO(sTemp) );
 
-
+#if MULTIPLE_LINE_INTRA
+  m_pcPrediction->initExtendIntraPatternChType(rTu, compID, bUseFilteredPredictions);
+#endif
   //===== get prediction signal =====
 
 #if COM16_C806_LMCHROMA
@@ -1209,7 +1218,11 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
   {
 #endif 
 #if COM16_C983_RSAF
-  if (compID==COMPONENT_Y && sps.getUseRSAF()) 
+  if (compID==COMPONENT_Y && sps.getUseRSAF()
+#if MULTIPLE_LINE_INTRA
+    &&pcCU->getLineRefIndex(uiAbsPartIdx) == 0
+#endif
+    ) 
   {
     bUseFilteredPredictions = (bFilter != false);
   }
