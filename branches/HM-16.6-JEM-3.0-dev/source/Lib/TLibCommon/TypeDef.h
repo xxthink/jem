@@ -70,7 +70,8 @@
 #define JVET_C0024_ENCODER_OVERFLOW_FIX                   1  ///< fix the encoder overflow in the case of very high QP
 #define JVET_C0024_DELTA_QP_FIX                           1  ///< support delta QP signaling in QTBT
 #if JVET_C0024_DELTA_QP_FIX
-#define JVET_C0024_DELTA_QP_FIX_BT_DIFF                   1
+#define JVET_C0024_DELTA_QP_FIX_BT_DIFF                   0
+#define JVET_C0024_DELTA_QP_FIX_R1                        1  ///< keep track of current partition index of quantization unit (group) and its last coded QP
 #endif
 
 // for fast algorithms

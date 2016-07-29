@@ -2930,11 +2930,16 @@ Bool TComDataCU::getBlockBelowRight( UInt uiAbsPartIdx, Int nCurBlkWidth , Int n
 TComDataCU* TComDataCU::getQpMinCuLeft( UInt& uiLPartUnitIdx, UInt uiCurrAbsIdxInCtu )
 {
   const UInt numPartInCtuWidth = m_pcPic->getNumPartInCtuWidth();
+#if JVET_C0024_DELTA_QP_FIX_R1
+  UInt absZorderQpMinCUIdx = m_uiQuPartIdx;
+  UInt absRorderQpMinCUIdx = g_auiZscanToRaster[absZorderQpMinCUIdx];
+#else
   const UInt maxCUDepth        = getSlice()->getSPS()->getMaxTotalCUDepth();
   const UInt maxCuDQPDepth     = getSlice()->getPPS()->getMaxCuDQPDepth();
   const UInt doubleDepthDifference = ((maxCUDepth - maxCuDQPDepth)<<1);
   UInt absZorderQpMinCUIdx = (uiCurrAbsIdxInCtu>>doubleDepthDifference)<<doubleDepthDifference;
   UInt absRorderQpMinCUIdx = g_auiZscanToRaster[absZorderQpMinCUIdx];
+#endif
 
   // check for left CTU boundary
   if ( RasterAddress::isZeroCol(absRorderQpMinCUIdx, numPartInCtuWidth) )
@@ -2957,11 +2962,16 @@ TComDataCU* TComDataCU::getQpMinCuLeft( UInt& uiLPartUnitIdx, UInt uiCurrAbsIdxI
 TComDataCU* TComDataCU::getQpMinCuAbove( UInt& uiAPartUnitIdx, UInt uiCurrAbsIdxInCtu )
 {
   const UInt numPartInCtuWidth = m_pcPic->getNumPartInCtuWidth();
+#if JVET_C0024_DELTA_QP_FIX_R1
+  UInt absZorderQpMinCUIdx = m_uiQuPartIdx;
+  UInt absRorderQpMinCUIdx = g_auiZscanToRaster[absZorderQpMinCUIdx];
+#else
   const UInt maxCUDepth        = getSlice()->getSPS()->getMaxTotalCUDepth();
   const UInt maxCuDQPDepth     = getSlice()->getPPS()->getMaxCuDQPDepth();
   const UInt doubleDepthDifference = ((maxCUDepth - maxCuDQPDepth)<<1);
   UInt absZorderQpMinCUIdx = (uiCurrAbsIdxInCtu>>doubleDepthDifference)<<doubleDepthDifference;
   UInt absRorderQpMinCUIdx = g_auiZscanToRaster[absZorderQpMinCUIdx];
+#endif
 
   // check for top CTU boundary
   if ( RasterAddress::isZeroRow( absRorderQpMinCUIdx, numPartInCtuWidth) )
@@ -2994,8 +3004,27 @@ Char TComDataCU::getRefQP( UInt uiCurrAbsIdxInCtu )
   UInt aPartIdx = MAX_UINT;
   TComDataCU* cULeft  = getQpMinCuLeft ( lPartIdx, m_absZIdxInCtu + uiCurrAbsIdxInCtu );
   TComDataCU* cUAbove = getQpMinCuAbove( aPartIdx, m_absZIdxInCtu + uiCurrAbsIdxInCtu );
+#if JVET_C0024_DELTA_QP_FIX_R1
+  return (((cULeft? cULeft->getQP( lPartIdx ): m_QuLastCodedQP) + (cUAbove? cUAbove->getQP( aPartIdx ): m_QuLastCodedQP) + 1) >> 1);
+#else
   return (((cULeft? cULeft->getQP( lPartIdx ): getLastCodedQP( uiCurrAbsIdxInCtu )) + (cUAbove? cUAbove->getQP( aPartIdx ): getLastCodedQP( uiCurrAbsIdxInCtu )) + 1) >> 1);
+#endif
 }
+
+#if JVET_C0024_DELTA_QP_FIX_R1
+Char TComDataCU::getCtuLastCodedQP()
+{
+  if( getPic()->getPicSym()->getCtuTsToRsAddrMap(getSlice()->getSliceCurStartCtuTsAddr()) != getCtuRsAddr() && getPic()->getPicSym()->getCtuRsToTsAddrMap(getCtuRsAddr()) > 0 )
+  {
+    TComDataCU* pcCtuPrev = getPic()->getCtu(getPic()->getPicSym()->getCtuTsToRsAddrMap(getPic()->getPicSym()->getCtuRsToTsAddrMap(getCtuRsAddr())-1));
+    if( CUIsFromSameSliceTileAndWavefrontRow( pcCtuPrev ) )
+    {
+      return pcCtuPrev->getCodedQP();
+    }
+  }
+  return getSlice()->getSliceQp();
+}
+#else
 
 Int TComDataCU::getLastValidPartIdx( Int iAbsPartIdx )
 {
@@ -3043,7 +3072,7 @@ Char TComDataCU::getLastCodedQP( UInt uiAbsPartIdx )
     }
   }
 }
-
+#endif
 
 /** Check whether the CU is coded in lossless coding mode.
  * \param   absPartIdx
