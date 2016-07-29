@@ -88,9 +88,9 @@ public:
   virtual Void codePDPCIdx       (TComDataCU* pcCU, UInt uiAbsPartIdx) = 0;
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
-   virtual Void codeROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth ) = 0;
+  virtual Void codeROTIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth ) = 0;
 #if JVET_C0024_QTBT
-   virtual Void codeROTIdxChroma ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth ) = 0;
+  virtual Void codeROTIdxChroma ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth ) = 0;
 #endif
 #endif
 #if VCEG_AZ07_IMV
@@ -131,7 +131,11 @@ public:
   virtual Void codeIntraDirChroma( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
   virtual Void codeInterDir      ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
   virtual Void codeRefFrmIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList )      = 0;
+#if JVET_C0068_SDH
+  virtual Void codeMvd           ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList, UInt uiMode = 3 )      = 0;
+#else
   virtual Void codeMvd           ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList )      = 0;
+#endif
 
   virtual Void codeCrossComponentPrediction( TComTU &rTu, ComponentID compID ) = 0;
 
@@ -253,7 +257,11 @@ public:
   Void encodePUWise       ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void encodeInterDirPU   ( TComDataCU* pcSubCU, UInt uiAbsPartIdx  );
   Void encodeRefFrmIdxPU  ( TComDataCU* pcSubCU, UInt uiAbsPartIdx, RefPicList eRefList );
+#if JVET_C0068_SDH
+  Void encodeMvdPU        ( TComDataCU* pcSubCU, UInt uiAbsPartIdx, RefPicList eRefList, UInt uiMode );
+#else
   Void encodeMvdPU        ( TComDataCU* pcSubCU, UInt uiAbsPartIdx, RefPicList eRefList );
+#endif
   Void encodeMVPIdxPU     ( TComDataCU* pcSubCU, UInt uiAbsPartIdx, RefPicList eRefList );
   Void encodeMergeFlag    ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void encodeMergeIndex   ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
@@ -264,9 +272,9 @@ public:
   Void encodePDPCIdx      ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false);
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
-    Void encodeROTIdx    ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth, Bool bRD = false );
+  Void encodeROTIdx    ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth, Bool bRD = false );
 #if JVET_C0024_QTBT
-    Void encodeROTIdxChroma( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth, Bool bRD = false );
+  Void encodeROTIdxChroma( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth, Bool bRD = false );
 #endif
 #endif
 #if VCEG_AZ07_FRUC_MERGE
@@ -337,7 +345,7 @@ public:
 #if ALF_HM3_REFACTOR
   Void encodeAlfParam(ALFParam* pAlfParam, UInt uiMaxTotalCUDepth
 #if FIX_TICKET12
-        ,const TComSlice * pSlice
+    ,const TComSlice * pSlice
 #endif
     );
 #if !JVET_C0024_QTBT

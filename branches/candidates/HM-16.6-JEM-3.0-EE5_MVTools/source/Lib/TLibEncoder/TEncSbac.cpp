@@ -1459,7 +1459,11 @@ Void TEncSbac::codeRefFrmIdx( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eR
   return;
 }
 
-Void TEncSbac::codeMvd( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList )
+Void TEncSbac::codeMvd( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList 
+#if JVET_C0068_SDH
+                       ,UInt uiMode
+#endif
+                       )
 {
   if(pcCU->getSlice()->getMvdL1ZeroFlag() && eRefList == REF_PIC_LIST_1 && pcCU->getInterDir(uiAbsPartIdx)==3)
   {
@@ -1490,6 +1494,88 @@ Void TEncSbac::codeMvd( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList
     iHor >>= 2;
     iVer >>= 2;
   }
+#endif
+#if JVET_C0068_SDH
+  switch( uiMode )
+  {
+  case 0:
+    {
+      m_pcBinIf->encodeBin( iHor != 0 ? 1 : 0, *pCtx );
+      m_pcBinIf->encodeBin( iVer != 0 ? 1 : 0, *pCtx );
+
+      const Bool bHorAbsGr0 = iHor != 0;
+      const Bool bVerAbsGr0 = iVer != 0;
+      const UInt uiHorAbs   = 0 > iHor ? -iHor : iHor;
+      const UInt uiVerAbs   = 0 > iVer ? -iVer : iVer;
+      pCtx++;
+
+      if( bHorAbsGr0 )
+      {
+        m_pcBinIf->encodeBin( uiHorAbs > 1 ? 1 : 0, *pCtx );
+      }
+
+      if( bVerAbsGr0 )
+      {
+        m_pcBinIf->encodeBin( uiVerAbs > 1 ? 1 : 0, *pCtx );
+      }
+
+      if( bHorAbsGr0 )
+      {
+        if( uiHorAbs > 1 )
+        {
+          xWriteEpExGolomb( uiHorAbs-2, 1 );
+        }
+      }
+
+      if( bVerAbsGr0 )
+      {
+        if( uiVerAbs > 1 )
+        {
+          xWriteEpExGolomb( uiVerAbs-2, 1 );
+        }
+      }
+    }
+    break;
+  case 1:
+    {
+      const Bool bHorAbsGr0 = iHor != 0;
+      const Bool bVerAbsGr0 = iVer != 0;
+
+      if( bHorAbsGr0 )
+      {
+        {
+#if VCEG_AZ07_IMV
+          if( pcCU->getiMVFlag( uiAbsPartIdx ) && pcCU->getSlice()->getSPS()->getIMV() )
+          {
+            m_pcBinIf->encodeBinEP( 0 > iHor ? 1 : 0 );
+          }
+          else
+#endif
+          {
+            Int sign      = iHor >= 0 ? 0 : 1;
+
+            Int sumInfo = std::abs(iHor) + std::abs(iVer);
+
+            if (USE_CU_SIZE)       sumInfo += (Int)(pcCU->getWidth( uiAbsPartIdx ));
+            if (USE_PART_MODE)     sumInfo += (Int)(SIZE_2Nx2N);
+            if (USE_REF_PIC_IDX)   sumInfo += (Int)(pcCU->getCUMvField( eRefList )->getRefIdx( uiAbsPartIdx ));
+
+            if (sign != (sumInfo % 2))
+            {
+              assert(0);
+            }         
+          }
+        }
+      }
+
+      if( bVerAbsGr0 )
+      {
+        m_pcBinIf->encodeBinEP( 0 > iVer ? 1 : 0 );
+      }
+    }
+    break;
+  default:
+    {
 #endif
 
   m_pcBinIf->encodeBin( iHor != 0 ? 1 : 0, *pCtx );
@@ -1530,7 +1616,10 @@ Void TEncSbac::codeMvd( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList
 
     m_pcBinIf->encodeBinEP( 0 > iVer ? 1 : 0 );
   }
-
+#if JVET_C0068_SDH
+    }
+  }
+#endif
   return;
 }
 

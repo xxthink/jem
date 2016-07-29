@@ -162,6 +162,30 @@
 
 #define VCEG_AZ07_IMV                                     1  ///< Locally adaptive motion vector resolution (AMVR)
 
+// JVET C0068 Tools define start //
+#define JVET_C0068_PBL                    1                  // Prediction List candidate update tool
+
+#define JVET_C0068_SDH                    1                  // Motion vector sign hiding tool
+
+#if JVET_C0068_SDH
+
+#define USE_CU_SIZE                       1
+#define USE_PART_MODE                     1
+#define USE_REF_PIC_IDX                   1
+
+#define ADJUST_RANGE_HOR_UPPER            1
+#define ADJUST_RANGE_HOR_LOWER          (-1)
+#define ADJUST_RANGE_VER_UPPER            1
+#define ADJUST_RANGE_VER_LOWER          (-1)
+#endif
+
+#if VCEG_AZ07_IMV
+#define JVET_C0068_MVR                    1                  // Motion vector rounding tool
+#else
+#define JVET_C0068_MVR                    0
+#endif
+// JVET C0068 Tools define end //
+
 #define VCEG_AZ07_FRUC_MERGE                              1  ///< Pattern matched motion vector derivation
 
 #define JVET_B058_HIGH_PRECISION_MOTION_VECTOR_MC         1
@@ -492,6 +516,22 @@ enum RDPCMSignallingMode
   RDPCM_SIGNAL_EXPLICIT            = 1,
   NUMBER_OF_RDPCM_SIGNALLING_MODES = 2
 };
+
+#if JVET_C0068_PBL
+enum ListPredDir
+{
+  DIR_L0toL1 = 0,
+  DIR_L1toL0 = 1,
+  DIR_NONE   = 2
+};
+enum PredMvPrio
+{
+  LOW_PRIO    = 0,
+  MEDIUM_PRIO = 1,
+  HIGH_PRIO   = 2,
+  UNKOWN_PRIO = 3
+};
+#endif
 
 /// supported slice type
 enum SliceType

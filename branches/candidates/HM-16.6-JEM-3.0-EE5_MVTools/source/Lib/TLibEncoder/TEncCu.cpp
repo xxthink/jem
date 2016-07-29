@@ -3647,22 +3647,71 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
 #endif
 #if COM16_C806_OBMC
 #if JVET_C0024_QTBT
-  m_pcPredSearch->predInterSearch ( rpcTempCU, m_pppcOrigYuv[uiWIdx][uiHIdx], m_pppcPredYuvTemp[uiWIdx][uiHIdx], m_pppcResiYuvTemp[uiWIdx][uiHIdx], m_pppcRecoYuvTemp[uiWIdx][uiHIdx], m_pppcPredYuvWoOBMC[uiWIdx][uiHIdx], m_pppcTmpYuv1[uiWIdx][uiHIdx], m_pppcTmpYuv2[uiWIdx][uiHIdx], false, bUseMRG );
+#if JVET_C0068_MVR
+  if (bIMV)
+  {
+    m_pcPredSearch->predInterSearchTwice ( rpcTempCU, m_pppcOrigYuv[uiWIdx][uiHIdx], m_pppcPredYuvTemp[uiWIdx][uiHIdx], m_pppcResiYuvTemp[uiWIdx][uiHIdx], m_pppcRecoYuvTemp[uiWIdx][uiHIdx], m_pppcPredYuvWoOBMC[uiWIdx][uiHIdx], m_pppcTmpYuv1[uiWIdx][uiHIdx], m_pppcTmpYuv2[uiWIdx][uiHIdx], false, bUseMRG );
+  }
+  else
+  {
+    m_pcPredSearch->predInterSearch ( rpcTempCU, m_pppcOrigYuv[uiWIdx][uiHIdx], m_pppcPredYuvTemp[uiWIdx][uiHIdx], m_pppcResiYuvTemp[uiWIdx][uiHIdx], m_pppcRecoYuvTemp[uiWIdx][uiHIdx], m_pppcPredYuvWoOBMC[uiWIdx][uiHIdx], m_pppcTmpYuv1[uiWIdx][uiHIdx], m_pppcTmpYuv2[uiWIdx][uiHIdx], false, bUseMRG );
+  }
 #else
+  m_pcPredSearch->predInterSearch ( rpcTempCU, m_pppcOrigYuv[uiWIdx][uiHIdx], m_pppcPredYuvTemp[uiWIdx][uiHIdx], m_pppcResiYuvTemp[uiWIdx][uiHIdx], m_pppcRecoYuvTemp[uiWIdx][uiHIdx], m_pppcPredYuvWoOBMC[uiWIdx][uiHIdx], m_pppcTmpYuv1[uiWIdx][uiHIdx], m_pppcTmpYuv2[uiWIdx][uiHIdx], false, bUseMRG );
+#endif
+#else
+#if JVET_C0068_MVR
+  if (bIMV)
+  {
+    m_pcPredSearch->predInterSearchTwice ( rpcTempCU, m_ppcOrigYuv[uhDepth], m_ppcPredYuvTemp[uhDepth], m_ppcResiYuvTemp[uhDepth], m_ppcRecoYuvTemp[uhDepth], m_ppcPredYuvWoOBMC[uhDepth], m_ppcTmpYuv1[uhDepth], m_ppcTmpYuv2[uhDepth], false, bUseMRG );
+  }
+  else
+#endif
   m_pcPredSearch->predInterSearch ( rpcTempCU, m_ppcOrigYuv[uhDepth], m_ppcPredYuvTemp[uhDepth], m_ppcResiYuvTemp[uhDepth], m_ppcRecoYuvTemp[uhDepth], m_ppcPredYuvWoOBMC[uhDepth], m_ppcTmpYuv1[uhDepth], m_ppcTmpYuv2[uhDepth], false, bUseMRG );
 #endif
 #else
 #if JVET_C0024_QTBT
-  m_pcPredSearch->predInterSearch ( rpcTempCU, m_pppcOrigYuv[uiWIdx][uiHIdx], m_pppcPredYuvTemp[uiWIdx][uiHIdx], m_pppcResiYuvTemp[uiWIdx][uiHIdx], m_pppcRecoYuvTemp[uiWIdx][uiHIdx] , false, bUseMRG );
+  #if JVET_C0068_MVR
+  if (bIMV)
+  {
+    m_pcPredSearch->predInterSearchTwice ( rpcTempCU, m_pppcOrigYuv[uiWIdx][uiHIdx], m_pppcPredYuvTemp[uiWIdx][uiHIdx], m_pppcResiYuvTemp[uiWIdx][uiHIdx], m_pppcRecoYuvTemp[uiWIdx][uiHIdx] , false, bUseMRG );
+  }
+  else
+  {
+    m_pcPredSearch->predInterSearch ( rpcTempCU, m_pppcOrigYuv[uiWIdx][uiHIdx], m_pppcPredYuvTemp[uiWIdx][uiHIdx], m_pppcResiYuvTemp[uiWIdx][uiHIdx], m_pppcRecoYuvTemp[uiWIdx][uiHIdx] , false, bUseMRG );
+  }
 #else
+  m_pcPredSearch->predInterSearch ( rpcTempCU, m_pppcOrigYuv[uiWIdx][uiHIdx], m_pppcPredYuvTemp[uiWIdx][uiHIdx], m_pppcResiYuvTemp[uiWIdx][uiHIdx], m_pppcRecoYuvTemp[uiWIdx][uiHIdx] , false, bUseMRG );
+#endif  
+#else
+#if JVET_C0068_MVR
+  if (bIMV)
+  {
+    m_pcPredSearch->predInterSearchTwice ( rpcTempCU, m_ppcOrigYuv[uhDepth], m_ppcPredYuvTemp[uhDepth], m_ppcResiYuvTemp[uhDepth], m_ppcRecoYuvTemp[uhDepth] DEBUG_STRING_PASS_INTO(sTest), false, bUseMRG );
+  }
+  else
+#endif
   m_pcPredSearch->predInterSearch ( rpcTempCU, m_ppcOrigYuv[uhDepth], m_ppcPredYuvTemp[uhDepth], m_ppcResiYuvTemp[uhDepth], m_ppcRecoYuvTemp[uhDepth] DEBUG_STRING_PASS_INTO(sTest), false, bUseMRG );
 #endif
 #endif
 #else
 #if COM16_C806_OBMC
-  m_pcPredSearch->predInterSearch ( rpcTempCU, m_ppcOrigYuv[uhDepth], m_ppcPredYuvTemp[uhDepth], m_ppcResiYuvTemp[uhDepth], m_ppcRecoYuvTemp[uhDepth], m_ppcPredYuvWoOBMC[uhDepth], m_ppcTmpYuv1[uhDepth], m_ppcTmpYuv2[uhDepth] );
+#if JVET_C0068_MVR
+    if (bIMV)
+    {
+      m_pcPredSearch->predInterSearchTwice ( rpcTempCU, m_ppcOrigYuv[uhDepth], m_ppcPredYuvTemp[uhDepth], m_ppcResiYuvTemp[uhDepth], m_ppcRecoYuvTemp[uhDepth], m_ppcPredYuvWoOBMC[uhDepth], m_ppcTmpYuv1[uhDepth], m_ppcTmpYuv2[uhDepth]);
+    }
+    else
+    {
+      m_pcPredSearch->predInterSearch ( rpcTempCU, m_ppcOrigYuv[uhDepth], m_ppcPredYuvTemp[uhDepth], m_ppcResiYuvTemp[uhDepth], m_ppcRecoYuvTemp[uhDepth], m_ppcPredYuvWoOBMC[uhDepth], m_ppcTmpYuv1[uhDepth], m_ppcTmpYuv2[uhDepth]);
+    }
 #else
-  m_pcPredSearch->predInterSearch ( rpcTempCU, m_ppcOrigYuv[uhDepth], m_ppcPredYuvTemp[uhDepth], m_ppcResiYuvTemp[uhDepth], m_ppcRecoYuvTemp[uhDepth] );
+    {
+      m_pcPredSearch->predInterSearch ( rpcTempCU, m_ppcOrigYuv[uhDepth], m_ppcPredYuvTemp[uhDepth], m_ppcResiYuvTemp[uhDepth], m_ppcRecoYuvTemp[uhDepth], m_ppcPredYuvWoOBMC[uhDepth], m_ppcTmpYuv1[uhDepth], m_ppcTmpYuv2[uhDepth] );
+    }
+#endif
+#else
+    m_pcPredSearch->predInterSearch ( rpcTempCU, m_ppcOrigYuv[uhDepth], m_ppcPredYuvTemp[uhDepth], m_ppcResiYuvTemp[uhDepth], m_ppcRecoYuvTemp[uhDepth] );
 #endif
 #endif
 
@@ -4278,6 +4327,9 @@ Void TEncCu::xCopyAMVPInfo (AMVPInfo* pSrc, AMVPInfo* pDst)
   for (Int i = 0; i < pSrc->iN; i++)
   {
     pDst->m_acMvCand[i] = pSrc->m_acMvCand[i];
+#if JVET_C0068_PBL
+    pDst->isScaled[i]   = pSrc->isScaled[i];
+#endif
   }
 }
 #if JVET_C0024_QTBT

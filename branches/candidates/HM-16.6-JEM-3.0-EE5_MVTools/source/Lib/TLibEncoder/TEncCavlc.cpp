@@ -1483,7 +1483,11 @@ Void TEncCavlc::codeRefFrmIdx( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, RefP
   assert(0);
 }
 
-Void TEncCavlc::codeMvd( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, RefPicList /*eRefList*/ )
+Void TEncCavlc::codeMvd( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, RefPicList /*eRefList*/ 
+#if JVET_C0068_SDH
+                        , UInt uiMode
+#endif
+                        )
 {
   assert(0);
 }

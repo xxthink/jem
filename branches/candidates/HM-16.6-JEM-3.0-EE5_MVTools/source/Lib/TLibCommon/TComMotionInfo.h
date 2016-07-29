@@ -59,6 +59,9 @@ typedef struct _AMVPInfo
 {
   TComMv m_acMvCand[ AMVP_MAX_NUM_CANDS_MEM ];  ///< array of motion vector predictor candidates
   Int    iN;                                ///< number of motion vector predictor candidates
+#if JVET_C0068_PBL
+  PredMvPrio isScaled[ AMVP_MAX_NUM_CANDS_MEM ];
+#endif
 } AMVPInfo;
 
 #if COM16_C1016_AFFINE
