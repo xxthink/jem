@@ -186,6 +186,9 @@ public:
 #if COM16_C1016_AFFINE
   virtual Void parseAffineFlag    ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPuIdx ) = 0;
   virtual Void parseAffineMvd     ( TComDataCU* pcCU, UInt uiAbsPartAddr, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList ) = 0;
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  virtual Void parseAffineParamFlag(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPuIdx) = 0;
+#endif
 #endif
 };
 
@@ -349,8 +352,10 @@ public:
 
 #if COM16_C1016_AFFINE
   Void decodeAffineFlag        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPuIdx );
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  Void decodeAffineParamFlag    (TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPuIdx);
 #endif
-
+#endif
 
 };// END CLASS DEFINITION TDecEntropy
 

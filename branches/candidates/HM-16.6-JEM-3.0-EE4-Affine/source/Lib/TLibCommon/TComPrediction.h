@@ -321,9 +321,14 @@ public:
 
 #if COM16_C1016_AFFINE
   Bool xCheckIdenticalAffineMotion ( TComDataCU* pcCU, UInt PartAddr, Int iWidth, Int iHeight );
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  Void xPredAffineBlk              ( const ComponentID compID, TComDataCU *cu, TComPicYuv *refPic, UInt partAddr, TComMv acMv[3], Int width, Int height, TComYuv *dstPic, Bool bi, const Int bitDepth, Bool b6Param);
+  Void getMvPredAffineAMVP         ( TComDataCU* pcCU, UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefPicList, TComMv acMvPred[3], Bool b6Param);
+#else
   Void xPredAffineBlk              ( const ComponentID compID, TComDataCU *cu, TComPicYuv *refPic, UInt partAddr, TComMv acMv[3], Int width, Int height, TComYuv *dstPic, Bool bi, const Int bitDepth );
 
   Void getMvPredAffineAMVP         ( TComDataCU* pcCU, UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefPicList, TComMv acMvPred[3] );
+#endif
 #endif
 
   Pel  predIntraGetPredValDC      ( const Pel* pSrc, Int iSrcStride, UInt iWidth, UInt iHeight);

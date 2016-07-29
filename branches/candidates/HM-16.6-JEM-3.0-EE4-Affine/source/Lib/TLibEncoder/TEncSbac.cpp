@@ -142,6 +142,9 @@ TEncSbac::TEncSbac()
 #if COM16_C1016_AFFINE
 , m_cCUAffineFlagSCModel               ( 1,             1,               NUM_AFFINE_FLAG_CTX           , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
+#if JVECT_C0062_AFFINE_SIX_PARAM
+, m_cCUAffineParamFlagSCModel(1, 1, NUM_AFFINE_FLAG_CTX, m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 {
   assert( m_numContextModels <= MAX_NUM_CTX_MOD );
 }
@@ -243,6 +246,9 @@ Void TEncSbac::resetEntropy           (const TComSlice *pSlice)
 #if COM16_C1016_AFFINE
   m_cCUAffineFlagSCModel.initBuffer               ( eSliceType, iQp, (UChar*)INIT_AFFINE_FLAG );
 #endif
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  m_cCUAffineParamFlagSCModel.initBuffer(eSliceType, iQp, (UChar*)INIT_AFFINE_FLAG);
+#endif
 
   for (UInt statisticIndex = 0; statisticIndex < RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS ; statisticIndex++)
   {
@@ -342,6 +348,9 @@ SliceType TEncSbac::determineCabacInitIdx(const TComSlice *pSlice)
 #endif
 #if COM16_C1016_AFFINE
       curCost += m_cCUAffineFlagSCModel.calcCost               ( curSliceType, qp, (UChar*)INIT_AFFINE_FLAG );
+#endif
+#if JVECT_C0062_AFFINE_SIX_PARAM
+      curCost += m_cCUAffineParamFlagSCModel.calcCost(curSliceType, qp, (UChar*)INIT_AFFINE_FLAG);
 #endif
       if (curCost < bestCost)
       {
@@ -3433,6 +3442,29 @@ Void TEncSbac::codeAffineFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
   DTRACE_CABAC_V( uiSymbol );
   DTRACE_CABAC_T( "\n");
 }
+#endif
+
+#if JVECT_C0062_AFFINE_SIX_PARAM
+Void TEncSbac::codeAffineParamFlag(TComDataCU* pcCU, UInt uiAbsPartIdx)
+{
+  // get context function is here
+  UInt uiSymbol = pcCU->getAffineParamFlag(uiAbsPartIdx) ? 1 : 0;
+  assert(pcCU->isAffine(uiAbsPartIdx));
+
+
+  UInt uiCtxAffine = pcCU->getCtxAffineParamFlag(uiAbsPartIdx);
+  m_pcBinIf->encodeBin(uiSymbol, m_cCUAffineParamFlagSCModel.get(0, 0, uiCtxAffine));
+
+
+  DTRACE_CABAC_VL(g_nSymbolCounter++);
+  DTRACE_CABAC_T("\tAffineFlag");
+  DTRACE_CABAC_T("\tuiCtxAffine: ");
+  DTRACE_CABAC_V(uiCtxAffine);
+  DTRACE_CABAC_T("\tuiSymbol: ");
+  DTRACE_CABAC_V(uiSymbol);
+  DTRACE_CABAC_T("\n");
+}
+
 #endif
 
 #if VCEG_AZ07_BAC_ADAPT_WDOW

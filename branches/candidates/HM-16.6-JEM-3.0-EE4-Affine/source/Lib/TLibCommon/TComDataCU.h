@@ -236,6 +236,9 @@ private:
 #if COM16_C1016_AFFINE
   Bool*         m_affineFlag;         ///< array of affine flags
 #endif
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  Bool*         m_affineParamFlag;         ///< array of affine flags
+#endif
 
   // -------------------------------------------------------------------------------------------------------------------
   // misc. variables
@@ -677,16 +680,35 @@ public:
   Bool         isAffine                 ( UInt uiAbsPartIdx );
   UInt         getCtxAffineFlag         ( UInt uiAbsPartIdx );
 
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  UInt         getCtxAffineParamFlag(UInt uiAbsPartIdx);
+  Bool*        getAffineParamFlag()                       { return m_affineParamFlag; }
+  Bool         getAffineParamFlag(UInt idx)             { return m_affineParamFlag[idx]; }
+  Void         setAffineParamFlag(UInt idx, Bool affineParam) { m_affineParamFlag[idx] = affineParam; }
+  Void         setAffineParamFlagSubParts(Bool bAffineParamFlag, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth);
+
+  Void         setAllAffineMvField      ( UInt uiAbsPartIdx, UInt uiPuIdx, TComMvField *pcMvField, RefPicList eRefPicList, UInt uiDepth, Bool b6Param);
+  Void         setAllAffineMv           ( UInt uiAbsPartIdx, UInt uiPuIdx, TComMv acMv[3], RefPicList eRefPicList, UInt uiDepth, Bool b6Param);
+#else
   Void         setAllAffineMvField      ( UInt uiAbsPartIdx, UInt uiPuIdx, TComMvField *pcMvField, RefPicList eRefPicList, UInt uiDepth );
   Void         setAllAffineMv           ( UInt uiAbsPartIdx, UInt uiPuIdx, TComMv acMv[3], RefPicList eRefPicList, UInt uiDepth );
+#endif
   Void         setAllAffineMvd          ( UInt uiAbsPartIdx, UInt uiPuIdx, TComMv acMvd[3], RefPicList eRefPicList, UInt uiDepth );
 
   // construct affine inter candidate list
-  Void         fillAffineMvpCand ( UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefPicList, Int iRefIdx, AffineAMVPInfo* pInfo );
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  Void         fillAffineMvpCand      ( UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefPicList, Int iRefIdx, AffineAMVPInfo* pInfo, Bool b6Param);
+  Bool         isValidAffineCandidate ( UInt uiAbsPartIdx, UInt uiPUIdx, TComMv cMv0, TComMv cMv1, TComMv cMv2, Int& riDV, Bool b6Param);
+#else
+  Void         fillAffineMvpCand      ( UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefPicList, Int iRefIdx, AffineAMVPInfo* pInfo );
   Bool         isValidAffineCandidate ( UInt uiAbsPartIdx, UInt uiPUIdx, TComMv cMv0, TComMv cMv1, TComMv cMv2, Int& riDV );
-
+#endif
   // construct affine merge candidate list
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  Void         getAffineMergeCandidates (UInt uiAbsPartIdx, UInt uiPuIdx, TComMvField(*pcMFieldNeighbours)[3], UChar* puhInterDirNeighbours, Int& numValidMergeCand, UInt& neighborAffineParam, Int mrgCandIdx = -1);
+#else
   Void         getAffineMergeCandidates ( UInt uiAbsPartIdx, UInt uiPuIdx, TComMvField (*pcMFieldNeighbours)[3], UChar* puhInterDirNeighbours, Int& numValidMergeCand, Int mrgCandIdx = -1 );
+#endif
   Bool         isAffineMrgFlagCoded     ( UInt uiAbsPartIdx, UInt uiPUIdx );
 #endif
 

@@ -3176,6 +3176,9 @@ Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTem
 #if COM16_C806_OBMC
       rpcTempCU->setOBMCFlagSubParts( true, 0, uhDepth );
 #endif
+#if JVECT_C0062_AFFINE_SIX_PARAM
+      rpcTempCU->setAffineFlagSubParts(false, 0, 0, uhDepth);
+#endif
 #if VCEG_AZ06_IC
       rpcTempCU->setICFlagSubParts( rpcTempCU->getSlice()->getApplyIC() ? abICFlag[uiMergeCand] : 0, 0, uhDepth );
 #endif
@@ -3290,6 +3293,9 @@ Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTem
           rpcTempCU->setMergeIndexSubParts( uiMergeCand, 0, 0, uhDepth ); // interprets depth relative to CTU level
 #if COM16_C806_OBMC
           rpcTempCU->setOBMCFlagSubParts( true, 0, uhDepth );
+#endif
+#if JVECT_C0062_AFFINE_SIX_PARAM
+          rpcTempCU->setAffineFlagSubParts(false, 0, 0, uhDepth);
 #endif
 #if VCEG_AZ06_IC
           rpcTempCU->setICFlagSubParts( rpcTempCU->getSlice()->getApplyIC() ? abICFlag[uiMergeCand] : 0, 0, uhDepth );
@@ -3456,6 +3462,10 @@ Void TEncCu::xCheckRDCostMerge2Nx2NFRUC( TComDataCU*& rpcBestCU, TComDataCU*& rp
     rpcTempCU->setPartSizeSubParts( SIZE_2Nx2N, 0, uhDepth ); 
 #endif
     rpcTempCU->setPredModeSubParts( MODE_INTER, 0, uhDepth ); // interprets depth relative to LCU level
+#if JVECT_C0062_AFFINE_SIX_PARAM
+    rpcTempCU->setAffineFlagSubParts(false, 0, 0, uhDepth);
+    rpcTempCU->setAffineParamFlagSubParts(0, 0, 0, uhDepth);
+#endif
     rpcTempCU->setCUTransquantBypassSubParts( false,     0, uhDepth );
     rpcTempCU->setMergeFlagSubParts( true, 0, 0, uhDepth ); // interprets depth relative to LCU level
     rpcTempCU->setMergeIndexSubParts( 0, 0, 0, uhDepth ); // interprets depth relative to LCU level
@@ -4472,7 +4482,14 @@ Void TEncCu::xCheckRDCostAffineMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& 
   rpcTempCU->setPartSizeSubParts( SIZE_2Nx2N, 0, uhDepth );
 #endif
 
+
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  UInt neighborAffineParam = 0;
+  rpcTempCU->getAffineMergeCandidates(0, 0, cAffineMvField, uhInterDirNeighbours, numValidMergeCand, neighborAffineParam);
+  assert(neighborAffineParam == 0 || neighborAffineParam == 1);
+#else
   rpcTempCU->getAffineMergeCandidates( 0, 0, cAffineMvField, uhInterDirNeighbours, numValidMergeCand );
+#endif
   if ( numValidMergeCand == -1 )
   {
     return;
@@ -4503,11 +4520,21 @@ Void TEncCu::xCheckRDCostAffineMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& 
         rpcTempCU->setPartSizeSubParts( SIZE_2Nx2N, 0, uhDepth );
 #endif
         rpcTempCU->setAffineFlagSubParts( true, 0, 0, uhDepth );
+#if JVECT_C0062_AFFINE_SIX_PARAM
+        rpcTempCU->setAffineParamFlagSubParts(neighborAffineParam, 0, 0, uhDepth);
+#endif
         rpcTempCU->setMergeFlagSubParts( true, 0, 0, uhDepth );
         rpcTempCU->setMergeIndexSubParts( uiMergeCand, 0, 0, uhDepth );
         rpcTempCU->setInterDirSubParts( uhInterDirNeighbours[uiMergeCand], 0, 0, uhDepth );
+#if JVECT_C0062_AFFINE_SIX_PARAM
+        Bool b6Param = neighborAffineParam;
+        rpcTempCU->setAllAffineMvField(0, 0, cAffineMvField[0 + 2 * uiMergeCand], REF_PIC_LIST_0, 0, b6Param);
+        rpcTempCU->setAllAffineMvField(0, 0, cAffineMvField[1 + 2 * uiMergeCand], REF_PIC_LIST_1, 0, b6Param);
+#else
         rpcTempCU->setAllAffineMvField( 0, 0, cAffineMvField[0 + 2*uiMergeCand], REF_PIC_LIST_0, 0 );
         rpcTempCU->setAllAffineMvField( 0, 0, cAffineMvField[1 + 2*uiMergeCand], REF_PIC_LIST_1, 0 );
+#endif
+
 
 #if COM16_C806_OBMC
         rpcTempCU->setOBMCFlagSubParts( true, 0, uhDepth );

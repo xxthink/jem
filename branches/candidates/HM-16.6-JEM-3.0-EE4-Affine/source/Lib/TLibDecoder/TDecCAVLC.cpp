@@ -2503,7 +2503,12 @@ Void TDecCavlc::parseAffineFlag( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UI
 {
   assert(0);
 }
-
+#if JVECT_C0062_AFFINE_SIX_PARAM
+Void TDecCavlc::parseAffineParamFlag(TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/, UInt /*uiPuIdx*/)
+{
+  assert(0);
+}
+#endif
 Void  TDecCavlc::parseAffineMvd( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiPartIdx*/, UInt /*uiDepth*/, RefPicList /*eRefList*/ )
 {
   assert(0);

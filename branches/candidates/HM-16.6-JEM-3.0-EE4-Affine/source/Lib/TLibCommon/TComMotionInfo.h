@@ -115,7 +115,11 @@ private:
   UInt      m_uiNumPartition;
   AMVPInfo  m_cAMVPInfo;
 #if COM16_C1016_AFFINE
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  AffineAMVPInfo m_cAffineAMVPInfo[2];
+#else
   AffineAMVPInfo m_cAffineAMVPInfo;
+#endif
 #endif
 #if JVET_C0024_QTBT
   TComDataCU* m_pcCU;
@@ -163,7 +167,11 @@ public:
 
 #if COM16_C1016_AFFINE
   Void            setMvd   ( TComMv cMvd, Int iIdx )     { m_pcMvd   [iIdx] = cMvd;    }
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  AffineAMVPInfo* getAffineAMVPInfo(UInt idx) { return &m_cAffineAMVPInfo[idx]; }
+#else
   AffineAMVPInfo* getAffineAMVPInfo () { return &m_cAffineAMVPInfo; }
+#endif
 #endif
 
   AMVPInfo* getAMVPInfo () { return &m_cAMVPInfo; }

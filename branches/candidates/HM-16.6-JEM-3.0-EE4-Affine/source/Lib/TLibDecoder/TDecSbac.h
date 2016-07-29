@@ -226,6 +226,9 @@ public:
 #if COM16_C1016_AFFINE
   Void  parseAffineFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPuIdx );
   Void  parseAffineMvd        ( TComDataCU* pcCU, UInt uiAbsPartAddr, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList );
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  Void  parseAffineParamFlag   (TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPuIdx);
+#endif
 #endif
 
   Void  parseExplicitRdpcmMode( TComTU &rTu, ComponentID compID );
@@ -316,6 +319,9 @@ private:
 
 #if COM16_C1016_AFFINE
   ContextModel3DBuffer m_cCUAffineFlagSCModel;
+#endif
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  ContextModel3DBuffer m_cCUAffineParamFlagSCModel;
 #endif
 
   UInt m_golombRiceAdaptationStatistics[RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS];

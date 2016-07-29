@@ -221,6 +221,9 @@ public:
 #if COM16_C1016_AFFINE
   Void codeAffineFlag    ( TComDataCU* pcCU, UInt uiAbsPartIdx );
 #endif
+#if JVECT_C0062_AFFINE_SIX_PARAM
+  Void codeAffineParamFlag(TComDataCU* pcCU, UInt uiAbsPartIdx);
+#endif
 };
 
 //! \}

@@ -611,7 +611,15 @@ protected:
                                   Int         iPartIdx,
                                   UInt&       ruiLastMode,
                                   Distortion& ruiAffineCost,
-                                  TComMv      cHevcMv[2][33] );
+                                  TComMv      cHevcMv[2][33] 
+#if JVECT_C0062_AFFINE_SIX_PARAM
+                                  , UInt affineParam
+                                  , UInt&uiBestAffineParam
+
+                                  , TComMv cMVBest[2][3], Int iBestRefIdx[2], TComMv bestMVD[2][3],
+                                  Int&bestDir, Int bestMVPIdx[2], Int bestMVPNum[2]
+#endif    
+                                  );
 
   Void xAffineMotionEstimation  ( TComDataCU*   pcCU,
                                   TComYuv*      pcYuvOrg,
@@ -622,6 +630,9 @@ protected:
                                   TComMv        acMv[3],
                                   UInt&         ruiBits,
                                   Distortion&   ruiCost,
+#if JVECT_C0062_AFFINE_SIX_PARAM
+                                  Bool          b6Param,
+#endif
                                   Bool          bBi = false  );
   
   Bool xEstimateAffineAMVP      ( TComDataCU*   pcCU, 
@@ -630,7 +641,11 @@ protected:
                                   RefPicList    eRefPicList, 
                                   Int           iRefIdx,
                                   TComMv        acMvPred[3], 
-                                  Distortion*   puiDistBiP );
+                                  Distortion*   puiDistBiP
+#if JVECT_C0062_AFFINE_SIX_PARAM
+                                  , Bool b6Param
+#endif
+                                  );
 
   Distortion xGetAffineTemplateCost ( TComDataCU* pcCU,
                                       UInt        uiPartAddr,
@@ -642,7 +657,11 @@ protected:
                                       RefPicList  eRefPicList,
                                       Int         iRefIdx,
                                       Int         iSizeX,
-                                      Int         iSizeY );
+                                      Int         iSizeY
+#if JVECT_C0062_AFFINE_SIX_PARAM
+                                      , Bool b6Param
+#endif
+                                      );
 
   Void xCopyAffineAMVPInfo     ( AffineAMVPInfo* pSrc, AffineAMVPInfo* pDst );
 
@@ -653,7 +672,11 @@ protected:
                                   TComMv acMv[3], TComMv acMvPred[3],
                                   Int&        riMVPIdx,
                                   UInt&       ruiBits,
-                                  Distortion& ruiCost );
+                                  Distortion& ruiCost
+#if JVECT_C0062_AFFINE_SIX_PARAM
+                                  , Bool b6Param
+#endif
+                                  );
 #endif
 
   Void xExtDIFUpSamplingH( TComPattern* pcPattern );
