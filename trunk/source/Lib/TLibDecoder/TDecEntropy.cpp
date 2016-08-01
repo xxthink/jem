@@ -1159,6 +1159,10 @@ Void TDecEntropy::decodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
 #endif
 
 #if JVET_C0024_QTBT
+#if JVET_C0024_DELTA_QP_FIX
+  Bool validCbf       = false;
+  Bool validChromaCbf = false;
+#endif
   if (isChroma(pcCU->getTextType()) || !pcCU->getSlice()->isIntra())
   {
     const UInt numValidComponent = pcCU->getPic()->getNumberValidComponents();
@@ -1166,12 +1170,43 @@ Void TDecEntropy::decodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
     {
       const ComponentID compID=ComponentID(ch);
       xDecodeTransform( bCodeDQP, isChromaQpAdjCoded, tuRecurse, compID);
+#if JVET_C0024_DELTA_QP_FIX
+      if( pcCU->getCbf( uiAbsPartIdx, compID ) )
+      {
+        validCbf = true;
+        validChromaCbf = true;
+      }
+#endif
     }
   }
   if (isLuma(pcCU->getTextType()))
   {
     xDecodeTransform( bCodeDQP, isChromaQpAdjCoded, tuRecurse, COMPONENT_Y);
+#if JVET_C0024_DELTA_QP_FIX
+    if( pcCU->getCbf( uiAbsPartIdx, COMPONENT_Y ) )
+    {
+      validCbf = true;
+    }
+#endif
   }
+
+#if JVET_C0024_DELTA_QP_FIX
+  if( pcCU->getSlice()->getPPS()->getUseDQP() && validCbf && bCodeDQP )
+  {
+    decodeQP( pcCU, uiAbsPartIdx );
+    bCodeDQP = false;
+  }
+
+  if ( pcCU->getSlice()->getUseChromaQpAdj() )
+  {
+    if ( validChromaCbf && isChromaQpAdjCoded && !pcCU->getCUTransquantBypass(uiAbsPartIdx) )
+    {
+      decodeChromaQpAdjustment( pcCU, uiAbsPartIdx );
+      isChromaQpAdjCoded = false;
+    }
+  }
+#endif
+
 #if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
 #if !QTBT_NSST
   Int bCbfCU = pcCU->getSlice()->isIntra() ? (isLuma(pcCU->getTextType()) ? pcCU->getCbf(uiAbsPartIdx, COMPONENT_Y)

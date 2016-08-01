@@ -287,6 +287,12 @@ Void TDecCu::decodeCtu( TComDataCU* pCtu, Bool& isLastCtuOfSliceSegment )
   if ( pCtu->getSlice()->getPPS()->getUseDQP() )
   {
     setdQPFlag(true);
+#if JVET_C0024_DELTA_QP_FIX // init current quantization unit info.
+    Char qp = pCtu->getCtuLastCodedQP();
+    pCtu->setQuPartIdx(0); 
+    pCtu->setQuLastCodedQP( qp );
+    pCtu->setCodedQP( qp );
+#endif
   }
 
   if ( pCtu->getSlice()->getUseChromaQpAdj() )
@@ -309,6 +315,18 @@ Void TDecCu::decodeCtu( TComDataCU* pCtu, Bool& isLastCtuOfSliceSegment )
   {
     pCtu->getSlice()->setTextType(CHANNEL_TYPE_CHROMA);
     pCtu->getPic()->setCodedAreaInCTU(0);
+#if JVET_C0024_DELTA_QP_FIX
+    if ( pCtu->getSlice()->getPPS()->getUseDQP() )
+    {
+      setdQPFlag(true);
+#if JVET_C0024_DELTA_QP_FIX // init current quantization unit info.
+      Char qp = pCtu->getCtuLastCodedQP();
+      pCtu->setQuPartIdx(0); 
+      pCtu->setQuLastCodedQP( qp );
+      pCtu->setCodedQP( qp );
+#endif
+    }
+#endif
     // start from the top level CU
     xDecodeCU( pCtu, 0, 0, uiCTUSize, uiCTUSize, isLastCtuOfSliceSegment);
   }
@@ -411,6 +429,12 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
     assert(uiWidth == uiHeight);
   }
   UInt uiCTUSize = pcCU->getSlice()->getSPS()->getCTUSize();
+#if JVET_C0024_DELTA_QP_FIX
+  UInt uiQTWidth = uiCTUSize>>uiDepth;
+  UInt uiQTHeight = uiCTUSize>>uiDepth;
+  const UInt uiQTBTDepth = (uiDepth << 1) + (g_aucConvertToBit[uiQTWidth]-g_aucConvertToBit[uiWidth] + g_aucConvertToBit[uiQTHeight]-g_aucConvertToBit[uiHeight]);
+  const UInt uiMaxDQPDepthQTBT = pps.getMaxCuDQPDepth() << 1;
+#endif
   if (uiCTUSize>>uiDepth == uiWidth && uiWidth==uiHeight)
   {
 #endif
@@ -448,10 +472,22 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
 #endif
   {
     UInt uiIdx = uiAbsPartIdx;
+#if JVET_C0024_DELTA_QP_FIX
+    if( uiQTBTDepth == uiMaxDQPDepthQTBT && pps.getUseDQP())
+#else
     if( uiDepth == pps.getMaxCuDQPDepth() && pps.getUseDQP())
+#endif
     {
       setdQPFlag(true);
+#if JVET_C0024_DELTA_QP_FIX
+      pcCU->setQuPartIdx( uiAbsPartIdx );
+      pcCU->setQuLastCodedQP( pcCU->getCodedQP() );
+#endif
+#if JVET_C0024_DELTA_QP_FIX
+      pcCU->setQPSubParts( pcCU->getRefQP(uiAbsPartIdx), uiAbsPartIdx, uiWidth, uiHeight ); // set QP to default QP
+#else
       pcCU->setQPSubParts( pcCU->getRefQP(uiAbsPartIdx), uiAbsPartIdx, uiDepth ); // set QP to default QP
+#endif
     }
 
     if( uiDepth == pps.getPpsRangeExtension().getDiffCuChromaQpOffsetDepth() && pcCU->getSlice()->getUseChromaQpAdj() )
@@ -482,12 +518,23 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
 
       uiIdx += uiQNumParts;
     }
+#if JVET_C0024_DELTA_QP_FIX
+    if( uiQTBTDepth == uiMaxDQPDepthQTBT && pps.getUseDQP())
+#else
     if( uiDepth == pps.getMaxCuDQPDepth() && pps.getUseDQP())
+#endif
     {
       if ( getdQPFlag() )
       {
         UInt uiQPSrcPartIdx = uiAbsPartIdx;
+#if JVET_C0024_DELTA_QP_FIX
+        pcCU->setQPSubParts( pcCU->getRefQP( uiQPSrcPartIdx ), uiAbsPartIdx, uiWidth, uiHeight ); // set QP to default QP
+#else
         pcCU->setQPSubParts( pcCU->getRefQP( uiQPSrcPartIdx ), uiAbsPartIdx, uiDepth ); // set QP to default QP
+#endif
+#if JVET_C0024_DELTA_QP_FIX
+        pcCU->setCodedQP( pcCU->getQP(uiQPSrcPartIdx) );
+#endif
       }
     }
     return;
@@ -527,6 +574,17 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
 #endif
     if (pcCU->getBTSplitModeForBTDepth(uiAbsPartIdx, uiBTDepth)==1)
     {
+#if JVET_C0024_DELTA_QP_FIX
+      if( uiQTBTDepth == uiMaxDQPDepthQTBT && pps.getUseDQP())
+      {
+        setdQPFlag(true);
+#if JVET_C0024_DELTA_QP_FIX
+        pcCU->setQuPartIdx( uiAbsPartIdx );
+        pcCU->setQuLastCodedQP( pcCU->getCodedQP() );
+#endif
+        pcCU->setQPSubParts( pcCU->getRefQP(uiAbsPartIdx), uiAbsPartIdx, uiWidth, uiHeight ); // set QP to default QP
+      }
+#endif
       for ( UInt uiPartUnitIdx = 0; uiPartUnitIdx < 2; uiPartUnitIdx++ )
       {
         if (uiPartUnitIdx==1)
@@ -544,10 +602,34 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
         xDecodeCU( pcCU, uiIdxBT, uiDepth, uiWidth, uiHeight>>1, isLastCtuOfSliceSegment );
 #endif
       }
+#if JVET_C0024_DELTA_QP_FIX
+      if( uiQTBTDepth == uiMaxDQPDepthQTBT && pps.getUseDQP())
+      {
+        if ( getdQPFlag() )
+        {
+          UInt uiQPSrcPartIdx = uiAbsPartIdx;
+          pcCU->setQPSubParts( pcCU->getRefQP( uiQPSrcPartIdx ), uiAbsPartIdx, uiWidth, uiHeight ); // set QP to default QP
+#if JVET_C0024_DELTA_QP_FIX
+          pcCU->setCodedQP( pcCU->getQP(uiQPSrcPartIdx) );
+#endif
+        }
+      }
+#endif
       return;
     }
     else if (pcCU->getBTSplitModeForBTDepth(uiAbsPartIdx, uiBTDepth)==2)
     {
+#if JVET_C0024_DELTA_QP_FIX
+      if( uiQTBTDepth == uiMaxDQPDepthQTBT && pps.getUseDQP())
+      {
+        setdQPFlag(true);
+#if JVET_C0024_DELTA_QP_FIX
+        pcCU->setQuPartIdx( uiAbsPartIdx );
+        pcCU->setQuLastCodedQP( pcCU->getCodedQP() );
+#endif
+        pcCU->setQPSubParts( pcCU->getRefQP(uiAbsPartIdx), uiAbsPartIdx, uiWidth, uiHeight ); // set QP to default QP
+      }
+#endif
       for ( UInt uiPartUnitIdx = 0; uiPartUnitIdx < 2; uiPartUnitIdx++ )
       {
         if (uiPartUnitIdx==1)
@@ -565,6 +647,19 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
         xDecodeCU( pcCU, uiIdxBT, uiDepth, uiWidth>>1, uiHeight, isLastCtuOfSliceSegment );
 #endif
       }
+#if JVET_C0024_DELTA_QP_FIX
+      if( uiQTBTDepth == uiMaxDQPDepthQTBT && pps.getUseDQP())
+      {
+        if ( getdQPFlag() )
+        {
+          UInt uiQPSrcPartIdx = uiAbsPartIdx;
+          pcCU->setQPSubParts( pcCU->getRefQP( uiQPSrcPartIdx ), uiAbsPartIdx, uiWidth, uiHeight ); // set QP to default QP
+#if JVET_C0024_DELTA_QP_FIX
+          pcCU->setCodedQP( pcCU->getQP(uiQPSrcPartIdx) );
+#endif
+        }
+      }
+#endif
       return;
     }  
   }
@@ -581,10 +676,22 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
   assert(g_aucConvertToBit[uiWidth]>=0 && g_aucConvertToBit[uiHeight]>=0);
 #endif
 
+#if JVET_C0024_DELTA_QP_FIX
+  if( uiQTBTDepth <= uiMaxDQPDepthQTBT && pps.getUseDQP())
+#else
   if( uiDepth <= pps.getMaxCuDQPDepth() && pps.getUseDQP())
+#endif
   {
     setdQPFlag(true);
+#if JVET_C0024_DELTA_QP_FIX
+    pcCU->setQuPartIdx( uiAbsPartIdx );
+    pcCU->setQuLastCodedQP( pcCU->getCodedQP() );
+#endif
+#if JVET_C0024_DELTA_QP_FIX
+    pcCU->setQPSubParts( pcCU->getRefQP(uiAbsPartIdx), uiAbsPartIdx, uiWidth, uiHeight ); // set QP to default QP
+#else
     pcCU->setQPSubParts( pcCU->getRefQP(uiAbsPartIdx), uiAbsPartIdx, uiDepth ); // set QP to default QP
+#endif
   }
 
   if( uiDepth <= pps.getPpsRangeExtension().getDiffCuChromaQpOffsetDepth() && pcCU->getSlice()->getUseChromaQpAdj() )
@@ -742,7 +849,14 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
 #if JVET_C0024_QTBT
     if(  pcCU->getSlice()->getPPS()->getUseDQP())
     {
+#if JVET_C0024_DELTA_QP_FIX
+      pcCU->setQPSubParts( getdQPFlag()?pcCU->getRefQP(uiAbsPartIdx):pcCU->getCodedQP(), uiAbsPartIdx, uiWidth, uiHeight ); // set QP
+#else
       pcCU->setQPSubParts( getdQPFlag()?pcCU->getRefQP(uiAbsPartIdx):pcCU->getCodedQP(), uiAbsPartIdx, uiDepth ); // set QP
+#endif
+#if JVET_C0024_DELTA_QP_FIX
+      pcCU->setCodedQP( pcCU->getQP(uiAbsPartIdx) );
+#endif
     }
 
     if (pcCU->getSlice()->getUseChromaQpAdj() && !getIsChromaQpAdjCoded())
@@ -785,7 +899,14 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
 #if JVET_C0024_QTBT
       if(  pcCU->getSlice()->getPPS()->getUseDQP())
       {
+#if JVET_C0024_DELTA_QP_FIX
+        pcCU->setQPSubParts( getdQPFlag()?pcCU->getRefQP(uiAbsPartIdx):pcCU->getCodedQP(), uiAbsPartIdx, uiWidth, uiHeight ); // set QP
+#else
         pcCU->setQPSubParts( getdQPFlag()?pcCU->getRefQP(uiAbsPartIdx):pcCU->getCodedQP(), uiAbsPartIdx, uiDepth ); // set QP
+#endif
+#if JVET_C0024_DELTA_QP_FIX
+        pcCU->setCodedQP( pcCU->getQP(uiAbsPartIdx) );
+#endif
       }
 
       if (pcCU->getSlice()->getUseChromaQpAdj() && !getIsChromaQpAdjCoded())
@@ -821,7 +942,14 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
 #if JVET_C0024_QTBT
   if(  pcCU->getSlice()->getPPS()->getUseDQP())
   {
+#if JVET_C0024_DELTA_QP_FIX
+    pcCU->setQPSubParts( getdQPFlag()?pcCU->getRefQP(uiAbsPartIdx):pcCU->getCodedQP(), uiAbsPartIdx, uiWidth, uiHeight ); // set QP
+#else
     pcCU->setQPSubParts( getdQPFlag()?pcCU->getRefQP(uiAbsPartIdx):pcCU->getCodedQP(), uiAbsPartIdx, uiDepth ); // set QP
+#endif
+#if JVET_C0024_DELTA_QP_FIX
+    pcCU->setCodedQP( pcCU->getQP(uiAbsPartIdx) );
+#endif
   }
 
   if (pcCU->getSlice()->getUseChromaQpAdj() && !getIsChromaQpAdjCoded())

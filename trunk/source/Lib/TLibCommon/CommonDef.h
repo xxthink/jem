@@ -422,6 +422,10 @@ static const Double MRG_FAST_RATIO    =                             1.25;
 static const Double PBINTRA_RATIO     =                             1.1;
 #endif
 
+#if JVET_C0024_ZERO_OUT_FIX
+static const Int    JVET_C0024_ZERO_OUT_TH =                        32;
+#endif
+
 //QTBT high level parameters
 //for I slice luma CTB configuration para.
 static const Int    MAX_BT_DEPTH  =                                 4;      ///<  <=7
