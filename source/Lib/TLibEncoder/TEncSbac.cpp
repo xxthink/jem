@@ -2254,11 +2254,11 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
 
  
 #if JVET_C0046_ZO_ASSERT && JVET_C0046_ZO_ASSERT_LAST_COEF
-  if ( (uiLog2BlockWidth + uiLog2BlockHeight) > TH_LOG2TBAREASIZE && 
-    (!pcCU->getTransformSkip(compID) && !pcCU->getCUTransquantBypass(uiAbsPartIdx)))
+  if ( ((uiWidth > JVET_C0024_ZERO_OUT_TH) || (uiHeight > JVET_C0024_ZERO_OUT_TH)) &&
+     (!pcCU->getTransformSkip(compID) && !pcCU->getCUTransquantBypass(uiAbsPartIdx)))
   {
-    // last coeff shall be in the low freqecy domain
-    assert( (posLastX <= (uiWidth >> 1)) && (posLastY <= (uiHeight >> 1)) );
+     // last coeff shall be in the low freqecy domain
+     assert((posLastX < JVET_C0024_ZERO_OUT_TH) && (posLastY < JVET_C0024_ZERO_OUT_TH));
   }
 #endif
 
@@ -2354,8 +2354,12 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
     {
       uiSigCoeffGroupFlag[ iCGBlkPos ] = 1;
     }
-#if COM16_C806_T64  && !JVET_C0024_QTBT && !JVET_C0046_ZO_ASSERT
+#if COM16_C806_T64  && (!JVET_C0024_QTBT || JVET_C0024_ZERO_OUT_FIX ) && !JVET_C0046_ZO_ASSERT
+#if JVET_C0024_ZERO_OUT_FIX
+    else if( iCGPosY>=(JVET_C0024_ZERO_OUT_TH>>2) || iCGPosX>=(JVET_C0024_ZERO_OUT_TH>>2) )
+#else
     else if( uiWidth>=64 && ( iCGPosY>=(codingParameters.heightInGroups/2) || iCGPosX>=(codingParameters.widthInGroups/2) ) )
+#endif
     {
       assert( 0 == uiSigCoeffGroupFlag[ iCGBlkPos ] );
     }

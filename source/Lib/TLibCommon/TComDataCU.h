@@ -250,7 +250,7 @@ private:
   Distortion    m_uiTotalDistortion;  ///< sum of partition distortion
   UInt          m_uiTotalBits;        ///< sum of partition bits
   UInt          m_uiTotalBins;        ///< sum of partition bins
-#if JVET_C0024_DELTA_QP_FIX_R1
+#if JVET_C0024_DELTA_QP_FIX
   UInt          m_uiQuPartIdx;
   Char          m_QuLastCodedQP;
   Char          m_codedQP[MAX_NUM_CHANNEL_TYPE];
@@ -476,7 +476,7 @@ public:
   Void          setQP                 ( UInt uiIdx, Char value ){ m_phQP[uiIdx] =  value;     }
   Void          setQPSubParts         ( Int qp,   UInt uiAbsPartIdx, UInt uiDepth );
 #endif
-#if JVET_C0024_DELTA_QP_FIX_R1
+#if JVET_C0024_DELTA_QP_FIX
   Char          getCtuLastCodedQP     (  );
 #else
   Int           getLastValidPartIdx   ( Int iAbsPartIdx );
@@ -487,7 +487,7 @@ public:
 #else
   Void          setQPSubCUs           ( Int qp, UInt absPartIdx, UInt depth, Bool &foundNonZeroCbf );
 #endif
-#if JVET_C0024_DELTA_QP_FIX_R1
+#if JVET_C0024_DELTA_QP_FIX
   Void          setQuLastCodedQP      ( Char qp )               { m_QuLastCodedQP = qp;       }
   Char          getQuLastCodedQP      ()                        { return m_QuLastCodedQP;     }
   Void          setQuPartIdx          ( UInt uiPartIdx )        { m_uiQuPartIdx = uiPartIdx;  }

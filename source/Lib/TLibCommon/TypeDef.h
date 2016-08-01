@@ -69,10 +69,7 @@
 #define JVET_C0024_CTU_256                                0  ///< support CTU 256 for QTBT, force QT split for CU 256x256 
 #define JVET_C0024_ENCODER_OVERFLOW_FIX                   1  ///< fix the encoder overflow in the case of very high QP
 #define JVET_C0024_DELTA_QP_FIX                           1  ///< support delta QP signaling in QTBT
-#if JVET_C0024_DELTA_QP_FIX
-#define JVET_C0024_DELTA_QP_FIX_BT_DIFF                   0
-#define JVET_C0024_DELTA_QP_FIX_R1                        1  ///< keep track of current partition index of quantization unit (group) and its last coded QP
-#endif
+#define JVET_C0024_ZERO_OUT_FIX                           1
 
 // for fast algorithms
 #define JVET_C0024_AMAX_BT                                1  ///< slice level adaptive maximum BT size (encoder only)
@@ -83,10 +80,10 @@
 
 #endif // end of JVET_C0024_QTBT
 
-#define JVET_C0046_ZO_ASSERT                              0  ///< assertion on last coeff and coded_sbk_flag when zeroing out is used (no TS and no TQBypass and using large transform is satisfied)
+#define JVET_C0046_ZO_ASSERT                              1  ///< assertion on last coeff and coded_sbk_flag when zeroing out is used (no TS and no TQBypass and using large transform is satisfied)
 #if JVET_C0046_ZO_ASSERT
-#define JVET_C0046_ZO_ASSERT_CODED_SBK_FLAG               1  ///< if (iCGX > TH || iCGY > TH) and (log2BlockWidth + log2BlockHeight) > log2TH and (no TS && no TQBypass), then coded_sbk_flag(iCGX, iCGY) shall be 0.
-#define JVET_C0046_ZO_ASSERT_LAST_COEF                    1  ///< if (log2BlockWidth + log2BlockHeight) > log2TH and (no TS && no TQBypass), then last coef (x,y) shall be in the low frequency domain.
+#define JVET_C0046_ZO_ASSERT_CODED_SBK_FLAG               1  ///< if (iCGX > TH1 || iCGY > TH1) and (no TS && no TQBypass), then coded_sbk_flag(iCGX, iCGY) shall be 0.
+#define JVET_C0046_ZO_ASSERT_LAST_COEF                    1  ///< if (posLastX>TH2 || posLastY>TH2) and (no TS && no TQBypass), then last coef (x,y) shall be in the low frequency domain.
 #endif
 
 #define JVET_C0046_OMIT_ASSERT_ERDPCM                     1  ///< for RExt, omit assertion related to Explict Residual DPCM
