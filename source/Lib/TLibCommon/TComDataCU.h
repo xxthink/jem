@@ -141,7 +141,11 @@ private:
   Char*          m_pePredMode;         ///< array of prediction modes
   Char*          m_crossComponentPredictionAlpha[MAX_NUM_COMPONENT]; ///< array of cross-component prediction alpha values
   Bool*          m_CUTransquantBypass;   ///< array of cu_transquant_bypass flags
+#if JVET_C0024_DELTA_QP_FIX
+  Char*          m_phQP[MAX_NUM_CHANNEL_TYPE]; ///< array of QP values       0-> Luma, 1-> Chroma
+#else
   Char*          m_phQP;               ///< array of QP values
+#endif
   UChar*         m_ChromaQpAdj;        ///< array of chroma QP adjustments (indexed). when value = 0, cu_chroma_qp_offset_flag=0; when value>0, indicates cu_chroma_qp_offset_flag=1 and cu_chroma_qp_offset_idx=value-1
   UInt           m_codedChromaQpAdj;
 #if !JVET_C0024_QTBT
@@ -246,7 +250,13 @@ private:
   Distortion    m_uiTotalDistortion;  ///< sum of partition distortion
   UInt          m_uiTotalBits;        ///< sum of partition bits
   UInt          m_uiTotalBins;        ///< sum of partition bins
+#if JVET_C0024_DELTA_QP_FIX
+  UInt          m_uiQuPartIdx;
+  Char          m_QuLastCodedQP;
+  Char          m_codedQP[MAX_NUM_CHANNEL_TYPE];
+#else
   Char          m_codedQP;
+#endif
   UChar*        m_explicitRdpcmMode[MAX_NUM_COMPONENT]; ///< Stores the explicit RDPCM mode for all TUs belonging to this CU
 
 protected:
@@ -447,15 +457,47 @@ public:
 
   Void          setSizeSubParts       ( UInt uiWidth, UInt uiHeight, UInt uiAbsPartIdx, UInt uiDepth );
 
+#if JVET_C0024_DELTA_QP_FIX
+  Char*         getQP                 ( const ChannelType channelType ) { return m_phQP[channelType]; }
+  Char*         getQP                 () { return m_phQP[getTextType()]; }
+  Char          getQP                 ( UInt uiIdx ) const      
+  { 
+    if( !getSlice()->isIntra() )
+    {
+      assert( getTextType() == CHANNEL_TYPE_LUMA );
+    }
+    return m_phQP[getTextType()][uiIdx];       
+  }
+  //Void          setQP                 ( UInt uiIdx, Char value ){ m_phQP[getTextType()][uiIdx] =  value;     }
+  Void          setQPSubParts         ( Int qp,   UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight );
+#else
   Char*         getQP                 ()                        { return m_phQP;              }
   Char          getQP                 ( UInt uiIdx ) const      { return m_phQP[uiIdx];       }
   Void          setQP                 ( UInt uiIdx, Char value ){ m_phQP[uiIdx] =  value;     }
   Void          setQPSubParts         ( Int qp,   UInt uiAbsPartIdx, UInt uiDepth );
+#endif
+#if JVET_C0024_DELTA_QP_FIX
+  Char          getCtuLastCodedQP     (  );
+#else
   Int           getLastValidPartIdx   ( Int iAbsPartIdx );
   Char          getLastCodedQP        ( UInt uiAbsPartIdx );
+#endif
+#if JVET_C0024_DELTA_QP_FIX
+  Void          setQPSubCUs           ( Int qp, UInt absPartIdx, UInt depth, UInt uiWidth, UInt uiHeight, UInt& ruiFirstNonZeroPartIdx, Bool &foundNonZeroCbf );
+#else
   Void          setQPSubCUs           ( Int qp, UInt absPartIdx, UInt depth, Bool &foundNonZeroCbf );
+#endif
+#if JVET_C0024_DELTA_QP_FIX
+  Void          setQuLastCodedQP      ( Char qp )               { m_QuLastCodedQP = qp;       }
+  Char          getQuLastCodedQP      ()                        { return m_QuLastCodedQP;     }
+  Void          setQuPartIdx          ( UInt uiPartIdx )        { m_uiQuPartIdx = uiPartIdx;  }
+  UInt          getQuPartIdx          ()                        { return m_uiQuPartIdx;       }
+  Void          setCodedQP            ( Char qp )               { m_codedQP[getTextType()] = qp;   }
+  Char          getCodedQP            ()                        { return m_codedQP[getTextType()]; }
+#else
   Void          setCodedQP            ( Char qp )               { m_codedQP = qp;             }
   Char          getCodedQP            ()                        { return m_codedQP;           }
+#endif
 
   UChar*        getChromaQpAdj        ()                        { return m_ChromaQpAdj;       } ///< array of chroma QP adjustments (indexed). when value = 0, cu_chroma_qp_offset_flag=0; when value>0, indicates cu_chroma_qp_offset_flag=1 and cu_chroma_qp_offset_idx=value-1
   UChar         getChromaQpAdj        (Int idx)           const { return m_ChromaQpAdj[idx];  } ///< When value = 0, cu_chroma_qp_offset_flag=0; when value>0, indicates cu_chroma_qp_offset_flag=1 and cu_chroma_qp_offset_idx=value-1
