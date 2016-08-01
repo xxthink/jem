@@ -2930,7 +2930,7 @@ Bool TComDataCU::getBlockBelowRight( UInt uiAbsPartIdx, Int nCurBlkWidth , Int n
 TComDataCU* TComDataCU::getQpMinCuLeft( UInt& uiLPartUnitIdx, UInt uiCurrAbsIdxInCtu )
 {
   const UInt numPartInCtuWidth = m_pcPic->getNumPartInCtuWidth();
-#if JVET_C0024_DELTA_QP_FIX_R1
+#if JVET_C0024_DELTA_QP_FIX
   UInt absZorderQpMinCUIdx = m_uiQuPartIdx;
   UInt absRorderQpMinCUIdx = g_auiZscanToRaster[absZorderQpMinCUIdx];
 #else
@@ -2962,7 +2962,7 @@ TComDataCU* TComDataCU::getQpMinCuLeft( UInt& uiLPartUnitIdx, UInt uiCurrAbsIdxI
 TComDataCU* TComDataCU::getQpMinCuAbove( UInt& uiAPartUnitIdx, UInt uiCurrAbsIdxInCtu )
 {
   const UInt numPartInCtuWidth = m_pcPic->getNumPartInCtuWidth();
-#if JVET_C0024_DELTA_QP_FIX_R1
+#if JVET_C0024_DELTA_QP_FIX
   UInt absZorderQpMinCUIdx = m_uiQuPartIdx;
   UInt absRorderQpMinCUIdx = g_auiZscanToRaster[absZorderQpMinCUIdx];
 #else
@@ -2994,24 +2994,18 @@ TComDataCU* TComDataCU::getQpMinCuAbove( UInt& uiAPartUnitIdx, UInt uiCurrAbsIdx
 */
 Char TComDataCU::getRefQP( UInt uiCurrAbsIdxInCtu )
 {
-#if JVET_C0024_DELTA_QP_FIX_BT_DIFF
-  if( 0 != getBTSplitMode(uiCurrAbsIdxInCtu) && getDepth(uiCurrAbsIdxInCtu) < m_pcPic->getPicSym()->getPPS().getMaxCuDQPDepth() )
-  {
-    return getSlice()->getSliceQp();
-  }
-#endif
   UInt lPartIdx = MAX_UINT;
   UInt aPartIdx = MAX_UINT;
   TComDataCU* cULeft  = getQpMinCuLeft ( lPartIdx, m_absZIdxInCtu + uiCurrAbsIdxInCtu );
   TComDataCU* cUAbove = getQpMinCuAbove( aPartIdx, m_absZIdxInCtu + uiCurrAbsIdxInCtu );
-#if JVET_C0024_DELTA_QP_FIX_R1
+#if JVET_C0024_DELTA_QP_FIX
   return (((cULeft? cULeft->getQP( lPartIdx ): m_QuLastCodedQP) + (cUAbove? cUAbove->getQP( aPartIdx ): m_QuLastCodedQP) + 1) >> 1);
 #else
   return (((cULeft? cULeft->getQP( lPartIdx ): getLastCodedQP( uiCurrAbsIdxInCtu )) + (cUAbove? cUAbove->getQP( aPartIdx ): getLastCodedQP( uiCurrAbsIdxInCtu )) + 1) >> 1);
 #endif
 }
 
-#if JVET_C0024_DELTA_QP_FIX_R1
+#if JVET_C0024_DELTA_QP_FIX
 Char TComDataCU::getCtuLastCodedQP()
 {
   if( getPic()->getPicSym()->getCtuTsToRsAddrMap(getSlice()->getSliceCurStartCtuTsAddr()) != getCtuRsAddr() && getPic()->getPicSym()->getCtuRsToTsAddrMap(getCtuRsAddr()) > 0 )

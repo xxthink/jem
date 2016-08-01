@@ -2333,11 +2333,11 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
   pcCoef[ uiBlkPosLast ] = 1;
 
 #if JVET_C0046_ZO_ASSERT && JVET_C0046_ZO_ASSERT_LAST_COEF
-  if ( (uiLog2BlockWidth + uiLog2BlockHeight) > TH_LOG2TBAREASIZE && 
-       (!pcCU->getTransformSkip(compID) && !pcCU->getCUTransquantBypass(uiAbsPartIdx)) )
+  if ( ((uiWidth > JVET_C0024_ZERO_OUT_TH) || (uiHeight > JVET_C0024_ZERO_OUT_TH)) && 
+     (!pcCU->getTransformSkip(compID) && !pcCU->getCUTransquantBypass(uiAbsPartIdx)))
   {
-      // last coeff shall be in the low freqecy domain
-      assert( (uiPosLastX <= (uiWidth >> 1)) && (uiPosLastY <= (uiHeight >> 1)) );
+     // last coeff shall be in the low freqecy domain
+     assert((uiPosLastX < JVET_C0024_ZERO_OUT_TH) && (uiPosLastY < JVET_C0024_ZERO_OUT_TH));
   }
 #endif
 
@@ -2446,8 +2446,12 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
     {
       uiSigCoeffGroupFlag[ iCGBlkPos ] = 1;
     }
-#if COM16_C806_T64 && !JVET_C0024_QTBT && !JVET_C0046_ZO_ASSERT
+#if COM16_C806_T64 && (!JVET_C0024_QTBT || JVET_C0024_ZERO_OUT_FIX ) && !JVET_C0046_ZO_ASSERT
+#if JVET_C0024_ZERO_OUT_FIX
+    else if( iCGPosY>=(JVET_C0024_ZERO_OUT_TH>>2) || iCGPosX>=(JVET_C0024_ZERO_OUT_TH>>2) )
+#else
     else if( uiWidth>=64 && ( iCGPosY>=(codingParameters.heightInGroups/2) || iCGPosX>=(codingParameters.widthInGroups/2) ) )
+#endif
     {
       uiSigCoeffGroupFlag[ iCGBlkPos ] = 0;
     }
@@ -2465,16 +2469,15 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
     }
 
 #if JVET_C0046_ZO_ASSERT && JVET_C0046_ZO_ASSERT_CODED_SBK_FLAG
-    if ((uiLog2BlockWidth + uiLog2BlockHeight) > TH_LOG2TBAREASIZE && 
-        (!pcCU->getTransformSkip(compID) && !pcCU->getCUTransquantBypass(uiAbsPartIdx))
-    )
-    {
-        if (iCGPosY >= (codingParameters.heightInGroups / 2) || iCGPosX >= (codingParameters.widthInGroups / 2))
-        {
-            //coded_sbk_flag(iCGX,iCGY) shall be equal to 0
-            assert(0 == uiSigCoeffGroupFlag[iCGBlkPos]);
-        }
-    }
+   if ( ((uiWidth > JVET_C0024_ZERO_OUT_TH) || (uiHeight > JVET_C0024_ZERO_OUT_TH)) &&
+      (!pcCU->getTransformSkip(compID) && !pcCU->getCUTransquantBypass(uiAbsPartIdx)) )
+   {
+      if (iCGPosY >= (JVET_C0024_ZERO_OUT_TH>>2) || iCGPosX >= (JVET_C0024_ZERO_OUT_TH>>2))
+      {
+         //coded_sbk_flag(iCGX,iCGY) shall be equal to 0
+         assert(0 == uiSigCoeffGroupFlag[iCGBlkPos]);
+      }
+   }
 #endif 
     // decode significant_coeff_flag
 #if !VCEG_AZ07_CTX_RESIDUALCODING
