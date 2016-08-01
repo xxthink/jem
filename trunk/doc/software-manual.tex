@@ -216,14 +216,13 @@ sent to the general JCT-VC email reflector on
 
 \subsection*{Bug reporting}
 Bugs should be reported on the issue tracker set up at
-\url{http://hevc.kw.bbc.co.uk/trac/}
+\url{https://hevc.hhi.fraunhofer.de/trac/jem}
 
 \section{Installation and compilation}
-The software may be retrieved from one of the following SVN servers
+The software may be retrieved from the following SVN server
 (mirrored):
 \begin{itemize}
-\item \url{https://hevc.hhi.fraunhofer.de/svn/svn_HEVCSoftware/}
-\item \url{svn://hevc.kw.bbc.co.uk/svn/jctvc-hm/}
+\item \url{https://jvet.hhi.fraunhofer.de/svn/svn_HMJEMSoftware/}
 \end{itemize}
 
 Table~\ref{tab:project-files} enumerates various project files that are
@@ -240,9 +239,11 @@ provided for development environments.
  \thead{Location of project file} \\
 % Environment          & Location of project file \\
 \hline
-MS Visual Studio 8   & build/HM_vc8.sln \\
-MS Visual Studio 9   & build/HM_vc9.sln \\
-MS Visual Studio 10  & build/HM_vc10.sln \\
+MS Visual Studio 9   & build/JEM_vc9.sln \\
+MS Visual Studio 2010  & build/JEM_vc2010.sln \\
+MS Visual Studio 2012  & build/JEM_vc2012.sln \\
+MS Visual Studio 2013  & build/JEM_vc2013.sln \\
+MS Visual Studio 2015  & build/JEM_vc2015.sln \\
 Xcode                & HM.xcodeproj \\
 Linux                & build/linux/makefile \\
 \hline
@@ -897,52 +898,46 @@ Specifies the value of general_frame_only_constraint_flag
 %%
 
 \begin{OptionTableNoShorthand}{Unit definition parameters}{tab:unit}
-\Option{MaxCUWidth} &
+\Option{CTUSize} &
 %\ShortOption{\None} &
-\Default{64} &
-Defines the maximum CU width.
+\Default{128} &
+Defines the CTU size.
 \\
 
-\Option{MaxCUHeight} &
+\Option{MinQTLumaISlice} &
 %\ShortOption{\None} &
-\Default{64} &
-Defines the maximum CU height.
+\Default{8} &
+Defines the minimum size of luma quadtree leaf node in intra slices.
 \\
 
-\Option{MaxCUSize (-s)} &
+\Option{MinQTChromaISlice} &
 %\ShortOption{\None} &
-\Default{64} &
-Defines the maximum CU size.
-\\
-
-\Option{MaxPartitionDepth (-h)} &
-%\ShortOption{-h} &
 \Default{4} &
-Defines the depth of the CU tree.
+Defines the minimum size of chroma quadtree leaf node in intra slices.
 \\
 
-\Option{QuadtreeTULog2MaxSize} &
+\Option{MinQTNonISlice} &
 %\ShortOption{\None} &
-\Default{6 \\ ($= \mathrm{log}_2(64)$)} &
-Defines the Maximum TU size in logarithm base 2.
+\Default{8} &
+Defines the minimum size of quadtree leaf node in inter slices.
 \\
 
-\Option{QuadtreeTULog2MinSize} &
+\Option{MaxBTDepth} &
 %\ShortOption{\None} &
-\Default{2 \\ ($= \mathrm{log}_2(4)$)} &
-Defines the Minimum TU size in logarithm base 2.
+\Default{3} &
+Defines the maximum depth of binary tree.
 \\
 
-\Option{QuadtreeTUMaxDepthIntra} &
+\Option{MaxBTDepthISliceL} &
 %\ShortOption{\None} &
-\Default{1} &
-Defines the depth of the TU tree for intra CUs.
+\Default{3} &
+Defines the maximum depth of binary tree for luma component in intra slices.
 \\
 
-\Option{QuadtreeTUMaxDepthInter} &
+\Option{MaxBTDepthISliceC} &
 %\ShortOption{\None} &
-\Default{2} &
-Defines the depth of the TU tree for inter CUs.
+\Default{3} &
+Defines the maximum depth of binary tree for chroma components in intra slices.
 \\
 
 \end{OptionTableNoShorthand}
@@ -1453,12 +1448,6 @@ Enables or disables the use of a deblocking across tile boundaries.
 
 \begin{OptionTableNoShorthand}{Coding tools parameters}{tab:coding-tools}
 
-\Option{AMP} &
-%\ShortOption{\None} &
-\Default{true} &
-Enables or disables the use of asymmetric motion partitions.
-\\
-
 \Option{SAO} &
 %\ShortOption{\None} &
 \Default{true} &
@@ -1650,6 +1639,172 @@ luma TUs are also skipped.
 \par
 This option has no effect if TransformSkip is disabled.
 \\
+
+\Option{ATMVP} &
+%\ShortOption{\None} &
+\Default{true} &
+Enables sub-CU level motion vector prediction.
+\\
+
+\Option{SubPUTempLog2Size} &
+%\ShortOption{\None} &
+\Default{2} &
+Defines the block size in sub-CU level motion vector prediction.
+\\
+
+\Option{OBMC} &
+%\ShortOption{\None} &
+\Default{true} &
+Enables overlapped block motion compensation.
+\\
+
+\Option{OBMCBLK} &
+%\ShortOption{\None} &
+\Default{4} &
+Defines the block size in overlapped block motion compensation.
+\\
+
+\Option{IMV} &
+%\ShortOption{\None} &
+\Default{true} &
+Enables locally adaptive motion vector resolution. 
+\\
+
+\Option{IMVMaxCand} &
+%\ShortOption{\None} &
+\Default{4} &
+Defines the maximum number of candidates searched in locally adaptive motion vector resolution.
+\\
+
+\Option{FRUC} &
+%\ShortOption{\None} &
+\Default{true} &
+Enables pattern matched motion vector derivation. 
+\\
+
+\Option{FRUCF} &
+%\ShortOption{\None} &
+\Default{true} &
+Enables bilinear filter in pattern matched motion vector derivation.
+\\
+
+\Option{FRUCR} &
+%\ShortOption{\None} &
+\Default{8} &
+Defines search range (in pixel) in pattern matched motion vector derivation. 
+\\
+
+\Option{FRUCRDepth} &
+%\ShortOption{\None} &
+\Default{4} &
+Defines refine depth in pattern matched motion vector derivation. 
+\\
+
+\Option{IlluCompEnable} &
+%\ShortOption{\None} &
+\Default{true} &
+Enables local illumination compensation.
+\\
+
+\Option{ALF} &
+%\ShortOption{\None} &
+\Default{true} &
+Enables adaptive loop filter.
+\\
+
+\Option{EMT (-emt)} &
+%\ShortOption{-emt} &
+\Default{3} &
+Enables explicit multiple core transform.
+\par
+\begin{tabular}{cp{0.45\textwidth}}
+  0 & Disabled for all blocks. \\
+  1 & Enabled for intra blocks. \\
+  2 & Enabled for inter blocks. \\
+  3 & Enabled for all blocks. \\
+\end{tabular}
+\\
+
+\Option{EMTFAST (-femt)} &
+%\ShortOption{-femt} &
+\Default{3} &
+Enables fast methods for explicit multiple core transform.
+\par
+\begin{tabular}{cp{0.45\textwidth}}
+  0 & Disabled for all blocks. \\
+  1 & Enabled for intra blocks. \\
+  2 & Enabled for inter blocks. \\
+  3 & Enabled for all blocks. \\
+\end{tabular}
+\\
+
+\Option{KLT} &
+%\ShortOption{-klt} &
+\Default{0} &
+Enables signal dependent transform.
+\par
+\begin{tabular}{cp{0.45\textwidth}}
+  0 & Disabled for all blocks. \\
+  1 & Enabled for intra blocks. \\
+  2 & Enabled for inter blocks. \\
+  3 & Enabled for all blocks. \\
+\end{tabular}
+\\
+
+\Option{LCTUFast} &
+%\ShortOption{\None} &
+\Default{true} &
+Enables fast methods for large CTU.
+\\
+
+\Option{IntraFourTapFilter} &
+%\ShortOption{\None} &
+\Default{true} &
+Enables 4-tap interpolation filter for intra prediction.
+\\
+
+\Option{IntraBoundaryFilter} &
+%\ShortOption{\None} &
+\Default{true} &
+Enables additional boundary filter for intra prediction.
+\\
+
+\Option{LMChroma} &
+%\ShortOption{\None} &
+\Default{true} &
+Enables cross-component linear model prediction.
+\\
+
+\Option{BIO} &
+%\ShortOption{\None} &
+\Default{true} &
+Enables bi-directional optical flow.
+\\
+
+\Option{PDPC} &
+%\ShortOption{\None} &
+\Default{true} &
+Enables position dependent intra prediction combination.
+\\
+
+\Option{NSST} &
+%\ShortOption{\None} &
+\Default{true} &
+Enables mode dependent non-separable secondary transforms.
+\\
+
+\Option{AFFINE} &
+%\ShortOption{\None} &
+\Default{true} &
+Enables affine motion prediction.
+\\
+
+\Option{RSAF} &
+%\ShortOption{\None} &
+\Default{true} &
+Enables adaptive reference sample smoothing.
+\\
+
 \end{OptionTableNoShorthand}
 
 %%
