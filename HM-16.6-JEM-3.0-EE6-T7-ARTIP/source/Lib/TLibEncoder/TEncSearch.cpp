@@ -4772,7 +4772,7 @@ DEBUG_STRING_FN_DECLARE(sDebug))
                 assert(uiPartOffset == 0);
                 Int numModesForFullRD = g_aucIntraModeNumFast_UseMPM[uiWIdx][uiHIdx];
 #if EXTEND_REF_LINE
-                if (iNumOfPassesExternRef == 4)
+                if (iNumOfPassesExternRef == REF_LINE_NUM)
                     numModesForFullRD *= REF_LINE_NUM;
                 else
                     numModesForFullRD *= 2;
