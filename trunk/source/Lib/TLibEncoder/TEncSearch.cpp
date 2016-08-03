@@ -1533,10 +1533,13 @@ TEncSearch::xEncIntraHeader( TComDataCU*  pcCU,
 #if VCEG_AZ05_INTRA_MPI 
         m_pcEntropyCoder->encodeMPIIdx(pcCU, 0, true);
 #endif
-#if COM16_C1046_PDPC_INTRA 
+#if COM16_C1046_PDPC_INTRA && !FIX_TICKET20
         m_pcEntropyCoder->encodePDPCIdx( pcCU, 0, true);
 #endif
       }
+#if COM16_C1046_PDPC_INTRA && FIX_TICKET20
+      m_pcEntropyCoder->encodePDPCIdx( pcCU, 0, true );
+#endif
 #if JVET_C0024_QTBT
       if (pcCU->isIntra(0) )
 #else

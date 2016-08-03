@@ -249,6 +249,9 @@
 #endif
 
 #define COM16_C1046_PDPC_INTRA                            1  ///< Position dependent intra prediction combination
+#if COM16_C1046_PDPC_INTRA
+#define FIX_TICKET20                                      1  ///< fixed ticket #20 (PDPC rate calculation in RDO)
+#endif
 #if COM16_C1046_PDPC_INTRA && COM16_C983_RSAF                
 #define COM16_C1046_PDPC_RSAF_HARMONIZATION               1  ///< Harmonization between PDPC and RSAF
 #endif
