@@ -161,7 +161,7 @@
 	\end{longtable}
 }
 
-\title{HM Software Manual}
+\title{JEM Software Manual}
 \author{%
 	Frank Bossen
 	\email{frank@bossentech.com}
@@ -169,11 +169,14 @@
 	David Flynn
 	\email{dflynn@blackberry.com}
 	\and
-  Karl Sharman
+	Karl Sharman
 	\email{karl.sharman@eu.sony.com}
 	\and
 	Karsten S\"uhring
 	\email{karsten.suehring@hhi.fraunhofer.de}
+	\and
+	Xian Li
+	\email{lxiang@qti.qualcomm.com}
 }
 
 \jctvcmeeting{}
@@ -185,9 +188,9 @@
 \begin{document}
 \maketitle
 \begin{abstract}
-This document is a user manual describing usage of reference software
-for the HEVC project. It applies to version 16.6
-of the software.
+This document is a user manual describing usage of the JEM software
+of the JVET project. It applies to version JEM-3.1, which is based 
+on the JCT-VC HM software version 16.6.
 \end{abstract}
 
 \tableofcontents
@@ -196,23 +199,31 @@ of the software.
 
 
 \section{General Information}
+The Joint Exploration Model (JEM) software is the reference software 
+of the Joint Video Exploration Team (on Future Video coding) of ITU-T 
+VCEG and ISO/IEC MPEG. 
+It reflects the explorative work on technologies that may be included
+in future video coding standards.
+
 Reference software is being made available to provide a reference
-implementation of the HEVC standard being developed by the Joint
-Collaborative Team on Video Coding (JCT-VC) regrouping experts from
-ITU-T SG 16 and ISO/IEC SC29 WG11. One of the main goals of the
+implementation of the technologies being evaluated by JVET.
+One of the main goals of the
 reference software is to provide a basis upon which to conduct
 experiments in order to determine which coding tools provide desired
 coding performance. It is not meant to be a particularly efficient
 implementation of anything, and one may notice its apparent
 unsuitability for a particular use. It should not be construed to be a
 reflection of how complex a production-quality implementation of a
-future HEVC standard would be.
+future video coding standard would be.
 
 This document aims to provide guidance on the usage of the reference
 software. It is widely suspected to be incomplete and suggestions for
 improvements are welcome. Such suggestions and general inquiries may be
-sent to the general JCT-VC email reflector on
-\url{jct-vc@lists.rwth-aachen.de} (registration required).
+sent to the general JVET email reflector on
+\url{jvet@lists.rwth-aachen.de} (registration required).
+
+\emph{Note, although the software is based on HM, the new technologies
+included in JEM are not part of the HEVC video coding standard.}
 
 \subsection*{Bug reporting}
 Bugs should be reported on the issue tracker set up at
@@ -239,13 +250,13 @@ provided for development environments.
  \thead{Location of project file} \\
 % Environment          & Location of project file \\
 \hline
-MS Visual Studio 9   & build/JEM_vc9.sln \\
+MS Visual Studio 9     & build/JEM_vc9.sln \\
 MS Visual Studio 2010  & build/JEM_vc2010.sln \\
 MS Visual Studio 2012  & build/JEM_vc2012.sln \\
 MS Visual Studio 2013  & build/JEM_vc2013.sln \\
 MS Visual Studio 2015  & build/JEM_vc2015.sln \\
-Xcode                & HM.xcodeproj \\
-Linux                & build/linux/makefile \\
+Xcode                  & HM.xcodeproj \\
+Linux                  & build/linux/makefile \\
 \hline
 \end{tabular}
 \end{table}
