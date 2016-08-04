@@ -4768,11 +4768,6 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
   TComTURecurse tuRecurseCU(pcCU, 0);
   TComTURecurse tuRecurseWithPU(tuRecurseCU, false, (uiInitTrDepth==0)?TComTU::DONT_SPLIT : TComTU::QUAD_SPLIT);
 
-#if  MULTIPLE_LINE_INTRA
-  const Int refIndex = pcCU->getLineRefIndex(0);
-
-#endif
-
 #if COM16_C806_EMT
   UInt uiPU = 0;
 #endif
