@@ -1159,7 +1159,6 @@ Void TComPrediction::predExtendIntra(const ComponentID compID, UInt uiDirMode, P
   TComDataCU *const pcCU = rTu.getCU();
   const UInt              uiAbsPartIdx = rTu.GetAbsPartIdxTU();
   const Int channelsBitDepthForPrediction = pcCU->getSlice()->getSPS()->getBitDepth(channelType);
-  Int MaxPelValue = (1 << channelsBitDepthForPrediction) - 1;
 
   Int offset = pcCU->getLineRefIndex(uiAbsPartIdx);
 
