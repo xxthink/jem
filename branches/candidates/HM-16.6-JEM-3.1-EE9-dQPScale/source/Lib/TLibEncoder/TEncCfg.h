@@ -239,6 +239,12 @@ protected:
   Bool      m_persistentRiceAdaptationEnabledFlag;
   Bool      m_cabacBypassAlignmentEnabledFlag;
   Bool      m_rdpcmEnabledFlag[NUMBER_OF_RDPCM_SIGNALLING_MODES];
+#if SHARP_LUMA_DELTA_QP 
+  UInt      m_useLumaDeltaQP;                                ///< use deltaQP determined by block luma activity
+  UInt      m_uiNbrOfUsedDQPChangePoints;                  ///< number of used qp luma pairs used to derive luma QP LUT
+  Int       m_dQPChangePoints[SHARP_MAX_LUMA_DQP];           /// qp luma pair used to derive luma QP LUT
+  Int       m_dQPLumaChangePoints[SHARP_MAX_LUMA_DQP];       /// qp luma pair used to derive luma QP LUT
+#endif
   Int*      m_aidQP;
   UInt      m_uiDeltaQpRD;
   Bool      m_bFastDeltaQP;
@@ -588,6 +594,16 @@ public:
 
   Void      setChromaFormatIdc              ( ChromaFormat cf ) { m_chromaFormatIDC = cf; }
   ChromaFormat  getChromaFormatIdc          ( )              { return m_chromaFormatIDC; }
+#if SHARP_LUMA_DELTA_QP
+  Void      setUseLumaDeltaQp               ( UInt   i )     { m_useLumaDeltaQP    = i; }
+  UInt      getUseLumaDeltaQp               ()               { return   m_useLumaDeltaQP; }
+  Void    setNbrOfUsedDQPChangePoints       ( UInt   n   )   { m_uiNbrOfUsedDQPChangePoints = n; }
+  UInt    getNbrOfUsedDQPChangePoints       ()               {  return m_uiNbrOfUsedDQPChangePoints; }
+  Void    setDQpChangePoints                ( Int*   DQp )   { for (Int i=0; i < SHARP_MAX_LUMA_DQP; i++) m_dQPChangePoints[i] = DQp[i]; }
+  Int*    getDQpChangePoints                ()               { return   &m_dQPChangePoints[0]; }
+  Void    setLumaDQpChangePoints            ( Int*   DQp )   { for (Int i=0; i < SHARP_MAX_LUMA_DQP; i++) m_dQPLumaChangePoints[i] = DQp[i]; }
+  Int*    getLumaDQpChangePoints            ()               { return   &m_dQPLumaChangePoints[0]; }
+#endif
 
 #if ADAPTIVE_QP_SELECTION
   Void      setUseAdaptQpSelect             ( Bool   i ) { m_bUseAdaptQpSelect    = i; }

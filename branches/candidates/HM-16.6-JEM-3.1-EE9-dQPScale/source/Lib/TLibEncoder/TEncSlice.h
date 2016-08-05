@@ -121,6 +121,12 @@ public:
   Void    initEncSlice        ( TComPic*  pcPic, Int pocLast, Int pocCurr, 
                                 Int iGOPid,   TComSlice*& rpcSlice, Bool isField );
   Void    resetQP             ( TComPic* pic, Int sliceQP, Double lambda );
+#if SHARP_LUMA_DELTA_QP
+  Int     m_GopID;
+  Void    setGopID( Int iGopID)  {m_GopID = iGopID;}
+  Int     getGopID()             { return m_GopID;}
+  Void    updateLambda(TComSlice* rpcSlice, Int dQP);
+#endif
   // compress and encode slice
   Void    precompressSlice    ( TComPic* pcPic                                     );      ///< precompress slice for multi-loop slice-level QP opt.
   Void    compressSlice       ( TComPic* pcPic, const Bool bCompressEntireSlice, const Bool bFastDeltaQP );      ///< analysis stage of slice

@@ -116,7 +116,9 @@ public:
 #endif
     );
   Void  filterPicture  (TComPic* pcPic );
-
+#if SHARP_DQP_BIT_STAT 
+  Void updateFrameBitStat(TComInputBitstream* bs, Bool flag);
+#endif
   Void setDecodedPictureHashSEIEnabled(Int enabled) { m_decodedPictureHashSEIEnabled = enabled; }
   UInt getNumberOfChecksumErrorsDetected() const { return m_numberOfChecksumErrorsDetected; }
 

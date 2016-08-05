@@ -50,6 +50,47 @@
 // Initialize / destroy functions
 // ====================================================================================================================
 
+#if SHARP_LUMA_DELTA_QP
+Int g_lumaQPLUT[SHARP_QP_LUMA_LUT_MAXSIZE];               // LUT for luma and correspionding QP offset
+#endif
+#if SHARP_WEIGHT_DISTORTION || SHARP_WEIGHT_DISTORTION_OUTPUT
+Double g_weight_pqto709[3][1024];
+#endif
+#if SHARP_LUMA_DELTA_QP
+Void initLumaDeltaQpLUT(Int totalChangePoints, Int *lumaChangePoints, Int* qps) {
+  Bool bChangePointFound;
+  for (Int qpChangePos = 1; qpChangePos < totalChangePoints; qpChangePos++)
+  {
+    assert(lumaChangePoints[qpChangePos] >= lumaChangePoints[qpChangePos-1]); // does not decrease
+    assert(qps[qpChangePos] >= qps[qpChangePos-1]); // does not decrease
+  }
+  for (Int y=0; y < SHARP_QP_LUMA_LUT_MAXSIZE; y++) 
+  {
+    bChangePointFound = false;
+    if (y<lumaChangePoints[0]) 
+    {
+      g_lumaQPLUT[y]=qps[0];
+      bChangePointFound = true;
+    }
+    if (!bChangePointFound) 
+    {
+      for (Int qpChangePos = 1; qpChangePos < totalChangePoints; qpChangePos++)
+      {
+        if (y<lumaChangePoints[qpChangePos])
+        {
+          g_lumaQPLUT[y]=qps[qpChangePos-1];
+          bChangePointFound = true;
+          break;
+        }
+      }
+      if (!bChangePointFound)  // last point
+      {
+        g_lumaQPLUT[y]=qps[totalChangePoints-1];
+      }
+    }
+  }
+}
+#endif
 //! \ingroup TLibCommon
 //! \{
 #if JVET_C0024_AMAX_BT

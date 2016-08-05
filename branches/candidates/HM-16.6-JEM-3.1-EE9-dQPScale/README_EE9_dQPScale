@@ -1,0 +1,46 @@
+In the code, changes are under macros starting with   SHARP_
+Below are example config parameters to control the luma adaptive QP and scaling, in the config files:
+
+ 
+### example 1: enable luma adaptive delta QP at CTU level
+LumaDeltaQP                   : 1           # Luma activity based deltaQP control  -- 0: disabled;  1: send dQP; 2: coefficient scaling (To be implemented)
+
+### example 2: enable luma adaptive delta QP at CU level of depth 3
+LumaDeltaQP                   : 1           # Luma activity based deltaQP control  -- 0: disabled;  1: send dQP;
+MaxCuDQPDepth                 : 3           # Max depth of delta QP, should be less than MaxPartitionDepth
+
+
+Related Macros:
+
+(1) #define SHARP_LUMA_DELTA_QP                1            ///< enable luma adaptive QP
+
+This is the luma adaptive QP technology used in MPEG-HDR anchor3.2. QP is explicitly signalled by delta QP
+Refer JCTVC-W0054 for details.
+
+(2) #define SHARP_QP_LUMA_LUT_HDR                0             ///< 0: use default LUT for SDR; 1: use default LUT for HDR
+There are two default LUT table defined in the code,  define SHARP_QP_LUMA_LUT_HDR 1 for HDR data,  0 for SDR data converted to ST-2084 
+
+(3) #define SHARP_DQP_BIT_STAT                  1             ///< for decoder output frame bits and deltaQP bits count
+For deltaQP overhead esimate, enable macro #SHARP_DQP_BIT_STAT  and run TAppDecoderAnalyserStatic 
+this makes decoder to output total bit usage and deltaQP bits per frame, and average % used by deltaQP bits.
+
+(4) 
+#define SHARP_WEIGHT_DISTORTION              1            ///< use weighted distortion in RD decision
+#define SHARP_WEIGHT_DISTORTION_OUTPUT       1            ///< printout weighted PSNR
+
+To make RD decision align with the luma adaptive QP adjustment, JVET-C0095 proposed a weighted PSNR metric.
+They are incorporated into encoder RD decision, and are enabled by the above macros.
+The weighted PSNR is printed out in the encoder log file as:
+
+WPSNR SUMMARY---------------------------------------------------
+	Total Frames |   Bitrate     Y-PSNR    U-PSNR    V-PSNR    YUV-PSNR
+        7    w     210.9357   36.6616   40.2324   40.4726   37.5797
+
+        
+ 
+
+
+
+  
+  
+  
