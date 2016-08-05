@@ -1261,7 +1261,7 @@ Void TDecSbac::parseIntraRefIndex(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDe
 #endif
 
   UInt uiSymbol;
-  m_pcTDecBinIf->decodeBin(uiSymbol, m_cCUIntraRefIndexSCModel.get(0, 0, 0) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__REF_FRM_IDX));
+  m_pcTDecBinIf->decodeBin(uiSymbol, m_cCUIntraRefIndexSCModel.get(0, 0, 0) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MULTIPLE_LINE_INTRA));
 
   if (uiSymbol == 0)
   {
@@ -1269,7 +1269,7 @@ Void TDecSbac::parseIntraRefIndex(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDe
   }
   else
   {
-    m_pcTDecBinIf->decodeBin(uiSymbol, m_cCUIntraRefIndexSCModel.get(0, 0, 1) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__REF_FRM_IDX));
+    m_pcTDecBinIf->decodeBin(uiSymbol, m_cCUIntraRefIndexSCModel.get(0, 0, 1) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MULTIPLE_LINE_INTRA));
 
 #if USE_FOUR_LINES
     if (uiSymbol == 0)
@@ -1278,7 +1278,7 @@ Void TDecSbac::parseIntraRefIndex(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDe
     }
     else
     {
-      m_pcTDecBinIf->decodeBin(uiSymbol, m_cCUIntraRefIndexSCModel.get(0, 0, 2));
+      m_pcTDecBinIf->decodeBin(uiSymbol, m_cCUIntraRefIndexSCModel.get(0, 0, 2) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MULTIPLE_LINE_INTRA));
       pcCU->setLineRefIndexSubParts(uiSymbol == 0 ? 2 : 3, uiAbsPartIdx, uiDepth);
     }
 #else
