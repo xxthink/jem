@@ -51,6 +51,9 @@
 //! \ingroup TAppDecoder
 //! \{
 
+#if SHARP_DQP_BIT_STAT
+struct BITStat frameStat, totalStat;
+#endif
 // ====================================================================================================================
 // Constructor / destructor / initialization / destroy
 // ====================================================================================================================
@@ -92,7 +95,7 @@ Void TAppDecTop::destroy()
  */
 Void TAppDecTop::decode()
 {
-  Int                 poc;
+  Int                 poc = 0;
   TComList<TComPic*>* pcListPic = NULL;
 
   ifstream bitstreamFile(m_pchBitstreamFile, ifstream::in | ifstream::binary);
@@ -123,6 +126,11 @@ Void TAppDecTop::decode()
   Bool openedReconFile = false; // reconstruction file not yet opened. (must be performed after SPS is seen)
   Bool loopFiltered = false;
 
+#if SHARP_DQP_BIT_STAT
+  Int largestPOC = 0;
+  memset(&frameStat, 0, sizeof(struct BITStat)); 
+  memset(&totalStat, 0, sizeof(struct BITStat));
+#endif
   while (!!bitstreamFile)
   {
     /* location serves to work around a design fault in the decoder, whereby
@@ -153,6 +161,9 @@ Void TAppDecTop::decode()
     }
     else
     {
+#if SHARP_DQP_BIT_STAT
+      frameStat.frame_start_bit = nalu.getBitstream().getNumBitsLeft();
+#endif
       read(nalu);
       if( (m_iMaxTemporalLayer >= 0 && nalu.m_temporalId > m_iMaxTemporalLayer) || !isNaluWithinTargetDecLayerIdSet(&nalu)  )
       {
@@ -190,6 +201,10 @@ Void TAppDecTop::decode()
       if (!loopFiltered || bitstreamFile)
       {
         m_cTDecTop.executeLoopFilters(poc, pcListPic);
+#if SHARP_DQP_BIT_STAT
+        frameStat.total_bit = 0;
+        frameStat.dQP_bit = 0;
+#endif
       }
       loopFiltered = (nalu.m_nalUnitType == NAL_UNIT_EOS);
       if (nalu.m_nalUnitType == NAL_UNIT_EOS)
@@ -249,8 +264,28 @@ Void TAppDecTop::decode()
         xWriteOutput( pcListPic, nalu.m_temporalId );
       }
     }
+#if SHARP_DQP_BIT_STAT
+    if (poc > largestPOC)
+      largestPOC = poc;
+#endif
   }
+#if SHARP_DQP_BIT_STAT
 
+  Int nframe = largestPOC+1;
+  Int fps = 24;  // use a fix number to calculate bit rate since decoder does not know the frame rate
+#if RExt__DECODER_DEBUG_BIT_STATISTICS
+  Int diffDQPBitsCount = abs(totalStat.dQP_bit - totalStat.dQP_bit_accu); 
+  if (diffDQPBitsCount != 0)  
+  { 
+    printf("\nDQP bits actual %d, DQP bits accumlated %d, Difference is %d\n", totalStat.dQP_bit, totalStat.dQP_bit_accu, diffDQPBitsCount);
+  }
+  printf("\nDQPStat:\t%d\tframes\ttotal dqp Bits\t%d\tTotal bits\t%10lld\tBitRate:kbps(if fps=24)\t%5.4f\tpercent\t%.2f%%\n", 
+    nframe, totalStat.dQP_bit, totalStat.total_bit, (Double)(totalStat.total_bit*fps)/(1000*nframe), (Double)(totalStat.dQP_bit*100)/(Double)totalStat.total_bit);
+#else
+  printf("\nTo get DQP bits count, run TAppDecoderAnalyserStatic which turns on RExt__DECODER_DEBUG_BIT_STATISTICS\n");
+  printf("\nDQPStat:\t%d\tframes\tTotal bits\t%10lld\tBitRate:kbps(if fps=24)\t%5.4f\n", nframe, totalStat.total_bit, (Double)(totalStat.total_bit*fps)/(1000*nframe));
+#endif
+#endif
   xFlushOutput( pcListPic );
   // delete buffers
   m_cTDecTop.deletePicBuffer();

@@ -468,7 +468,7 @@ public:
     }
     return m_phQP[getTextType()][uiIdx];       
   }
-  //Void          setQP                 ( UInt uiIdx, Char value ){ m_phQP[getTextType()][uiIdx] =  value;     }
+  Void          setQP                 ( UInt uiIdx, Char value ){ m_phQP[getTextType()][uiIdx] =  value;     }
   Void          setQPSubParts         ( Int qp,   UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight );
 #else
   Char*         getQP                 ()                        { return m_phQP;              }

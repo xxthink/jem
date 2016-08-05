@@ -520,6 +520,18 @@ class TComCodingStatistics
       return inst;
     }
 
+#if SHARP_DQP_BIT_STAT
+    static const Int64 getStatBits(Int i) {
+      TComCodingStatistics &inst=GetSingletonInstance();
+      Int64 totalCABACbits=0;
+      for(UInt c=0; c<CODING_STATS_NUM_SUBCLASSES; c++)
+      {
+        totalCABACbits+=inst.data.statistics[i][c].bits;
+        totalCABACbits+=inst.data.statistics_ep[i][c].bits * TCOMCODINGSTATISTICS_ENTROPYSCALE;
+      }
+      return totalCABACbits;
+    };
+#endif
     static const TComCodingStatisticsData &GetStatistics()         { return GetSingletonInstance().data; }
     static Void SetStatistics(const TComCodingStatisticsData &src) { GetSingletonInstance().data=src; }
 
