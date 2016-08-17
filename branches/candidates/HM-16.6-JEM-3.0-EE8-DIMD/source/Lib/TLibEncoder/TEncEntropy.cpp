@@ -216,12 +216,29 @@ Void TEncEntropy::encodeDIMDFlag(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDep
   {
     uiAbsPartIdx = 0;
   }
-  //assert(isLuma(pcCU->getTextType()));
   if(pcCU->getPredictionMode(uiAbsPartIdx) == MODE_INTER)
   {
-    //assert(!pcCU->getDIMDEnabledFlag(CHANNEL_TYPE_LUMA, uiAbsPartIdx));
     return;
   }
+#if DISABLE_DIMD_SM_QTBT_BLK
+  UInt uiBTDepth = pcCU->getBTDepth(uiAbsPartIdx, uiWidth, uiHeight);
+  if(pcCU->getBTSplitModeForBTDepth(uiAbsPartIdx, uiBTDepth) == 0 && (uiBTDepth <= MAX_BT_DEPTH_DIMD_SIG_AI || !pcCU->getSlice()->isIntra()))
+  {
+    if(uiWidth*uiHeight < 64)
+    {
+      assert(!pcCU->getDIMDEnabledFlag(CHANNEL_TYPE_LUMA, uiAbsPartIdx));
+      return;
+    }
+  }
+  if(uiBTDepth == MAX_BT_DEPTH_DIMD_SIG_AI && pcCU->getBTSplitModeForBTDepth(uiAbsPartIdx, uiBTDepth) && pcCU->getSlice()->isIntra())
+  {
+    if(uiWidth*uiHeight <= 64)
+    {
+      assert(!pcCU->getDIMDEnabledFlag(CHANNEL_TYPE_LUMA, uiAbsPartIdx));
+      return;
+    }
+  }
+#endif
 
   m_pcEntropyCoderIf->codeDIMDFlag(pcCU, uiAbsPartIdx, uiDepth);
 }

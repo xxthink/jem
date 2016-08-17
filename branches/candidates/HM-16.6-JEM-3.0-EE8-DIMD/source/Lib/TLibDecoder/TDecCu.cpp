@@ -93,11 +93,7 @@ TDecCu::TDecCu()
 TDecCu::~TDecCu()
 {
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
-#if JVET_C0035_ATMVP_SIMPLIFICATION
-  for (UInt ui=0;ui<NUM_MGR_TYPE;ui++)
-#else
   for (UInt ui=0;ui<2;ui++)
-#endif
   {
     if( m_pMvFieldSP[ui] != NULL )
     {
@@ -532,7 +528,7 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
 #if DIMD_INTRA_PRED
       if(isLuma(pcCU->getTextType()) && pcCU->getSlice()->isIntra() && uiBTDepth == MAX_BT_DEPTH_DIMD_SIG_AI)
       {
-        m_pcEntropyDecoder->decodeDIMDFlag(pcCU, uiAbsPartIdx, uiDepth, uiWidth, uiHeight);
+       m_pcEntropyDecoder->decodeDIMDFlag(pcCU, uiAbsPartIdx, uiDepth, uiWidth, uiHeight);
        UInt uiDIMDIntraMode = DC_IDX;
        pcCU->setSizeSubParts( uiWidth, uiHeight, uiAbsPartIdx, uiDepth );
        if(pcCU->getDIMDEnabledFlag(CHANNEL_TYPE_LUMA, uiAbsPartIdx))
@@ -571,7 +567,7 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
            } 
          } 
        }
-     }
+      }
 #endif
       for ( UInt uiPartUnitIdx = 0; uiPartUnitIdx < 2; uiPartUnitIdx++ )
       {
@@ -958,7 +954,6 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
     }
   }
 #endif
-
 #if JVET_C0024_QTBT
   if (pcCU->isIntra( uiAbsPartIdx ) )
 #else
@@ -982,7 +977,7 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
 #else
       xFinishDecodeCU( pcCU, uiAbsPartIdx, uiDepth, isLastCtuOfSliceSegment );
 #endif
-#if DIMD_INTRA_PRED
+#if DIMD_INTRA_PRED 
       pcCU->getPic()->setCodedBlkInCTU(false, uiBlkX, uiBlkY, uiWidth>> MIN_CU_LOG2, uiHeight>> MIN_CU_LOG2);
       pcCU->getPic()->addCodedAreaInCTU(-Int(uiWidth*uiHeight));
       m_pppcYuvResi[uiWidthIdx][uiHeightIdx]->clear();
@@ -1417,7 +1412,6 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
   }
 #endif
 
-
   DEBUG_STRING_NEW(sTemp)
   m_pcPrediction->initIntraPatternChType( rTu, compID, bUseFilteredPredictions  
 #if COM16_C983_RSAF
@@ -1427,7 +1421,6 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
 
 
   //===== get prediction signal =====
-
 #if COM16_C806_LMCHROMA
   if( uiChFinalMode == LM_CHROMA_IDX )
   {

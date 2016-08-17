@@ -263,6 +263,7 @@ extern const Int g_pdpc_pred_param[5][35][6];
 extern const Int g_pdpc_pred_param[5][2][35][7];
 #endif
 #endif
+
 //! \}
 
 #endif  //__TCOMROM__

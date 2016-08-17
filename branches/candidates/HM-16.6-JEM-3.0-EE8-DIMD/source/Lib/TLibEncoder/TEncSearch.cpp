@@ -1810,6 +1810,7 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
       }
     }
 #endif
+
     // save prediction
     if( default0Save1Load2 == 1 )
     {

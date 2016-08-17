@@ -916,7 +916,7 @@ Void TEncSbac::codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
 #endif
   {
     iNumberOfPassesROT = pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) <= DC_IDX ? 3 : 4;
- }
+  }
 
   if( iNumberOfPassesROT==3 )
   {
@@ -1140,6 +1140,17 @@ Void TEncSbac::codeFRUCMgrMode( TComDataCU* pcCU, UInt uiAbsPartIdx , UInt uiPUI
 Void TEncSbac::codeBTSplitMode ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight)
 {
   UInt uiBTSplitMode = pcCU->getBTSplitModeForBTDepth(uiAbsPartIdx, pcCU->getBTDepth(uiAbsPartIdx, uiWidth, uiHeight));  //0: no split; 1: hor; 2: ver
+
+#if DISABLE_DIMD_SM_QTBT_BLK
+  if(isLuma(pcCU->getTextType()) && pcCU->getBTDepth(uiAbsPartIdx, uiWidth, uiHeight) > MAX_BT_DEPTH_DIMD_SIG_AI && pcCU->getSlice()->isIntra())
+  {
+    if(pcCU->getDIMDEnabledFlag(CHANNEL_TYPE_LUMA, uiAbsPartIdx) && uiWidth * uiHeight <= 64)
+    {
+      assert(!uiBTSplitMode);
+      return;
+    }
+  }
+#endif
 
   UInt uiCtx = pcCU->getCtxBTSplitFlag(uiAbsPartIdx, uiWidth, uiHeight);
 

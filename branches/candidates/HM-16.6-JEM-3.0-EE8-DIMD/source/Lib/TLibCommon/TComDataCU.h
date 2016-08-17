@@ -921,7 +921,7 @@ public:
 #if VCEG_AZ07_INTRA_65ANG_MODES && !JVET_C0055_INTRA_MPM
                                                   , Int &iAboveLeftCase
 #endif
-                                                  , Int* piMode = NULL
+                                                  , Int* piMode = NULL 
                                                 );
 
   // -------------------------------------------------------------------------------------------------------------------
