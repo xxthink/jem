@@ -834,6 +834,34 @@ Void TDecSbac::parseDIMDFlag(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, 
     return;
   }
 
+#if DISABLE_DIMD_SM_QTBT_BLK
+  UInt uiBTDepth = pcCU->getBTDepth(uiAbsPartIdx, uiWidth, uiHeight);
+  if(pcCU->getBTSplitModeForBTDepth(uiAbsPartIdx, uiBTDepth) == 0 && (uiBTDepth <= MAX_BT_DEPTH_DIMD_SIG_AI || !pcCU->getSlice()->isIntra()))
+  {
+    if(uiWidth*uiHeight < 64)
+    {
+      for (UInt i = 0; i < uiLong; i += uiShort)
+      {
+        memset(pcCU->getDIMDEnabledFlag(CHANNEL_TYPE_LUMA) + g_auiRasterToZscan[uiRaster] - pcCU->getZorderIdxInCtu(), 0, uiCurrPartNumb );
+        uiRaster += uiNumPartInShort * uiStride;
+      }
+      return;
+    }
+  }
+  if(uiBTDepth == MAX_BT_DEPTH_DIMD_SIG_AI && pcCU->getBTSplitModeForBTDepth(uiAbsPartIdx, uiBTDepth) && pcCU->getSlice()->isIntra())
+  {
+    if(uiWidth*uiHeight <= 64)
+    {
+      for (UInt i = 0; i < uiLong; i += uiShort)
+      {
+        memset(pcCU->getDIMDEnabledFlag(CHANNEL_TYPE_LUMA) + g_auiRasterToZscan[uiRaster] - pcCU->getZorderIdxInCtu(), 0, uiCurrPartNumb );
+        uiRaster += uiNumPartInShort * uiStride;
+      }
+      return;
+    }
+  }
+#endif
+
   UInt uiSymbol = 0;
   m_pcTDecBinIf->decodeBin( uiSymbol, m_cDIMDEnabledSCModel.get(0, 0, uiDepth) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__DIMD_FLAG) );
   for (UInt i = 0; i < uiLong; i += uiShort)
@@ -1150,6 +1178,18 @@ Void TDecSbac::parseBTSplitMode   ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt ui
 
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
   const TComCodingStatisticsClassType ctype(STATS__CABAC_BITS__BTSPLIT_FLAG, g_aucConvertToBit[uiWidth]+2);
+#endif
+
+#if DISABLE_DIMD_SM_QTBT_BLK
+  if(isLuma(pcCU->getTextType()) && pcCU->getBTDepth(uiAbsPartIdx, uiWidth, uiHeight) > MAX_BT_DEPTH_DIMD_SIG_AI && pcCU->getSlice()->isIntra())
+  {
+    if(pcCU->getDIMDEnabledFlag(CHANNEL_TYPE_LUMA, uiAbsPartIdx) && uiWidth * uiHeight <= 64)
+    {
+      uiSymbol = 0;
+      pcCU->setBTSplitModeSubParts(uiSymbol, uiAbsPartIdx, uiWidth, uiHeight);
+      return;
+    }
+  }
 #endif
 
   UInt uiCtx = pcCU->getCtxBTSplitFlag(uiAbsPartIdx, uiWidth, uiHeight);

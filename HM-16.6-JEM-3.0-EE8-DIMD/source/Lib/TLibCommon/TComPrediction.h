@@ -344,8 +344,7 @@ public:
   }
 
 #if DIMD_INTRA_PRED
-  UInt deriveNeighborIntraDirs      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
-  Void initDIMDLumaFlexibleIntraPattern ( TComDataCU* pcCU,
+  UInt deriveNeighborIntraDirs      ( TComDataCU* pcCU, UInt uiAbsPartIdx );  Void initDIMDLumaFlexibleIntraPattern ( TComDataCU* pcCU,
                                           UInt        uiZorderIdxInPart,
                                           Int         iRefX,
                                           Int         iRefY,

@@ -47,11 +47,47 @@
 //! \ingroup TLibCommon
 //! \{
 
+#define EE8_TEST_IDX                                      6
+#if   EE8_TEST_IDX == 1
 #define DIMD_INTRA_PRED                                   1
-#if DIMD_INTRA_PRED
-#define MAX_TEMP_SIZE                                     4  
-#define MAX_BT_DEPTH_DIMD_SIG_AI                          1
+#define SM_TEMP_SIZE                                      1
+#define LG_TEMP_SIZE                                      1
 #define DIMD_NUM_INTRA_DIR_INC                            1
+#elif EE8_TEST_IDX == 2
+#define DIMD_INTRA_PRED                                   1
+#define SM_TEMP_SIZE                                      2
+#define LG_TEMP_SIZE                                      2
+#define DIMD_NUM_INTRA_DIR_INC                            1
+#elif EE8_TEST_IDX == 3
+#define DIMD_INTRA_PRED                                   1
+#define SM_TEMP_SIZE                                      2
+#define LG_TEMP_SIZE                                      4
+#define DIMD_NUM_INTRA_DIR_INC                            1
+#elif EE8_TEST_IDX == 4
+#define DIMD_INTRA_PRED                                   1
+#define SM_TEMP_SIZE                                      2
+#define LG_TEMP_SIZE                                      4
+#define DIMD_NUM_INTRA_DIR_INC                            1
+#define DISABLE_DIMD_SM_QTBT_BLK                          1
+#elif EE8_TEST_IDX == 5
+#define DIMD_INTRA_PRED                                   1
+#define SM_TEMP_SIZE                                      2
+#define LG_TEMP_SIZE                                      4
+#define DIMD_NUM_INTRA_DIR_INC                            0
+#elif EE8_TEST_IDX == 6
+#define DIMD_INTRA_PRED                                   0
+#define HIGH_COMPLEXITY_INTRA_MODE_RD                     3
+#elif EE8_TEST_IDX == 7
+#define DIMD_INTRA_PRED                                   1
+#define SM_TEMP_SIZE                                      2
+#define LG_TEMP_SIZE                                      4
+#define DIMD_NUM_INTRA_DIR_INC                            1
+#define HIGH_COMPLEXITY_INTRA_MODE_RD                     3
+#endif
+
+#if DIMD_INTRA_PRED
+#define MAX_TEMP_SIZE                                     4
+#define MAX_BT_DEPTH_DIMD_SIG_AI                          1
 #endif
 
 ///////////////////////////////////////////////////////////

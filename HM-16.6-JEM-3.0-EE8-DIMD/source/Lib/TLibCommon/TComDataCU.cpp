@@ -171,7 +171,7 @@ TComDataCU::TComDataCU()
 #if DIMD_NUM_INTRA_DIR_INC
     m_ucExtIntraDir[ch]      = NULL;
 #endif
-    m_ucDIMDNoBTLevelFlag[ch]= NULL;
+    m_ucDIMDNoBTLevelFlag[ch]= NULL; 
   }
 #endif
 
@@ -8141,7 +8141,6 @@ UInt TComDataCU::getCoefScanIdx(const UInt uiAbsPartIdx, const UInt uiWidth, con
   }
 
   //------------------
-
 #if DIMD_NUM_INTRA_DIR_INC
   if(getDIMDEnabledFlag(toChannelType(compID), uiAbsPartIdx))
   {

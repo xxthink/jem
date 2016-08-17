@@ -1834,9 +1834,12 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #endif
          xCheckRDCostIntra( rpcBestCU, rpcTempCU, intraCost, SIZE_2Nx2N DEBUG_STRING_PASS_INTO(sDebug)
 #if VCEG_AZ05_ROT_TR || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
-           , bNonZeroCoeff
+                            , bNonZeroCoeff
 #endif
-           );
+#if DIMD_INTRA_PRED
+                            , 0
+#endif
+                         );
          rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
 #endif
 #if VCEG_AZ05_INTRA_MPI
@@ -1866,6 +1869,13 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
           if(rpcTempCU->getBTDepth(0) <= MAX_BT_DEPTH_DIMD_SIG_AI || !rpcTempCU->getSlice()->isIntra())
           {
             bTestDIMDIntra = true;
+#if DISABLE_DIMD_SM_QTBT_BLK
+            if(rpcTempCU->getWidth(0) * rpcTempCU->getHeight(0) < 64)
+            {
+              bTestDIMDIntra = false;
+              assert(bTestNonDIMDIntra);
+            }
+#endif
           }
           else
           {
@@ -1873,6 +1883,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
             bTestDIMDIntra = rpcTempCU->getDIMDEnabledFlag(CHANNEL_TYPE_LUMA, 0);
           }
         }
+
         if(bTestDIMDIntra)
         {
 #if COM16_C1046_PDPC_INTRA
@@ -1939,6 +1950,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
                   {
                     continue; 
                   }
+
                   if(rpcTempCU->getSlice()->isIntra())
                   {
 #if DIMD_NUM_INTRA_DIR_INC
@@ -2013,7 +2025,6 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
                 {
                   continue; 
                 }
-
                 if(rpcTempCU->getSlice()->isIntra())
                 {
 #if DIMD_NUM_INTRA_DIR_INC
@@ -2060,7 +2071,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
                                    , bNonZeroCoeff
 #endif
                                    , 1
-                  );
+                                 );
                 rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
 #endif
 #if VCEG_AZ05_INTRA_MPI
@@ -2416,6 +2427,17 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
   }
 #endif
 
+#if DISABLE_DIMD_SM_QTBT_BLK
+  if(isLuma(rpcTempCU->getTextType()) && rpcTempCU->getBTDepth(0) > MAX_BT_DEPTH_DIMD_SIG_AI && rpcTempCU->getSlice()->isIntra())
+  {
+    if(rpcTempCU->getDIMDEnabledFlag(CHANNEL_TYPE_LUMA, 0) && rpcTempCU->getWidth(0)*rpcTempCU->getHeight(0) <= 64)
+    {
+      bTestHorSplit = false;
+      bTestVerSplit = false;
+    }     
+  }
+#endif
+
   if (bTestHorSplit) 
   {
     // further split
@@ -2434,8 +2456,20 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         else if(rpcTempCU->getBTDepth(0) == MAX_BT_DEPTH_DIMD_SIG_AI && rpcTempCU->getSlice()->isIntra())
         {
           uiStartDIMDId         = 0;
+#if DISABLE_DIMD_SM_QTBT_BLK
+          if(rpcTempCU->getWidth(0)*rpcTempCU->getHeight(0) > 64)
+          {
+#endif
           uiEndStartDIMDId      = 1;
           bIsBTDepthSigDIMDFlag = true;
+#if DISABLE_DIMD_SM_QTBT_BLK
+          }
+          else
+          {
+            uiEndStartDIMDId      = 0;
+            bIsBTDepthSigDIMDFlag = false;
+          }
+#endif
         }
         else
         {
@@ -2610,8 +2644,20 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         else if(rpcTempCU->getBTDepth(0) == MAX_BT_DEPTH_DIMD_SIG_AI && rpcTempCU->getSlice()->isIntra()) 
         {
           uiStartDIMDId         = 0;
+#if DISABLE_DIMD_SM_QTBT_BLK
+          if(rpcTempCU->getWidth(0)*rpcTempCU->getHeight(0) > 64)
+          {
+#endif
           uiEndStartDIMDId      = 1;
           bIsBTDepthSigDIMDFlag = true;
+#if DISABLE_DIMD_SM_QTBT_BLK
+          }
+          else
+          {
+            uiEndStartDIMDId      = 0;
+            bIsBTDepthSigDIMDFlag = false;
+          }
+#endif
         }
         else
         {
@@ -4441,6 +4487,12 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
   {
     assert(!rpcTempCU->getDIMDNoBTLevelFlag(CHANNEL_TYPE_CHROMA, 0)); 
   }
+#if DISABLE_DIMD_SM_QTBT_BLK
+  if(ucDIMDIntraRD)
+  {
+    assert(rpcTempCU->getWidth(0)*rpcTempCU->getHeight(0) >= 64);
+  }
+#endif
 #endif
   rpcTempCU->setSkipFlagSubParts( false, 0, uiDepth );
 #if COM16_C806_OBMC
