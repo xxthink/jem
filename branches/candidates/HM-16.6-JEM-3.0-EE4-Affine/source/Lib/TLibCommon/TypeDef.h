@@ -219,9 +219,9 @@
 #define JVET_B0038_AFFINE_HARMONIZATION                   1  ///< Harmonization of affine, OBMC and DBF
 #define JVET_C0025_AFFINE_FILTER_SIMPLIFICATION           1  ///< Simplification of MC filters for affine
 ////////////////////////////////
-#define JVECT_C0062_AFFINE_SIX_PARAM                               1 ///< enable 6 parameter affine model
+#define JVECT_C0062_AFFINE_SIX_PARAM                      1 ///< enable 6 parameter affine model
 #if JVECT_C0062_AFFINE_SIX_PARAM
-#define JVET_C0062_AFFINE_MERGE_CANDIDATE                         1 ///< change the neighbor affine merge candidate order
+#define JVET_C0062_AFFINE_MERGE_CANDIDATE                 0 ///< change the neighbor affine merge candidate order
 #endif
 //////////////////////////////
 #endif
