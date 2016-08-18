@@ -5106,7 +5106,7 @@ void fastForwardDST4_B64(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo
     }
 }
 
-#if ITSKIP
+#if JVET_C0024_ITSKIP
 void fastInverseDST4_B64(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
 #else
 void fastInverseDST4_B64(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
@@ -5116,11 +5116,11 @@ void fastInverseDST4_B64(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int z
     Int rnd_factor = 1<<(shift-1);
     const Int uiTrSize = 64;
     const TMatrixCoeff *iT = g_aiTr64[DST4][0];
-#if ITSKIP
+#if JVET_C0024_ITSKIP
     Bool zo = iSkipLine2 >= 32;
 #endif
     if (zo) {
-#if ITSKIP
+#if JVET_C0024_ITSKIP
         for (i = 0; i < line-iSkipLine; ++i) {
 #else
             for (i = 0; i < (line>>(zo-1)); ++i) {
@@ -5136,7 +5136,7 @@ void fastInverseDST4_B64(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int z
                 coeff++;
             }
         } else {
-#if ITSKIP
+#if JVET_C0024_ITSKIP
             for (i = 0; i < line-iSkipLine; ++i) {
 #else
                 for (i = 0; i < line; ++i) {
@@ -5152,7 +5152,7 @@ void fastInverseDST4_B64(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int z
                     coeff++;
                 }
             }
-#if ITSKIP
+#if JVET_C0024_ITSKIP
             memset(block, 0, uiTrSize*iSkipLine*sizeof(TCoeff));
 #endif
 }
@@ -5207,7 +5207,7 @@ void fastForwardDST4_B128(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int z
     }
 }
         
-#if ITSKIP
+#if JVET_C0024_ITSKIP
 void fastInverseDST4_B128(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
 #else
 void fastInverseDST4_B128(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
@@ -5217,11 +5217,11 @@ void fastInverseDST4_B128(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int 
     Int rnd_factor = 1<<(shift-1);
     const Int uiTrSize = 128;
     const TMatrixCoeff *iT = g_aiTr128[DST4][0];
-#if ITSKIP
+#if JVET_C0024_ITSKIP
     Bool zo = iSkipLine2 >= 64;
 #endif
     if (zo) {
-#if ITSKIP
+#if JVET_C0024_ITSKIP
         for (i = 0; i < line-iSkipLine; ++i) {
 #else
             for (i = 0; i < (line>>(zo-1)); ++i) {
@@ -5237,7 +5237,7 @@ void fastInverseDST4_B128(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int 
                 coeff++;
             }
         } else {
-#if ITSKIP
+#if JVET_C0024_ITSKIP
             for (i = 0; i < line-iSkipLine; ++i) {
 #else
                 for (i = 0; i < line; ++i) {
@@ -5253,7 +5253,7 @@ void fastInverseDST4_B128(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int 
                     coeff++;
                 }
             }
-#if ITSKIP
+#if JVET_C0024_ITSKIP
             memset(block, 0, uiTrSize*iSkipLine*sizeof(TCoeff));
 #endif
         }
