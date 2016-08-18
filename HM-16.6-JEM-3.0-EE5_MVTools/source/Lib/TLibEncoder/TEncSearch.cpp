@@ -8637,10 +8637,10 @@ Void TEncSearch::xXneiborSearchForMvdSdh( TComDataCU*  pcCU,
     Int yOffset       = searchPairs[Iter].second;
 #endif
 
-    Int xUnderTest    = cMv.getHor() + xOffset;
-    Int yUnderTest    = cMv.getVer() + yOffset;
-    Int xMvdUnderTest = xUnderTest - rcMvPred.getHor();
-    Int yMvdUnderTest = yUnderTest - rcMvPred.getVer();
+    Short xUnderTest    = cMv.getHor() + xOffset;
+    Short yUnderTest    = cMv.getVer() + yOffset;
+    Short xMvdUnderTest = xUnderTest - rcMvPred.getHor();
+    Short yMvdUnderTest = yUnderTest - rcMvPred.getVer();
 
     if ((xMvdUnderTest >> (precision)) != 0)
     {
@@ -8815,8 +8815,9 @@ Void TEncSearch::xCheckBestMVP ( TComDataCU* pcCU, RefPicList eRefPicList,
 
   if ( mvdSdhOnHere )
   {
-    Int mvdX  = (cMv.getHor() - rcMvPred.getHor()) >> (precision);
-    Int mvdY  = (cMv.getVer() - rcMvPred.getVer()) >> (precision);
+    TComMv Mvd = cMv - rcMvPred;
+    Int mvdX  = (Mvd.getHor()) >> (precision);
+    Int mvdY  = (Mvd.getVer()) >> (precision);
 
     if ( mvdX != 0 )
     {
@@ -8875,8 +8876,9 @@ Void TEncSearch::xCheckBestMVP ( TComDataCU* pcCU, RefPicList eRefPicList,
 
     if ( mvdSdhOnHere )
     {
-      Int mvdX = (cMv.getHor() - pcAMVPInfo->m_acMvCand[iMVPIdx].getHor()) >> (precision);
-      Int mvdY = (cMv.getVer() - pcAMVPInfo->m_acMvCand[iMVPIdx].getVer()) >> (precision);
+      TComMv Mvd = cMv - pcAMVPInfo->m_acMvCand[iMVPIdx];
+      Int mvdX  = (Mvd.getHor()) >> (precision);
+      Int mvdY  = (Mvd.getVer()) >> (precision);
 
       if ( mvdX != 0 )
       {
