@@ -6977,6 +6977,51 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
     if ( uiCostBi <= uiCost[0] && uiCostBi <= uiCost[1])
     {
       uiLastMode = 2;
+#if JVET_C0068_SDH
+      // here we do a sanity check on the final MVD for SDH
+      // if the check fail (happens very rare), MVD would be forced to 0
+#if VCEG_AZ07_IMV
+      if (pcCU->getiMVFlag( uiPartAddr ) == false)
+#endif
+      {
+        Int precision   = 0;
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+        precision       += VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE;
+#endif
+        // check for List0
+        TComMv Mvd      = cMvBi[0] - cMvPredBi[0][iRefIdxBi[0]];
+        Int xMvdUnderTest = Mvd.getHor();
+        Int yMvdUnderTest = Mvd.getVer();
+        if ((xMvdUnderTest >> precision) != 0)
+        {
+          Int sum = std::abs(xMvdUnderTest >> precision) + std::abs(yMvdUnderTest >> precision);
+
+          if ( USE_CU_SIZE       ) sum += (Int)(pcCU->getWidth(0));
+          if ( USE_PART_MODE     ) sum += (Int)(SIZE_2Nx2N);
+          if ( USE_REF_PIC_IDX   ) sum += (Int)(iRefIdxBi[0]);
+
+          Int sign = xMvdUnderTest >= 0 ? 0 : 1;
+          if((sum % 2) != sign) cMvBi[0] = cMvPredBi[0][iRefIdxBi[0]];
+        }
+
+        // check for List1
+        Mvd = cMvBi[1] - cMvPredBi[1][iRefIdxBi[1]];
+        xMvdUnderTest = Mvd.getHor();
+        yMvdUnderTest = Mvd.getVer();
+        if ((xMvdUnderTest >> precision) != 0)
+        {
+          Int sum = std::abs(xMvdUnderTest >> precision) + std::abs(yMvdUnderTest >> precision);
+
+          if ( USE_CU_SIZE       ) sum += (Int)(pcCU->getWidth(0));
+          if ( USE_PART_MODE     ) sum += (Int)(SIZE_2Nx2N);
+          if ( USE_REF_PIC_IDX   ) sum += (Int)(iRefIdxBi[1]);
+
+          Int sign = xMvdUnderTest >= 0 ? 0 : 1;
+           if((sum % 2) != sign) cMvBi[1] = cMvPredBi[1][iRefIdxBi[1]];
+        }
+      }
+#endif
+
       pcCU->getCUMvField(REF_PIC_LIST_0)->setAllMv( cMvBi[0], ePartSize, uiPartAddr, 0, iPartIdx );
       pcCU->getCUMvField(REF_PIC_LIST_0)->setAllRefIdx( iRefIdxBi[0], ePartSize, uiPartAddr, 0, iPartIdx );
       pcCU->getCUMvField(REF_PIC_LIST_1)->setAllMv( cMvBi[1], ePartSize, uiPartAddr, 0, iPartIdx );
@@ -7001,6 +7046,36 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
     else if ( uiCost[0] <= uiCost[1] )
     {
       uiLastMode = 0;
+
+#if JVET_C0068_SDH
+      // here we do a sanity check on the final MVD for SDH
+      // if the check fail (happens very rare), MVD would be forced to 0
+#if VCEG_AZ07_IMV
+      if (pcCU->getiMVFlag( uiPartAddr ) == false)
+#endif
+      {
+        Int precision   = 0;
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+        precision       += VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE;
+#endif
+        // check for List0
+        TComMv Mvd      = cMv[0] - cMvPred[0][iRefIdx[0]];
+        Int xMvdUnderTest = Mvd.getHor();
+        Int yMvdUnderTest = Mvd.getVer();
+        if ((xMvdUnderTest >> precision) != 0)
+        {
+          Int sum = std::abs(xMvdUnderTest >> precision) + std::abs(yMvdUnderTest >> precision);
+
+          if ( USE_CU_SIZE       ) sum += (Int)(pcCU->getWidth(0));
+          if ( USE_PART_MODE     ) sum += (Int)(SIZE_2Nx2N);
+          if ( USE_REF_PIC_IDX   ) sum += (Int)(iRefIdx[0]);
+
+          Int sign = xMvdUnderTest >= 0 ? 0 : 1;
+          if((sum % 2) != sign) cMv[0] = cMvPred[0][iRefIdx[0]];
+        }
+      }
+#endif
+
       pcCU->getCUMvField(REF_PIC_LIST_0)->setAllMv( cMv[0], ePartSize, uiPartAddr, 0, iPartIdx );
       pcCU->getCUMvField(REF_PIC_LIST_0)->setAllRefIdx( iRefIdx[0], ePartSize, uiPartAddr, 0, iPartIdx );
 
@@ -7018,6 +7093,36 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
     else
     {
       uiLastMode = 1;
+
+#if JVET_C0068_SDH
+      // here we do a sanity check on the final MVD for SDH
+      // if the check fail (happens very rare), MVD would be forced to 0
+#if VCEG_AZ07_IMV
+      if (pcCU->getiMVFlag( uiPartAddr ) == false)
+#endif
+      {
+        Int precision   = 0;
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+        precision       += VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE;
+#endif
+        // check for List0
+        TComMv Mvd      = cMv[1] - cMvPred[1][iRefIdx[1]];
+        Int xMvdUnderTest = Mvd.getHor();
+        Int yMvdUnderTest = Mvd.getVer();
+        if ((xMvdUnderTest >> precision) != 0)
+        {
+          Int sum = std::abs(xMvdUnderTest >> precision) + std::abs(yMvdUnderTest >> precision);
+
+          if ( USE_CU_SIZE       ) sum += (Int)(pcCU->getWidth(0));
+          if ( USE_PART_MODE     ) sum += (Int)(SIZE_2Nx2N);
+          if ( USE_REF_PIC_IDX   ) sum += (Int)(iRefIdx[1]);
+
+          Int sign = xMvdUnderTest >= 0 ? 0 : 1;
+          if((sum % 2) != sign) cMv[1] = cMvPred[1][iRefIdx[1]];
+        }
+      }
+#endif
+
       pcCU->getCUMvField(REF_PIC_LIST_1)->setAllMv( cMv[1], ePartSize, uiPartAddr, 0, iPartIdx );
       pcCU->getCUMvField(REF_PIC_LIST_1)->setAllRefIdx( iRefIdx[1], ePartSize, uiPartAddr, 0, iPartIdx );
 
