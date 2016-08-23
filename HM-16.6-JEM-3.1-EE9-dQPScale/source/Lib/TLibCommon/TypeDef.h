@@ -87,7 +87,7 @@
 #if SHARP_LUMA_DELTA_QP
 #define SHARP_MAX_LUMA_DQP                 20              ///< max allowed positions for delta QP change based on luma
 #define SHARP_QP_LUMA_LUT_MAXSIZE          1024            ///< max LUT size for QP offset based on luma
-#define SHARP_QP_LUMA_LUT_HDR                1             ///< 0: use default LUT for SDR; 1: use default LUT for HDR
+#define SHARP_QP_LUMA_LUT_HDR                0             ///< 0: use default LUT for SDR; 1: use default LUT for HDR
 #define SHARP_WEIGHT_DISTORTION              1            ///< use weighted distortion in RD decision
 #define SHARP_WEIGHT_DISTORTION_OUTPUT       1            ///< printout weighted PSNR
 
