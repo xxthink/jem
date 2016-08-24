@@ -1,3 +1,5 @@
+*** This luma adaptive QP control code is intended for coding data in ST-2084 container and optimized for Weighted PSNR as described in JVET-C0095  *** 
+
 In the code, changes are under macros starting with   SHARP_
 Below are example config parameters to control the luma adaptive QP and scaling, in the config files:
 
@@ -12,12 +14,12 @@ MaxCuDQPDepth                 : 3           # Max depth of delta QP, should be l
 
 Related Macros:
 
-(1) #define SHARP_LUMA_DELTA_QP                1            ///< enable luma adaptive QP
+(1) #define SHARP_LUMA_DELTA_QP                1            ///< enable luma adaptive QP, only intended for HDR or SDR data in ST-2084 
 
 This is the luma adaptive QP technology used in MPEG-HDR anchor3.2. QP is explicitly signalled by delta QP
 Refer JCTVC-W0054 for details.
 
-(2) #define SHARP_QP_LUMA_LUT_HDR                0             ///< 0: use default LUT for SDR; 1: use default LUT for HDR
+(2) #define SHARP_QP_LUMA_LUT_HDR                0             ///< 0: use default LUT for SDR in ST-2084 container; 1: use default LUT for HDR
 There are two default LUT table defined in the code,  define SHARP_QP_LUMA_LUT_HDR 1 for HDR data,  0 for SDR data converted to ST-2084 
 
 (3) #define SHARP_DQP_BIT_STAT                  1             ///< for decoder output frame bits and deltaQP bits count
@@ -37,7 +39,7 @@ WPSNR SUMMARY---------------------------------------------------
         7    w     210.9357   36.6616   40.2324   40.4726   37.5797
 
         
- 
+(5) directory dataConvert contains the script used for converting CTC SDR sequences to SDR in ST-2084 container.
 
 
 
