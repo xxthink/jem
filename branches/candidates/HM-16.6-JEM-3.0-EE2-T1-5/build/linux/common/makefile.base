@@ -12,8 +12,8 @@ endif
 # executables used
 #########################################################
 
-CPP     = g++
-CC      = gcc
+CPP     = g++-4.4
+CC      = gcc-4.4
 AR    	= ar
 LD    	= $(CPP)
 ASM		= nasm

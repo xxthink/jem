@@ -4889,221 +4889,221 @@ void fastInverseDST1_B128(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int 
 #if C0022_MODIF_EMT
 void fastForwardDST4_B4 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use)
 {
-    Int i, j, k, iSum;
-    Int rnd_factor = 1<<(shift-1);
-    const Int uiTrSize = 4;
-    const TMatrixCoeff *iT;
-    TCoeff *pCoef;
-    for (i = 0; i < line; ++i) {
-        pCoef = coeff;
-        iT = g_aiTr4[DST4][0];
-        for (j = 0; j < uiTrSize; ++j) {
-            iSum = 0;
-            for (k = 0; k < uiTrSize; ++k) {
-                iSum += block[k]*iT[k];
-            }
-            pCoef[i] = (iSum + rnd_factor)>>shift;
-            pCoef += line;
-            iT += uiTrSize;
-        }
-        block += uiTrSize;
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+  const Int uiTrSize = 4;
+  const TMatrixCoeff *iT;
+  TCoeff *pCoef;
+  for (i = 0; i < line; ++i) {
+    pCoef = coeff;
+    iT = g_aiTr4[DST4][0];
+    for (j = 0; j < uiTrSize; ++j) {
+      iSum = 0;
+      for (k = 0; k < uiTrSize; ++k) {
+        iSum += block[k]*iT[k];
+      }
+      pCoef[i] = (iSum + rnd_factor)>>shift;
+      pCoef += line;
+      iT += uiTrSize;
     }
+    block += uiTrSize;
+  }
 }
 
 void fastInverseDST4_B4 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)
 {
-    Int i, j, k, iSum;
-    Int rnd_factor = 1<<(shift-1);
-    const TMatrixCoeff *iT = g_aiTr4[DST4][0];
-    const Int uiTrSize = 4;
-    for (i = 0; i < line; ++i) {
-        for (j = 0; j < uiTrSize; ++j) {
-            iSum = 0;
-            for (k = 0; k < uiTrSize; ++k) {
-                iSum += coeff[k*line]*iT[k*uiTrSize+j];
-            }
-            block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
-        }
-        block+=uiTrSize;
-        ++coeff;
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+  const TMatrixCoeff *iT = g_aiTr4[DST4][0];
+  const Int uiTrSize = 4;
+  for (i = 0; i < line; ++i) {
+    for (j = 0; j < uiTrSize; ++j) {
+      iSum = 0;
+      for (k = 0; k < uiTrSize; ++k) {
+        iSum += coeff[k*line]*iT[k*uiTrSize+j];
+      }
+      block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
     }
+    block+=uiTrSize;
+    ++coeff;
+  }
 }
 
 void fastForwardDST4_B8 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use)
 {
-    Int i, j, k, iSum;
-    Int rnd_factor = 1<<(shift-1);
-    const Int uiTrSize = 8;
-    const TMatrixCoeff *iT;
-    TCoeff *pCoef;
-    for (i = 0; i < line; ++i) {
-        pCoef = coeff;
-        iT = g_aiTr8[DST4][0];
-        for (j = 0; j < uiTrSize; ++j) {
-            iSum = 0;
-            for (k = 0; k < uiTrSize; ++k) {
-                iSum += block[k]*iT[k];
-            }
-            pCoef[i] = (iSum + rnd_factor)>>shift;
-            pCoef += line;
-            iT += uiTrSize;
-        }
-        block += uiTrSize;
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+  const Int uiTrSize = 8;
+  const TMatrixCoeff *iT;
+  TCoeff *pCoef;
+  for (i = 0; i < line; ++i) {
+    pCoef = coeff;
+    iT = g_aiTr8[DST4][0];
+    for (j = 0; j < uiTrSize; ++j) {
+      iSum = 0;
+      for (k = 0; k < uiTrSize; ++k) {
+        iSum += block[k]*iT[k];
+      }
+      pCoef[i] = (iSum + rnd_factor)>>shift;
+      pCoef += line;
+      iT += uiTrSize;
     }
+    block += uiTrSize;
+  }
 }
 
 void fastInverseDST4_B8 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)
 {
-    Int i, j, k, iSum;
-    Int rnd_factor = 1<<(shift-1);
-    const Int uiTrSize = 8;
-    const TMatrixCoeff *iT = g_aiTr8[DST4][0];
-    for (i = 0; i < line; ++i) {
-        for (j = 0; j < uiTrSize; ++j) {
-            iSum = 0;
-            for (k = 0; k < uiTrSize; ++k) {
-                iSum += coeff[k*line]*iT[k*uiTrSize+j];
-            }
-            block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
-        }
-        block += uiTrSize;
-        ++coeff;
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+  const Int uiTrSize = 8;
+  const TMatrixCoeff *iT = g_aiTr8[DST4][0];
+  for (i = 0; i < line; ++i) {
+    for (j = 0; j < uiTrSize; ++j) {
+      iSum = 0;
+      for (k = 0; k < uiTrSize; ++k) {
+        iSum += coeff[k*line]*iT[k*uiTrSize+j];
+      }
+      block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
     }
+    block += uiTrSize;
+    ++coeff;
+  }
 }
 
 void fastForwardDST4_B16(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use)
 {
-    Int i, j, k, iSum;
-    Int rnd_factor = 1<<(shift-1);
-    const Int uiTrSize = 16;
-    const TMatrixCoeff *iT;
-    TCoeff *pCoef;
-    for (i = 0; i < line; ++i) {
-        pCoef = coeff;
-        iT = g_aiTr16[DST4][0];
-        for (j = 0; j < uiTrSize; ++j) {
-            iSum = 0;
-            for (k = 0; k < uiTrSize; ++k) {
-                iSum += block[k]*iT[k];
-            }
-            pCoef[i] = (iSum + rnd_factor)>>shift;
-            pCoef += line;
-            iT += uiTrSize;
-        }
-        block += uiTrSize;
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+  const Int uiTrSize = 16;
+  const TMatrixCoeff *iT;
+  TCoeff *pCoef;
+  for (i = 0; i < line; ++i) {
+    pCoef = coeff;
+    iT = g_aiTr16[DST4][0];
+    for (j = 0; j < uiTrSize; ++j) {
+      iSum = 0;
+      for (k = 0; k < uiTrSize; ++k) {
+        iSum += block[k]*iT[k];
+      }
+      pCoef[i] = (iSum + rnd_factor)>>shift;
+      pCoef += line;
+      iT += uiTrSize;
     }
+    block += uiTrSize;
+  }
 }
 
 void fastInverseDST4_B16(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)
 {
-    Int i, j, k, iSum;
-    Int rnd_factor = 1<<(shift-1);
-    const Int uiTrSize = 16;
-    const TMatrixCoeff *iT = g_aiTr16[DST4][0];
-    for (i = 0; i < line; ++i) {
-        for (j = 0; j < uiTrSize; ++j) {
-            iSum = 0;
-            for (k = 0; k < uiTrSize; ++k) {
-                iSum += coeff[k*line]*iT[k*uiTrSize+j];
-            }
-            block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
-        }
-        block += uiTrSize;
-        ++coeff;
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+  const Int uiTrSize = 16;
+  const TMatrixCoeff *iT = g_aiTr16[DST4][0];
+  for (i = 0; i < line; ++i) {
+    for (j = 0; j < uiTrSize; ++j) {
+      iSum = 0;
+      for (k = 0; k < uiTrSize; ++k) {
+        iSum += coeff[k*line]*iT[k*uiTrSize+j];
+      }
+      block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
     }
+    block += uiTrSize;
+    ++coeff;
+  }
 }
 
 void fastForwardDST4_B32(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use)
 {
-    Int i, j, k, iSum;
-    Int rnd_factor = 1<<(shift-1);
-    const Int uiTrSize = 32;
-    const TMatrixCoeff *iT;
-    TCoeff *pCoef;
-    for (i = 0; i < line; ++i) {
-        pCoef = coeff;
-        iT = g_aiTr32[DST4][0];
-        for (j=0; j < uiTrSize; ++j) {
-            iSum = 0;
-            for (k = 0; k < uiTrSize; ++k) {
-                iSum += block[k]*iT[k];
-            }
-            pCoef[i] = (iSum + rnd_factor)>>shift;
-            pCoef += line;
-            iT += uiTrSize;
-        }
-        block += uiTrSize;
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+  const Int uiTrSize = 32;
+  const TMatrixCoeff *iT;
+  TCoeff *pCoef;
+  for (i = 0; i < line; ++i) {
+    pCoef = coeff;
+    iT = g_aiTr32[DST4][0];
+    for (j=0; j < uiTrSize; ++j) {
+      iSum = 0;
+      for (k = 0; k < uiTrSize; ++k) {
+        iSum += block[k]*iT[k];
+      }
+      pCoef[i] = (iSum + rnd_factor)>>shift;
+      pCoef += line;
+      iT += uiTrSize;
     }
+    block += uiTrSize;
+  }
 }
 
 void fastInverseDST4_B32(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)
 {
-    Int i, j, k, iSum;
-    Int rnd_factor = 1<<(shift-1);
-    const Int uiTrSize = 32;
-    const TMatrixCoeff *iT = g_aiTr32[DST4][0];
-    for (i = 0; i < line; ++i) {
-        for (j = 0; j < uiTrSize; ++j) {
-            iSum = 0;
-            for (k = 0; k < uiTrSize; ++k) {
-                iSum += coeff[k*line]*iT[k*uiTrSize+j];
-            }
-            block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
-        }
-        block += uiTrSize;
-        ++coeff;
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+  const Int uiTrSize = 32;
+  const TMatrixCoeff *iT = g_aiTr32[DST4][0];
+  for (i = 0; i < line; ++i) {
+    for (j = 0; j < uiTrSize; ++j) {
+      iSum = 0;
+      for (k = 0; k < uiTrSize; ++k) {
+        iSum += coeff[k*line]*iT[k*uiTrSize+j];
+      }
+      block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
     }
+    block += uiTrSize;
+    ++coeff;
+  }
 }
 
 #if JVET_C0024_QTBT
 void fastForwardDST4_B64(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use)
 {
-    Int i, j, k, iSum;
-    Int rnd_factor = 1<<(shift-1);
-    const Int uiTrSize = 64;
-    const TMatrixCoeff *iT;
-    TCoeff *pCoef;
-    if (zo) {
-        TCoeff *tmp = coeff;
-        for (i = 0; i < (line >> (zo-1)); ++i) {
-            pCoef = coeff;
-            iT = g_aiTr64[DST4][0];
-            for (j = 0; j < uiTrSize/2; ++j) {
-                iSum = 0;
-                for (k=0; k < uiTrSize; ++k) {
-                    iSum += block[k]*iT[k];
-                }
-                pCoef[i] = (iSum + rnd_factor) >> shift;
-                iT += uiTrSize;
-                pCoef += line;
-            }
-            block += uiTrSize;
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+  const Int uiTrSize = 64;
+  const TMatrixCoeff *iT;
+  TCoeff *pCoef;
+  if (zo) {
+    TCoeff *tmp = coeff;
+    for (i = 0; i < (line >> (zo-1)); ++i) {
+      pCoef = coeff;
+      iT = g_aiTr64[DST4][0];
+      for (j = 0; j < uiTrSize/2; ++j) {
+        iSum = 0;
+        for (k=0; k < uiTrSize; ++k) {
+          iSum += block[k]*iT[k];
         }
-        coeff += (line >> (zo-1));
-        if (zo == 2) {
-            for (j = 0; j < uiTrSize/2; ++j) {
-                memset( coeff, 0, sizeof(TCoeff)*uiTrSize/2 );
-                coeff += uiTrSize;
-            }
-        }
-        coeff = tmp + uiTrSize*uiTrSize/2;
-        memset( coeff, 0, sizeof(TCoeff)*uiTrSize*uiTrSize/2 );
-    } else {
-        for (i = 0; i < line; ++i) {
-            pCoef = coeff;
-            iT = g_aiTr64[DST4][0];
-            for (j = 0; j < uiTrSize; ++j) {
-                iSum = 0;
-                for (k = 0; k < uiTrSize; ++k) {
-                    iSum += block[k]*iT[k];
-                }
-                pCoef[i] = (iSum + rnd_factor) >> shift;
-                pCoef += line;
-                iT += uiTrSize;
-            }
-            block += uiTrSize;
-        }
+        pCoef[i] = (iSum + rnd_factor) >> shift;
+        iT += uiTrSize;
+        pCoef += line;
+      }
+      block += uiTrSize;
     }
+    coeff += (line >> (zo-1));
+    if (zo == 2) {
+      for (j = 0; j < uiTrSize/2; ++j) {
+        memset( coeff, 0, sizeof(TCoeff)*uiTrSize/2 );
+        coeff += uiTrSize;
+      }
+    }
+    coeff = tmp + uiTrSize*uiTrSize/2;
+    memset( coeff, 0, sizeof(TCoeff)*uiTrSize*uiTrSize/2 );
+  } else {
+    for (i = 0; i < line; ++i) {
+      pCoef = coeff;
+      iT = g_aiTr64[DST4][0];
+      for (j = 0; j < uiTrSize; ++j) {
+        iSum = 0;
+        for (k = 0; k < uiTrSize; ++k) {
+          iSum += block[k]*iT[k];
+        }
+        pCoef[i] = (iSum + rnd_factor) >> shift;
+        pCoef += line;
+        iT += uiTrSize;
+      }
+      block += uiTrSize;
+    }
+  }
 }
 
 #if JVET_C0024_ITSKIP
@@ -5112,392 +5112,308 @@ void fastInverseDST4_B64(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int i
 void fastInverseDST4_B64(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
 #endif
 {
-    Int i, j, k, iSum;
-    Int rnd_factor = 1<<(shift-1);
-    const Int uiTrSize = 64;
-    const TMatrixCoeff *iT = g_aiTr64[DST4][0];
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+  const Int uiTrSize = 64;
+  const TMatrixCoeff *iT = g_aiTr64[DST4][0];
 #if JVET_C0024_ITSKIP
-    Bool zo = iSkipLine2 >= 32;
+  Bool zo = iSkipLine2 >= 32;
 #endif
-    if (zo) {
+  if (zo) {
 #if JVET_C0024_ITSKIP
-        for (i = 0; i < line-iSkipLine; ++i) {
+    for (i = 0; i < line-iSkipLine; ++i) {
 #else
-            for (i = 0; i < (line>>(zo-1)); ++i) {
+      for (i = 0; i < (line>>(zo-1)); ++i) {
 #endif
-                for (j = 0; j < uiTrSize; ++j) {
-                    iSum = 0;
-                    for (k = 0; k < uiTrSize/2; ++k) {
-                        iSum += coeff[k*line]*iT[k*uiTrSize+j];
-                    }
-                    block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
-                }
-                block += uiTrSize;
-                coeff++;
-            }
-        } else {
+        for (j = 0; j < uiTrSize; ++j) {
+          iSum = 0;
+          for (k = 0; k < uiTrSize/2; ++k) {
+            iSum += coeff[k*line]*iT[k*uiTrSize+j];
+          }
+          block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+        }
+        block += uiTrSize;
+        coeff++;
+      }
+    } else {
 #if JVET_C0024_ITSKIP
-            for (i = 0; i < line-iSkipLine; ++i) {
+      for (i = 0; i < line-iSkipLine; ++i) {
 #else
-                for (i = 0; i < line; ++i) {
+        for (i = 0; i < line; ++i) {
 #endif
-                    for (j = 0; j < uiTrSize; ++j) {
-                        iSum = 0;
-                        for (k = 0; k < uiTrSize; ++k) {
-                            iSum += coeff[k*line]*iT[k*uiTrSize+j];
-                        }
-                        block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
-                    }
-                    block += uiTrSize;
-                    coeff++;
-                }
+          for (j = 0; j < uiTrSize; ++j) {
+            iSum = 0;
+            for (k = 0; k < uiTrSize; ++k) {
+              iSum += coeff[k*line]*iT[k*uiTrSize+j];
             }
+            block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+          }
+          block += uiTrSize;
+          coeff++;
+        }
+      }
 #if JVET_C0024_ITSKIP
-            memset(block, 0, uiTrSize*iSkipLine*sizeof(TCoeff));
+      memset(block, 0, uiTrSize*iSkipLine*sizeof(TCoeff));
 #endif
 }
-        
+
 void fastForwardDST4_B128(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use)
 {
-    Int i, j, k, iSum;
-    Int rnd_factor = 1<<(shift-1);
-    const Int uiTrSize = 128;
-    const TMatrixCoeff *iT;
-    TCoeff *pCoef;
-    if (zo) {
-        TCoeff *tmp = coeff;
-        for (i = 0; i < (line >> (zo-1)); ++i) {
-            pCoef = coeff;
-            iT = g_aiTr128[DST4][0];
-            for (j = 0; j < uiTrSize/2; ++j) {
-                iSum = 0;
-                for (k=0; k < uiTrSize; ++k) {
-                    iSum += block[k]*iT[k];
-                }
-                pCoef[i] = (iSum + rnd_factor) >> shift;
-                iT += uiTrSize;
-                pCoef += line;
-            }
-            block += uiTrSize;
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+  const Int uiTrSize = 128;
+  const TMatrixCoeff *iT;
+  TCoeff *pCoef;
+  if (zo) {
+    TCoeff *tmp = coeff;
+    for (i = 0; i < (line >> (zo-1)); ++i) {
+      pCoef = coeff;
+      iT = g_aiTr128[DST4][0];
+      for (j = 0; j < uiTrSize/2; ++j) {
+        iSum = 0;
+        for (k=0; k < uiTrSize; ++k) {
+          iSum += block[k]*iT[k];
         }
-        coeff += (line >> (zo-1));
-        if (zo == 2) {
-            for (j = 0; j < uiTrSize/2; ++j) {
-                memset( coeff, 0, sizeof(TCoeff)*uiTrSize/2 );
-                coeff += uiTrSize;
-            }
-        }
-        coeff = tmp + uiTrSize*uiTrSize/2;
-        memset( coeff, 0, sizeof(TCoeff)*uiTrSize*uiTrSize/2 );
-    } else {
-        for (i = 0; i < line; ++i) {
-            pCoef = coeff;
-            iT = g_aiTr128[DST4][0];
-            for (j = 0; j < uiTrSize; ++j) {
-                iSum = 0;
-                for (k = 0; k < uiTrSize; ++k) {
-                    iSum += block[k]*iT[k];
-                }
-                pCoef[i] = (iSum + rnd_factor) >> shift;
-                pCoef += line;
-                iT += uiTrSize;
-            }
-            block += uiTrSize;
-        }
+        pCoef[i] = (iSum + rnd_factor) >> shift;
+        iT += uiTrSize;
+        pCoef += line;
+      }
+      block += uiTrSize;
     }
+    coeff += (line >> (zo-1));
+    if (zo == 2) {
+      for (j = 0; j < uiTrSize/2; ++j) {
+        memset( coeff, 0, sizeof(TCoeff)*uiTrSize/2 );
+        coeff += uiTrSize;
+      }
+    }
+    coeff = tmp + uiTrSize*uiTrSize/2;
+    memset( coeff, 0, sizeof(TCoeff)*uiTrSize*uiTrSize/2 );
+  } else {
+    for (i = 0; i < line; ++i) {
+      pCoef = coeff;
+      iT = g_aiTr128[DST4][0];
+      for (j = 0; j < uiTrSize; ++j) {
+        iSum = 0;
+        for (k = 0; k < uiTrSize; ++k) {
+          iSum += block[k]*iT[k];
+        }
+        pCoef[i] = (iSum + rnd_factor) >> shift;
+        pCoef += line;
+        iT += uiTrSize;
+      }
+      block += uiTrSize;
+    }
+  }
 }
-        
+
 #if JVET_C0024_ITSKIP
 void fastInverseDST4_B128(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
 #else
 void fastInverseDST4_B128(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
 #endif
 {
-    Int i, j, k, iSum;
-    Int rnd_factor = 1<<(shift-1);
-    const Int uiTrSize = 128;
-    const TMatrixCoeff *iT = g_aiTr128[DST4][0];
+  Int i, j, k, iSum;
+  Int rnd_factor = 1<<(shift-1);
+  const Int uiTrSize = 128;
+  const TMatrixCoeff *iT = g_aiTr128[DST4][0];
 #if JVET_C0024_ITSKIP
-    Bool zo = iSkipLine2 >= 64;
+  Bool zo = iSkipLine2 >= 64;
 #endif
-    if (zo) {
+  if (zo) {
 #if JVET_C0024_ITSKIP
-        for (i = 0; i < line-iSkipLine; ++i) {
+    for (i = 0; i < line-iSkipLine; ++i) {
 #else
-            for (i = 0; i < (line>>(zo-1)); ++i) {
+      for (i = 0; i < (line>>(zo-1)); ++i) {
 #endif
-                for (j = 0; j < uiTrSize; ++j) {
-                    iSum = 0;
-                    for (k = 0; k < uiTrSize/2; ++k) {
-                        iSum += coeff[k*line]*iT[k*uiTrSize+j];
-                    }
-                    block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
-                }
-                block += uiTrSize;
-                coeff++;
-            }
-        } else {
-#if JVET_C0024_ITSKIP
-            for (i = 0; i < line-iSkipLine; ++i) {
-#else
-                for (i = 0; i < line; ++i) {
-#endif
-                    for (j = 0; j < uiTrSize; ++j) {
-                        iSum = 0;
-                        for (k = 0; k < uiTrSize; ++k) {
-                            iSum += coeff[k*line]*iT[k*uiTrSize+j];
-                        }
-                        block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
-                    }
-                    block += uiTrSize;
-                    coeff++;
-                }
-            }
-#if JVET_C0024_ITSKIP
-            memset(block, 0, uiTrSize*iSkipLine*sizeof(TCoeff));
-#endif
+        for (j = 0; j < uiTrSize; ++j) {
+          iSum = 0;
+          for (k = 0; k < uiTrSize/2; ++k) {
+            iSum += coeff[k*line]*iT[k*uiTrSize+j];
+          }
+          block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
         }
+        block += uiTrSize;
+        coeff++;
+      }
+    } else {
+#if JVET_C0024_ITSKIP
+      for (i = 0; i < line-iSkipLine; ++i) {
+#else
+        for (i = 0; i < line; ++i) {
+#endif
+          for (j = 0; j < uiTrSize; ++j) {
+            iSum = 0;
+            for (k = 0; k < uiTrSize; ++k) {
+              iSum += coeff[k*line]*iT[k*uiTrSize+j];
+            }
+            block[j] = Clip3(outputMinimum, outputMaximum, (Int)(iSum + rnd_factor)>>shift);
+          }
+          block += uiTrSize;
+          coeff++;
+        }
+      }
+#if JVET_C0024_ITSKIP
+      memset(block, 0, uiTrSize*iSkipLine*sizeof(TCoeff));
+#endif
+    }
 #endif
 
 void fastForwardID_B4 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use)
 {
-    const Int rnd_factor = 1<<(shift-1);
-    
-    for (int i = 0; i < line; ++i) {
-        Short scale = g_aiTr4[ID][i][i];
-        coeff[         i] = ( block[4*i+0]*scale + rnd_factor ) >> shift;
-        coeff[1*line+i] = ( block[4*i+1]*scale + rnd_factor ) >> shift;
-        coeff[2*line+i] = ( block[4*i+2]*scale + rnd_factor ) >> shift;
-        coeff[3*line+i] = ( block[4*i+3]*scale + rnd_factor ) >> shift;
+  Int i,j,scale;
+  Int rnd_factor = 1<<(shift-1);
+  const UInt uiTrSize = 4;
+  scale = g_aiTr4[ID][0][0];
+  for (i = 0; i < line; ++i) {
+    for (j = 0; j < uiTrSize; ++j) {
+      coeff[line*j + i] = (block[uiTrSize*i + j]*scale + rnd_factor) >> shift;
     }
+  }
 }
 
 void fastInverseID_B4 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)
 {
-    const Int rnd_factor = 1<<(shift-1);
-    
-    for (int i = 0; i < line; ++i) {
-        Short scale = g_aiTr4[ID][i][i];
-        block[4*i+0] = Clip3(outputMinimum, outputMaximum, (scale*coeff[       i] + rnd_factor)>>shift);
-        block[4*i+1] = Clip3(outputMinimum, outputMaximum, (scale*coeff[1*line+i] + rnd_factor)>>shift);
-        block[4*i+2] = Clip3(outputMinimum, outputMaximum, (scale*coeff[2*line+i] + rnd_factor)>>shift);
-        block[4*i+3] = Clip3(outputMinimum, outputMaximum, (scale*coeff[3*line+i] + rnd_factor)>>shift);
+  Int i,j,scale;
+  Int rnd_factor = 1<<(shift-1);
+  const Int uiTrSize = 4;
+  scale = g_aiTr4[ID][0][0];
+  for (i = 0; i < line; ++i) {
+    for (j = 0; j < uiTrSize; ++j) {
+      block[uiTrSize*i + j] = Clip3(outputMinimum, outputMaximum, (scale*coeff[line*j + i] + rnd_factor)>>shift);
     }
+  }
 }
 
 void fastForwardID_B8 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use)
 {
-    const Int rnd_factor = 1<<(shift-1);
-    
-    for (int i = 0; i < line; ++i) {
-        Short scale = g_aiTr8[ID][i][i];
-        coeff[       i] = ( block[8*i+0]*scale + rnd_factor ) >> shift;
-        coeff[1*line+i] = ( block[8*i+1]*scale + rnd_factor ) >> shift;
-        coeff[2*line+i] = ( block[8*i+2]*scale + rnd_factor ) >> shift;
-        coeff[3*line+i] = ( block[8*i+3]*scale + rnd_factor ) >> shift;
-        coeff[4*line+i] = ( block[8*i+4]*scale + rnd_factor ) >> shift;
-        coeff[5*line+i] = ( block[8*i+5]*scale + rnd_factor ) >> shift;
-        coeff[6*line+i] = ( block[8*i+6]*scale + rnd_factor ) >> shift;
-        coeff[7*line+i] = ( block[8*i+7]*scale + rnd_factor ) >> shift;
+  Int i,j,scale;
+  Int rnd_factor = 1<<(shift-1);
+  const UInt uiTrSize = 8;
+  scale = g_aiTr8[ID][0][0];
+  for (i = 0; i < line; ++i) {
+    for (j = 0; j < uiTrSize; ++j) {
+      coeff[line*j + i] = (block[uiTrSize*i + j]*scale + rnd_factor) >> shift;
     }
+  }
 }
 
 void fastInverseID_B8 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)
 {
-    const Int rnd_factor = 1<<(shift-1);
-    
-    for (int i = 0; i < line; ++i) {
-        Short scale = g_aiTr8[ID][i][i];
-        block[8*i+0] = Clip3(outputMinimum, outputMaximum, (scale*coeff[       i] + rnd_factor)>>shift);
-        block[8*i+1] = Clip3(outputMinimum, outputMaximum, (scale*coeff[1*line+i] + rnd_factor)>>shift);
-        block[8*i+2] = Clip3(outputMinimum, outputMaximum, (scale*coeff[2*line+i] + rnd_factor)>>shift);
-        block[8*i+3] = Clip3(outputMinimum, outputMaximum, (scale*coeff[3*line+i] + rnd_factor)>>shift);
-        block[8*i+4] = Clip3(outputMinimum, outputMaximum, (scale*coeff[4*line+i] + rnd_factor)>>shift);
-        block[8*i+5] = Clip3(outputMinimum, outputMaximum, (scale*coeff[5*line+i] + rnd_factor)>>shift);
-        block[8*i+6] = Clip3(outputMinimum, outputMaximum, (scale*coeff[6*line+i] + rnd_factor)>>shift);
-        block[8*i+7] = Clip3(outputMinimum, outputMaximum, (scale*coeff[7*line+i] + rnd_factor)>>shift);
+  Int i,j,scale;
+  Int rnd_factor = 1<<(shift-1);
+  const Int uiTrSize = 8;
+  scale = g_aiTr8[ID][0][0];
+  for (i = 0; i < line; ++i) {
+    for (j = 0; j < uiTrSize; ++j) {
+      block[uiTrSize*i + j] = Clip3(outputMinimum, outputMaximum, (scale*coeff[line*j + i] + rnd_factor)>>shift);
     }
+  }
 }
 
 void fastForwardID_B16(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use)
 {
-    const Int rnd_factor = 1<<(shift-1);
-    
-    for (int i =  0; i < line; ++i) {
-        Short scale = g_aiTr16[ID][i][i];
-        coeff[        i] = ( block[16*i+ 0]*scale + rnd_factor ) >> shift;
-        coeff[ 1*line+i] = ( block[16*i+ 1]*scale + rnd_factor ) >> shift;
-        coeff[ 2*line+i] = ( block[16*i+ 2]*scale + rnd_factor ) >> shift;
-        coeff[ 3*line+i] = ( block[16*i+ 3]*scale + rnd_factor ) >> shift;
-        coeff[ 4*line+i] = ( block[16*i+ 4]*scale + rnd_factor ) >> shift;
-        coeff[ 5*line+i] = ( block[16*i+ 5]*scale + rnd_factor ) >> shift;
-        coeff[ 6*line+i] = ( block[16*i+ 6]*scale + rnd_factor ) >> shift;
-        coeff[ 7*line+i] = ( block[16*i+ 7]*scale + rnd_factor ) >> shift;
-        coeff[ 8*line+i] = ( block[16*i+ 8]*scale + rnd_factor ) >> shift;
-        coeff[ 9*line+i] = ( block[16*i+ 9]*scale + rnd_factor ) >> shift;
-        coeff[10*line+i] = ( block[16*i+10]*scale + rnd_factor ) >> shift;
-        coeff[11*line+i] = ( block[16*i+11]*scale + rnd_factor ) >> shift;
-        coeff[12*line+i] = ( block[16*i+12]*scale + rnd_factor ) >> shift;
-        coeff[13*line+i] = ( block[16*i+13]*scale + rnd_factor ) >> shift;
-        coeff[14*line+i] = ( block[16*i+14]*scale + rnd_factor ) >> shift;
-        coeff[15*line+i] = ( block[16*i+15]*scale + rnd_factor ) >> shift;
+  Int i,j,scale;
+  Int rnd_factor = 1<<(shift-1);
+  const UInt uiTrSize = 16;
+  scale = g_aiTr16[ID][0][0];
+  for (i = 0; i < line; ++i) {
+    for (j = 0; j < uiTrSize; ++j) {
+      coeff[line*j + i] = (block[uiTrSize*i + j]*scale + rnd_factor) >> shift;
     }
+  }
 }
-                
+
 void fastInverseID_B16(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)
 {
-    const Int rnd_factor = 1<<(shift-1);
-    
-    for (int i =  0; i < line; ++i) {
-        Short scale = g_aiTr16[ID][i][i];
-        block[16*i+ 0] = Clip3(outputMinimum, outputMaximum, (scale*coeff[        i] + rnd_factor)>>shift);
-        block[16*i+ 1] = Clip3(outputMinimum, outputMaximum, (scale*coeff[ 1*line+i] + rnd_factor)>>shift);
-        block[16*i+ 2] = Clip3(outputMinimum, outputMaximum, (scale*coeff[ 2*line+i] + rnd_factor)>>shift);
-        block[16*i+ 3] = Clip3(outputMinimum, outputMaximum, (scale*coeff[ 3*line+i] + rnd_factor)>>shift);
-        block[16*i+ 4] = Clip3(outputMinimum, outputMaximum, (scale*coeff[ 4*line+i] + rnd_factor)>>shift);
-        block[16*i+ 5] = Clip3(outputMinimum, outputMaximum, (scale*coeff[ 5*line+i] + rnd_factor)>>shift);
-        block[16*i+ 6] = Clip3(outputMinimum, outputMaximum, (scale*coeff[ 6*line+i] + rnd_factor)>>shift);
-        block[16*i+ 7] = Clip3(outputMinimum, outputMaximum, (scale*coeff[ 7*line+i] + rnd_factor)>>shift);
-        block[16*i+ 8] = Clip3(outputMinimum, outputMaximum, (scale*coeff[ 8*line+i] + rnd_factor)>>shift);
-        block[16*i+ 9] = Clip3(outputMinimum, outputMaximum, (scale*coeff[ 9*line+i] + rnd_factor)>>shift);
-        block[16*i+10] = Clip3(outputMinimum, outputMaximum, (scale*coeff[10*line+i] + rnd_factor)>>shift);
-        block[16*i+11] = Clip3(outputMinimum, outputMaximum, (scale*coeff[11*line+i] + rnd_factor)>>shift);
-        block[16*i+12] = Clip3(outputMinimum, outputMaximum, (scale*coeff[12*line+i] + rnd_factor)>>shift);
-        block[16*i+13] = Clip3(outputMinimum, outputMaximum, (scale*coeff[13*line+i] + rnd_factor)>>shift);
-        block[16*i+14] = Clip3(outputMinimum, outputMaximum, (scale*coeff[14*line+i] + rnd_factor)>>shift);
-        block[16*i+15] = Clip3(outputMinimum, outputMaximum, (scale*coeff[15*line+i] + rnd_factor)>>shift);
+  Int i,j,scale;
+  Int rnd_factor = 1<<(shift-1);
+  const Int uiTrSize = 16;
+  scale = g_aiTr16[ID][0][0];
+  for (i = 0; i < line; ++i) {
+    for (j = 0; j < uiTrSize; ++j) {
+      block[uiTrSize*i + j] = Clip3(outputMinimum, outputMaximum, (scale*coeff[line*j + i] + rnd_factor)>>shift);
     }
+  }
 }
 
 void fastForwardID_B32(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use)
 {
-    const Int rnd_factor = 1<<(shift-1);
-    
-    for (int i =  0; i < line; ++i) {
-        Short scale = g_aiTr32[ID][i][i];
-        coeff[        i] = ( block[32*i+ 0]*scale + rnd_factor ) >> shift;
-        coeff[ 1*line+i] = ( block[32*i+ 1]*scale + rnd_factor ) >> shift;
-        coeff[ 2*line+i] = ( block[32*i+ 2]*scale + rnd_factor ) >> shift;
-        coeff[ 3*line+i] = ( block[32*i+ 3]*scale + rnd_factor ) >> shift;
-        coeff[ 4*line+i] = ( block[32*i+ 4]*scale + rnd_factor ) >> shift;
-        coeff[ 5*line+i] = ( block[32*i+ 5]*scale + rnd_factor ) >> shift;
-        coeff[ 6*line+i] = ( block[32*i+ 6]*scale + rnd_factor ) >> shift;
-        coeff[ 7*line+i] = ( block[32*i+ 7]*scale + rnd_factor ) >> shift;
-        coeff[ 8*line+i] = ( block[32*i+ 8]*scale + rnd_factor ) >> shift;
-        coeff[ 9*line+i] = ( block[32*i+ 9]*scale + rnd_factor ) >> shift;
-        coeff[10*line+i] = ( block[32*i+10]*scale + rnd_factor ) >> shift;
-        coeff[11*line+i] = ( block[32*i+11]*scale + rnd_factor ) >> shift;
-        coeff[12*line+i] = ( block[32*i+12]*scale + rnd_factor ) >> shift;
-        coeff[13*line+i] = ( block[32*i+13]*scale + rnd_factor ) >> shift;
-        coeff[14*line+i] = ( block[32*i+14]*scale + rnd_factor ) >> shift;
-        coeff[15*line+i] = ( block[32*i+15]*scale + rnd_factor ) >> shift;
-        coeff[16*line+i] = ( block[32*i+16]*scale + rnd_factor ) >> shift;
-        coeff[17*line+i] = ( block[32*i+17]*scale + rnd_factor ) >> shift;
-        coeff[18*line+i] = ( block[32*i+18]*scale + rnd_factor ) >> shift;
-        coeff[19*line+i] = ( block[32*i+19]*scale + rnd_factor ) >> shift;
-        coeff[20*line+i] = ( block[32*i+20]*scale + rnd_factor ) >> shift;
-        coeff[21*line+i] = ( block[32*i+21]*scale + rnd_factor ) >> shift;
-        coeff[22*line+i] = ( block[32*i+22]*scale + rnd_factor ) >> shift;
-        coeff[23*line+i] = ( block[32*i+23]*scale + rnd_factor ) >> shift;
-        coeff[24*line+i] = ( block[32*i+24]*scale + rnd_factor ) >> shift;
-        coeff[25*line+i] = ( block[32*i+25]*scale + rnd_factor ) >> shift;
-        coeff[26*line+i] = ( block[32*i+26]*scale + rnd_factor ) >> shift;
-        coeff[27*line+i] = ( block[32*i+27]*scale + rnd_factor ) >> shift;
-        coeff[28*line+i] = ( block[32*i+28]*scale + rnd_factor ) >> shift;
-        coeff[29*line+i] = ( block[32*i+29]*scale + rnd_factor ) >> shift;
-        coeff[30*line+i] = ( block[32*i+30]*scale + rnd_factor ) >> shift;
-        coeff[31*line+i] = ( block[32*i+31]*scale + rnd_factor ) >> shift;
+  Int i,j,scale;
+  Int rnd_factor = 1<<(shift-1);
+  const UInt uiTrSize = 32;
+  scale = g_aiTr32[ID][0][0];
+  for (i =  0; i < line; ++i) {
+    for (j = 0; j < uiTrSize; ++j) {
+      coeff[line*j + i] = (block[uiTrSize*i + j]*scale + rnd_factor) >> shift;
     }
+  }
 }
 
 void fastInverseID_B32(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)
 {
-    const Int rnd_factor = 1<<(shift-1);
-    
-    for (int i =  0; i < line; ++i) {
-        Short scale = g_aiTr32[ID][i][i];
-        block[32*i+ 0] = Clip3(outputMinimum, outputMaximum, (scale*coeff[        i] + rnd_factor)>>shift);
-        block[32*i+ 1] = Clip3(outputMinimum, outputMaximum, (scale*coeff[ 1*line+i] + rnd_factor)>>shift);
-        block[32*i+ 2] = Clip3(outputMinimum, outputMaximum, (scale*coeff[ 2*line+i] + rnd_factor)>>shift);
-        block[32*i+ 3] = Clip3(outputMinimum, outputMaximum, (scale*coeff[ 3*line+i] + rnd_factor)>>shift);
-        block[32*i+ 4] = Clip3(outputMinimum, outputMaximum, (scale*coeff[ 4*line+i] + rnd_factor)>>shift);
-        block[32*i+ 5] = Clip3(outputMinimum, outputMaximum, (scale*coeff[ 5*line+i] + rnd_factor)>>shift);
-        block[32*i+ 6] = Clip3(outputMinimum, outputMaximum, (scale*coeff[ 6*line+i] + rnd_factor)>>shift);
-        block[32*i+ 7] = Clip3(outputMinimum, outputMaximum, (scale*coeff[ 7*line+i] + rnd_factor)>>shift);
-        block[32*i+ 8] = Clip3(outputMinimum, outputMaximum, (scale*coeff[ 8*line+i] + rnd_factor)>>shift);
-        block[32*i+ 9] = Clip3(outputMinimum, outputMaximum, (scale*coeff[ 9*line+i] + rnd_factor)>>shift);
-        block[32*i+10] = Clip3(outputMinimum, outputMaximum, (scale*coeff[10*line+i] + rnd_factor)>>shift);
-        block[32*i+11] = Clip3(outputMinimum, outputMaximum, (scale*coeff[11*line+i] + rnd_factor)>>shift);
-        block[32*i+12] = Clip3(outputMinimum, outputMaximum, (scale*coeff[12*line+i] + rnd_factor)>>shift);
-        block[32*i+13] = Clip3(outputMinimum, outputMaximum, (scale*coeff[13*line+i] + rnd_factor)>>shift);
-        block[32*i+14] = Clip3(outputMinimum, outputMaximum, (scale*coeff[14*line+i] + rnd_factor)>>shift);
-        block[32*i+15] = Clip3(outputMinimum, outputMaximum, (scale*coeff[15*line+i] + rnd_factor)>>shift);
-        block[32*i+16] = Clip3(outputMinimum, outputMaximum, (scale*coeff[16*line+i] + rnd_factor)>>shift);
-        block[32*i+17] = Clip3(outputMinimum, outputMaximum, (scale*coeff[17*line+i] + rnd_factor)>>shift);
-        block[32*i+18] = Clip3(outputMinimum, outputMaximum, (scale*coeff[18*line+i] + rnd_factor)>>shift);
-        block[32*i+19] = Clip3(outputMinimum, outputMaximum, (scale*coeff[19*line+i] + rnd_factor)>>shift);
-        block[32*i+20] = Clip3(outputMinimum, outputMaximum, (scale*coeff[20*line+i] + rnd_factor)>>shift);
-        block[32*i+21] = Clip3(outputMinimum, outputMaximum, (scale*coeff[21*line+i] + rnd_factor)>>shift);
-        block[32*i+22] = Clip3(outputMinimum, outputMaximum, (scale*coeff[22*line+i] + rnd_factor)>>shift);
-        block[32*i+23] = Clip3(outputMinimum, outputMaximum, (scale*coeff[23*line+i] + rnd_factor)>>shift);
-        block[32*i+24] = Clip3(outputMinimum, outputMaximum, (scale*coeff[24*line+i] + rnd_factor)>>shift);
-        block[32*i+25] = Clip3(outputMinimum, outputMaximum, (scale*coeff[25*line+i] + rnd_factor)>>shift);
-        block[32*i+26] = Clip3(outputMinimum, outputMaximum, (scale*coeff[26*line+i] + rnd_factor)>>shift);
-        block[32*i+27] = Clip3(outputMinimum, outputMaximum, (scale*coeff[27*line+i] + rnd_factor)>>shift);
-        block[32*i+28] = Clip3(outputMinimum, outputMaximum, (scale*coeff[28*line+i] + rnd_factor)>>shift);
-        block[32*i+29] = Clip3(outputMinimum, outputMaximum, (scale*coeff[29*line+i] + rnd_factor)>>shift);
-        block[32*i+30] = Clip3(outputMinimum, outputMaximum, (scale*coeff[30*line+i] + rnd_factor)>>shift);
-        block[32*i+31] = Clip3(outputMinimum, outputMaximum, (scale*coeff[31*line+i] + rnd_factor)>>shift);
+  Int i,j,scale;
+  Int rnd_factor = 1<<(shift-1);
+  const Int uiTrSize = 32;
+  scale = g_aiTr32[ID][0][0];
+  for (i = 0; i < line; ++i) {
+    for (j = 0; j < uiTrSize; ++j) {
+      block[uiTrSize*i + j] = Clip3(outputMinimum, outputMaximum, (scale*coeff[line*j + i] + rnd_factor)>>shift);
     }
+  }
 }
 
 #if JVET_C0024_QTBT
 void fastForwardID_B64(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use)
 {
-    const Int rnd_factor = 1<<(shift-1);
-    const UInt uiTrSize = 64;
-    for (int i =  0; i < line; ++i) {
-        for (int j =  0; j < uiTrSize; ++j) {
-            Short scale = g_aiTr64[ID][i][i];
-            coeff[line*j + i] = (block[uiTrSize*i + j]*scale + rnd_factor) >> shift;
-        }
+  Int i,j,scale;
+  Int rnd_factor = 1<<(shift-1);
+  const UInt uiTrSize = 64;
+  scale = g_aiTr64[ID][0][0];
+  for (i = 0; i < line; ++i) {
+    for (j = 0; j < uiTrSize; ++j) {
+      coeff[line*j + i] = (block[uiTrSize*i + j]*scale + rnd_factor) >> shift;
     }
+  }
 }
-        
+
 void fastInverseID_B64(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
 {
-    Int rnd_factor = 1<<(shift-1);
-    const Int uiTrSize = 64;
-    for (int i = 0; i < line; ++i) {
-        for (int j =  0; j < uiTrSize; ++j) {
-            Short scale = g_aiTr64[ID][i][i];
-            block[uiTrSize*i + j] = Clip3(outputMinimum, outputMaximum, (scale*coeff[line*j + i] + rnd_factor)>>shift);
-        }
+  Int i,j,scale;
+  Int rnd_factor = 1<<(shift-1);
+  const Int uiTrSize = 64;
+  scale = g_aiTr64[ID][0][0];
+  for ( i = 0; i < line; ++i) {
+    for ( j =  0; j < uiTrSize; ++j) {
+      block[uiTrSize*i + j] = Clip3(outputMinimum, outputMaximum, (scale*coeff[line*j + i] + rnd_factor)>>shift);
     }
+  }
 }
-        
+
 void fastForwardID_B128(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use)
 {
-    const Int rnd_factor = 1<<(shift-1);
-    const UInt uiTrSize = 128;
-    for (int i =  0; i < line; ++i) {
-        for (int j =  0; j < uiTrSize; ++j) {
-            Short scale = g_aiTr128[ID][i][i];
-            coeff[line*j + i] = (block[uiTrSize*i + j]*scale + rnd_factor) >> shift;
-        }
+  Int i,j,scale;
+  Int rnd_factor = 1<<(shift-1);
+  const UInt uiTrSize = 128;
+  scale = g_aiTr128[ID][0][0];
+  for ( i =  0; i < line; ++i) {
+    for ( j =  0; j < uiTrSize; ++j) {
+      coeff[line*j + i] = (block[uiTrSize*i + j]*scale + rnd_factor) >> shift;
     }
+  }
 }
-        
+
 void fastInverseID_B128(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input block, output coeff
 {
-    Int rnd_factor = 1<<(shift-1);
-    const Int uiTrSize = 128;
-    for (int i = 0; i < line; ++i) {
-        for (int j =  0; j < uiTrSize; ++j) {
-            Short scale = g_aiTr128[ID][i][i];
-            block[uiTrSize*i + j] = Clip3(outputMinimum, outputMaximum, (scale*coeff[line*j + i] + rnd_factor)>>shift);
-        }
+  Int i,j,scale;
+  Int rnd_factor = 1<<(shift-1);
+  const Int uiTrSize = 128;
+  scale = g_aiTr128[ID][0][0];
+  for (i = 0; i < line; ++i) {
+    for (j = 0; j < uiTrSize; ++j) {
+      block[uiTrSize*i + j] = Clip3(outputMinimum, outputMaximum, (scale*coeff[line*j + i] + rnd_factor)>>shift);
     }
+  }
 }
 #endif
 #endif
