@@ -11562,8 +11562,8 @@ Void TEncSearch::xAffineMotionEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, I
     pcCU->clipMv(acMvTemp[0]);
     pcCU->clipMv(acMvTemp[1]);
 
-    vx2 = -(acMvTemp[1].getVer() - acMvTemp[0].getVer()) * iRoiHeight / iRoiWidth + acMvTemp[0].getHor();
-    vy2 = (acMvTemp[1].getHor() - acMvTemp[0].getHor()) * iRoiHeight / iRoiWidth + acMvTemp[0].getVer();
+    Int vx2 = -(acMvTemp[1].getVer() - acMvTemp[0].getVer()) * iRoiHeight / iRoiWidth + acMvTemp[0].getHor();
+    Int vy2 = (acMvTemp[1].getHor() - acMvTemp[0].getHor()) * iRoiHeight / iRoiWidth + acMvTemp[0].getVer();
     acMvTemp[2].set(vx2, vy2);
 
     pcCU->clipMv(acMvTemp[2]);

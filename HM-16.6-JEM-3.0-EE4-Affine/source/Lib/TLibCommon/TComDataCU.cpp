@@ -8439,7 +8439,9 @@ Void TComDataCU::setAllAffineMv ( UInt uiAbsPartIdx, UInt uiPuIdx, TComMv acMv[3
   // Set AffineMvField for affine motion compensation LT, RT, LB and RB
   cMv = acMv[1] + acMv[2] - acMv[0];
 
+#if JVECT_C0062_AFFINE_SIX_PARAM
   clipMv(cMv);//ZF
+#endif
   getCUMvField(e)->setMv( acMv[0], uiPartIdxLT - m_absZIdxInCtu );
   getCUMvField(e)->setMv( acMv[1], uiPartIdxRT - m_absZIdxInCtu );
   getCUMvField(e)->setMv( acMv[2], uiPartIdxLB - m_absZIdxInCtu );
