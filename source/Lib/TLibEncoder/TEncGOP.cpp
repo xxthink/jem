@@ -1331,6 +1331,13 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
 #if JVET_C0024_AMAX_BT_FIX
     else
     {
+#if JVET_C0024_AMAX_BT_FIX_TICKET23
+      if( g_bInitAMaxBT  )
+      {
+        ::memset( g_uiBlkSize, 0, sizeof(g_uiBlkSize) );
+        ::memset( g_uiNumBlk, 0, sizeof(g_uiNumBlk) );
+      }
+#endif
       g_uiPrevISlicePOC = pcSlice->getPOC();
       g_bInitAMaxBT = true;
     }
