@@ -53,6 +53,7 @@
 #define JVET_C0024_QTBT                                   1
 
 #if JVET_C0024_QTBT
+#define JVET_C0024_BT_FIX_TICKET22                        1
 
 #define MIN_CU_LOG2                                       2
 #if MIN_CU_LOG2==1
