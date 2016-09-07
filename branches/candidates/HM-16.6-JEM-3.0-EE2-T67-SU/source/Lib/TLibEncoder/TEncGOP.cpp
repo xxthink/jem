@@ -1337,14 +1337,14 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
 #endif
 #endif
 
-#if SU_EMT
+#if SU_EMT && !SU_FIXED_SIZE
     if ( pcSlice->isIntra() )
     {
       pcSlice->setMinEmtFlagSigAreaSize( ( m_pcCfg->getSourceWidth() * m_pcCfg->getSourceHeight() ) > 800000 ? 256 : 64 );
     }
 #endif
 
-#if SU_NSST
+#if SU_NSST && !SU_FIXED_SIZE
     if ( pcSlice->isIntra() )
     {
       pcSlice->setMinNsstFlagSigAreaSize( ( m_pcCfg->getSourceWidth() * m_pcCfg->getSourceHeight() ) > 800000 ? 256 : 64 );
