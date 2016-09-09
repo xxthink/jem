@@ -29,6 +29,7 @@ this makes decoder to output total bit usage and deltaQP bits per frame, and ave
 (4) 
 #define SHARP_WEIGHT_DISTORTION              1            ///< use weighted distortion in RD decision
 #define SHARP_WEIGHT_DISTORTION_OUTPUT       1            ///< printout weighted PSNR
+#define SHARP_WEIGHT_DISTORTION_YCBCR_SHARE  1            ///< 1: chroma share the same weight as luma;    0: YCbCr has seperate weights (only for SDR in ST-2084)
 
 To make RD decision align with the luma adaptive QP adjustment, JVET-C0095 proposed a weighted PSNR metric.
 They are incorporated into encoder RD decision, and are enabled by the above macros.

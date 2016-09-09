@@ -2059,8 +2059,18 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
 
   //===== update distortion =====
 #if SHARP_WEIGHT_DISTORTION
-  if (m_pcEncCfg->getUseLumaDeltaQp() > 0)
-    ruiDist += m_pcRdCost->getDistPart( bitDepth, piReco, uiStride, piOrg, uiStride, uiWidth, uiHeight, compID, DF_SSE_WTD );  // use weighted SSE
+  if (m_pcEncCfg->getUseLumaDeltaQp() > 0) {
+
+#if SHARP_WEIGHT_DISTORTION
+    UInt           iOrgStrideLuma         = pcOrgYuv ->getStride (COMPONENT_Y);
+    Pel           *piOrgLuma            = pcOrgYuv ->getAddr( COMPONENT_Y, uiAbsPartIdx );
+#endif  
+    ruiDist += m_pcRdCost->getDistPart( bitDepth, piReco, uiStride, piOrg, uiStride, uiWidth, uiHeight, compID, DF_SSE_WTD
+#if SHARP_WEIGHT_DISTORTION
+  , piOrgLuma, iOrgStrideLuma
+#endif    
+    );  // use weighted SSE
+  }
   else
 #endif
   ruiDist += m_pcRdCost->getDistPart( bitDepth, piReco, uiStride, piOrg, uiStride, uiWidth, uiHeight, compID );
@@ -2369,8 +2379,17 @@ Bool TEncSearch::xIntraCodingTUBlockTM(TComYuv*    pcOrgYuv,
 
     //===== update distortion =====
 #if SHARP_WEIGHT_DISTORTION
-    if (m_pcEncCfg->getUseLumaDeltaQp() > 0)
-      ruiDist += m_pcRdCost->getDistPart( bitDepth, piReco, uiStride, piOrg, uiStride, uiWidth, uiHeight, compID, DF_SSE_WTD );  // use weighted SSE
+    if (m_pcEncCfg->getUseLumaDeltaQp() > 0) {
+#if SHARP_WEIGHT_DISTORTION
+      UInt           iOrgStrideLuma         = pcOrgYuv ->getStride (COMPONENT_Y);
+      Pel           *piOrgLuma            = pcOrgYuv ->getAddr( COMPONENT_Y, uiAbsPartIdx );
+#endif 
+      ruiDist += m_pcRdCost->getDistPart( bitDepth, piReco, uiStride, piOrg, uiStride, uiWidth, uiHeight, compID, DF_SSE_WTD
+#if SHARP_WEIGHT_DISTORTION
+        , piOrgLuma, iOrgStrideLuma
+#endif
+        );  // use weighted SSE
+    }
     else
 #endif
     ruiDist += m_pcRdCost->getDistPart(bitDepth, piReco, uiStride, piOrg, uiStride, uiWidth, uiHeight, compID);
@@ -8098,9 +8117,18 @@ Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg,
       const UInt csx=pcYuvOrg->getComponentScaleX(compID);
       const UInt csy=pcYuvOrg->getComponentScaleY(compID);
 #if SHARP_WEIGHT_DISTORTION       // RA
-      if (m_pcEncCfg->getUseLumaDeltaQp() > 0)
+      if (m_pcEncCfg->getUseLumaDeltaQp() > 0) {
+#if SHARP_WEIGHT_DISTORTION
+        UInt           iOrgStrideLuma         = pcYuvOrg ->getStride (COMPONENT_Y);
+        Pel           *piOrgLuma            = pcYuvOrg ->getAddr( COMPONENT_Y);
+#endif
         distortion += m_pcRdCost->getDistPart( sps.getBitDepth(toChannelType(compID)), pcYuvRec->getAddr(compID), pcYuvRec->getStride(compID), pcYuvOrg->getAddr(compID),
-        pcYuvOrg->getStride(compID), cuWidthPixels >> csx, cuHeightPixels >> csy, compID, DF_SSE_WTD );  // use weighted SSE
+        pcYuvOrg->getStride(compID), cuWidthPixels >> csx, cuHeightPixels >> csy, compID, DF_SSE_WTD 
+#if SHARP_WEIGHT_DISTORTION
+        , piOrgLuma, iOrgStrideLuma
+#endif 
+        );  // use weighted SSE
+      }
       else
 #endif
       distortion += m_pcRdCost->getDistPart( sps.getBitDepth(toChannelType(compID)), pcYuvRec->getAddr(compID), pcYuvRec->getStride(compID), pcYuvOrg->getAddr(compID),
@@ -8449,9 +8477,18 @@ Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg,
   {
     const ComponentID compID=ComponentID(comp);
 #if SHARP_WEIGHT_DISTORTION  // RA
-      if (m_pcEncCfg->getUseLumaDeltaQp() > 0)
+      if (m_pcEncCfg->getUseLumaDeltaQp() > 0) {
+#if SHARP_WEIGHT_DISTORTION
+        UInt           iOrgStrideLuma         = pcYuvOrg ->getStride (COMPONENT_Y);
+        Pel           *piOrgLuma            = pcYuvOrg ->getAddr( COMPONENT_Y);
+#endif 
         finalDistortion += m_pcRdCost->getDistPart( sps.getBitDepth(toChannelType(compID)), pcYuvRec->getAddr(compID ), pcYuvRec->getStride(compID ), pcYuvOrg->getAddr(compID ), 
-        pcYuvOrg->getStride(compID), cuWidthPixels >> pcYuvOrg->getComponentScaleX(compID), cuHeightPixels >> pcYuvOrg->getComponentScaleY(compID), compID, DF_SSE_WTD );  // use weighted SSE
+          pcYuvOrg->getStride(compID), cuWidthPixels >> pcYuvOrg->getComponentScaleX(compID), cuHeightPixels >> pcYuvOrg->getComponentScaleY(compID), compID, DF_SSE_WTD 
+#if SHARP_WEIGHT_DISTORTION
+          , piOrgLuma, iOrgStrideLuma
+#endif         
+          );  // use weighted SSE
+      }
       else
 #endif
     finalDistortion += m_pcRdCost->getDistPart( sps.getBitDepth(toChannelType(compID)), pcYuvRec->getAddr(compID ), pcYuvRec->getStride(compID ), pcYuvOrg->getAddr(compID ), pcYuvOrg->getStride(compID), cuWidthPixels >> pcYuvOrg->getComponentScaleX(compID), cuHeightPixels >> pcYuvOrg->getComponentScaleY(compID), compID);

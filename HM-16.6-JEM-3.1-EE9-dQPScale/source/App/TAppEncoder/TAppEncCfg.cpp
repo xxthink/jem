@@ -1908,6 +1908,9 @@ Void TAppEncCfg::xCheckParameter()
   if (m_useLumaDeltaQP) 
   {
    xConfirmPara( m_uiDeltaQpRD > 0, "Luma-based Delta QP cannot be used together with slice level multiple-QP optimization!\n" );
+#if SHARP_WEIGHT_DISTORTION
+   xConfirmPara( m_chromaFormatIDC != CHROMA_420, "Weighted distortion currently is only implemented for CHROMA_420 format!\n");
+#endif
   }
 #endif
 #if !JVET_C0024_QTBT
