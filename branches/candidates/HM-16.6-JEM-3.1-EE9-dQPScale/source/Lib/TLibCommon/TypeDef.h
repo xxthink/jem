@@ -82,14 +82,15 @@
 // EE9 Luma adaptive QP control related macros, are only implemented when QTBT on
 /////////////////////////////////////////////////////////////////////////////////////
 
-#define SHARP_LUMA_DELTA_QP                1               ///< enable luma adaptive QP
+#define SHARP_LUMA_DELTA_QP                1               ///< enable luma adaptive QP, intended for data in ST-2084 container
 
 #if SHARP_LUMA_DELTA_QP
 #define SHARP_MAX_LUMA_DQP                 20              ///< max allowed positions for delta QP change based on luma
 #define SHARP_QP_LUMA_LUT_MAXSIZE          1024            ///< max LUT size for QP offset based on luma
-#define SHARP_QP_LUMA_LUT_HDR                0             ///< 0: use default LUT for SDR; 1: use default LUT for HDR
+#define SHARP_QP_LUMA_LUT_HDR                0            ///< 0: use default LUT for SDR in ST-2084; 1: use default LUT for HDR
 #define SHARP_WEIGHT_DISTORTION              1            ///< use weighted distortion in RD decision
 #define SHARP_WEIGHT_DISTORTION_OUTPUT       1            ///< printout weighted PSNR
+#define SHARP_WEIGHT_DISTORTION_YCBCR_SHARE  1            ///< 1: chroma share the same weight as luma;    0: YCbCr has seperate weights (only for SDR in ST-2084)
 
 #define SHARP_DQP_BIT_STAT                  1             ///< for decoder output frame bits and deltaQP bits count
 #endif  // end of Luma adaptive QP control related macros
