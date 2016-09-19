@@ -1002,6 +1002,10 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
     // encode CTU and calculate the true bit counters.
     m_pcCuEncoder->encodeCtu( pCtu );
 
+#if SHARP_LUMA_STORE_DQP
+    if (pcSlice->getPPS()->getUseDQP_ResScale())
+         pCtu->updateCtuQP(pCtu);
+#endif
 
     pRDSbacCoder->setBinCountingEnableFlag( false );
 

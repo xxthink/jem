@@ -53,6 +53,10 @@
 #if SHARP_LUMA_DELTA_QP
 Int g_lumaQPLUT[SHARP_QP_LUMA_LUT_MAXSIZE];               // LUT for luma and correspionding QP offset
 #endif
+#if SHARP_LUMA_RES_SCALING
+Int *g_LumaResScaleLUT;
+Int LumaResScaleLUT0[2*SHARP_MAX_LUMA_DQP+1];    //  residual scale corresponding to dQP
+#endif
 #if SHARP_WEIGHT_DISTORTION || SHARP_WEIGHT_DISTORTION_OUTPUT
 Double g_weight_pqto709[3][1024];
 #endif
@@ -89,6 +93,19 @@ Void initLumaDeltaQpLUT(Int totalChangePoints, Int *lumaChangePoints, Int* qps) 
       }
     }
   }
+}
+#endif
+#if SHARP_LUMA_RES_SCALING
+Void initLumaResScaleLUT() {
+
+    for (Int i = -(SHARP_MAX_LUMA_DQP); i<= SHARP_MAX_LUMA_DQP; i++)
+    {
+        Int arr_idx = SHARP_MAX_LUMA_DQP+i;
+        LumaResScaleLUT0[arr_idx] = (Int)((pow(10,(double)i/20.0)*(1<<SHARP_LUMA_RESCALE_PRECISION)+0.5));
+    }
+
+    // set the pointer to the middle of the LUT, so we can use dQP as index
+    g_LumaResScaleLUT = &LumaResScaleLUT0[SHARP_MAX_LUMA_DQP];
 }
 #endif
 //! \ingroup TLibCommon

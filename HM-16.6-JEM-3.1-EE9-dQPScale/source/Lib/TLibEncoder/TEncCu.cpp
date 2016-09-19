@@ -781,6 +781,10 @@ Void TEncCu::init( TEncTop* pcEncTop )
   if (m_pcEncCfg->getUseLumaDeltaQp())
     initLumaDeltaQpLUT(m_pcEncCfg->getNbrOfUsedDQPChangePoints(), m_pcEncCfg->getLumaDQpChangePoints(), m_pcEncCfg->getDQpChangePoints());
 #endif
+#if SHARP_LUMA_RES_SCALING
+  if (m_pcEncCfg->getUseLumaDeltaQp()==2)  // i.e. getUseDQP_ResScale()) is true
+    initLumaResScaleLUT();
+#endif
 }
 
 // ====================================================================================================================
@@ -881,6 +885,11 @@ Void TEncCu::compressCtu( TComDataCU* pCtu )
         m_pppcTempCU[uiWidthIdx][uiHeightIdx]->setQuLastCodedQP( qp );
         m_pppcBestCU[uiWidthIdx][uiHeightIdx]->setQuPartIdx(0); // init current quantization unit partition index
         m_pppcTempCU[uiWidthIdx][uiHeightIdx]->setQuPartIdx(0); // init current quantization unit partition index
+      }
+#endif
+#if SHARP_LUMA_STORE_DQP
+      if (pCtu->getSlice()->getPPS()->getUseDQP_ResScale()) {
+        memcpy( pCtu->getInferDQPChannel(CHANNEL_TYPE_CHROMA), pCtu->getInferDQPChannel(CHANNEL_TYPE_LUMA), sizeof(Char)*pCtu->getPic()->getNumPartitionsInCtu());
       }
 #endif
 
@@ -1142,7 +1151,16 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
   const UInt uiQTBTDepth = (uiDepth<<1) + uiBTDepth;
   const UInt uiMaxDQPDepthQTBT = pps.getMaxCuDQPDepth() << 1;
 #endif
-
+#if SHARP_LUMA_STORE_DQP
+  if (pps.getUseDQP_ResScale() && isChroma(rpcBestCU->getTextType())) {
+    TComDataCU* pCTU = rpcBestCU->getPic()->getCtu(rpcBestCU->getCtuRsAddr() ) ;
+    Int absZorderIdxInCtu = rpcBestCU->getZorderIdxInCtu();
+    Char* lumaInferDQP = pCTU->getInferDQPChannel(CHANNEL_TYPE_LUMA);
+    Int iInferDQP = lumaInferDQP[absZorderIdxInCtu];       // use the  luma QP of the top left pixel of the chroma block colocated
+    rpcTempCU->setInferDQPSubParts( iInferDQP, 0, uiWidth, uiHeight);
+    rpcBestCU->setInferDQPSubParts( iInferDQP, 0, uiWidth, uiHeight);
+  }
+#endif
 
   Int iBaseQP = xComputeQP( rpcBestCU, uiDepth );
   Int iMinQP;
@@ -1198,10 +1216,17 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
   Int targetQP = iBaseQP;
   if (m_pcEncCfg->getUseLumaDeltaQp() )
   {
+#if !SHARP_LUMA_RES_SCALING
     if( uiQTBTDepth <= uiMaxDQPDepthQTBT ) 
+#else
+    if ((uiQTBTDepth <= uiMaxDQPDepthQTBT) || pps.getUseDQP_ResScale())
+#endif
 
-    m_LumaQPOffset= CalculateLumaActivity(rpcTempCU, 0, m_pppcOrigYuv[uiWidthIdx][uiHeightIdx]);  // keep using the same m_QP_LUMA_OFFSET in the same LCU
+    m_LumaQPOffset= CalculateLumaActivity(rpcTempCU, 0, m_pppcOrigYuv[uiWidthIdx][uiHeightIdx]);
     targetQP = iBaseQP-m_LumaQPOffset;        // targetQP is used for control lambda
+#if SHARP_LUMA_RES_SCALING
+    if (!pps.getUseDQP_ResScale()) // if rescale true, do not change the CU qp, luam adaptive QP adjustment will be done by coefficient scaling
+#endif    
     {
       iMinQP = iBaseQP-m_LumaQPOffset;
       iMaxQP = iMinQP;   // make it same as MinQP to force encode choose the modified QP
@@ -1288,7 +1313,11 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         iQP = lowestQP;
       }
 #if SHARP_LUMA_DELTA_QP
+#if !SHARP_LUMA_RES_SCALING
       if (m_pcEncCfg->getUseLumaDeltaQp() && (uiQTBTDepth <= uiMaxDQPDepthQTBT))
+#else
+      if ((m_pcEncCfg->getUseLumaDeltaQp() && (uiQTBTDepth <= uiMaxDQPDepthQTBT)) || pps.getUseDQP_ResScale())
+#endif
         getSliceEncoder()->updateLambda(pcSlice, targetQP);
 #endif
 
@@ -2343,7 +2372,11 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
           xCopyYuv2Tmp( pcSubBestPartCU->getZorderIdxInCtu()-rpcTempCU->getZorderIdxInCtu(), uiWidth, uiHeight, 1 );
 #if SHARP_LUMA_DELTA_QP && !SHARP_WEIGHT_DISTORTION
           // accumulate the splitted cost which uses the correct sub CU lambda
+#if !SHARP_LUMA_RES_SCALING
           if (m_pcEncCfg->getUseLumaDeltaQp() && pps.getMaxCuDQPDepth() >= 1)  // deeper than CTU level
+#else
+          if ((m_pcEncCfg->getUseLumaDeltaQp() && pps.getMaxCuDQPDepth() >= 1) || pps.getUseDQP_ResScale())
+#endif
           {
             splitTotalCost += pcSubBestPartCU->getTotalCost();
           }
@@ -2359,7 +2392,11 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
       m_pcEntropyCoder->encodeBTSplitMode(rpcTempCU, 0, uiWidth, uiHeight, true);
 #if SHARP_LUMA_DELTA_QP && !SHARP_WEIGHT_DISTORTION
           // add the split flag cost  
+#if !SHARP_LUMA_RES_SCALING
           if (m_pcEncCfg->getUseLumaDeltaQp() && pps.getMaxCuDQPDepth() >= 1)  // deeper than CTU level
+#else
+          if ((m_pcEncCfg->getUseLumaDeltaQp() && pps.getMaxCuDQPDepth() >= 1) || pps.getUseDQP_ResScale())
+#endif
           {
             Int splitBits = m_pcEntropyCoder->getNumberOfWrittenBits(); // split bits and BTsplitMode
             Double splitBitCost = m_pcRdCost->calcRdCost(splitBits, 0 );
@@ -2382,7 +2419,11 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
           m_pcEntropyCoder->resetBits();
           m_pcEntropyCoder->encodeQP( rpcTempCU, uiFirstNonZeroPartIdx, false );
 #if SHARP_LUMA_DELTA_QP && !SHARP_WEIGHT_DISTORTION         
+#if !SHARP_LUMA_RES_SCALING
           if (m_pcEncCfg->getUseLumaDeltaQp() && pps.getMaxCuDQPDepth() >= 1)  // deeper than CTU level
+#else
+          if ((m_pcEncCfg->getUseLumaDeltaQp() && pps.getMaxCuDQPDepth() >= 1) || pps.getUseDQP_ResScale())
+#endif
           { // add the dQP cost  
             Int writtenBits = m_pcEntropyCoder->getNumberOfWrittenBits();
             Double splitBitCost = m_pcRdCost->calcRdCost(writtenBits, 0 );
@@ -2406,7 +2447,11 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
       }
 #endif
 #if SHARP_LUMA_DELTA_QP  && !SHARP_WEIGHT_DISTORTION
+#if !SHARP_LUMA_RES_SCALING
       if (m_pcEncCfg->getUseLumaDeltaQp() && pps.getMaxCuDQPDepth() >= 1)  // deeper than CTU level
+#else
+      if ((m_pcEncCfg->getUseLumaDeltaQp() && pps.getMaxCuDQPDepth() >= 1) || pps.getUseDQP_ResScale())
+#endif
       {    
         rpcTempCU->getTotalCost()  = splitTotalCost;  // replace the totalCost with the accumulated one
       }
@@ -2530,7 +2575,11 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
           xCopyYuv2Tmp( pcSubBestPartCU->getZorderIdxInCtu()-rpcTempCU->getZorderIdxInCtu(), uiWidth, uiHeight, 2 );
 #if SHARP_LUMA_DELTA_QP  && !SHARP_WEIGHT_DISTORTION
           // accumulate the splitted cost
+#if !SHARP_LUMA_RES_SCALING
           if (m_pcEncCfg->getUseLumaDeltaQp() && pps.getMaxCuDQPDepth() >= 1)  // deeper than CTU level
+#else
+          if ((m_pcEncCfg->getUseLumaDeltaQp() && pps.getMaxCuDQPDepth() >= 1) || pps.getUseDQP_ResScale())
+#endif
           {
             splitTotalCost += pcSubBestPartCU->getTotalCost();
           }
@@ -2547,7 +2596,11 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
       m_pcEntropyCoder->encodeBTSplitMode(rpcTempCU, 0, uiWidth, uiHeight, true);
 #if SHARP_LUMA_DELTA_QP && !SHARP_WEIGHT_DISTORTION
       // add the split flag cost  
+#if !SHARP_LUMA_RES_SCALING
       if (m_pcEncCfg->getUseLumaDeltaQp() && pps.getMaxCuDQPDepth() >= 1)  // deeper than CTU level
+#else
+      if ((m_pcEncCfg->getUseLumaDeltaQp() && pps.getMaxCuDQPDepth() >= 1) || pps.getUseDQP_ResScale())
+#endif
       {
         Int splitBits = m_pcEntropyCoder->getNumberOfWrittenBits(); // split and BTSplitMode bits
         Double splitBitCost = m_pcRdCost->calcRdCost(splitBits, 0 );
@@ -2571,7 +2624,11 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
           m_pcEntropyCoder->encodeQP( rpcTempCU, uiFirstNonZeroPartIdx, false );
 #if SHARP_LUMA_DELTA_QP && !SHARP_WEIGHT_DISTORTION
           // add the dQP bit cost  
+#if !SHARP_LUMA_RES_SCALING
           if (m_pcEncCfg->getUseLumaDeltaQp() && pps.getMaxCuDQPDepth() >= 1)  // deeper than CTU level
+#else
+          if ((m_pcEncCfg->getUseLumaDeltaQp() && pps.getMaxCuDQPDepth() >= 1) || pps.getUseDQP_ResScale())
+#endif
           {
             Int writtenBits = m_pcEntropyCoder->getNumberOfWrittenBits();
             Double splitBitCost = m_pcRdCost->calcRdCost(writtenBits, 0 );
@@ -2595,7 +2652,11 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
       }
 #endif
 #if SHARP_LUMA_DELTA_QP  && !SHARP_WEIGHT_DISTORTION
+#if !SHARP_LUMA_RES_SCALING
       if (m_pcEncCfg->getUseLumaDeltaQp() && pps.getMaxCuDQPDepth() >= 1)  // deeper than CTU level
+#else
+      if ((m_pcEncCfg->getUseLumaDeltaQp() && pps.getMaxCuDQPDepth() >= 1) || pps.getUseDQP_ResScale())
+#endif
       {    
        rpcTempCU->getTotalCost()  = splitTotalCost;  // replace the totalCost with the accumulated one
       }
@@ -2767,7 +2828,11 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 
 #if SHARP_LUMA_DELTA_QP && !SHARP_WEIGHT_DISTORTION
             // accumulate the splitted cost
+#if !SHARP_LUMA_RES_SCALING
             if (m_pcEncCfg->getUseLumaDeltaQp() && pps.getMaxCuDQPDepth() >= 1)  // deeper than CTU level
+#else
+            if ((m_pcEncCfg->getUseLumaDeltaQp() && pps.getMaxCuDQPDepth() >= 1) || pps.getUseDQP_ResScale())
+#endif
             {
               splitTotalCost += pcSubBestPartCU->getTotalCost();
             }
@@ -2801,7 +2866,11 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         m_pcEntropyCoder->encodeSplitFlag( rpcTempCU, 0, uiDepth, true );
 #if SHARP_LUMA_DELTA_QP && !SHARP_WEIGHT_DISTORTION
           // add the split flag cost  
+#if !SHARP_LUMA_RES_SCALING
           if (m_pcEncCfg->getUseLumaDeltaQp() && pps.getMaxCuDQPDepth() >= 1)  // deeper than CTU level
+#else
+          if ((m_pcEncCfg->getUseLumaDeltaQp() && pps.getMaxCuDQPDepth() >= 1) || pps.getUseDQP_ResScale())
+#endif
           {
             Int splitBits = m_pcEntropyCoder->getNumberOfWrittenBits(); // split bits
             Double splitBitCost = m_pcRdCost->calcRdCost(splitBits, 0 );
@@ -2864,7 +2933,11 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
           m_pcEntropyCoder->resetBits();
           m_pcEntropyCoder->encodeQP( rpcTempCU, 0, false );
 #if SHARP_LUMA_DELTA_QP  && !SHARP_WEIGHT_DISTORTION       
+#if !SHARP_LUMA_RES_SCALING
           if (m_pcEncCfg->getUseLumaDeltaQp() && pps.getMaxCuDQPDepth() >= 1)  // deeper than CTU level
+#else
+          if ((m_pcEncCfg->getUseLumaDeltaQp() && pps.getMaxCuDQPDepth() >= 1) || pps.getUseDQP_ResScale())
+#endif
           { // add the dQP cost  
             Int writtenBits = m_pcEntropyCoder->getNumberOfWrittenBits();
             Double splitBitCost = m_pcRdCost->calcRdCost(writtenBits, 0 );
@@ -2902,7 +2975,11 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         }
       }
 #if SHARP_LUMA_DELTA_QP && !SHARP_WEIGHT_DISTORTION 
+#if !SHARP_LUMA_RES_SCALING
         if (m_pcEncCfg->getUseLumaDeltaQp() && pps.getMaxCuDQPDepth() >= 1)  // deeper than CTU level
+#else
+      if ((m_pcEncCfg->getUseLumaDeltaQp() && pps.getMaxCuDQPDepth() >= 1) || pps.getUseDQP_ResScale())
+#endif
         {    
         rpcTempCU->getTotalCost()  = splitTotalCost;   // replace the totalCost with the accumulated one
         }

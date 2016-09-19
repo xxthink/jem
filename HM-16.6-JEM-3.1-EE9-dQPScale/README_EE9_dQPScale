@@ -1,26 +1,47 @@
 *** This luma adaptive QP control code is intended for coding data in ST-2084 container and optimized for Weighted PSNR as described in JVET-C0095  *** 
 
 In the code, changes are under macros starting with   SHARP_
-Below are example config parameters to control the luma adaptive QP and scaling, in the config files:
+This version of code support luma adaptive qp with explicit delta QP signalling, luma adaptive coeffiicent scaling (either use DC + prediction to scale AC, or use prediction only to scale all coefficients). Below are example config parameters to control the luma adaptive QP and coefficient scaling:
 
  
 ### example 1: enable luma adaptive delta QP at CTU level
 LumaDeltaQP                   : 1           # Luma activity based deltaQP control  -- 0: disabled;  1: send dQP; 2: coefficient scaling (To be implemented)
+MaxCuDQPDepth                 : 0           # Max depth of delta QP, should be less than MaxPartitionDepth
 
 ### example 2: enable luma adaptive delta QP at CU level of depth 3
 LumaDeltaQP                   : 1           # Luma activity based deltaQP control  -- 0: disabled;  1: send dQP;
 MaxCuDQPDepth                 : 3           # Max depth of delta QP, should be less than MaxPartitionDepth
+
+### example 3: enable luma adaptive coefficient scaling
+LumaDeltaQP                   : 2           # Luma activity based deltaQP control  -- 0: disabled;  1: send dQP; 2: coefficient scaling
+LumaDQPFile                   : lumaDQP_SDR_6.txt    # File containing luma change points used to derive the luma QP LUT. If file is not exist, use Default luma DQP LUT. 
+
+Note: For coding SDR in ST-2084 with luma adaptive coefficient scaling and when SHARP_DSCALE_PRED_ONLY is 0, use Qp 16,21,26,31 and LumaDQPFile=lumaDQP_SDR_6.txt (in cfg directory) to get proper DC quantization, For all other test, use QP 22, 27, 32, 37 as in CTC and default luma DQP LUT defined in the code.
 
 
 Related Macros:
 
 (1) #define SHARP_LUMA_DELTA_QP                1            ///< enable luma adaptive QP, only intended for HDR or SDR data in ST-2084 
 
-This is the luma adaptive QP technology used in MPEG-HDR anchor3.2. QP is explicitly signalled by delta QP
-Refer JCTVC-W0054 for details.
+  1.1 Code for luma adaptive adaptive QP alone are under
+    #define SHARP_LUMA_DELTA_QP                1            ///< enable luma adaptive QP
+    #define SHARP_LUMA_RES_SCALING             0            ///< enable coefficient scaling based on luma predciton and DC 
+
+    This is the luma adaptive QP technology used in MPEG-HDR anchor3.2. QP is explicitly signalled by delta QP
+    Refer JCTVC-W0054 for details.  If you'd like to check out code before the coefficient scaling added, checked out revision 277.
+  
+  1.2   Code for luma adaptive coefficient scaling are under
+    #define SHARP_LUMA_DELTA_QP                1            ///< enable luma adaptive QP
+    #define SHARP_LUMA_RES_SCALING             1            ///< enable coefficient scaling based on luma predciton and DC 
+
+    Here the target QP for each block is similar to the adaptive QP approach, But the delta QP is not signalled. Transform coefficients are scaled based on reconstructed luma pixel. 
+    Refer JVET-C0095 for details.
+    #SHARP_DSCALE_PRED_ONLY                   0             ///< 1: only use prediction to obtain the scale  0: use pred and DC coefficient to obtain scale
+
 
 (2) #define SHARP_QP_LUMA_LUT_HDR                0             ///< 0: use default LUT for SDR in ST-2084 container; 1: use default LUT for HDR
 There are two default LUT table defined in the code,  define SHARP_QP_LUMA_LUT_HDR 1 for HDR data,  0 for SDR data converted to ST-2084 
+The LUT table can also be input from a file through command line or config file parameter LumaDQPFile
 
 (3) #define SHARP_DQP_BIT_STAT                  1             ///< for decoder output frame bits and deltaQP bits count
 For deltaQP overhead esimate, enable macro #SHARP_DQP_BIT_STAT  and run TAppDecoderAnalyserStatic 

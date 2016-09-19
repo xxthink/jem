@@ -212,6 +212,10 @@ extern       Char   g_aucConvertToBit  [ MAX_CU_SIZE+1 ];   // from width to log
 extern Int g_lumaQPLUT[SHARP_QP_LUMA_LUT_MAXSIZE];               // LUT for luma and correspionding QP offset
 Void initLumaDeltaQpLUT(Int totalChangePoints, Int *lumaChangePoints, Int* qps);
 #endif
+#if SHARP_LUMA_RES_SCALING
+extern Int *g_LumaResScaleLUT;         // LUT for luma dQP and correspionding scale
+Void initLumaResScaleLUT();
+#endif
 
 #if ENC_DEC_TRACE
 extern FILE*  g_hTrace;

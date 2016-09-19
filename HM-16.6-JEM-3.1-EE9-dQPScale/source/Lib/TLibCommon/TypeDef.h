@@ -88,6 +88,11 @@
 #define SHARP_MAX_LUMA_DQP                 20              ///< max allowed positions for delta QP change based on luma
 #define SHARP_QP_LUMA_LUT_MAXSIZE          1024            ///< max LUT size for QP offset based on luma
 #define SHARP_QP_LUMA_LUT_HDR                0            ///< 0: use default LUT for SDR in ST-2084; 1: use default LUT for HDR
+// scale transform transform coefficient instead of explicit sending delta QP
+#define SHARP_LUMA_RES_SCALING                1            ///< enable coefficient scaling based on luma predciton and DC 
+#define SHARP_LUMA_STORE_DQP       SHARP_LUMA_RES_SCALING  ///< same marco as above, give it different name for ease of searching
+#define SHARP_DSCALE_PRED_ONLY               0             ///< 1: only use prediction to obtain the scale  0: use pred and DC coefficient to obtain scale
+#define SHARP_LUMA_RESCALE_PRECISION         6             /// actual scale is   scale>>RESCALE_LUT_PRECISION
 #define SHARP_WEIGHT_DISTORTION              1            ///< use weighted distortion in RD decision
 #define SHARP_WEIGHT_DISTORTION_OUTPUT       1            ///< printout weighted PSNR
 #define SHARP_WEIGHT_DISTORTION_YCBCR_SHARE  1            ///< 1: chroma share the same weight as luma;    0: YCbCr has seperate weights (only for SDR in ST-2084)

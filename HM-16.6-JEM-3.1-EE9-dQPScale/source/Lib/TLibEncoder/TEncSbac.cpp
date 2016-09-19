@@ -1582,6 +1582,12 @@ Void TEncSbac::codeCrossComponentPrediction( TComTU &rTu, ComponentID compID )
 
 Void TEncSbac::codeDeltaQP( TComDataCU* pcCU, UInt uiAbsPartIdx )
 {
+#if SHARP_LUMA_RES_SCALING  
+  if (pcCU->getSlice()->getPPS()->getUseDQP_ResScale()) {     
+    // coefficient scale is derived, no delta QP is signalled
+    assert(0);
+  }
+#endif
   Int iDQp  = pcCU->getQP( uiAbsPartIdx ) - pcCU->getRefQP( uiAbsPartIdx );
 
   Int qpBdOffsetY =  pcCU->getSlice()->getSPS()->getQpBDOffset(CHANNEL_TYPE_LUMA);

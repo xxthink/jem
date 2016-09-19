@@ -1036,6 +1036,16 @@ Void TEncTop::xInitPPS()
   }
 #if SHARP_LUMA_DELTA_QP
   if (getUseLumaDeltaQp() ) { 
+#if SHARP_LUMA_RES_SCALING // dQP flag control
+      if (getUseLumaDeltaQp() == 2) {  // enable DQP_ResScale, not enable DQP flag, so no deltaQP is sent
+        bUseDQP = false;
+        m_cPPS.setUseDQP_ResScale(true);
+        m_cPPS.setNbrOfUsedDQPChangePoints(m_uiNbrOfUsedDQPChangePoints);
+        m_cPPS.setDQpChangePoints(m_dQPChangePoints);
+        m_cPPS.setLumaDQpChangePoints(m_dQPLumaChangePoints);
+      }
+      else // enable DQP flag
+#endif
       bUseDQP = true;
   }
 #endif
