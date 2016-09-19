@@ -1300,6 +1300,12 @@ private:
   Int              m_SPSId;                    // seq_parameter_set_id
   Int              m_picInitQPMinus26;
   Bool             m_useDQP;
+#if SHARP_LUMA_RES_SCALING // signalling
+  Bool             m_useDQP_ResScale;
+  Int              m_uiNbrOfUsedDQPChangePoints;
+  Int              m_dQPChangePoints[SHARP_MAX_LUMA_DQP];
+  Int              m_dQPLumaChangePoints[SHARP_MAX_LUMA_DQP];
+#endif
   Bool             m_bConstrainedIntraPred;    // constrained_intra_pred_flag
   Bool             m_bSliceChromaQpFlag;       // slicelevel_chroma_qp_flag
 
@@ -1360,6 +1366,20 @@ public:
   Void                   setPicInitQPMinus26( Int i )                                     { m_picInitQPMinus26 = i;                       }
   Bool                   getUseDQP() const                                                { return m_useDQP;                              }
   Void                   setUseDQP( Bool b )                                              { m_useDQP   = b;                               }
+#if SHARP_LUMA_RES_SCALING
+  Bool                   getUseDQP_ResScale() const                                       { return m_useDQP_ResScale;                     }
+  Void                   setUseDQP_ResScale( Bool b )                                     { m_useDQP_ResScale   = b;                      }
+  Void                  setNbrOfUsedDQPChangePoints( UInt    n   )                        { m_uiNbrOfUsedDQPChangePoints = n; }
+  UInt                  getNbrOfUsedDQPChangePoints() const                               { return m_uiNbrOfUsedDQPChangePoints; }
+  Void                  setDQpChangePoints( Int*    DQp )                                 { for (Int i=0; i < SHARP_MAX_LUMA_DQP; i++) m_dQPChangePoints[i] = DQp[i]; }
+  Void                  setDQpChangePoint( Int i, Int DQpVal )                            {m_dQPChangePoints[i] = DQpVal; } ;
+  Int*                  getDQpChangePoints()                                              { return   m_dQPChangePoints; }     
+  Int                   getDQpChangePoint(Int k)  const                                   { return   m_dQPChangePoints[k]; }
+  Void                  setLumaDQpChangePoints( Int*    DQp )                             { for (Int i=0; i < SHARP_MAX_LUMA_DQP; i++) m_dQPLumaChangePoints[i] = DQp[i]; }
+  Void                  setLumaDQpChangePoint( Int i, Int    DQpVal )                     { m_dQPLumaChangePoints[i] = DQpVal; }
+  Int*                  getLumaDQpChangePoints()                                          { return   m_dQPLumaChangePoints; }
+  Int                   getLumaDQpChangePoint( Int k) const                                { return   m_dQPLumaChangePoints[k]; }
+#endif
   Bool                   getConstrainedIntraPred() const                                  { return  m_bConstrainedIntraPred;              }
   Void                   setConstrainedIntraPred( Bool b )                                { m_bConstrainedIntraPred = b;                  }
   Bool                   getSliceChromaQpFlag() const                                     { return  m_bSliceChromaQpFlag;                 }

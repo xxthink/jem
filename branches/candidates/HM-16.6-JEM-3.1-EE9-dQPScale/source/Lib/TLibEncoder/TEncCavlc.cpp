@@ -172,6 +172,20 @@ Void TEncCavlc::codePPS( const TComPPS* pcPPS )
   WRITE_FLAG( pcPPS->getConstrainedIntraPred() ? 1 : 0,      "constrained_intra_pred_flag" );
   WRITE_FLAG( pcPPS->getUseTransformSkip() ? 1 : 0,  "transform_skip_enabled_flag" );
   WRITE_FLAG( pcPPS->getUseDQP() ? 1 : 0, "cu_qp_delta_enabled_flag" );
+#if SHARP_LUMA_RES_SCALING // signalling, this is put in PPS to be consistent with existing cu_qp_delta_enabled_flag, but it does not have to be in PPS
+  WRITE_FLAG( pcPPS->getUseDQP_ResScale() ? 1 : 0, "cu_dqp_resscale_enabled_flag" );
+  if (pcPPS->getUseDQP_ResScale()) 
+  {
+      WRITE_UVLC( pcPPS->getNbrOfUsedDQPChangePoints(),         "num_luma_dqp_change_points");
+      WRITE_SVLC( pcPPS->getDQpChangePoint(0),        "delta_dqp_change_point");
+      WRITE_SVLC( pcPPS->getLumaDQpChangePoint(0), "delta_luma_dqp_change_point");
+      for (Int i=1; i < pcPPS->getNbrOfUsedDQPChangePoints(); i++)
+      {
+          WRITE_SVLC( pcPPS->getDQpChangePoint(i)-pcPPS->getDQpChangePoint(i-1),        "delta_dqp_change_point");
+          WRITE_SVLC( pcPPS->getLumaDQpChangePoint(i)-pcPPS->getLumaDQpChangePoint(i-1), "delta_luma_dqp_change_point");
+      }
+  }
+#endif
   if ( pcPPS->getUseDQP() )
   {
     WRITE_UVLC( pcPPS->getMaxCuDQPDepth(), "diff_cu_qp_delta_depth" );

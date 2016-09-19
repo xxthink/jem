@@ -1,0 +1,19 @@
+# Qp and Luma value pair (1 117) means from luma vlaue 117, qp offset changes to 1)  # use with QP 22,27,32,37
+0  0
+1  117 
+2  150 
+3  184 
+4  217 
+5  250 
+6 284 
+7 317 
+8 350 
+9 384 
+10 417 
+11 450 
+12  484
+
+
+
+
+

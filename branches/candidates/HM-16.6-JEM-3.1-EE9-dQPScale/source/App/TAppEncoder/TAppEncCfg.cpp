@@ -343,7 +343,8 @@ static Int defaultdQpChangePoints[SHARP_DEFAULT_LUMA_DQP]=  {-3, -2, -1,  0,  1,
 static Int defaultLumaChangePoints[SHARP_DEFAULT_LUMA_DQP]= { 0,301,367,434,501,567,634,701,767,834};
 #else 
 #define SHARP_DEFAULT_LUMA_DQP                             13     // default number of positions for delta QP change based on luma
-static Int defaultdQpChangePoints[SHARP_DEFAULT_LUMA_DQP]=  { 0,  1,  2,  3,   4,  5,  6,  7,  8,  9, 10, 11, 12};
+static Int defaultdQpChangePoints[SHARP_DEFAULT_LUMA_DQP]=  { 0,  1,  2,  3,   4,  5,  6,  7,  8,  9, 10, 11, 12};   // use with input qp 22, 27, 32, 37
+//static Int defaultdQpChangePoints[SHARP_DEFAULT_LUMA_DQP]=  {-6, -5,  -4, -3, -2, -1, 0,  1,  2,  3,  4,  5,  6};  // use with input qp 16, 21, 26, 31
 static Int defaultLumaChangePoints[SHARP_DEFAULT_LUMA_DQP]= { 0, 117,150,184,217,250,284,317,350,384,417,450,484};
 #endif
 #endif
@@ -1911,6 +1912,9 @@ Void TAppEncCfg::xCheckParameter()
 #if SHARP_WEIGHT_DISTORTION
    xConfirmPara( m_chromaFormatIDC != CHROMA_420, "Weighted distortion currently is only implemented for CHROMA_420 format!\n");
 #endif
+#if SHARP_LUMA_RES_SCALING && VCEG_AZ08_USE_KLT
+   xConfirmPara((m_useLumaDeltaQP == 2 && m_useKLT!=0), "Luma-based Coefficient scaling cannot be used together with KLT");
+#endif
   }
 #endif
 #if !JVET_C0024_QTBT
@@ -2755,6 +2759,8 @@ Void TAppEncCfg::xPrintParameter()
   printf("RDpenalty:%d ", m_rdPenalty  );
 #if SHARP_LUMA_DELTA_QP 
   printf("LQP:%d ", m_useLumaDeltaQP                  );
+  if (m_useLumaDeltaQP == 2)
+    printf("predOnly:%d ", SHARP_DSCALE_PRED_ONLY );
   printf("HdrLQPLUT %d ", SHARP_QP_LUMA_LUT_HDR);
 #endif
   printf("SQP:%d ", m_uiDeltaQpRD         );
