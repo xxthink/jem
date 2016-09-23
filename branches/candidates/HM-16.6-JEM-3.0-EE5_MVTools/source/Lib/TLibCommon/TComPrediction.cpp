@@ -3058,6 +3058,7 @@ Void TComPrediction::subBlockOBMC( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv
   
 #if JVET_C0024_QTBT
   PartSize ePartSize = SIZE_2Nx2N;
+  ePartSize = ePartSize; // avoid unused parameter warning when fruc merge is off
 #else
   PartSize ePartSize = pcCU->getPartitionSize( uiAbsPartIdx );
 #endif
