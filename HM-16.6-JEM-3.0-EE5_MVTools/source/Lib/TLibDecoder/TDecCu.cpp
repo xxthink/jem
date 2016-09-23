@@ -2025,7 +2025,11 @@ Void TDecCu::xDeriveCUMV( TComDataCU * pcCU , UInt uiAbsPartIdx , UInt uiDepth )
             pcCU->getCUMvField( RefPicList( refListIdx ) )->setAllMvd( cMv, ePartSize, uiSubPartIdx, uiDepth, uiPartIdx );
 
             AMVPInfo* pAMVPInfo = pcSubCU->getCUMvField( eRefList )->getAMVPInfo();
-            pcSubCU->fillMvpCand(uiPartIdx, uiSubPartIdx - uiAbsPartIdx, eRefList, pcSubCU->getCUMvField( eRefList )->getRefIdx( uiSubPartIdx - uiAbsPartIdx ), pAMVPInfo, m_pcPrediction );
+            pcSubCU->fillMvpCand(uiPartIdx, uiSubPartIdx - uiAbsPartIdx, eRefList, pcSubCU->getCUMvField( eRefList )->getRefIdx( uiSubPartIdx - uiAbsPartIdx ), pAMVPInfo
+#if VCEG_AZ07_FRUC_MERGE
+              , m_pcPrediction 
+#endif
+              );
 
             {
               // *** *** mvp list modification start *** *** 
@@ -2349,7 +2353,7 @@ Void TDecCu::xDeriveCUMV_NoFRUC( TComDataCU * pcCU , UInt uiAbsPartIdx , UInt ui
       Bool toolEnabled = false;
       if (   pcSubCU->getCUMvField(REF_PIC_LIST_1)->getRefIdx( uiSubPartIdx - uiAbsPartIdx ) >= 0
           && pcSubCU->getCUMvField(REF_PIC_LIST_0)->getRefIdx( uiSubPartIdx - uiAbsPartIdx ) >= 0
-          && pcCU->getSlice()->getMvdL1ZeroFlag() == false )
+          && pcCU->getSlice()->getMvdL1ZeroFlag() == false
 #if COM16_C1016_AFFINE
           && !pcCU->isAffine(uiSubPartIdx)
 #endif
