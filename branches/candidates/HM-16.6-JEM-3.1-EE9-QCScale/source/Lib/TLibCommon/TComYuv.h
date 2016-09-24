@@ -155,6 +155,13 @@ public:
   Void         removeHighFreq             ( const TComYuv* pcYuvSrc, const UInt uiPartIdx, const UInt uiWidth, const UInt uiHeight
                                           , const Int bitDepths[MAX_NUM_CHANNEL_TYPE], const Bool bClipToBitDepths
                                           );
+#if SHARP_LUMA_RES_SCALING
+  static Int        getAvgPred(Pel* pPred, Int uiWidth, Int uiHeight, UInt uiStride);
+  static Int        getAvgPred(TComYuv* pcYuvSrc, UInt uiTrUnitIdx, UInt uiPartSize);
+#if QCSCALE
+  static Int        getAvgPred(TComYuv* pcYuvSrc, UInt uiTrUnitIdx, Int uiWidth, Int uiHeight);
+#endif
+#endif
 
   // ------------------------------------------------------------------------------------------------------------------
   //  Access function for YUV buffer

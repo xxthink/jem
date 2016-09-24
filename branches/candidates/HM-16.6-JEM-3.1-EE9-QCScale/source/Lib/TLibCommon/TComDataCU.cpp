@@ -95,6 +95,9 @@ TComDataCU::TComDataCU()
   for(UInt i=0; i<MAX_NUM_CHANNEL_TYPE; i++)
   {
     m_phQP[i]          = NULL;
+#if SHARP_LUMA_STORE_DQP
+    m_phInferDQP[i]    = NULL;
+#endif
   }
 #else
   m_phQP               = NULL;
@@ -219,6 +222,9 @@ Void TComDataCU::create( ChromaFormat chromaFormatIDC, UInt uiNumPartition, UInt
     {
 #if JVET_C0024_DELTA_QP_FIX
       m_phQP[i]               = (Char*     )xMalloc( Char,    uiNumPartition);
+#endif
+#if SHARP_LUMA_STORE_DQP
+      m_phInferDQP[i]         = (Char*     )xMalloc( Char,    uiNumPartition);
 #endif
       m_puhDepth[i]           = (UChar*    )xMalloc(UChar,    uiNumPartition);
       m_puhWidth[i]           = (UChar*    )xMalloc(UChar,    uiNumPartition);
@@ -432,6 +438,9 @@ Void TComDataCU::destroy()
     {
 #if JVET_C0024_DELTA_QP_FIX
       if ( m_phQP[i]               ) { xFree(m_phQP[i]);                m_phQP[i]              = NULL; }
+#endif
+#if SHARP_LUMA_STORE_DQP
+      if ( m_phInferDQP[i]         ) { xFree(m_phInferDQP[i]);          m_phInferDQP[i]        = NULL; }
 #endif
       if ( m_puhDepth[i]           ) { xFree(m_puhDepth[i]);            m_puhDepth[i]          = NULL; }
       if ( m_puhWidth[i]           ) { xFree(m_puhWidth[i]);            m_puhWidth[i]          = NULL; }
@@ -846,6 +855,9 @@ Void TComDataCU::initCtu( TComPic* pcPic, UInt ctuRsAddr )
 #if JVET_C0024_DELTA_QP_FIX
     memset( m_phQP[ch]              , getSlice()->getSliceQp(),   m_uiNumPartition * sizeof( *m_phQP[ch] ) );
 #endif
+#if SHARP_LUMA_STORE_DQP
+    memset( m_phInferDQP[ch]        , 0,                          m_uiNumPartition * sizeof( *m_phInferDQP[ch] ) ); 
+#endif
     memset( m_puhDepth[ch]          , 0,                          m_uiNumPartition * sizeof( *m_puhDepth[ch] ) );
 #if JVET_C0024_CTU_256
     memset( m_puhWidth[ch]          , maxCUWidth >> MIN_CU_LOG2,  m_uiNumPartition * sizeof( *m_puhWidth[ch] ) );
@@ -1106,6 +1118,9 @@ Void TComDataCU::initEstData( const UInt uiDepth, const Int qp, const Bool bTran
     m_pbIPCMFlag[ui]    = 0;
 #if JVET_C0024_DELTA_QP_FIX
     m_phQP[eCType][ui]  = qp;
+#if SHARP_LUMA_STORE_DQP
+    m_phInferDQP[eCType][ui]   = 0;
+#endif
 #else
     m_phQP[ui]          = qp;
 #endif
@@ -1240,6 +1255,17 @@ Void TComDataCU::initSubBT(TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiCUDepth,
 
 #if JVET_C0024_DELTA_QP_FIX
     memset(m_phQP[getTextType()] + uiZorderDst, qp, uiCurrPartNumb );
+#if SHARP_LUMA_STORE_DQP
+    if (getTextType() == 1)
+    {
+        if ((pcCU->getInferDQP() != NULL) && (m_phInferDQP[CHANNEL_TYPE_LUMA] != NULL))
+        {
+            // copy inferDQP derived for 
+            memcpy(m_phInferDQP[CHANNEL_TYPE_LUMA] + uiZorderDst, pcCU->getInferDQP() + uiZorderSrc, m_uiNumPartition*sizeof(Char));
+        }
+    }
+    memset(m_phInferDQP[getTextType()] + uiZorderDst, 0, uiCurrPartNumb );
+#endif
 #else
     memset(m_phQP + uiZorderDst, qp, uiCurrPartNumb );
 #endif
@@ -1408,6 +1434,18 @@ Void TComDataCU::initSubCU( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth, 
 
 #if JVET_C0024_DELTA_QP_FIX
   memset( m_phQP[eCType],      qp,  sizeInChar );
+#if SHARP_LUMA_STORE_DQP
+#if QCSCALE
+  if (eCType == 1)
+  {
+      if ((pcCU->getInferDQP() != NULL) && (m_phInferDQP[CHANNEL_TYPE_LUMA] != NULL))
+      {
+          memcpy(m_phInferDQP[CHANNEL_TYPE_LUMA], pcCU->getInferDQP() + uiPartOffset, sizeInChar);
+      }
+  }
+#endif
+  memset( m_phInferDQP[eCType],         0,  sizeInChar);
+#endif 
 #else
   memset( m_phQP,              qp,  sizeInChar );
 #endif
@@ -1647,6 +1685,13 @@ Void TComDataCU::copySubCU( TComDataCU* pcCU, UInt uiAbsPartIdx )
 #endif
 #if JVET_C0024_DELTA_QP_FIX
   m_phQP[eCType] = pcCU->getQP()          + uiPart;
+ #if SHARP_LUMA_STORE_DQP
+#if QCSCALE
+  m_phInferDQP[CHANNEL_TYPE_LUMA] = pcCU->getInferDQP() + uiPart;
+#else
+  m_phInferDQP[eCType] = pcCU->getInferDQP() + uiPart;
+#endif
+#endif 
 #else
   m_phQP=pcCU->getQP()                    + uiPart;
 #endif
@@ -1904,6 +1949,13 @@ Void TComDataCU::copySameSizeCUFrom(TComDataCU* pcCU, UInt uiPartUnitIdx, UInt u
 #endif
 #if JVET_C0024_DELTA_QP_FIX
     memcpy(m_phQP[getTextType()] + uiOffset, pcCU->getQP(), sizeInChar);
+#if SHARP_LUMA_STORE_DQP
+#if QCSCALE
+    memcpy(m_phInferDQP[CHANNEL_TYPE_LUMA] + uiOffset, pcCU->getInferDQP(), sizeInChar);
+#else
+    memcpy( m_phInferDQP[getTextType()] + uiOffset, pcCU->getInferDQP(), sizeInChar    );
+#endif
+#endif
 #else
     memcpy(m_phQP + uiOffset, pcCU->getQP(), sizeInChar);
 #endif
@@ -2098,6 +2150,13 @@ Void TComDataCU::copyPartFrom( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDept
 #endif
 #if JVET_C0024_DELTA_QP_FIX
     memcpy( m_phQP[eCType] + uiZorderDst, pcCU->getQP()+uiZorderSrc, uiCurrPartNumb );
+#if SHARP_LUMA_STORE_DQP
+#if QCSCALE
+    memcpy(m_phInferDQP[CHANNEL_TYPE_LUMA] + uiZorderDst, pcCU->getInferDQP() + uiZorderSrc, uiCurrPartNumb);
+#else
+    memcpy( m_phInferDQP[eCType] + uiZorderDst, pcCU->getInferDQP()+uiZorderSrc, uiCurrPartNumb ); 
+#endif
+#endif
 #else
     memcpy( m_phQP       + uiZorderDst, pcCU->getQP()+uiZorderSrc, uiCurrPartNumb );
 #endif
@@ -2391,6 +2450,13 @@ Void TComDataCU::copyToPic( UChar uhDepth )
 #endif
 #if JVET_C0024_DELTA_QP_FIX
       memcpy( pCtu->getQP(eCType) + uiZorderDst, m_phQP[eCType] + uiZorderSrc, uiCurrPartNumb  );
+#if SHARP_LUMA_STORE_DQP
+#if QCSCALE
+      memcpy(pCtu->getInferDQP(CHANNEL_TYPE_LUMA) + uiZorderDst, m_phInferDQP[CHANNEL_TYPE_LUMA] + uiZorderSrc, uiCurrPartNumb);
+#else
+      memcpy( pCtu->getInferDQP(eCType) + uiZorderDst, m_phInferDQP[eCType] + uiZorderSrc, uiCurrPartNumb  );
+#endif
+#endif
 #else
       memcpy( pCtu->getQP() + uiZorderDst, m_phQP + uiZorderSrc, uiCurrPartNumb  );
 #endif
@@ -4694,6 +4760,48 @@ Void TComDataCU::setQPSubParts( Int qp, UInt uiAbsPartIdx, UInt uiDepth )
 #endif
 }
 
+#if SHARP_LUMA_STORE_DQP
+Void TComDataCU::setInferDQPSubParts( Char qp, UInt uiAbsPartIdx, UInt uiDepth )
+{
+  assert( (qp<(SHARP_MAX_LUMA_DQP/2))  && (qp>-(SHARP_MAX_LUMA_DQP/2)) );
+
+#ifdef QCSCALE
+  setSubPart<Char>(qp, m_phInferDQP[COMPONENT_Y], uiAbsPartIdx, getWidth(uiAbsPartIdx), getHeight(uiAbsPartIdx));
+#else
+  memset(m_phInferDQP + uiAbsPartIdx, qp, sizeof(Char)*numPart); // DBUG needs to be changed
+#endif
+
+}
+
+Int TComDataCU::getAvgInferDQP( UInt uiAbsPartIdxInCTU, UInt uiDepth )
+{
+  const Int numPart = m_pcPic->getNumPartitionsInCtu() >> (uiDepth << 1); // DBUG needs to be changed
+
+  Int sum= 0;
+  for (Int i=0; i < numPart; i++)
+  {
+      sum += m_phInferDQP[COMPONENT_Y][uiAbsPartIdxInCTU + i];
+  }
+
+  Int rnd = (sum>=0)? numPart>>1 : -(numPart>>1);       // sum can be negative
+  sum = (sum+rnd)/numPart;             // Integer division
+  return sum;
+}
+
+Int TComDataCU::getAvgQP( UInt uiAbsPartIdx, UInt uiDepth )
+{
+  const Int numPart = m_pcPic->getNumPartitionsInCtu() >> (uiDepth << 1); // DBUG needs to be changed
+
+  Int sum= 0;
+  for (Int i=0; i < numPart; i++)
+  {
+      sum += m_phQP[COMPONENT_Y][uiAbsPartIdx+i];
+  }
+
+  sum = (sum+(numPart>>1))/numPart;             // Integer division
+  return sum;
+}
+#endif
 Void TComDataCU::setIntraDirSubParts( const ChannelType channelType, const UInt dir, const UInt absPartIdx, const UInt depth )
 {
 #if JVET_C0024_QTBT

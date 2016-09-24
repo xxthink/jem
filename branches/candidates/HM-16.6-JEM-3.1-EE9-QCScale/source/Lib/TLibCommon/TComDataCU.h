@@ -146,6 +146,9 @@ private:
 #else
   Char*          m_phQP;               ///< array of QP values
 #endif
+#if SHARP_LUMA_STORE_DQP
+  Char*         m_phInferDQP[MAX_NUM_CHANNEL_TYPE];         ///< array of inferred deltaQP values
+#endif
   UChar*         m_ChromaQpAdj;        ///< array of chroma QP adjustments (indexed). when value = 0, cu_chroma_qp_offset_flag=0; when value>0, indicates cu_chroma_qp_offset_flag=1 and cu_chroma_qp_offset_idx=value-1
   UInt           m_codedChromaQpAdj;
 #if !JVET_C0024_QTBT
@@ -468,8 +471,26 @@ public:
     }
     return m_phQP[getTextType()][uiIdx];       
   }
-  //Void          setQP                 ( UInt uiIdx, Char value ){ m_phQP[getTextType()][uiIdx] =  value;     }
+  Void          setQP                 ( UInt uiIdx, Char value ){ m_phQP[getTextType()][uiIdx] =  value;     }
   Void          setQPSubParts         ( Int qp,   UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight );
+  
+#if SHARP_LUMA_STORE_DQP
+  Char          getQP(ChannelType channelType, UInt uiIdx) const { return m_phQP[COMPONENT_Y][uiIdx]; }
+#if QCSCALE
+  Char*         getInferDQP             ( const ChannelType channelType ) { return m_phInferDQP[COMPONENT_Y];  }
+  Char*         getInferDQP() { return m_phInferDQP[COMPONENT_Y]; }
+  Char          getInferDQP(ChannelType channelType, UInt uiIdx) const     { return m_phInferDQP[COMPONENT_Y][uiIdx]; }
+#else
+  Char*         getInferDQP             ( const ChannelType channelType ) { return m_phInferDQP[channelType];  }
+  Char*         getInferDQP             () { return m_phInferDQP[getTextType()];       }  
+  Char          getInferDQP             ( ChannelType channelType, UInt uiIdx) const     { return m_phInferDQP[channelType][uiIdx]; }
+#endif
+  Int           getAvgQP( UInt uiAbsPartIdx, UInt uiDepth ); // DBUG change is needed 
+  Int           getAvgInferDQP( UInt uiAbsPartIdx, UInt uiDepth ); //DBUG change is needed 
+   
+  Void          setInferDQP(ChannelType channelType, UInt uiIdx, Char value){ m_phInferDQP[channelType][uiIdx] = value; } //?
+  Void          setInferDQPSubParts         ( Char qp,   UInt uiAbsPartIdx, UInt uiDepth ); //DBUG change is needed 
+#endif  
 #else
   Char*         getQP                 ()                        { return m_phQP;              }
   Char          getQP                 ( UInt uiIdx ) const      { return m_phQP[uiIdx];       }
