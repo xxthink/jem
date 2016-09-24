@@ -224,6 +224,24 @@ Void TDecCavlc::parsePPS(TComPPS* pcPPS)
   pcPPS->setUseTransformSkip ( uiCode ? true : false );
 
   READ_FLAG( uiCode, "cu_qp_delta_enabled_flag" );            pcPPS->setUseDQP( uiCode ? true : false );
+#if SHARP_LUMA_RES_SCALING // signalling
+  READ_FLAG( uiCode, "cu_dqp_resscale_enabled_flag" );        pcPPS->setUseDQP_ResScale( uiCode ? true : false );
+
+  if (pcPPS->getUseDQP_ResScale()) {
+
+      READ_UVLC( uiCode, "num_luma_dqp_change_points"); pcPPS->setNbrOfUsedDQPChangePoints(uiCode);         
+
+      READ_SVLC( iCode,  "delta_dqp_chagne_point");  pcPPS->setDQpChangePoint(0, iCode);
+      READ_SVLC( iCode, "delta_luma_dqp_chagne_point");  pcPPS->setLumaDQpChangePoint(0, iCode);
+
+      for (Int i=1; i < pcPPS->getNbrOfUsedDQPChangePoints(); i++)
+      {
+          READ_SVLC( iCode,  "delta_dqp_chagne_point"); pcPPS->setDQpChangePoint(i, iCode + pcPPS->getDQpChangePoint(i-1));
+          READ_SVLC( iCode, "delta_luma_dqp_chagne_point"); pcPPS->setLumaDQpChangePoint(i, iCode + pcPPS->getLumaDQpChangePoint(i-1));
+      }
+  }
+
+#endif
   if( pcPPS->getUseDQP() )
   {
     READ_UVLC( uiCode, "diff_cu_qp_delta_depth" );
@@ -1931,7 +1949,15 @@ Void TDecCavlc::parseDeltaQP( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth 
 #endif
 
   Int qpBdOffsetY = pcCU->getSlice()->getSPS()->getQpBDOffset(CHANNEL_TYPE_LUMA);
+#if SHARP_LUMA_RES_SCALING
+  Int qp;
+  if (pcCU->getSlice()->getPPS()->getUseDQP_ResScale())
+      qp = (((Int) pcCU->getSlice()->getSliceQp() + iDQp + 52 + 2*qpBdOffsetY )%(52+ qpBdOffsetY)) -  qpBdOffsetY;  
+  else
+      qp = (((Int) pcCU->getRefQP( uiAbsPartIdx ) + iDQp + 52 + 2*qpBdOffsetY )%(52+ qpBdOffsetY)) -  qpBdOffsetY;
+#else
   const Int qp = (((Int) pcCU->getRefQP( uiAbsPartIdx ) + iDQp + 52 + 2*qpBdOffsetY )%(52+ qpBdOffsetY)) -  qpBdOffsetY;
+#endif
 
   const UInt maxCUDepth        = pcCU->getSlice()->getSPS()->getMaxTotalCUDepth();
   const UInt maxCuDQPDepth     = pcCU->getSlice()->getPPS()->getMaxCuDQPDepth();

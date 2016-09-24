@@ -341,6 +341,10 @@ Void InvNsst4x4( Int* src, UInt uiMode, UChar index );
 #endif
                            TCoeff         & uiAbsSum,
                      const QpParam        & cQP 
+#if SHARP_LUMA_RES_SCALING
+                       ,   Int          avgPred
+#endif
+
 #if VCEG_AZ08_KLT_COMMON
                      , Bool useKLT = false
 #endif
@@ -353,6 +357,9 @@ Void InvNsst4x4( Int* src, UInt uiMode, UChar index );
                        const UInt           uiStride,
                              TCoeff      *  pcCoeff,
                        const QpParam      & cQP
+#if SHARP_LUMA_RES_SCALING
+                       ,      Int          avgPred
+#endif
 #if VCEG_AZ08_KLT_COMMON
                        , Bool useKLT = false
 #endif
@@ -360,6 +367,9 @@ Void InvNsst4x4( Int* src, UInt uiMode, UChar index );
                              );
 
   Void invRecurTransformNxN ( const ComponentID compID, TComYuv *pResidual, TComTU &rTu 
+#if SHARP_LUMA_RES_SCALING
+                       ,      Int          avgPred
+#endif
 #if VCEG_AZ08_INTER_KLT
       , TComYuv *pcPred
 #endif
@@ -485,6 +495,9 @@ Void InvNsst4x4( Int* src, UInt uiMode, UChar index );
 #endif
   Void transformSkipQuantOneSample(TComTU &rTu, const ComponentID compID, const TCoeff resiDiff, TCoeff* pcCoeff, const UInt uiPos, const QpParam &cQP, const Bool bUseHalfRoundingPoint);
   Void invTrSkipDeQuantOneSample(TComTU &rTu, ComponentID compID, TCoeff pcCoeff, Pel &reconSample, const QpParam &cQP, UInt uiPos );
+#if SHARP_LUMA_RES_SCALING
+  Int getAcScale(Int dQP) { return g_LumaResScaleLUT[dQP];}
+#endif
 
 #if VCEG_AZ08_KLT_COMMON
   Void calcCovMatrix(TrainDataType **pData, UInt uiSampleNum, covMatrixType *pCovMatrix, UInt uiDim, DistType *pDiff);
@@ -622,6 +635,29 @@ private:
                      TCoeff      * pSrc,
                const ComponentID   compID,
                const QpParam      &cQP );
+#endif
+
+#if SHARP_LUMA_RES_SCALING
+#if !REMOVE_DC
+Int xConvertDCCoeffToDCVal(TComTU       &rTu, Int DCCoeff, int uiWidth, const ComponentID compID);
+#endif
+Int xResidualScale(       TComTU       &rTu,
+                          TCoeff      * pSrc,
+                          TCoeff      * pDes,
+                          Int         avgPred,
+                          const ComponentID   compID,
+                          Int acScale
+                          );
+
+Int xResidualDeScale(       TComTU       &rTu,
+                            TCoeff      * pSrc,
+                            TCoeff      * pDes,
+                            Int         avgPred,
+                            const ComponentID   compID,
+                            const QpParam      &cQP,
+                            Int acScale
+                          );
+
 #endif
 
   // RDOQ functions

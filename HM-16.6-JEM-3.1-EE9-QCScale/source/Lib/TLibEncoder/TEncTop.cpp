@@ -302,6 +302,9 @@ Void TEncTop::init(Bool isFieldCoding)
   m_cGOPEncoder.  init( this );
   m_cSliceEncoder.init( this );
   m_cCuEncoder.   init( this );
+#if SHARP_LUMA_DELTA_QP
+  m_cCuEncoder.setSliceEncoder(&m_cSliceEncoder);
+#endif
 
   // initialize transform & quantization class
   m_pcCavlcCoder = getCavlcCoder();
@@ -1031,6 +1034,22 @@ Void TEncTop::xInitPPS()
   {
     bUseDQP = true;
   }
+#if SHARP_LUMA_DELTA_QP
+  if (getUseLumaDeltaQp() ) { 
+
+#if SHARP_LUMA_RES_SCALING // dQP flag control
+      if (getUseLumaDeltaQp() == 2) {  // enable DQP_ResScale, not enable DQP flag, so no deltaQP is sent
+        m_cPPS.setUseDQP_ResScale(true);
+
+        m_cPPS.setNbrOfUsedDQPChangePoints(m_uiNbrOfUsedDQPChangePoints);
+        m_cPPS.setDQpChangePoints(m_dQPChangePoints);
+        m_cPPS.setLumaDQpChangePoints(m_dQPLumaChangePoints);
+      }
+      else // enable DQP flag
+#endif
+      bUseDQP = true;
+  }
+#endif
 
   if (m_costMode==COST_SEQUENCE_LEVEL_LOSSLESS || m_costMode==COST_LOSSLESS_CODING)
   {

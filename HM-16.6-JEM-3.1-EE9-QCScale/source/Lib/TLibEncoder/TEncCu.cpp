@@ -776,6 +776,15 @@ Void TEncCu::init( TEncTop* pcEncTop )
   m_pcRDGoOnSbacCoder  = pcEncTop->getRDGoOnSbacCoder();
 
   m_pcRateCtrl         = pcEncTop->getRateCtrl();
+#if SHARP_LUMA_DELTA_QP
+  m_LumaQPOffset=0;
+  if (m_pcEncCfg->getUseLumaDeltaQp())
+    initLumaDeltaQpLUT(m_pcEncCfg->getNbrOfUsedDQPChangePoints(), m_pcEncCfg->getLumaDQpChangePoints(), m_pcEncCfg->getDQpChangePoints());
+#endif
+#if SHARP_LUMA_RES_SCALING
+  if (m_pcEncCfg->getUseLumaDeltaQp()==2)  // i.e. getUseDQP_ResScale()) is true
+    initLumaAcScaleLUT();
+#endif
 }
 
 // ====================================================================================================================
@@ -836,6 +845,27 @@ Void TEncCu::compressCtu( TComDataCU* pCtu )
   DEBUG_STRING_NEW(sDebug)
 
   xCompressCU( m_pppcBestCU[uiWidthIdx][uiHeightIdx], m_pppcTempCU[uiWidthIdx][uiHeightIdx], 0, uiCTUSize, uiCTUSize, 0 DEBUG_STRING_PASS_INTO(sDebug) );     
+#if QCSCALE
+  if (pCtu->getSlice()->getPPS()->getUseDQP_ResScale())
+  if (!pCtu->isIntra(0))
+  {
+      Char *map = pCtu->getInferDQP();
+      FILE *fid = fopen("encoder.map", "a");
+      for (int j = 0; j < uiCTUSize/4; j++)
+      {
+          for (int i = 0; i < uiCTUSize/4; i++)
+          {
+              int z = j*uiCTUSize/4 + i; // coordinate in raster
+              z = g_auiRasterToZscan[z]; // coordinate in Zscan 
+              fprintf(fid, "%d ", map[z]);
+          }
+          fprintf(fid, "\n");
+      }
+      map = NULL;
+      fclose(fid);
+  }
+#endif
+
 #else
   m_ppcBestCU[0]->initCtu( pCtu->getPic(), pCtu->getCtuRsAddr() );
   m_ppcTempCU[0]->initCtu( pCtu->getPic(), pCtu->getCtuRsAddr() );
@@ -863,6 +893,15 @@ Void TEncCu::compressCtu( TComDataCU* pCtu )
     {
       pCtu->getSlice()->setTextType(CHANNEL_TYPE_CHROMA);
       // initialize CU data
+#if QCSCALE
+      Char *l_tempDQP = NULL;
+      UInt uiNumPartition = pCtu->getPic()->getNumPartitionsInCtu();
+      if (pCtu->getSlice()->getPPS()->getUseDQP_ResScale())
+      {
+          l_tempDQP = new char[uiNumPartition];
+          memcpy(l_tempDQP, m_pppcBestCU[uiWidthIdx][uiHeightIdx]->getInferDQP(), uiNumPartition*sizeof(Char));
+      }
+#endif
       pCtu->getPic()->setCodedAreaInCTU(0);
       m_pppcBestCU[uiWidthIdx][uiHeightIdx]->initCtu( pCtu->getPic(), pCtu->getCtuRsAddr() );
       m_pppcTempCU[uiWidthIdx][uiHeightIdx]->initCtu( pCtu->getPic(), pCtu->getCtuRsAddr() );
@@ -878,8 +917,19 @@ Void TEncCu::compressCtu( TComDataCU* pCtu )
         m_pppcTempCU[uiWidthIdx][uiHeightIdx]->setQuPartIdx(0); // init current quantization unit partition index
       }
 #endif
+#if QCSCALE
+      if (pCtu->getSlice()->getPPS()->getUseDQP_ResScale())
+      {
+          memcpy(m_pppcBestCU[uiWidthIdx][uiHeightIdx]->getInferDQP(), l_tempDQP, uiNumPartition * sizeof (Char));
+          memcpy(m_pppcTempCU[uiWidthIdx][uiHeightIdx]->getInferDQP(), l_tempDQP, uiNumPartition * sizeof (Char));
+          if (l_tempDQP)
+              delete[] l_tempDQP;
+          l_tempDQP = NULL;
+      }
+#endif
 
       xCompressCU( m_pppcBestCU[uiWidthIdx][uiHeightIdx], m_pppcTempCU[uiWidthIdx][uiHeightIdx], 0, uiCTUSize, uiCTUSize, 0 DEBUG_STRING_PASS_INTO(sDebug) );
+
     }
 #endif
 
@@ -893,6 +943,19 @@ Void TEncCu::compressCtu( TComDataCU* pCtu )
   }
 #endif
 }
+#if SHARP_LUMA_STORE_DQP
+Void TEncCu::updateCtuQP( TComDataCU* pCtu )
+{
+
+  if (pCtu->getSlice()->getPPS()->getUseDQP_ResScale()) 
+  {
+    xUpdateCUQp(pCtu, 0,   0);
+    Int ctuQP = pCtu->getAvgQP(0,0);
+    m_pcSliceEncoder->accumulateLumaAdaptiveSliceQP(ctuQP);
+  }
+}
+#endif
+
 /** \param  pCtu  pointer of CU data class
  */
 Void TEncCu::encodeCtu ( TComDataCU* pCtu )
@@ -1027,7 +1090,45 @@ Void TEncCu::deriveTestModeAMP (TComDataCU *pcBestCU, PartSize eParentPartSize, 
 }
 #endif
 #endif
+#if SHARP_LUMA_DELTA_QP
+// Get QP offset derived from Luma activity
+Int TEncCu::CalculateLumaActivity(TComDataCU *pcCU, const UInt uiAbsPartIdx, const TComYuv * pOrgYuv)
+{
+  const Int      stride  = pOrgYuv->getStride(COMPONENT_Y);
+  Int      width   = pcCU->getWidth(uiAbsPartIdx);
+  Int      height  = pcCU->getHeight(uiAbsPartIdx);
 
+  // limit the block by picture size
+  const TComSPS* pSPS = pcCU->getSlice()->getSPS();
+  if ( pcCU->getCUPelX() + width > pSPS->getPicWidthInLumaSamples())
+    width = pSPS->getPicWidthInLumaSamples() - pcCU->getCUPelX();
+
+  if ( pcCU->getCUPelY() + height > pSPS->getPicHeightInLumaSamples())
+    height = pSPS->getPicHeightInLumaSamples() - pcCU->getCUPelY();
+
+  // Get Luma
+  Int Sum = 0;
+  Double avg=0;
+
+  const Pel *pY = pOrgYuv->getAddr(COMPONENT_Y, uiAbsPartIdx);
+
+  for (Int y = 0; y < height; y++)
+  {
+    for (Int x = 0; x < width; x++)
+    {
+      Sum += pY[x];
+    }
+    pY += stride;
+  }
+  avg = (double)Sum/(width*height); 
+
+  Int lumaIdx = min(Int(avg+0.5), SHARP_QP_LUMA_LUT_MAXSIZE-1);
+  Int QP = g_lumaQPLUT[lumaIdx];
+
+  return QP;
+}
+
+#endif
 
 // ====================================================================================================================
 // Protected member functions
@@ -1150,6 +1251,32 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
     iMinQP = rpcTempCU->getQP(0);
     iMaxQP = rpcTempCU->getQP(0);
   }
+#if SHARP_LUMA_DELTA_QP
+  Int targetQP = iBaseQP;
+  if (m_pcEncCfg->getUseLumaDeltaQp())
+  {
+#if JVET_C0024_DELTA_QP_FIX
+#if !SHARP_LUMA_RES_SCALING
+      if (uiQTBTDepth <= uiMaxDQPDepthQTBT)
+#else
+      if (uiQTBTDepth <= uiMaxDQPDepthQTBT || pps.getUseDQP_ResScale())
+#endif
+#else
+      if (uiDepth <= pps.getMaxCuDQPDepth())
+#endif
+        m_LumaQPOffset = CalculateLumaActivity(rpcTempCU, 0, m_pppcOrigYuv[uiWidthIdx][uiHeightIdx]);  // keep using the same m_QP_LUMA_OFFSET in the same LCU
+    targetQP = iBaseQP-m_LumaQPOffset;        // targetQP is used for control lambda
+#if SHARP_LUMA_RES_SCALING
+    if (!pps.getUseDQP_ResScale()) // if rescale true, do not change the CU qp, luam adaptive QP adjustment will be done by coefficient scaling
+    {
+#endif 
+      iMinQP = iBaseQP-m_LumaQPOffset;
+      iMaxQP = iMinQP;   // make it same as MinQP to force encode choose the modified QP
+#if SHARP_LUMA_RES_SCALING
+    }
+#endif
+  }  
+#endif
 
   if ( m_pcEncCfg->getUseRateCtrl() )
   {
@@ -1229,6 +1356,18 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
       {
         iQP = lowestQP;
       }
+#if SHARP_LUMA_DELTA_QP    // copied from initEncSlice
+#if JVET_C0024_DELTA_QP_FIX
+#if !SHARP_LUMA_RES_SCALING
+      if (m_pcEncCfg->getUseLumaDeltaQp() && uiQTBTDepth <= uiMaxDQPDepthQTBT)
+#else
+      if ((m_pcEncCfg->getUseLumaDeltaQp() && uiQTBTDepth <= uiMaxDQPDepthQTBT) || pps.getUseDQP_ResScale())
+#endif
+#else
+      if (m_pcEncCfg->getUseLumaDeltaQp() && uiDepth <= pps.getMaxCuDQPDepth() )
+#endif
+        getSliceEncoder()->updateLambda(pcSlice, targetQP);
+#endif
 
       m_cuChromaQpOffsetIdxPlus1 = 0;
       if (pcSlice->getUseChromaQpAdj())
@@ -2195,6 +2334,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
   if (bTestHorSplit) 
   {
     // further split
+#if SHARP_LUMA_DELTA_QP
+      Double splitCost = 0;
+#endif
     for (Int iQP=iMinQP; iQP<=iMaxQP; iQP++)
     {
       const Bool bIsLosslessMode = false; // False at this level. Next level down may set it to true.
@@ -2271,6 +2413,13 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
           }
 #endif
           xCopyYuv2Tmp( pcSubBestPartCU->getZorderIdxInCtu()-rpcTempCU->getZorderIdxInCtu(), uiWidth, uiHeight, 1 );
+#if SHARP_LUMA_DELTA_QP
+          // accumulate the splitted cost
+          if (m_pcEncCfg->getUseLumaDeltaQp() && uiMaxDQPDepthQTBT >= 1)  // deeper than CTU level
+          {
+              splitCost += pcSubBestPartCU->getTotalCost();
+          }
+#endif  
         }
       }
       m_pcRDGoOnSbacCoder->load(m_ppppcRDSbacCoder[uiWidthIdx][uiHeightIdx-1][CI_NEXT_BEST]);
@@ -2280,11 +2429,26 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         m_pcEntropyCoder->encodeSplitFlag( rpcTempCU, 0, uiDepth, true );
       }
       m_pcEntropyCoder->encodeBTSplitMode(rpcTempCU, 0, uiWidth, uiHeight, true);
+#if SHARP_LUMA_DELTA_QP
+       // add the split flag cost  _DBUG!! here or above?
+      if (m_pcEncCfg->getUseLumaDeltaQp() && uiMaxDQPDepthQTBT >= 1)  // deeper than CTU level
+      {
+          Int splitBits = m_pcEntropyCoder->getNumberOfWrittenBits(); // split bits
+          Double splitBitCost = m_pcRdCost->calcRdCost(splitBits, 0);
+          splitCost += splitBitCost;
+      }
+#endif
 
 
       rpcTempCU->getTotalBits() += m_pcEntropyCoder->getNumberOfWrittenBits(); // split bits
       rpcTempCU->getTotalBins() += ((TEncBinCABAC *)((TEncSbac*)m_pcEntropyCoder->m_pcEntropyCoderIf)->getEncBinIf())->getBinsCoded();
-
+#if SHARP_LUMA_DELTA_QP   
+      if (m_pcEncCfg->getUseLumaDeltaQp() && uiMaxDQPDepthQTBT >= 1)  // deeper than CTU level
+      {
+          rpcTempCU->getTotalCost() = splitCost;
+      }
+      else
+#endif   
       rpcTempCU->getTotalCost()  = m_pcRdCost->calcRdCost( rpcTempCU->getTotalBits(), rpcTempCU->getTotalDistortion() );
 #if JVET_C0024_DELTA_QP_FIX
       if( uiQTBTDepth == uiMaxDQPDepthQTBT && pps.getUseDQP())
@@ -2348,6 +2512,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
   if (bTestVerSplit) 
   {
     // further split
+#if SHARP_LUMA_DELTA_QP
+      Double splitCost = 0;
+#endif
     for (Int iQP=iMinQP; iQP<=iMaxQP; iQP++)
     {
       const Bool bIsLosslessMode = false; // False at this level. Next level down may set it to true.
@@ -2426,6 +2593,13 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
           }
 #endif
           xCopyYuv2Tmp( pcSubBestPartCU->getZorderIdxInCtu()-rpcTempCU->getZorderIdxInCtu(), uiWidth, uiHeight, 2 );
+#if SHARP_LUMA_DELTA_QP
+          // accumulate the splitted cost
+          if (m_pcEncCfg->getUseLumaDeltaQp() && uiMaxDQPDepthQTBT >= 1)  // deeper than CTU level
+          {
+              splitCost += pcSubBestPartCU->getTotalCost();
+          }
+#endif  
         }
       }
 
@@ -2436,11 +2610,25 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         m_pcEntropyCoder->encodeSplitFlag( rpcTempCU, 0, uiDepth, true );
       }
       m_pcEntropyCoder->encodeBTSplitMode(rpcTempCU, 0, uiWidth, uiHeight, true);
-
+#if SHARP_LUMA_DELTA_QP
+      // add the split flag cost  _DBUG!! here or above?
+      if (m_pcEncCfg->getUseLumaDeltaQp() && uiMaxDQPDepthQTBT >= 1)  // deeper than CTU level
+      {
+          Int splitBits = m_pcEntropyCoder->getNumberOfWrittenBits(); // split bits
+          Double splitBitCost = m_pcRdCost->calcRdCost(splitBits, 0);
+          splitCost += splitBitCost;
+      }
+#endif
 
       rpcTempCU->getTotalBits() += m_pcEntropyCoder->getNumberOfWrittenBits(); // split bits
       rpcTempCU->getTotalBins() += ((TEncBinCABAC *)((TEncSbac*)m_pcEntropyCoder->m_pcEntropyCoderIf)->getEncBinIf())->getBinsCoded();
-
+#if SHARP_LUMA_DELTA_QP   
+      if (m_pcEncCfg->getUseLumaDeltaQp() && uiMaxDQPDepthQTBT >= 1)  // deeper than CTU level
+      {
+          rpcTempCU->getTotalCost() = splitCost;
+      }
+      else
+#endif 
       rpcTempCU->getTotalCost()  = m_pcRdCost->calcRdCost( rpcTempCU->getTotalBits(), rpcTempCU->getTotalDistortion() );
 #if JVET_C0024_DELTA_QP_FIX
       if( uiQTBTDepth == uiMaxDQPDepthQTBT && pps.getUseDQP())
@@ -2512,6 +2700,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #endif
   {
     // further split
+#if SHARP_LUMA_DELTA_QP
+      Double splitCost = 0;
+#endif
     for (Int iQP=iMinQP; iQP<=iMaxQP; iQP++)
     {
       const Bool bIsLosslessMode = false; // False at this level. Next level down may set it to true.
@@ -2629,6 +2820,13 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
           rpcTempCU->copyPartFrom( pcSubBestPartCU, uiPartUnitIdx, uhNextDepth );         // Keep best part data to current temporary data.
           xCopyYuv2Tmp( pcSubBestPartCU->getTotalNumPart()*uiPartUnitIdx, uhNextDepth );
 #endif
+#if SHARP_LUMA_DELTA_QP
+          // accumulate the splitted cost
+          if (m_pcEncCfg->getUseLumaDeltaQp() && uiMaxDQPDepthQTBT >= 1)  // deeper than CTU level
+          {
+              splitCost += pcSubBestPartCU->getTotalCost();
+          }
+#endif
         }
         else
         {
@@ -2656,10 +2854,26 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         if( !bForceQT )
 #endif
         m_pcEntropyCoder->encodeSplitFlag( rpcTempCU, 0, uiDepth, true );
+#if SHARP_LUMA_DELTA_QP
+        // add the split flag cost  _DBUG!! here or above?
+        if (m_pcEncCfg->getUseLumaDeltaQp() && uiMaxDQPDepthQTBT >= 1)  // deeper than CTU level
+        {
+            Int splitBits = m_pcEntropyCoder->getNumberOfWrittenBits(); // split bits
+            Double splitBitCost = m_pcRdCost->calcRdCost(splitBits, 0);
+            splitCost += splitBitCost;
+        }
+#endif
 
         rpcTempCU->getTotalBits() += m_pcEntropyCoder->getNumberOfWrittenBits(); // split bits
         rpcTempCU->getTotalBins() += ((TEncBinCABAC *)((TEncSbac*)m_pcEntropyCoder->m_pcEntropyCoderIf)->getEncBinIf())->getBinsCoded();
       }
+#if SHARP_LUMA_DELTA_QP   
+      if (m_pcEncCfg->getUseLumaDeltaQp() && uiMaxDQPDepthQTBT >= 1)  // deeper than CTU level
+      {
+          rpcTempCU->getTotalCost() = splitCost;
+      }
+      else
+#endif 
       rpcTempCU->getTotalCost()  = m_pcRdCost->calcRdCost( rpcTempCU->getTotalBits(), rpcTempCU->getTotalDistortion() );
 
 #if JVET_C0024_DELTA_QP_FIX
@@ -2864,7 +3078,66 @@ Int TEncCu::xComputeQP( TComDataCU* pcCU, UInt uiDepth )
 
   return Clip3(-pcCU->getSlice()->getSPS()->getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, iBaseQp+iQpOffset );
 }
+#if SHARP_LUMA_STORE_DQP
+Void TEncCu::xUpdateCUQp( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
+{
 
+  if (!pcCU->getSlice()->getPPS()->getUseDQP_ResScale())
+    return;
+
+  // code needs to be written again according to QTBT...
+  /*
+  TComPic   *const pcPic   = pcCU->getPic();
+  TComSlice *const pcSlice = pcCU->getPic()->getSlice(pcCU->getPic()->getCurrSliceIdx());
+  const TComSPS   &sps =*(pcSlice->getSPS());
+  const TComPPS   &pps =*(pcSlice->getPPS());
+
+  const UInt maxCUWidth = pcCU->getWidth(0);
+  const UInt maxCUHeight = pcCU->getHeight(0);
+  
+  Bool bBoundary = false;
+  UInt uiLPelX = pcCU->getCUPelX() + g_auiRasterToPelX[g_auiZscanToRaster[uiAbsPartIdx]];
+  UInt uiRPelX = uiLPelX + maxCUWidth - 1;
+  UInt uiTPelY = pcCU->getCUPelY() + g_auiRasterToPelY[g_auiZscanToRaster[uiAbsPartIdx]];
+  UInt uiBPelY = uiTPelY + maxCUHeight - 1;
+
+
+  if( ( uiRPelX >= sps.getPicWidthInLumaSamples() ) ||  ( uiBPelY >= sps.getPicHeightInLumaSamples() ) )
+  {
+    bBoundary = true;
+  }
+  UChar ucMaxDepth = g_aucConvertToBit[sps.getCTUSize()];
+  if (((uiDepth < pcCU->getDepth(uiAbsPartIdx)) && (uiDepth < ucMaxDepth)) || bBoundary)
+  {
+    UInt uiQNumParts = ( pcPic->getNumPartitionsInCtu() >> (uiDepth<<1) )>>2;
+    if( uiDepth == pps.getMaxCuDQPDepth() && pps.getUseDQP())
+    {
+      setdQPFlag(true);
+    }    
+
+    for ( UInt uiPartUnitIdx = 0; uiPartUnitIdx < 4; uiPartUnitIdx++, uiAbsPartIdx+=uiQNumParts )
+    {
+      uiLPelX   = pcCU->getCUPelX() + g_auiRasterToPelX[ g_auiZscanToRaster[uiAbsPartIdx] ];
+      uiTPelY   = pcCU->getCUPelY() + g_auiRasterToPelY[ g_auiZscanToRaster[uiAbsPartIdx] ];
+      if( ( uiLPelX < sps.getPicWidthInLumaSamples() ) && ( uiTPelY < sps.getPicHeightInLumaSamples() ) )
+      {
+        xUpdateCUQp( pcCU, uiAbsPartIdx, uiDepth+1 );
+      }
+    }
+    return;
+  }
+
+  UInt             uiWidth = pcCU->getWidth(uiAbsPartIdx);
+  UInt             uiHeight = pcCU->getHeight(uiAbsPartIdx);
+
+
+  Int uiAbsPartIdxInCTU = uiAbsPartIdx;
+  Int newQp= ( pcCU->getQtRootCbf( uiAbsPartIdxInCTU) == 0) ? pcCU->getRefQP(uiAbsPartIdxInCTU) : pcCU->getQP(uiAbsPartIdxInCTU) - pcCU->getAvgInferDQP(uiAbsPartIdxInCTU, uiDepth);     
+  pcCU->setQPSubParts(newQp, uiAbsPartIdxInCTU, uiWidth, uiHeight);
+  */
+}
+
+#endif
 /** encode a CU block recursively
  * \param pcCU
  * \param uiAbsPartIdx

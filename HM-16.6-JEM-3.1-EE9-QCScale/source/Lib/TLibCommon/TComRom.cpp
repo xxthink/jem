@@ -46,6 +46,81 @@
 #include <assert.h>
 #include "TComDataCU.h"
 #include "Debug.h"
+#if SHARP_LUMA_DELTA_QP
+Int g_lumaQPLUT[SHARP_QP_LUMA_LUT_MAXSIZE];               // LUT for luma and correspionding QP offset
+#endif
+#if SHARP_WEIGHT_DISTORTION || SHARP_WEIGHT_DISTORTION_OUTPUT
+Double g_weight_pqto709[3][1024];
+#endif
+
+#if SHARP_LUMA_RES_SCALING
+Int g_CUQP_updated_flag=0;  // encoder only
+Int *g_LumaResScaleLUT;
+Int LumaResScaleLUT0[SHARP_MAX_LUMA_DQP];    //  residual scale corresponding to dQP
+#endif
+// ====================================================================================================================
+// Look up table for luma based QP adjustment
+// ====================================================================================================================
+#if SHARP_LUMA_DELTA_QP
+Void initLumaDeltaQpLUT(Int totalChangePoints, Int *lumaChangePoints, Int* qps) {
+
+  Bool bChangePointFound;
+
+  for (Int qpChangePos = 1; qpChangePos < totalChangePoints; qpChangePos++)
+  {
+    assert(lumaChangePoints[qpChangePos] >= lumaChangePoints[qpChangePos-1]); // does not decrease
+    assert(qps[qpChangePos] >= qps[qpChangePos-1]); // does not decrease
+  }
+
+  for (Int y=0; y < SHARP_QP_LUMA_LUT_MAXSIZE; y++) 
+  {
+    bChangePointFound = false;
+    if (y<lumaChangePoints[0]) 
+    {
+      g_lumaQPLUT[y]=qps[0];
+      bChangePointFound = true;
+    }
+
+    if (!bChangePointFound) 
+    {
+      for (Int qpChangePos = 1; qpChangePos < totalChangePoints; qpChangePos++)
+      {
+        if (y<lumaChangePoints[qpChangePos])
+        {
+          g_lumaQPLUT[y]=qps[qpChangePos-1];
+          bChangePointFound = true;
+          break;
+        }
+      }
+      if (!bChangePointFound)  // last point
+      {
+        g_lumaQPLUT[y]=qps[totalChangePoints-1];
+      }
+    }
+  }
+}
+#endif
+
+#if SHARP_LUMA_RES_SCALING
+Void initLumaAcScaleLUT() {
+
+#if REMOVE_DEC_DIV
+    for (Int i = -(SHARP_MAX_LUMA_DQP>>1)+1; i <= SHARP_MAX_LUMA_DQP>>1; i++)
+    {
+        Int arr_idx = (SHARP_MAX_LUMA_DQP>>1)-i;
+#else
+    for (Int i = -(SHARP_MAX_LUMA_DQP>>1); i< SHARP_MAX_LUMA_DQP>>1; i++)
+    {
+        Int arr_idx = (SHARP_MAX_LUMA_DQP>>1)+i;
+#endif
+
+        LumaResScaleLUT0[arr_idx] = (Int)((pow(10,(double)i/20.0)*(1<<SHARP_LUMA_RESCALE_PRECISION)+0.5));
+    }
+
+    // set the pointer to the middle of the LUT, so we can use dQP as index
+    g_LumaResScaleLUT = &LumaResScaleLUT0[(SHARP_MAX_LUMA_DQP>>1)];
+}
+#endif
 // ====================================================================================================================
 // Initialize / destroy functions
 // ====================================================================================================================

@@ -388,6 +388,60 @@ UInt TComYuv::sadLuma( TComYuv* pcYuvSrc0 )
 }
 #endif
 
+#if SHARP_LUMA_RES_SCALING
+Int  TComYuv::getAvgPred(Pel* piPred, Int uiWidth, Int uiHeight, UInt uiStride) {
+
+    Int avgPred = 0;
+    for( UInt uiY = 0; uiY < uiHeight; uiY++ )
+    {
+        for( UInt uiX = 0; uiX < uiWidth; uiX++ )
+        {
+            avgPred += piPred[ uiX ];
+        }
+        piPred += uiStride;
+    }
+
+    if (avgPred < 0)
+    {
+        piPred -= uiStride*uiHeight;
+        for (UInt uiY = 0; uiY < uiHeight; uiY++)
+        {
+            for (UInt uiX = 0; uiX < uiWidth; uiX++)
+            {
+                printf("%d ", piPred[uiX]);
+            }
+            piPred += uiStride;
+            printf("\n");
+        }
+    }
+    avgPred  = (Int)((avgPred + 0.5)/(uiWidth*uiHeight));
+    avgPred = Clip3(0, SHARP_QP_LUMA_LUT_MAXSIZE - 1, avgPred);
+    return avgPred;
+}
+
+Int  TComYuv::getAvgPred(TComYuv* pcYuvSrc, UInt uiTrUnitIdx, UInt uiPartSize) {
+    // for component Y only
+    Int uiWidth =uiPartSize;
+    Int uiHeight=uiPartSize;
+    Pel* piPred = pcYuvSrc->getAddr( COMPONENT_Y, uiTrUnitIdx, uiWidth );
+
+    const Int  uiStride = pcYuvSrc->getStride(COMPONENT_Y);
+    Int avgPred = getAvgPred(piPred, uiWidth, uiHeight, uiStride);
+    return avgPred;
+}
+
+#if QCSCALE
+Int  TComYuv::getAvgPred(TComYuv* pcYuvSrc, UInt uiTrUnitIdx, Int uiWidth, Int uiHeight) {
+    // for component Y only
+    Pel* piPred = pcYuvSrc->getAddr(COMPONENT_Y, uiTrUnitIdx, uiWidth);
+
+    const Int  uiStride = pcYuvSrc->getStride(COMPONENT_Y);
+    Int avgPred = getAvgPred(piPred, uiWidth, uiHeight, uiStride);
+    return avgPred;
+}
+#endif
+#endif
+
 
 Void TComYuv::addAvg( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const UInt iPartUnitIdx, const UInt uiWidth, const UInt uiHeight, const BitDepths &clipBitDepths 
 #if VCEG_AZ05_BIO                  

@@ -77,7 +77,6 @@
 #define JVET_C0024_FAST_MRG                               1
 #define JVET_C0024_PBINTRA_FAST                           1
 #define JVET_C0024_ITSKIP                                 1  ///< skip zero row/column in inverse transform (decoder speedup)
-
 #endif // end of JVET_C0024_QTBT
 
 #define JVET_C0046_ZO_ASSERT                              1  ///< assertion on last coeff and coded_sbk_flag when zeroing out is used (no TS and no TQBypass and using large transform is satisfied)
@@ -299,6 +298,29 @@
 #define DEC_NUH_TRACE                                     0 ///< When trace enabled, enable tracing of NAL unit headers at the decoder (currently not possible at the encoder)
 
 #define PRINT_RPS_INFO                                    0 ///< Enable/disable the printing of bits used to send the RPS.
+
+#define SHARP_LUMA_DELTA_QP                               1               ///< enable luma adaptive QP
+
+#if SHARP_LUMA_DELTA_QP
+#define SHARP_MAX_LUMA_DQP                                20              ///< max allowed positions for delta QP change based on luma
+#define SHARP_QP_LUMA_LUT_MAXSIZE                         1024            ///< max LUT size for QP offset based on luma
+
+// scale AC transform coefficient 
+#define SHARP_LUMA_RES_SCALING                            1            ///< enable coefficient scaling based on luma predciton and DC 
+#define SHARP_LUMA_STORE_DQP                              SHARP_LUMA_RES_SCALING  ///< same marco as above, give it different name for ease of searchingP
+
+#define SHARP_LUMA_RESCALE_PRECISION                      6             /// actual scale is   scale>>RESCALE_LUT_PRECISION'
+#define REMOVE_DC                                         0
+#define MOVE_SCALING                                      0
+#define REMOVE_DEC_DIV                                    0
+
+#define SHARP_WEIGHT_DISTORTION              1            ///< use weighted distortion in RD decision
+#define SHARP_WEIGHT_DISTORTION_OUTPUT       1            ///< printout weighted PSNR
+#define SHARP_DQP_BIT_STAT                  1             ///< for decoder output frame bits and deltaQP bits count
+
+#define QCSCALE                     1
+#define QCSCALE_REMOV_DC                     1
+#endif
 
 // ====================================================================================================================
 // Tool Switches - transitory (these macros are likely to be removed in future revisions)
@@ -629,6 +651,16 @@ enum DFunc
   DF_SADS48          = 48,
 
   DF_SSE_FRAME       = 50,     ///< Frame-based SSE
+#if SHARP_WEIGHT_DISTORTION         ///< Weighted SSE
+  DF_SSE_WTD             = 51,      ///< general size SSE
+  DF_SSE4_WTD            = 52,      ///<   4xM SSE
+  DF_SSE8_WTD            = 53,      ///<   8xM SSE
+  DF_SSE16_WTD           = 54,      ///<  16xM SSE
+  DF_SSE32_WTD           = 55,      ///<  32xM SSE
+  DF_SSE64_WTD           = 56,      ///<  64xM SSE
+  DF_SSE16N_WTD          = 57,      ///< 16NxM SSE
+  DF_DEFAULT_ORI         = 58,
+#endif
   DF_TOTAL_FUNCTIONS = 64
 };
 
