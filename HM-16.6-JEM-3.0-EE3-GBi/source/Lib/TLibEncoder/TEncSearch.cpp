@@ -7598,7 +7598,28 @@ Void TEncSearch::xMotionEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPa
 #if JVET_C0024_QTBT //for encoder speedup, not try intege ME for one block twice.
   Bool bResetSrchRng = false;
 
+#if IDCC_GENERALIZED_BI_PRED && IDCC_GBI_SIMP
+  if( bBi )
+  {
+    if( !m_pcEncCfg->getUseFastEnc() || !pcCU->getPic()->IsSetGbiMv( pcCU->getGbiIdx( uiPartAddr ), pcCU->getZorderIdxInCtu(), pcCU->getWidth(0), pcCU->getHeight(0), eRefPicList, iRefIdxPred ) )
+    {
+      xSetSearchRange( pcCU, rcMv, iSrchRng, cMvSrchRngLT, cMvSrchRngRB );
+    }
+    else
+    {
+      TComMv cIntMv = pcCU->getPic()->getGbiMv( pcCU->getGbiIdx( uiPartAddr ), pcCU->getZorderIdxInCtu(), pcCU->getWidth(0), pcCU->getHeight(0), eRefPicList, iRefIdxPred );
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+      cIntMv <<= (2+VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE);
+#else
+      cIntMv <<= 2;
+#endif
+      xSetSearchRange( pcCU, cIntMv, 1, cMvSrchRngLT, cMvSrchRngRB );
+      bResetSrchRng = true;
+    }
+  }
+#else
   if ( bBi )  xSetSearchRange   ( pcCU, rcMv   , iSrchRng, cMvSrchRngLT, cMvSrchRngRB );
+#endif
   else        
   {
     if (pcCU->getPic()->IsSetIntMv(pcCU->getZorderIdxInCtu(), pcCU->getWidth(0), pcCU->getHeight(0), eRefPicList, iRefIdxPred))
@@ -7641,6 +7662,16 @@ Void TEncSearch::xMotionEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPa
 #endif
   setWpScalingDistParam( pcCU, iRefIdxPred, eRefPicList );
   //  Do integer search
+#if IDCC_GENERALIZED_BI_PRED && IDCC_GBI_SIMP
+  if( bBi && pcCU->getGbiIdx( uiPartAddr ) != GBI_DEFAULT && !bResetSrchRng )
+  {
+    xPatternSearchFast  ( pcCU, pcPatternKey, piRefY, iRefStride, &cMvSrchRngLT, &cMvSrchRngRB, rcMv, ruiCost, pcMvPred );
+#if IDCC_GENERALIZED_BI_PRED && IDCC_GBI_SIMP
+    pcCU->getPic()->setGbiMv(pcCU->getGbiIdx( uiPartAddr ), pcCU->getZorderIdxInCtu(), pcCU->getWidth(0), pcCU->getHeight(0), eRefPicList, iRefIdxPred, rcMv);
+#endif
+  }
+  else
+#endif
 #if JVET_C0024_QTBT //for encoder speedup, not try intege ME for one block twice.
   if ( !m_iFastSearch || bBi || bResetSrchRng)
 #else
@@ -7648,6 +7679,12 @@ Void TEncSearch::xMotionEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPa
 #endif
   {
     xPatternSearch      ( pcPatternKey, piRefY, iRefStride, &cMvSrchRngLT, &cMvSrchRngRB, rcMv, ruiCost );
+#if IDCC_GENERALIZED_BI_PRED && IDCC_GBI_SIMP
+    if( bBi )
+    {
+      pcCU->getPic()->setGbiMv(pcCU->getGbiIdx( uiPartAddr ), pcCU->getZorderIdxInCtu(), pcCU->getWidth(0), pcCU->getHeight(0), eRefPicList, iRefIdxPred, rcMv);
+    }
+#endif
   }
   else
   {

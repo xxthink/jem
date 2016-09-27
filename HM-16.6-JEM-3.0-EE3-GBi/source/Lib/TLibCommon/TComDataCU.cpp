@@ -4432,6 +4432,13 @@ Bool TComDataCU::isICFlagCoded( UInt uiAbsPartIdx )
     return false;
   }
 
+#if IDCC_GENERALIZED_BI_PRED && ( VCEG_AZ06_IC && IDCC_GBI_SIMP )
+  if ( getGbiIdx( uiAbsPartIdx ) != GBI_DEFAULT )
+  {
+    return false;
+  }
+#endif
+
 #if JVET_C0024_QTBT
   if( getMergeFlag( uiAbsPartIdx ) 
 #else
@@ -8935,7 +8942,7 @@ Bool TComDataCU::isGbiFlagCoded( UInt uiAbsPartIdx )
     return false;
   }
 
-  // If at least one PU that is bi needs signaling MV (and is not affine -- depending on GBI_FOR_AFFINE)
+  // If at least one PU that is bi needs signaling MV
 #if JVET_C0024_QTBT
   //const PartSize ePartSize  = SIZE_2Nx2N;
   const UInt     uiNumPU    = 1;

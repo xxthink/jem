@@ -1084,6 +1084,10 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
   Double dIntraNxNCost = MAX_DOUBLE;
 #endif
 #endif
+#if IDCC_GENERALIZED_BI_PRED && IDCC_GBI_SIMP
+  m_dBestSkipModeCost   = MAX_DOUBLE;
+  m_dBestNonGbiModeCost = MAX_DOUBLE;
+#endif
 
   const UInt numberValidComponents = rpcBestCU->getPic()->getNumberValidComponents();
 #if VCEG_AZ08_INTER_KLT
@@ -1596,6 +1600,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #endif
 
         if((rpcBestCU->getSlice()->getSliceType() == I_SLICE)                                        ||
+#if IDCC_GENERALIZED_BI_PRED && IDCC_GBI_SIMP
+          ( ( rpcBestCU->getGbiIdx(0) == GBI_DEFAULT || ( rpcBestCU->getGbiIdx(0) != GBI_DEFAULT && m_dBestSkipModeCost > m_dBestNonGbiModeCost ) ) && ( 
+#endif
 #if JVET_C0024_QTBT
           ((!m_pcEncCfg->getDisableIntraPUsInInterSlices()) && (!rpcBestCU->getPic()->getInter(rpcBestCU->getZorderIdxInCtu(), uiWidth, uiHeight)) && (
 #else
@@ -1605,6 +1612,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
              ((rpcBestCU->getCbf( 0, COMPONENT_Cb ) != 0) && (numberValidComponents > COMPONENT_Cb)) ||
              ((rpcBestCU->getCbf( 0, COMPONENT_Cr ) != 0) && (numberValidComponents > COMPONENT_Cr))  // avoid very complex intra if it is unlikely
             )))
+#if IDCC_GENERALIZED_BI_PRED && IDCC_GBI_SIMP
+            ))
+#endif
         {
 #if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
           Int bNonZeroCoeff = 0;
@@ -2072,7 +2082,11 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
   }
   if (!bBoundary && rpcBestCU->getPredictionMode(0)==MODE_INTER)
   {
+#if IDCC_GENERALIZED_BI_PRED && IDCC_GBI_SIMP
+    rpcBestCU->getPic()->setInter(rpcBestCU->getZorderIdxInCtu(), uiWidth, uiHeight, true, rpcBestCU->getGbiIdx(0));
+#else
     rpcBestCU->getPic()->setInter(rpcBestCU->getZorderIdxInCtu(), uiWidth, uiHeight, true);
+#endif
   }
   else if (!bBoundary && rpcBestCU->getPredictionMode(0)==MODE_INTRA)
   {
@@ -3444,6 +3458,17 @@ Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTem
             mergeCandBuffer[uiMergeCand] = 1;
           }
 
+#if IDCC_GENERALIZED_BI_PRED && IDCC_GBI_SIMP
+          if( rpcTempCU->getGbiIdx(0) == GBI_DEFAULT && rpcTempCU->getTotalCost() < m_dBestSkipModeCost && rpcBestCU->getQtRootCbf( 0 ) == 0 )
+          {
+            m_dBestSkipModeCost = rpcTempCU->getTotalCost();
+          }
+          if( rpcTempCU->getGbiIdx(0) == GBI_DEFAULT && rpcTempCU->getTotalCost() < m_dBestNonGbiModeCost )
+          {
+            m_dBestNonGbiModeCost = rpcTempCU->getTotalCost();
+          }
+#endif
+
           Int orgQP = rpcTempCU->getQP( 0 );
           xCheckDQP( rpcTempCU );
           xCheckBestMode(rpcBestCU, rpcTempCU, uhDepth DEBUG_STRING_PASS_INTO(bestStr) DEBUG_STRING_PASS_INTO(tmpStr));
@@ -3575,6 +3600,16 @@ Void TEncCu::xCheckRDCostMerge2Nx2NFRUC( TComDataCU*& rpcBestCU, TComDataCU*& rp
         {
           uiNoResidual++;
         }
+#if IDCC_GENERALIZED_BI_PRED && IDCC_GBI_SIMP
+        if( rpcTempCU->getGbiIdx(0) == GBI_DEFAULT && rpcTempCU->getTotalCost() < m_dBestSkipModeCost && rpcBestCU->getQtRootCbf( 0 ) == 0 )
+        {
+          m_dBestSkipModeCost = rpcTempCU->getTotalCost();
+        }
+        if( rpcTempCU->getGbiIdx(0) == GBI_DEFAULT && rpcTempCU->getTotalCost() < m_dBestNonGbiModeCost )
+        {
+          m_dBestNonGbiModeCost = rpcTempCU->getTotalCost();
+        }
+#endif
         rpcTempCU->setSkipFlagSubParts( rpcTempCU->getQtRootCbf(0) == 0, 0, uhDepth );
         Int orgQP = rpcTempCU->getQP( 0 );
         xCheckDQP( rpcTempCU );
@@ -3650,6 +3685,16 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
 
   for( UChar uhGbiLoopIdx = 0; uhGbiLoopIdx < uhGbiLoopNum; uhGbiLoopIdx++ )
   {
+#if IDCC_GBI_SIMP
+    if( rpcBestCU->getPic()->getInter( rpcBestCU->getZorderIdxInCtu(), rpcBestCU->getWidth(0), rpcBestCU->getHeight(0) ) )
+    {
+      if( g_aiGbiSearchOrder[uhGbiLoopIdx] != GBI_DEFAULT && g_aiGbiSearchOrder[uhGbiLoopIdx] != rpcBestCU->getPic()->getGbiIdx( rpcBestCU->getZorderIdxInCtu(), rpcBestCU->getWidth(0), rpcBestCU->getHeight(0) ) )
+      {
+        continue;
+      }
+    }
+#endif
+
     rpcTempCU->setGbiIdxSubParts( g_aiGbiSearchOrder[uhGbiLoopIdx], 0, uhDepth, true );
 #if VCEG_AZ06_IC
     rpcTempCU->setICFlagSubParts( bICFlagX,     0, uhDepth );
@@ -3721,6 +3766,16 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
   else
   {
 #endif
+
+
+
+#if IDCC_GENERALIZED_BI_PRED && ( VCEG_AZ06_IC && IDCC_GBI_SIMP )
+    if( uhGbiLoopIdx > 0 && rpcTempCU->getICFlag( 0 ) )
+    {
+      return;
+    }
+#endif
+
 #if AMP_MRG
 #if !JVET_C0024_QTBT
   rpcTempCU->setMergeAMP (true);
@@ -3870,6 +3925,13 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
   DebugInterPredResiReco(sTest, *(m_ppcPredYuvTemp[uhDepth]), *(m_ppcResiYuvBest[uhDepth]), *(m_ppcRecoYuvTemp[uhDepth]), DebugStringGetPredModeMask(rpcTempCU->getPredictionMode(0)));
 #endif
 
+#if IDCC_GENERALIZED_BI_PRED && IDCC_GBI_SIMP
+  if( rpcTempCU->getGbiIdx(0) == GBI_DEFAULT && rpcTempCU->getTotalCost() < m_dBestNonGbiModeCost )
+  {
+    m_dBestNonGbiModeCost = rpcTempCU->getTotalCost();
+  }
+#endif
+
   xCheckDQP( rpcTempCU );
   xCheckBestMode(rpcBestCU, rpcTempCU, uhDepth DEBUG_STRING_PASS_INTO(sDebug) DEBUG_STRING_PASS_INTO(sTest));
 #if COM16_C806_OBMC
@@ -3992,6 +4054,12 @@ Void TEncCu::xCheckRDCostInterKLT(TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU
     {
         rpcTempCU->setSkipFlagSubParts(rpcTempCU->getQtRootCbf(0) == 0, 0, uhDepth);
     }
+#if IDCC_GENERALIZED_BI_PRED && IDCC_GBI_SIMP
+    if( rpcTempCU->getGbiIdx(0) == GBI_DEFAULT && rpcTempCU->getTotalCost() < m_dBestNonGbiModeCost )
+    {
+      m_dBestNonGbiModeCost = rpcTempCU->getTotalCost();
+    }
+#endif
     xCheckDQP(rpcTempCU);
     xCheckBestMode(rpcBestCU, rpcTempCU, uhDepth);
 }
@@ -4668,6 +4736,16 @@ Void TEncCu::xCheckRDCostAffineMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& 
           // If no residual when allowing for one, then set mark to not try case where residual is forced to 0
           mergeCandBuffer[uiMergeCand] = 1;
         }
+#if IDCC_GENERALIZED_BI_PRED && IDCC_GBI_SIMP
+        if( rpcTempCU->getGbiIdx(0) == GBI_DEFAULT && rpcTempCU->getTotalCost() < m_dBestSkipModeCost && rpcBestCU->getQtRootCbf( 0 ) == 0 )
+        {
+          m_dBestSkipModeCost = rpcTempCU->getTotalCost();
+        }
+        if( rpcTempCU->getGbiIdx(0) == GBI_DEFAULT && rpcTempCU->getTotalCost() < m_dBestNonGbiModeCost )
+        {
+          m_dBestNonGbiModeCost = rpcTempCU->getTotalCost();
+        }
+#endif
 
         rpcTempCU->setSkipFlagSubParts( rpcTempCU->getQtRootCbf(0) == 0, 0, uhDepth );
         Int orgQP = rpcTempCU->getQP( 0 );

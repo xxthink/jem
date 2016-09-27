@@ -92,6 +92,13 @@ private:
   Bool                  m_bSkiped[1<<((MAX_CU_DEPTH-MIN_CU_LOG2)<<1)][MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1]; //[zorder][w][h] , if skip mode, not try inter, intra
   Bool                  m_bInter[1<<((MAX_CU_DEPTH-MIN_CU_LOG2)<<1)][MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1]; //[zorder][w][h] , if inter mode, not try intra
   Bool                  m_bIntra[1<<((MAX_CU_DEPTH-MIN_CU_LOG2)<<1)][MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1]; // if intra mode, not try inter
+#if IDCC_GENERALIZED_BI_PRED && IDCC_GBI_SIMP
+  UChar                 m_uhGbiIdx[1<<((MAX_CU_DEPTH-MIN_CU_LOG2)<<1)][MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1];
+#endif
+#if IDCC_GENERALIZED_BI_PRED && IDCC_GBI_SIMP
+  TComMv                m_cGbiMv   [1<<((MAX_CU_DEPTH-MIN_CU_LOG2)<<1)][MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1][2][5][GBI_NUM];
+  Bool                  m_bSetGbiMv[1<<((MAX_CU_DEPTH-MIN_CU_LOG2)<<1)][MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1][2][5][GBI_NUM];
+#endif
 #endif
 
   std::vector<std::vector<TComDataCU*> > m_vSliceCUDataLink;
@@ -114,8 +121,15 @@ public:
   Void          setSkiped(UInt uiZorder, UInt uiWidth, UInt uiHeight, Bool bSkip);
   Bool          getSkiped(UInt uiZorder, UInt uiWidth, UInt uiHeight);
   Void          clearAllSkiped();
+#if IDCC_GENERALIZED_BI_PRED && IDCC_GBI_SIMP
+  Void          setInter(UInt uiZorder, UInt uiWidth, UInt uiHeight, Bool bInter, UChar uhGbiIdx);
+#else
   Void          setInter(UInt uiZorder, UInt uiWidth, UInt uiHeight, Bool bInter);
+#endif
   Bool          getInter(UInt uiZorder, UInt uiWidth, UInt uiHeight);
+#if IDCC_GENERALIZED_BI_PRED && IDCC_GBI_SIMP
+  UChar         getGbiIdx(UInt uiZorder, UInt uiWidth, UInt uiHeight);
+#endif
   Void          clearAllInter();
   Void          setIntra(UInt uiZorder, UInt uiWidth, UInt uiHeight, Bool bIntra);
   Bool          getIntra(UInt uiZorder, UInt uiWidth, UInt uiHeight);
@@ -125,6 +139,11 @@ public:
   TComMv        getIntMv(UInt uiZorder, UInt uiWidth, UInt uiHeight, RefPicList eRefList, UInt uiRefIdx);
   Void          clearAllIntMv();
   Bool          IsSetIntMv(UInt uiZorder, UInt uiWidth, UInt uiHeight, RefPicList eRefList, UInt uiRefIdx);
+#if IDCC_GENERALIZED_BI_PRED && IDCC_GBI_SIMP
+  Void          setGbiMv  ( UChar uhGbiIdx, UInt uiZorder, UInt uiWidth, UInt uiHeight, RefPicList eRefList, UInt uiRefIdx, TComMv cMv );
+  TComMv        getGbiMv  ( UChar uhGbiIdx, UInt uiZorder, UInt uiWidth, UInt uiHeight, RefPicList eRefList, UInt uiRefIdx );
+  Bool          IsSetGbiMv( UChar uhGbiIdx, UInt uiZorder, UInt uiWidth, UInt uiHeight, RefPicList eRefList, UInt uiRefIdx );
+#endif
 #endif
 
   Void          create( const TComSPS &sps, const TComPPS &pps, const Bool bIsVirtual /*= false*/ );

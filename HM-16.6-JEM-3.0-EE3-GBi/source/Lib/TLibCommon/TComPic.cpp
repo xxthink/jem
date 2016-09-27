@@ -287,11 +287,18 @@ Void  TComPic::clearAllSkiped()
   memset(m_bSkiped, 0, (1<<((MAX_CU_DEPTH-MIN_CU_LOG2)<<1))*(MAX_CU_DEPTH-MIN_CU_LOG2+1)*(MAX_CU_DEPTH-MIN_CU_LOG2+1)*sizeof(Bool));
 }
 
+#if IDCC_GENERALIZED_BI_PRED && IDCC_GBI_SIMP
+Void  TComPic::setInter(UInt uiZorder, UInt uiWidth, UInt uiHeight, Bool bInter, UChar uhGbiIdx)
+#else
 Void  TComPic::setInter(UInt uiZorder, UInt uiWidth, UInt uiHeight, Bool bInter)
+#endif
 {
   UInt uiWIdx = g_aucConvertToBit[uiWidth];
   UInt uiHIdx = g_aucConvertToBit[uiHeight];
   m_bInter[uiZorder][uiWIdx][uiHIdx] = bInter; 
+#if IDCC_GENERALIZED_BI_PRED && IDCC_GBI_SIMP
+  m_uhGbiIdx[uiZorder][uiWIdx][uiHIdx] = uhGbiIdx;
+#endif
 }
 Bool  TComPic::getInter(UInt uiZorder, UInt uiWidth, UInt uiHeight)
 {
@@ -299,9 +306,20 @@ Bool  TComPic::getInter(UInt uiZorder, UInt uiWidth, UInt uiHeight)
   UInt uiHIdx = g_aucConvertToBit[uiHeight];
   return m_bInter[uiZorder][uiWIdx][uiHIdx];
 }
+#if IDCC_GENERALIZED_BI_PRED && IDCC_GBI_SIMP
+UChar  TComPic::getGbiIdx(UInt uiZorder, UInt uiWidth, UInt uiHeight)
+{
+  UInt uiWIdx = g_aucConvertToBit[uiWidth];
+  UInt uiHIdx = g_aucConvertToBit[uiHeight];
+  return m_uhGbiIdx[uiZorder][uiWIdx][uiHIdx];
+}
+#endif
 Void  TComPic::clearAllInter()
 {
   memset(m_bInter, 0, (1<<((MAX_CU_DEPTH-MIN_CU_LOG2)<<1))*(MAX_CU_DEPTH-MIN_CU_LOG2+1)*(MAX_CU_DEPTH-MIN_CU_LOG2+1)*sizeof(Bool));
+#if IDCC_GENERALIZED_BI_PRED && IDCC_GBI_SIMP
+  memset(m_uhGbiIdx, GBI_DEFAULT, (1<<((MAX_CU_DEPTH-MIN_CU_LOG2)<<1))*(MAX_CU_DEPTH-MIN_CU_LOG2+1)*(MAX_CU_DEPTH-MIN_CU_LOG2+1)*sizeof(UChar));
+#endif
 }
 
 Void  TComPic::setIntra(UInt uiZorder, UInt uiWidth, UInt uiHeight, Bool bIntra)
@@ -343,9 +361,36 @@ Bool  TComPic::IsSetIntMv(UInt uiZorder, UInt uiWidth, UInt uiHeight, RefPicList
   return m_bSetIntMv[uiZorder][uiWIdx][uiHIdx][(UInt)eRefList][uiRefIdx];
 }
 
+#if IDCC_GENERALIZED_BI_PRED && IDCC_GBI_SIMP
+Void  TComPic::setGbiMv(UChar uhGbiIdx, UInt uiZorder, UInt uiWidth, UInt uiHeight, RefPicList eRefList, UInt uiRefIdx, TComMv cMv)
+{
+  UInt uiWIdx = g_aucConvertToBit[uiWidth];
+  UInt uiHIdx = g_aucConvertToBit[uiHeight];
+  m_cGbiMv   [uiZorder][uiWIdx][uiHIdx][(UInt)eRefList][uiRefIdx][uhGbiIdx] = cMv;
+  m_bSetGbiMv[uiZorder][uiWIdx][uiHIdx][(UInt)eRefList][uiRefIdx][uhGbiIdx] = true; 
+}
+
+TComMv  TComPic::getGbiMv(UChar uhGbiIdx, UInt uiZorder, UInt uiWidth, UInt uiHeight, RefPicList eRefList, UInt uiRefIdx)
+{
+  UInt uiWIdx = g_aucConvertToBit[uiWidth];
+  UInt uiHIdx = g_aucConvertToBit[uiHeight];
+  return m_cGbiMv[uiZorder][uiWIdx][uiHIdx][(UInt)eRefList][uiRefIdx][uhGbiIdx];
+}
+
+Bool  TComPic::IsSetGbiMv(UChar uhGbiIdx, UInt uiZorder, UInt uiWidth, UInt uiHeight, RefPicList eRefList, UInt uiRefIdx)
+{
+  UInt uiWIdx = g_aucConvertToBit[uiWidth];
+  UInt uiHIdx = g_aucConvertToBit[uiHeight];
+  return m_bSetGbiMv[uiZorder][uiWIdx][uiHIdx][(UInt)eRefList][uiRefIdx][uhGbiIdx];
+}
+#endif
+
 Void  TComPic::clearAllIntMv()
 {
   memset(m_bSetIntMv, 0, (1<<((MAX_CU_DEPTH-MIN_CU_LOG2)<<1))*(MAX_CU_DEPTH-MIN_CU_LOG2+1)*(MAX_CU_DEPTH-MIN_CU_LOG2+1)*2*5*sizeof(Bool));
+#if IDCC_GENERALIZED_BI_PRED && IDCC_GBI_SIMP
+  memset(m_bSetGbiMv, 0, (1<<((MAX_CU_DEPTH-MIN_CU_LOG2)<<1))*(MAX_CU_DEPTH-MIN_CU_LOG2+1)*(MAX_CU_DEPTH-MIN_CU_LOG2+1)*2*5*GBI_NUM*sizeof(Bool));
+#endif
 }
 #endif
 //! \}

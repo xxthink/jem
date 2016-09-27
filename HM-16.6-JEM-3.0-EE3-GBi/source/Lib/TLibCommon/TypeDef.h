@@ -47,11 +47,6 @@
 //! \ingroup TLibCommon
 //! \{
 
-#define IDCC_GENERALIZED_BI_PRED                          3  ///< Generalized bi-prediction:
-                                                             //   1: (Test #1)            3/8, 1/2, 5/8
-                                                             //   2: (Test #2)       1/4, 3/8, 1/2, 5/8, 3/4
-                                                             //   3: (Test #3) -1/4, 1/4, 3/8, 1/2, 5/8, 3/4, 5/4
-
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////
@@ -261,6 +256,14 @@
 
 #define PARALLEL_ENCODING_SAO_FIX                         1  ///< Fix of SAO for parallel encoding proposed in JVET-B0036
 #define PARALLEL_ENCODING_RAS_CABAC_INIT_PRESENT          1  ///< Fix of CABAC initialization for parallel encoding proposed in JVET-B0036
+
+#define IDCC_GENERALIZED_BI_PRED                          3  ///< Generalized bi-prediction:
+                                                             //   1: (Test #1)            3/8, 1/2, 5/8
+                                                             //   2: (Test #2)       1/4, 3/8, 1/2, 5/8, 3/4
+                                                             //   3: (Test #3) -1/4, 1/4, 3/8, 1/2, 5/8, 3/4, 5/4
+#if IDCC_GENERALIZED_BI_PRED && JVET_C0024_QTBT
+#define IDCC_GBI_SIMP                                     1
+#endif
 
 // encoder only changes
 #define COM16_C806_SIMD_OPT                               1  ///< SIMD optimization, no impact on RD performance
