@@ -223,6 +223,9 @@
 #if COM16_C1016_AFFINE
 #define JVET_B0038_AFFINE_HARMONIZATION                   1  ///< Harmonization of affine, OBMC and DBF
 #define JVET_C0025_AFFINE_FILTER_SIMPLIFICATION           1  ///< Simplification of MC filters for affine
+#if JVET_C0025_AFFINE_FILTER_SIMPLIFICATION && VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE != 2
+#error JVET_C0025_AFFINE_FILTER_SIMPLIFICATION shall be off if no 1/16 MV accuracy
+#endif
 #endif
 
 #define COM16_C983_RSAF                                   1  ///< Adaptive reference sample smoothing
