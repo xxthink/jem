@@ -95,6 +95,10 @@ private:
 #endif
 #endif
   UChar                   m_uhTotalDepth;
+#if IDCC_GENERALIZED_BI_PRED && IDCC_GBI_SIMP
+  Double                  m_dBestSkipModeCost;
+  Double                  m_dBestNonGbiModeCost;
+#endif
 
 #if JVET_C0024_QTBT
 #if JVET_C0024_FAST_MRG
