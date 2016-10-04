@@ -220,6 +220,9 @@ static const Int SCAN_SET_SIZE =                                   (1 << MLS_CG_
 
 #if JVET_C0046_ZO_ASSERT
 static const Int TH_LOG2TBAREASIZE =                               10; ///< Threshold for zeroing out
+#if JVET_C0046_ZO_ASSERT_FIX_TICKET24
+static const Int JVET_C0046_ZERO_OUT_TH =                          32;
+#endif
 #endif
 
 #if ADAPTIVE_QP_SELECTION

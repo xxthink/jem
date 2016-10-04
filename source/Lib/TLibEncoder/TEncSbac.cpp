@@ -2258,11 +2258,19 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
 
  
 #if JVET_C0046_ZO_ASSERT && JVET_C0046_ZO_ASSERT_LAST_COEF
+#if JVET_C0046_ZO_ASSERT_FIX_TICKET24
+  if ( ((uiWidth > JVET_C0046_ZERO_OUT_TH) || (uiHeight > JVET_C0046_ZERO_OUT_TH)) &&
+#else
   if ( ((uiWidth > JVET_C0024_ZERO_OUT_TH) || (uiHeight > JVET_C0024_ZERO_OUT_TH)) &&
-     (!pcCU->getTransformSkip(compID) && !pcCU->getCUTransquantBypass(uiAbsPartIdx)))
+#endif
+      (!pcCU->getTransformSkip(compID) && !pcCU->getCUTransquantBypass(uiAbsPartIdx)))
   {
      // last coeff shall be in the low freqecy domain
+#if JVET_C0046_ZO_ASSERT_FIX_TICKET24
+     assert((posLastX < JVET_C0046_ZERO_OUT_TH) && (posLastY < JVET_C0046_ZERO_OUT_TH));
+#else
      assert((posLastX < JVET_C0024_ZERO_OUT_TH) && (posLastY < JVET_C0024_ZERO_OUT_TH));
+#endif
   }
 #endif
 
@@ -2368,7 +2376,7 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
       assert( 0 == uiSigCoeffGroupFlag[ iCGBlkPos ] );
     }
 #endif
-#if JVET_C0046_ZO_ASSERT && JVET_C0046_ZO_ASSERT_CODED_SBK_FLAG  
+#if JVET_C0046_ZO_ASSERT && JVET_C0046_ZO_ASSERT_CODED_SBK_FLAG
     else if ( (uiLog2BlockWidth + uiLog2BlockHeight) > TH_LOG2TBAREASIZE && 
               (!pcCU->getTransformSkip(compID) && !pcCU->getCUTransquantBypass(uiAbsPartIdx) ))
     {
