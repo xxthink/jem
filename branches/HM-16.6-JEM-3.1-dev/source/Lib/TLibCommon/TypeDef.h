@@ -82,12 +82,6 @@
 
 #endif // end of JVET_C0024_QTBT
 
-#define JVET_C0046_ZO_ASSERT                              1  ///< assertion on last coeff and coded_sbk_flag when zeroing out is used (no TS and no TQBypass and using large transform is satisfied)
-#if JVET_C0046_ZO_ASSERT
-#define JVET_C0046_ZO_ASSERT_CODED_SBK_FLAG               1  ///< if (iCGX > TH1 || iCGY > TH1) and (no TS && no TQBypass), then coded_sbk_flag(iCGX, iCGY) shall be 0.
-#define JVET_C0046_ZO_ASSERT_LAST_COEF                    1  ///< if (posLastX>TH2 || posLastY>TH2) and (no TS && no TQBypass), then last coef (x,y) shall be in the low frequency domain.
-#endif
-
 #define JVET_C0046_OMIT_ASSERT_ERDPCM                     1  ///< for RExt, omit assertion related to Explict Residual DPCM
 
 #define JVET_C0046_FIX_DECODER_DEBUG_BIT_STATISTICS       1  ///< bugfix on DECODER_DEBUG_BIT_STATISTICS for QTBT
@@ -153,6 +147,17 @@
 #define COM16_C806_EMT                                    1  ///< Explicit multiple core transform
 
 #define COM16_C806_T64                                    1  ///< 64x64 transform
+
+#if COM16_C806_T64
+#define JVET_C0046_ZO_ASSERT                              1  ///< assertion on last coeff and coded_sbk_flag when zeroing out is used (no TS and no TQBypass and using large transform is satisfied)
+#if JVET_C0046_ZO_ASSERT
+#define JVET_C0046_ZO_ASSERT_CODED_SBK_FLAG               1  ///< if (iCGX > TH1 || iCGY > TH1) and (no TS && no TQBypass), then coded_sbk_flag(iCGX, iCGY) shall be 0.
+#define JVET_C0046_ZO_ASSERT_LAST_COEF                    1  ///< if (posLastX>TH2 || posLastY>TH2) and (no TS && no TQBypass), then last coef (x,y) shall be in the low frequency domain.
+#if !JVET_C0024_QTBT
+#define JVET_C0046_ZO_ASSERT_FIX_TICKET24                 1  ///< fixed ticket#24
+#endif
+#endif
+#endif
 
 #if COM16_C806_EMT || COM16_C806_T64
 #define COM16_C806_TRANS_PREC                             2  ///< Integer transform matrix precision
