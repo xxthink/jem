@@ -470,6 +470,7 @@ Void TEncCu::destroy()
   {
     if(m_pcMrgPredTempYuv[idx])
     {
+      m_pcMrgPredTempYuv[idx]->destroy();
       delete m_pcMrgPredTempYuv[idx];
       m_pcMrgPredTempYuv[idx] = NULL;
     }
