@@ -177,7 +177,11 @@ public:
   Void codeKLTFlags      (TComTU &rTu, ComponentID component);
 #endif
 
-  Void estBit            ( estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, ChannelType chType );
+  Void estBit            ( estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, ChannelType chType 
+#if RDOQ_BIT_ESTIMATE_FIX_TICKET29
+    , UInt uiScanIdx
+#endif
+    );
 
   Void xCodePredWeightTable          ( TComSlice* pcSlice );
 
