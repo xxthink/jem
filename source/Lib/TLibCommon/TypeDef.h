@@ -54,6 +54,7 @@
 
 #if JVET_C0024_QTBT
 #define JVET_C0024_BT_FIX_TICKET22                        1
+#define RDOQ_BIT_ESTIMATE_FIX_TICKET29                    1  // correct RDOQ uninitialized values in case of vertical scan 
 
 #define MIN_CU_LOG2                                       2
 #if MIN_CU_LOG2==1

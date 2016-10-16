@@ -214,11 +214,19 @@ public:
   // for RD-optimizatioon
   // -------------------------------------------------------------------------------------------------------------------
 
-  Void estBit               (estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, ChannelType chType);
+  Void estBit               (estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, ChannelType chType
+#if RDOQ_BIT_ESTIMATE_FIX_TICKET29
+    , UInt uiScanIdx
+#endif
+    );
   Void estCBFBit                     ( estBitsSbacStruct* pcEstBitsSbac );
   Void estSignificantCoeffGroupMapBit( estBitsSbacStruct* pcEstBitsSbac, ChannelType chType );
   Void estSignificantMapBit          ( estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, ChannelType chType );
-  Void estLastSignificantPositionBit ( estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, ChannelType chType );
+  Void estLastSignificantPositionBit ( estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, ChannelType chType 
+#if RDOQ_BIT_ESTIMATE_FIX_TICKET29
+    , UInt uiScanIdx
+#endif
+    );
   Void estSignificantCoefficientsBit ( estBitsSbacStruct* pcEstBitsSbac, ChannelType chType );
 
   Void codeExplicitRdpcmMode            ( TComTU &rTu, const ComponentID compID );

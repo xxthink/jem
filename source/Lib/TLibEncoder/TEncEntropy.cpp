@@ -1205,7 +1205,11 @@ Void TEncEntropy::encodeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID
   }
 }
 
-Void TEncEntropy::estimateBit (estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, const ChannelType chType)
+Void TEncEntropy::estimateBit (estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, const ChannelType chType
+#if RDOQ_BIT_ESTIMATE_FIX_TICKET29
+  , UInt uiScanIdx
+#endif
+  )
 {
 #if JVET_C0024_QTBT
   if (width==2 || height==2)
@@ -1213,7 +1217,11 @@ Void TEncEntropy::estimateBit (estBitsSbacStruct* pcEstBitsSbac, Int width, Int 
       return;   //don't use RDOQ for 2xn;
   }
 
-  m_pcEntropyCoderIf->estBit ( pcEstBitsSbac, width, height, chType );
+  m_pcEntropyCoderIf->estBit ( pcEstBitsSbac, width, height, chType 
+#if RDOQ_BIT_ESTIMATE_FIX_TICKET29
+    , uiScanIdx
+#endif
+    );
 #else
   const UInt heightAtEntropyCoding = (width != height) ? (height >> 1) : height;
 
