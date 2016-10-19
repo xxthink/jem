@@ -4249,9 +4249,11 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
     if( rpcTempCU->getWidth( 0 ) > 64 )
 #endif
     {
+#if !FIX_TICKET30
       rpcTempCU->getTotalCost() = MAX_DOUBLE / 4;
       rpcTempCU->getTotalDistortion() = MAX_INT;
       xCheckBestMode(rpcBestCU, rpcTempCU, uiDepth);
+#endif
       return;
     }
   }
