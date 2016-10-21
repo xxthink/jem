@@ -54,6 +54,7 @@
 
 #if JVET_C0024_QTBT
 #define JVET_C0024_BT_FIX_TICKET22                        1
+#define RDOQ_BIT_ESTIMATE_FIX_TICKET29                    1  // correct RDOQ uninitialized values in case of vertical scan 
 
 #define MIN_CU_LOG2                                       2
 #if MIN_CU_LOG2==1
@@ -81,12 +82,6 @@
 #define JVET_C0024_ITSKIP                                 1  ///< skip zero row/column in inverse transform (decoder speedup)
 
 #endif // end of JVET_C0024_QTBT
-
-#define JVET_C0046_ZO_ASSERT                              1  ///< assertion on last coeff and coded_sbk_flag when zeroing out is used (no TS and no TQBypass and using large transform is satisfied)
-#if JVET_C0046_ZO_ASSERT
-#define JVET_C0046_ZO_ASSERT_CODED_SBK_FLAG               1  ///< if (iCGX > TH1 || iCGY > TH1) and (no TS && no TQBypass), then coded_sbk_flag(iCGX, iCGY) shall be 0.
-#define JVET_C0046_ZO_ASSERT_LAST_COEF                    1  ///< if (posLastX>TH2 || posLastY>TH2) and (no TS && no TQBypass), then last coef (x,y) shall be in the low frequency domain.
-#endif
 
 #define JVET_C0046_OMIT_ASSERT_ERDPCM                     1  ///< for RExt, omit assertion related to Explict Residual DPCM
 
@@ -153,6 +148,17 @@
 #define COM16_C806_EMT                                    1  ///< Explicit multiple core transform
 
 #define COM16_C806_T64                                    1  ///< 64x64 transform
+
+#if COM16_C806_T64
+#define JVET_C0046_ZO_ASSERT                              1  ///< assertion on last coeff and coded_sbk_flag when zeroing out is used (no TS and no TQBypass and using large transform is satisfied)
+#if JVET_C0046_ZO_ASSERT
+#define JVET_C0046_ZO_ASSERT_CODED_SBK_FLAG               1  ///< if (iCGX > TH1 || iCGY > TH1) and (no TS && no TQBypass), then coded_sbk_flag(iCGX, iCGY) shall be 0.
+#define JVET_C0046_ZO_ASSERT_LAST_COEF                    1  ///< if (posLastX>TH2 || posLastY>TH2) and (no TS && no TQBypass), then last coef (x,y) shall be in the low frequency domain.
+#if !JVET_C0024_QTBT
+#define JVET_C0046_ZO_ASSERT_FIX_TICKET24                 1  ///< fixed ticket#24
+#endif
+#endif
+#endif
 
 #if COM16_C806_EMT || COM16_C806_T64
 #define COM16_C806_TRANS_PREC                             2  ///< Integer transform matrix precision
@@ -223,6 +229,9 @@
 #if COM16_C1016_AFFINE
 #define JVET_B0038_AFFINE_HARMONIZATION                   1  ///< Harmonization of affine, OBMC and DBF
 #define JVET_C0025_AFFINE_FILTER_SIMPLIFICATION           1  ///< Simplification of MC filters for affine
+#if JVET_C0025_AFFINE_FILTER_SIMPLIFICATION && VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE != 2
+#error JVET_C0025_AFFINE_FILTER_SIMPLIFICATION shall be off if no 1/16 MV accuracy
+#endif
 #endif
 
 #define COM16_C983_RSAF                                   1  ///< Adaptive reference sample smoothing
@@ -270,6 +279,8 @@
 
 #define JVET_B0039_QP_FIX                                 1  ///< Recalcualtes QP to align with a HM lambda (same relation as for all intra coding is used)
 #define JVET_B0039_INC_NUM_QP_PROB                        7  ///< Number of context is increased when more QPs are used
+
+#define FIX_TICKET30                                      1  ///< Fix of ticket #30 (Use of uninitialized Cabac coder for Intra 128x128 blocks)
 
 ///////////////////////////////////////////////////////////
 // KTA tools section end
