@@ -2258,11 +2258,19 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
 
  
 #if JVET_C0046_ZO_ASSERT && JVET_C0046_ZO_ASSERT_LAST_COEF
+#if JVET_C0046_ZO_ASSERT_FIX_TICKET24
+  if ( ((uiWidth > JVET_C0046_ZERO_OUT_TH) || (uiHeight > JVET_C0046_ZERO_OUT_TH)) &&
+#else
   if ( ((uiWidth > JVET_C0024_ZERO_OUT_TH) || (uiHeight > JVET_C0024_ZERO_OUT_TH)) &&
-     (!pcCU->getTransformSkip(compID) && !pcCU->getCUTransquantBypass(uiAbsPartIdx)))
+#endif
+      (!pcCU->getTransformSkip(compID) && !pcCU->getCUTransquantBypass(uiAbsPartIdx)))
   {
      // last coeff shall be in the low freqecy domain
+#if JVET_C0046_ZO_ASSERT_FIX_TICKET24
+     assert((posLastX < JVET_C0046_ZERO_OUT_TH) && (posLastY < JVET_C0046_ZERO_OUT_TH));
+#else
      assert((posLastX < JVET_C0024_ZERO_OUT_TH) && (posLastY < JVET_C0024_ZERO_OUT_TH));
+#endif
   }
 #endif
 
@@ -2368,7 +2376,7 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
       assert( 0 == uiSigCoeffGroupFlag[ iCGBlkPos ] );
     }
 #endif
-#if JVET_C0046_ZO_ASSERT && JVET_C0046_ZO_ASSERT_CODED_SBK_FLAG  
+#if JVET_C0046_ZO_ASSERT && JVET_C0046_ZO_ASSERT_CODED_SBK_FLAG
     else if ( (uiLog2BlockWidth + uiLog2BlockHeight) > TH_LOG2TBAREASIZE && 
               (!pcCU->getTransformSkip(compID) && !pcCU->getCUTransquantBypass(uiAbsPartIdx) ))
     {
@@ -2807,7 +2815,11 @@ Void TEncSbac::codeSAOBlkParam(SAOBlkParam& saoBlkParam, const BitDepths &bitDep
  *   estimate bit cost for CBP, significant map and significant coefficients
  ****************************************************************************
  */
-Void TEncSbac::estBit( estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, ChannelType chType )
+Void TEncSbac::estBit( estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, ChannelType chType 
+#if RDOQ_BIT_ESTIMATE_FIX_TICKET29
+  , UInt uiScanIdx
+#endif
+  )
 {
   estCBFBit( pcEstBitsSbac );
 
@@ -2817,7 +2829,11 @@ Void TEncSbac::estBit( estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, 
   estSignificantMapBit( pcEstBitsSbac, width, height, chType );
 
   // encode last significant position
-  estLastSignificantPositionBit( pcEstBitsSbac, width, height, chType );
+  estLastSignificantPositionBit( pcEstBitsSbac, width, height, chType 
+#if RDOQ_BIT_ESTIMATE_FIX_TICKET29
+    , uiScanIdx
+#endif
+    );
 
   // encode significant coefficients
   estSignificantCoefficientsBit( pcEstBitsSbac, chType );
@@ -2967,9 +2983,20 @@ Void TEncSbac::estSignificantMapBit( estBitsSbacStruct* pcEstBitsSbac, Int width
  ****************************************************************************
  */
 
-Void TEncSbac::estLastSignificantPositionBit( estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, ChannelType chType )
+Void TEncSbac::estLastSignificantPositionBit( estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, ChannelType chType 
+#if RDOQ_BIT_ESTIMATE_FIX_TICKET29
+  , UInt uiScanIdx
+#endif
+  )
 {
   //--------------------------------------------------------------------------------------------------.
+#if RDOQ_BIT_ESTIMATE_FIX_TICKET29
+  // swap
+  if (uiScanIdx == SCAN_VER)
+  {
+    swap(width, height);
+  }
+#endif
 
   //set up the number of channels
 

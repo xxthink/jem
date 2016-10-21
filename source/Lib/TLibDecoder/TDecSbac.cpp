@@ -2196,7 +2196,8 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
 #endif
 #else
   const UInt         uiLog2BlockWidth  = g_aucConvertToBit[ uiWidth  ] + 2;
-#if !VCEG_AZ07_CTX_RESIDUALCODING || JVET_C0046_ZO_ASSERT
+//#if !VCEG_AZ07_CTX_RESIDUALCODING || JVET_C0046_ZO_ASSERT ticket#24
+#if !VCEG_AZ07_CTX_RESIDUALCODING
   const UInt         uiLog2BlockHeight = g_aucConvertToBit[ uiHeight ] + 2;
 #endif
 #endif
@@ -2337,11 +2338,19 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
   pcCoef[ uiBlkPosLast ] = 1;
 
 #if JVET_C0046_ZO_ASSERT && JVET_C0046_ZO_ASSERT_LAST_COEF
+#if JVET_C0046_ZO_ASSERT_FIX_TICKET24
+  if ( ((uiWidth > JVET_C0046_ZERO_OUT_TH) || (uiHeight > JVET_C0046_ZERO_OUT_TH)) &&
+#else
   if ( ((uiWidth > JVET_C0024_ZERO_OUT_TH) || (uiHeight > JVET_C0024_ZERO_OUT_TH)) && 
-     (!pcCU->getTransformSkip(compID) && !pcCU->getCUTransquantBypass(uiAbsPartIdx)))
+#endif
+       (!pcCU->getTransformSkip(compID) && !pcCU->getCUTransquantBypass(uiAbsPartIdx)))
   {
      // last coeff shall be in the low freqecy domain
+#if JVET_C0046_ZO_ASSERT_FIX_TICKET24
+     assert((uiPosLastX < JVET_C0046_ZERO_OUT_TH) && (uiPosLastY < JVET_C0046_ZERO_OUT_TH));
+#else
      assert((uiPosLastX < JVET_C0024_ZERO_OUT_TH) && (uiPosLastY < JVET_C0024_ZERO_OUT_TH));
+#endif
   }
 #endif
 
@@ -2473,10 +2482,18 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
     }
 
 #if JVET_C0046_ZO_ASSERT && JVET_C0046_ZO_ASSERT_CODED_SBK_FLAG
+#if JVET_C0046_ZO_ASSERT_FIX_TICKET24
+   if ( ((uiWidth > JVET_C0046_ZERO_OUT_TH) || (uiHeight > JVET_C0046_ZERO_OUT_TH)) &&
+#else
    if ( ((uiWidth > JVET_C0024_ZERO_OUT_TH) || (uiHeight > JVET_C0024_ZERO_OUT_TH)) &&
-      (!pcCU->getTransformSkip(compID) && !pcCU->getCUTransquantBypass(uiAbsPartIdx)) )
+#endif
+       (!pcCU->getTransformSkip(compID) && !pcCU->getCUTransquantBypass(uiAbsPartIdx)) )
    {
+#if JVET_C0046_ZO_ASSERT_FIX_TICKET24
+      if (iCGPosY >= (JVET_C0046_ZERO_OUT_TH>>2) || iCGPosX >= (JVET_C0046_ZERO_OUT_TH>>2))
+#else
       if (iCGPosY >= (JVET_C0024_ZERO_OUT_TH>>2) || iCGPosX >= (JVET_C0024_ZERO_OUT_TH>>2))
+#endif
       {
          //coded_sbk_flag(iCGX,iCGY) shall be equal to 0
          assert(0 == uiSigCoeffGroupFlag[iCGBlkPos]);
