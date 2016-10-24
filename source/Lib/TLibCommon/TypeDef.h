@@ -258,6 +258,7 @@
 
 #if COM16_C1044_NSST
 #define JVET_C0045_C0053_NO_NSST_FOR_TS                   1  ///< JVET-C0045/C0053: Disable NSST for TS coded blocks 
+#define JVET_D0120_NSST_IMPROV                            1  ///< JVET-D0120: NSST improvements using HyGT and 8x8 NSST  
 #endif
 
 #define COM16_C1046_PDPC_INTRA                            1  ///< Position dependent intra prediction combination

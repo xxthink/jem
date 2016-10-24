@@ -6583,6 +6583,190 @@ Void TComTrQuant::RotTransform4I( Int* matrix, UChar index )
   } // for n, vertical ROT
 }
 #elif COM16_C1044_NSST
+
+#if JVET_D0120_NSST_IMPROV
+
+Void TComTrQuant::FwdNsst4x4( Int* src, UInt uiMode, UChar index )
+{
+  const Int   rnd = NSST_HYGT_RNDS_4x4;
+  const Int   shl = 5;
+  const Int * par = g_nsstHyGTPar4x4[uiMode][index];
+  const Int   cof = 1 << (shl + 9);
+
+  assert( index<4 );
+
+  for (Int k = 0; k < 16; k++) src[k] <<= shl;
+
+  for (Int r = 0, q = (4 * rnd - 1); r < rnd; r++) 
+  {
+    for (Int d = 0; d < 4; d++, q--) 
+    {
+      const Int   s = 1 << d;
+      const Int * p = par + ((r * 4 + d) * 8);
+      if (q > 0 )
+      {
+        for (Int i = 0; i < 8; i++) 
+        {
+          const tabSinCos * t = &g_tabSinCos[*p++];
+          register Int j = i + (i & -s);
+          register Int a = src[j];
+          register Int b = src[j + s];
+          src[j]     = (t->c * a - t->s * b + 512) >> 10;
+          src[j + s] = (t->c * b + t->s * a + 512) >> 10;
+        }
+      }
+      else
+      {
+        for (Int i = 0; i < 8; i++) 
+        {
+          const tabSinCos * t = &g_tabSinCos[*p++];
+          register Int j = i + (i & -s);
+          register Int a = src[j];
+          register Int b = src[j + s];
+          src[j]     = (t->c * a - t->s * b + cof) >> (10 + shl);
+          src[j + s] = (t->c * b + t->s * a + cof) >> (10 + shl);
+        }
+      }
+    }
+  }
+}
+
+Void TComTrQuant::InvNsst4x4( Int* src, UInt uiMode, UChar index )
+{
+  const Int    rnd = NSST_HYGT_RNDS_4x4;
+  const Int    shl = 5;
+  const Int  * par = g_nsstHyGTPar4x4[uiMode][index];
+  const Int    cof = 1 << (shl + 9);
+
+  assert( index<4 );
+
+  for (Int k = 0; k < 16; k++) src[k] <<= shl;
+
+  for (Int r = rnd, q = (4 * rnd - 1); --r >= 0;) 
+  {
+    for (Int d = 4; --d >= 0; q--) 
+    {
+      const Int   s = 1 << d;
+      const Int * p = par + ((r * 4 + d) * 8);
+      if (q > 0 )
+      {
+        for (Int i = 0; i < 8; i++) 
+        {
+          const tabSinCos * t = &g_tabSinCos[*p++];
+          register Int j = i + (i & -s);
+          register Int a = src[j];
+          register Int b = src[j + s];
+          src[j]     = (t->c * a + t->s * b + 512) >> 10;
+          src[j + s] = (t->c * b - t->s * a + 512) >> 10;
+        }
+      }
+      else
+      {
+        for (Int i = 0; i < 8; i++) {
+          const tabSinCos * t = &g_tabSinCos[*p++];
+          register Int j = i + (i & -s);
+          register Int a = src[j];
+          register Int b = src[j + s];
+          src[j]     = (t->c * a + t->s * b + cof) >> (10 + shl);
+          src[j + s] = (t->c * b - t->s * a + cof) >> (10 + shl);
+        }
+      }
+    }
+  }
+}
+
+Void TComTrQuant::FwdNsst8x8( Int* src, UInt uiMode, UChar index )
+{
+  const Int   rnd = NSST_HYGT_RNDS_8x8;
+  const Int   shl = 5;
+  const Int * par = g_nsstHyGTPar8x8[uiMode][index];
+  const Int   cof = 1 << (shl + 9);
+
+  assert( index<4 );
+
+  for (Int k = 0; k < 64; k++) src[k] <<= shl;
+
+  for (Int r = 0, q = (6 * rnd - 1); r < rnd; r++) 
+  {
+    for (Int d = 0; d < 6; d++, q--) 
+    {
+      const Int   s = 1 << d;
+      const Int * p = par + ((r * 6 + d) * 32);
+      if (q > 0)
+      {
+        for (Int i = 0; i < 32; i++) 
+        {
+          const tabSinCos * t = &g_tabSinCos[*p++];
+          register Int j = i + (i & -s);
+          register Int a = src[j];
+          register Int b = src[j + s];
+          src[j]     = (t->c * a - t->s * b + 512) >> 10;
+          src[j + s] = (t->c * b + t->s * a + 512) >> 10;
+        }
+      }
+      else
+      {
+        for (int i = 0; i < 32; i++) 
+        {
+          const tabSinCos * t = &g_tabSinCos[*p++];
+          register Int j = i + (i & -s);
+          register Int a = src[j];
+          register Int b = src[j + s];
+          src[j]     = (t->c * a - t->s * b + cof) >> (10 + shl);
+          src[j + s] = (t->c * b + t->s * a + cof) >> (10 + shl);
+        }
+      }
+    }
+  }
+}
+
+Void TComTrQuant::InvNsst8x8( Int* src, UInt uiMode, UChar index )
+{
+  const Int    rnd = NSST_HYGT_RNDS_8x8;
+  const Int    shl = 5;
+  const Int  * par = g_nsstHyGTPar8x8[uiMode][index];
+  const Int    cof = 1 << (shl + 9);
+  
+  assert( index<4 );
+
+  for (Int k = 0; k < 64; k++) src[k] <<= shl;
+
+  for (Int r = rnd, q = (6 * rnd - 1); --r >= 0;) 
+  {
+    for (Int d = 6; --d >= 0; q--) 
+    {
+      const Int   s = 1 << d;
+      const Int * p = par + ((r * 6 + d) * 32);
+      if (q > 0)
+      {
+        for (Int i = 0; i < 32; i++) 
+        {
+          const tabSinCos * t = &g_tabSinCos[*p++];
+          register Int j = i + (i & -s);
+          register Int a = src[j];
+          register Int b = src[j + s];
+          src[j]     = (t->c * a + t->s * b + 512) >> 10;
+          src[j + s] = (t->c * b - t->s * a + 512) >> 10;
+        }
+      }
+      else
+      {
+        for (Int i = 0; i < 32; i++) 
+        {
+          const tabSinCos * t = &g_tabSinCos[*p++];
+          register Int j = i + (i & -s);
+          register Int a = src[j];
+          register Int b = src[j + s];
+          src[j]     = (t->c * a + t->s * b + cof) >> (10 + shl);
+          src[j + s] = (t->c * b - t->s * a + cof) >> (10 + shl);
+        }
+      }
+    }
+  }
+}
+
+#else
+
 Void TComTrQuant::FwdNsst4x4( Int* src, UInt uiMode, UChar index )
 {
   const Int *iT = g_aiNsst4x4[uiMode][index][0];
@@ -6622,6 +6806,8 @@ Void TComTrQuant::InvNsst4x4( Int* src, UInt uiMode, UChar index )
 
   memcpy( src, temp, 16*sizeof(Int) );
 }
+
+#endif
 #endif
 
 #if COM16_C806_EMT
@@ -6819,16 +7005,28 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
         )
 #endif
       {           
+#if JVET_D0120_NSST_IMPROV
+        static Int NSST_MATRIX[64];
+        const  Int iLog2SbSize   = (uiWidth > 4 && uiHeight > 4) ? 3 : 2;
+        const  Int iSbSize       = (uiWidth > 4 && uiHeight > 4) ? 8 : 4;
+        const  Int iSubGroupXMax = Clip3(1, 8, (Int)uiWidth ) >> iLog2SbSize;
+        const  Int iSubGroupYMax = Clip3(1, 8, (Int)uiHeight) >> iLog2SbSize;
+#else
         static Int NSST_MATRIX[16];
         Int iSubGroupXMax = Clip3 (1,16,(Int)( (uiWidth>>2)));
         Int iSubGroupYMax = Clip3 (1,16,(Int)( (uiHeight>>2)));
+#endif
 
         Int iOffSetX = 0;
         Int iOffSetY = 0;
         Int y = 0;
         Int* piCoeffTemp = m_plTempCoeff;
         Int* piNsstTemp = NSST_MATRIX;
+#if JVET_D0120_NSST_IMPROV
+        Int iString2CopySize = iSbSize*sizeof(Int);
+#else
         Int iString2CopySize = 4*sizeof(Int);
+#endif
 #if VCEG_AZ07_CTX_RESIDUALCODING
 #if !JVET_C0024_QTBT
         const UInt uiLog2BlockSize = g_aucConvertToBit[ uiWidth ] + 2;
@@ -6843,15 +7041,30 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
         const UInt log2BlockHeight = g_aucConvertToBit[uiHeight] + 2;
 #endif
 #if VCEG_AZ07_CTX_RESIDUALCODING
+#if JVET_D0120_NSST_IMPROV
+#if JVET_C0024_QTBT
+        const UInt *scan = (log2BlockWidth>=3 && log2BlockHeight>=3) ? g_auiCoefTopLeftDiagScan8x8[log2BlockWidth-3] : g_scanOrder[ SCAN_GROUPED_4x4 ][ uiScanIdx ][ log2BlockWidth    ][ log2BlockHeight    ];
+#else
+        const UInt *scan = uiLog2BlockSize>3 ? g_auiCoefTopLeftDiagScan8x8[log2BlockWidth-4] : g_scanOrder[ SCAN_GROUPED_4x4 ][ uiScanIdx ][ log2BlockWidth    ][ log2BlockHeight    ];
+#endif
+#else
 #if JVET_C0024_QTBT
         const UInt *scan = (log2BlockWidth==3 && log2BlockHeight==3) ? g_auiCoefScanFirstCG8x8[uiScanIdx] : g_scanOrder[ SCAN_GROUPED_4x4 ][ uiScanIdx ][ log2BlockWidth    ][ log2BlockHeight    ];
 #else
         const UInt *scan = uiLog2BlockSize==3 ? g_auiCoefScanFirstCG8x8[uiScanIdx] : g_scanOrder[ SCAN_GROUPED_4x4 ][ uiScanIdx ][ log2BlockWidth    ][ log2BlockHeight    ];
 #endif
+#endif
+#else
+#if JVET_D0120_NSST_IMPROV
+#if JVET_C0024_QTBT
+        const UInt *scan = (log2BlockWidth>=3 && log2BlockHeight>=3) ? g_auiCoefTopLeftDiagScan8x8[log2BlockWidth-3] : g_scanOrder[ SCAN_GROUPED_4x4 ][ uiScanIdx ][ log2BlockWidth    ][ log2BlockHeight    ];
+#else
+        const UInt *scan = uiLog2BlockSize>3 ? g_auiCoefTopLeftDiagScan8x8[log2BlockWidth-4] : g_scanOrder[ SCAN_GROUPED_4x4 ][ uiScanIdx ][ log2BlockWidth    ][ log2BlockHeight    ];
+#endif
 #else
         const UInt *scan = g_scanOrder[ SCAN_GROUPED_4x4 ][ uiScanIdx ][ log2BlockWidth    ][ log2BlockHeight    ];
 #endif
-
+#endif
         UInt uiIntraMode = pcCU->getIntraDir( toChannelType(compID), uiAbsPartIdx);
         if( compID != COMPONENT_Y )
         {
@@ -6887,43 +7100,104 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
         if( iNsstCandNum > pcCU->getROTIdx(uiAbsPartIdx) )
 #endif
         {
+#if JVET_D0120_NSST_IMPROV 
+          const Int * permut = iSbSize>4 ? g_nsstHyGTPermut8x8[g_NsstLut[uiIntraMode]][ucNsstIdx - 1] : g_nsstHyGTPermut4x4[g_NsstLut[uiIntraMode]][ucNsstIdx - 1];
+#endif
           for (Int iSubGroupX = 0; iSubGroupX<iSubGroupXMax; iSubGroupX++)
           {
             for (Int iSubGroupY = 0; iSubGroupY<iSubGroupYMax; iSubGroupY++)
             {
+#if JVET_D0120_NSST_IMPROV
+              iOffSetX = iSbSize*iSubGroupX;
+              iOffSetY = iSbSize*iSubGroupY*uiWidth;
+#else
               iOffSetX = 4*iSubGroupX;
               iOffSetY = 4*iSubGroupY*uiWidth;
+#endif
               piNsstTemp = NSST_MATRIX;
               piCoeffTemp = m_plTempCoeff+iOffSetX+iOffSetY;
 
+#if JVET_D0120_NSST_IMPROV
+              for(  y = 0; y < iSbSize; y++ )
+#else
               for(  y = 0; y < 4; y++ )
+#endif
               {  
                 if( uiIntraMode>DIA_IDX )
                 {
+#if JVET_D0120_NSST_IMPROV
+                  if( iSbSize==4 )
+                  {
+                    piNsstTemp[ 0] = piCoeffTemp[0]; piNsstTemp[ 4] = piCoeffTemp[1];
+                    piNsstTemp[ 8] = piCoeffTemp[2]; piNsstTemp[12] = piCoeffTemp[3];
+                  }
+                  else if( iSbSize==8 )
+                  {
+                    piNsstTemp[ 0] = piCoeffTemp[0]; piNsstTemp[ 8] = piCoeffTemp[1];
+                    piNsstTemp[16] = piCoeffTemp[2]; piNsstTemp[24] = piCoeffTemp[3];
+                    piNsstTemp[32] = piCoeffTemp[4]; piNsstTemp[40] = piCoeffTemp[5];
+                    piNsstTemp[48] = piCoeffTemp[6]; piNsstTemp[56] = piCoeffTemp[7];
+                  }
+#else
                   piNsstTemp[ 0] = piCoeffTemp[0]; piNsstTemp[ 4] = piCoeffTemp[1];
                   piNsstTemp[ 8] = piCoeffTemp[2]; piNsstTemp[12] = piCoeffTemp[3];
+#endif
                   piNsstTemp ++;
                 }
                 else
                 {
                   ::memcpy(piNsstTemp, piCoeffTemp, iString2CopySize); 
+#if JVET_D0120_NSST_IMPROV
+                  piNsstTemp += iSbSize;
+#else
                   piNsstTemp +=4;
+#endif
                 }
                 piCoeffTemp +=uiWidth;
               }
 
 #if JVET_C0024_QTBT
+#if JVET_D0120_NSST_IMPROV
+              if ( iSbSize>4 )
+              {
+                FwdNsst8x8( NSST_MATRIX, g_NsstLut[uiIntraMode], ucNsstIdx-1 );
+              }
+              else
+              {
+                FwdNsst4x4( NSST_MATRIX, g_NsstLut[uiIntraMode], ucNsstIdx-1 );
+              }
+#else
               FwdNsst4x4( NSST_MATRIX, g_NsstLut[uiIntraMode], ucNsstIdx-1 );
+#endif
+#else
+#if JVET_D0120_NSST_IMPROV
+              if ( iSbSize>4 )
+              {
+                FwdNsst8x8( NSST_MATRIX, g_NsstLut[uiIntraMode], pcCU->getROTIdx(uiAbsPartIdx)-1 );
+              }
+              else 
+              {
+                FwdNsst4x4( NSST_MATRIX, g_NsstLut[uiIntraMode], pcCU->getROTIdx(uiAbsPartIdx)-1 );
+              }
 #else
               FwdNsst4x4( NSST_MATRIX, g_NsstLut[uiIntraMode], pcCU->getROTIdx(uiAbsPartIdx)-1 );
+#endif
 #endif
 
               piNsstTemp = NSST_MATRIX;
               piCoeffTemp = m_plTempCoeff+iOffSetX+iOffSetY;
 
+#if JVET_D0120_NSST_IMPROV
+              for(  y = 0; y < iSbSize*iSbSize; y++ )
+#else
               for(  y = 0; y < 16; y++ )
-              {    
+#endif
+              {
+#if JVET_D0120_NSST_IMPROV 
+                piCoeffTemp[scan[y]] = piNsstTemp[permut[y]];
+#else
                 piCoeffTemp[scan[y]] = piNsstTemp[y];
+#endif
               }
             }
           }
@@ -7113,16 +7387,28 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
 #if !JVET_C0024_QTBT
       Char ucNsstIdx = pcCU->getROTIdx(uiAbsPartIdx) ;
 #endif
+#if JVET_D0120_NSST_IMPROV
+      static Int NSST_MATRIX[64];
+      const  Int iLog2SbSize   = (uiWidth > 4 && uiHeight > 4) ? 3 : 2;
+      const  Int iSbSize       = (uiWidth > 4 && uiHeight > 4) ? 8 : 4;
+      const  Int iSubGroupXMax = Clip3(1, 8, (Int)uiWidth ) >> iLog2SbSize;
+      const  Int iSubGroupYMax = Clip3(1, 8, (Int)uiHeight) >> iLog2SbSize;
+#else
       static Int NSST_MATRIX[16];
       Int iSubGroupXMax = Clip3 (1,16,(Int)( (uiWidth>>2)));
       Int iSubGroupYMax = Clip3 (1,16,(Int)( (uiHeight>>2)));
+#endif
+
       Int iOffSetX = 0;
       Int iOffSetY = 0;
       Int y = 0;
       Int* piCoeffTemp = m_plTempCoeff;
       Int* piNsstTemp = NSST_MATRIX;
+#if JVET_D0120_NSST_IMPROV
+      Int iString2CopySize = iSbSize*sizeof(Int);
+#else
       Int iString2CopySize = 4*sizeof(Int);
-
+#endif
 
 #if VCEG_AZ07_CTX_RESIDUALCODING
 #if !JVET_C0024_QTBT
@@ -7138,13 +7424,29 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
       const UInt log2BlockHeight = g_aucConvertToBit[uiHeight] + 2;
 #endif
 #if VCEG_AZ07_CTX_RESIDUALCODING
+#if JVET_D0120_NSST_IMPROV
+#if JVET_C0024_QTBT
+      const UInt *scan = (log2BlockWidth>=3 && log2BlockHeight>=3) ? g_auiCoefTopLeftDiagScan8x8[log2BlockWidth-3] : g_scanOrder[ SCAN_GROUPED_4x4 ][ uiScanIdx ][ log2BlockWidth    ][ log2BlockHeight    ];
+#else
+      const UInt *scan = uiLog2BlockSize>3 ? g_auiCoefTopLeftDiagScan8x8[log2BlockWidth-4] : g_scanOrder[ SCAN_GROUPED_4x4 ][ uiScanIdx ][ log2BlockWidth    ][ log2BlockHeight    ];
+#endif
+#else
 #if JVET_C0024_QTBT
       const UInt *scan = (log2BlockWidth==3 && log2BlockHeight==3)? g_auiCoefScanFirstCG8x8[uiScanIdx] : g_scanOrder[ SCAN_GROUPED_4x4 ][ uiScanIdx ][ log2BlockWidth    ][ log2BlockHeight    ];
 #else
       const UInt *scan = uiLog2BlockSize==3 ? g_auiCoefScanFirstCG8x8[uiScanIdx] : g_scanOrder[ SCAN_GROUPED_4x4 ][ uiScanIdx ][ log2BlockWidth    ][ log2BlockHeight    ];
 #endif
+#endif
+#else
+#if JVET_D0120_NSST_IMPROV
+#if JVET_C0024_QTBT
+      const UInt *scan = (log2BlockWidth>=3 && log2BlockHeight>=3) ? g_auiCoefTopLeftDiagScan8x8[log2BlockWidth-3] : g_scanOrder[ SCAN_GROUPED_4x4 ][ uiScanIdx ][ log2BlockWidth    ][ log2BlockHeight    ];
+#else
+      const UInt *scan = uiLog2BlockSize>3 ? g_auiCoefTopLeftDiagScan8x8[log2BlockWidth-4] : g_scanOrder[ SCAN_GROUPED_4x4 ][ uiScanIdx ][ log2BlockWidth    ][ log2BlockHeight    ];
+#endif
 #else
       const UInt *scan = g_scanOrder[ SCAN_GROUPED_4x4 ][ uiScanIdx ][ log2BlockWidth    ][ log2BlockHeight    ];
+#endif
 #endif
 
       UInt uiIntraMode = pcCU->getIntraDir( toChannelType(compID), uiAbsPartIdx);
@@ -7178,36 +7480,86 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
 
       if( iNsstCandNum > ucNsstIdx )
       {
+#if JVET_D0120_NSST_IMPROV 
+        const Int * permut = iSbSize>4 ? g_nsstHyGTPermut8x8[g_NsstLut[uiIntraMode]][ucNsstIdx - 1] : g_nsstHyGTPermut4x4[g_NsstLut[uiIntraMode]][ucNsstIdx - 1];
+#endif
         for (Int iSubGroupX = 0; iSubGroupX<iSubGroupXMax; iSubGroupX++)
         {
           for (Int iSubGroupY = 0; iSubGroupY<iSubGroupYMax; iSubGroupY++)
           {
+#if JVET_D0120_NSST_IMPROV
+            iOffSetX = iSbSize*iSubGroupX;
+            iOffSetY = iSbSize*iSubGroupY*uiWidth;
+#else
             iOffSetX = 4*iSubGroupX;
             iOffSetY = 4*iSubGroupY*uiWidth;
+#endif
             piNsstTemp = NSST_MATRIX;
             piCoeffTemp = m_plTempCoeff+iOffSetX+iOffSetY;
 
+#if JVET_D0120_NSST_IMPROV
+            for(  y = 0; y < iSbSize*iSbSize; y++ )
+#else
             for(  y = 0; y < 16; y++ )
+#endif
             {    
+#if JVET_D0120_NSST_IMPROV
+              piNsstTemp[permut[y]] = piCoeffTemp[scan[y]];
+#else
               piNsstTemp[y] = piCoeffTemp[scan[y]];
+#endif
             }
 
+#if JVET_D0120_NSST_IMPROV
+            if ( iSbSize>4 )
+            {
+              InvNsst8x8( NSST_MATRIX, g_NsstLut[uiIntraMode], ucNsstIdx-1 );
+            }
+            else
+            {
+              InvNsst4x4( NSST_MATRIX, g_NsstLut[uiIntraMode], ucNsstIdx-1 );
+            }
+#else
             InvNsst4x4( NSST_MATRIX, g_NsstLut[uiIntraMode], ucNsstIdx-1 );
+#endif
 
             piNsstTemp = NSST_MATRIX;
             piCoeffTemp = m_plTempCoeff+iOffSetX+iOffSetY;
+#if JVET_D0120_NSST_IMPROV
+            for(  y = 0; y < iSbSize; y++ )
+#else
             for(  y = 0; y < 4; y++ )
+#endif
             {    
               if( uiIntraMode>DIA_IDX )
               {
+#if JVET_D0120_NSST_IMPROV
+                if ( iSbSize==4 )
+                {
+                  piCoeffTemp[0] = piNsstTemp[ 0]; piCoeffTemp[1] = piNsstTemp[ 4];
+                  piCoeffTemp[2] = piNsstTemp[ 8]; piCoeffTemp[3] = piNsstTemp[12];
+                }
+                else if ( iSbSize==8 )
+                {
+                  piCoeffTemp[0] = piNsstTemp[ 0]; piCoeffTemp[1] = piNsstTemp[ 8];
+                  piCoeffTemp[2] = piNsstTemp[16]; piCoeffTemp[3] = piNsstTemp[24];
+                  piCoeffTemp[4] = piNsstTemp[32]; piCoeffTemp[5] = piNsstTemp[40];
+                  piCoeffTemp[6] = piNsstTemp[48]; piCoeffTemp[7] = piNsstTemp[56];
+                }
+#else
                 piCoeffTemp[0] = piNsstTemp[ 0]; piCoeffTemp[1] = piNsstTemp[ 4];
                 piCoeffTemp[2] = piNsstTemp[ 8]; piCoeffTemp[3] = piNsstTemp[12];
+#endif
                 piNsstTemp ++;
               }
               else
               {
                 ::memcpy( piCoeffTemp, piNsstTemp, iString2CopySize); 
+#if JVET_D0120_NSST_IMPROV
+                piNsstTemp +=iSbSize;
+#else
                 piNsstTemp +=4;
+#endif
               }
               piCoeffTemp +=uiWidth;          
             }

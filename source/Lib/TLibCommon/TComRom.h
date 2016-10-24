@@ -188,9 +188,25 @@ extern TMatrixCoeff g_aiTr64[NUM_TRANS_TYPE][64][64];
 
 #if COM16_C1044_NSST
 extern const UChar g_NsstLut[NUM_INTRA_MODE-1];
+#if JVET_D0120_NSST_IMPROV
+struct tabSinCos { Int c, s; };
+extern tabSinCos g_tabSinCos     [NSST_HYGT_PTS]; 
+extern const Int g_nsstHyGTPermut4x4 [35][3][16];
+extern const Int g_nsstHyGTPar4x4    [35][3][64];
+extern const Int g_nsstHyGTPermut8x8 [35][3][64];
+extern const Int g_nsstHyGTPar8x8    [35][3][768];
+#else
 extern const Int   g_aiNsst4x4[12][3][16][16];
+#endif
 #if VCEG_AZ07_CTX_RESIDUALCODING
 extern const UInt  g_auiCoefScanFirstCG8x8[3][16];
+#endif
+#if JVET_D0120_NSST_IMPROV
+#if JVET_C0024_QTBT
+extern const UInt g_auiCoefTopLeftDiagScan8x8[5][64];
+#else
+extern const UInt g_auiCoefTopLeftDiagScan8x8[3][64];
+#endif
 #endif
 #endif
 
