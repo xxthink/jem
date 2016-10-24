@@ -283,6 +283,12 @@ static const UInt  EMT_INTER_MAX_CU =                              32; ///< Max 
 #endif
 #endif
 
+#if JVET_D0120_NSST_IMPROV
+static const Int  NSST_HYGT_RNDS_4x4 =                              2;
+static const Int  NSST_HYGT_RNDS_8x8 =                              4;
+static const Int  NSST_HYGT_PTS =                            (1 << 8);
+#endif
+
 #if VCEG_AZ07_INTRA_65ANG_MODES
 static const Int MDCS_ANGLE_LIMIT =                                 9; ///< 0 = Horizontal/vertical only, 1 = Horizontal/vertical +/- 1, 2 = Horizontal/vertical +/- 2 etc...
 #else

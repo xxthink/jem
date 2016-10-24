@@ -329,6 +329,10 @@ Void RotTransform4I( Int* matrix, UChar index );
 #elif COM16_C1044_NSST
 Void FwdNsst4x4( Int* src, UInt uiMode, UChar index );
 Void InvNsst4x4( Int* src, UInt uiMode, UChar index );
+#if JVET_D0120_NSST_IMPROV
+Void FwdNsst8x8( Int* src, UInt uiMode, UChar index );
+Void InvNsst8x8( Int* src, UInt uiMode, UChar index );
+#endif
 #endif 
   // transform & inverse transform functions
   Void transformNxN(       TComTU         & rTu,
