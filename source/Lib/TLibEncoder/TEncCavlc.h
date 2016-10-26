@@ -177,6 +177,10 @@ public:
   Void codeKLTFlags      (TComTU &rTu, ComponentID component);
 #endif
 
+#if JVET_D0123_ME_CTX_LUT_BITS
+  Void estPuMeBit        ( estPuMeBitsSbacStruct* pcEstPuMeBitsSbac);
+#endif
+
   Void estBit            ( estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, ChannelType chType 
 #if RDOQ_BIT_ESTIMATE_FIX_TICKET29
     , UInt uiScanIdx

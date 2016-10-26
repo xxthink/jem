@@ -50,6 +50,9 @@
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////
+
+#define JVET_D0123_ME_CTX_LUT_BITS                        1
+
 #define JVET_C0024_QTBT                                   1
 
 #if JVET_C0024_QTBT
@@ -656,6 +659,9 @@ enum CI_IDX
   CI_CHROMA_INTRA,      ///< chroma intra index
   CI_QT_TRAFO_TEST,
   CI_QT_TRAFO_ROOT,
+#if JVET_D0123_ME_CTX_LUT_BITS
+  CI_PU_NEXT_BEST,
+#endif
   CI_NUM,               ///< total number
 };
 

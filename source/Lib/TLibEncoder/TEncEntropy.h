@@ -53,7 +53,27 @@
 class TEncSbac;
 class TEncCavlc;
 class SEI;
-
+#if JVET_D0123_ME_CTX_LUT_BITS
+typedef struct
+{
+  Int mvdBits[NUM_MV_RES_CTX][2 /*Flag = [0|1]*/];
+  Int mvpIdxBits[NUM_MVP_IDX_CTX][2 /*Flag = [0|1]*/];
+  Int mrgFlagBits[NUM_MERGE_FLAG_EXT_CTX][2 /*Flag = [0|1]*/];
+  Int mrgIdxBits[NUM_MERGE_IDX_EXT_CTX][2 /*Flag = [0|1]*/];
+  Int refIdxBits[NUM_REF_NO_CTX][2 /*Flag = [0|1]*/];
+#if VCEG_AZ07_FRUC_MERGE
+  Int frucMrgBits[NUM_FRUCMGRMODE_CTX][2 /*Flag = [0|1]*/];
+  Int frucMeBits [NUM_FRUCME_CTX][2 /*Flag = [0|1]*/];
+#endif
+  Int interDirBits[NUM_INTER_DIR_CTX][2 /*Flag = [0|1]*/];
+#if COM16_C1016_AFFINE
+  Int affineFlagBits[NUM_AFFINE_FLAG_CTX][2 /*Flag = [0|1]*/];
+#endif
+#if VCEG_AZ07_IMV
+  Int iMVFlagBits[NUM_IMV_FLAG_CTX][2/*Flag = [0|1]*/];
+#endif
+} estPuMeBitsSbacStruct;
+#endif
 // ====================================================================================================================
 // Class definition
 // ====================================================================================================================
@@ -155,7 +175,9 @@ public:
     , UInt uiScanIdx
 #endif
     ) = 0;
-
+#if JVET_D0123_ME_CTX_LUT_BITS
+  virtual Void estPuMeBit           (estPuMeBitsSbacStruct* pcEstPuMeBitsSbac) = 0;
+#endif
   virtual Void codeExplicitRdpcmMode ( TComTU &rTu, const ComponentID compID ) = 0;
 
   virtual ~TEncEntropyIf() {}
@@ -254,6 +276,9 @@ public:
 #if VCEG_AZ06_IC
   Void encodeICFlag            ( TComDataCU* pcCU, UInt uiAbsPartIdx );
 #endif
+#if JVET_D0123_ME_CTX_LUT_BITS
+  Void encodePuMotionInfo     (TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiPartIdx);
+#endif
   Void encodePUWise       ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void encodeInterDirPU   ( TComDataCU* pcSubCU, UInt uiAbsPartIdx  );
   Void encodeRefFrmIdxPU  ( TComDataCU* pcSubCU, UInt uiAbsPartIdx, RefPicList eRefList );
@@ -332,7 +357,9 @@ public:
     , UInt uiScanIdx
 #endif
     );
-
+#if JVET_D0123_ME_CTX_LUT_BITS
+  Void estimatePuMeBit        ( estPuMeBitsSbacStruct* pcMePuEstBitsSbac );
+#endif
   Void encodeSAOBlkParam(SAOBlkParam& saoBlkParam, const BitDepths &bitDepths, Bool* sliceEnabled, Bool leftMergeAvail, Bool aboveMergeAvail){m_pcEntropyCoderIf->codeSAOBlkParam(saoBlkParam, bitDepths, sliceEnabled, leftMergeAvail, aboveMergeAvail, false);}
 
   static Int countNonZeroCoeffs( TCoeff* pcCoef, UInt uiSize );

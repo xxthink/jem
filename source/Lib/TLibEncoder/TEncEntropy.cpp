@@ -729,6 +729,103 @@ Void TEncEntropy::encodeCrossComponentPrediction( TComTU &rTu, ComponentID compI
   m_pcEntropyCoderIf->codeCrossComponentPrediction( rTu, compID );
 }
 
+#if JVET_D0123_ME_CTX_LUT_BITS
+Void TEncEntropy::encodePuMotionInfo(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiPartIdx){ 
+#if JVET_C0024_QTBT
+#if COM16_C1016_AFFINE
+  PartSize ePartSize = SIZE_2Nx2N;
+#endif
+#else
+  PartSize ePartSize = pcCU->getPartitionSize( uiAbsPartIdx );
+#endif
+#if VCEG_AZ07_IMV
+  Bool bNonZeroMvd = false;
+#endif
+    encodeMergeFlag( pcCU, uiAbsPartIdx );
+    if ( pcCU->getMergeFlag( uiAbsPartIdx ) )
+    {
+#if VCEG_AZ07_FRUC_MERGE
+      encodeFRUCMgrMode( pcCU, uiAbsPartIdx , uiPartIdx );
+      if( !pcCU->getFRUCMgrMode( uiAbsPartIdx ) )
+#endif
+#if COM16_C1016_AFFINE
+      {
+        if ( ePartSize == SIZE_2Nx2N && pcCU->isAffineMrgFlagCoded(uiAbsPartIdx, uiPartIdx) )
+        {
+          encodeAffineFlag( pcCU, uiAbsPartIdx, uiPartIdx );
+        }
+
+        if ( !pcCU->isAffine( uiAbsPartIdx ) )
+        {
+          encodeMergeIndex( pcCU, uiAbsPartIdx );
+        }
+      }
+#else
+      encodeMergeIndex( pcCU, uiAbsPartIdx );
+#endif
+#if ENVIRONMENT_VARIABLE_DEBUG_AND_TEST
+      if (bDebugPred)
+      {
+        std::cout << "Coded merge flag, CU absPartIdx: " << uiAbsPartIdx << " PU(" << uiPartIdx << ") absPartIdx: " << uiSubPartIdx;
+        std::cout << " merge index: " << (UInt)pcCU->getMergeIndex(uiSubPartIdx) << std::endl;
+      }
+#endif
+    }
+    else
+    {
+      encodeInterDirPU( pcCU, uiAbsPartIdx );
+#if COM16_C1016_AFFINE
+#if JVET_C0024_QTBT
+      if ( pcCU->getWidth(uiAbsPartIdx) > 8 && pcCU->getHeight(uiAbsPartIdx) > 8 && ePartSize == SIZE_2Nx2N )
+#else
+      if ( pcCU->getWidth(uiAbsPartIdx) > 8 && ePartSize == SIZE_2Nx2N )
+#endif
+      {
+        encodeAffineFlag( pcCU, uiAbsPartIdx, uiPartIdx );
+      }
+#endif
+
+      for ( UInt uiRefListIdx = 0; uiRefListIdx < 2; uiRefListIdx++ )
+      {
+        if ( pcCU->getSlice()->getNumRefIdx( RefPicList( uiRefListIdx ) ) > 0 )
+        {
+          encodeRefFrmIdxPU ( pcCU, uiAbsPartIdx, RefPicList( uiRefListIdx ) );
+
+          encodeMvdPU       ( pcCU, uiAbsPartIdx, RefPicList( uiRefListIdx ) );
+
+#if VCEG_AZ07_IMV
+          bNonZeroMvd |= ( pcCU->getCUMvField( RefPicList( uiRefListIdx ) )->getMvd( uiAbsPartIdx ).getHor() != 0 );
+          bNonZeroMvd |= ( pcCU->getCUMvField( RefPicList( uiRefListIdx ) )->getMvd( uiAbsPartIdx ).getVer() != 0 );
+#endif
+          encodeMVPIdxPU    ( pcCU, uiAbsPartIdx, RefPicList( uiRefListIdx ) );
+#if ENVIRONMENT_VARIABLE_DEBUG_AND_TEST
+          if (bDebugPred)
+          {
+            std::cout << "refListIdx: " << uiRefListIdx << std::endl;
+            std::cout << "MVD horizontal: " << pcCU->getCUMvField(RefPicList(uiRefListIdx))->getMvd( uiAbsPartIdx ).getHor() << std::endl;
+            std::cout << "MVD vertical:   " << pcCU->getCUMvField(RefPicList(uiRefListIdx))->getMvd( uiAbsPartIdx ).getVer() << std::endl;
+            std::cout << "MVPIdxPU: " << pcCU->getMVPIdx(RefPicList( uiRefListIdx ), uiSubPartIdx) << std::endl;
+            std::cout << "InterDir: " << (UInt)pcCU->getInterDir(uiSubPartIdx) << std::endl;
+          }
+#endif
+        }
+      }
+    } 
+
+#if VCEG_AZ07_IMV
+  if( bNonZeroMvd && pcCU->getSlice()->getSPS()->getIMV() )
+  {
+    encodeiMVFlag( pcCU , uiAbsPartIdx );
+  }
+  if( !bNonZeroMvd )
+  {
+    assert( pcCU->getiMVFlag( uiAbsPartIdx ) == 0 );
+  }
+
+#endif
+  return;
+}
+#endif
 //! encode motion information for every PU block
 Void TEncEntropy::encodePUWise( TComDataCU* pcCU, UInt uiAbsPartIdx )
 {
@@ -1204,6 +1301,13 @@ Void TEncEntropy::encodeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID
     }
   }
 }
+
+#if JVET_D0123_ME_CTX_LUT_BITS
+Void TEncEntropy::estimatePuMeBit (estPuMeBitsSbacStruct* pcEstPuMeBitsSbac )
+{
+  m_pcEntropyCoderIf->estPuMeBit ( pcEstPuMeBitsSbac );
+}
+#endif
 
 Void TEncEntropy::estimateBit (estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, const ChannelType chType
 #if RDOQ_BIT_ESTIMATE_FIX_TICKET29

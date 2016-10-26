@@ -3469,6 +3469,10 @@ Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTem
   Bool bMrgTempBufSet = false;
   if (!bestIsSkip)
   {
+#if JVET_D0123_ME_CTX_LUT_BITS
+    UInt uiMrgIdxBits[MRG_MAX_NUM_CANDS];
+    m_pcPredSearch->getMrgCandBits(rpcBestCU, 0, uiMrgIdxBits);
+#endif
     bMrgTempBufSet = true;
     for( UInt uiMergeCand = 0; uiMergeCand < numValidMergeCand; ++uiMergeCand )
     {
@@ -3536,14 +3540,17 @@ Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTem
       distParam.bApplyWeight = false;
 
       UInt uiSad = distParam.DistFunc(&distParam);
-
+#if JVET_D0123_ME_CTX_LUT_BITS
+      UInt uiBitsCand = uiMrgIdxBits[uiMergeCand];
+      Double cost  = (Double)uiSad + (Double)uiBitsCand/((Double)EPBIT) * m_pcRdCost->getSqrtLambda();
+#else
       UInt uiBitsCand = uiMergeCand + 1;                                         
       if (uiMergeCand == rpcTempCU->getSlice()->getMaxNumMergeCand() -1)
       {
         uiBitsCand--;
       }   
       Double cost      = (Double)uiSad + (Double)uiBitsCand * m_pcRdCost->getSqrtLambda();
-
+#endif
       TEncSearch::updateCandList( uiMergeCand, cost, uiNumMrgSATDCand, uiRdModeList, CandCostList );
     }
     for (UInt i=1; i<uiNumMrgSATDCand; i++)

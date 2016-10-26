@@ -2809,6 +2809,118 @@ Void TEncSbac::codeSAOBlkParam(SAOBlkParam& saoBlkParam, const BitDepths &bitDep
   }
 }
 
+#if JVET_D0123_ME_CTX_LUT_BITS
+Void TEncSbac::estPuMeBit  (estPuMeBitsSbacStruct* pcEstPuMeBitsSbac)
+{
+  estMvdBit            (pcEstPuMeBitsSbac);
+  estMvpIdxBit         (pcEstPuMeBitsSbac);
+  estRefIdxBit         (pcEstPuMeBitsSbac);
+  estMrgFlagBit        (pcEstPuMeBitsSbac);
+  estMrgIdxBit         (pcEstPuMeBitsSbac);  
+  estInterDirBit       (pcEstPuMeBitsSbac);  
+#if VCEG_AZ07_FRUC_MERGE
+  estFrucModeBit     (pcEstPuMeBitsSbac);  
+#endif
+#if COM16_C1016_AFFINE
+  estAffineFlagBit     (pcEstPuMeBitsSbac);
+#endif
+}
+
+Void TEncSbac::estMvdBit            (estPuMeBitsSbacStruct* pcEstPuMeBitsSbac)
+{
+  ContextModel *pCtx = m_cCUMvdSCModel.get(0);
+  for (UInt uiCtxInc = 0; uiCtxInc < NUM_MV_RES_CTX; uiCtxInc++)
+  {
+    pcEstPuMeBitsSbac->mvdBits[uiCtxInc][0] = pCtx[ uiCtxInc ].getEntropyBits( 0 );
+    pcEstPuMeBitsSbac->mvdBits[uiCtxInc][1] = pCtx[ uiCtxInc ].getEntropyBits( 1 );
+  }
+}
+
+Void TEncSbac::estMvpIdxBit         (estPuMeBitsSbacStruct* pcEstPuMeBitsSbac){
+  ContextModel *pCtx = m_cMVPIdxSCModel.get(0);
+  for (UInt uiCtxInc = 0; uiCtxInc < NUM_MVP_IDX_CTX; uiCtxInc++)
+  {
+    pcEstPuMeBitsSbac->mvpIdxBits[uiCtxInc][0] = pCtx[ uiCtxInc ].getEntropyBits( 0 );
+    pcEstPuMeBitsSbac->mvpIdxBits[uiCtxInc][1] = pCtx[ uiCtxInc ].getEntropyBits( 1 );
+  }
+}
+
+Void TEncSbac::estRefIdxBit          (estPuMeBitsSbacStruct* pcEstPuMeBitsSbac)
+{
+  ContextModel *pCtx = m_cCURefPicSCModel.get(0);
+  for (UInt uiCtxInc = 0; uiCtxInc < NUM_REF_NO_CTX; uiCtxInc++)
+  {
+    pcEstPuMeBitsSbac->refIdxBits[uiCtxInc][0] = pCtx[ uiCtxInc ].getEntropyBits( 0 );
+    pcEstPuMeBitsSbac->refIdxBits[uiCtxInc][1] = pCtx[ uiCtxInc ].getEntropyBits( 1 );
+  }
+}
+#if VCEG_AZ07_FRUC_MERGE
+Void TEncSbac::estFrucModeBit      (estPuMeBitsSbacStruct* pcEstPuMeBitsSbac)
+{
+  ContextModel *pCtx = m_cCUFRUCMgrModeSCModel.get(0);
+  for (UInt uiCtxInc = 0; uiCtxInc < NUM_FRUCMGRMODE_CTX; uiCtxInc++)
+  {
+    pcEstPuMeBitsSbac->frucMrgBits[uiCtxInc][0] = pCtx[ uiCtxInc ].getEntropyBits( 0 );
+    pcEstPuMeBitsSbac->frucMrgBits[uiCtxInc][1] = pCtx[ uiCtxInc ].getEntropyBits( 1 );
+  }
+  pCtx = m_cCUFRUCMESCModel.get(0);
+  for (UInt uiCtxInc = 0; uiCtxInc < NUM_FRUCME_CTX; uiCtxInc++)
+  {
+    pcEstPuMeBitsSbac->frucMeBits[uiCtxInc][0] = pCtx[ uiCtxInc ].getEntropyBits( 0 );
+    pcEstPuMeBitsSbac->frucMeBits[uiCtxInc][1] = pCtx[ uiCtxInc ].getEntropyBits( 1 );
+  }
+}
+#endif
+Void TEncSbac::estMrgFlagBit        (estPuMeBitsSbacStruct* pcEstPuMeBitsSbac)
+{
+  ContextModel *pCtx = m_cCUMergeFlagExtSCModel.get(0);
+  for (UInt uiCtxInc = 0; uiCtxInc < NUM_MERGE_FLAG_EXT_CTX; uiCtxInc++)
+  {
+    pcEstPuMeBitsSbac->mrgFlagBits[uiCtxInc][0] = pCtx[ uiCtxInc ].getEntropyBits( 0 );
+    pcEstPuMeBitsSbac->mrgFlagBits[uiCtxInc][1] = pCtx[ uiCtxInc ].getEntropyBits( 1 );
+  }
+}
+Void TEncSbac::estMrgIdxBit         (estPuMeBitsSbacStruct* pcEstPuMeBitsSbac)
+{
+  ContextModel *pCtx = m_cCUMergeIdxExtSCModel.get(0);
+  for (UInt uiCtxInc = 0; uiCtxInc < NUM_MERGE_IDX_EXT_CTX; uiCtxInc++)
+  {
+    pcEstPuMeBitsSbac->mrgIdxBits[uiCtxInc][0] = pCtx[ uiCtxInc ].getEntropyBits( 0 );
+    pcEstPuMeBitsSbac->mrgIdxBits[uiCtxInc][1] = pCtx[ uiCtxInc ].getEntropyBits( 1 );
+  }
+}
+#if COM16_C1016_AFFINE
+Void TEncSbac::estAffineFlagBit     (estPuMeBitsSbacStruct* pcEstPuMeBitsSbac)
+{
+  ContextModel *pCtx = m_cCUAffineFlagSCModel.get(0);
+  for (UInt uiCtxInc = 0; uiCtxInc < NUM_AFFINE_FLAG_CTX; uiCtxInc++)
+  {
+    pcEstPuMeBitsSbac->affineFlagBits[uiCtxInc][0] = pCtx[ uiCtxInc ].getEntropyBits(0);
+    pcEstPuMeBitsSbac->affineFlagBits[uiCtxInc][1] = pCtx[ uiCtxInc ].getEntropyBits(1);
+  }
+}
+#endif
+#if VCEG_AZ07_IMV
+Void TEncSbac::estIMVFlagBit        (estPuMeBitsSbacStruct* pcEstPuMeBitsSbac)
+{
+  ContextModel *pCtx = m_cCUiMVFlagSCModel.get(0);
+  for (UInt uiCtxInc = 0; uiCtxInc < NUM_IMV_FLAG_CTX; uiCtxInc++)
+  {
+    pcEstPuMeBitsSbac->iMVFlagBits[uiCtxInc][0] = pCtx[ uiCtxInc ].getEntropyBits(0);
+    pcEstPuMeBitsSbac->iMVFlagBits[uiCtxInc][1] = pCtx[ uiCtxInc ].getEntropyBits(1);
+  }
+}
+#endif
+Void TEncSbac::estInterDirBit     (estPuMeBitsSbacStruct* pcEstPuMeBitsSbac)
+{
+  ContextModel *pCtx = m_cCUInterDirSCModel.get(0);
+  for (UInt uiCtxInc = 0; uiCtxInc < NUM_INTER_DIR_CTX; uiCtxInc++)
+  {
+    pcEstPuMeBitsSbac->interDirBits[uiCtxInc][0] = pCtx[ uiCtxInc ].getEntropyBits( 0 );
+    pcEstPuMeBitsSbac->interDirBits[uiCtxInc][1] = pCtx[ uiCtxInc ].getEntropyBits( 1 );
+  }
+}
+#endif
 /*!
  ****************************************************************************
  * \brief

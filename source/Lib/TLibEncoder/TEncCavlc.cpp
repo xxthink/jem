@@ -1522,6 +1522,14 @@ Void TEncCavlc::codeCoeffNxN    ( TComTU& /*rTu*/, TCoeff* /*pcCoef*/, const Com
   assert(0);
 }
 
+#if JVET_D0123_ME_CTX_LUT_BITS
+Void TEncCavlc::estPuMeBit  (estPuMeBitsSbacStruct* /*pcEstPuMeBitsSbac*/)
+{
+  // printf("error : no VLC mode support in this version\n");
+  return;
+}
+#endif
+
 Void TEncCavlc::estBit( estBitsSbacStruct* /*pcEstBitsCabac*/, Int /*width*/, Int /*height*/, ChannelType /*chType*/ 
 #if RDOQ_BIT_ESTIMATE_FIX_TICKET29
   , UInt /*uiScanIdx*/
