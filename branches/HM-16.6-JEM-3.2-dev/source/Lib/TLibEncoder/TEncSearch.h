@@ -151,6 +151,9 @@ private:
   Double*         m_tmpDerivate[2];
 #endif
 
+#if JVET_D0123_ME_CTX_LUT_BITS
+  Int             iCostScale;
+#endif
 protected:
   // interface to option
   TEncCfg*        m_pcEncCfg;
@@ -178,6 +181,9 @@ protected:
   TEncSbac*       m_pcRDGoOnSbacCoder;
   DistParam       m_cDistParam;
 
+#if VCEG_AZ07_IMV && JVET_D0123_ME_CTX_LUT_BITS
+  UInt        m_uiBitsIMVFlag[2];
+#endif
   // Misc.
   Pel*            m_pTempPel;
   const UInt*     m_puiDFilter;
@@ -196,6 +202,9 @@ protected:
 #endif
 
 public:
+#if JVET_D0123_ME_CTX_LUT_BITS
+  estPuMeBitsSbacStruct* m_pcPuMeEstBitsSbac;
+#endif
   TEncSearch();
   virtual ~TEncSearch();
 
@@ -235,10 +244,18 @@ protected:
     UInt        uiBestRound;
     UInt        uiBestDistance;
     Distortion  uiBestSad;
+#if JVET_D0123_ME_CTX_LUT_BITS
+    Distortion  uiBestSadOnly;
+#endif
     UChar       ucPointNr;
   } IntTZSearchStruct;
 
   // sub-functions for ME
+#if JVET_D0123_ME_CTX_LUT_BITS
+  __inline UInt xGetBitsEpExGolomb( UInt uiSymbol, UInt uiCount );
+  __inline UInt xGetMvdBitsLut (TComDataCU* pcCU, UInt uiAbsPartIdx, Int iCurVal);
+  __inline UInt xMvdBits(TComPattern* pcPatternKey, Int iX, Int iY);
+#endif
   __inline Void xTZSearchHelp         ( TComPattern* pcPatternKey, IntTZSearchStruct& rcStruct, const Int iSearchX, const Int iSearchY, const UChar ucPointNr, const UInt uiDistance );
   __inline Void xTZ2PointSearch       ( TComPattern* pcPatternKey, IntTZSearchStruct& rcStrukt, TComMv* pcMvSrchRngLT, TComMv* pcMvSrchRngRB );
   __inline Void xTZ8PointSquareSearch ( TComPattern* pcPatternKey, IntTZSearchStruct& rcStrukt, TComMv* pcMvSrchRngLT, TComMv* pcMvSrchRngRB, const Int iStartX, const Int iStartY, const Int iDist );
@@ -309,6 +326,9 @@ public:
   Void IPCMSearch (TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* rpcPredYuv, TComYuv* rpcResiYuv, TComYuv* rpcRecoYuv );
 #if JVET_C0024_FAST_MRG
   static UInt updateCandList( UInt uiMode, Double uiCost, UInt uiFastCandNum, UInt * CandModeList, Double * CandCostList );
+#if JVET_D0123_ME_CTX_LUT_BITS && JVET_C0024_FAST_MRG 
+  Void getMrgCandBits( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiMrgIdxBits[MRG_MAX_NUM_CANDS]);
+#endif
 #endif
 protected:
 
@@ -468,7 +488,7 @@ protected:
                                     Int&        riMVPIdx,
                                     UInt&       ruiBits,
                                     Distortion& ruiCost 
-#if VCEG_AZ07_IMV
+#if VCEG_AZ07_IMV || JVET_D0123_ME_CTX_LUT_BITS
                                     , UInt uiPartAddr
 #endif
                                     );
@@ -489,7 +509,31 @@ protected:
 
   Void xCopyAMVPInfo              ( AMVPInfo*   pSrc, AMVPInfo* pDst );
   UInt xGetMvpIdxBits             ( Int iIdx, Int iNum );
-  Void xGetBlkBits                ( PartSize  eCUMode, Bool bPSlice, Int iPartIdx,  UInt uiLastMode, UInt uiBlkBit[3]);
+  Void xGetBlkBits                ( PartSize  eCUMode, Bool bPSlice, Int iPartIdx,  UInt uiLastMode, UInt uiBlkBit[3]
+#if JVET_D0123_ME_CTX_LUT_BITS
+  ,TComDataCU* pcCU, UInt uiAbsPartIdx
+#endif
+    );
+
+#if JVET_D0123_ME_CTX_LUT_BITS
+#if VCEG_AZ07_IMV
+  Void xGetIMVFlagBits        (TComDataCU* pcCU, UInt uiAbsPartIdx);
+#endif
+  Void loadCtxMe(TComDataCU* pcCU);
+  Void loadCtxMeSbacCoder(TComDataCU* pcCU);
+  Void storeCtxMeSbacCoder(TComDataCU* pcCU);
+  UInt getInterDirPUBits(UInt uiInterDir, UInt uiCtx, TComDataCU* pcCU, UInt uiAbsPartIdx);
+  Void xGetMrgFlagBits(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt mrgFlagBits[2]);
+  UInt xGetMrgIdxBits( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiMergeCand);
+  Void xUpdateMvpIdxBits(TComDataCU* pcCU);
+  UInt xRefFrameIdxBits(TComDataCU* pcCU, Int iRefFrame, UInt uiRefNum);
+#if COM16_C1016_AFFINE
+  Void xGetAffineFlagBits(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt iPUIdx, UInt uiAffineFlagBits[2]);
+#endif
+#if VCEG_AZ07_FRUC_MERGE
+  UInt xGetFRUCMgrModeBits(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt iPUIdx, UChar uhFRUCMode);
+#endif
+#endif
 
   Void xMergeEstimation           ( TComDataCU*  pcCU,
                                     TComYuv*     pcYuvOrg,
@@ -653,7 +697,11 @@ protected:
                                   TComMv acMv[3], TComMv acMvPred[3],
                                   Int&        riMVPIdx,
                                   UInt&       ruiBits,
-                                  Distortion& ruiCost );
+                                  Distortion& ruiCost
+#if JVET_D0123_ME_CTX_LUT_BITS
+                                  , UInt uiPartAddr
+#endif
+                                  );
 #endif
 
   Void xExtDIFUpSamplingH( TComPattern* pcPattern );

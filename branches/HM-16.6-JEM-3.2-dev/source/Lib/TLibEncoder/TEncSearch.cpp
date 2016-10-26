@@ -151,6 +151,9 @@ TEncSearch::TEncSearch()
 , m_puhQTTempEmtCuFlag (NULL)
 #endif
 {
+#if JVET_D0123_ME_CTX_LUT_BITS
+  m_pcPuMeEstBitsSbac = new estPuMeBitsSbacStruct;
+#endif
   for (UInt ch=0; ch<MAX_NUM_COMPONENT; ch++)
   {
 #if JVET_C0024_QTBT
@@ -499,6 +502,9 @@ TEncSearch::~TEncSearch()
   {
     destroy();
   }
+#if JVET_D0123_ME_CTX_LUT_BITS
+  delete m_pcPuMeEstBitsSbac;
+#endif
 }
 
 
@@ -791,6 +797,77 @@ const UInt uiStarRefinementRounds   = 2;  /* star refinement stop X rounds after
   const Int  uiSearchStep             = 4;                                                                       \
   const Int  iMVDistThresh            = 8;                                                                       \
 
+#if JVET_D0123_ME_CTX_LUT_BITS
+
+__inline UInt TEncSearch::xGetBitsEpExGolomb( UInt uiSymbol, UInt uiCount )
+{
+  UInt numBins = 0;
+  while( uiSymbol >= (UInt)(1<<uiCount) )
+  {
+    numBins++;
+    uiSymbol -= 1 << uiCount;
+    uiCount  ++;
+  }
+  numBins++;
+  numBins += uiCount;
+
+  assert( numBins <= 32 );
+  return (numBins << 15);
+}
+
+__inline UInt TEncSearch::xGetMvdBitsLut (TComDataCU* pcCU, UInt uiAbsPartIdx, Int iCurVal)
+{
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+  assert( iCurVal == ( iCurVal >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE ) );
+  iCurVal >>= VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE;
+#endif
+
+#if VCEG_AZ07_IMV
+  if( pcCU->getiMVFlag( uiAbsPartIdx ) && pcCU->getSlice()->getSPS()->getIMV() )
+  {
+    iCurVal >>= 2;
+
+  }
+#endif
+
+  UInt uiCtxIdx = 0;
+  UInt uiBits = 0;
+  uiBits += m_pcPuMeEstBitsSbac->mvdBits[uiCtxIdx][(iCurVal != 0) ? 1 : 0];
+  const Bool bValAbsGr0 = iCurVal != 0;
+  const UInt uiValAbs   = 0 > iCurVal ? -iCurVal : iCurVal;
+
+  uiCtxIdx++;
+  if (bValAbsGr0)
+  {
+    uiBits += m_pcPuMeEstBitsSbac->mvdBits[uiCtxIdx][uiValAbs > 1 ? 1 : 0];
+  }
+
+  if( bValAbsGr0 )
+  {
+    if( uiValAbs > 1 )
+    {
+      uiBits += xGetBitsEpExGolomb( uiValAbs-2, 1 );
+    }
+    uiBits += (UInt)EPBIT;
+  }
+
+  return uiBits;
+}
+
+__inline UInt TEncSearch::xMvdBits(TComPattern* pcPatternKey, Int iX, Int iY)
+{
+  TComDataCU* pcCU = pcPatternKey->m_pcCU;
+  UInt uiPartAddr = pcPatternKey->m_uiPartAddr;
+  Int iMvpX = pcPatternKey->m_mvPred->getHor();
+  Int iMvpY = pcPatternKey->m_mvPred->getVer();
+  Int iCurX  = (iX << iCostScale) - iMvpX;
+  Int iCurY  = (iY << iCostScale) - iMvpY;
+
+  UInt uiBits = xGetMvdBitsLut(pcCU, uiPartAddr, iCurX) + xGetMvdBitsLut(pcCU, uiPartAddr, iCurY);
+
+  return uiBits;
+}
+#endif
 
 
 __inline Void TEncSearch::xTZSearchHelp( TComPattern* pcPatternKey, IntTZSearchStruct& rcStruct, const Int iSearchX, const Int iSearchY, const UChar ucPointNr, const UInt uiDistance )
@@ -826,12 +903,20 @@ __inline Void TEncSearch::xTZSearchHelp( TComPattern* pcPatternKey, IntTZSearchS
   {
     Int isubShift = 0;
     // motion cost
+#if JVET_D0123_ME_CTX_LUT_BITS
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+    Distortion uiBitCost = xMvdBits(pcPatternKey, iSearchX<<VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE, iSearchY<<VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE);
+#else
+    Distortion uiBitCost = xMvdBits(pcPatternKey, iSearchX, iSearchY);
+#endif
+    uiBitCost = m_pcRdCost->getCostSearch(uiBitCost);
+#else
     Distortion uiBitCost = m_pcRdCost->getCost( iSearchX, iSearchY 
 #if VCEG_AZ07_IMV
       , pcPatternKey->getImvFlag()
 #endif
       );
-
+#endif
     if ( m_cDistParam.iRows > 32 )
     {
       m_cDistParam.iSubShift = 4;
@@ -870,9 +955,15 @@ __inline Void TEncSearch::xTZSearchHelp( TComPattern* pcPatternKey, IntTZSearchS
 
       if(m_cDistParam.iSubShift == 0)
       {
+#if JVET_D0123_ME_CTX_LUT_BITS
+        UInt uiCurSad = uiSad;
+#endif
         uiSad += uiBitCost;
         if( uiSad < rcStruct.uiBestSad )
         {
+#if JVET_D0123_ME_CTX_LUT_BITS
+          rcStruct.uiBestSadOnly   = uiCurSad;
+#endif
           rcStruct.uiBestSad      = uiSad;
           rcStruct.iBestX         = iSearchX;
           rcStruct.iBestY         = iSearchY;
@@ -888,14 +979,27 @@ __inline Void TEncSearch::xTZSearchHelp( TComPattern* pcPatternKey, IntTZSearchS
     uiSad = m_cDistParam.DistFunc( &m_cDistParam );
 
     // motion cost
+#if JVET_D0123_ME_CTX_LUT_BITS
+    Distortion uiCurSad = uiSad;
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+    Distortion uiMvdBits = xMvdBits(pcPatternKey, iSearchX<<VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE, iSearchY<<VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE);
+#else
+    Distortion uiMvdBits = xMvdBits(pcPatternKey, iSearchX, iSearchY);
+#endif
+    uiSad += (UInt) m_pcRdCost->getCostSearch(uiMvdBits);
+#else
     uiSad += m_pcRdCost->getCost( iSearchX, iSearchY 
 #if VCEG_AZ07_IMV
       , pcPatternKey->getImvFlag()
 #endif
       );
+#endif
 
     if( uiSad < rcStruct.uiBestSad )
     {
+#if JVET_D0123_ME_CTX_LUT_BITS
+      rcStruct.uiBestSadOnly  = uiCurSad;
+#endif
       rcStruct.uiBestSad      = uiSad;
       rcStruct.iBestX         = iSearchX;
       rcStruct.iBestY         = iSearchY;
@@ -1328,12 +1432,22 @@ Distortion TEncSearch::xPatternRefinement( TComPattern* pcPatternKey,
     m_cDistParam.pCur = piRefPos;
     m_cDistParam.bitDepth = pcPatternKey->getBitDepthY();
     uiDist = m_cDistParam.DistFunc( &m_cDistParam );
+#if JVET_D0123_ME_CTX_LUT_BITS
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+    Distortion uiMvdBits = xMvdBits(pcPatternKey, 
+      cMvTest.getHor() <<VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE, 
+      cMvTest.getVer() <<VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE);
+#else
+    Distortion uiMvdBits = xMvdBits(pcPatternKey, cMvTest.getHor(), cMvTest.getVer());
+#endif
+    uiDist += (UInt) m_pcRdCost->getCostSearch( uiMvdBits );
+#else
     uiDist += m_pcRdCost->getCost( cMvTest.getHor(), cMvTest.getVer() 
 #if VCEG_AZ07_IMV
       , pcPatternKey->getImvFlag()
 #endif
       );
-
+#endif
     if ( uiDist < uiDistBest )
     {
       uiDistBest  = uiDist;
@@ -6163,6 +6277,10 @@ Void TEncSearch::xMergeEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPUI
 #endif
 
     xGetInterPredictionError( pcCU, pcYuvOrg, iPUIdx, uiCostCand, m_pcEncCfg->getUseHADME() );
+#if JVET_D0123_ME_CTX_LUT_BITS
+    uiBitsCand = xGetMrgIdxBits( pcCU, uiAbsPartIdx, uiMergeCand);
+    uiCostCand = uiCostCand + m_pcRdCost->getCostSearch( uiBitsCand );
+#else
     uiBitsCand = uiMergeCand + 1;
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
     UInt uiMaxCand = m_pcEncCfg->getMaxNumMergeCand() + (m_pcEncCfg->getAtmvp()? 2:0);
@@ -6174,6 +6292,7 @@ Void TEncSearch::xMergeEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPUI
         uiBitsCand--;
     }
     uiCostCand = uiCostCand + m_pcRdCost->getCost( uiBitsCand );
+#endif
     if ( uiCostCand < ruiCost )
     {
       ruiCost = uiCostCand;
@@ -6207,8 +6326,13 @@ Void TEncSearch::xFRUCMgrEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iP
     {
       UInt uiCostCand = 0;
       xGetInterPredictionError( pcCU, pcYuvOrg, iPUIdx, uiCostCand, m_pcEncCfg->getUseHADME() );
+#if JVET_D0123_ME_CTX_LUT_BITS
+      UInt uiBitsCand = xGetFRUCMgrModeBits(pcCU, uiAbsPartIdx, iPUIdx, uhFRUCME[nME]);
+      UInt uiCost = uiCostCand + m_pcRdCost->getCostSearch( uiBitsCand );
+#else
       UInt uiBitsCand = 1;
       UInt uiCost = uiCostCand + m_pcRdCost->getCost( uiBitsCand );
+#endif
       if( uiCost < ruiMinCost )
       {
         ruiMinCost = uiCost;
@@ -6348,6 +6472,10 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
 #endif
 #endif
 
+#if JVET_D0123_ME_CTX_LUT_BITS
+  loadCtxMe(pcCU);
+#endif
+
   for ( Int iPartIdx = 0; iPartIdx < iNumPart; iPartIdx++ )
   {
 #if COM16_C1016_AFFINE
@@ -6383,10 +6511,22 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
     Int          refIdxValidList1 = 0;
     UInt         bitsValidList1 = MAX_UINT;
     Distortion   costValidList1 = std::numeric_limits<Distortion>::max();
-
-    xGetBlkBits( ePartSize, pcCU->getSlice()->isInterP(), iPartIdx, uiLastMode, uiMbBits);
-
+#if JVET_D0123_ME_CTX_LUT_BITS
+    //m_pcRDGoOnSbacCoder->load(m_pppcRDSbacCoder[pcCU->getDepth(0)][CI_PU_NEXT_BEST]);
+    loadCtxMeSbacCoder(pcCU);
+    //m_pcEntropyCoder->resetBits();
+    m_pcEntropyCoder->estimatePuMeBit(m_pcPuMeEstBitsSbac);
     pcCU->getPartIndexAndSize( iPartIdx, uiPartAddr, iRoiWidth, iRoiHeight );
+    xGetBlkBits( ePartSize, pcCU->getSlice()->isInterP(), iPartIdx, uiLastMode, uiMbBits, pcCU, uiPartAddr);
+    xUpdateMvpIdxBits(pcCU);
+#if VCEG_AZ07_IMV
+    if (iPartIdx == 0)
+      xGetIMVFlagBits(pcCU, uiPartAddr);
+#endif
+#else
+    xGetBlkBits( ePartSize, pcCU->getSlice()->isInterP(), iPartIdx, uiLastMode, uiMbBits);
+    pcCU->getPartIndexAndSize( iPartIdx, uiPartAddr, iRoiWidth, iRoiHeight );
+#endif
 
 #if AMP_MRG
     Bool bTestNormalMC = true;
@@ -6410,11 +6550,15 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
         uiBitsTemp = uiMbBits[iRefList];
         if ( pcCU->getSlice()->getNumRefIdx(eRefPicList) > 1 )
         {
+#if JVET_D0123_ME_CTX_LUT_BITS
+          uiBitsTemp += xRefFrameIdxBits(pcCU, iRefIdxTemp, (UInt)pcCU->getSlice()->getNumRefIdx(eRefPicList));
+#else
           uiBitsTemp += iRefIdxTemp+1;
           if ( iRefIdxTemp == pcCU->getSlice()->getNumRefIdx(eRefPicList)-1 )
           {
             uiBitsTemp--;
           }
+#endif
         }
         xEstimateMvPredAMVP( pcCU, pcOrgYuv, iPartIdx, eRefPicList, iRefIdxTemp, cMvPred[iRefList][iRefIdxTemp], false, &biPDistTemp);
         aaiMvpIdx[iRefList][iRefIdxTemp] = pcCU->getMVPIdx(eRefPicList, uiPartAddr);
@@ -6436,9 +6580,29 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
             cMvTemp[1][iRefIdxTemp] = cMvTemp[0][pcCU->getSlice()->getList1IdxToList0Idx( iRefIdxTemp )];
             uiCostTemp = uiCostTempL0[pcCU->getSlice()->getList1IdxToList0Idx( iRefIdxTemp )];
             /*first subtract the bit-rate part of the cost of the other list*/
+#if JVET_D0123_ME_CTX_LUT_BITS
+            uiCostTemp -= m_pcRdCost->getCostSearch( uiBitsTempL0[pcCU->getSlice()->getList1IdxToList0Idx( iRefIdxTemp )] );
+#else
             uiCostTemp -= m_pcRdCost->getCost( uiBitsTempL0[pcCU->getSlice()->getList1IdxToList0Idx( iRefIdxTemp )] );
+#endif
             /*correct the bit-rate part of the current ref*/
             m_pcRdCost->setPredictor  ( cMvPred[iRefList][iRefIdxTemp] );
+#if JVET_D0123_ME_CTX_LUT_BITS
+            TComPattern   tmpPattern;
+            TComPattern*  pcPatternKey  = &tmpPattern;
+            pcPatternKey->m_pcCU = pcCU;
+            pcPatternKey->m_bBi = false;
+            pcPatternKey->m_bAffine = false;
+            pcPatternKey->m_ePartSize = ePartSize;
+            pcPatternKey->m_uiPartAddr = uiPartAddr;
+            pcPatternKey->m_eRefList = eRefPicList;
+            pcPatternKey->m_mvPred = &cMvPred[iRefList][iRefIdxTemp];
+
+            iCostScale = 0;
+
+            uiBitsTemp += xMvdBits(pcPatternKey, cMvTemp[1][iRefIdxTemp].getHor(), cMvTemp[1][iRefIdxTemp].getVer());
+            uiCostTemp += m_pcRdCost->getCostSearch( uiBitsTemp );
+#else
             uiBitsTemp += m_pcRdCost->getBits( 
 #if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
               cMvTemp[1][iRefIdxTemp].getHor() >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE , cMvTemp[1][iRefIdxTemp].getVer() >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE 
@@ -6451,6 +6615,7 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
               );
             /*calculate the correct cost*/
             uiCostTemp += m_pcRdCost->getCost( uiBitsTemp );
+#endif
           }
           else
           {
@@ -6463,7 +6628,7 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
         }
         xCopyAMVPInfo(pcCU->getCUMvField(eRefPicList)->getAMVPInfo(), &aacAMVPInfo[iRefList][iRefIdxTemp]); // must always be done ( also when AMVP_MODE = AM_NONE )
         xCheckBestMVP(pcCU, eRefPicList, cMvTemp[iRefList][iRefIdxTemp], cMvPred[iRefList][iRefIdxTemp], aaiMvpIdx[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp
-#if VCEG_AZ07_IMV
+#if VCEG_AZ07_IMV || JVET_D0123_ME_CTX_LUT_BITS
           , uiPartAddr
 #endif
           );
@@ -6541,11 +6706,15 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
 
         if ( pcCU->getSlice()->getNumRefIdx(REF_PIC_LIST_1) > 1 )
         {
+#if JVET_D0123_ME_CTX_LUT_BITS
+          uiMotBits[1] += xRefFrameIdxBits(pcCU, bestBiPRefIdxL1, (UInt)pcCU->getSlice()->getNumRefIdx(REF_PIC_LIST_1));
+#else
           uiMotBits[1] += bestBiPRefIdxL1+1;
           if ( bestBiPRefIdxL1 == pcCU->getSlice()->getNumRefIdx(REF_PIC_LIST_1)-1 )
           {
             uiMotBits[1]--;
           }
+#endif
         }
 
         uiMotBits[1] += m_auiMVPIdxCost[aaiMvpIdxBi[1][bestBiPRefIdxL1]][AMVP_MAX_NUM_CANDS];
@@ -6615,19 +6784,23 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
           uiBitsTemp = uiMbBits[2] + uiMotBits[1-iRefList];
           if ( pcCU->getSlice()->getNumRefIdx(eRefPicList) > 1 )
           {
+#if JVET_D0123_ME_CTX_LUT_BITS
+            uiBitsTemp += xRefFrameIdxBits(pcCU, iRefIdxTemp, (UInt)pcCU->getSlice()->getNumRefIdx(eRefPicList));
+#else
             uiBitsTemp += iRefIdxTemp+1;
             if ( iRefIdxTemp == pcCU->getSlice()->getNumRefIdx(eRefPicList)-1 )
             {
               uiBitsTemp--;
             }
+#endif
           }
           uiBitsTemp += m_auiMVPIdxCost[aaiMvpIdxBi[iRefList][iRefIdxTemp]][AMVP_MAX_NUM_CANDS];
           // call ME
-          xMotionEstimation ( pcCU, pcOrgYuv, iPartIdx, eRefPicList, &cMvPredBi[iRefList][iRefIdxTemp], iRefIdxTemp, cMvTemp[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp, true );
 
+          xMotionEstimation ( pcCU, pcOrgYuv, iPartIdx, eRefPicList, &cMvPredBi[iRefList][iRefIdxTemp], iRefIdxTemp, cMvTemp[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp, true );
           xCopyAMVPInfo(&aacAMVPInfo[iRefList][iRefIdxTemp], pcCU->getCUMvField(eRefPicList)->getAMVPInfo());
           xCheckBestMVP(pcCU, eRefPicList, cMvTemp[iRefList][iRefIdxTemp], cMvPredBi[iRefList][iRefIdxTemp], aaiMvpIdxBi[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp
-#if VCEG_AZ07_IMV
+#if VCEG_AZ07_IMV || JVET_D0123_ME_CTX_LUT_BITS
             , uiPartAddr
 #endif
             );
@@ -6661,7 +6834,7 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
           {
             xCopyAMVPInfo(&aacAMVPInfo[0][iRefIdxBi[0]], pcCU->getCUMvField(REF_PIC_LIST_0)->getAMVPInfo());
             xCheckBestMVP(pcCU, REF_PIC_LIST_0, cMvBi[0], cMvPredBi[0][iRefIdxBi[0]], aaiMvpIdxBi[0][iRefIdxBi[0]], uiBits[2], uiCostBi
-#if VCEG_AZ07_IMV
+#if VCEG_AZ07_IMV || JVET_D0123_ME_CTX_LUT_BITS
               , uiPartAddr
 #endif
               );
@@ -6669,7 +6842,7 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
             {
               xCopyAMVPInfo(&aacAMVPInfo[1][iRefIdxBi[1]], pcCU->getCUMvField(REF_PIC_LIST_1)->getAMVPInfo());
               xCheckBestMVP(pcCU, REF_PIC_LIST_1, cMvBi[1], cMvPredBi[1][iRefIdxBi[1]], aaiMvpIdxBi[1][iRefIdxBi[1]], uiBits[2], uiCostBi
-#if VCEG_AZ07_IMV
+#if VCEG_AZ07_IMV || JVET_D0123_ME_CTX_LUT_BITS
                 , uiPartAddr
 #endif
                 );
@@ -6778,6 +6951,10 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
 #if !JVET_C0024_QTBT
     if ( pcCU->getPartitionSize( uiPartAddr ) != SIZE_2Nx2N )
     {
+#if JVET_D0123_ME_CTX_LUT_BITS
+      UInt uiMrgFlagBits[2] = {0, 0};
+      xGetMrgFlagBits(pcCU, uiPartAddr, uiMrgFlagBits);
+#endif
       UInt uiMRGInterDir = 0;
       TComMvField cMRGMvField[2];
       UInt uiMRGIndex = 0;
@@ -6795,18 +6972,52 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
       if (bTestNormalMC)
       {
         xGetInterPredictionError( pcCU, pcOrgYuv, iPartIdx, uiMEError, m_pcEncCfg->getUseHADME() );
+#if JVET_D0123_ME_CTX_LUT_BITS
+        uiMEBits += uiMrgFlagBits[0];
+        uiMECost = uiMEError + m_pcRdCost->getCostSearch(uiMEBits);
+#else
         uiMECost = uiMEError + m_pcRdCost->getCost( uiMEBits );
+#endif
       }
 #else
       // calculate ME cost
       Distortion uiMEError = std::numeric_limits<Distortion>::max();
       xGetInterPredictionError( pcCU, pcOrgYuv, iPartIdx, uiMEError, m_pcEncCfg->getUseHADME() );
+#if JVET_D0123_ME_CTX_LUT_BITS
+      uiMEBits += uiMrgFlagBits[0];
+      Distortion uiMECost = uiMEError + m_pcRdCost->getCostSearch(uiMEBits);
+#else
       Distortion uiMECost = uiMEError + m_pcRdCost->getCost( uiMEBits );
+#endif
 #endif
       // save ME result.
       uiMEInterDir = pcCU->getInterDir( uiPartAddr );
       pcCU->getMvField( pcCU, uiPartAddr, REF_PIC_LIST_0, cMEMvField[0] );
       pcCU->getMvField( pcCU, uiPartAddr, REF_PIC_LIST_1, cMEMvField[1] );
+
+#if JVET_D0123_ME_CTX_LUT_BITS && VCEG_AZ07_IMV
+      if (uiMEError != std::numeric_limits<Distortion>::max() && iPartIdx == iNumPart-1)
+      {
+        Bool bNonZeroMvd= false
+          for ( Int iPartIdxTmp = 0; iPartIdxTmp < iNumPart; iPartIdxTmp++)
+          {
+            UInt uiPartAddrTmp = 0;
+            pcCU->getPartIndexAndSize( iPartIdxTmp, uiPartAddrTmp, iRoiWidth, iRoiHeight );
+            for ( UInt uiRefListIdx = 0; uiRefListIdx < 2 && (!bNonZeroMvd); uiRefListIdx++ )
+            {
+              if ( pcCU->getSlice()->getNumRefIdx( RefPicList( uiRefListIdx ) ) > 0 )
+              {
+                bNonZeroMvd |= ( pcCU->getCUMvField( RefPicList( uiRefListIdx ) )->getMvd( uiPartAddrTmp ).getHor() != 0 );
+                bNonZeroMvd |= ( pcCU->getCUMvField( RefPicList( uiRefListIdx ) )->getMvd( uiPartAddrTmp ).getVer() != 0 );
+              }
+            }
+          }
+          if( bNonZeroMvd && pcCU->getSlice()->getSPS()->getIMV() )
+          {
+            uiMEError += m_pcRdCost->getCostSearch(m_uiBitsIMVFlag[pcCU->getiMVFlag( uiPartAddr ) ? 1 : 0]);
+          }
+      }
+#endif
 
       // find Merge result
       Distortion uiMRGCost = std::numeric_limits<Distortion>::max();
@@ -6826,7 +7037,10 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
       , m_phInterDirSP
 #endif 
         );
-
+#if JVET_D0123_ME_CTX_LUT_BITS
+      assert(uiMRGCost != std::numeric_limits<Distortion>::max());
+      uiMRGCost += m_pcRdCost->getCostSearch(uiMrgFlagBits[1]);
+#endif
 #if VCEG_AZ07_FRUC_MERGE
       UInt uiFRUCMgrCost = MAX_UINT;
       UChar uhFRUCMode = 0;
@@ -6835,6 +7049,10 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
         xFRUCMgrEstimation( pcCU, pcOrgYuv, iPartIdx, 
           m_pMvFieldFRUC, m_phInterDirFRUC , m_phFRUCRefineDist , m_phFRUCSBlkRefineDist ,
           uiFRUCMgrCost , uhFRUCMode );
+#if JVET_D0123_ME_CTX_LUT_BITS
+        uiFRUCMgrCost += m_pcRdCost->getCostSearch(uiMrgFlagBits[1]);
+        uiMRGCost += m_pcRdCost->getCostSearch(xGetFRUCMgrModeBits(pcCU, uiPartAddr, iPartIdx, FRUC_MERGE_OFF));
+#endif
       }
 #endif
 
@@ -6975,7 +7193,14 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
 
       // do affine ME & Merge
       predAffineInterSearch( pcCU, pcOrgYuv, iPartIdx, uiLastModeTemp, uiAffineCost, cMvHevcTemp );
-
+#if JVET_D0123_ME_CTX_LUT_BITS
+      UInt uiAffineFlagBits[2] = {0, 0};
+      xGetAffineFlagBits(pcCU, uiPartAddr, iPartIdx, uiAffineFlagBits);
+      assert(uiHevcCost != MAX_UINT);
+      uiHevcCost += m_pcRdCost->getCostSearch(uiAffineFlagBits[0]);
+      assert(uiAffineCost != MAX_UINT);
+      uiAffineCost += m_pcRdCost->getCostSearch(uiAffineFlagBits[1]);
+#endif
       // check best mode, normal or affine
       if ( uiHevcCost <= uiAffineCost )
       {
@@ -7006,7 +7231,20 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
     //  MC
     motionCompensation ( pcCU, pcPredYuv, REF_PIC_LIST_X, iPartIdx );
 
+#if JVET_D0123_ME_CTX_LUT_BITS && (!JVET_C0024_QTBT) //encode motion info && update ctx model
+    if (iPartIdx < iNumPart - 1)
+    {
+      //m_pcRDGoOnSbacCoder->load(m_pppcRDSbacCoder[pcCU->getDepth(0)][CI_PU_NEXT_BEST]);
+      loadCtxMeSbacCoder(pcCU);
+      m_pcEntropyCoder->encodePuMotionInfo(pcCU, uiPartAddr, iPartIdx);
+      //m_pcRDGoOnSbacCoder->store(m_pppcRDSbacCoder[pcCU->getDepth(0)][CI_PU_NEXT_BEST]);
+      storeCtxMeSbacCoder(pcCU);
+      //m_pcRDGoOnSbacCoder->resetBits();
+    }
+#endif
+
   } //  end of for ( Int iPartIdx = 0; iPartIdx < iNumPart; iPartIdx++ )
+
 #if COM16_C806_OBMC
   pcPredYuv->copyToPartYuv( pcPredYuvWoOBMC, 0 );
   subBlockOBMC( pcCU, 0, pcPredYuv, pcTmpYuv1, pcTmpYuv2 );
@@ -7097,6 +7335,239 @@ Void TEncSearch::xEstimateMvPredAMVP( TComDataCU* pcCU, TComYuv* pcOrgYuv, UInt 
   return;
 }
 
+#if JVET_D0123_ME_CTX_LUT_BITS
+UInt TEncSearch::xRefFrameIdxBits(TComDataCU* pcCU, Int iRefFrame, UInt uiRefNum)
+{
+  UInt uiCtx = 0;
+  UInt uiBits = m_pcPuMeEstBitsSbac->refIdxBits[uiCtx][( iRefFrame == 0 ? 0 : 1 )];
+  if (iRefFrame > 0)
+  {
+    //UInt uiRefNum = pcCU->getSlice()->getNumRefIdx( eRefList ) - 2;
+    uiRefNum = uiRefNum - 2;
+    //pCtx++;
+    //iRefFrame--;
+    uiCtx++;
+    iRefFrame--;
+    for( UInt ui = 0; ui < uiRefNum; ++ui )
+    {
+      const UInt uiSymbol = ui == iRefFrame ? 0 : 1;
+      if( ui == 0 )
+      {
+        //m_pcBinIf->encodeBin( uiSymbol, *pCtx );
+        uiBits += m_pcPuMeEstBitsSbac->refIdxBits[uiCtx][uiSymbol];
+      }
+      else
+      {
+        //m_pcBinIf->encodeBinEP( uiSymbol );
+        uiBits += (UInt)EPBIT;
+      }
+      if( uiSymbol == 0 )
+      {
+        break;
+      }
+    }
+  }
+  return uiBits;
+}
+#if JVET_C0024_FAST_MRG
+Void TEncSearch::getMrgCandBits( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiMrgIdxBits[MRG_MAX_NUM_CANDS])
+{
+  loadCtxMe(pcCU);
+  loadCtxMeSbacCoder(pcCU);
+  m_pcEntropyCoder->estimatePuMeBit(m_pcPuMeEstBitsSbac);
+  for (UInt i = 0; i < MRG_MAX_NUM_CANDS; i++)
+  {
+    uiMrgIdxBits[i] = xGetMrgIdxBits( pcCU, uiAbsPartIdx, i);
+  }
+}
+#endif
+Void TEncSearch::xUpdateMvpIdxBits(TComDataCU* pcCU)
+{
+  for( Int iNum = 0; iNum < AMVP_MAX_NUM_CANDS+1; iNum++)
+  {
+    for( Int iIdx = 0; iIdx < AMVP_MAX_NUM_CANDS; iIdx++)
+    {
+      if (iIdx < iNum)
+      {
+        const Int iOffset = 1;
+        //so far: only works when AMVP_MAX_NUM_CANDS is equal to 2
+        UInt uiSymbol = (UInt)iIdx;
+        Int iMaxSymbol = iNum - 1;
+        if (iMaxSymbol == 0)
+        {
+          m_auiMVPIdxCost[iIdx][iNum] = 0;
+        }
+        else
+        {
+          UInt uiBits = m_pcPuMeEstBitsSbac->mvpIdxBits[0][uiSymbol ? 1 : 0];
+          if ( uiSymbol != 0 )
+          {
+            Bool bCodeLast = ( iMaxSymbol > uiSymbol );
+            while( --uiSymbol ) 
+            {
+              //m_pcBinIf->encodeBin( 1, pcSCModel[ iOffset ] );
+              uiBits += m_pcPuMeEstBitsSbac->mvpIdxBits[iOffset][1];
+            }
+            if( bCodeLast )
+            {
+              //m_pcBinIf->encodeBin( 0, pcSCModel[ iOffset ] );
+              uiBits += m_pcPuMeEstBitsSbac->mvpIdxBits[iOffset][0];
+            }
+          }
+          m_auiMVPIdxCost[iIdx][iNum] = uiBits;
+        }
+      }
+      else
+      {
+        m_auiMVPIdxCost[iIdx][iNum] = MAX_INT;
+      }
+    }
+  }
+}
+
+Void TEncSearch::loadCtxMe(TComDataCU* pcCU)
+{
+#if JVET_C0024_QTBT
+  UInt uiWIdx = g_aucConvertToBit[pcCU->getWidth(0)];
+  UInt uiHIdx = g_aucConvertToBit[pcCU->getHeight(0)];
+  m_ppppcRDSbacCoder[uiWIdx][uiHIdx][CI_PU_NEXT_BEST]->load(m_ppppcRDSbacCoder[uiWIdx][uiHIdx][CI_CURR_BEST]);
+#else
+  UInt uiDepth = pcCU->getDepth(0);
+  m_pppcRDSbacCoder[uiDepth][CI_PU_NEXT_BEST]->load(m_pppcRDSbacCoder[uiDepth][CI_CURR_BEST]);
+#endif
+}
+
+Void TEncSearch::loadCtxMeSbacCoder(TComDataCU* pcCU)
+{
+#if JVET_C0024_QTBT
+  UInt uiWIdx = g_aucConvertToBit[pcCU->getWidth(0)];
+  UInt uiHIdx = g_aucConvertToBit[pcCU->getHeight(0)];
+  m_pcRDGoOnSbacCoder->load(m_ppppcRDSbacCoder[uiWIdx][uiHIdx][CI_PU_NEXT_BEST]);
+#else
+  UInt uiDepth = pcCU->getDepth(0);
+  m_pcRDGoOnSbacCoder->load(m_pppcRDSbacCoder[uiDepth][CI_PU_NEXT_BEST]);
+#endif
+}
+
+Void TEncSearch::storeCtxMeSbacCoder(TComDataCU* pcCU)
+{
+#if JVET_C0024_QTBT
+  UInt uiWIdx = g_aucConvertToBit[pcCU->getWidth(0)];
+  UInt uiHIdx = g_aucConvertToBit[pcCU->getHeight(0)];
+  m_pcRDGoOnSbacCoder->store(m_ppppcRDSbacCoder[uiWIdx][uiHIdx][CI_PU_NEXT_BEST]);
+#else
+  UInt uiDepth = pcCU->getDepth(0);
+  m_pcRDGoOnSbacCoder->store(m_pppcRDSbacCoder[uiDepth][CI_PU_NEXT_BEST]);
+#endif
+}
+
+#if COM16_C1016_AFFINE
+Void TEncSearch::xGetAffineFlagBits(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt iPUIdx, UInt uiAffineFlagBits[2]){
+  UInt uiCtxAffine = pcCU->getCtxAffineFlag( uiAbsPartIdx );
+  for (UInt i = 0; i < 2; i++)
+  {
+    uiAffineFlagBits[i] = m_pcPuMeEstBitsSbac->affineFlagBits[uiCtxAffine][i];
+  }
+}
+#endif
+
+Void TEncSearch::xGetMrgFlagBits(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiMrgFlagBits[2])
+{
+  for (UInt i = 0; i< 2; i++)
+  {
+    uiMrgFlagBits[i] = m_pcPuMeEstBitsSbac->mrgFlagBits[0][i];
+  }
+}
+
+UInt TEncSearch::xGetMrgIdxBits( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiMergeCand)
+{
+  UInt uiNumCand = pcCU->getSlice()->getMaxNumMergeCand();
+  UInt uiBits = 0;
+  if ( uiNumCand > 1 )
+  {
+    for( UInt ui = 0; ui < uiNumCand - 1; ++ui )
+    {
+      const UInt uiSymbol = ui == uiMergeCand ? 0 : 1;
+#if COM16_C806_GEN_MRG_IMPROVEMENT
+      //m_pcBinIf->encodeBin( uiSymbol, m_cCUMergeIdxExtSCModel.get( 0, 0, (ui > NUM_MERGE_IDX_EXT_CTX-1? NUM_MERGE_IDX_EXT_CTX-1:ui) ) );
+      uiBits += m_pcPuMeEstBitsSbac->mrgIdxBits[(ui > NUM_MERGE_IDX_EXT_CTX-1? NUM_MERGE_IDX_EXT_CTX-1:ui)][uiSymbol];
+#else
+      if ( ui==0 )
+      {
+        //m_pcBinIf->encodeBin( uiSymbol, m_cCUMergeIdxExtSCModel.get( 0, 0, 0 ) );
+        uiBits += m_pcPuMeEstBitsSbac->mrgIdxBits[0][uiSymbol];
+      }
+      else
+      {
+        uiBits += (UInt)EPBIT;
+      }
+#endif
+      if( uiSymbol == 0 )
+      {
+        break;
+      }
+    }
+  }
+  return uiBits;
+}
+
+#if VCEG_AZ07_FRUC_MERGE
+UInt TEncSearch::xGetFRUCMgrModeBits(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt iPUIdx, const UChar uhFRUCMode){
+  if( !pcCU->getSlice()->getSPS()->getUseFRUCMgrMode() )
+    return MAX_UINT;
+  UInt uiBits = 0;
+  //UInt uiFirstBin = pcCU->getFRUCMgrMode( uiAbsPartIdx ) != FRUC_MERGE_OFF;
+  UInt uiFirstBin = uhFRUCMode != FRUC_MERGE_OFF;
+  //m_pcBinIf->encodeBin( uiFirstBin, m_cCUFRUCMgrModeSCModel.get( 0 ,  0 , pcCU->getCtxFRUCMgrMode( uiAbsPartIdx ) ) );
+  uiBits += m_pcPuMeEstBitsSbac->frucMrgBits[pcCU->getCtxFRUCMgrMode( uiAbsPartIdx )][uiFirstBin];
+  if( uiFirstBin )
+  {
+    if( pcCU->getSlice()->isInterP() )
+    {
+      //assert( pcCU->getFRUCMgrMode( uiAbsPartIdx ) == FRUC_MERGE_TEMPLATE );
+      assert( uhFRUCMode == FRUC_MERGE_TEMPLATE );
+    }
+    else
+    {
+      UInt uiSecondBin = uhFRUCMode == FRUC_MERGE_BILATERALMV;
+      //m_pcBinIf->encodeBin( uiSecondBin , m_cCUFRUCMESCModel.get( 0 , 0 , pcCU->getCtxFRUCME( uiAbsPartIdx ) ) );
+      uiBits += m_pcPuMeEstBitsSbac->frucMeBits[pcCU->getCtxFRUCME( uiAbsPartIdx )][uiSecondBin];
+    }
+  }
+  return uiBits;
+}
+#endif
+
+UInt TEncSearch::getInterDirPUBits(UInt uiInterDir, UInt uiCtx, TComDataCU* pcCU, UInt uiAbsPartIdx){
+#if COM16_C806_LARGE_CTU
+  assert( uiCtx < 4 );  // uiCtx=4 is only for the last bin when uiInterDir < 2
+#endif
+  UInt uiBits = 0;
+  UInt uiSymbol = 0;
+#if JVET_C0024_QTBT
+  if (1 )
+#else
+#if COM16_C806_HEVC_MOTION_CONSTRAINT_REMOVAL
+  if (pcCU->getSlice()->getSPS()->getAtmvpEnableFlag() || pcCU->getPartitionSize(uiAbsPartIdx) == SIZE_2Nx2N || pcCU->getHeight(uiAbsPartIdx) != 8 )
+#else
+  if (pcCU->getPartitionSize(uiAbsPartIdx) == SIZE_2Nx2N || pcCU->getHeight(uiAbsPartIdx) != 8 )
+#endif
+#endif
+  {
+    //m_pcBinIf->encodeBin( uiInterDir == 2 ? 1 : 0, *( pCtx + uiCtx ) );  //uiCtx
+    uiSymbol = (uiInterDir == 2) ? 1 : 0;
+    uiBits += m_pcPuMeEstBitsSbac->interDirBits[uiCtx][uiSymbol];
+  }
+
+  if (uiInterDir < 2)
+  {
+    //m_pcBinIf->encodeBin( uiInterDir, *( pCtx + 4 ) );  //4
+    uiBits += m_pcPuMeEstBitsSbac->interDirBits[4][uiInterDir];
+  }
+  return uiBits;
+}
+#endif
+
 UInt TEncSearch::xGetMvpIdxBits(Int iIdx, Int iNum)
 {
   assert(iIdx >= 0 && iNum >= 0 && iIdx < iNum);
@@ -7125,12 +7596,38 @@ UInt TEncSearch::xGetMvpIdxBits(Int iIdx, Int iNum)
   return uiLength;
 }
 
-Void TEncSearch::xGetBlkBits( PartSize eCUMode, Bool bPSlice, Int iPartIdx, UInt uiLastMode, UInt uiBlkBit[3])
+#if VCEG_AZ07_IMV && JVET_D0123_ME_CTX_LUT_BITS
+Void TEncSearch::xGetIMVFlagBits(TComDataCU* pcCU, UInt uiAbsPartIdx)
 {
+  UInt uiCtxiMV = pcCU->getCtxiMVFlag( uiAbsPartIdx ) ;
+  for (UInt i = 0; i < 2; i++)
+  {
+    m_uiBitsIMVFlag[i] = m_pcPuMeEstBitsSbac->iMVFlagBits[uiCtxiMV][i];
+  }
+}
+#endif
+Void TEncSearch::xGetBlkBits( PartSize eCUMode, Bool bPSlice, Int iPartIdx, UInt uiLastMode, UInt uiBlkBit[3]
+#if JVET_D0123_ME_CTX_LUT_BITS
+,TComDataCU* pcCU, UInt uiAbsPartIdx
+#endif
+  )
+{
+#if JVET_D0123_ME_CTX_LUT_BITS
+  if (bPSlice)
+  {
+    memset(uiBlkBit, 0, 3 * sizeof(UInt));
+    return;
+  }
+  UInt uiCtx = pcCU->getCtxInterDir(uiAbsPartIdx);
+  for (UInt i = 0; i < 3; i++)
+  {
+    uiBlkBit[i] = getInterDirPUBits(i, uiCtx, pcCU, uiAbsPartIdx);
+  }
+#else
 #if JVET_C0024_QTBT
-    uiBlkBit[0] = (! bPSlice) ? 3 : 1;
-    uiBlkBit[1] = 3;
-    uiBlkBit[2] = 5;
+  uiBlkBit[0] = (! bPSlice) ? 3 : 1;
+  uiBlkBit[1] = 3;
+  uiBlkBit[2] = 5;
 #else
   if ( eCUMode == SIZE_2Nx2N )
   {
@@ -7178,6 +7675,7 @@ Void TEncSearch::xGetBlkBits( PartSize eCUMode, Bool bPSlice, Int iPartIdx, UInt
     assert( 0 );
   }
 #endif
+#endif
 }
 
 Void TEncSearch::xCopyAMVPInfo (AMVPInfo* pSrc, AMVPInfo* pDst)
@@ -7190,7 +7688,7 @@ Void TEncSearch::xCopyAMVPInfo (AMVPInfo* pSrc, AMVPInfo* pDst)
 }
 
 Void TEncSearch::xCheckBestMVP ( TComDataCU* pcCU, RefPicList eRefPicList, TComMv cMv, TComMv& rcMvPred, Int& riMVPIdx, UInt& ruiBits, Distortion& ruiCost 
-#if VCEG_AZ07_IMV
+#if VCEG_AZ07_IMV || JVET_D0123_ME_CTX_LUT_BITS
   , UInt uiPartAddr
 #endif
   )
@@ -7210,6 +7708,17 @@ Void TEncSearch::xCheckBestMVP ( TComDataCU* pcCU, RefPicList eRefPicList, TComM
   Int iBestMVPIdx = riMVPIdx;
 
   m_pcRdCost->setPredictor( rcMvPred );
+#if JVET_D0123_ME_CTX_LUT_BITS
+  TComPattern   tmpPattern;
+  TComPattern*  pcPatternKey  = &tmpPattern;
+  pcPatternKey->m_pcCU = pcCU;
+  pcPatternKey->m_uiPartAddr = uiPartAddr;
+  pcPatternKey->m_eRefList = eRefPicList;
+  pcPatternKey->m_mvPred = &rcMvPred;
+  iCostScale = 0;
+
+  Int iOrgMvBits = xMvdBits(pcPatternKey, cMv.getHor(), cMv.getVer());
+#else
   Int iOrgMvBits  = m_pcRdCost->getBits(
 #if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
     cMv.getHor() >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE, cMv.getVer() >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
@@ -7220,6 +7729,7 @@ Void TEncSearch::xCheckBestMVP ( TComDataCU* pcCU, RefPicList eRefPicList, TComM
     , pcCU->getiMVFlag( uiPartAddr )
 #endif
     );
+#endif
   iOrgMvBits += m_auiMVPIdxCost[riMVPIdx][AMVP_MAX_NUM_CANDS];
   Int iBestMvBits = iOrgMvBits;
 
@@ -7229,7 +7739,10 @@ Void TEncSearch::xCheckBestMVP ( TComDataCU* pcCU, RefPicList eRefPicList, TComM
     {
       continue;
     }
-
+#if JVET_D0123_ME_CTX_LUT_BITS
+    pcPatternKey->m_mvPred = &pcAMVPInfo->m_acMvCand[iMVPIdx];
+    Int iMvBits = xMvdBits(pcPatternKey, cMv.getHor(), cMv.getVer());
+#else
     m_pcRdCost->setPredictor( pcAMVPInfo->m_acMvCand[iMVPIdx] );
 
     Int iMvBits = m_pcRdCost->getBits(
@@ -7242,6 +7755,7 @@ Void TEncSearch::xCheckBestMVP ( TComDataCU* pcCU, RefPicList eRefPicList, TComM
       , pcCU->getiMVFlag( uiPartAddr )
 #endif
       );
+#endif
     iMvBits += m_auiMVPIdxCost[iMVPIdx][AMVP_MAX_NUM_CANDS];
 
     if (iMvBits < iBestMvBits)
@@ -7258,7 +7772,11 @@ Void TEncSearch::xCheckBestMVP ( TComDataCU* pcCU, RefPicList eRefPicList, TComM
     riMVPIdx = iBestMVPIdx;
     UInt uiOrgBits = ruiBits;
     ruiBits = uiOrgBits - iOrgMvBits + iBestMvBits;
+#if JVET_D0123_ME_CTX_LUT_BITS
+    ruiCost = (ruiCost - m_pcRdCost->getCostSearch( uiOrgBits ))  + m_pcRdCost->getCostSearch( ruiBits );
+#else
     ruiCost = (ruiCost - m_pcRdCost->getCost( uiOrgBits ))  + m_pcRdCost->getCost( ruiBits );
+#endif
   }
 }
 
@@ -7320,7 +7838,11 @@ Distortion TEncSearch::xGetTemplateCost( TComDataCU* pcCU,
   // calc distortion
 
   uiCost = m_pcRdCost->getDistPart( pcCU->getSlice()->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA), pcTemplateCand->getAddr(COMPONENT_Y, uiPartAddr), pcTemplateCand->getStride(COMPONENT_Y), pcOrgYuv->getAddr(COMPONENT_Y, uiPartAddr), pcOrgYuv->getStride(COMPONENT_Y), iSizeX, iSizeY, COMPONENT_Y, DF_SAD );
+#if JVET_D0123_ME_CTX_LUT_BITS
+  uiCost = uiCost + m_pcRdCost->getCostSearch(m_auiMVPIdxCost[iMVPIdx][iMVPNum]);
+#else
   uiCost = (UInt) m_pcRdCost->calcRdCost( m_auiMVPIdxCost[iMVPIdx][iMVPNum], uiCost, false, DF_SAD );
+#endif
   return uiCost;
 }
 
@@ -7415,6 +7937,15 @@ Void TEncSearch::xMotionEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPa
 
   m_pcRdCost->getMotionCost( true, 0, pcCU->getCUTransquantBypass(uiPartAddr) );
 
+#if JVET_D0123_ME_CTX_LUT_BITS
+  pcPatternKey->m_pcCU = pcCU;
+  pcPatternKey->m_uiPartAddr = uiPartAddr;
+  pcPatternKey->m_eRefList = eRefPicList;
+  pcPatternKey->m_mvPred = pcMvPred;
+
+  iCostScale = 2;
+#endif
+
   m_pcRdCost->setPredictor  ( *pcMvPred );
   m_pcRdCost->setCostScale  ( 2 );
 #if VCEG_AZ06_IC
@@ -7457,11 +7988,16 @@ Void TEncSearch::xMotionEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPa
 
   m_pcRdCost->getMotionCost( true, 0, pcCU->getCUTransquantBypass(uiPartAddr) );
   m_pcRdCost->setCostScale ( 1 );
-
+#if JVET_D0123_ME_CTX_LUT_BITS
+  iCostScale = 1;
+#endif
   const Bool bIsLosslessCoded = pcCU->getCUTransquantBypass(uiPartAddr) != 0;
   xPatternSearchFracDIF( bIsLosslessCoded, pcPatternKey, piRefY, iRefStride, &rcMv, cMvHalf, cMvQter, ruiCost );
 
   m_pcRdCost->setCostScale( 0 );
+#if JVET_D0123_ME_CTX_LUT_BITS
+  iCostScale = 0;
+#endif
 #if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
   rcMv <<= ( 2 + VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE );
   rcMv += (cMvHalf <<= ( VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE + 1 ) );
@@ -7472,6 +8008,9 @@ Void TEncSearch::xMotionEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPa
   rcMv +=  cMvQter;
 #endif
 
+#if JVET_D0123_ME_CTX_LUT_BITS
+  UInt uiMvBits = xMvdBits(pcPatternKey, rcMv.getHor(), rcMv.getVer());
+#else
   UInt uiMvBits = m_pcRdCost->getBits( 
 #if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
     rcMv.getHor() >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE, rcMv.getVer() >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
@@ -7482,9 +8021,14 @@ Void TEncSearch::xMotionEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPa
     , pcCU->getiMVFlag( uiPartAddr )
 #endif
     );
+#endif
 
   ruiBits      += uiMvBits;
+#if JVET_D0123_ME_CTX_LUT_BITS
+  ruiCost       = (Distortion)( floor( fWeight * ( (Double)ruiCost - (Double)m_pcRdCost->getCostSearch( uiMvBits ) ) ) + (Double)m_pcRdCost->getCostSearch( ruiBits ) );
+#else
   ruiCost       = (Distortion)( floor( fWeight * ( (Double)ruiCost - (Double)m_pcRdCost->getCost( uiMvBits ) ) ) + (Double)m_pcRdCost->getCost( ruiBits ) );
+#endif
 }
 
 
@@ -7527,7 +8071,10 @@ Void TEncSearch::xPatternSearch( TComPattern* pcPatternKey, Pel* piRefY, Int iRe
   Int         iBestY = 0;
 
   Pel*  piRefSrch;
-
+#if JVET_D0123_ME_CTX_LUT_BITS
+  Distortion  uiCurSad;
+  Distortion  uiSadOnlyBest  = std::numeric_limits<Distortion>::max();
+#endif
   //-- jclee for using the SAD function pointer
   m_pcRdCost->setDistParam( pcPatternKey, piRefY, iRefStride,  m_cDistParam );
 
@@ -7557,14 +8104,26 @@ Void TEncSearch::xPatternSearch( TComPattern* pcPatternKey, Pel* piRefY, Int iRe
       uiSad = m_cDistParam.DistFunc( &m_cDistParam );
 
       // motion cost
+#if JVET_D0123_ME_CTX_LUT_BITS
+      uiCurSad = uiSad;
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+      UInt uiMvdBits = xMvdBits(pcPatternKey, x <<VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE, y <<VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE);
+#else
+      UInt uiMvdBits = xMvdBits(pcPatternKey, x, y);
+#endif
+      uiSad += (UInt) m_pcRdCost->getCostSearch( uiMvdBits );
+#else
       uiSad += m_pcRdCost->getCost( x, y 
 #if VCEG_AZ07_IMV
         , pcPatternKey->getImvFlag()
 #endif
         );
-
+#endif
       if ( uiSad < uiSadBest )
       {
+#if JVET_D0123_ME_CTX_LUT_BITS
+        uiSadOnlyBest = uiCurSad;
+#endif
         uiSadBest = uiSad;
         iBestX    = x;
         iBestY    = y;
@@ -7574,12 +8133,15 @@ Void TEncSearch::xPatternSearch( TComPattern* pcPatternKey, Pel* piRefY, Int iRe
   }
 
   rcMv.set( iBestX, iBestY );
-
+#if JVET_D0123_ME_CTX_LUT_BITS
+  ruiSAD = uiSadOnlyBest;
+#else
   ruiSAD = uiSadBest - m_pcRdCost->getCost( iBestX, iBestY 
 #if VCEG_AZ07_IMV
     , pcPatternKey->getImvFlag()
 #endif
     );
+#endif
   return;
 }
 
@@ -7647,6 +8209,9 @@ Void TEncSearch::xTZSearch( TComDataCU*  pcCU,
   cStruct.iYStride    = iRefStride;
   cStruct.piRefY      = piRefY;
   cStruct.uiBestSad   = MAX_UINT;
+#if JVET_D0123_ME_CTX_LUT_BITS
+  cStruct.uiBestSadOnly = MAX_UINT;
+#endif
 
   // set rcMv (Median predictor) as start point and as best point
   xTZSearchHelp( pcPatternKey, cStruct, rcMv.getHor(), rcMv.getVer(), 0, 0 );
@@ -7834,11 +8399,15 @@ Void TEncSearch::xTZSearch( TComDataCU*  pcCU,
 
   // write out best match
   rcMv.set( cStruct.iBestX, cStruct.iBestY );
+#if JVET_D0123_ME_CTX_LUT_BITS
+  ruiSAD = cStruct.uiBestSadOnly;
+#else
   ruiSAD = cStruct.uiBestSad - m_pcRdCost->getCost( cStruct.iBestX, cStruct.iBestY 
 #if VCEG_AZ07_IMV
     , pcPatternKey->getImvFlag()
 #endif
     );
+#endif
 }
 
 
@@ -7877,7 +8446,9 @@ Void TEncSearch::xTZSearchSelective( TComDataCU*   pcCU,
   cStruct.uiBestSad   = MAX_UINT;
   cStruct.iBestX = 0;
   cStruct.iBestY = 0;
-
+#if JVET_D0123_ME_CTX_LUT_BITS
+  cStruct.uiBestSadOnly = MAX_UINT;
+#endif
 
   // set rcMv (Median predictor) as start point and as best point
   xTZSearchHelp( pcPatternKey, cStruct, rcMv.getHor(), rcMv.getVer(), 0, 0 );
@@ -7992,8 +8563,11 @@ Void TEncSearch::xTZSearchSelective( TComDataCU*   pcCU,
 
   // write out best match
   rcMv.set( cStruct.iBestX, cStruct.iBestY );
+#if JVET_D0123_ME_CTX_LUT_BITS
+  ruiSAD = cStruct.uiBestSadOnly;
+#else
   ruiSAD = cStruct.uiBestSad - m_pcRdCost->getCost( cStruct.iBestX, cStruct.iBestY );
-
+#endif
 }
 
 
@@ -8025,6 +8599,9 @@ Void TEncSearch::xPatternSearchFracDIF(
   ruiCost = xPatternRefinement( pcPatternKey, baseRefMv, 2, rcMvHalf, !bIsLosslessCoded );
 
   m_pcRdCost->setCostScale( 0 );
+#if JVET_D0123_ME_CTX_LUT_BITS
+  iCostScale = 0;
+#endif
 #if VCEG_AZ07_IMV
   if( pcPatternKey->getImvFlag() )
   {
@@ -10276,8 +10853,11 @@ Distortion TEncSearch::xGetAffineTemplateCost( TComDataCU* pcCU, UInt uiPartAddr
 
   // calc distortion
   uiCost = m_pcRdCost->getDistPart( pcCU->getSlice()->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA), pcTemplateCand->getAddr(COMPONENT_Y, uiPartAddr), pcTemplateCand->getStride(COMPONENT_Y), pcOrgYuv->getAddr(COMPONENT_Y, uiPartAddr), pcOrgYuv->getStride(COMPONENT_Y), iSizeX, iSizeY, COMPONENT_Y, DF_SAD );
+#if JVET_D0123_ME_CTX_LUT_BITS
+  uiCost = uiCost + (UInt) m_pcRdCost->getCostSearch(m_auiMVPIdxCost[iMVPIdx][iMVPNum]);
+#else
   uiCost = (UInt) m_pcRdCost->calcRdCost( m_auiMVPIdxCost[iMVPIdx][iMVPNum], uiCost, false, DF_SAD );
-
+#endif
   return uiCost;
 }
 
@@ -10409,10 +10989,16 @@ Void TEncSearch::predAffineInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, Int
   UInt          bitsValidList1 = MAX_UINT;
   UInt          costValidList1 = MAX_UINT;
   TComMv        mvHevc[3];
+#if JVET_D0123_ME_CTX_LUT_BITS
+  loadCtxMeSbacCoder(pcCU);
+  pcCU->getPartIndexAndSize( iPartIdx, uiPartAddr, iRoiWidth, iRoiHeight );
+  xGetBlkBits( ePartSize, pcCU->getSlice()->isInterP(), iPartIdx, ruiLastMode, uiMbBits, pcCU, uiPartAddr); 
+  xUpdateMvpIdxBits(pcCU);
+#else
   xGetBlkBits( ePartSize, pcCU->getSlice()->isInterP(), iPartIdx, ruiLastMode, uiMbBits);
 
   pcCU->getPartIndexAndSize( iPartIdx, uiPartAddr, iRoiWidth, iRoiHeight );
-
+#endif
   // set Affine flag
   pcCU->setAffineFlagSubParts( true,  uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr) );
   pcCU->setMergeFlagSubParts ( false, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr) );
@@ -10428,11 +11014,15 @@ Void TEncSearch::predAffineInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, Int
       uiBitsTemp = uiMbBits[iRefList];
       if ( pcCU->getSlice()->getNumRefIdx(eRefPicList) > 1 )
       {
+#if JVET_D0123_ME_CTX_LUT_BITS
+        uiBitsTemp += xRefFrameIdxBits(pcCU, iRefIdxTemp, (UInt)pcCU->getSlice()->getNumRefIdx(eRefPicList));
+#else
         uiBitsTemp += iRefIdxTemp+1;
         if ( iRefIdxTemp == pcCU->getSlice()->getNumRefIdx(eRefPicList)-1 )
         {
           uiBitsTemp--;
         }
+#endif
       }
 
       // Do Affine AMVP
@@ -10474,7 +11064,11 @@ Void TEncSearch::predAffineInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, Int
           memcpy( cMvTemp[1][iRefIdxTemp], cMvTemp[0][iList1ToList0Idx], sizeof(TComMv)*3 );
           uiCostTemp = uiCostTempL0[iList1ToList0Idx];
           /*first subtract the bit-rate part of the cost of the other list*/
+#if JVET_D0123_ME_CTX_LUT_BITS
+          uiCostTemp -= m_pcRdCost->getCostSearch( uiBitsTempL0[iList1ToList0Idx] );
+#else
           uiCostTemp -= m_pcRdCost->getCost( uiBitsTempL0[iList1ToList0Idx] );
+#endif
           /*correct the bit-rate part of the current ref*/
 #if JVET_C0024_QTBT
           for ( Int iVerIdx = 0; iVerIdx<2; iVerIdx++ ) //Affine fix
@@ -10483,6 +11077,17 @@ Void TEncSearch::predAffineInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, Int
 #endif
           {
             m_pcRdCost->setPredictor ( cMvPred[iRefList][iRefIdxTemp][iVerIdx] );
+#if JVET_D0123_ME_CTX_LUT_BITS
+            TComPattern   tmpPattern;
+            TComPattern*  pcPatternKey  = &tmpPattern;
+            pcPatternKey->m_pcCU = pcCU;
+            pcPatternKey->m_uiPartAddr = uiPartAddr;
+            pcPatternKey->m_eRefList = eRefPicList;
+            pcPatternKey->m_mvPred = &cMvPred[iRefList][iRefIdxTemp][iVerIdx];
+
+            iCostScale = 0;
+            uiBitsTemp += xMvdBits(pcPatternKey, cMvTemp[1][iRefIdxTemp][iVerIdx].getHor(), cMvTemp[1][iRefIdxTemp][iVerIdx].getVer());
+#else
             uiBitsTemp += m_pcRdCost->getBits( 
 #if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
               cMvTemp[1][iRefIdxTemp][iVerIdx].getHor() >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE, cMvTemp[1][iRefIdxTemp][iVerIdx].getVer() >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
@@ -10493,9 +11098,14 @@ Void TEncSearch::predAffineInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, Int
               , false
 #endif
               );
+#endif
           }
           /*calculate the correct cost*/
+#if JVET_D0123_ME_CTX_LUT_BITS
+          uiCostTemp += m_pcRdCost->getCostSearch( uiBitsTemp );
+#else
           uiCostTemp += m_pcRdCost->getCost( uiBitsTemp );
+#endif
         }
         else
         {
@@ -10509,7 +11119,12 @@ Void TEncSearch::predAffineInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, Int
 
       // Set best AMVP Index
       xCopyAffineAMVPInfo( pcCU->getCUMvField(eRefPicList)->getAffineAMVPInfo(), &aacAffineAMVPInfo[iRefList][iRefIdxTemp] );
-      xCheckBestAffineMVP( pcCU, eRefPicList, cMvTemp[iRefList][iRefIdxTemp], cMvPred[iRefList][iRefIdxTemp], aaiMvpIdx[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp );
+      xCheckBestAffineMVP( pcCU, eRefPicList, cMvTemp[iRefList][iRefIdxTemp], cMvPred[iRefList][iRefIdxTemp], aaiMvpIdx[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp
+#if JVET_D0123_ME_CTX_LUT_BITS
+        , uiPartAddr
+
+#endif
+        );
 
       if ( iRefList == 0 )
       {
@@ -10575,8 +11190,12 @@ Void TEncSearch::predAffineInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, Int
       uiMotBits[1] = uiMbBits[1];
       if ( pcCU->getSlice()->getNumRefIdx(REF_PIC_LIST_1) > 1 )
       {
+#if JVET_D0123_ME_CTX_LUT_BITS
+        uiMotBits[1] += xRefFrameIdxBits(pcCU, bestBiPRefIdxL1, (UInt)pcCU->getSlice()->getNumRefIdx(REF_PIC_LIST_1));
+#else
         uiMotBits[1] += bestBiPRefIdxL1+1;
         if ( bestBiPRefIdxL1 == pcCU->getSlice()->getNumRefIdx(REF_PIC_LIST_1)-1 ) uiMotBits[1]--;
+#endif
       }
       uiMotBits[1] += m_auiMVPIdxCost[aaiMvpIdxBi[1][bestBiPRefIdxL1]][AMVP_MAX_NUM_CANDS];
       uiBits[2] = uiMbBits[2] + uiMotBits[0] + uiMotBits[1];
@@ -10643,15 +11262,23 @@ Void TEncSearch::predAffineInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, Int
         uiBitsTemp = uiMbBits[2] + uiMotBits[1-iRefList];
         if ( pcCU->getSlice()->getNumRefIdx(eRefPicList) > 1 )
         {
+#if JVET_D0123_ME_CTX_LUT_BITS
+          uiBitsTemp += xRefFrameIdxBits(pcCU, iRefIdxTemp, (UInt)pcCU->getSlice()->getNumRefIdx(eRefPicList));
+#else
           uiBitsTemp += iRefIdxTemp+1;
           if ( iRefIdxTemp == pcCU->getSlice()->getNumRefIdx(eRefPicList)-1 ) uiBitsTemp--;
+#endif
         }
         uiBitsTemp += m_auiMVPIdxCost[aaiMvpIdxBi[iRefList][iRefIdxTemp]][AMVP_MAX_NUM_CANDS];
 
         // call Affine ME
         xAffineMotionEstimation ( pcCU, pcOrgYuv, iPartIdx, eRefPicList, cMvPredBi[iRefList][iRefIdxTemp], iRefIdxTemp, cMvTemp[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp, true );
         xCopyAffineAMVPInfo( &aacAffineAMVPInfo[iRefList][iRefIdxTemp], pcCU->getCUMvField(eRefPicList)->getAffineAMVPInfo() );
-        xCheckBestAffineMVP( pcCU, eRefPicList, cMvTemp[iRefList][iRefIdxTemp], cMvPredBi[iRefList][iRefIdxTemp], aaiMvpIdxBi[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp);
+        xCheckBestAffineMVP( pcCU, eRefPicList, cMvTemp[iRefList][iRefIdxTemp], cMvPredBi[iRefList][iRefIdxTemp], aaiMvpIdxBi[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp
+#if JVET_D0123_ME_CTX_LUT_BITS
+          , uiPartAddr
+#endif
+          );
 
         if ( uiCostTemp < uiCostBi )
         {
@@ -10680,12 +11307,20 @@ Void TEncSearch::predAffineInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, Int
         if ( uiCostBi <= uiCost[0] && uiCostBi <= uiCost[1] )
         {
           xCopyAffineAMVPInfo( &aacAffineAMVPInfo[0][iRefIdxBi[0]], pcCU->getCUMvField(REF_PIC_LIST_0)->getAffineAMVPInfo() );
-          xCheckBestAffineMVP( pcCU, REF_PIC_LIST_0, cMvBi[0], cMvPredBi[0][iRefIdxBi[0]], aaiMvpIdxBi[0][iRefIdxBi[0]], uiBits[2], uiCostBi );
+          xCheckBestAffineMVP( pcCU, REF_PIC_LIST_0, cMvBi[0], cMvPredBi[0][iRefIdxBi[0]], aaiMvpIdxBi[0][iRefIdxBi[0]], uiBits[2], uiCostBi
+#if JVET_D0123_ME_CTX_LUT_BITS
+            , uiPartAddr
+#endif
+            );
 
           if ( !pcCU->getSlice()->getMvdL1ZeroFlag() )
           {
             xCopyAffineAMVPInfo( &aacAffineAMVPInfo[1][iRefIdxBi[1]], pcCU->getCUMvField(REF_PIC_LIST_1)->getAffineAMVPInfo() );
-            xCheckBestAffineMVP( pcCU, REF_PIC_LIST_1, cMvBi[1], cMvPredBi[1][iRefIdxBi[1]], aaiMvpIdxBi[1][iRefIdxBi[1]], uiBits[2], uiCostBi );
+            xCheckBestAffineMVP( pcCU, REF_PIC_LIST_1, cMvBi[1], cMvPredBi[1][iRefIdxBi[1]], aaiMvpIdxBi[1][iRefIdxBi[1]], uiBits[2], uiCostBi
+#if JVET_D0123_ME_CTX_LUT_BITS
+              , uiPartAddr
+#endif
+              );
           }
         }
         break;
@@ -10778,7 +11413,11 @@ Void TEncSearch::predAffineInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, Int
   return;
 }
 
-Void TEncSearch::xCheckBestAffineMVP ( TComDataCU* pcCU, RefPicList eRefPicList, TComMv acMv[3], TComMv acMvPred[3], Int& riMVPIdx, UInt& ruiBits, Distortion& ruiCost )
+Void TEncSearch::xCheckBestAffineMVP ( TComDataCU* pcCU, RefPicList eRefPicList, TComMv acMv[3], TComMv acMvPred[3], Int& riMVPIdx, UInt& ruiBits, Distortion& ruiCost
+#if JVET_D0123_ME_CTX_LUT_BITS
+              , UInt uiPartAddr
+#endif
+              )
 {
   AffineAMVPInfo* pcAffineAMVPInfo = pcCU->getCUMvField(eRefPicList)->getAffineAMVPInfo();
 
@@ -10792,11 +11431,27 @@ Void TEncSearch::xCheckBestAffineMVP ( TComDataCU* pcCU, RefPicList eRefPicList,
 
   Int iBestMVPIdx = riMVPIdx;
 
+#if JVET_D0123_ME_CTX_LUT_BITS
+  TComPattern   tmpPattern;
+  TComPattern*  pcPatternKey  = &tmpPattern;
+  pcPatternKey->m_pcCU = pcCU;
+  pcPatternKey->m_uiPartAddr = uiPartAddr;
+  pcPatternKey->m_eRefList = eRefPicList;
+
+  pcPatternKey->m_bAffine = true;
+  pcPatternKey->m_bBi = false;
+  iCostScale = 0;
+#endif
+
   // Get origin MV bits
   Int iOrgMvBits = 0;
   for ( Int iVerIdx=0; iVerIdx<2; iVerIdx++ )
   {
     m_pcRdCost->setPredictor ( acMvPred[iVerIdx] );
+#if JVET_D0123_ME_CTX_LUT_BITS
+    pcPatternKey->m_mvPred = &acMvPred[iVerIdx];
+    iOrgMvBits += xMvdBits(pcPatternKey, acMv[iVerIdx].getHor(), acMv[iVerIdx].getVer());
+#else
     iOrgMvBits += m_pcRdCost->getBits( 
 #if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
       acMv[iVerIdx].getHor() >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE, acMv[iVerIdx].getVer() >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
@@ -10807,6 +11462,7 @@ Void TEncSearch::xCheckBestAffineMVP ( TComDataCU* pcCU, RefPicList eRefPicList,
       , false
 #endif
       );
+#endif
   }
   iOrgMvBits += m_auiMVPIdxCost[riMVPIdx][AMVP_MAX_NUM_CANDS];
 
@@ -10822,6 +11478,10 @@ Void TEncSearch::xCheckBestAffineMVP ( TComDataCU* pcCU, RefPicList eRefPicList,
     for ( Int iVerIdx=0; iVerIdx<2; iVerIdx++ )
     {
       m_pcRdCost->setPredictor ( pcAffineAMVPInfo->m_acMvCand[iMVPIdx][iVerIdx] );
+#if JVET_D0123_ME_CTX_LUT_BITS
+      pcPatternKey->m_mvPred = &pcAffineAMVPInfo->m_acMvCand[iMVPIdx][iVerIdx];
+      iMvBits += xMvdBits(pcPatternKey, acMv[iVerIdx].getHor(), acMv[iVerIdx].getVer());
+#else
       iMvBits += m_pcRdCost->getBits( 
 #if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
         acMv[iVerIdx].getHor() >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE, acMv[iVerIdx].getVer() >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
@@ -10832,6 +11492,7 @@ Void TEncSearch::xCheckBestAffineMVP ( TComDataCU* pcCU, RefPicList eRefPicList,
         , false
 #endif
         );
+#endif
     }
     iMvBits += m_auiMVPIdxCost[iMVPIdx][AMVP_MAX_NUM_CANDS];
 
@@ -10848,7 +11509,11 @@ Void TEncSearch::xCheckBestAffineMVP ( TComDataCU* pcCU, RefPicList eRefPicList,
     riMVPIdx = iBestMVPIdx;
     UInt uiOrgBits = ruiBits;
     ruiBits = uiOrgBits - iOrgMvBits + iBestMvBits;
+#if JVET_D0123_ME_CTX_LUT_BITS
+    ruiCost = (ruiCost - m_pcRdCost->getCostSearch( uiOrgBits ))  + m_pcRdCost->getCostSearch( ruiBits );
+#else
     ruiCost = (ruiCost - m_pcRdCost->getCost( uiOrgBits )) + m_pcRdCost->getCost( ruiBits );
+#endif
   }
 }
 
@@ -10939,6 +11604,17 @@ Void TEncSearch::xAffineMotionEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, I
   for ( Int i=0; i<2; i++ )
   {
     m_pcRdCost->setPredictor( acMvPred[i] );
+#if JVET_D0123_ME_CTX_LUT_BITS
+    TComPattern   tmpPattern;
+    TComPattern*  pcPatternKey  = &tmpPattern;
+    pcPatternKey->m_pcCU = pcCU;
+    pcPatternKey->m_uiPartAddr = uiPartAddr;
+    pcPatternKey->m_eRefList = eRefPicList;
+    pcPatternKey->m_mvPred = &acMvPred[i];
+
+    iCostScale = 0;
+    uiBitsBest += xMvdBits(pcPatternKey, acMvTemp[i].getHor(), acMvTemp[i].getVer());
+#else
     uiBitsBest += m_pcRdCost->getBits( 
 #if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
       acMvTemp[i].getHor() >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE, acMvTemp[i].getVer() >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
@@ -10949,8 +11625,13 @@ Void TEncSearch::xAffineMotionEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, I
       , false
 #endif
       );
+#endif
   }
+#if JVET_D0123_ME_CTX_LUT_BITS
+  uiCostBest = (UInt)( floor( fWeight * (Double)uiCostBest ) + (Double)m_pcRdCost->getCostSearch( uiBitsBest ) );
+#else
   uiCostBest = (UInt)( floor( fWeight * (Double)uiCostBest ) + (Double)m_pcRdCost->getCost( uiBitsBest ) );
+#endif
 
 #if COM16_C1016_AFFINE
   memcpy( acMv, acMvTemp, sizeof(TComMv) * 3 );
@@ -11120,6 +11801,17 @@ Void TEncSearch::xAffineMotionEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, I
     for ( Int i=0; i<2; i++ )
     {
       m_pcRdCost->setPredictor( acMvPred[i] );
+#if JVET_D0123_ME_CTX_LUT_BITS
+      TComPattern   tmpPattern;
+      TComPattern*  pcPatternKey  = &tmpPattern;
+      pcPatternKey->m_pcCU = pcCU;
+      pcPatternKey->m_uiPartAddr = uiPartAddr;
+      pcPatternKey->m_eRefList = eRefPicList;
+      pcPatternKey->m_mvPred = &acMvPred[i];
+
+      iCostScale = 0;
+      uiBitsTemp += xMvdBits(pcPatternKey, acMvTemp[i].getHor(), acMvTemp[i].getVer());
+#else 
       uiBitsTemp += m_pcRdCost->getBits( 
 #if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
         acMvTemp[i].getHor() >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE, acMvTemp[i].getVer() >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
@@ -11130,8 +11822,13 @@ Void TEncSearch::xAffineMotionEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, I
         , false
 #endif
         );
+#endif
     }
+#if JVET_D0123_ME_CTX_LUT_BITS
+    uiCostTemp = (UInt)( floor( fWeight * (Double)uiCostTemp ) + (Double)m_pcRdCost->getCostSearch( uiBitsTemp ) );
+#else
     uiCostTemp = (UInt)( floor( fWeight * (Double)uiCostTemp ) + (Double)m_pcRdCost->getCost( uiBitsTemp ) );
+#endif
 
     // store best cost and mv
     if ( uiCostTemp < uiCostBest )

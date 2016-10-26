@@ -213,7 +213,24 @@ public:
   // -------------------------------------------------------------------------------------------------------------------
   // for RD-optimizatioon
   // -------------------------------------------------------------------------------------------------------------------
-
+#if JVET_D0123_ME_CTX_LUT_BITS
+  Void estPuMeBit           (estPuMeBitsSbacStruct* pcEstPuMeBitsSbac);
+  Void estMvdBit            (estPuMeBitsSbacStruct* pcEstPuMeBitsSbac);
+  Void estMvpIdxBit         (estPuMeBitsSbacStruct* pcEstPuMeBitsSbac);
+  Void estRefIdxBit         (estPuMeBitsSbacStruct* pcEstPuMeBitsSbac);
+  Void estInterDirBit       (estPuMeBitsSbacStruct* pcEstPuMeBitsSbac);
+  Void estMrgFlagBit        (estPuMeBitsSbacStruct* pcEstPuMeBitsSbac);
+  Void estMrgIdxBit         (estPuMeBitsSbacStruct* pcEstPuMeBitsSbac);
+#if VCEG_AZ07_FRUC_MERGE
+  Void estFrucModeBit       (estPuMeBitsSbacStruct* pcEstPuMeBitsSbac);  
+#endif
+#if COM16_C1016_AFFINE
+  Void estAffineFlagBit     (estPuMeBitsSbacStruct* pcEstPuMeBitsSbac);
+#endif
+#if VCEG_AZ07_IMV
+  Void estIMVFlagBit        (estPuMeBitsSbacStruct* pcEstPuMeBitsSbac);
+#endif
+#endif
   Void estBit               (estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, ChannelType chType
 #if RDOQ_BIT_ESTIMATE_FIX_TICKET29
     , UInt uiScanIdx

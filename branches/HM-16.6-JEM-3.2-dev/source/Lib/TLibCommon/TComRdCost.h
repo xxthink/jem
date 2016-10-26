@@ -199,6 +199,12 @@ public:
       ) >> 16;
 #endif
   }
+#if JVET_D0123_ME_CTX_LUT_BITS
+  Distortion getCostSearch (UInt uiBits)
+  {
+    return (Distortion) (m_sqrtLambda * uiBits / ((Double)EPBIT));
+  }
+#endif
 #if RExt__HIGH_BIT_DEPTH_SUPPORT
   Distortion getCost( UInt b )                 { return Distortion(( m_dCost * b ) / 65536.0); }
 #else
