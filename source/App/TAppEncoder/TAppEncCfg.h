@@ -130,6 +130,11 @@ protected:
   // coding quality
   Double    m_fQP;                                            ///< QP value of key-picture (floating point)
   Int       m_iQP;                                            ///< QP value of key-picture (integer)
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+  Double    m_dIntraQpFactor;                                 ///< Intra Q Factor. If negative, use a default equation: 0.57*(1.0 - Clip3( 0.0, 0.5, 0.05*(Double)(isField ? (GopSize-1)/2 : GopSize-1) ))
+  Int       m_intraQPOffset;                                  ///< QP offset for intra slice (integer)
+  Bool      m_lambdaFromQPEnable;                             ///< enable flag for QP:lambda fix
+#endif
   Char*     m_pchdQPFile;                                     ///< QP offset for each slice (initialized from external file)
   Int*      m_aidQP;                                          ///< array of slice QP values
   Int       m_iMaxDeltaQP;                                    ///< max. |delta QP|

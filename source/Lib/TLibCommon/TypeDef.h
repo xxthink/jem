@@ -282,10 +282,17 @@
 // encoder only changes
 #define COM16_C806_SIMD_OPT                               1  ///< SIMD optimization, no impact on RD performance
 
+#define JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY             1 ///< This approach derives lambda from QP+QPoffset+QPoffset2. QPoffset2 is derived from QP+QPoffset using a linear model that is clipped between 0 and 3.
+                                                            // To use this capability enable config parameter LambdaFromQpEnable
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+#define JVET_B0039_QP_FIX                                 0  ///< Recalcualtes QP to align with a HM lambda (same relation as for all intra coding is used)
+#else
 #define JVET_B0039_QP_FIX                                 1  ///< Recalcualtes QP to align with a HM lambda (same relation as for all intra coding is used)
+#endif
 #define JVET_B0039_INC_NUM_QP_PROB                        7  ///< Number of context is increased when more QPs are used
 
 #define FIX_TICKET30                                      1  ///< Fix of ticket #30 (Use of uninitialized Cabac coder for Intra 128x128 blocks)
+
 
 ///////////////////////////////////////////////////////////
 // KTA tools section end

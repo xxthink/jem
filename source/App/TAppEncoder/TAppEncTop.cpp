@@ -124,6 +124,11 @@ Void TAppEncTop::xInitLibCfg()
     m_cTEncTop.setLambdaModifier                                  ( uiLoop, m_adLambdaModifier[ uiLoop ] );
   }
   m_cTEncTop.setQP                                                ( m_iQP );
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+  m_cTEncTop.setIntraQpFactor                                     ( m_dIntraQpFactor );
+  m_cTEncTop.setIntraQPOffset                                     ( m_intraQPOffset );
+  m_cTEncTop.setLambdaFromQPEnable                                ( m_lambdaFromQPEnable );
+#endif
 
   m_cTEncTop.setPad                                               ( m_aiPad );
 
@@ -165,7 +170,11 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setExtendedPrecisionProcessingFlag                   ( m_extendedPrecisionProcessingFlag );
   m_cTEncTop.setHighPrecisionOffsetsEnabledFlag                   ( m_highPrecisionOffsetsEnabledFlag );
   //====== Tool list ========
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+  m_cTEncTop.setDeltaQpRD( (m_costMode==COST_LOSSLESS_CODING) ? 0 : m_uiDeltaQpRD );
+#else
   m_cTEncTop.setDeltaQpRD                                         ( m_uiDeltaQpRD  );
+#endif
   m_cTEncTop.setFastDeltaQp                                       ( m_bFastDeltaQP  );
   m_cTEncTop.setUseASR                                            ( m_bUseASR      );
   m_cTEncTop.setUseHADME                                          ( m_bUseHADME    );

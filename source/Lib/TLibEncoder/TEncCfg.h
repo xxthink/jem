@@ -50,6 +50,10 @@ struct GOPEntry
 {
   Int m_POC;
   Int m_QPOffset;
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+  Double m_QPOffsetModelOffset;
+  Double m_QPOffsetModelScale;
+#endif
   Double m_QPFactor;
   Int m_tcOffsetDiv2;
   Int m_betaOffsetDiv2;
@@ -68,6 +72,10 @@ struct GOPEntry
   GOPEntry()
   : m_POC(-1)
   , m_QPOffset(0)
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+  , m_QPOffsetModelOffset(0)
+  , m_QPOffsetModelScale(0)
+#endif
   , m_QPFactor(0)
   , m_tcOffsetDiv2(0)
   , m_betaOffsetDiv2(0)
@@ -108,7 +116,9 @@ protected:
   Window    m_conformanceWindow;
   Int       m_framesToBeEncoded;
   Double    m_adLambdaModifier[ MAX_TLAYER ];
-
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY  
+  std::vector<Double> m_adIntraLambdaModifier;
+#endif
   Bool      m_printMSEBasedSequencePSNR;
   Bool      m_printFrameMSE;
   Bool      m_printSequenceMSE;
@@ -138,6 +148,11 @@ protected:
   Int       m_numReorderPics[MAX_TLAYER];
 
   Int       m_iQP;                              //  if (AdaptiveQP == OFF)
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+  Double    m_dIntraQpFactor;                                 ///< Intra Q Factor. If negative, use a default equation: 0.57*(1.0 - Clip3( 0.0, 0.5, 0.05*(Double)(isField ? (GopSize-1)/2 : GopSize-1) ))
+  Int       m_intraQPOffset;                    ///< QP offset for intra slice (integer)
+  Int       m_lambdaFromQPEnable;               ///< enable lambda derivation from QP
+#endif
 
   Int       m_aiPad[2];
 
@@ -519,6 +534,11 @@ public:
   Void      setNumReorderPics               ( Int  i, UInt tlayer ) { m_numReorderPics[tlayer] = i;    }
 
   Void      setQP                           ( Int   i )      { m_iQP = i; }
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+  Void      setIntraQpFactor                ( Double dValue )               { m_dIntraQpFactor = dValue;              }
+  Void      setIntraQPOffset                ( Int   i )         { m_intraQPOffset = i; }
+  Void      setLambdaFromQPEnable           ( Bool  b )         { m_lambdaFromQPEnable = b; }
+#endif
 
   Void      setPad                          ( Int*  iPad                   )      { for ( Int i = 0; i < 2; i++ ) m_aiPad[i] = iPad[i]; }
 
@@ -612,15 +632,26 @@ public:
   Int       getFramesToBeEncoded            ()      { return  m_framesToBeEncoded; }
   Void setLambdaModifier                    ( UInt uiIndex, Double dValue ) { m_adLambdaModifier[ uiIndex ] = dValue; }
   Double getLambdaModifier                  ( UInt uiIndex ) const { return m_adLambdaModifier[ uiIndex ]; }
-
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+  const std::vector<Double>& getIntraLambdaModifier()                        const { return m_adIntraLambdaModifier;         }
+#endif
   //==== Coding Structure ========
   UInt      getIntraPeriod                  ()      { return  m_uiIntraPeriod; }
   UInt      getDecodingRefreshType          ()      { return  m_uiDecodingRefreshType; }
   Int       getGOPSize                      ()      { return  m_iGOPSize; }
   Int       getMaxDecPicBuffering           (UInt tlayer) { return m_maxDecPicBuffering[tlayer]; }
   Int       getNumReorderPics               (UInt tlayer) { return m_numReorderPics[tlayer]; }
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+  Double    getIntraQpFactor                ()                        const { return m_dIntraQpFactor;                }
+  Int       getIntraQPOffset                () const    { return  m_intraQPOffset; }
+  Int       getLambdaFromQPEnable           () const    { return  m_lambdaFromQPEnable; }
+protected:
+  Int       getBaseQP                       () const { return  m_iQP; } // public should use getQPForPicture.
+public:
+  Int       getQPForPicture                 (const UInt gopIndex, TComSlice *pSlice); // Function actually defined in TEncTop.cpp
+#else
   Int       getQP                           ()      { return  m_iQP; }
-
+#endif
   Int       getPad                          ( Int i )      { assert (i < 2 );                      return  m_aiPad[i]; }
 
   //======== Transform =============
