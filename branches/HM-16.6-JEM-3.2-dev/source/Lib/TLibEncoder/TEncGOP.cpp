@@ -976,7 +976,15 @@ Int EfficientFieldIRAPMapping::restoreGOPid(const Int GOPid)
   return GOPid;
 }
 
-
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+static UInt calculateCollocatedFromL0Flag(TComSlice *pSlice)
+{
+  Int refIdx = 0; // Zero always assumed
+  TComPic *refPicL0 = pSlice->getRefPic(REF_PIC_LIST_0, refIdx);
+  TComPic *refPicL1 = pSlice->getRefPic(REF_PIC_LIST_1, refIdx);
+  return refPicL0->getSlice(0)->getSliceQp() > refPicL1->getSlice(0)->getSliceQp();
+}
+#else
 static UInt calculateCollocatedFromL1Flag(TEncCfg *pCfg, const Int GOPid, const Int gopSize)
 {
   Int iCloseLeft=1, iCloseRight=-1;
@@ -1025,6 +1033,7 @@ static UInt calculateCollocatedFromL1Flag(TEncCfg *pCfg, const Int GOPid, const 
     return 1;
   }
 }
+#endif
 
 // ====================================================================================================================
 // Public member functions
@@ -1082,8 +1091,9 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     //-- For time output for each slice
     clock_t iBeforeTime = clock();
 
+#if !JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
     UInt uiColDir = calculateCollocatedFromL1Flag(m_pcCfg, iGOPid, m_iGopSize);
-
+#endif
     /////////////////////////////////////////////////////////////////////////////////////////////////// Initial to start encoding
     Int iTimeOffset;
     Int pocCurr;
@@ -1363,7 +1373,12 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
 
     if (pcSlice->getSliceType() == B_SLICE)
     {
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+      const UInt uiColFromL0 = calculateCollocatedFromL0Flag(pcSlice);
+      pcSlice->setColFromL0Flag(uiColFromL0);
+#else
       pcSlice->setColFromL0Flag(1-uiColDir);
+#endif
       Bool bLowDelay = true;
       Int  iCurrPOC  = pcSlice->getPOC();
       Int iRefIdx = 0;
@@ -1390,8 +1405,9 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
       pcSlice->setCheckLDC(true);
     }
 
+#if !JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
     uiColDir = 1-uiColDir;
-
+#endif
     //-------------------------------------------------------------
     pcSlice->setRefPOCList();
 #if JVET_C0027_BIO
