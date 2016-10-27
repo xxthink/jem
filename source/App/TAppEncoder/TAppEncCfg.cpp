@@ -793,12 +793,12 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 #if JVET_C0024_QTBT
   ("CTUSize",                                         m_uiCTUSize,                                       128u, "CTUSize")
   ("MinQTLumaISlice",                                 m_uiMinQT[0],                                        8u, "MinQTSizeLuma")
-  ("MinQTChromaISlice",                               m_uiMinQT[1],                                        4u, "MinQTSizeChroma")
+  ("MinQTChromaISlice",                               m_uiMinQT[1],                                        4u, "MinQTSizeChroma (in luma samples)")
   ("MinQTNonISlice",                                  m_uiMinQT[2],                                        8u, "MinQTSize")
 #if JVET_C0024_SPS_MAX_BT_SIZE
   ("MaxBTSize",                                       m_uiMaxBTSize,                                     128u, "MaxBTSize")
   ("MaxBTSizeISliceL",                                m_uiMaxBTSizeISliceL,                               32u, "MaxBTSizeISliceL")
-  ("MaxBTSizeISliceC",                                m_uiMaxBTSizeISliceC,                               16u, "MaxBTSizeISliceC")
+  ("MaxBTSizeISliceC",                                m_uiMaxBTSizeISliceC,                               16u, "MaxBTSizeISliceC (in luma samples)")
 #endif
 #if JVET_C0024_SPS_MAX_BT_DEPTH
   ("MaxBTDepth",                                      m_uiMaxBTDepth,                                      3u, "MaxBTDepth")
