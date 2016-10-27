@@ -1100,6 +1100,13 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
   const UInt uiMaxDQPDepthQTBT = pps.getMaxCuDQPDepth() << 1;
 #endif
 
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+  Bool bUseSaveLoad = m_pcEncCfg->getUseSaveLoadEncInfo() && uiWidthIdx > 0 && uiHeightIdx > 0;
+  Bool bUseSaveLoadSplitDecision = bUseSaveLoad && m_pcEncCfg->getUseSaveLoadSplitDecision();
+  ChannelType eChannelType = rpcBestCU->getTextType();
+  UInt uiZorderIdx = rpcBestCU->getZorderIdxInCtu();
+#endif
+
 
   Int iBaseQP = xComputeQP( rpcBestCU, uiDepth );
   Int iMinQP;
@@ -1212,7 +1219,14 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
     assert(uiWidth == uiHeight);
   }
 #endif
-
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+  UChar saveLoadTag = m_pcPredSearch->getSaveLoadTag( uiZorderIdx, uiWidthIdx, uiHeightIdx );
+  UChar saveLoadSplit = ( (bUseSaveLoadSplitDecision && saveLoadTag == LOAD_ENC_INFO) ? m_pcPredSearch->getSaveLoadSplit(uiWidthIdx, uiHeightIdx) : 0 );
+  Double dCostTempBest = MAX_DOUBLE;
+  Double dNonSplitCost = MAX_DOUBLE;
+  Double dHorSplitCost = MAX_DOUBLE;
+  Double dVerSplitCost = MAX_DOUBLE;
+#endif
   if ( !bBoundary 
 #if COM16_C806_LARGE_CTU
     && ucMinDepth <= uiDepth 
@@ -1220,8 +1234,15 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #if JVET_C0024_QTBT
     && !bForceQT
 #endif
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+    && !( saveLoadSplit & 0x01 )
+#endif
     )
   {
+#if JVET_D0077_FAST_EXT
+    Bool bPrevSameBlockIsIntra = rpcBestCU->getPic()->getIntra(rpcBestCU->getZorderIdxInCtu(), uiWidth, uiHeight);
+    Bool bPrevSameBlockIsSkip  = rpcBestCU->getPic()->getSkiped(rpcBestCU->getZorderIdxInCtu(), uiWidth, uiHeight);
+#endif
     for (Int iQP=iMinQP; iQP<=iMaxQP; iQP++)
     {
       const Bool bIsLosslessMode = isAddLowestQP && (iQP == iMinQP);
@@ -1266,6 +1287,18 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
       // do inter modes, SKIP and 2Nx2N
       if( rpcBestCU->getSlice()->getSliceType() != I_SLICE )
       {
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+#if VCEG_AZ07_FRUC_MERGE
+        Bool bFastSkipFruc = ( saveLoadTag == LOAD_ENC_INFO && 0 == m_pcPredSearch->getSaveLoadFrucMode( uiWidthIdx, uiHeightIdx ) );
+#endif
+#if VCEG_AZ07_IMV
+        Bool bFastSkipIMV = ( saveLoadTag == LOAD_ENC_INFO && ( !m_pcPredSearch->getSaveLoadIMVFlag( uiWidthIdx, uiHeightIdx ) || m_pcPredSearch->getSaveLoadMergeFlag( uiWidthIdx, uiHeightIdx ) )  );
+#endif
+        Bool bFastSkipInter = ( saveLoadTag == LOAD_ENC_INFO && m_pcPredSearch->getSaveLoadMergeFlag( uiWidthIdx, uiHeightIdx ) );
+#if COM16_C1016_AFFINE
+        Bool bFastSkipAffine = ( saveLoadTag == LOAD_ENC_INFO && !m_pcPredSearch->getSaveLoadAffineFlag( uiWidthIdx, uiHeightIdx ) );
+#endif
+#endif
 #if VCEG_AZ06_IC
         for( UInt uiICId = 0; uiICId < ( bICEnabled ? 2 : 1 ); uiICId++ )
         {
@@ -1286,7 +1319,15 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         {
 #endif
 #if COM16_C1016_AFFINE
+#if JVET_D0077_FAST_EXT
+        if( rpcTempCU->getSlice()->getSPS()->getUseAffine() && !bPrevSameBlockIsIntra 
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+          && !bFastSkipAffine
+#endif
+          )
+#else
         if( rpcTempCU->getSlice()->getSPS()->getUseAffine() )
+#endif
         {
           xCheckRDCostAffineMerge2Nx2N( rpcBestCU, rpcTempCU );
           rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
@@ -1300,7 +1341,15 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #endif
 
 #if VCEG_AZ07_FRUC_MERGE
+#if JVET_D0077_FAST_EXT
+        if( rpcTempCU->getSlice()->getSPS()->getUseFRUCMgrMode() && !bPrevSameBlockIsIntra 
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+          && !bFastSkipFruc
+#endif
+          )
+#else
         if( rpcTempCU->getSlice()->getSPS()->getUseFRUCMgrMode() )
+#endif
         {
 #if VCEG_AZ06_IC
           rpcTempCU->setICFlagSubParts(bICFlag, 0, uiDepth);
@@ -1311,8 +1360,18 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #endif
 
 #if JVET_C0024_QTBT
+#if JVET_D0077_FAST_EXT
+        if (!m_pcEncCfg->getUseEarlySkipDetection() && !bPrevSameBlockIsSkip && !bPrevSameBlockIsIntra
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+          && !bFastSkipInter
+#if VCEG_AZ06_IC
+          && !( saveLoadTag == LOAD_ENC_INFO && bICFlag != m_pcPredSearch->getSaveLoadICFlag( uiWidthIdx, uiHeightIdx ) )
+#endif
+#endif
+#else
         if (!m_pcEncCfg->getUseEarlySkipDetection() && !rpcBestCU->getPic()->getSkiped(rpcBestCU->getZorderIdxInCtu(), uiWidth, uiHeight)
           && !rpcBestCU->getPic()->getIntra(rpcBestCU->getZorderIdxInCtu(), uiWidth, uiHeight)
+#endif
           )
 #else
         if(!m_pcEncCfg->getUseEarlySkipDetection())
@@ -1332,6 +1391,37 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #endif
         }
 #if VCEG_AZ06_IC
+        }
+#endif
+#if VCEG_AZ07_IMV && JVET_D0077_SAVE_LOAD_ENC_INFO
+#if JVET_D0077_FAST_EXT
+        if( m_pcEncCfg->getIMV() && !rpcBestCU->getSlice()->isIntra() && !bPrevSameBlockIsIntra && !bPrevSameBlockIsSkip 
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+          && !bFastSkipIMV
+#endif
+          )
+#else
+        if( m_pcEncCfg->getIMV() && !rpcBestCU->getSlice()->isIntra() )
+#endif
+        {
+          // always check SIZE_2Nx2N
+#if VCEG_AZ06_IC
+          for( UInt uiICId = 0; uiICId < ( bICEnabled ? 2 : 1 ); uiICId++ )
+          {
+            Bool bICFlag = uiICId ? true : false;
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+            if( saveLoadTag == LOAD_ENC_INFO && bICFlag != m_pcPredSearch->getSaveLoadICFlag( uiWidthIdx, uiHeightIdx ) )
+            {
+              continue;
+      }
+#endif
+            rpcTempCU->setICFlagSubParts(bICFlag, 0, uiDepth);
+#endif
+            xCheckRDCostInter( rpcBestCU, rpcTempCU, SIZE_2Nx2N , false , true );
+            rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
+#if VCEG_AZ06_IC
+          }
+#endif
         }
 #endif
       }
@@ -1562,14 +1652,28 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         }
 #endif //#if !JVET_C0024_QTBT
 
-#if VCEG_AZ07_IMV
+#if VCEG_AZ07_IMV && !JVET_D0077_SAVE_LOAD_ENC_INFO
+#if JVET_D0077_FAST_EXT
+        if( m_pcEncCfg->getIMV() && !rpcBestCU->getSlice()->isIntra() && !bPrevSameBlockIsIntra && !bPrevSameBlockIsSkip 
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+          && !bFastSkipIMV
+#endif
+          )
+#else
         if( m_pcEncCfg->getIMV() && !rpcBestCU->getSlice()->isIntra() )
+#endif
         {
           // always check SIZE_2Nx2N
 #if VCEG_AZ06_IC
           for( UInt uiICId = 0; uiICId < ( bICEnabled ? 2 : 1 ); uiICId++ )
           {
             Bool bICFlag = uiICId ? true : false;
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+            if( saveLoadTag == LOAD_ENC_INFO && bICFlag != m_pcPredSearch->getSaveLoadICFlag( uiWidthIdx, uiHeightIdx ) )
+            {
+              continue;
+            }
+#endif
             rpcTempCU->setICFlagSubParts(bICFlag, 0, uiDepth);
 #endif
             xCheckRDCostInter( rpcBestCU, rpcTempCU, SIZE_2Nx2N , false , true );
@@ -1675,6 +1779,14 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
           rpcTempCU->getInterHAD() = MAX_UINT;
           if (rpcBestCU->getPredictionMode(0)==MODE_INTER && !rpcBestCU->getSlice()->isIntra())
           {
+#if JVET_C0024_PBINTRA_FAST_FIX
+            DistParam distParam;
+            const Bool bUseHadamard=rpcTempCU->getCUTransquantBypass(0) == 0;
+            m_pcRdCost->setDistParam(distParam, rpcTempCU->getSlice()->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA), m_pppcOrigYuv[uiWidthIdx][uiHeightIdx]->getAddr(COMPONENT_Y)
+              , m_pppcOrigYuv[uiWidthIdx][uiHeightIdx]->getStride(COMPONENT_Y)
+              , m_pppcPredYuvBest[uiWidthIdx][uiHeightIdx]->getAddr(COMPONENT_Y), m_pppcPredYuvBest[uiWidthIdx][uiHeightIdx]->getStride(COMPONENT_Y)
+              , rpcTempCU->getWidth(0), rpcTempCU->getHeight(0), bUseHadamard);
+#else
             m_pcPredSearch->motionCompensation ( rpcTempCU, m_pppcPredYuvTemp[uiWidthIdx][uiHeightIdx] );
             // use hadamard transform here
             DistParam distParam;
@@ -1683,6 +1795,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
               , m_pppcOrigYuv[uiWidthIdx][uiHeightIdx]->getStride(COMPONENT_Y)
               , m_pppcPredYuvTemp[uiWidthIdx][uiHeightIdx]->getAddr(COMPONENT_Y), m_pppcPredYuvTemp[uiWidthIdx][uiHeightIdx]->getStride(COMPONENT_Y)
               , rpcTempCU->getWidth(0), rpcTempCU->getHeight(0), bUseHadamard);
+#endif
             distParam.bApplyWeight = false;
 
             UInt uiSad = distParam.DistFunc(&distParam);
@@ -1719,6 +1832,12 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #endif
    for (iROTidx = 0; iROTidx < iNumberOfPassesROT; iROTidx++)
    {
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+     if( saveLoadTag == LOAD_ENC_INFO && iROTidx && iROTidx != m_pcPredSearch->getSaveLoadRotIdx(uiWidthIdx, uiHeightIdx) )
+     {
+       continue;
+     }
+#endif
 #endif
 #if VCEG_AZ05_INTRA_MPI
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
@@ -1734,6 +1853,12 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #endif
        for (iPDPCidx = 0; iPDPCidx < iNumberOfPassesPDPC; iPDPCidx++)
        {
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+         if( CHANNEL_TYPE_LUMA == eChannelType && saveLoadTag == LOAD_ENC_INFO && iPDPCidx != m_pcPredSearch->getSaveLoadPdpcIdx(uiWidthIdx, uiHeightIdx) )
+         {
+           continue;
+         }
+#endif
 #endif
 #if COM16_C806_EMT
 #if JVET_C0024_QTBT
@@ -1743,6 +1868,12 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #endif
          for (UChar ucCuFlag = 0; ucCuFlag < ucEmtUsage; ucCuFlag++)
          {
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+           if( saveLoadTag == LOAD_ENC_INFO && /*ucCuFlag && */ucCuFlag != m_pcPredSearch->getSaveLoadEmtFlag(uiWidthIdx, uiHeightIdx) )
+           {
+             continue;
+           }
+#endif
            if (ucCuFlag && bEarlySkipIntra && m_pcEncCfg->getUseFastInterEMT())
            {
              continue;
@@ -1782,7 +1913,11 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
              , bNonZeroCoeff
 #endif
              );
-           if (!ucCuFlag && !rpcBestCU->isIntra(0) && m_pcEncCfg->getUseFastInterEMT())
+           if (!ucCuFlag && !rpcBestCU->isIntra(0) && m_pcEncCfg->getUseFastInterEMT()
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+             && dBestInterCost < MAX_DOUBLE
+#endif
+             )
            {
              static const Double thEmtInterFastSkipIntra = 1.4; // Skip checking Intra if "2Nx2N using DCT2" is worse than best Inter mode
              if (rpcTempCU->getTotalCost() > thEmtInterFastSkipIntra*dBestInterCost)
@@ -2037,6 +2172,26 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #else
       m_pcRDGoOnSbacCoder->store(m_pppcRDSbacCoder[uiDepth][CI_NEXT_BEST]);
 #endif
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+      if( saveLoadTag == SAVE_ENC_INFO )
+      {
+        m_pcPredSearch->setSaveLoadEmtFlag(uiWidthIdx, uiHeightIdx, rpcBestCU->getEmtCuFlag(0));
+        m_pcPredSearch->setSaveLoadEmtIdx(uiWidthIdx, uiHeightIdx, rpcBestCU->getEmtTuIdx(0));
+        m_pcPredSearch->setSaveLoadRotIdx(uiWidthIdx, uiHeightIdx, rpcBestCU->getROTIdx(rpcBestCU->getTextType(),0));
+        m_pcPredSearch->setSaveLoadPdpcIdx(uiWidthIdx, uiHeightIdx, rpcBestCU->getPDPCIdx(0));
+        if( !rpcBestCU->isIntra(0) )
+        {
+          m_pcPredSearch->setSaveLoadFrucMode(uiWidthIdx, uiHeightIdx, rpcBestCU->getFRUCMgrMode(0));
+          m_pcPredSearch->setSaveLoadIMVFlag(uiWidthIdx, uiHeightIdx, rpcBestCU->getiMVFlag(0));
+          m_pcPredSearch->setSaveLoadICFlag(uiWidthIdx, uiHeightIdx, rpcBestCU->getICFlag(0));
+          m_pcPredSearch->setSaveLoadMergeFlag(uiWidthIdx, uiHeightIdx, rpcBestCU->getMergeFlag(0));
+          m_pcPredSearch->setSaveLoadAffineFlag(uiWidthIdx, uiHeightIdx, rpcBestCU->getAffineFlag(0));
+          m_pcPredSearch->setSaveLoadInterDir(uiWidthIdx, uiHeightIdx, rpcBestCU->getInterDir(0));
+    }
+        dNonSplitCost = dCostTempBest = rpcBestCU->getTotalCost();
+        m_pcPredSearch->setSaveLoadTag(uiZorderIdx, uiWidthIdx, uiHeightIdx, LOAD_ENC_INFO);
+      }
+#endif
     }
 #if JVET_C0024_DELTA_QP_FIX
     if( pps.getUseDQP() )
@@ -2193,6 +2348,27 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
   }
 #endif
 
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+  if( bUseSaveLoad )
+  {
+    m_pcPredSearch->setSaveLoadTag( uiZorderIdx, uiWidthIdx-1, uiHeightIdx-1, SAVE_ENC_INFO );
+  }
+#endif
+
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+  if( bUseSaveLoadSplitDecision && saveLoadTag == LOAD_ENC_INFO )
+  {
+    if( bTestHorSplit && (saveLoadSplit & 0x02) )
+    {
+      bTestHorSplit = false;
+    }
+    if( bTestVerSplit && (saveLoadSplit & 0x04) )
+    {
+      bTestVerSplit = false;
+    }
+  }
+#endif
+
   if (bTestHorSplit) 
   {
     // further split
@@ -2287,6 +2463,12 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
       rpcTempCU->getTotalBins() += ((TEncBinCABAC *)((TEncSbac*)m_pcEntropyCoder->m_pcEntropyCoderIf)->getEncBinIf())->getBinsCoded();
 
       rpcTempCU->getTotalCost()  = m_pcRdCost->calcRdCost( rpcTempCU->getTotalBits(), rpcTempCU->getTotalDistortion() );
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+      if( rpcTempCU->getTotalCost() < dHorSplitCost )
+      {
+        dHorSplitCost = rpcTempCU->getTotalCost();
+      }
+#endif
 #if JVET_C0024_DELTA_QP_FIX
       if( uiQTBTDepth == uiMaxDQPDepthQTBT && pps.getUseDQP())
       {
@@ -2338,6 +2520,12 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
       rpcBestCU->getPic()->setCodedBlkInCTU(false, uiPelXInCTU>> MIN_CU_LOG2, uiPelYInCTU>> MIN_CU_LOG2, uiWidth>> MIN_CU_LOG2, uiHeight>> MIN_CU_LOG2 );  
       rpcBestCU->getPic()->addCodedAreaInCTU(-(Int)uiWidth*uiHeight);
     }
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+    if( dCostTempBest > dHorSplitCost )
+    {
+      dCostTempBest = dHorSplitCost;
+  }
+#endif
   }
 
   //for encoder speedup
@@ -2443,6 +2631,12 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
       rpcTempCU->getTotalBins() += ((TEncBinCABAC *)((TEncSbac*)m_pcEntropyCoder->m_pcEntropyCoderIf)->getEncBinIf())->getBinsCoded();
 
       rpcTempCU->getTotalCost()  = m_pcRdCost->calcRdCost( rpcTempCU->getTotalBits(), rpcTempCU->getTotalDistortion() );
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+      if( rpcTempCU->getTotalCost() < dVerSplitCost )
+      {
+        dVerSplitCost = rpcTempCU->getTotalCost();
+      }
+#endif
 #if JVET_C0024_DELTA_QP_FIX
       if( uiQTBTDepth == uiMaxDQPDepthQTBT && pps.getUseDQP())
       {
@@ -2494,6 +2688,12 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
       rpcBestCU->getPic()->setCodedBlkInCTU(false, uiPelXInCTU>> MIN_CU_LOG2, uiPelYInCTU>> MIN_CU_LOG2, uiWidth>> MIN_CU_LOG2, uiHeight>> MIN_CU_LOG2 );  
       rpcBestCU->getPic()->addCodedAreaInCTU(-(Int)uiWidth*uiHeight);
     }
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+    if( dCostTempBest > dVerSplitCost )
+    {
+      dCostTempBest = dVerSplitCost;
+  }
+#endif
   }
 
   UInt uiZorderBR = g_auiRasterToZscan[((uiHeight>> MIN_CU_LOG2)-1) * (sps.getCTUSize()>> MIN_CU_LOG2) + (uiWidth>> MIN_CU_LOG2)-1];  //bottom-right part.
@@ -2793,6 +2993,30 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
   rpcBestCU->copyToPic(uiDepth);                                                     // Copy Best data to Picture for next partition prediction.
 
   xCopyYuv2Pic( rpcBestCU->getPic(), rpcBestCU->getCtuRsAddr(), rpcBestCU->getZorderIdxInCtu(), uiDepth, uiDepth );   // Copy Yuv data to picture Yuv
+#endif
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+  if( bUseSaveLoad )
+  {
+    m_pcPredSearch->setSaveLoadTag( MAX_UINT, uiWidthIdx - 1, uiHeightIdx - 1, SAVE_LOAD_INIT );
+  }
+  if( bUseSaveLoadSplitDecision && saveLoadTag == SAVE_ENC_INFO )
+  {
+    UChar c = 0;
+    Double TH = JVET_D0077_SPLIT_DECISION_COST_SCALE * dCostTempBest;
+    if( dNonSplitCost > TH )
+    {
+      c = c | 0x01;
+    }
+    if( dHorSplitCost > TH )
+    {
+      c = c | 0x02;
+    }
+    if( dVerSplitCost > TH )
+    {
+      c = c | 0x04;
+    }
+    m_pcPredSearch->setSaveLoadSplit(uiWidthIdx, uiHeightIdx, c);
+  }
 #endif
 
   if (bBoundary)
@@ -3765,6 +3989,13 @@ Void TEncCu::xCheckRDCostMerge2Nx2NFRUC( TComDataCU*& rpcBestCU, TComDataCU*& rp
 #endif
   for( Int nME = 0 ; nME < 2 ; nME++ )
   {
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+    if( m_pcPredSearch->getSaveLoadTag(rpcBestCU->getZorderIdxInCtu(), uiWIdx, uiHIdx) == LOAD_ENC_INFO && 
+      uhFRUCME[nME] != m_pcPredSearch->getSaveLoadFrucMode( uiWIdx, uiHIdx ) )
+    {
+      continue;
+    }
+#endif
 #if !JVET_C0024_QTBT
     rpcTempCU->setPartSizeSubParts( SIZE_2Nx2N, 0, uhDepth ); 
 #endif

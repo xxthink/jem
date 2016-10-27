@@ -761,6 +761,42 @@ Void TEncSearch::init(TEncCfg*      pcEncCfg,
   m_tmpDerivate[1] = new Double[MAX_CU_SIZE * MAX_CU_SIZE];
 #endif
 
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+  for( UInt uiWIdx = 0; uiWIdx <= MAX_CU_DEPTH-MIN_CU_LOG2; uiWIdx++ )
+  {
+    for( UInt uiHIdx = 0; uiHIdx <= MAX_CU_DEPTH-MIN_CU_LOG2; uiHIdx++ )
+    {
+      m_SaveLoadPartIdx[uiWIdx][uiHIdx] = MAX_UINT;
+      m_SaveLoadTag[uiWIdx][uiHIdx] = SAVE_LOAD_INIT;
+#if COM16_C806_EMT
+      m_SaveLoadEmtFlag[uiWIdx][uiHIdx] = 0;
+      m_SaveLoadEmtIdx[uiWIdx][uiHIdx] = 0;
+#endif
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+      m_SaveLoadRotIdx[uiWIdx][uiHIdx] = 0;
+#endif
+#if COM16_C1046_PDPC_INTRA
+      m_SaveLoadPdpcIdx[uiWIdx][uiHIdx] = 0;
+#endif
+#if VCEG_AZ07_FRUC_MERGE
+      m_SaveLoadFrucMode[uiWIdx][uiHIdx] = 0;
+#endif
+#if VCEG_AZ07_IMV
+      m_SaveLoadIMVFlag[uiWIdx][uiHIdx] = false;
+#endif
+#if VCEG_AZ06_IC
+      m_SaveLoadICFlag[uiWIdx][uiHIdx] = false;
+#endif
+#if COM16_C1016_AFFINE
+      m_SaveLoadAffineFlag[uiWIdx][uiHIdx] = false;
+#endif
+      m_SaveLoadMergeFlag[uiWIdx][uiHIdx] = false;
+      m_SaveLoadInterDir[uiWIdx][uiHIdx] = 0;
+      m_SaveLoadSplit[uiWIdx][uiHIdx] = 0;
+    }
+  }
+#endif
+
   m_isInitialized = true;
 }
 
@@ -2771,6 +2807,12 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
           {
             continue;
           }
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+          if( this->getSaveLoadTag(pcCU->getZorderIdxInCtu(), uiWIdx, uiHIdx) == LOAD_ENC_INFO && ucTrIdx && ucTrIdx != this->getSaveLoadEmtIdx(uiWIdx, uiHIdx) )
+          {
+            continue;
+          }
+#endif
 #endif
 
 #if JVET_C0024_QTBT //bug fix for RSAF ?
@@ -3471,6 +3513,12 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
           {
             continue;
           }
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+          if( this->getSaveLoadTag(pcCU->getZorderIdxInCtu(), uiWIdx, uiHIdx) == LOAD_ENC_INFO && ucTrIdx && ucTrIdx != this->getSaveLoadEmtIdx(uiWIdx, uiHIdx) )
+          {
+            continue;
+          }
+#endif
 #endif
 
         DEBUG_STRING_NEW(sModeString)
@@ -3637,6 +3685,12 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
         {
           continue;
         }
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+        if( this->getSaveLoadTag(pcCU->getZorderIdxInCtu(), uiWIdx, uiHIdx) == LOAD_ENC_INFO && ucTrIdx && ucTrIdx != this->getSaveLoadEmtIdx(uiWIdx, uiHIdx) )
+        {
+          continue;
+        }
+#endif
 #endif
 
       //----- store original entropy coding status -----
@@ -4863,6 +4917,14 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
   {
     ucEmtUsageFlag = 0;
   }
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+  UInt  uiZorderIdx = pcCU->getZorderIdxInCtu();
+  UChar saveLoadTag = getSaveLoadTag( uiZorderIdx, uiWIdx, uiHIdx );
+  if( saveLoadTag == LOAD_ENC_INFO /*&& getSaveLoadEmtFlag(uiWIdx, uiHIdx) == 0*/ )
+  {
+    ucEmtUsageFlag = 0;
+  }
+#endif
 #endif
 
   //===== loop over partitions =====
@@ -6528,6 +6590,17 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
     pcCU->getPartIndexAndSize( iPartIdx, uiPartAddr, iRoiWidth, iRoiHeight );
 #endif
 
+#if JVET_D0077_SAVE_LOAD_ENC_INFO 
+    UInt uiWidthIdx = g_aucConvertToBit[iRoiWidth];
+    UInt uiHeightIdx = g_aucConvertToBit[iRoiHeight];
+    UInt uiZorderIdx = pcCU->getZorderIdxInCtu();
+    UChar saveLoadTag = getSaveLoadTag( uiZorderIdx, uiWidthIdx, uiHeightIdx );
+#if COM16_C1016_AFFINE
+    Bool bFastSkipAffine = ( saveLoadTag == LOAD_ENC_INFO && !getSaveLoadAffineFlag( uiWidthIdx, uiHeightIdx ) );
+#endif
+    Bool bFastSkipBi = ( saveLoadTag == LOAD_ENC_INFO && getSaveLoadInterDir( uiWidthIdx, uiHeightIdx ) != 3 );
+#endif
+
 #if AMP_MRG
     Bool bTestNormalMC = true;
 
@@ -6676,7 +6749,11 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
     if( bCheckBi )
     {
 #endif
-    if ( (pcCU->getSlice()->isInterB()) && (pcCU->isBipredRestriction(iPartIdx) == false) )
+    if ( (pcCU->getSlice()->isInterB()) && (pcCU->isBipredRestriction(iPartIdx) == false) 
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+      && !bFastSkipBi
+#endif
+      )
     {
 
       cMvBi[0] = cMv[0];            cMvBi[1] = cMv[1];
@@ -7170,6 +7247,9 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
 #endif
 #if VCEG_AZ06_IC
       && !pcCU->getICFlag( uiPartAddr )
+#endif
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+      && !bFastSkipAffine
 #endif
       )
     {
@@ -10999,6 +11079,14 @@ Void TEncSearch::predAffineInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, Int
 
   pcCU->getPartIndexAndSize( iPartIdx, uiPartAddr, iRoiWidth, iRoiHeight );
 #endif
+
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+  UInt uiWidthIdx = g_aucConvertToBit[iRoiWidth];
+  UInt uiHeightIdx = g_aucConvertToBit[iRoiHeight];
+  UInt uiZorderIdx = pcCU->getZorderIdxInCtu();
+  UChar saveLoadTag = getSaveLoadTag( uiZorderIdx, uiWidthIdx, uiHeightIdx );
+#endif
+
   // set Affine flag
   pcCU->setAffineFlagSubParts( true,  uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr) );
   pcCU->setMergeFlagSubParts ( false, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr) );
@@ -11154,7 +11242,11 @@ Void TEncSearch::predAffineInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, Int
   } // end Uni-prediction
 
   // Bi-directional prediction
-  if ( ( pcCU->getSlice()->isInterB() ) && ( pcCU->isBipredRestriction(iPartIdx) == false ) )
+  if ( ( pcCU->getSlice()->isInterB() ) && ( pcCU->isBipredRestriction(iPartIdx) == false ) 
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+    && !(saveLoadTag == LOAD_ENC_INFO && getSaveLoadInterDir( uiWidthIdx, uiHeightIdx ) != 3)
+#endif
+    )
   {
     // Set as best list0 and list1
     iRefIdxBi[0] = iRefIdx[0];
