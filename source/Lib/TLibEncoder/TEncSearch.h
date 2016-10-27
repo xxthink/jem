@@ -151,9 +151,42 @@ private:
   Double*         m_tmpDerivate[2];
 #endif
 
+
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+  UInt            m_SaveLoadPartIdx[MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1]; ///< partition index of the block for save/load encoder decision 
+  UChar           m_SaveLoadTag[MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1];     ///< 0: not used, 1: save, 2: load
+#if COM16_C806_EMT
+  UChar           m_SaveLoadEmtFlag[MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1]; 
+  UChar           m_SaveLoadEmtIdx [MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1]; 
+#endif
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST 
+   Char           m_SaveLoadRotIdx [MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1]; 
+#endif
+#if COM16_C1046_PDPC_INTRA
+   Char           m_SaveLoadPdpcIdx[MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1]; 
+#endif
+#if VCEG_AZ07_FRUC_MERGE
+  UChar           m_SaveLoadFrucMode[MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1];
+#endif
+#if VCEG_AZ07_IMV
+  Bool            m_SaveLoadIMVFlag[MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1];
+#endif
+#if VCEG_AZ06_IC
+  Bool            m_SaveLoadICFlag[MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1];
+#endif
+#if COM16_C1016_AFFINE
+  Bool            m_SaveLoadAffineFlag[MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1];
+#endif
+  Bool            m_SaveLoadMergeFlag[MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1];
+  UChar           m_SaveLoadInterDir[MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1];
+  UChar           m_SaveLoadSplit[MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1];
+#endif
+
+
 #if JVET_D0123_ME_CTX_LUT_BITS
   Int             iCostScale;
 #endif
+
 protected:
   // interface to option
   TEncCfg*        m_pcEncCfg;
@@ -226,6 +259,47 @@ public:
             TEncSbac*     pcRDGoOnSbacCoder );
 
   Void destroy();
+
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+  UChar getSaveLoadTag( UInt uiPartIdx, UInt uiWIdx, UInt uiHIdx ) {  return uiPartIdx == m_SaveLoadPartIdx[uiWIdx][uiHIdx] ? m_SaveLoadTag[uiWIdx][uiHIdx] : SAVE_LOAD_INIT; };
+  Void  setSaveLoadTag( UInt uiPartIdx, UInt uiWIdx, UInt uiHIdx, UChar c ) { m_SaveLoadPartIdx[uiWIdx][uiHIdx] = uiPartIdx; m_SaveLoadTag[uiWIdx][uiHIdx] = c; };
+#if COM16_C806_EMT
+  UChar getSaveLoadEmtFlag( UInt uiWIdx, UInt uiHIdx ) {  return m_SaveLoadEmtFlag[uiWIdx][uiHIdx]; }; 
+  Void  setSaveLoadEmtFlag( UInt uiWIdx, UInt uiHIdx, UChar c ) { m_SaveLoadEmtFlag[uiWIdx][uiHIdx] = c; };
+  UChar getSaveLoadEmtIdx( UInt uiWIdx, UInt uiHIdx ) {  return m_SaveLoadEmtIdx[uiWIdx][uiHIdx]; }; 
+  Void  setSaveLoadEmtIdx( UInt uiWIdx, UInt uiHIdx, UChar c ) { m_SaveLoadEmtIdx[uiWIdx][uiHIdx] = c; };
+#endif
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST 
+  Char  getSaveLoadRotIdx( UInt uiWIdx, UInt uiHIdx ) {  return m_SaveLoadRotIdx[uiWIdx][uiHIdx]; }; 
+  Void  setSaveLoadRotIdx( UInt uiWIdx, UInt uiHIdx, Char c ) { m_SaveLoadRotIdx[uiWIdx][uiHIdx] = c; };
+#endif
+#if COM16_C1046_PDPC_INTRA
+  Char  getSaveLoadPdpcIdx( UInt uiWIdx, UInt uiHIdx ) {  return m_SaveLoadPdpcIdx[uiWIdx][uiHIdx]; }; 
+  Void  setSaveLoadPdpcIdx( UInt uiWIdx, UInt uiHIdx, Char c ) { m_SaveLoadPdpcIdx[uiWIdx][uiHIdx] = c; };
+#endif
+#if VCEG_AZ07_FRUC_MERGE
+  UChar getSaveLoadFrucMode( UInt uiWIdx, UInt uiHIdx ) {  return m_SaveLoadFrucMode[uiWIdx][uiHIdx]; }; 
+  Void  setSaveLoadFrucMode( UInt uiWIdx, UInt uiHIdx, UChar c ) { m_SaveLoadFrucMode[uiWIdx][uiHIdx] = c; };
+#endif
+#if VCEG_AZ07_IMV
+  Bool  getSaveLoadIMVFlag( UInt uiWIdx, UInt uiHIdx ) {  return m_SaveLoadIMVFlag[uiWIdx][uiHIdx]; }; 
+  Void  setSaveLoadIMVFlag( UInt uiWIdx, UInt uiHIdx, Bool b ) { m_SaveLoadIMVFlag[uiWIdx][uiHIdx] = b; };
+#endif
+#if VCEG_AZ06_IC
+  Bool  getSaveLoadICFlag( UInt uiWIdx, UInt uiHIdx ) {  return m_SaveLoadICFlag[uiWIdx][uiHIdx]; }; 
+  Void  setSaveLoadICFlag( UInt uiWIdx, UInt uiHIdx, Bool b ) { m_SaveLoadICFlag[uiWIdx][uiHIdx] = b; };
+#endif
+#if COM16_C1016_AFFINE
+  Bool  getSaveLoadAffineFlag( UInt uiWIdx, UInt uiHIdx ) {  return m_SaveLoadAffineFlag[uiWIdx][uiHIdx]; }; 
+  Void  setSaveLoadAffineFlag( UInt uiWIdx, UInt uiHIdx, Bool b ) { m_SaveLoadAffineFlag[uiWIdx][uiHIdx] = b; };
+#endif
+  Bool  getSaveLoadMergeFlag( UInt uiWIdx, UInt uiHIdx ) {  return m_SaveLoadMergeFlag[uiWIdx][uiHIdx]; }; 
+  Void  setSaveLoadMergeFlag( UInt uiWIdx, UInt uiHIdx, Bool b ) { m_SaveLoadMergeFlag[uiWIdx][uiHIdx] = b; };
+  UChar getSaveLoadInterDir( UInt uiWIdx, UInt uiHIdx ) {  return m_SaveLoadInterDir[uiWIdx][uiHIdx]; }; 
+  Void  setSaveLoadInterDir( UInt uiWIdx, UInt uiHIdx, UChar c ) { m_SaveLoadInterDir[uiWIdx][uiHIdx] = c; };
+  UChar getSaveLoadSplit( UInt uiWIdx, UInt uiHIdx ) {  return m_SaveLoadSplit[uiWIdx][uiHIdx]; }; 
+  Void  setSaveLoadSplit( UInt uiWIdx, UInt uiHIdx, UChar c ) { m_SaveLoadSplit[uiWIdx][uiHIdx] = c; };
+#endif
 
 protected:
 

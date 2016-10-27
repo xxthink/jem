@@ -83,7 +83,15 @@
 #define JVET_C0024_AMAX_BT_FIX_TICKET23                   1
 #define JVET_C0024_FAST_MRG                               1
 #define JVET_C0024_PBINTRA_FAST                           1
+#if JVET_C0024_PBINTRA_FAST
+#define JVET_C0024_PBINTRA_FAST_FIX                       1  ///< JVET-D0077
+#endif
 #define JVET_C0024_ITSKIP                                 1  ///< skip zero row/column in inverse transform (decoder speedup)
+
+#define JVET_D0077_FAST_EXT                               1  ///< extension of exsiting fast algorithm 
+
+#define JVET_D0077_TRANSFORM_OPT                          1  ///< software optimization to take full advantages of zero rows/columns in transform coefficients
+#define JVET_D0077_SAVE_LOAD_ENC_INFO                     1  ///< save and load encoder decision for speedup
 
 #endif // end of JVET_C0024_QTBT
 
@@ -491,6 +499,14 @@ typedef       float           EigenType;
 // ====================================================================================================================
 // Enumeration
 // ====================================================================================================================
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+enum SaveLoadTag
+{
+  SAVE_LOAD_INIT = 0,
+  SAVE_ENC_INFO = 1,
+  LOAD_ENC_INFO = 2
+};
+#endif
 
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
 enum MergeType

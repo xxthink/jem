@@ -451,6 +451,9 @@ static const Int    MAX_BT_DEPTH_INTER =                            4;      ///<
 static const Int    MAX_BT_SIZE_INTER  =                          128;      ///< for initialization, [1<<MIN_BT_SIZE_INTER, 1<<CTU_LOG2]
 static const Int    MIN_BT_SIZE_INTER  =                            4;      ///<
 
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+static const Double JVET_D0077_SPLIT_DECISION_COST_SCALE =       1.05;
+#endif
 #endif
 
 #if JVET_D0123_ME_CTX_LUT_BITS

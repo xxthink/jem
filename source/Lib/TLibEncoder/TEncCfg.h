@@ -243,6 +243,10 @@ protected:
   Bool      m_useFastDecisionForMerge;
   Bool      m_bUseCbfFastMode;
   Bool      m_useEarlySkipDetection;
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+  Bool      m_useSaveLoadEncInfo;
+  Bool      m_useSaveLoadSplitDecision;
+#endif
   Bool      m_crossComponentPredictionEnabledFlag;
   Bool      m_reconBasedCrossCPredictionEstimate;
   UInt      m_log2SaoOffsetScale[MAX_NUM_CHANNEL_TYPE];
@@ -698,6 +702,10 @@ public:
   Void      setUseFastDecisionForMerge      ( Bool  b )     { m_useFastDecisionForMerge = b; }
   Void      setUseCbfFastMode            ( Bool  b )     { m_bUseCbfFastMode = b; }
   Void      setUseEarlySkipDetection        ( Bool  b )     { m_useEarlySkipDetection = b; }
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+  Void      setUseSaveLoadEncInfo           ( Bool  b )     { m_useSaveLoadEncInfo = b; }
+  Void      setUseSaveLoadSplitDecision     ( Bool  b )     { m_useSaveLoadSplitDecision = b; }
+#endif
   Void      setUseConstrainedIntraPred      ( Bool  b )     { m_bUseConstrainedIntraPred = b; }
   Void      setFastUDIUseMPMEnabled         ( Bool  b )     { m_bFastUDIUseMPMEnabled = b; }
   Void      setFastMEForGenBLowDelayEnabled ( Bool  b )     { m_bFastMEForGenBLowDelayEnabled = b; }
@@ -725,6 +733,10 @@ public:
   Bool      getUseFastDecisionForMerge      ()      { return m_useFastDecisionForMerge; }
   Bool      getUseCbfFastMode               ()      { return m_bUseCbfFastMode; }
   Bool      getUseEarlySkipDetection        ()      { return m_useEarlySkipDetection; }
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+  Bool      getUseSaveLoadEncInfo           ()      { return m_useSaveLoadEncInfo; }
+  Bool      getUseSaveLoadSplitDecision     ()      { return m_useSaveLoadSplitDecision; }
+#endif
   Bool      getUseConstrainedIntraPred      ()      { return m_bUseConstrainedIntraPred; }
   Bool      getFastUDIUseMPMEnabled         ()      { return m_bFastUDIUseMPMEnabled; }
   Bool      getFastMEForGenBLowDelayEnabled ()      { return m_bFastMEForGenBLowDelayEnabled; }

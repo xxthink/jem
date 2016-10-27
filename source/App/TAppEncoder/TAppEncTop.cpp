@@ -211,6 +211,10 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setUseFastDecisionForMerge                           ( m_useFastDecisionForMerge  );
   m_cTEncTop.setUseCbfFastMode                                    ( m_bUseCbfFastMode  );
   m_cTEncTop.setUseEarlySkipDetection                             ( m_useEarlySkipDetection );
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+  m_cTEncTop.setUseSaveLoadEncInfo                                ( m_useSaveLoadEncInfo );
+  m_cTEncTop.setUseSaveLoadSplitDecision                          ( m_useSaveLoadSplitDecision ); 
+#endif
   m_cTEncTop.setCrossComponentPredictionEnabledFlag               ( m_crossComponentPredictionEnabledFlag );
   m_cTEncTop.setUseReconBasedCrossCPredictionEstimate             ( m_reconBasedCrossCPredictionEstimate );
   m_cTEncTop.setLog2SaoOffsetScale                                ( CHANNEL_TYPE_LUMA  , m_log2SaoOffsetScale[CHANNEL_TYPE_LUMA]   );
