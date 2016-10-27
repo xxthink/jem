@@ -443,8 +443,8 @@ static const Int    MIN_BT_SIZE   =                                 4;      ///<
 
 //for I slice chroma CTB configuration para. (in luma samples)
 static const Int    MAX_BT_DEPTH_C =                                0;      ///< <=7   
-static const Int    MAX_BT_SIZE_C  =                                16;     ///< [1<<MIN_QT_SIZE_C, 1<<CTU_LOG2]
-static const Int    MIN_BT_SIZE_C  =                                4;      ///< can be set down to 4
+static const Int    MAX_BT_SIZE_C  =                               64;      ///< [1<<MIN_QT_SIZE_C, 1<<CTU_LOG2], in luma samples
+static const Int    MIN_BT_SIZE_C  =                                4;      ///< can be set down to 4, in luma samples
 
 //for P/B slice CTU config. para.
 static const Int    MAX_BT_DEPTH_INTER =                            4;      ///< <=7
