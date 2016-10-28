@@ -42,6 +42,9 @@
 #include <string>
 #include <limits>
 #include "TLibCommon/TComRom.h"
+#if JVET_D0033_ADAPTIVE_CLIPPING
+#include "TLibCommon/CommonDef.h"
+#endif
 #include "TAppEncCfg.h"
 #include "TAppCommon/program_options_lite.h"
 #include "TLibEncoder/TEncRateCtrl.h"
@@ -1190,6 +1193,9 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 #if COM16_C983_RSAF
   ("RSAF",                                       m_useRSAF,         true, "Enable reference sample adaptive filter")
 #endif
+#if JVET_D0033_ADAPTIVE_CLIPPING
+  ("AClip,-aclip", m_ClipParam.isActive, true, "Slice Level Adpative Clipping (Automated by default)")
+#endif
   ;
 
   for(Int i=1; i<MAX_GOP+1; i++)
@@ -1330,7 +1336,22 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 
   m_InputChromaFormatIDC = numberToChromaFormat(tmpInputChromaFormat);
   m_chromaFormatIDC      = ((tmpChromaFormat == 0) ? (m_InputChromaFormatIDC) : (numberToChromaFormat(tmpChromaFormat)));
+#if JVET_D0033_ADAPTIVE_CLIPPING
+  {
+      // DEFAULT VALUES
+      ClipParam::ibdLuma=m_internalBitDepth[CHANNEL_TYPE_LUMA];
+      ClipParam::ibdChroma=m_internalBitDepth[CHANNEL_TYPE_CHROMA];
+      ClipParam::nbBitsY=ClipParam::ibdLuma;
+      ClipParam::nbBitsUV=ClipParam::ibdChroma;
 
+      resetBounds(m_ClipParam);
+
+      const Int bd=max(m_inputBitDepth[CHANNEL_TYPE_LUMA],m_inputBitDepth[CHANNEL_TYPE_CHROMA]);
+      ClipParam::cquantiz=ClipParam::ibdLuma-bd; // if ibd=10, input=8 ->2
+      ClipParam::cquantiz=(ClipParam::cquantiz/2)*2; // just in case
+      if (ClipParam::cquantiz>6) ClipParam::cquantiz=6;
+  }
+#endif
   if (extendedProfile >= 1000 && extendedProfile <= 12316)
   {
     m_profile = Profile::MAINREXT;
@@ -2830,6 +2851,9 @@ Void TAppEncCfg::xPrintParameter()
 #endif
 #if COM16_C983_RSAF
   printf("RSAF:%d ", m_useRSAF);
+#endif
+#if JVET_D0033_ADAPTIVE_CLIPPING
+  printf("ACLIP:%d ",m_ClipParam.isActive?1:0);
 #endif
     printf("\n\n");
 

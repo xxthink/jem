@@ -324,6 +324,14 @@ Void TDecCavlc::parsePPS(TComPPS* pcPPS)
   READ_FLAG( uiCode, "slice_segment_header_extension_present_flag");
   pcPPS->setSliceHeaderExtensionPresentFlag(uiCode);
 
+#if JVET_D0033_ADAPTIVE_CLIPPING
+  READ_FLAG( uiCode, "tch clip param enabled_flag");
+  pcPPS->m_clip_enabled=uiCode;
+  if (pcPPS->m_clip_enabled) {
+      READ_CODE( 2,uiCode,"tch clip param quantiz");
+      ClipParam::cquantiz=2*uiCode;
+  }
+#endif
   READ_FLAG( uiCode, "pps_extension_present_flag");
   if (uiCode)
   {
@@ -665,6 +673,12 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
   pcSPS->setQpBDOffset(CHANNEL_TYPE_CHROMA,  (Int) (6*uiCode) );
 #endif
 
+#if JVET_D0033_ADAPTIVE_CLIPPING
+    ClipParam::ibdLuma=pcSPS->getBitDepth(CHANNEL_TYPE_LUMA);
+    ClipParam::ibdChroma=pcSPS->getBitDepth(CHANNEL_TYPE_CHROMA);
+    ClipParam::nbBitsY=ClipParam::ibdLuma;
+    ClipParam::nbBitsUV=ClipParam::ibdChroma;
+#endif
   READ_UVLC( uiCode,    "log2_max_pic_order_cnt_lsb_minus4" );   pcSPS->setBitsForPOC( 4 + uiCode );
   assert(uiCode <= 12);
 
@@ -1617,6 +1631,48 @@ Void TDecCavlc::parseSliceHeader (TComSlice* pcSlice, ParameterSetManager *param
     }
   }
 
+#if JVET_D0033_ADAPTIVE_CLIPPING
+  if (firstSliceSegmentInPic) {
+      if (pps->m_clip_enabled)
+      {
+          // default
+          ClipParam prm;
+          setOff(prm);
+
+          READ_FLAG(uiCode, "TchClipAdaptive_flag");
+          prm.isActive = (uiCode == 1) ? true : false;
+          if (prm.isActive)
+          {
+
+                  READ_CODE(ClipParam::nbBitsY-ClipParam::cquantiz, uiCode, "TchClipAdaptive_Y_MIN");
+                  prm.Y().m = (uiCode<<ClipParam::cquantiz);
+              READ_CODE(ClipParam::nbBitsY-ClipParam::cquantiz, uiCode, "TchClipAdaptive_Y_MAX");
+              prm.Y().M = (uiCode<<ClipParam::cquantiz);
+
+                  READ_FLAG(uiCode, "TchClipAdaptive_flag_chroma");
+                  prm.isChromaActive = (uiCode == 1) ? true : false;
+                  if (prm.isChromaActive)
+                  {
+                  READ_CODE(ClipParam::nbBitsUV-ClipParam::cquantiz, uiCode, "TchClipAdaptive_C0_MIN");
+                      prm.U().m = (uiCode<<ClipParam::cquantiz);
+
+                  READ_CODE(ClipParam::nbBitsUV-ClipParam::cquantiz, uiCode, "TchClipAdaptive_C0_MAX");
+                  prm.U().M = (uiCode<<ClipParam::cquantiz);
+
+                      READ_CODE(ClipParam::nbBitsUV-ClipParam::cquantiz, uiCode, "TchClipAdaptive_C1_MIN");
+                      prm.V().m = (uiCode<<ClipParam::cquantiz);
+
+                      READ_CODE(ClipParam::nbBitsUV-ClipParam::cquantiz, uiCode, "TchClipAdaptive_C1_MAX");
+                  prm.V().M = (uiCode<<ClipParam::cquantiz);
+                  } // else use default
+
+          }
+          pcSlice->m_clip_decoded=prm; //
+      } else {
+          setOff(pcSlice->m_clip_decoded);
+      }
+  }
+#endif
   if(pps->getSliceHeaderExtensionPresentFlag())
   {
     READ_UVLC(uiCode,"slice_segment_header_extension_length");

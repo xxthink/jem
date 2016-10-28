@@ -51,6 +51,9 @@
 // KTA tools section start
 ///////////////////////////////////////////////////////////
 
+#define JVET_D0033_ADAPTIVE_CLIPPING                      1
+#define JVET_D0033_ADAPTIVE_CLIPPING_ENC_METHOD           1
+
 #define JVET_D0123_ME_CTX_LUT_BITS                        1
 
 #define JVET_C0024_QTBT                                   1

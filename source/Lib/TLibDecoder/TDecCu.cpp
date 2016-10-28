@@ -1209,7 +1209,18 @@ Void TDecCu::xReconInter( TComDataCU* pcCU, UInt uiDepth )
 #if !JVET_C0024_QTBT
   else
   {
+#if JVET_D0033_ADAPTIVE_CLIPPING // decoder, inter no res
+      if (g_ClipParam.isActive)
+      {
+          m_ppcYuvReco[uiDepth]->clipPartToPartYuv( m_ppcYuvReco[uiDepth], 0, pcCU->getWidth(0), pcCU->getHeight(0), pcCU->getSlice()->getSPS()->getBitDepths() );
+      } 
+      else 
+      {
     m_ppcYuvReco[uiDepth]->copyPartToPartYuv( m_ppcYuvReco[uiDepth],0, pcCU->getWidth( 0 ),pcCU->getHeight( 0 ));
+  }
+#else
+    m_ppcYuvReco[uiDepth]->copyPartToPartYuv( m_ppcYuvReco[uiDepth],0, pcCU->getWidth( 0 ),pcCU->getHeight( 0 ));
+#endif
   }
 #endif
 #if DEBUG_STRING
@@ -1220,7 +1231,11 @@ Void TDecCu::xReconInter( TComDataCU* pcCU, UInt uiDepth )
 #endif
 
 #if JVET_C0024_QTBT
+#if JVET_D0033_ADAPTIVE_CLIPPING
+  m_pppcYuvReco[uiWidthIdx][uiHeightIdx]->clipToPicYuv(pcCU->getPic()->getPicYuvRec(), pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu());
+#else
   m_pppcYuvReco[uiWidthIdx][uiHeightIdx]->copyToPicYuv(pcCU->getPic()->getPicYuvRec(), pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu());
+#endif
 #endif
 }
 
@@ -1414,7 +1429,9 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
   }
 #endif
 
+#if !JVET_D0033_ADAPTIVE_CLIPPING
   const Int clipbd = sps.getBitDepth(toChannelType(compID));
+#endif
 #if O0043_BEST_EFFORT_DECODING
   const Int bitDepthDelta = sps.getStreamBitDepth(toChannelType(compID)) - clipbd;
 #endif
@@ -1455,9 +1472,18 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
       }
 #endif
 #if O0043_BEST_EFFORT_DECODING
+#if JVET_D0033_ADAPTIVE_CLIPPING
+      pReco    [ uiX ] = ClipA( rightShiftEvenRounding<Pel>(pPred[ uiX ] + pResi[ uiX ], bitDepthDelta),  compID);
+#else
       pReco    [ uiX ] = ClipBD( rightShiftEvenRounding<Pel>(pPred[ uiX ] + pResi[ uiX ], bitDepthDelta), clipbd );
+#endif
+#else
+
+#if JVET_D0033_ADAPTIVE_CLIPPING // decoder intra rec
+      pReco    [ uiX ] = ClipA(pPred[ uiX ] + pResi[ uiX ], compID);
 #else
       pReco    [ uiX ] = ClipBD( pPred[ uiX ] + pResi[ uiX ], clipbd );
+#endif
 #endif
       pRecIPred[ uiX ] = pReco[ uiX ];
     }
@@ -1499,7 +1525,9 @@ TDecCu::xIntraRecBlkTM( TComYuv*    pcRecoYuv,
     }
 
     TComDataCU *pcCU = rTu.getCU();
+#if !JVET_D0033_ADAPTIVE_CLIPPING
     const TComSPS &sps = *(pcCU->getSlice()->getSPS());
+#endif
     const UInt uiAbsPartIdx = rTu.GetAbsPartIdxTU();
 
     const TComRectangle &tuRect = rTu.getRect(compID);
@@ -1583,7 +1611,9 @@ TDecCu::xIntraRecBlkTM( TComYuv*    pcRecoYuv,
     }
 #endif
 
+#if !JVET_D0033_ADAPTIVE_CLIPPING
     const Int clipbd = sps.getBitDepth(toChannelType(compID));
+#endif
 #if O0043_BEST_EFFORT_DECODING
     const Int bitDepthDelta = sps.getStreamBitDepth(toChannelType(compID)) - clipbd;
 #endif
@@ -1618,10 +1648,20 @@ TDecCu::xIntraRecBlkTM( TComYuv*    pcRecoYuv,
                 ss << pResi[uiX] << ", ";
             }
 #endif
+#if JVET_D0033_ADAPTIVE_CLIPPING
 #if O0043_BEST_EFFORT_DECODING
+
+            pReco[uiX] = ClipA(rightShiftEvenRounding<Pel>(pPred[uiX] + pResi[uiX], bitDepthDelta), compID);
+#else
+            pReco[uiX] = ClipA(pPred[uiX] + pResi[uiX], compID);
+#endif
+#else
+#if O0043_BEST_EFFORT_DECODING
+
             pReco[uiX] = ClipBD(rightShiftEvenRounding<Pel>(pPred[uiX] + pResi[uiX], bitDepthDelta), clipbd);
 #else
             pReco[uiX] = ClipBD(pPred[uiX] + pResi[uiX], clipbd);
+#endif
 #endif
             pRecIPred[uiX] = pReco[uiX];
         }

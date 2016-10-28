@@ -52,6 +52,93 @@
 #include <deque>
 using namespace std;
 
+#if JVET_D0033_ADAPTIVE_CLIPPING
+namespace {
+// simulate a coding decoding of the Intra(intrinsic) prms: to be sync with real encoding
+Bound encodeDecodeBoundIntra(Bound b,Int n,Int bd) {
+
+    b.m>>=ClipParam::cquantiz;
+    b.m=std::min((1<<(n-ClipParam::cquantiz))-1,b.m);
+    b.m<<=ClipParam::cquantiz;
+    b.m=Clip3(0,(1<<bd)-1,b.m);
+
+    b.M>>=ClipParam::cquantiz;
+    b.M=std::min((1<<(n-ClipParam::cquantiz))-1,b.M);
+    b.M<<=ClipParam::cquantiz;
+    b.M=Clip3(0,(1<<bd)-1,b.M);
+
+    return b;
+}
+
+ClipParam encodeDecodeClipPrmIntra(const ClipParam &prm) {
+    ClipParam prm2;
+
+    prm2.isActive=prm.isActive;
+    prm2.isChromaActive=prm.isChromaActive;
+    prm2.Y()=encodeDecodeBoundIntra(prm.Y(),ClipParam::nbBitsY,ClipParam::ibdLuma);
+    prm2.U()=encodeDecodeBoundIntra(prm.U(),ClipParam::nbBitsUV,ClipParam::ibdChroma);
+    prm2.V()=encodeDecodeBoundIntra(prm.V(),ClipParam::nbBitsUV,ClipParam::ibdChroma);
+
+    return prm2;
+
+}
+
+ClipParam codingChoice(const ClipParam &prm_tocode,
+                          Int delta_disto_luma,Int delta_disto_chroma,
+                          Double lambda_luma,Double lambda_chroma,int tbd
+                          )
+{
+    ClipParam prm;
+
+    // intra coding
+    prm=encodeDecodeClipPrmIntra(prm_tocode);
+#if JVET_D0033_ADAPTIVE_CLIPPING_ENC_METHOD    
+    Int dR_luma_only;   // delta cost with off
+    Int dR_chroma; // delta cost with off
+
+    dR_luma_only=(ClipParam::nbBitsY-ClipParam::cquantiz)*2     +1 /* chroma off */;
+    dR_chroma=(ClipParam::nbBitsUV-ClipParam::cquantiz)*2    *2 /* chroma on */;
+
+    double lambda_coef=2;
+
+    // chroma are set for L2 norm -> use sqrt to correct for L0/L1
+    lambda_luma=lambda_coef*sqrt(lambda_luma);
+    lambda_chroma=lambda_coef*sqrt(lambda_chroma);
+    // then rdo
+    // D_on+lamda*R_on < D_off+lamda*R_off -> (D_on-D_off)+lambda*dR<0 -> -dD + lambda * dR <0
+
+    // only luma 0
+    Bool chroma_on=false;
+    Double best_rd=-delta_disto_luma  +lambda_luma   * dR_luma_only;
+
+    // add chroma
+    Double rd=-delta_disto_luma  +lambda_luma   *dR_luma_only-delta_disto_chroma+lambda_chroma*dR_chroma;
+    if (rd<best_rd) {
+        best_rd=rd;
+        chroma_on=true;
+    }
+
+    if (best_rd>0.) {
+        prm.isActive=false;
+    } else {
+        prm.isChromaActive=chroma_on;
+        if (!chroma_on) { // replace chroma by default values
+            prm.U().m=0;
+            prm.U().M=(1<<ClipParam::ibdChroma)-1;
+            prm.V()=prm.U();
+        }
+    }
+#else
+    prm.isActive=true;
+    prm.isChromaActive=true;
+#endif
+    return prm;
+
+}
+
+
+}
+#endif
 //! \ingroup TLibEncoder
 //! \{
 
@@ -1566,6 +1653,28 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     }
 #endif
 
+#if JVET_D0033_ADAPTIVE_CLIPPING
+        // set adaptive clipping bounds for current slice
+        if (m_pcCfg->getTchClipParam().isActive ) {
+
+            Int tbd;
+            if (pcSlice->getSliceType() == I_SLICE) tbd=-1;
+            else                                    tbd=pcSlice->getDepth();
+            Int delta_disto_luma,delta_disto_chroma;
+            ClipParam prm=pcPic->computeTchClipParam(delta_disto_luma,delta_disto_chroma);
+
+            prm=codingChoice(prm,delta_disto_luma,delta_disto_chroma,pcPic->getSlice(0)->getLambdas()[0],pcPic->getSlice(0)->getLambdas()[1],tbd);
+            if (prm.isActive) {
+                pcPic->m_aclip_prm     = prm;
+            } else {
+                setOff(pcPic->m_aclip_prm);
+            }
+        } else {
+            setOff(pcPic->m_aclip_prm); // OFF with defaults val
+        }
+        g_ClipParam =pcPic->m_aclip_prm; // set the global for access from clipBD
+
+#endif
     // now compress (trial encode) the various slice segments (slices, and dependent slices)
     {
       const UInt numberOfCtusInFrame=pcPic->getPicSym()->getNumberOfCtusInFrame();

@@ -244,6 +244,77 @@ Void TComPic::getCUAddrAndPartIdx( Int iX, Int iY, Int& riCuAddr, Int& riAbsZord
 }
 #endif
 
+#if JVET_D0033_ADAPTIVE_CLIPPING
+namespace {
+Bound computeBoundsComp(const Pel *p,Int height,Int width,Int stride)
+{
+    Bound b;
+    b.m=b.M=*p;
+    for (int i = 0; i < height; i++)
+        for (int j = 0; j < width; j++)
+        {
+            const int x=p[i*stride + j];
+            if (x> b.M) b.M = x;
+            if (x< b.m) b.m = x;
+        }
+    return b;
+}
+
+int count(const Pel *p,Int height,Int width,Int stride,Int m,Int M) {
+    Int s=0;
+    for (int i = 0; i < height; i++)
+        for (int j = 0; j < width; j++)
+        {
+            const int x=p[i*stride + j];
+            if (x>=m&&x<=M) ++s;
+        }
+    return s;
+}
+}
+
+ClipParam TComPic::computeTchClipParam(Int &delta_disto_luma,Int &delta_disto_chroma) const
+{
+    ClipParam prm;
+    prm.isActive=true;
+    prm.isChromaActive=true;
+    delta_disto_luma=delta_disto_chroma=0;
+
+    const TComPicYuv &picorg = *m_apcPicYuv[PIC_YUV_ORG];
+
+    const Pel *pY = picorg.getAddr(COMPONENT_Y);
+    Int strideY   = picorg.getStride(COMPONENT_Y);
+    Int widthY    = picorg.getWidth(COMPONENT_Y);
+    Int heightY   = picorg.getHeight(COMPONENT_Y);
+
+    Bound Y=computeBoundsComp(pY,heightY,widthY,strideY);
+    prm.Y().m = Y.m;
+    prm.Y().M = Y.M;
+    const int kMargin=8; // margin (in pixel value) to consider near the bound
+    {
+        if (Y.m>0)                            delta_disto_luma+=count(pY,heightY,widthY,strideY,Y.m        ,Y.m+kMargin);
+        if (Y.M<(1<<ClipParam::ibdLuma)-1) delta_disto_luma+=count(pY,heightY,widthY,strideY,Y.M-kMargin,Y.M        );
+    }
+    const Pel *pCb = picorg.getAddr(COMPONENT_Cb);
+    Int strideC    = picorg.getStride(COMPONENT_Cb);
+    Int widthC     = picorg.getWidth(COMPONENT_Cb);
+    Int heightC    = picorg.getHeight(COMPONENT_Cb);
+
+    Bound U=computeBoundsComp(pCb,heightC,widthC,strideC);
+
+    const Pel *pCr = picorg.getAddr(COMPONENT_Cr);
+    Bound V=computeBoundsComp(pCr,heightC,widthC,strideC);
+    {
+        if (U.m>0)                              delta_disto_chroma+=count(pCb,heightC,widthC,strideC,U.m        ,U.m+kMargin);
+        if (U.M<(1<<ClipParam::ibdChroma)-1) delta_disto_chroma+=count(pCb,heightC,widthC,strideC,U.M-kMargin,U.M        );
+        if (V.m>0)                              delta_disto_chroma+=count(pCr,heightC,widthC,strideC,V.m        ,V.m+kMargin);
+        if (V.M<(1<<ClipParam::ibdChroma)-1) delta_disto_chroma+=count(pCr,heightC,widthC,strideC,V.M-kMargin,V.M        );
+    }
+    prm.U()=U;
+    prm.V()=V;
+
+    return prm;
+}
+#endif
 #if JVET_C0024_QTBT
 Void TComPic::setCodedBlkInCTU(Bool bCoded, UInt uiBlkX, UInt uiBlkY, UInt uiWidth, UInt uiHeight)
 {

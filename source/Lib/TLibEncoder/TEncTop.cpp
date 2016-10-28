@@ -1147,6 +1147,9 @@ Void TEncTop::xInitPPS()
   {
     m_cPPS.setDependentSliceSegmentsEnabledFlag( true );
   }
+#if JVET_D0033_ADAPTIVE_CLIPPING
+  m_cPPS.m_clip_enabled=m_ClipParam.isActive;
+#endif
 }
 
 //Function for initializing m_RPSList, a list of TComReferencePictureSet, based on the GOPEntry objects read from the config file.

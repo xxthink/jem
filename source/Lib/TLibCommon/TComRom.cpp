@@ -3384,6 +3384,14 @@ const UInt g_scalingListSizeX  [SCALING_LIST_SIZE_NUM] = { 4, 8, 16,  32
 };
 #endif
 
+#if JVET_D0033_ADAPTIVE_CLIPPING
+ClipParam g_ClipParam;
+Int ClipParam::nbBitsY;
+Int ClipParam::nbBitsUV;
+Int ClipParam::ibdLuma;
+Int ClipParam::ibdChroma;
+Int ClipParam::cquantiz;
+#endif
 #if COM16_C1046_PDPC_INTRA
 #if JVET_C0024_QTBT // lossless change, just remove unused entries from the table
 const Int g_pdpc_pred_param[5][35][6] = {
