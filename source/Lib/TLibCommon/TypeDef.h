@@ -303,7 +303,7 @@
 #define JVET_B0039_INC_NUM_QP_PROB                        7  ///< Number of context is increased when more QPs are used
 
 #define FIX_TICKET30                                      1  ///< Fix of ticket #30 (Use of uninitialized Cabac coder for Intra 128x128 blocks)
-
+#define FIX_TICKET32                                      1  ///< Fix of ticket #32 (Initialization for INIT_LAST)
 
 ///////////////////////////////////////////////////////////
 // KTA tools section end
