@@ -304,6 +304,7 @@
 
 #define FIX_TICKET30                                      1  ///< Fix of ticket #30 (Use of uninitialized Cabac coder for Intra 128x128 blocks)
 #define FIX_TICKET32                                      1  ///< Fix of ticket #32 (Initialization for INIT_LAST)
+#define FIX_TICKET33                                      1  ///< Fix of ticket #33 (Block level IC flag is set based on slice level IC flag)
 
 ///////////////////////////////////////////////////////////
 // KTA tools section end
