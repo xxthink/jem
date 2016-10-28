@@ -9230,7 +9230,9 @@ Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,
             invTransformNxN(rTu, compID, pResi, uiStride, pcCoeff, cQP, useKLT DEBUG_STRING_PASS_INTO(psDebug));
             if (compID == COMPONENT_Y)
             {
+#if !JVET_D0033_ADAPTIVE_CLIPPING
                 const Int clipbd = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
+#endif
 #if O0043_BEST_EFFORT_DECODING
                 const Int bitDepthDelta = pcCU->getSlice()->getSPS()->getStreamBitDepth(toChannelType(compID)) - clipbd;
 #endif
@@ -9247,9 +9249,17 @@ Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,
                     for (UInt uiX = 0; uiX < tuWidth; uiX++)
                     {
 #if O0043_BEST_EFFORT_DECODING
-                        piReco[uiX] = ClipBD(rightShiftEvenRounding<Pel>(piPred[uiX] + piResi[uiX], bitDepthDelta), clipbd);
+#if JVET_D0033_ADAPTIVE_CLIPPING
+                      piReco[uiX] = ClipA(rightShiftEvenRounding<Pel>(piPred[uiX] + piResi[uiX], bitDepthDelta), compID);
 #else
-                        piReco[uiX] = ClipBD(piPred[uiX] + piResi[uiX], clipbd);
+                      piReco[uiX] = ClipBD(rightShiftEvenRounding<Pel>(piPred[uiX] + piResi[uiX], bitDepthDelta), clipbd);
+#endif
+#else
+#if JVET_D0033_ADAPTIVE_CLIPPING
+                      piReco[uiX] = ClipA(piPred[uiX] + piResi[uiX], compID);
+#else
+                      piReco[uiX] = ClipBD(piPred[uiX] + piResi[uiX], clipbd);
+#endif
 #endif
 
                     }

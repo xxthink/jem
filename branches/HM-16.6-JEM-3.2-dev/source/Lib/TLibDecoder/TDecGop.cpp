@@ -135,6 +135,10 @@ Void TDecGop::decompressSlice(TComInputBitstream* pcBitstream, TComPic* pcPic
   m_pcEntropyDecoder->setStatsHandle ( m_apcStats );
 #endif
 
+#if JVET_D0033_ADAPTIVE_CLIPPING
+    pcPic->m_aclip_prm=pcSlice->m_clip_decoded;
+    g_ClipParam=pcPic->m_aclip_prm;
+#endif
   const UInt uiNumSubstreams = pcSlice->getNumberOfSubstreamSizes()+1;
 
   // init each couple {EntropyDecoder, Substream}

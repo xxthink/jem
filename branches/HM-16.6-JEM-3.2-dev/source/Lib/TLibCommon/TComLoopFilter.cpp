@@ -40,6 +40,9 @@
 #include "TComMv.h"
 #include "TComTU.h"
 
+#if JVET_D0033_ADAPTIVE_CLIPPING
+#include "CommonDef.h"
+#endif
 //! \ingroup TLibCommon
 //! \{
 
@@ -1084,7 +1087,11 @@ Void TComLoopFilter::xEdgeFilterChroma( TComDataCU* const pcCU, const UInt uiAbs
 
         for ( UInt uiStep = 0; uiStep < uiLoopLength; uiStep++ )
         {
-          xPelFilterChroma( piTmpSrcChroma + iSrcStep*(uiStep+iIdx*uiLoopLength), iOffset, iTc , bPartPNoFilter, bPartQNoFilter, bitDepthChroma);
+                    xPelFilterChroma( piTmpSrcChroma + iSrcStep*(uiStep+iIdx*uiLoopLength), iOffset, iTc , bPartPNoFilter, bPartQNoFilter, bitDepthChroma
+                  #if JVET_D0033_ADAPTIVE_CLIPPING
+                                      , ComponentID(chromaIdx + 1)
+                  #endif
+                                      );
         }
       }
     }
@@ -1135,19 +1142,32 @@ __inline Void TComLoopFilter::xPelFilterLuma( Pel* piSrc, Int iOffset, Int tc, B
     if ( abs(delta) < iThrCut )
     {
       delta = Clip3(-tc, tc, delta);
+#if JVET_D0033_ADAPTIVE_CLIPPING
+      piSrc[-iOffset] = ClipA((m3+delta), COMPONENT_Y);
+      piSrc[0] = ClipA((m4-delta),  COMPONENT_Y);
+#else
       piSrc[-iOffset] = ClipBD((m3+delta), bitDepthLuma);
       piSrc[0] = ClipBD((m4-delta), bitDepthLuma);
+#endif
 
       Int tc2 = tc>>1;
       if(bFilterSecondP)
       {
         Int delta1 = Clip3(-tc2, tc2, (( ((m1+m3+1)>>1)- m2+delta)>>1));
+#if JVET_D0033_ADAPTIVE_CLIPPING
+          piSrc[-iOffset*2] = ClipA((m2+delta1),  COMPONENT_Y);
+#else
         piSrc[-iOffset*2] = ClipBD((m2+delta1), bitDepthLuma);
+#endif
       }
       if(bFilterSecondQ)
       {
         Int delta2 = Clip3(-tc2, tc2, (( ((m6+m4+1)>>1)- m5-delta)>>1));
+#if JVET_D0033_ADAPTIVE_CLIPPING
+          piSrc[ iOffset] = ClipA((m5+delta2), COMPONENT_Y);
+#else
         piSrc[ iOffset] = ClipBD((m5+delta2), bitDepthLuma);
+#endif
       }
     }
   }
@@ -1176,7 +1196,11 @@ __inline Void TComLoopFilter::xPelFilterLuma( Pel* piSrc, Int iOffset, Int tc, B
  \param bPartQNoFilter  indicator to disable filtering on partQ
  \param bitDepthChroma  chroma bit depth
  */
-__inline Void TComLoopFilter::xPelFilterChroma( Pel* piSrc, Int iOffset, Int tc, Bool bPartPNoFilter, Bool bPartQNoFilter, const Int bitDepthChroma)
+__inline Void TComLoopFilter::xPelFilterChroma( Pel* piSrc, Int iOffset, Int tc, Bool bPartPNoFilter, Bool bPartQNoFilter, const Int bitDepthChroma
+                                                #if JVET_D0033_ADAPTIVE_CLIPPING
+                                                , ComponentID compID
+                                                #endif
+                                                )
 {
   Int delta;
 
@@ -1186,8 +1210,13 @@ __inline Void TComLoopFilter::xPelFilterChroma( Pel* piSrc, Int iOffset, Int tc,
   Pel m2  = piSrc[-iOffset*2];
 
   delta = Clip3(-tc,tc, (((( m4 - m3 ) << 2 ) + m2 - m5 + 4 ) >> 3) );
+#if JVET_D0033_ADAPTIVE_CLIPPING
+    piSrc[-iOffset] = ClipA((m3+delta),  compID);
+    piSrc[0] = ClipA((m4-delta),  compID);
+#else
   piSrc[-iOffset] = ClipBD((m3+delta), bitDepthChroma);
   piSrc[0] = ClipBD((m4-delta), bitDepthChroma);
+#endif
 
   if(bPartPNoFilter)
   {

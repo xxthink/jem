@@ -43,16 +43,29 @@
 #include "TComWeightPrediction.h"
 
 
+#if JVET_D0033_ADAPTIVE_CLIPPING
+static Pel weightBidir( Int w0, Pel P0, Int w1, Pel P1, Int round, Int shift, Int offset, ComponentID id)
+{
+  return ClipA( ( (w0*(P0 + IF_INTERNAL_OFFS) + w1*(P1 + IF_INTERNAL_OFFS) + round + (offset << (shift-1))) >> shift ), id);
+}
+
+static Pel weightUnidir( Int w0, Pel P0, Int round, Int shift, Int offset, ComponentID id)
+{
+  return ClipA( ( (w0*(P0 + IF_INTERNAL_OFFS) + round) >> shift ) + offset, id );
+}
+#else
 static inline Pel weightBidir( Int w0, Pel P0, Int w1, Pel P1, Int round, Int shift, Int offset, Int clipBD)
 {
   return ClipBD( ( (w0*(P0 + IF_INTERNAL_OFFS) + w1*(P1 + IF_INTERNAL_OFFS) + round + (offset << (shift-1))) >> shift ), clipBD );
 }
-
-
 static inline Pel weightUnidir( Int w0, Pel P0, Int round, Int shift, Int offset, Int clipBD)
 {
   return ClipBD( ( (w0*(P0 + IF_INTERNAL_OFFS) + round) >> shift ) + offset, clipBD );
 }
+#endif
+
+
+
 
 // ====================================================================================================================
 // Class definition
@@ -111,14 +124,25 @@ Void TComWeightPrediction::addWeightBi( const TComYuv              *pcYuvSrc0,
       Int x = iWidth-1;
       for ( ; x >= 3; )
       {
+#if JVET_D0033_ADAPTIVE_CLIPPING
+        pDst[x] = weightBidir(w0,pSrc0[x], w1,pSrc1[x], round, shift, offset, compID); x--;
+        pDst[x] = weightBidir(w0,pSrc0[x], w1,pSrc1[x], round, shift, offset, compID); x--;
+        pDst[x] = weightBidir(w0,pSrc0[x], w1,pSrc1[x], round, shift, offset, compID); x--;
+        pDst[x] = weightBidir(w0,pSrc0[x], w1,pSrc1[x], round, shift, offset, compID); x--;
+#else
         pDst[x] = weightBidir(w0,pSrc0[x], w1,pSrc1[x], round, shift, offset, clipBD); x--;
         pDst[x] = weightBidir(w0,pSrc0[x], w1,pSrc1[x], round, shift, offset, clipBD); x--;
         pDst[x] = weightBidir(w0,pSrc0[x], w1,pSrc1[x], round, shift, offset, clipBD); x--;
         pDst[x] = weightBidir(w0,pSrc0[x], w1,pSrc1[x], round, shift, offset, clipBD); x--;
+#endif
       }
       for( ; x >= 0; x-- )
       {
+#if JVET_D0033_ADAPTIVE_CLIPPING
+        pDst[x] = weightBidir(w0,pSrc0[x], w1,pSrc1[x], round, shift, offset, compID);
+#else
         pDst[x] = weightBidir(w0,pSrc0[x], w1,pSrc1[x], round, shift, offset, clipBD);
+#endif
       }
 
       pSrc0 += iSrc0Stride;
@@ -166,14 +190,25 @@ Void TComWeightPrediction::addWeightUni( const TComYuv        *const pcYuvSrc0,
       Int x = iWidth-1;
       for ( ; x >= 3; )
       {
+#if JVET_D0033_ADAPTIVE_CLIPPING
+        pDst[x] = weightUnidir(w0, pSrc0[x], round, shift, offset, compID); x--;
+        pDst[x] = weightUnidir(w0, pSrc0[x], round, shift, offset, compID); x--;
+        pDst[x] = weightUnidir(w0, pSrc0[x], round, shift, offset, compID); x--;
+        pDst[x] = weightUnidir(w0, pSrc0[x], round, shift, offset, compID); x--;
+#else
         pDst[x] = weightUnidir(w0, pSrc0[x], round, shift, offset, clipBD); x--;
         pDst[x] = weightUnidir(w0, pSrc0[x], round, shift, offset, clipBD); x--;
         pDst[x] = weightUnidir(w0, pSrc0[x], round, shift, offset, clipBD); x--;
         pDst[x] = weightUnidir(w0, pSrc0[x], round, shift, offset, clipBD); x--;
+#endif
       }
       for( ; x >= 0; x--)
       {
+#if JVET_D0033_ADAPTIVE_CLIPPING
+        pDst[x] = weightUnidir(w0, pSrc0[x], round, shift, offset, compID);
+#else
         pDst[x] = weightUnidir(w0, pSrc0[x], round, shift, offset, clipBD);
+#endif
       }
       pSrc0 += iSrc0Stride;
       pDst  += iDstStride;

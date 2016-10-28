@@ -488,6 +488,9 @@ protected:
   std::string m_summaryPicFilenameBase;                       ///< Base filename to use for producing summary picture output files. The actual filenames used will have I.txt, P.txt and B.txt appended.
   UInt        m_summaryVerboseness;                           ///< Specifies the level of the verboseness of the text output.
 
+#if JVET_D0033_ADAPTIVE_CLIPPING
+  ClipParam m_ClipParam;
+#endif
 public:
   TEncCfg()
   : m_tileColumnWidth()
@@ -781,6 +784,10 @@ public:
   Void  setSliceArgument               ( Int  i )                    { m_sliceArgument = i;          }
   SliceConstraint getSliceMode         () const                      { return m_sliceMode;           }
   Int   getSliceArgument               ()                            { return m_sliceArgument;       }
+#if JVET_D0033_ADAPTIVE_CLIPPING
+  Void setTchClipParam(ClipParam& tchClipParam) { m_ClipParam = tchClipParam; }
+  const ClipParam& getTchClipParam() const { return m_ClipParam; }
+#endif
   //====== Dependent Slice ========
   Void  setSliceSegmentMode            ( SliceConstraint  i )        { m_sliceSegmentMode = i;       }
   Void  setSliceSegmentArgument        ( Int  i )                    { m_sliceSegmentArgument = i;   }
