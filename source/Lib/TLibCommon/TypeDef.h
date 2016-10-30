@@ -56,12 +56,13 @@
 
 #define JVET_D0123_ME_CTX_LUT_BITS                        1
 
-#define JVET_C0024_QTBT                                   1
+#define JVET_C0024_QTBT                                   0
 
 #if JVET_C0024_QTBT
 #define JVET_C0024_BT_FIX_TICKET22                        1
 #define JVET_C0024_QTBT_FIX_QUANT_TICKET25                1  // JVET-D0025
 #define RDOQ_BIT_ESTIMATE_FIX_TICKET29                    1  // correct RDOQ uninitialized values in case of vertical scan 
+#define FIX_TICKET32                                      1  ///< Fix of ticket #32 (Initialization for INIT_LAST)
 
 #define MIN_CU_LOG2                                       2
 #if MIN_CU_LOG2==1
@@ -303,7 +304,6 @@
 #define JVET_B0039_INC_NUM_QP_PROB                        7  ///< Number of context is increased when more QPs are used
 
 #define FIX_TICKET30                                      1  ///< Fix of ticket #30 (Use of uninitialized Cabac coder for Intra 128x128 blocks)
-#define FIX_TICKET32                                      1  ///< Fix of ticket #32 (Initialization for INIT_LAST)
 #define FIX_TICKET33                                      1  ///< Fix of ticket #33 (Block level IC flag is set based on slice level IC flag)
 
 ///////////////////////////////////////////////////////////
