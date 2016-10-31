@@ -7203,7 +7203,7 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
 #if JVET_D0123_ME_CTX_LUT_BITS && VCEG_AZ07_IMV
       if (uiMEError != std::numeric_limits<Distortion>::max() && iPartIdx == iNumPart-1)
       {
-        Bool bNonZeroMvd= false
+        Bool bNonZeroMvd= false;
           for ( Int iPartIdxTmp = 0; iPartIdxTmp < iNumPart; iPartIdxTmp++)
           {
             UInt uiPartAddrTmp = 0;
