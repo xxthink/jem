@@ -56,7 +56,7 @@
 
 #define JVET_D0123_ME_CTX_LUT_BITS                        1
 
-#define JVET_C0024_QTBT                                   0
+#define JVET_C0024_QTBT                                   1
 
 #if JVET_C0024_QTBT
 #define JVET_C0024_BT_FIX_TICKET22                        1
