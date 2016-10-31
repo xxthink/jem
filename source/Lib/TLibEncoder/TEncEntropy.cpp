@@ -738,9 +738,6 @@ Void TEncEntropy::encodePuMotionInfo(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt u
 #else
   PartSize ePartSize = pcCU->getPartitionSize( uiAbsPartIdx );
 #endif
-#if VCEG_AZ07_IMV
-  Bool bNonZeroMvd = false;
-#endif
     encodeMergeFlag( pcCU, uiAbsPartIdx );
     if ( pcCU->getMergeFlag( uiAbsPartIdx ) )
     {
@@ -793,10 +790,6 @@ Void TEncEntropy::encodePuMotionInfo(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt u
 
           encodeMvdPU       ( pcCU, uiAbsPartIdx, RefPicList( uiRefListIdx ) );
 
-#if VCEG_AZ07_IMV
-          bNonZeroMvd |= ( pcCU->getCUMvField( RefPicList( uiRefListIdx ) )->getMvd( uiAbsPartIdx ).getHor() != 0 );
-          bNonZeroMvd |= ( pcCU->getCUMvField( RefPicList( uiRefListIdx ) )->getMvd( uiAbsPartIdx ).getVer() != 0 );
-#endif
           encodeMVPIdxPU    ( pcCU, uiAbsPartIdx, RefPicList( uiRefListIdx ) );
 #if ENVIRONMENT_VARIABLE_DEBUG_AND_TEST
           if (bDebugPred)
@@ -811,18 +804,6 @@ Void TEncEntropy::encodePuMotionInfo(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt u
         }
       }
     } 
-
-#if VCEG_AZ07_IMV
-  if( bNonZeroMvd && pcCU->getSlice()->getSPS()->getIMV() )
-  {
-    encodeiMVFlag( pcCU , uiAbsPartIdx );
-  }
-  if( !bNonZeroMvd )
-  {
-    assert( pcCU->getiMVFlag( uiAbsPartIdx ) == 0 );
-  }
-
-#endif
   return;
 }
 #endif
