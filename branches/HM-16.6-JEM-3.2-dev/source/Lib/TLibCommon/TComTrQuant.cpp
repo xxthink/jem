@@ -8541,7 +8541,11 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
 #endif
         {
 #if JVET_D0120_NSST_IMPROV 
+#if JVET_C0024_QTBT
           const Int * permut = iSbSize>4 ? g_nsstHyGTPermut8x8[g_NsstLut[uiIntraMode]][ucNsstIdx - 1] : g_nsstHyGTPermut4x4[g_NsstLut[uiIntraMode]][ucNsstIdx - 1];
+#else
+          const Int * permut = iSbSize>4 ? g_nsstHyGTPermut8x8[g_NsstLut[uiIntraMode]][pcCU->getROTIdx(uiAbsPartIdx) - 1] : g_nsstHyGTPermut4x4[g_NsstLut[uiIntraMode]][pcCU->getROTIdx(uiAbsPartIdx) - 1];
+#endif
 #endif
           for (Int iSubGroupX = 0; iSubGroupX<iSubGroupXMax; iSubGroupX++)
           {
