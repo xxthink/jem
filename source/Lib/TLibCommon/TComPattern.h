@@ -92,11 +92,8 @@ private:
 public:
 #if JVET_D0123_ME_CTX_LUT_BITS
   TComDataCU*       m_pcCU;
-  RefPicList        m_eRefList;
   UInt              m_uiPartAddr;
   TComMv*           m_mvPred;
-  Bool              m_bBi;
-  Bool              m_bAffine;
   PartSize          m_ePartSize;
 #endif
 
