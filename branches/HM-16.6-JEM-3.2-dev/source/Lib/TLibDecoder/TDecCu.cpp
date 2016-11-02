@@ -1212,7 +1212,7 @@ Void TDecCu::xReconInter( TComDataCU* pcCU, UInt uiDepth )
 #if JVET_D0033_ADAPTIVE_CLIPPING // decoder, inter no res
       if (g_ClipParam.isActive)
       {
-          m_ppcYuvReco[uiDepth]->clipPartToPartYuv( m_ppcYuvReco[uiDepth], 0, pcCU->getWidth(0), pcCU->getHeight(0), pcCU->getSlice()->getSPS()->getBitDepths() );
+          m_ppcYuvReco[uiDepth]->clipPartToPartYuv( m_ppcYuvReco[uiDepth], 0, pcCU->getWidth(0), pcCU->getHeight(0));
       } 
       else 
       {
