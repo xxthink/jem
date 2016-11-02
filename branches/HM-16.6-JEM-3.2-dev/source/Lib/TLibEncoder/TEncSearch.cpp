@@ -5015,6 +5015,14 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #endif
   }
 
+#if JVET_D0127_REDUNDANCY_REMOVAL
+  Bool NSSTFlag = (pcCU->getROTIdx(CHANNEL_TYPE_LUMA, 0) == 0);
+  Bool NSSTSaveFlag = (pcCU->getROTIdx(CHANNEL_TYPE_LUMA, 0) == 0) && (pcCU->getPDPCIdx(0) == 0) && (pcCU->getEmtCuFlag(0) == 0);
+  static UInt   uiSavedRdModeListNSST[35], uiSavedNumRdModesNSST, uiSavedHadModeListNSST[35];
+  static Double dSavedModeCostNSST[35], dSavedHadListNSST[FAST_UDI_MAX_RDMODE_NUM];
+  UInt uiHadModeList[67];
+#endif
+
 #if COM16_C806_EMT
 #if JVET_C0024_QTBT
   static Double dBestModeCostStore; // RD cost of the best mode for each PU using DCT2
@@ -5052,6 +5060,9 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
   {
     ucEmtUsageFlag = 0;
   }
+#if JVET_D0127_REDUNDANCY_REMOVAL
+  NSSTFlag |= saveLoadTag == LOAD_ENC_INFO;
+#endif
 #endif
 #endif
 
@@ -5113,7 +5124,11 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
     {
       assert(numModesForFullRD < numModesAvailable);
 
+#if JVET_D0127_REDUNDANCY_REMOVAL
+      for (Int i = 0; i < numModesForFullRD + 2; i++)
+#else
       for( Int i=0; i < numModesForFullRD; i++ )
+#endif
       {
         CandCostList[ i ] = MAX_DOUBLE;
       }
@@ -5147,6 +5162,10 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
       const Bool bUseHadamard=pcCU->getCUTransquantBypass(0) == 0;
       m_pcRdCost->setDistParam(distParam, sps.getBitDepth(CHANNEL_TYPE_LUMA), piOrg, uiStride, piPred, uiStride, puRect.width, puRect.height, bUseHadamard);
       distParam.bApplyWeight = false;
+
+#if JVET_D0127_REDUNDANCY_REMOVAL
+      if (NSSTFlag){
+#endif
       for( Int modeIdx = 0; modeIdx < numModesAvailable; modeIdx++ )
       {
         UInt       uiMode = modeIdx;
@@ -5204,11 +5223,19 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #endif
 
 #if JVET_C0024_FAST_MRG
+#if JVET_D0127_REDUNDANCY_REMOVAL
+        CandNum += updateCandList(uiMode, cost, numModesForFullRD + 2, uiRdModeList, CandCostList);
+#else
         CandNum += updateCandList( uiMode, cost, numModesForFullRD, uiRdModeList, CandCostList );
+#endif
 #else
         CandNum += xUpdateCandList( uiMode, cost, numModesForFullRD, uiRdModeList, CandCostList );
 #endif
 #if JVET_C0024_PBINTRA_FAST
+#if JVET_D0127_REDUNDANCY_REMOVAL
+        UInt Num = 0;
+        Num = updateCandList(uiMode, uiSad, numModesForFullRD+2, uiHadModeList, CandHadList);
+#else
         if (uiSad < CandHadList[0])
         {
           CandHadList[2] = CandHadList[1];
@@ -5225,7 +5252,60 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
           CandHadList[2] = uiSad;
         }
 #endif   
+#endif
       }
+#if JVET_D0127_REDUNDANCY_REMOVAL
+      if (NSSTSaveFlag){
+          uiSavedNumRdModesNSST = numModesForFullRD;
+          ::memcpy(uiSavedRdModeListNSST, uiRdModeList, (numModesForFullRD + 2)*sizeof(UInt));
+          ::memcpy(dSavedModeCostNSST, CandCostList, (numModesForFullRD + 2)*sizeof(Double));
+          ::memcpy(dSavedHadListNSST, CandHadList, (numModesForFullRD + 2)*sizeof(Double));
+          ::memcpy(uiSavedHadModeListNSST, uiHadModeList, (numModesForFullRD + 2)*sizeof(UInt));
+      }
+      }
+      else{
+
+          if (pcCU->getROTIdx(CHANNEL_TYPE_LUMA, 0) == 3){
+              numModesForFullRD = uiSavedNumRdModesNSST;
+              ::memcpy(uiRdModeList, uiSavedRdModeListNSST, (numModesForFullRD + 2)*sizeof(UInt));
+              ::memcpy(CandCostList, dSavedModeCostNSST, (numModesForFullRD + 2)*sizeof(Double));
+              ::memcpy(CandHadList, dSavedHadListNSST, (numModesForFullRD + 2)*sizeof(Double));
+              ::memcpy(uiHadModeList, uiSavedHadModeListNSST, (numModesForFullRD + 2)*sizeof(UInt));
+              Int cnt = 0;
+              Int i = 0;
+
+              for (i = 0; i < numModesForFullRD; i++){
+                  if (uiRdModeList[i] <= DC_IDX){
+                      for (UInt j = i; j < numModesForFullRD + 1 - cnt; j++){
+                          uiRdModeList[j] = uiRdModeList[j + 1];
+                          CandCostList[j] = CandCostList[j + 1];
+                      }
+                      cnt++;
+                      i--;
+                  }
+              }
+
+              cnt = 0;
+              for (i = 0; i < numModesForFullRD; i++){
+                  if (uiHadModeList[i] <= DC_IDX){
+                      for (UInt j = i; j < numModesForFullRD + 1 - cnt; j++){
+                          uiHadModeList[j] = uiHadModeList[j + 1];
+                          CandHadList[j] = CandHadList[j + 1];
+                      }
+                      cnt++;
+                      i--;
+                  }
+              }
+          }
+          else{
+              numModesForFullRD = uiSavedNumRdModesNSST;
+              ::memcpy(uiRdModeList, uiSavedRdModeListNSST, numModesForFullRD*sizeof(UInt));
+              ::memcpy(CandCostList, dSavedModeCostNSST, numModesForFullRD*sizeof(Double));
+              ::memcpy(CandHadList, dSavedHadListNSST, numModesForFullRD*sizeof(Double));
+          }
+
+      }
+#endif
 
 #if VCEG_AZ07_INTRA_65ANG_MODES
       UInt uiParentCandList[FAST_UDI_MAX_RDMODE_NUM];

@@ -56,6 +56,8 @@
 
 #define JVET_D0123_ME_CTX_LUT_BITS                        1
 
+#define JVET_D0127_REDUNDANCY_REMOVAL                     1
+
 #define JVET_C0024_QTBT                                   1
 
 #if JVET_C0024_QTBT
