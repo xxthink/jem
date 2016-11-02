@@ -6785,7 +6785,9 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
     //m_pcRDGoOnSbacCoder->load(m_pppcRDSbacCoder[pcCU->getDepth(0)][CI_PU_NEXT_BEST]);
     loadCtxMeSbacCoder(pcCU);
     //m_pcEntropyCoder->resetBits();
+
     m_pcEntropyCoder->estimatePuMeBit(m_pcPuMeEstBitsSbac);
+
     pcCU->getPartIndexAndSize( iPartIdx, uiPartAddr, iRoiWidth, iRoiHeight );
     xGetBlkBits( ePartSize, pcCU->getSlice()->isInterP(), iPartIdx, uiLastMode, uiMbBits, pcCU, uiPartAddr);
     xUpdateMvpIdxBits(pcCU);
@@ -6872,11 +6874,8 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
             TComPattern   tmpPattern;
             TComPattern*  pcPatternKey  = &tmpPattern;
             pcPatternKey->m_pcCU = pcCU;
-            pcPatternKey->m_bBi = false;
-            pcPatternKey->m_bAffine = false;
             pcPatternKey->m_ePartSize = ePartSize;
             pcPatternKey->m_uiPartAddr = uiPartAddr;
-            pcPatternKey->m_eRefList = eRefPicList;
             pcPatternKey->m_mvPred = &cMvPred[iRefList][iRefIdxTemp];
 
             iCostScale = 0;
@@ -7323,7 +7322,7 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
 #endif 
         );
 #if JVET_D0123_ME_CTX_LUT_BITS
-      assert(uiMRGCost != std::numeric_limits<Distortion>::max());
+      assert(uiMRGCost != std::numeric_limits<Distortion>::max() && uiMRGCost + m_pcRdCost->getCostSearch(uiMrgFlagBits[1]) > uiMRGCost);
       uiMRGCost += m_pcRdCost->getCostSearch(uiMrgFlagBits[1]);
 #endif
 #if VCEG_AZ07_FRUC_MERGE
@@ -7335,7 +7334,10 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
           m_pMvFieldFRUC, m_phInterDirFRUC , m_phFRUCRefineDist , m_phFRUCSBlkRefineDist ,
           uiFRUCMgrCost , uhFRUCMode );
 #if JVET_D0123_ME_CTX_LUT_BITS
-        uiFRUCMgrCost += m_pcRdCost->getCostSearch(uiMrgFlagBits[1]);
+        if (uiFRUCMgrCost < MAX_UINT)
+        {
+          uiFRUCMgrCost += m_pcRdCost->getCostSearch(uiMrgFlagBits[1]);
+        }
         uiMRGCost += m_pcRdCost->getCostSearch(xGetFRUCMgrModeBits(pcCU, uiPartAddr, iPartIdx, FRUC_MERGE_OFF));
 #endif
       }
@@ -8001,7 +8003,6 @@ Void TEncSearch::xCheckBestMVP ( TComDataCU* pcCU, RefPicList eRefPicList, TComM
   TComPattern*  pcPatternKey  = &tmpPattern;
   pcPatternKey->m_pcCU = pcCU;
   pcPatternKey->m_uiPartAddr = uiPartAddr;
-  pcPatternKey->m_eRefList = eRefPicList;
   pcPatternKey->m_mvPred = &rcMvPred;
   iCostScale = 0;
 
@@ -8228,7 +8229,6 @@ Void TEncSearch::xMotionEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPa
 #if JVET_D0123_ME_CTX_LUT_BITS
   pcPatternKey->m_pcCU = pcCU;
   pcPatternKey->m_uiPartAddr = uiPartAddr;
-  pcPatternKey->m_eRefList = eRefPicList;
   pcPatternKey->m_mvPred = pcMvPred;
 
   iCostScale = 2;
@@ -11402,7 +11402,6 @@ Void TEncSearch::predAffineInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, Int
             TComPattern*  pcPatternKey  = &tmpPattern;
             pcPatternKey->m_pcCU = pcCU;
             pcPatternKey->m_uiPartAddr = uiPartAddr;
-            pcPatternKey->m_eRefList = eRefPicList;
             pcPatternKey->m_mvPred = &cMvPred[iRefList][iRefIdxTemp][iVerIdx];
 
             iCostScale = 0;
@@ -11760,10 +11759,6 @@ Void TEncSearch::xCheckBestAffineMVP ( TComDataCU* pcCU, RefPicList eRefPicList,
   TComPattern*  pcPatternKey  = &tmpPattern;
   pcPatternKey->m_pcCU = pcCU;
   pcPatternKey->m_uiPartAddr = uiPartAddr;
-  pcPatternKey->m_eRefList = eRefPicList;
-
-  pcPatternKey->m_bAffine = true;
-  pcPatternKey->m_bBi = false;
   iCostScale = 0;
 #endif
 
@@ -11933,7 +11928,6 @@ Void TEncSearch::xAffineMotionEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, I
     TComPattern*  pcPatternKey  = &tmpPattern;
     pcPatternKey->m_pcCU = pcCU;
     pcPatternKey->m_uiPartAddr = uiPartAddr;
-    pcPatternKey->m_eRefList = eRefPicList;
     pcPatternKey->m_mvPred = &acMvPred[i];
 
     iCostScale = 0;
@@ -12130,7 +12124,6 @@ Void TEncSearch::xAffineMotionEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, I
       TComPattern*  pcPatternKey  = &tmpPattern;
       pcPatternKey->m_pcCU = pcCU;
       pcPatternKey->m_uiPartAddr = uiPartAddr;
-      pcPatternKey->m_eRefList = eRefPicList;
       pcPatternKey->m_mvPred = &acMvPred[i];
 
       iCostScale = 0;
