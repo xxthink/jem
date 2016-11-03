@@ -5016,11 +5016,18 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
   }
 
 #if JVET_D0127_REDUNDANCY_REMOVAL
+#if JVET_C0024_QTBT
   Bool NSSTFlag = (pcCU->getROTIdx(CHANNEL_TYPE_LUMA, 0) == 0);
   Bool NSSTSaveFlag = (pcCU->getROTIdx(CHANNEL_TYPE_LUMA, 0) == 0) && (pcCU->getPDPCIdx(0) == 0) && (pcCU->getEmtCuFlag(0) == 0);
+#else
+  Bool NSSTFlag = (pcCU->getROTIdx(0) == 0);
+  Bool NSSTSaveFlag = (pcCU->getROTIdx(0) == 0) && (pcCU->getPDPCIdx(0) == 0) && (pcCU->getEmtCuFlag(0) == 0);
+#endif
   static UInt   uiSavedRdModeListNSST[35], uiSavedNumRdModesNSST, uiSavedHadModeListNSST[35];
   static Double dSavedModeCostNSST[35], dSavedHadListNSST[FAST_UDI_MAX_RDMODE_NUM];
+#if JVET_C0024_PBINTRA_FAST
   UInt uiHadModeList[67];
+#endif
 #endif
 
 #if COM16_C806_EMT
@@ -5259,18 +5266,25 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
           uiSavedNumRdModesNSST = numModesForFullRD;
           ::memcpy(uiSavedRdModeListNSST, uiRdModeList, (numModesForFullRD + 2)*sizeof(UInt));
           ::memcpy(dSavedModeCostNSST, CandCostList, (numModesForFullRD + 2)*sizeof(Double));
-          ::memcpy(dSavedHadListNSST, CandHadList, (numModesForFullRD + 2)*sizeof(Double));
+#if JVET_C0024_PBINTRA_FAST
           ::memcpy(uiSavedHadModeListNSST, uiHadModeList, (numModesForFullRD + 2)*sizeof(UInt));
+          ::memcpy(dSavedHadListNSST, CandHadList, (numModesForFullRD + 2)*sizeof(Double));
+#endif
       }
       }
       else{
-
+#if JVET_C0024_QTBT
           if (pcCU->getROTIdx(CHANNEL_TYPE_LUMA, 0) == 3){
+#else
+          if (pcCU->getROTIdx(0) == 3){
+#endif
               numModesForFullRD = uiSavedNumRdModesNSST;
               ::memcpy(uiRdModeList, uiSavedRdModeListNSST, (numModesForFullRD + 2)*sizeof(UInt));
               ::memcpy(CandCostList, dSavedModeCostNSST, (numModesForFullRD + 2)*sizeof(Double));
-              ::memcpy(CandHadList, dSavedHadListNSST, (numModesForFullRD + 2)*sizeof(Double));
+#if JVET_C0024_PBINTRA_FAST
               ::memcpy(uiHadModeList, uiSavedHadModeListNSST, (numModesForFullRD + 2)*sizeof(UInt));
+              ::memcpy(CandHadList, dSavedHadListNSST, (numModesForFullRD + 2)*sizeof(Double));
+#endif
               Int cnt = 0;
               Int i = 0;
 
@@ -5285,6 +5299,7 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
                   }
               }
 
+#if JVET_C0024_PBINTRA_FAST
               cnt = 0;
               for (i = 0; i < numModesForFullRD; i++){
                   if (uiHadModeList[i] <= DC_IDX){
@@ -5296,15 +5311,18 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
                       i--;
                   }
               }
+#endif
           }
           else{
               numModesForFullRD = uiSavedNumRdModesNSST;
               ::memcpy(uiRdModeList, uiSavedRdModeListNSST, numModesForFullRD*sizeof(UInt));
               ::memcpy(CandCostList, dSavedModeCostNSST, numModesForFullRD*sizeof(Double));
+#if JVET_C0024_PBINTRA_FAST
               ::memcpy(CandHadList, dSavedHadListNSST, numModesForFullRD*sizeof(Double));
+#endif
           }
 
-      }
+          }
 #endif
 
 #if VCEG_AZ07_INTRA_65ANG_MODES
