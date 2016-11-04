@@ -5240,8 +5240,8 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #endif
 #if JVET_C0024_PBINTRA_FAST
 #if JVET_D0127_REDUNDANCY_REMOVAL
-        UInt Num = 0;
-        Num = updateCandList(uiMode, uiSad, numModesForFullRD+2, uiHadModeList, CandHadList);
+
+        updateCandList(uiMode, uiSad, numModesForFullRD+2, uiHadModeList, CandHadList);
 #else
         if (uiSad < CandHadList[0])
         {
