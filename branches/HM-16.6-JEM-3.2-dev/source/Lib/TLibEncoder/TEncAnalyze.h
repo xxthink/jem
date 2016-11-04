@@ -100,7 +100,7 @@ public:
   }
 
 
-  Void calculateCombinedValues(const ChromaFormat chFmt, Double &PSNRyuv, Double &MSEyuv, const BitDepths &bitDepths)
+  Void calculateCombinedValues(const ChromaFormat chFmt, Double &PSNRyuv, Double &MSEyuv, const Bool trueBitdepthPSNR, const BitDepths &bitDepths)
   {
     MSEyuv    = 0;
     Int scale = 0;
@@ -114,7 +114,7 @@ public:
       }
     }
 
-    const UInt maxval                = 255 << (maximumBitDepth - 8);
+    const UInt maxval                = (trueBitdepthPSNR == true) ? (1 << maximumBitDepth) - 1 : 255 << (maximumBitDepth - 8);
     const UInt numberValidComponents = getNumberValidComponents(chFmt);
 
     for (UInt comp=0; comp<numberValidComponents; comp++)
@@ -136,7 +136,7 @@ public:
   }
 
 
-  Void    printOut ( Char cDelim, const ChromaFormat chFmt, const Bool printMSEBasedSNR, const Bool printSequenceMSE, const BitDepths &bitDepths )
+  Void    printOut ( Char cDelim, const ChromaFormat chFmt, const Bool printMSEBasedSNR, const Bool printSequenceMSE, const Bool trueBitdepthPSNR, const BitDepths &bitDepths )
   {
     Double dFps     =   m_dFrmRate; //--CFG_KDY
     Double dScale   = dFps / 1000 / (Double)m_uiNumPic;
@@ -155,7 +155,7 @@ public:
         else
         {
           //NOTE: this is not the true maximum value for any bitDepth other than 8. It comes from the original HM PSNR calculation
-          const UInt maxval = 255 << (bitDepths.recon[toChannelType(compID)] - 8);
+          const UInt maxval = ( trueBitdepthPSNR == true ) ? (1 << bitDepths.recon[toChannelType(compID)]) - 1 : 255 << (bitDepths.recon[toChannelType(compID)] - 8);
           const Double MSE = m_MSEyuvframe[compID];
 
           MSEBasedSNR[compID] = (MSE == 0) ? 999.99 : (10 * log10((maxval * maxval) / (MSE / (Double)getNumPic())));
@@ -235,7 +235,7 @@ public:
           Double PSNRyuv = MAX_DOUBLE;
           Double MSEyuv  = MAX_DOUBLE;
           
-          calculateCombinedValues(chFmt, PSNRyuv, MSEyuv, bitDepths);
+          calculateCombinedValues(chFmt, PSNRyuv, MSEyuv, trueBitdepthPSNR, bitDepths);
 
           if (printMSEBasedSNR)
           {
@@ -325,7 +325,7 @@ public:
   }
 
 
-  Void    printSummary(const ChromaFormat chFmt, const Bool printSequenceMSE, const BitDepths &bitDepths, const std::string &sFilename)
+  Void    printSummary(const ChromaFormat chFmt, const Bool printSequenceMSE, const Bool trueBitdepthPSNR, const BitDepths &bitDepths, const std::string &sFilename)
   {
     FILE* pFile = fopen (sFilename.c_str(), "at");
 
@@ -345,7 +345,7 @@ public:
           Double PSNRyuv = MAX_DOUBLE;
           Double MSEyuv  = MAX_DOUBLE;
           
-          calculateCombinedValues(chFmt, PSNRyuv, MSEyuv, bitDepths);
+          calculateCombinedValues(chFmt, PSNRyuv, MSEyuv, trueBitdepthPSNR, bitDepths);
 
           fprintf(pFile, "%f\t %f\t %f\t %f\t %f",
               getBits() * dScale,
