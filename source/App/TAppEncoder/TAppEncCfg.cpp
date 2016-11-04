@@ -747,7 +747,9 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   ("MSEBasedSequencePSNR",                            m_printMSEBasedSequencePSNR,                      false, "0 (default) emit sequence PSNR only as a linear average of the frame PSNRs, 1 = also emit a sequence PSNR based on an average of the frame MSEs")
   ("PrintFrameMSE",                                   m_printFrameMSE,                                  false, "0 (default) emit only bit count and PSNRs for each frame, 1 = also emit MSE values")
   ("PrintSequenceMSE",                                m_printSequenceMSE,                               false, "0 (default) emit only bit rate and PSNRs for the whole sequence, 1 = also emit MSE values")
+#if JVET_D0134_PSNR
   ("TrueBitdepthPSNR",                                m_trueBidepthPSNR,                                false, "0 (default) compute PSNR using maxval = (1<<(bitdepth) - 1) instead of maxval = 255<<(bitdepth - 8)")
+#endif
   ("CabacZeroWordPaddingEnabled",                     m_cabacZeroWordPaddingEnabled,                     true, "0 do not add conforming cabac-zero-words to bit streams, 1 (default) = add cabac-zero-words as required")
   ("ChromaFormatIDC,-cf",                             tmpChromaFormat,                                      0, "ChromaFormatIDC (400|420|422|444 or set 0 (default) for same as InputChromaFormat)")
   ("ConformanceMode",                                 m_conformanceWindowMode,                              0, "Deprecated alias of ConformanceWindowMode")
@@ -828,6 +830,10 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   ("IntraPeriod,-ip",                                 m_iIntraPeriod,                                      -1, "Intra period in frames, (-1: only first frame)")
   ("DecodingRefreshType,-dr",                         m_iDecodingRefreshType,                               0, "Intra refresh type (0:none 1:CRA 2:IDR 3:RecPointSEI)")
   ("GOPSize,g",                                       m_iGOPSize,                                           1, "GOP size of temporal structure")
+
+#if JVET_D0135_PARAMS
+  ("ReWriteParamSetsFlag",                            m_bReWriteParamSetsFlag,                          false, "Enable rewriting of Parameter sets before every (intra) random access point")
+#endif 
 
   // motion search options
   ("DisableIntraInInter",                             m_bDisableIntraPUsInInterSlices,                  false, "Flag to disable intra PUs in inter slices")
@@ -2599,7 +2605,9 @@ Void TAppEncCfg::xPrintParameter()
   printf("Internal Format                        : %dx%d %gHz\n", m_iSourceWidth, m_iSourceHeight, (Double)m_iFrameRate/m_temporalSubsampleRatio );
   printf("Sequence PSNR output                   : %s\n", (m_printMSEBasedSequencePSNR ? "Linear average, MSE-based" : "Linear average only") );
   printf("Sequence MSE output                    : %s\n", (m_printSequenceMSE ? "Enabled" : "Disabled") );
+#if JVET_D0134_PSNR
   printf("True Bitdepth PSNR                     : %s\n", (m_trueBidepthPSNR ? "Enabled" : "Disabled") );
+#endif
   printf("Frame MSE output                       : %s\n", (m_printFrameMSE    ? "Enabled" : "Disabled") );
   printf("Cabac-zero-word-padding                : %s\n", (m_cabacZeroWordPaddingEnabled? "Enabled" : "Disabled") );
   if (m_isField)
@@ -2663,6 +2671,11 @@ Void TAppEncCfg::xPrintParameter()
   printf("Motion search range                    : %d\n", m_iSearchRange );
   printf("Intra period                           : %d\n", m_iIntraPeriod );
   printf("Decoding refresh type                  : %d\n", m_iDecodingRefreshType );
+
+#if JVET_D0135_PARAMS
+  printf("Rewriting parameter sets flag (RAP)    : %s\n", (m_bReWriteParamSetsFlag                   ? "Enabled" : "Disabled") );
+#endif
+
   printf("QP                                     : %5.2f\n", m_fQP );
   printf("Max dQP signaling depth                : %d\n", m_iMaxCuDQPDepth);
 

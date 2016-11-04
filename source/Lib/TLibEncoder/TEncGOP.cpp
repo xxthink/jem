@@ -1745,7 +1745,12 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     // Set entropy coder
     m_pcEntropyCoder->setEntropyCoder   ( m_pcCavlcCoder );
 
-    if ( m_bSeqFirst )
+#if JVET_D0135_PARAMS
+    //if ( m_bSeqFirst || (m_pcCfg->getWriteParamSetsIDRFlag() && pcSlice->getIdrPicFlag()) )
+    if ( m_bSeqFirst || (m_pcCfg->getReWriteParamSetsFlag() && ( pcPic->getSlice(0)->getSliceType() == I_SLICE )))
+#else
+      if ( m_bSeqFirst )
+#endif
     {
       // write various parameter sets
       actualTotalBits += xWriteParameterSets(accessUnit, pcSlice);
@@ -2068,7 +2073,11 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
   assert ( (m_iNumPicCoded == iNumPicRcvd) );
 }
 
+#if JVET_D0134_PSNR
 Void TEncGOP::printOutSummary(UInt uiNumAllPicCoded, Bool isField, const Bool printMSEBasedSNR, const Bool printSequenceMSE, const Bool trueBitdepthPSNR, const BitDepths &bitDepths)
+#else
+Void TEncGOP::printOutSummary(UInt uiNumAllPicCoded, Bool isField, const Bool printMSEBasedSNR, const Bool printSequenceMSE, const BitDepths &bitDepths)
+#endif
 {
   assert (uiNumAllPicCoded == m_gcAnalyzeAll.getNumPic());
 
@@ -2081,6 +2090,7 @@ Void TEncGOP::printOutSummary(UInt uiNumAllPicCoded, Bool isField, const Bool pr
   m_gcAnalyzeB.setFrmRate( m_pcCfg->getFrameRate()*rateMultiplier / (Double)m_pcCfg->getTemporalSubsampleRatio());
   const ChromaFormat chFmt = m_pcCfg->getChromaFormatIdc();
 
+#if JVET_D0134_PSNR
   //-- all
   printf( "\n\nSUMMARY --------------------------------------------------------\n" );
   m_gcAnalyzeAll.printOut('a', chFmt, printMSEBasedSNR, printSequenceMSE, trueBitdepthPSNR, bitDepths);
@@ -2121,6 +2131,48 @@ Void TEncGOP::printOutSummary(UInt uiNumAllPicCoded, Bool isField, const Bool pr
       m_gcAnalyzeAll_in.printSummary(chFmt, printSequenceMSE, trueBitdepthPSNR, bitDepths, m_pcCfg->getSummaryOutFilename());
     }
   }
+#else
+  //-- all
+  printf( "\n\nSUMMARY --------------------------------------------------------\n" );
+  m_gcAnalyzeAll.printOut('a', chFmt, printMSEBasedSNR, printSequenceMSE, bitDepths);
+
+  printf( "\n\nI Slices--------------------------------------------------------\n" );
+  m_gcAnalyzeI.printOut('i', chFmt, printMSEBasedSNR, printSequenceMSE, bitDepths);
+
+  printf( "\n\nP Slices--------------------------------------------------------\n" );
+  m_gcAnalyzeP.printOut('p', chFmt, printMSEBasedSNR, printSequenceMSE, bitDepths);
+
+  printf( "\n\nB Slices--------------------------------------------------------\n" );
+  m_gcAnalyzeB.printOut('b', chFmt, printMSEBasedSNR, printSequenceMSE, bitDepths);
+
+  if (!m_pcCfg->getSummaryOutFilename().empty())
+  {
+    m_gcAnalyzeAll.printSummary(chFmt, printSequenceMSE, bitDepths, m_pcCfg->getSummaryOutFilename());
+  }
+
+  if (!m_pcCfg->getSummaryPicFilenameBase().empty())
+  {
+    m_gcAnalyzeI.printSummary(chFmt, printSequenceMSE, bitDepths, m_pcCfg->getSummaryPicFilenameBase()+"I.txt");
+    m_gcAnalyzeP.printSummary(chFmt, printSequenceMSE, bitDepths, m_pcCfg->getSummaryPicFilenameBase()+"P.txt");
+    m_gcAnalyzeB.printSummary(chFmt, printSequenceMSE, bitDepths, m_pcCfg->getSummaryPicFilenameBase()+"B.txt");
+  }
+
+  if(isField)
+  {
+    //-- interlaced summary
+    m_gcAnalyzeAll_in.setFrmRate( m_pcCfg->getFrameRate() / (Double)m_pcCfg->getTemporalSubsampleRatio());
+    m_gcAnalyzeAll_in.setBits(m_gcAnalyzeAll.getBits());
+    // prior to the above statement, the interlace analyser does not contain the correct total number of bits.
+
+    printf( "\n\nSUMMARY INTERLACED ---------------------------------------------\n" );
+    m_gcAnalyzeAll_in.printOut('a', chFmt, printMSEBasedSNR, printSequenceMSE, bitDepths);
+
+    if (!m_pcCfg->getSummaryOutFilename().empty())
+    {
+      m_gcAnalyzeAll_in.printSummary(chFmt, printSequenceMSE, bitDepths, m_pcCfg->getSummaryOutFilename());
+    }
+  }
+#endif
 
   printf("\nRVM: %.3lf\n" , xCalculateRVM());
 }
@@ -2366,8 +2418,12 @@ Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const Acces
       pOrg += iOrgStride;
       pRec += iRecStride;
     }
+    
+#if JVET_D0134_PSNR
     const Int maxval = ( m_pcCfg->getTrueBitdepthPSNR() == true )?  (1 << pcPic->getPicSym()->getSPS().getBitDepth(toChannelType(ch))) - 1 : 255 << (pcPic->getPicSym()->getSPS().getBitDepth(toChannelType(ch)) - 8);
-
+#else
+    const Int maxval = 255 << (pcPic->getPicSym()->getSPS().getBitDepth(toChannelType(ch)) - 8);
+#endif
     const Double fRefValue = (Double) maxval * maxval * iSize;
     dPSNR[ch]         = ( uiSSDtemp ? 10.0 * log10( fRefValue / (Double)uiSSDtemp ) : 999.99 );
     MSEyuvframe[ch]   = (Double)uiSSDtemp/(iSize);
@@ -2519,7 +2575,12 @@ Void TEncGOP::xCalculateInterlacedAddPSNR( TComPic* pcPicOrgFirstField, TComPic*
         pRec += iStride;
       }
     }
+
+#if JVET_D0134_PSNR
     const Int maxval = ( m_pcCfg->getTrueBitdepthPSNR() == true )?  (1 << sps.getBitDepth(toChannelType(ch))) - 1 : 255 << (sps.getBitDepth(toChannelType(ch)) - 8);
+#else
+    const Int maxval = 255 << (sps.getBitDepth(toChannelType(ch)) - 8);
+#endif
     const Double fRefValue = (Double) maxval * maxval * iSize*2;
     dPSNR[ch]         = ( uiSSDtemp ? 10.0 * log10( fRefValue / (Double)uiSSDtemp ) : 999.99 );
     MSEyuvframe[ch]   = (Double)uiSSDtemp/(iSize*2);
