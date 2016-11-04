@@ -122,6 +122,7 @@ protected:
   Bool      m_printMSEBasedSequencePSNR;
   Bool      m_printFrameMSE;
   Bool      m_printSequenceMSE;
+  Bool      m_trueBidepthPSNR;
   Bool      m_cabacZeroWordPaddingEnabled;
 
   /* profile & level */
@@ -525,6 +526,10 @@ public:
 
   Bool      getPrintSequenceMSE             ()         const { return m_printSequenceMSE;           }
   Void      setPrintSequenceMSE             (Bool value)     { m_printSequenceMSE = value;          }
+  
+  Bool      getTrueBitdepthPSNR             ()         const { return m_trueBidepthPSNR;           }
+  Void      setTrueBitdepthPSNR             (Bool value)     { m_trueBidepthPSNR = value;          }
+
 
   Bool      getCabacZeroWordPaddingEnabled()           const { return m_cabacZeroWordPaddingEnabled;  }
   Void      setCabacZeroWordPaddingEnabled(Bool value)       { m_cabacZeroWordPaddingEnabled = value; }

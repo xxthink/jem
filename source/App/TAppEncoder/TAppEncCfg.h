@@ -88,6 +88,7 @@ protected:
   Bool      m_printMSEBasedSequencePSNR;
   Bool      m_printFrameMSE;
   Bool      m_printSequenceMSE;
+  Bool      m_trueBidepthPSNR;
   Bool      m_cabacZeroWordPaddingEnabled;
   Bool      m_bClipInputVideoToRec709Range;
   Bool      m_bClipOutputVideoToRec709Range;
