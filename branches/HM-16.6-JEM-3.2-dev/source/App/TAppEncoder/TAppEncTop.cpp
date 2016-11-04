@@ -98,7 +98,9 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setPrintMSEBasedSequencePSNR                         ( m_printMSEBasedSequencePSNR);
   m_cTEncTop.setPrintFrameMSE                                     ( m_printFrameMSE);
   m_cTEncTop.setPrintSequenceMSE                                  ( m_printSequenceMSE);
+#if JVET_D0134_PSNR
   m_cTEncTop.setTrueBitdepthPSNR                                  ( m_trueBidepthPSNR );
+#endif
   m_cTEncTop.setCabacZeroWordPaddingEnabled                       ( m_cabacZeroWordPaddingEnabled );
 
   m_cTEncTop.setFrameRate                                         ( m_iFrameRate );
@@ -111,6 +113,11 @@ Void TAppEncTop::xInitLibCfg()
 
   //====== Coding Structure ========
   m_cTEncTop.setIntraPeriod                                       ( m_iIntraPeriod );
+
+#if JVET_D0135_PARAMS
+  m_cTEncTop.setReWriteParamSetsFlag                             ( m_bReWriteParamSetsFlag );
+#endif
+  
   m_cTEncTop.setDecodingRefreshType                               ( m_iDecodingRefreshType );
   m_cTEncTop.setGOPSize                                           ( m_iGOPSize );
   m_cTEncTop.setGopList                                           ( m_GOPList );
