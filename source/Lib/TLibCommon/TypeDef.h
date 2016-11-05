@@ -50,11 +50,21 @@
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////
+#define JVET_D0134_PSNR                                   1
+#define JVET_D0135_PARAMS                                 1
+
+#define JVET_D0033_ADAPTIVE_CLIPPING                      1
+#define JVET_D0033_ADAPTIVE_CLIPPING_ENC_METHOD           1
+
+#define JVET_D0123_ME_CTX_LUT_BITS                        1
+
 #define JVET_C0024_QTBT                                   1
 
 #if JVET_C0024_QTBT
 #define JVET_C0024_BT_FIX_TICKET22                        1
+#define JVET_C0024_QTBT_FIX_QUANT_TICKET25                1  // JVET-D0025
 #define RDOQ_BIT_ESTIMATE_FIX_TICKET29                    1  // correct RDOQ uninitialized values in case of vertical scan 
+#define FIX_TICKET32                                      1  ///< Fix of ticket #32 (Initialization for INIT_LAST)
 
 #define MIN_CU_LOG2                                       2
 #if MIN_CU_LOG2==1
@@ -79,7 +89,15 @@
 #define JVET_C0024_AMAX_BT_FIX_TICKET23                   1
 #define JVET_C0024_FAST_MRG                               1
 #define JVET_C0024_PBINTRA_FAST                           1
+#if JVET_C0024_PBINTRA_FAST
+#define JVET_C0024_PBINTRA_FAST_FIX                       1  ///< JVET-D0077
+#endif
 #define JVET_C0024_ITSKIP                                 1  ///< skip zero row/column in inverse transform (decoder speedup)
+
+#define JVET_D0077_FAST_EXT                               1  ///< extension of exsiting fast algorithm 
+
+#define JVET_D0077_TRANSFORM_OPT                          1  ///< software optimization to take full advantages of zero rows/columns in transform coefficients
+#define JVET_D0077_SAVE_LOAD_ENC_INFO                     1  ///< save and load encoder decision for speedup
 
 #endif // end of JVET_C0024_QTBT
 
@@ -257,6 +275,8 @@
 
 #if COM16_C1044_NSST
 #define JVET_C0045_C0053_NO_NSST_FOR_TS                   1  ///< JVET-C0045/C0053: Disable NSST for TS coded blocks 
+#define JVET_D0120_NSST_IMPROV                            1  ///< JVET-D0120: NSST improvements using HyGT and 8x8 NSST  
+#define JVET_D0127_REDUNDANCY_REMOVAL                     1
 #endif
 
 #define COM16_C1046_PDPC_INTRA                            1  ///< Position dependent intra prediction combination
@@ -277,10 +297,17 @@
 // encoder only changes
 #define COM16_C806_SIMD_OPT                               1  ///< SIMD optimization, no impact on RD performance
 
+#define JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY             1 ///< This approach derives lambda from QP+QPoffset+QPoffset2. QPoffset2 is derived from QP+QPoffset using a linear model that is clipped between 0 and 3.
+                                                            // To use this capability enable config parameter LambdaFromQpEnable
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+#define JVET_B0039_QP_FIX                                 0  ///< Recalcualtes QP to align with a HM lambda (same relation as for all intra coding is used)
+#else
 #define JVET_B0039_QP_FIX                                 1  ///< Recalcualtes QP to align with a HM lambda (same relation as for all intra coding is used)
+#endif
 #define JVET_B0039_INC_NUM_QP_PROB                        7  ///< Number of context is increased when more QPs are used
 
 #define FIX_TICKET30                                      1  ///< Fix of ticket #30 (Use of uninitialized Cabac coder for Intra 128x128 blocks)
+#define FIX_TICKET33                                      1  ///< Fix of ticket #33 (Block level IC flag is set based on slice level IC flag)
 
 ///////////////////////////////////////////////////////////
 // KTA tools section end
@@ -479,6 +506,14 @@ typedef       float           EigenType;
 // ====================================================================================================================
 // Enumeration
 // ====================================================================================================================
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+enum SaveLoadTag
+{
+  SAVE_LOAD_INIT = 0,
+  SAVE_ENC_INFO = 1,
+  LOAD_ENC_INFO = 2
+};
+#endif
 
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
 enum MergeType
@@ -654,6 +689,9 @@ enum CI_IDX
   CI_CHROMA_INTRA,      ///< chroma intra index
   CI_QT_TRAFO_TEST,
   CI_QT_TRAFO_ROOT,
+#if JVET_D0123_ME_CTX_LUT_BITS
+  CI_PU_NEXT_BEST,
+#endif
   CI_NUM,               ///< total number
 };
 
@@ -744,6 +782,9 @@ enum ScalingListSize
   SCALING_LIST_32x32,
 #if COM16_C806_T64
   SCALING_LIST_64x64,
+#endif
+#if JVET_C0024_QTBT_FIX_QUANT_TICKET25
+  SCALING_LIST_128x128,
 #endif
   SCALING_LIST_SIZE_NUM
 };

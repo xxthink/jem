@@ -291,7 +291,13 @@ protected:
 #endif
   Void xCUAdaptive_qc(TComPic* pcPic, ALFParam* pcAlfParam, imgpel *imgY_rec_post, imgpel *imgY_rec, Int Stride);
 #if JVET_C0038_GALF
-  Void subfilterFrame(imgpel *imgY_rec_post, imgpel *imgY_rec, ALFParam* pcAlfPara, int start_height, int end_height, int start_width, int end_width, int Stride, Bool bChroma = false);
+  Void subfilterFrame(imgpel *imgY_rec_post, imgpel *imgY_rec, ALFParam* pcAlfPara, int start_height, int end_height, int start_width, int end_width, int Stride,
+                    #if JVET_D0033_ADAPTIVE_CLIPPING
+                    ComponentID compid
+                    #else
+                    Bool bChroma = false
+                    #endif
+                    );
   Void filterFrame(imgpel *imgY_rec_post, imgpel *imgY_rec, ALFParam* pcAlfPara, int Stride);
 #else
   Void subfilterFrame(imgpel *imgY_rec_post, imgpel *imgY_rec, int filtNo, int start_height, int end_height, int start_width, int end_width, int Stride);

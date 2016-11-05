@@ -283,6 +283,12 @@ static const UInt  EMT_INTER_MAX_CU =                              32; ///< Max 
 #endif
 #endif
 
+#if JVET_D0120_NSST_IMPROV
+static const Int  NSST_HYGT_RNDS_4x4 =                              2;
+static const Int  NSST_HYGT_RNDS_8x8 =                              4;
+static const Int  NSST_HYGT_PTS =                            (1 << 8);
+#endif
+
 #if VCEG_AZ07_INTRA_65ANG_MODES
 static const Int MDCS_ANGLE_LIMIT =                                 9; ///< 0 = Horizontal/vertical only, 1 = Horizontal/vertical +/- 1, 2 = Horizontal/vertical +/- 2 etc...
 #else
@@ -437,15 +443,23 @@ static const Int    MIN_BT_SIZE   =                                 4;      ///<
 
 //for I slice chroma CTB configuration para. (in luma samples)
 static const Int    MAX_BT_DEPTH_C =                                0;      ///< <=7   
-static const Int    MAX_BT_SIZE_C  =                                16;     ///< [1<<MIN_QT_SIZE_C, 1<<CTU_LOG2]
-static const Int    MIN_BT_SIZE_C  =                                4;      ///< can be set down to 4
+static const Int    MAX_BT_SIZE_C  =                               64;      ///< [1<<MIN_QT_SIZE_C, 1<<CTU_LOG2], in luma samples
+static const Int    MIN_BT_SIZE_C  =                                4;      ///< can be set down to 4, in luma samples
 
 //for P/B slice CTU config. para.
 static const Int    MAX_BT_DEPTH_INTER =                            4;      ///< <=7
 static const Int    MAX_BT_SIZE_INTER  =                          128;      ///< for initialization, [1<<MIN_BT_SIZE_INTER, 1<<CTU_LOG2]
 static const Int    MIN_BT_SIZE_INTER  =                            4;      ///<
 
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+static const Double JVET_D0077_SPLIT_DECISION_COST_SCALE =       1.05;
 #endif
+#endif
+
+#if JVET_D0123_ME_CTX_LUT_BITS
+static const Int    EPBIT =                                   (1<<15);
+#endif
+
 
 // ====================================================================================================================
 // Macro functions
@@ -455,8 +469,102 @@ static const Int    MIN_BT_SIZE_INTER  =                            4;      ///<
 #define SIGN(x)                       ( x >= 0 ? 1 : -1 )
 #endif
 
+#if JVET_D0033_ADAPTIVE_CLIPPING
+// for clipping pixel values, use ClipA NOT Clip3
+template <typename T> inline T Clip3(const T minVal, const T maxVal, const T a) { return (a<minVal)?minVal:(a>maxVal?maxVal:a); }  ///< general min/max clip
+
+struct Bound { Int m,M; };
+struct ClipParam{
+    static Int nbBitsY;
+    static Int nbBitsUV;
+    static Int ibdLuma;
+    static Int ibdChroma;
+    static Int cquantiz;
+    Bool isActive;
+    Bool isChromaActive;
+    Int max(ComponentID c) const {
+        switch(c) {
+        case COMPONENT_Y: return Y().M; break;
+        case COMPONENT_Cb: return U().M; break;
+        case COMPONENT_Cr: return V().M; break;
+        default: assert(false); return 0;
+        }
+    }
+    Int min(ComponentID c) const {
+        switch(c) {
+        case COMPONENT_Y: return Y().m; break;
+        case COMPONENT_Cb: return U().m; break;
+        case COMPONENT_Cr: return V().m; break;
+        default: assert(false); return 0;
+        }
+    }
+    Bound Y()  const { return Y_;  }
+    Bound &Y()       { return Y_; }
+
+    Bound Y_;
+
+    Bound U()  const { return U_; }
+    Bound &U()       { return U_; }
+    Bound V()  const { return V_; }
+    Bound &V()       { return V_; }
+    Bound U_;
+    Bound V_;
+
+
+    void setInvalid() { Y_.m=Y_.M=0; U_=V_=Y_; }
+    Int operator[](int idx) const {
+        switch(idx) {
+        case 0: return Y_.m; break;
+        case 1: return Y_.M; break;
+        case 2: return U_.m; break;
+        case 3: return U_.M; break;
+        case 4: return V_.m; break;
+        default: return V_.M; break;
+        }
+    }
+    Int &operator[](int idx) {
+        switch(idx) {
+        case 0: return Y_.m; break;
+        case 1: return Y_.M; break;
+        case 2: return U_.m; break;
+        case 3: return U_.M; break;
+        case 4: return V_.m; break;
+        default: return V_.M; break;
+        }
+    }
+};
+
+
+
+inline void resetBounds(ClipParam &prm) {
+    prm.Y().m = 0;
+    prm.Y().M = (1<<ClipParam::ibdLuma)-1; // (1<<BD)-1
+    prm.U().m = 0;
+    prm.U().M = (1<<ClipParam::ibdChroma)-1;; // (1<<BD)-1
+    prm.V()=prm.U();
+}
+
+inline void setOff(ClipParam &prm) {
+    resetBounds(prm);
+    prm.isActive=false;
+    prm.isChromaActive=false;
+}
+
+extern ClipParam g_ClipParam;
+
+template <typename T> T ClipA(const T x, const ComponentID compID)
+{
+    switch(compID) {
+    case COMPONENT_Y:    return Clip3((T)g_ClipParam.Y().m,(T)g_ClipParam.Y().M,x); break;
+    case COMPONENT_Cb:   return Clip3((T)g_ClipParam.U().m,(T)g_ClipParam.U().M,x); break;
+    case COMPONENT_Cr:   return Clip3((T)g_ClipParam.V().m,(T)g_ClipParam.V().M,x); break;
+    default: std::cerr << "ClipA: Invalid compID value " << compID << " . Exiting." << std::endl; assert(false); exit(0);  return 0;
+    }
+}
+#else
 template <typename T> inline T Clip3 (const T minVal, const T maxVal, const T a) { return std::min<T> (std::max<T> (minVal, a) , maxVal); }  ///< general min/max clip
 template <typename T> inline T ClipBD(const T x, const Int bitDepth)             { return Clip3(T(0), T((1 << bitDepth)-1), x);           }
+#endif
 
 template <typename T> inline Void Check3( T minVal, T maxVal, T a)
 {

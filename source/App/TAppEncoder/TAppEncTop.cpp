@@ -98,6 +98,9 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setPrintMSEBasedSequencePSNR                         ( m_printMSEBasedSequencePSNR);
   m_cTEncTop.setPrintFrameMSE                                     ( m_printFrameMSE);
   m_cTEncTop.setPrintSequenceMSE                                  ( m_printSequenceMSE);
+#if JVET_D0134_PSNR
+  m_cTEncTop.setTrueBitdepthPSNR                                  ( m_trueBidepthPSNR );
+#endif
   m_cTEncTop.setCabacZeroWordPaddingEnabled                       ( m_cabacZeroWordPaddingEnabled );
 
   m_cTEncTop.setFrameRate                                         ( m_iFrameRate );
@@ -110,6 +113,11 @@ Void TAppEncTop::xInitLibCfg()
 
   //====== Coding Structure ========
   m_cTEncTop.setIntraPeriod                                       ( m_iIntraPeriod );
+
+#if JVET_D0135_PARAMS
+  m_cTEncTop.setReWriteParamSetsFlag                             ( m_bReWriteParamSetsFlag );
+#endif
+  
   m_cTEncTop.setDecodingRefreshType                               ( m_iDecodingRefreshType );
   m_cTEncTop.setGOPSize                                           ( m_iGOPSize );
   m_cTEncTop.setGopList                                           ( m_GOPList );
@@ -124,6 +132,11 @@ Void TAppEncTop::xInitLibCfg()
     m_cTEncTop.setLambdaModifier                                  ( uiLoop, m_adLambdaModifier[ uiLoop ] );
   }
   m_cTEncTop.setQP                                                ( m_iQP );
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+  m_cTEncTop.setIntraQpFactor                                     ( m_dIntraQpFactor );
+  m_cTEncTop.setIntraQPOffset                                     ( m_intraQPOffset );
+  m_cTEncTop.setLambdaFromQPEnable                                ( m_lambdaFromQPEnable );
+#endif
 
   m_cTEncTop.setPad                                               ( m_aiPad );
 
@@ -165,7 +178,11 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setExtendedPrecisionProcessingFlag                   ( m_extendedPrecisionProcessingFlag );
   m_cTEncTop.setHighPrecisionOffsetsEnabledFlag                   ( m_highPrecisionOffsetsEnabledFlag );
   //====== Tool list ========
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+  m_cTEncTop.setDeltaQpRD( (m_costMode==COST_LOSSLESS_CODING) ? 0 : m_uiDeltaQpRD );
+#else
   m_cTEncTop.setDeltaQpRD                                         ( m_uiDeltaQpRD  );
+#endif
   m_cTEncTop.setFastDeltaQp                                       ( m_bFastDeltaQP  );
   m_cTEncTop.setUseASR                                            ( m_bUseASR      );
   m_cTEncTop.setUseHADME                                          ( m_bUseHADME    );
@@ -202,6 +219,10 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setUseFastDecisionForMerge                           ( m_useFastDecisionForMerge  );
   m_cTEncTop.setUseCbfFastMode                                    ( m_bUseCbfFastMode  );
   m_cTEncTop.setUseEarlySkipDetection                             ( m_useEarlySkipDetection );
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+  m_cTEncTop.setUseSaveLoadEncInfo                                ( m_useSaveLoadEncInfo );
+  m_cTEncTop.setUseSaveLoadSplitDecision                          ( m_useSaveLoadSplitDecision ); 
+#endif
   m_cTEncTop.setCrossComponentPredictionEnabledFlag               ( m_crossComponentPredictionEnabledFlag );
   m_cTEncTop.setUseReconBasedCrossCPredictionEstimate             ( m_reconBasedCrossCPredictionEstimate );
   m_cTEncTop.setLog2SaoOffsetScale                                ( CHANNEL_TYPE_LUMA  , m_log2SaoOffsetScale[CHANNEL_TYPE_LUMA]   );
@@ -469,6 +490,9 @@ Void TAppEncTop::xInitLibCfg()
 #endif
 #if COM16_C983_RSAF
   m_cTEncTop.setUseRSAF                         ( m_useRSAF );
+#endif
+#if JVET_D0033_ADAPTIVE_CLIPPING
+    m_cTEncTop.setTchClipParam(m_ClipParam);
 #endif
   m_cTEncTop.setSummaryOutFilename                                ( m_summaryOutFilename );
   m_cTEncTop.setSummaryPicFilenameBase                            ( m_summaryPicFilenameBase );

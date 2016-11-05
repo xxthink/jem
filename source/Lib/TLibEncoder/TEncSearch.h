@@ -151,6 +151,42 @@ private:
   Double*         m_tmpDerivate[2];
 #endif
 
+
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+  UInt            m_SaveLoadPartIdx[MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1]; ///< partition index of the block for save/load encoder decision 
+  UChar           m_SaveLoadTag[MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1];     ///< 0: not used, 1: save, 2: load
+#if COM16_C806_EMT
+  UChar           m_SaveLoadEmtFlag[MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1]; 
+  UChar           m_SaveLoadEmtIdx [MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1]; 
+#endif
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST 
+   Char           m_SaveLoadRotIdx [MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1]; 
+#endif
+#if COM16_C1046_PDPC_INTRA
+   Char           m_SaveLoadPdpcIdx[MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1]; 
+#endif
+#if VCEG_AZ07_FRUC_MERGE
+  UChar           m_SaveLoadFrucMode[MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1];
+#endif
+#if VCEG_AZ07_IMV
+  Bool            m_SaveLoadIMVFlag[MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1];
+#endif
+#if VCEG_AZ06_IC
+  Bool            m_SaveLoadICFlag[MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1];
+#endif
+#if COM16_C1016_AFFINE
+  Bool            m_SaveLoadAffineFlag[MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1];
+#endif
+  Bool            m_SaveLoadMergeFlag[MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1];
+  UChar           m_SaveLoadInterDir[MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1];
+  UChar           m_SaveLoadSplit[MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1];
+#endif
+
+
+#if JVET_D0123_ME_CTX_LUT_BITS
+  Int             iCostScale;
+#endif
+
 protected:
   // interface to option
   TEncCfg*        m_pcEncCfg;
@@ -178,6 +214,9 @@ protected:
   TEncSbac*       m_pcRDGoOnSbacCoder;
   DistParam       m_cDistParam;
 
+#if VCEG_AZ07_IMV && JVET_D0123_ME_CTX_LUT_BITS
+  UInt        m_uiBitsIMVFlag[2];
+#endif
   // Misc.
   Pel*            m_pTempPel;
   const UInt*     m_puiDFilter;
@@ -196,6 +235,9 @@ protected:
 #endif
 
 public:
+#if JVET_D0123_ME_CTX_LUT_BITS
+  estPuMeBitsSbacStruct* m_pcPuMeEstBitsSbac;
+#endif
   TEncSearch();
   virtual ~TEncSearch();
 
@@ -218,6 +260,47 @@ public:
 
   Void destroy();
 
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+  UChar getSaveLoadTag( UInt uiPartIdx, UInt uiWIdx, UInt uiHIdx ) {  return uiPartIdx == m_SaveLoadPartIdx[uiWIdx][uiHIdx] ? m_SaveLoadTag[uiWIdx][uiHIdx] : SAVE_LOAD_INIT; };
+  Void  setSaveLoadTag( UInt uiPartIdx, UInt uiWIdx, UInt uiHIdx, UChar c ) { m_SaveLoadPartIdx[uiWIdx][uiHIdx] = uiPartIdx; m_SaveLoadTag[uiWIdx][uiHIdx] = c; };
+#if COM16_C806_EMT
+  UChar getSaveLoadEmtFlag( UInt uiWIdx, UInt uiHIdx ) {  return m_SaveLoadEmtFlag[uiWIdx][uiHIdx]; }; 
+  Void  setSaveLoadEmtFlag( UInt uiWIdx, UInt uiHIdx, UChar c ) { m_SaveLoadEmtFlag[uiWIdx][uiHIdx] = c; };
+  UChar getSaveLoadEmtIdx( UInt uiWIdx, UInt uiHIdx ) {  return m_SaveLoadEmtIdx[uiWIdx][uiHIdx]; }; 
+  Void  setSaveLoadEmtIdx( UInt uiWIdx, UInt uiHIdx, UChar c ) { m_SaveLoadEmtIdx[uiWIdx][uiHIdx] = c; };
+#endif
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST 
+  Char  getSaveLoadRotIdx( UInt uiWIdx, UInt uiHIdx ) {  return m_SaveLoadRotIdx[uiWIdx][uiHIdx]; }; 
+  Void  setSaveLoadRotIdx( UInt uiWIdx, UInt uiHIdx, Char c ) { m_SaveLoadRotIdx[uiWIdx][uiHIdx] = c; };
+#endif
+#if COM16_C1046_PDPC_INTRA
+  Char  getSaveLoadPdpcIdx( UInt uiWIdx, UInt uiHIdx ) {  return m_SaveLoadPdpcIdx[uiWIdx][uiHIdx]; }; 
+  Void  setSaveLoadPdpcIdx( UInt uiWIdx, UInt uiHIdx, Char c ) { m_SaveLoadPdpcIdx[uiWIdx][uiHIdx] = c; };
+#endif
+#if VCEG_AZ07_FRUC_MERGE
+  UChar getSaveLoadFrucMode( UInt uiWIdx, UInt uiHIdx ) {  return m_SaveLoadFrucMode[uiWIdx][uiHIdx]; }; 
+  Void  setSaveLoadFrucMode( UInt uiWIdx, UInt uiHIdx, UChar c ) { m_SaveLoadFrucMode[uiWIdx][uiHIdx] = c; };
+#endif
+#if VCEG_AZ07_IMV
+  Bool  getSaveLoadIMVFlag( UInt uiWIdx, UInt uiHIdx ) {  return m_SaveLoadIMVFlag[uiWIdx][uiHIdx]; }; 
+  Void  setSaveLoadIMVFlag( UInt uiWIdx, UInt uiHIdx, Bool b ) { m_SaveLoadIMVFlag[uiWIdx][uiHIdx] = b; };
+#endif
+#if VCEG_AZ06_IC
+  Bool  getSaveLoadICFlag( UInt uiWIdx, UInt uiHIdx ) {  return m_SaveLoadICFlag[uiWIdx][uiHIdx]; }; 
+  Void  setSaveLoadICFlag( UInt uiWIdx, UInt uiHIdx, Bool b ) { m_SaveLoadICFlag[uiWIdx][uiHIdx] = b; };
+#endif
+#if COM16_C1016_AFFINE
+  Bool  getSaveLoadAffineFlag( UInt uiWIdx, UInt uiHIdx ) {  return m_SaveLoadAffineFlag[uiWIdx][uiHIdx]; }; 
+  Void  setSaveLoadAffineFlag( UInt uiWIdx, UInt uiHIdx, Bool b ) { m_SaveLoadAffineFlag[uiWIdx][uiHIdx] = b; };
+#endif
+  Bool  getSaveLoadMergeFlag( UInt uiWIdx, UInt uiHIdx ) {  return m_SaveLoadMergeFlag[uiWIdx][uiHIdx]; }; 
+  Void  setSaveLoadMergeFlag( UInt uiWIdx, UInt uiHIdx, Bool b ) { m_SaveLoadMergeFlag[uiWIdx][uiHIdx] = b; };
+  UChar getSaveLoadInterDir( UInt uiWIdx, UInt uiHIdx ) {  return m_SaveLoadInterDir[uiWIdx][uiHIdx]; }; 
+  Void  setSaveLoadInterDir( UInt uiWIdx, UInt uiHIdx, UChar c ) { m_SaveLoadInterDir[uiWIdx][uiHIdx] = c; };
+  UChar getSaveLoadSplit( UInt uiWIdx, UInt uiHIdx ) {  return m_SaveLoadSplit[uiWIdx][uiHIdx]; }; 
+  Void  setSaveLoadSplit( UInt uiWIdx, UInt uiHIdx, UChar c ) { m_SaveLoadSplit[uiWIdx][uiHIdx] = c; };
+#endif
+
 protected:
 
   /// sub-function for motion vector refinement used in fractional-pel accuracy
@@ -235,10 +318,18 @@ protected:
     UInt        uiBestRound;
     UInt        uiBestDistance;
     Distortion  uiBestSad;
+#if JVET_D0123_ME_CTX_LUT_BITS
+    Distortion  uiBestSadOnly;
+#endif
     UChar       ucPointNr;
   } IntTZSearchStruct;
 
   // sub-functions for ME
+#if JVET_D0123_ME_CTX_LUT_BITS
+  __inline UInt xGetBitsEpExGolomb( UInt uiSymbol, UInt uiCount );
+  __inline UInt xGetMvdBitsLut (TComDataCU* pcCU, UInt uiAbsPartIdx, Int iCurVal);
+  __inline UInt xMvdBits(TComPattern* pcPatternKey, Int iX, Int iY);
+#endif
   __inline Void xTZSearchHelp         ( TComPattern* pcPatternKey, IntTZSearchStruct& rcStruct, const Int iSearchX, const Int iSearchY, const UChar ucPointNr, const UInt uiDistance );
   __inline Void xTZ2PointSearch       ( TComPattern* pcPatternKey, IntTZSearchStruct& rcStrukt, TComMv* pcMvSrchRngLT, TComMv* pcMvSrchRngRB );
   __inline Void xTZ8PointSquareSearch ( TComPattern* pcPatternKey, IntTZSearchStruct& rcStrukt, TComMv* pcMvSrchRngLT, TComMv* pcMvSrchRngRB, const Int iStartX, const Int iStartY, const Int iDist );
@@ -309,6 +400,9 @@ public:
   Void IPCMSearch (TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* rpcPredYuv, TComYuv* rpcResiYuv, TComYuv* rpcRecoYuv );
 #if JVET_C0024_FAST_MRG
   static UInt updateCandList( UInt uiMode, Double uiCost, UInt uiFastCandNum, UInt * CandModeList, Double * CandCostList );
+#if JVET_D0123_ME_CTX_LUT_BITS && JVET_C0024_FAST_MRG 
+  Void getMrgCandBits( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiMrgIdxBits[MRG_MAX_NUM_CANDS]);
+#endif
 #endif
 protected:
 
@@ -468,7 +562,7 @@ protected:
                                     Int&        riMVPIdx,
                                     UInt&       ruiBits,
                                     Distortion& ruiCost 
-#if VCEG_AZ07_IMV
+#if VCEG_AZ07_IMV || JVET_D0123_ME_CTX_LUT_BITS
                                     , UInt uiPartAddr
 #endif
                                     );
@@ -489,7 +583,31 @@ protected:
 
   Void xCopyAMVPInfo              ( AMVPInfo*   pSrc, AMVPInfo* pDst );
   UInt xGetMvpIdxBits             ( Int iIdx, Int iNum );
-  Void xGetBlkBits                ( PartSize  eCUMode, Bool bPSlice, Int iPartIdx,  UInt uiLastMode, UInt uiBlkBit[3]);
+  Void xGetBlkBits                ( PartSize  eCUMode, Bool bPSlice, Int iPartIdx,  UInt uiLastMode, UInt uiBlkBit[3]
+#if JVET_D0123_ME_CTX_LUT_BITS
+  ,TComDataCU* pcCU, UInt uiAbsPartIdx
+#endif
+    );
+
+#if JVET_D0123_ME_CTX_LUT_BITS
+#if VCEG_AZ07_IMV
+  Void xGetIMVFlagBits        (TComDataCU* pcCU, UInt uiAbsPartIdx);
+#endif
+  Void loadCtxMe(TComDataCU* pcCU);
+  Void loadCtxMeSbacCoder(TComDataCU* pcCU);
+  Void storeCtxMeSbacCoder(TComDataCU* pcCU);
+  UInt getInterDirPUBits(UInt uiInterDir, UInt uiCtx, TComDataCU* pcCU, UInt uiAbsPartIdx);
+  Void xGetMrgFlagBits(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt mrgFlagBits[2]);
+  UInt xGetMrgIdxBits( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiMergeCand);
+  Void xUpdateMvpIdxBits(TComDataCU* pcCU);
+  UInt xRefFrameIdxBits(TComDataCU* pcCU, Int iRefFrame, UInt uiRefNum);
+#if COM16_C1016_AFFINE
+  Void xGetAffineFlagBits(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt iPUIdx, UInt uiAffineFlagBits[2]);
+#endif
+#if VCEG_AZ07_FRUC_MERGE
+  UInt xGetFRUCMgrModeBits(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt iPUIdx, UChar uhFRUCMode);
+#endif
+#endif
 
   Void xMergeEstimation           ( TComDataCU*  pcCU,
                                     TComYuv*     pcYuvOrg,
@@ -653,7 +771,11 @@ protected:
                                   TComMv acMv[3], TComMv acMvPred[3],
                                   Int&        riMVPIdx,
                                   UInt&       ruiBits,
-                                  Distortion& ruiCost );
+                                  Distortion& ruiCost
+#if JVET_D0123_ME_CTX_LUT_BITS
+                                  , UInt uiPartAddr
+#endif
+                                  );
 #endif
 
   Void xExtDIFUpSamplingH( TComPattern* pcPattern );

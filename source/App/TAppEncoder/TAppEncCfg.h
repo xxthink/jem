@@ -88,6 +88,9 @@ protected:
   Bool      m_printMSEBasedSequencePSNR;
   Bool      m_printFrameMSE;
   Bool      m_printSequenceMSE;
+#if JVET_D0134_PSNR
+  Bool      m_trueBidepthPSNR;
+#endif
   Bool      m_cabacZeroWordPaddingEnabled;
   Bool      m_bClipInputVideoToRec709Range;
   Bool      m_bClipOutputVideoToRec709Range;
@@ -110,6 +113,9 @@ protected:
   Int       m_iIntraPeriod;                                   ///< period of I-slice (random access period)
   Int       m_iDecodingRefreshType;                           ///< random access type
   Int       m_iGOPSize;                                       ///< GOP size of hierarchical structure
+#if JVET_D0135_PARAMS
+  Bool      m_bReWriteParamSetsFlag;                          ///< Flag to enable rewriting of parameter sets at random access points
+#endif  
   Int       m_extraRPSs;                                      ///< extra RPSs added to handle CRA
   GOPEntry  m_GOPList[MAX_GOP];                               ///< the coding structure entries from the config file
   Int       m_numReorderPics[MAX_TLAYER];                     ///< total number of reorder pictures
@@ -130,6 +136,11 @@ protected:
   // coding quality
   Double    m_fQP;                                            ///< QP value of key-picture (floating point)
   Int       m_iQP;                                            ///< QP value of key-picture (integer)
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+  Double    m_dIntraQpFactor;                                 ///< Intra Q Factor. If negative, use a default equation: 0.57*(1.0 - Clip3( 0.0, 0.5, 0.05*(Double)(isField ? (GopSize-1)/2 : GopSize-1) ))
+  Int       m_intraQPOffset;                                  ///< QP offset for intra slice (integer)
+  Bool      m_lambdaFromQPEnable;                             ///< enable flag for QP:lambda fix
+#endif
   Char*     m_pchdQPFile;                                     ///< QP offset for each slice (initialized from external file)
   Int*      m_aidQP;                                          ///< array of slice QP values
   Int       m_iMaxDeltaQP;                                    ///< max. |delta QP|
@@ -242,6 +253,10 @@ protected:
   Bool      m_useFastDecisionForMerge;                        ///< flag for using Fast Decision Merge RD-Cost
   Bool      m_bUseCbfFastMode;                              ///< flag for using Cbf Fast PU Mode Decision
   Bool      m_useEarlySkipDetection;                         ///< flag for using Early SKIP Detection
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+  Bool      m_useSaveLoadEncInfo;
+  Bool      m_useSaveLoadSplitDecision;
+#endif
   Int       m_sliceMode;                                     ///< 0: no slice limits, 1 : max number of CTBs per slice, 2: max number of bytes per slice,
                                                              ///< 3: max number of tiles per slice
   Int       m_sliceArgument;                                 ///< argument according to selected slice mode
@@ -451,6 +466,9 @@ protected:
 #endif
 #if COM16_C983_RSAF
   Bool      m_useRSAF;
+#endif
+#if JVET_D0033_ADAPTIVE_CLIPPING
+  ClipParam m_ClipParam;
 #endif
   std::string m_summaryOutFilename;                           ///< filename to use for producing summary output file.
   std::string m_summaryPicFilenameBase;                       ///< Base filename to use for producing summary picture output files. The actual filenames used will have I.txt, P.txt and B.txt appended.

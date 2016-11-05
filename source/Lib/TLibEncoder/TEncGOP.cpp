@@ -52,6 +52,93 @@
 #include <deque>
 using namespace std;
 
+#if JVET_D0033_ADAPTIVE_CLIPPING
+namespace {
+// simulate a coding decoding of the Intra(intrinsic) prms: to be sync with real encoding
+Bound encodeDecodeBoundIntra(Bound b,Int n,Int bd) {
+
+    b.m>>=ClipParam::cquantiz;
+    b.m=std::min((1<<(n-ClipParam::cquantiz))-1,b.m);
+    b.m<<=ClipParam::cquantiz;
+    b.m=Clip3(0,(1<<bd)-1,b.m);
+
+    b.M>>=ClipParam::cquantiz;
+    b.M=std::min((1<<(n-ClipParam::cquantiz))-1,b.M);
+    b.M<<=ClipParam::cquantiz;
+    b.M=Clip3(0,(1<<bd)-1,b.M);
+
+    return b;
+}
+
+ClipParam encodeDecodeClipPrmIntra(const ClipParam &prm) {
+    ClipParam prm2;
+
+    prm2.isActive=prm.isActive;
+    prm2.isChromaActive=prm.isChromaActive;
+    prm2.Y()=encodeDecodeBoundIntra(prm.Y(),ClipParam::nbBitsY,ClipParam::ibdLuma);
+    prm2.U()=encodeDecodeBoundIntra(prm.U(),ClipParam::nbBitsUV,ClipParam::ibdChroma);
+    prm2.V()=encodeDecodeBoundIntra(prm.V(),ClipParam::nbBitsUV,ClipParam::ibdChroma);
+
+    return prm2;
+
+}
+
+ClipParam codingChoice(const ClipParam &prm_tocode,
+                          Int delta_disto_luma,Int delta_disto_chroma,
+                          Double lambda_luma,Double lambda_chroma,int tbd
+                          )
+{
+    ClipParam prm;
+
+    // intra coding
+    prm=encodeDecodeClipPrmIntra(prm_tocode);
+#if JVET_D0033_ADAPTIVE_CLIPPING_ENC_METHOD    
+    Int dR_luma_only;   // delta cost with off
+    Int dR_chroma; // delta cost with off
+
+    dR_luma_only=(ClipParam::nbBitsY-ClipParam::cquantiz)*2     +1 /* chroma off */;
+    dR_chroma=(ClipParam::nbBitsUV-ClipParam::cquantiz)*2    *2 /* chroma on */;
+
+    double lambda_coef=2;
+
+    // chroma are set for L2 norm -> use sqrt to correct for L0/L1
+    lambda_luma=lambda_coef*sqrt(lambda_luma);
+    lambda_chroma=lambda_coef*sqrt(lambda_chroma);
+    // then rdo
+    // D_on+lamda*R_on < D_off+lamda*R_off -> (D_on-D_off)+lambda*dR<0 -> -dD + lambda * dR <0
+
+    // only luma 0
+    Bool chroma_on=false;
+    Double best_rd=-delta_disto_luma  +lambda_luma   * dR_luma_only;
+
+    // add chroma
+    Double rd=-delta_disto_luma  +lambda_luma   *dR_luma_only-delta_disto_chroma+lambda_chroma*dR_chroma;
+    if (rd<best_rd) {
+        best_rd=rd;
+        chroma_on=true;
+    }
+
+    if (best_rd>0.) {
+        prm.isActive=false;
+    } else {
+        prm.isChromaActive=chroma_on;
+        if (!chroma_on) { // replace chroma by default values
+            prm.U().m=0;
+            prm.U().M=(1<<ClipParam::ibdChroma)-1;
+            prm.V()=prm.U();
+        }
+    }
+#else
+    prm.isActive=true;
+    prm.isChromaActive=true;
+#endif
+    return prm;
+
+}
+
+
+}
+#endif
 //! \ingroup TLibEncoder
 //! \{
 
@@ -976,7 +1063,15 @@ Int EfficientFieldIRAPMapping::restoreGOPid(const Int GOPid)
   return GOPid;
 }
 
-
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+static UInt calculateCollocatedFromL0Flag(TComSlice *pSlice)
+{
+  Int refIdx = 0; // Zero always assumed
+  TComPic *refPicL0 = pSlice->getRefPic(REF_PIC_LIST_0, refIdx);
+  TComPic *refPicL1 = pSlice->getRefPic(REF_PIC_LIST_1, refIdx);
+  return refPicL0->getSlice(0)->getSliceQp() > refPicL1->getSlice(0)->getSliceQp();
+}
+#else
 static UInt calculateCollocatedFromL1Flag(TEncCfg *pCfg, const Int GOPid, const Int gopSize)
 {
   Int iCloseLeft=1, iCloseRight=-1;
@@ -1025,6 +1120,7 @@ static UInt calculateCollocatedFromL1Flag(TEncCfg *pCfg, const Int GOPid, const 
     return 1;
   }
 }
+#endif
 
 // ====================================================================================================================
 // Public member functions
@@ -1082,8 +1178,9 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     //-- For time output for each slice
     clock_t iBeforeTime = clock();
 
+#if !JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
     UInt uiColDir = calculateCollocatedFromL1Flag(m_pcCfg, iGOPid, m_iGopSize);
-
+#endif
     /////////////////////////////////////////////////////////////////////////////////////////////////// Initial to start encoding
     Int iTimeOffset;
     Int pocCurr;
@@ -1363,7 +1460,12 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
 
     if (pcSlice->getSliceType() == B_SLICE)
     {
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+      const UInt uiColFromL0 = calculateCollocatedFromL0Flag(pcSlice);
+      pcSlice->setColFromL0Flag(uiColFromL0);
+#else
       pcSlice->setColFromL0Flag(1-uiColDir);
+#endif
       Bool bLowDelay = true;
       Int  iCurrPOC  = pcSlice->getPOC();
       Int iRefIdx = 0;
@@ -1390,8 +1492,9 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
       pcSlice->setCheckLDC(true);
     }
 
+#if !JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
     uiColDir = 1-uiColDir;
-
+#endif
     //-------------------------------------------------------------
     pcSlice->setRefPOCList();
 #if JVET_C0027_BIO
@@ -1550,6 +1653,28 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     }
 #endif
 
+#if JVET_D0033_ADAPTIVE_CLIPPING
+        // set adaptive clipping bounds for current slice
+        if (m_pcCfg->getTchClipParam().isActive ) {
+
+            Int tbd;
+            if (pcSlice->getSliceType() == I_SLICE) tbd=-1;
+            else                                    tbd=pcSlice->getDepth();
+            Int delta_disto_luma,delta_disto_chroma;
+            ClipParam prm=pcPic->computeTchClipParam(delta_disto_luma,delta_disto_chroma);
+
+            prm=codingChoice(prm,delta_disto_luma,delta_disto_chroma,pcPic->getSlice(0)->getLambdas()[0],pcPic->getSlice(0)->getLambdas()[1],tbd);
+            if (prm.isActive) {
+                pcPic->m_aclip_prm     = prm;
+            } else {
+                setOff(pcPic->m_aclip_prm);
+            }
+        } else {
+            setOff(pcPic->m_aclip_prm); // OFF with defaults val
+        }
+        g_ClipParam =pcPic->m_aclip_prm; // set the global for access from clipBD
+
+#endif
     // now compress (trial encode) the various slice segments (slices, and dependent slices)
     {
       const UInt numberOfCtusInFrame=pcPic->getPicSym()->getNumberOfCtusInFrame();
@@ -1620,7 +1745,12 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     // Set entropy coder
     m_pcEntropyCoder->setEntropyCoder   ( m_pcCavlcCoder );
 
-    if ( m_bSeqFirst )
+#if JVET_D0135_PARAMS
+    //if ( m_bSeqFirst || (m_pcCfg->getWriteParamSetsIDRFlag() && pcSlice->getIdrPicFlag()) )
+    if ( m_bSeqFirst || (m_pcCfg->getReWriteParamSetsFlag() && ( pcPic->getSlice(0)->getSliceType() == I_SLICE )))
+#else
+      if ( m_bSeqFirst )
+#endif
     {
       // write various parameter sets
       actualTotalBits += xWriteParameterSets(accessUnit, pcSlice);
@@ -1943,7 +2073,11 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
   assert ( (m_iNumPicCoded == iNumPicRcvd) );
 }
 
+#if JVET_D0134_PSNR
+Void TEncGOP::printOutSummary(UInt uiNumAllPicCoded, Bool isField, const Bool printMSEBasedSNR, const Bool printSequenceMSE, const Bool trueBitdepthPSNR, const BitDepths &bitDepths)
+#else
 Void TEncGOP::printOutSummary(UInt uiNumAllPicCoded, Bool isField, const Bool printMSEBasedSNR, const Bool printSequenceMSE, const BitDepths &bitDepths)
+#endif
 {
   assert (uiNumAllPicCoded == m_gcAnalyzeAll.getNumPic());
 
@@ -1956,6 +2090,48 @@ Void TEncGOP::printOutSummary(UInt uiNumAllPicCoded, Bool isField, const Bool pr
   m_gcAnalyzeB.setFrmRate( m_pcCfg->getFrameRate()*rateMultiplier / (Double)m_pcCfg->getTemporalSubsampleRatio());
   const ChromaFormat chFmt = m_pcCfg->getChromaFormatIdc();
 
+#if JVET_D0134_PSNR
+  //-- all
+  printf( "\n\nSUMMARY --------------------------------------------------------\n" );
+  m_gcAnalyzeAll.printOut('a', chFmt, printMSEBasedSNR, printSequenceMSE, trueBitdepthPSNR, bitDepths);
+
+  printf( "\n\nI Slices--------------------------------------------------------\n" );
+  m_gcAnalyzeI.printOut('i', chFmt, printMSEBasedSNR, printSequenceMSE, trueBitdepthPSNR, bitDepths);
+
+  printf( "\n\nP Slices--------------------------------------------------------\n" );
+  m_gcAnalyzeP.printOut('p', chFmt, printMSEBasedSNR, printSequenceMSE, trueBitdepthPSNR, bitDepths);
+
+  printf( "\n\nB Slices--------------------------------------------------------\n" );
+  m_gcAnalyzeB.printOut('b', chFmt, printMSEBasedSNR, printSequenceMSE, trueBitdepthPSNR, bitDepths);
+
+  if (!m_pcCfg->getSummaryOutFilename().empty())
+  {
+    m_gcAnalyzeAll.printSummary(chFmt, printSequenceMSE, trueBitdepthPSNR, bitDepths, m_pcCfg->getSummaryOutFilename());
+  }
+
+  if (!m_pcCfg->getSummaryPicFilenameBase().empty())
+  {
+    m_gcAnalyzeI.printSummary(chFmt, printSequenceMSE, trueBitdepthPSNR, bitDepths, m_pcCfg->getSummaryPicFilenameBase()+"I.txt");
+    m_gcAnalyzeP.printSummary(chFmt, printSequenceMSE, trueBitdepthPSNR, bitDepths, m_pcCfg->getSummaryPicFilenameBase()+"P.txt");
+    m_gcAnalyzeB.printSummary(chFmt, printSequenceMSE, trueBitdepthPSNR, bitDepths, m_pcCfg->getSummaryPicFilenameBase()+"B.txt");
+  }
+
+  if(isField)
+  {
+    //-- interlaced summary
+    m_gcAnalyzeAll_in.setFrmRate( m_pcCfg->getFrameRate() / (Double)m_pcCfg->getTemporalSubsampleRatio());
+    m_gcAnalyzeAll_in.setBits(m_gcAnalyzeAll.getBits());
+    // prior to the above statement, the interlace analyser does not contain the correct total number of bits.
+
+    printf( "\n\nSUMMARY INTERLACED ---------------------------------------------\n" );
+    m_gcAnalyzeAll_in.printOut('a', chFmt, printMSEBasedSNR, printSequenceMSE, trueBitdepthPSNR, bitDepths);
+
+    if (!m_pcCfg->getSummaryOutFilename().empty())
+    {
+      m_gcAnalyzeAll_in.printSummary(chFmt, printSequenceMSE, trueBitdepthPSNR, bitDepths, m_pcCfg->getSummaryOutFilename());
+    }
+  }
+#else
   //-- all
   printf( "\n\nSUMMARY --------------------------------------------------------\n" );
   m_gcAnalyzeAll.printOut('a', chFmt, printMSEBasedSNR, printSequenceMSE, bitDepths);
@@ -1996,6 +2172,7 @@ Void TEncGOP::printOutSummary(UInt uiNumAllPicCoded, Bool isField, const Bool pr
       m_gcAnalyzeAll_in.printSummary(chFmt, printSequenceMSE, bitDepths, m_pcCfg->getSummaryOutFilename());
     }
   }
+#endif
 
   printf("\nRVM: %.3lf\n" , xCalculateRVM());
 }
@@ -2241,7 +2418,12 @@ Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const Acces
       pOrg += iOrgStride;
       pRec += iRecStride;
     }
+    
+#if JVET_D0134_PSNR
+    const Int maxval = ( m_pcCfg->getTrueBitdepthPSNR() == true )?  (1 << pcPic->getPicSym()->getSPS().getBitDepth(toChannelType(ch))) - 1 : 255 << (pcPic->getPicSym()->getSPS().getBitDepth(toChannelType(ch)) - 8);
+#else
     const Int maxval = 255 << (pcPic->getPicSym()->getSPS().getBitDepth(toChannelType(ch)) - 8);
+#endif
     const Double fRefValue = (Double) maxval * maxval * iSize;
     dPSNR[ch]         = ( uiSSDtemp ? 10.0 * log10( fRefValue / (Double)uiSSDtemp ) : 999.99 );
     MSEyuvframe[ch]   = (Double)uiSSDtemp/(iSize);
@@ -2393,7 +2575,12 @@ Void TEncGOP::xCalculateInterlacedAddPSNR( TComPic* pcPicOrgFirstField, TComPic*
         pRec += iStride;
       }
     }
+
+#if JVET_D0134_PSNR
+    const Int maxval = ( m_pcCfg->getTrueBitdepthPSNR() == true )?  (1 << sps.getBitDepth(toChannelType(ch))) - 1 : 255 << (sps.getBitDepth(toChannelType(ch)) - 8);
+#else
     const Int maxval = 255 << (sps.getBitDepth(toChannelType(ch)) - 8);
+#endif
     const Double fRefValue = (Double) maxval * maxval * iSize*2;
     dPSNR[ch]         = ( uiSSDtemp ? 10.0 * log10( fRefValue / (Double)uiSSDtemp ) : 999.99 );
     MSEyuvframe[ch]   = (Double)uiSSDtemp/(iSize*2);
