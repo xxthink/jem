@@ -42,6 +42,9 @@
 #include <string>
 #include <limits>
 #include "TLibCommon/TComRom.h"
+#if JVET_D0033_ADAPTIVE_CLIPPING
+#include "TLibCommon/CommonDef.h"
+#endif
 #include "TAppEncCfg.h"
 #include "TAppCommon/program_options_lite.h"
 #include "TLibEncoder/TEncRateCtrl.h"
@@ -159,6 +162,10 @@ std::istringstream &operator>>(std::istringstream &in, GOPEntry &entry)     //in
   in>>entry.m_sliceType;
   in>>entry.m_POC;
   in>>entry.m_QPOffset;
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+  in>>entry.m_QPOffsetModelOffset;
+  in>>entry.m_QPOffsetModelScale;
+#endif
   in>>entry.m_QPFactor;
   in>>entry.m_tcOffsetDiv2;
   in>>entry.m_betaOffsetDiv2;
@@ -740,6 +747,9 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   ("MSEBasedSequencePSNR",                            m_printMSEBasedSequencePSNR,                      false, "0 (default) emit sequence PSNR only as a linear average of the frame PSNRs, 1 = also emit a sequence PSNR based on an average of the frame MSEs")
   ("PrintFrameMSE",                                   m_printFrameMSE,                                  false, "0 (default) emit only bit count and PSNRs for each frame, 1 = also emit MSE values")
   ("PrintSequenceMSE",                                m_printSequenceMSE,                               false, "0 (default) emit only bit rate and PSNRs for the whole sequence, 1 = also emit MSE values")
+#if JVET_D0134_PSNR
+  ("TrueBitdepthPSNR",                                m_trueBidepthPSNR,                                false, "0 (default) compute PSNR using maxval = (1<<(bitdepth) - 1) instead of maxval = 255<<(bitdepth - 8)")
+#endif
   ("CabacZeroWordPaddingEnabled",                     m_cabacZeroWordPaddingEnabled,                     true, "0 do not add conforming cabac-zero-words to bit streams, 1 (default) = add cabac-zero-words as required")
   ("ChromaFormatIDC,-cf",                             tmpChromaFormat,                                      0, "ChromaFormatIDC (400|420|422|444 or set 0 (default) for same as InputChromaFormat)")
   ("ConformanceMode",                                 m_conformanceWindowMode,                              0, "Deprecated alias of ConformanceWindowMode")
@@ -789,12 +799,12 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 #if JVET_C0024_QTBT
   ("CTUSize",                                         m_uiCTUSize,                                       128u, "CTUSize")
   ("MinQTLumaISlice",                                 m_uiMinQT[0],                                        8u, "MinQTSizeLuma")
-  ("MinQTChromaISlice",                               m_uiMinQT[1],                                        4u, "MinQTSizeChroma")
+  ("MinQTChromaISlice",                               m_uiMinQT[1],                                        4u, "MinQTSizeChroma (in luma samples)")
   ("MinQTNonISlice",                                  m_uiMinQT[2],                                        8u, "MinQTSize")
 #if JVET_C0024_SPS_MAX_BT_SIZE
   ("MaxBTSize",                                       m_uiMaxBTSize,                                     128u, "MaxBTSize")
   ("MaxBTSizeISliceL",                                m_uiMaxBTSizeISliceL,                               32u, "MaxBTSizeISliceL")
-  ("MaxBTSizeISliceC",                                m_uiMaxBTSizeISliceC,                               16u, "MaxBTSizeISliceC")
+  ("MaxBTSizeISliceC",                                m_uiMaxBTSizeISliceC,                               16u, "MaxBTSizeISliceC (in luma samples)")
 #endif
 #if JVET_C0024_SPS_MAX_BT_DEPTH
   ("MaxBTDepth",                                      m_uiMaxBTDepth,                                      3u, "MaxBTDepth")
@@ -821,6 +831,10 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   ("DecodingRefreshType,-dr",                         m_iDecodingRefreshType,                               0, "Intra refresh type (0:none 1:CRA 2:IDR 3:RecPointSEI)")
   ("GOPSize,g",                                       m_iGOPSize,                                           1, "GOP size of temporal structure")
 
+#if JVET_D0135_PARAMS
+  ("ReWriteParamSetsFlag",                            m_bReWriteParamSetsFlag,                          false, "Enable rewriting of Parameter sets before every (intra) random access point")
+#endif 
+
   // motion search options
   ("DisableIntraInInter",                             m_bDisableIntraPUsInInterSlices,                  false, "Flag to disable intra PUs in inter slices")
   ("FastSearch",                                      m_iFastSearch,                                        1, "0:Full search  1:Diamond  2:PMVFAST")
@@ -843,6 +857,11 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 
   /* Quantization parameters */
   ("QP,q",                                            m_fQP,                                             30.0, "Qp value, if value is float, QP is switched once during encoding")
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+  ("IQPFactor,-IQF",                                  m_dIntraQpFactor,                                  -1.0, "Intra QP Factor for Lambda Computation. If negative, the default will scale lambda based on GOP size (unless LambdaFromQpEnable then IntraQPOffset is used instead)")
+  ("IntraQPOffset",                                   m_intraQPOffset,                                      0, "Qp offset value for intra slice, typically determined based on GOP size")
+  ("LambdaFromQpEnable",                              m_lambdaFromQPEnable,                             false, "Enable flag for derivation of lambda from QP")
+#endif
   ("DeltaQpRD,-dqr",                                  m_uiDeltaQpRD,                                       0u, "max dQp offset for slice")
   ("MaxDeltaQP,d",                                    m_iMaxDeltaQP,                                        0, "max dQp offset for block")
   ("MaxCuDQPDepth,-dqd",                              m_iMaxCuDQPDepth,                                     0, "max depth for a minimum CuDQP")
@@ -948,6 +967,10 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   ("FDM",                                             m_useFastDecisionForMerge,                         true, "Fast decision for Merge RD Cost")
   ("CFM",                                             m_bUseCbfFastMode,                                false, "Cbf fast mode setting")
   ("ESD",                                             m_useEarlySkipDetection,                          false, "Early SKIP detection setting")
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+  ("SaveLoadEncInfo",                                 m_useSaveLoadEncInfo,                             true,  "Reuse of previous encoder decision for same block generated by different parition methods")
+  ("SaveLoadSplitDecision",                           m_useSaveLoadSplitDecision,                       false, "Reuse of previous split decision for same block generated by different partition methods")
+#endif
   ( "RateControl",                                    m_RCEnableRateControl,                            false, "Rate control: enable rate control" )
   ( "TargetBitrate",                                  m_RCTargetBitrate,                                    0, "Rate control: target bit-rate" )
   ( "KeepHierarchicalBit",                            m_RCKeepHierarchicalBit,                              0, "Rate control: 0: equal bit allocation; 1: fixed ratio bit allocation; 2: adaptive ratio bit allocation" )
@@ -1177,6 +1200,9 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 #if COM16_C983_RSAF
   ("RSAF",                                       m_useRSAF,         true, "Enable reference sample adaptive filter")
 #endif
+#if JVET_D0033_ADAPTIVE_CLIPPING
+  ("AClip,-aclip", m_ClipParam.isActive, true, "Slice Level Adpative Clipping (Automated by default)")
+#endif
   ;
 
   for(Int i=1; i<MAX_GOP+1; i++)
@@ -1317,7 +1343,22 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 
   m_InputChromaFormatIDC = numberToChromaFormat(tmpInputChromaFormat);
   m_chromaFormatIDC      = ((tmpChromaFormat == 0) ? (m_InputChromaFormatIDC) : (numberToChromaFormat(tmpChromaFormat)));
+#if JVET_D0033_ADAPTIVE_CLIPPING
+  {
+      // DEFAULT VALUES
+      ClipParam::ibdLuma=m_internalBitDepth[CHANNEL_TYPE_LUMA];
+      ClipParam::ibdChroma=m_internalBitDepth[CHANNEL_TYPE_CHROMA];
+      ClipParam::nbBitsY=ClipParam::ibdLuma;
+      ClipParam::nbBitsUV=ClipParam::ibdChroma;
 
+      resetBounds(m_ClipParam);
+
+      const Int bd=max(m_inputBitDepth[CHANNEL_TYPE_LUMA],m_inputBitDepth[CHANNEL_TYPE_CHROMA]);
+      ClipParam::cquantiz=ClipParam::ibdLuma-bd; // if ibd=10, input=8 ->2
+      ClipParam::cquantiz=(ClipParam::cquantiz/2)*2; // just in case
+      if (ClipParam::cquantiz>6) ClipParam::cquantiz=6;
+  }
+#endif
   if (extendedProfile >= 1000 && extendedProfile <= 12316)
   {
     m_profile = Profile::MAINREXT;
@@ -2564,6 +2605,9 @@ Void TAppEncCfg::xPrintParameter()
   printf("Internal Format                        : %dx%d %gHz\n", m_iSourceWidth, m_iSourceHeight, (Double)m_iFrameRate/m_temporalSubsampleRatio );
   printf("Sequence PSNR output                   : %s\n", (m_printMSEBasedSequencePSNR ? "Linear average, MSE-based" : "Linear average only") );
   printf("Sequence MSE output                    : %s\n", (m_printSequenceMSE ? "Enabled" : "Disabled") );
+#if JVET_D0134_PSNR
+  printf("True Bitdepth PSNR                     : %s\n", (m_trueBidepthPSNR ? "Enabled" : "Disabled") );
+#endif
   printf("Frame MSE output                       : %s\n", (m_printFrameMSE    ? "Enabled" : "Disabled") );
   printf("Cabac-zero-word-padding                : %s\n", (m_cabacZeroWordPaddingEnabled? "Enabled" : "Disabled") );
   if (m_isField)
@@ -2627,6 +2671,11 @@ Void TAppEncCfg::xPrintParameter()
   printf("Motion search range                    : %d\n", m_iSearchRange );
   printf("Intra period                           : %d\n", m_iIntraPeriod );
   printf("Decoding refresh type                  : %d\n", m_iDecodingRefreshType );
+
+#if JVET_D0135_PARAMS
+  printf("Rewriting parameter sets flag (RAP)    : %s\n", (m_bReWriteParamSetsFlag                   ? "Enabled" : "Disabled") );
+#endif
+
   printf("QP                                     : %5.2f\n", m_fQP );
   printf("Max dQP signaling depth                : %d\n", m_iMaxCuDQPDepth);
 
@@ -2697,6 +2746,10 @@ Void TAppEncCfg::xPrintParameter()
   printf("CFM:%d ", m_bUseCbfFastMode         );
   printf("ESD:%d ", m_useEarlySkipDetection  );
   printf("RQT:%d ", 1     );
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+  printf("SaveLoadEncInfo: %d", m_useSaveLoadEncInfo);
+  printf("SaveLoadSplitDecision: %d", m_useSaveLoadSplitDecision);
+#endif
   printf("TransformSkip:%d ",     m_useTransformSkip              );
   printf("TransformSkipFast:%d ", m_useTransformSkipFast       );
   printf("TransformSkipLog2MaxSize:%d ", m_log2MaxTransformSkipBlockSize);
@@ -2813,6 +2866,9 @@ Void TAppEncCfg::xPrintParameter()
 #endif
 #if COM16_C983_RSAF
   printf("RSAF:%d ", m_useRSAF);
+#endif
+#if JVET_D0033_ADAPTIVE_CLIPPING
+  printf("ACLIP:%d ",m_ClipParam.isActive?1:0);
 #endif
     printf("\n\n");
 

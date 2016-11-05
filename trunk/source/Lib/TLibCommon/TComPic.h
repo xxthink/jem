@@ -229,6 +229,10 @@ public:
   TComPicYuv*   m_apcQuaPicYuv[4][4];     //   quarter pixel reconstructed pictures (fractional pixels); 
   TComPicYuv*   getPicQuaYuvRec(UInt uiRow, UInt uiCol)     { return  m_apcQuaPicYuv[uiRow][uiCol]; }
 #endif
+#if JVET_D0033_ADAPTIVE_CLIPPING
+  ClipParam m_aclip_prm;
+  ClipParam computeTchClipParam(Int &delta_disto_luma, Int &delta_disto_chroma) const;
+#endif
 };// END CLASS DEFINITION TComPic
 
 //! \}

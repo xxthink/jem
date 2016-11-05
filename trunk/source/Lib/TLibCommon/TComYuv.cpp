@@ -159,6 +159,101 @@ Void TComYuv::copyFromPicComponent  ( const ComponentID compID, const TComPicYuv
 
 
 
+#if JVET_D0033_ADAPTIVE_CLIPPING
+// encoder only for inter skip
+Void TComYuv::clipToPartYuv(TComYuv* pcYuvDst, const UInt uiDstPartIdx, const BitDepths &bitDepths) const
+{
+
+    for (Int comp = 0; comp<getNumberValidComponents(); comp++)
+    {
+        clipToPartComponent(ComponentID(comp), pcYuvDst, uiDstPartIdx);
+    }
+}
+
+Void TComYuv::clipToPartComponent(const ComponentID compID, TComYuv* pcYuvDst, const UInt uiDstPartIdx) const
+{
+    const Pel* pSrc = getAddr(compID);
+    Pel* pDst = pcYuvDst->getAddr(compID, uiDstPartIdx);
+
+
+    const UInt iSrcStride = getStride(compID);
+    const UInt iDstStride = pcYuvDst->getStride(compID);
+    const Int  iWidth = getWidth(compID);
+    const Int  iHeight = getHeight(compID);
+
+    for (Int y = iHeight; y != 0; y--)
+    {
+        for (Int x = 0; x<iWidth; x ++)
+        {
+            pDst[x] = ClipA(pSrc[x], compID);
+        }
+        pDst += iDstStride;
+        pSrc += iSrcStride;
+    }
+}
+
+// QT BT
+Void TComYuv::clipToPicYuv   ( TComPicYuv* pcPicYuvDst, const UInt ctuRsAddr, const UInt uiAbsZorderIdx, const UInt uiPartDepth, const UInt uiPartIdx ) const
+{
+  for(Int comp=0; comp<getNumberValidComponents(); comp++)
+  {
+    clipToPicComponent  ( ComponentID(comp), pcPicYuvDst, ctuRsAddr, uiAbsZorderIdx, uiPartDepth, uiPartIdx );
+  }
+}
+
+Void TComYuv::clipToPicComponent  ( const ComponentID compID, TComPicYuv* pcPicYuvDst, const UInt ctuRsAddr, const UInt uiAbsZorderIdx, const UInt uiPartDepth, const UInt uiPartIdx ) const
+{
+    const Int iWidth  = getWidth(compID) >>uiPartDepth;
+    const Int iHeight = getHeight(compID)>>uiPartDepth;
+
+    const Pel* pSrc     = getAddr(compID, uiPartIdx, iWidth);
+    Pel* pDst     = pcPicYuvDst->getAddr ( compID, ctuRsAddr, uiAbsZorderIdx );
+
+    const UInt  iSrcStride  = getStride(compID);
+    const UInt  iDstStride  = pcPicYuvDst->getStride(compID);
+
+    for ( Int y = iHeight; y != 0; y-- )
+    {
+        for (Int x = 0; x<iWidth; x ++)
+        {
+            pDst[x] = ClipA(pSrc[x],  compID);
+        }
+        pDst += iDstStride;
+        pSrc += iSrcStride;
+    }
+}
+
+
+// decoder only for no residual inter
+Void TComYuv::clipPartToPartYuv(TComYuv* pcYuvDst, const UInt uiPartIdx, const UInt iWidth, const UInt iHeight) const
+{
+    for (Int comp = 0; comp<getNumberValidComponents(); comp++)
+    {
+        clipPartToPartComponent(ComponentID(comp),
+                                pcYuvDst,
+                                uiPartIdx,
+                                iWidth >> getComponentScaleX(ComponentID(comp)),
+                                iHeight >> getComponentScaleY(ComponentID(comp)));
+    }
+}
+
+Void TComYuv::clipPartToPartComponent(const ComponentID compID, TComYuv* pcYuvDst, const UInt uiPartIdx, const UInt iWidthComponent, const UInt iHeightComponent) const
+{
+    const Pel* pSrc = getAddr(compID, uiPartIdx);
+    Pel* pDst = pcYuvDst->getAddr(compID, uiPartIdx);
+    const UInt  iSrcStride = getStride(compID);
+    const UInt  iDstStride = pcYuvDst->getStride(compID);
+    for (UInt y = iHeightComponent; y != 0; y--)
+    {
+        for (UInt x = 0; x<iWidthComponent; x++)
+        {
+            pDst[x] = ClipA(pSrc[x],  compID);
+        }
+        pSrc += iSrcStride;
+        pDst += iDstStride;
+    }
+}
+#endif
 
 Void TComYuv::copyToPartYuv( TComYuv* pcYuvDst, const UInt uiDstPartIdx ) const
 {
@@ -301,7 +396,9 @@ Void TComYuv::addClip( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const
     const UInt iSrc0Stride = pcYuvSrc0->getStride(compID);
     const UInt iSrc1Stride = pcYuvSrc1->getStride(compID);
     const UInt iDstStride  = getStride(compID);
+#if !JVET_D0033_ADAPTIVE_CLIPPING
     const Int clipbd = clipBitDepths.recon[toChannelType(compID)];
+#endif
 #if O0043_BEST_EFFORT_DECODING
     const Int bitDepthDelta = clipBitDepths.stream[toChannelType(compID)] - clipbd;
 #endif
@@ -313,7 +410,11 @@ Void TComYuv::addClip( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const
 #if O0043_BEST_EFFORT_DECODING
         pDst[x] = Pel(ClipBD<Int>( Int(pSrc0[x]) + rightShiftEvenRounding<Pel>(pSrc1[x], bitDepthDelta), clipbd));
 #else
+#if JVET_D0033_ADAPTIVE_CLIPPING // enc and dec for inter pred+res
+        pDst[x] = Pel(ClipA<Int>( Int(pSrc0[x]) + Int(pSrc1[x]), compID));
+#else
         pDst[x] = Pel(ClipBD<Int>( Int(pSrc0[x]) + Int(pSrc1[x]), clipbd));
+#endif
 #endif
       }
       pSrc0 += iSrc0Stride;
@@ -427,8 +528,14 @@ Void TComYuv::addAvg( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const 
       {
         for (Int x=0 ; x < iWidth; x+=2 )
         {
+#if JVET_D0033_ADAPTIVE_CLIPPING
+            pDst[ x + 0 ] = ClipA( rightShift(( pSrc0[ x + 0 ] + pSrc1[ x + 0 ] + offset ), shiftNum),  compID );
+            pDst[ x + 1 ] = ClipA( rightShift(( pSrc0[ x + 1 ] + pSrc1[ x + 1 ] + offset ), shiftNum) , compID);
+
+#else
           pDst[ x + 0 ] = ClipBD( rightShift(( pSrc0[ x + 0 ] + pSrc1[ x + 0 ] + offset ), shiftNum), clipbd );
           pDst[ x + 1 ] = ClipBD( rightShift(( pSrc0[ x + 1 ] + pSrc1[ x + 1 ] + offset ), shiftNum), clipbd );
+#endif
         }
         pSrc0 += iSrc0Stride;
         pSrc1 += iSrc1Stride;
@@ -441,10 +548,17 @@ Void TComYuv::addAvg( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const 
       {
         for (Int x=0 ; x < iWidth; x+=4 )
         {
+#if JVET_D0033_ADAPTIVE_CLIPPING
+                pDst[ x + 0 ] = ClipA( rightShift(( pSrc0[ x + 0 ] + pSrc1[ x + 0 ] + offset ), shiftNum),  compID );
+                pDst[ x + 1 ] = ClipA( rightShift(( pSrc0[ x + 1 ] + pSrc1[ x + 1 ] + offset ), shiftNum),  compID );
+                pDst[ x + 2 ] = ClipA( rightShift(( pSrc0[ x + 2 ] + pSrc1[ x + 2 ] + offset ), shiftNum),  compID );
+                pDst[ x + 3 ] = ClipA( rightShift(( pSrc0[ x + 3 ] + pSrc1[ x + 3 ] + offset ), shiftNum),  compID );
+#else
           pDst[ x + 0 ] = ClipBD( rightShift(( pSrc0[ x + 0 ] + pSrc1[ x + 0 ] + offset ), shiftNum), clipbd );
           pDst[ x + 1 ] = ClipBD( rightShift(( pSrc0[ x + 1 ] + pSrc1[ x + 1 ] + offset ), shiftNum), clipbd );
           pDst[ x + 2 ] = ClipBD( rightShift(( pSrc0[ x + 2 ] + pSrc1[ x + 2 ] + offset ), shiftNum), clipbd );
           pDst[ x + 3 ] = ClipBD( rightShift(( pSrc0[ x + 3 ] + pSrc1[ x + 3 ] + offset ), shiftNum), clipbd );
+#endif
         }
         pSrc0 += iSrc0Stride;
         pSrc1 += iSrc1Stride;
@@ -477,12 +591,18 @@ Void TComYuv::removeHighFreq( const TComYuv* pcYuvSrc,
     const Int iHeight = uiHeight>>getComponentScaleY(compID);
     if (bClipToBitDepths)
     {
+#if !JVET_D0033_ADAPTIVE_CLIPPING
       const Int clipBd=bitDepths[toChannelType(compID)];
+#endif
       for ( Int y = iHeight-1; y >= 0; y-- )
       {
         for ( Int x = iWidth-1; x >= 0; x-- )
         {
+#if JVET_D0033_ADAPTIVE_CLIPPING
+          pDst[x ] = ClipA((2 * pDst[x]) - pSrc[x],  compID);
+#else
           pDst[x ] = ClipBD((2 * pDst[x]) - pSrc[x], clipBd);
+#endif
         }
         pSrc += iSrcStride;
         pDst += iDstStride;

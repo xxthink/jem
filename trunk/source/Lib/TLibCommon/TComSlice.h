@@ -1480,6 +1480,9 @@ public:
   // WAS: getSaoOffsetBitShift and setSaoOffsetBitShift
   // Now: getPpsRangeExtension().getLog2SaoOffsetScale and getPpsRangeExtension().setLog2SaoOffsetScale
 
+#if JVET_D0033_ADAPTIVE_CLIPPING
+  Bool m_clip_enabled;
+#endif
 };
 
 struct WPScalingParam
@@ -1886,6 +1889,10 @@ public:
 #endif
 #endif
 
+#if JVET_D0033_ADAPTIVE_CLIPPING
+  ClipParam computeTchClipParam(Int &cnt);
+  ClipParam m_clip_decoded;
+#endif
 
 #if JVET_C0024_QTBT
   ChannelType   getTextType() const {return m_eType;}

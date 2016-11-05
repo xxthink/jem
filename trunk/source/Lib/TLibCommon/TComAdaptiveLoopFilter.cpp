@@ -2187,20 +2187,37 @@ Void TComAdaptiveLoopFilter::filterFrame(imgpel *imgYRecPost, imgpel *imgYRec, i
       Int nWidth  = min( j + m_ALF_WIN_HORSIZE, m_img_width  ) - j;
 #if JVET_C0038_GALF
       calcVar( m_imgY_var, imgYRec, m_FILTER_LENGTH/2, JVET_C0038_SHIFT_VAL_HALFW, nHeight, nWidth, stride , j , i);
-      subfilterFrame(imgYRecPost, imgYRec, pcAlfPara, i, i + nHeight, j, j + nWidth, stride);
+      subfilterFrame(imgYRecPost, imgYRec, pcAlfPara, i, i + nHeight, j, j + nWidth, stride
+               #if JVET_D0033_ADAPTIVE_CLIPPING
+                    , COMPONENT_Y
+               #endif
+                     );
 #else
       calcVar( m_imgY_var, imgYRec, m_FILTER_LENGTH/2, m_VAR_SIZE, nHeight, nWidth, stride , j , i );
-      subfilterFrame(imgYRecPost, imgYRec, filtNo, i, i + nHeight, j, j + nWidth, stride );
+      subfilterFrame(imgYRecPost, imgYRec, filtNo, i, i + nHeight, j, j + nWidth, stride
+               #if JVET_D0033_ADAPTIVE_CLIPPING
+                    , COMPONENT_Y
+#endif
+                     );
 #endif
     }
   }
 }
 #if JVET_C0038_GALF
-Void TComAdaptiveLoopFilter::subfilterFrame(imgpel *imgYRecPost, imgpel *imgYRec, ALFParam* pcAlfPara, Int startHeight, Int endHeight, Int startWidth, Int endWidth, Int stride, Bool bChroma)
+Void TComAdaptiveLoopFilter::subfilterFrame(imgpel *imgYRecPost, imgpel *imgYRec, ALFParam* pcAlfPara, Int startHeight, Int endHeight, Int startWidth, Int endWidth, Int stride,
+                                            #if JVET_D0033_ADAPTIVE_CLIPPING
+                                            ComponentID compid
+#else
+                                            Bool bChroma
+                                            #endif
+                                            )
 #else
 Void TComAdaptiveLoopFilter::subfilterFrame(imgpel *imgYRecPost, imgpel *imgYRec, int filtNo, int startHeight, int endHeight, int startWidth, int endWidth, int stride)
 #endif
 {
+#if JVET_D0033_ADAPTIVE_CLIPPING
+    const Bool bChroma=(compid!=COMPONENT_Y);
+#endif
 #if JVET_C0038_GALF
   if(bChroma)
   {
@@ -2338,7 +2355,11 @@ Void TComAdaptiveLoopFilter::subfilterFrame(imgpel *imgYRecPost, imgpel *imgYRec
         pixelInt += coef[40]* (pImg0[+0]);
 #endif
         pixelInt=(Int)((pixelInt+offset) >> (numBitsMinus1));
+#if JVET_D0033_ADAPTIVE_CLIPPING // done here instead of inside the table TODO
+        *(pImgYRec++) = ClipA(pClipTable[pixelInt],compid);
+#else
         *(pImgYRec++) = pClipTable[pixelInt];
+#endif
       }
       imgYRecPost += stride;
     }
@@ -2482,7 +2503,11 @@ Void TComAdaptiveLoopFilter::subfilterFrame(imgpel *imgYRecPost, imgpel *imgYRec
 #endif
 
         pixelInt=(Int)((pixelInt+offset) >> (numBitsMinus1));
+#if JVET_D0033_ADAPTIVE_CLIPPING // done here instead of inside the table TODO
+        *(pImgYRec++) = ClipA(pClipTable[pixelInt],compid);
+#else
         *(pImgYRec++) = pClipTable[pixelInt];
+#endif
       }
       imgYRecPost += stride;
     }
@@ -2668,7 +2693,11 @@ Void TComAdaptiveLoopFilter::subfilterFrame(imgpel *imgYRecPost, imgpel *imgYRec
 #endif
         pixelInt=(Int)((pixelInt+offset) >> (numBitsMinus1));
 
+#if JVET_D0033_ADAPTIVE_CLIPPING // done here instead of inside the table TODO
+        *(pImgYRec++) = ClipA(pClipTable[pixelInt],compid);
+#else
         *(pImgYRec++) = pClipTable[pixelInt];
+#endif
       }
       imgYRecPost += stride;
     }
@@ -2765,16 +2794,28 @@ Void TComAdaptiveLoopFilter::xSubCUAdaptive_qc(TComDataCU* pcCU, ALFParam* pcAlf
   {
 #if JVET_C0024_QTBT&&!JVET_C0038_GALF
     calcVar( m_imgY_var, imgY_rec, m_FILTER_LENGTH/2, m_VAR_SIZE, uiHeight, uiWidth, Stride , uiLPelX , uiTPelY );
-    subfilterFrame(imgY_rec_post, imgY_rec, pcAlfParam->realfiltNo, uiTPelY, uiBPelY+1, uiLPelX, uiRPelX+1, Stride);
+    subfilterFrame(imgY_rec_post, imgY_rec, pcAlfParam->realfiltNo, uiTPelY, uiBPelY+1, uiLPelX, uiRPelX+1, Stride
+               #if JVET_D0033_ADAPTIVE_CLIPPING
+                    , COMPONENT_Y
+               #endif
+                   );
 #else
     Int nHeight = min(uiBPelY+1,(unsigned int)(m_img_height)) - uiTPelY;
     Int nWidth  = min(uiRPelX+1,(unsigned int)(m_img_width)) - uiLPelX;
 #if JVET_C0038_GALF
     calcVar( m_imgY_var, imgY_rec, m_FILTER_LENGTH/2, JVET_C0038_SHIFT_VAL_HALFW, nHeight, nWidth, Stride , uiLPelX , uiTPelY);
-    subfilterFrame(imgY_rec_post, imgY_rec, pcAlfParam, uiTPelY, min(uiBPelY+1,(unsigned int)(m_img_height)), uiLPelX, min(uiRPelX+1,(unsigned int)(m_img_width)), Stride );
+    subfilterFrame(imgY_rec_post, imgY_rec, pcAlfParam, uiTPelY, min(uiBPelY+1,(unsigned int)(m_img_height)), uiLPelX, min(uiRPelX+1,(unsigned int)(m_img_width)), Stride
+               #if JVET_D0033_ADAPTIVE_CLIPPING
+                    , COMPONENT_Y
+               #endif
+                   );
 #else
     calcVar( m_imgY_var, imgY_rec, m_FILTER_LENGTH/2, m_VAR_SIZE, nHeight, nWidth, Stride , uiLPelX , uiTPelY );
-    subfilterFrame(imgY_rec_post, imgY_rec, pcAlfParam->realfiltNo, uiTPelY, min(uiBPelY+1,(unsigned int)(m_img_height)), uiLPelX, min(uiRPelX+1,(unsigned int)(m_img_width)), Stride);
+    subfilterFrame(imgY_rec_post, imgY_rec, pcAlfParam->realfiltNo, uiTPelY, min(uiBPelY+1,(unsigned int)(m_img_height)), uiLPelX, min(uiRPelX+1,(unsigned int)(m_img_width)), Stride
+               #if JVET_D0033_ADAPTIVE_CLIPPING
+                    , COMPONENT_Y
+#endif
+                   );
 #endif
 #endif
   }
@@ -2861,7 +2902,13 @@ Void TComAdaptiveLoopFilter::xFrameChroma(ALFParam* pcAlfParam, TComPicYuv* pcPi
     pDec  =  (imgpel*)pcPicDec->getAddr(COMPONENT_Cb);
     pRest =  (imgpel*)pcPicRest->getAddr(COMPONENT_Cb);
   }
-  subfilterFrame(pRest, pDec, pcAlfParam, 0, iHeight, 0, iWidth, iDecStride, true);
+  subfilterFrame(pRest, pDec, pcAlfParam, 0, iHeight, 0, iWidth, iDecStride,
+               #if JVET_D0033_ADAPTIVE_CLIPPING
+                (iColor==0)?COMPONENT_Cb:COMPONENT_Cr
+               #else
+                 true
+               #endif
+                 );
 }
 #else
 Void TComAdaptiveLoopFilter::xFrameChroma( TComPicYuv* pcPicDec, TComPicYuv* pcPicRest, Int *qh, Int iTap, Int iColor )
@@ -2892,6 +2939,9 @@ Void TComAdaptiveLoopFilter::xFrameChroma( TComPicYuv* pcPicDec, TComPicYuv* pcP
     pRest = pcPicRest->getAddr(COMPONENT_Cb);
   }
 
+#if JVET_D0033_ADAPTIVE_CLIPPING
+  const ComponentID compID=(ComponentID)(COMPONENT_Cb+iColor);
+#endif
   Pel* pTmpDec1, *pTmpDec2;
   Pel* pTmpPixSum;
   
@@ -2946,7 +2996,11 @@ Void TComAdaptiveLoopFilter::xFrameChroma( TComPicYuv* pcPicDec, TComPicYuv* pcP
           value += qh[N] << iShift;
           value = (value + m_ALF_ROUND_OFFSET)>>m_ALF_NUM_BIT_SHIFT;
           
+#if JVET_D0033_ADAPTIVE_CLIPPING
+          pRest[x] = (Pel) ClipA(value,compID);
+#else
           pRest[x] = (Pel) Clip3(0, m_nIBDIMax, value);
+#endif
         }
         pRest += iRestStride;
         pDec += iDecStride;
@@ -3027,7 +3081,11 @@ Void TComAdaptiveLoopFilter::xFrameChroma( TComPicYuv* pcPicDec, TComPicYuv* pcP
           value += qh[N] << iShift;
           value = (value + m_ALF_ROUND_OFFSET)>>m_ALF_NUM_BIT_SHIFT;
           
+#if JVET_D0033_ADAPTIVE_CLIPPING
+          pRest[x] = (Pel) ClipA(value,compID);
+#else
           pRest[x] = (Pel) Clip3(0, m_nIBDIMax, value);
+#endif
         }
         pRest += iRestStride;
         pDec += iDecStride;
@@ -3142,7 +3200,11 @@ Void TComAdaptiveLoopFilter::xFrameChroma( TComPicYuv* pcPicDec, TComPicYuv* pcP
           value += qh[N] << iShift;
           value = (value + m_ALF_ROUND_OFFSET)>>m_ALF_NUM_BIT_SHIFT;
           
+#if JVET_D0033_ADAPTIVE_CLIPPING
+          pRest[x] = (Pel) ClipA(value,compID);
+#else
           pRest[x] = (Pel) Clip3(0, m_nIBDIMax, value);
+#endif
         }
         pRest += iRestStride;
         pDec += iDecStride;

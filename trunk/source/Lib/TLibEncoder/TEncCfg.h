@@ -50,6 +50,10 @@ struct GOPEntry
 {
   Int m_POC;
   Int m_QPOffset;
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+  Double m_QPOffsetModelOffset;
+  Double m_QPOffsetModelScale;
+#endif
   Double m_QPFactor;
   Int m_tcOffsetDiv2;
   Int m_betaOffsetDiv2;
@@ -68,6 +72,10 @@ struct GOPEntry
   GOPEntry()
   : m_POC(-1)
   , m_QPOffset(0)
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+  , m_QPOffsetModelOffset(0)
+  , m_QPOffsetModelScale(0)
+#endif
   , m_QPFactor(0)
   , m_tcOffsetDiv2(0)
   , m_betaOffsetDiv2(0)
@@ -108,10 +116,15 @@ protected:
   Window    m_conformanceWindow;
   Int       m_framesToBeEncoded;
   Double    m_adLambdaModifier[ MAX_TLAYER ];
-
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY  
+  std::vector<Double> m_adIntraLambdaModifier;
+#endif
   Bool      m_printMSEBasedSequencePSNR;
   Bool      m_printFrameMSE;
   Bool      m_printSequenceMSE;
+#if JVET_D0134_PSNR
+  Bool      m_trueBidepthPSNR;
+#endif
   Bool      m_cabacZeroWordPaddingEnabled;
 
   /* profile & level */
@@ -131,6 +144,11 @@ protected:
   //====== Coding Structure ========
   UInt      m_uiIntraPeriod;
   UInt      m_uiDecodingRefreshType;            ///< the type of decoding refresh employed for the random access.
+
+#if JVET_D0135_PARAMS
+  Bool      m_bReWriteParamSetsFlag;
+#endif
+
   Int       m_iGOPSize;
   GOPEntry  m_GOPList[MAX_GOP];
   Int       m_extraRPSs;
@@ -138,6 +156,11 @@ protected:
   Int       m_numReorderPics[MAX_TLAYER];
 
   Int       m_iQP;                              //  if (AdaptiveQP == OFF)
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+  Double    m_dIntraQpFactor;                                 ///< Intra Q Factor. If negative, use a default equation: 0.57*(1.0 - Clip3( 0.0, 0.5, 0.05*(Double)(isField ? (GopSize-1)/2 : GopSize-1) ))
+  Int       m_intraQPOffset;                    ///< QP offset for intra slice (integer)
+  Int       m_lambdaFromQPEnable;               ///< enable lambda derivation from QP
+#endif
 
   Int       m_aiPad[2];
 
@@ -228,6 +251,10 @@ protected:
   Bool      m_useFastDecisionForMerge;
   Bool      m_bUseCbfFastMode;
   Bool      m_useEarlySkipDetection;
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+  Bool      m_useSaveLoadEncInfo;
+  Bool      m_useSaveLoadSplitDecision;
+#endif
   Bool      m_crossComponentPredictionEnabledFlag;
   Bool      m_reconBasedCrossCPredictionEstimate;
   UInt      m_log2SaoOffsetScale[MAX_NUM_CHANNEL_TYPE];
@@ -469,6 +496,9 @@ protected:
   std::string m_summaryPicFilenameBase;                       ///< Base filename to use for producing summary picture output files. The actual filenames used will have I.txt, P.txt and B.txt appended.
   UInt        m_summaryVerboseness;                           ///< Specifies the level of the verboseness of the text output.
 
+#if JVET_D0033_ADAPTIVE_CLIPPING
+  ClipParam m_ClipParam;
+#endif
 public:
   TEncCfg()
   : m_tileColumnWidth()
@@ -504,12 +534,20 @@ public:
   Bool      getPrintSequenceMSE             ()         const { return m_printSequenceMSE;           }
   Void      setPrintSequenceMSE             (Bool value)     { m_printSequenceMSE = value;          }
 
+#if JVET_D0134_PSNR
+  Bool      getTrueBitdepthPSNR             ()         const { return m_trueBidepthPSNR;           }
+  Void      setTrueBitdepthPSNR             (Bool value)     { m_trueBidepthPSNR = value;          }
+#endif
+
   Bool      getCabacZeroWordPaddingEnabled()           const { return m_cabacZeroWordPaddingEnabled;  }
   Void      setCabacZeroWordPaddingEnabled(Bool value)       { m_cabacZeroWordPaddingEnabled = value; }
 
   //====== Coding Structure ========
   Void      setIntraPeriod                  ( Int   i )      { m_uiIntraPeriod = (UInt)i; }
   Void      setDecodingRefreshType          ( Int   i )      { m_uiDecodingRefreshType = (UInt)i; }
+#if JVET_D0135_PARAMS
+  Void      setReWriteParamSetsFlag         ( Bool  i )      { m_bReWriteParamSetsFlag = i; }
+#endif
   Void      setGOPSize                      ( Int   i )      { m_iGOPSize = i; }
   Void      setGopList                      ( GOPEntry*  GOPList ) {  for ( Int i = 0; i < MAX_GOP; i++ ) m_GOPList[i] = GOPList[i]; }
   Void      setExtraRPSs                    ( Int   i )      { m_extraRPSs = i; }
@@ -519,6 +557,11 @@ public:
   Void      setNumReorderPics               ( Int  i, UInt tlayer ) { m_numReorderPics[tlayer] = i;    }
 
   Void      setQP                           ( Int   i )      { m_iQP = i; }
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+  Void      setIntraQpFactor                ( Double dValue )               { m_dIntraQpFactor = dValue;              }
+  Void      setIntraQPOffset                ( Int   i )         { m_intraQPOffset = i; }
+  Void      setLambdaFromQPEnable           ( Bool  b )         { m_lambdaFromQPEnable = b; }
+#endif
 
   Void      setPad                          ( Int*  iPad                   )      { for ( Int i = 0; i < 2; i++ ) m_aiPad[i] = iPad[i]; }
 
@@ -612,15 +655,29 @@ public:
   Int       getFramesToBeEncoded            ()      { return  m_framesToBeEncoded; }
   Void setLambdaModifier                    ( UInt uiIndex, Double dValue ) { m_adLambdaModifier[ uiIndex ] = dValue; }
   Double getLambdaModifier                  ( UInt uiIndex ) const { return m_adLambdaModifier[ uiIndex ]; }
-
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+  const std::vector<Double>& getIntraLambdaModifier()                        const { return m_adIntraLambdaModifier;         }
+#endif
   //==== Coding Structure ========
   UInt      getIntraPeriod                  ()      { return  m_uiIntraPeriod; }
   UInt      getDecodingRefreshType          ()      { return  m_uiDecodingRefreshType; }
+#if JVET_D0135_PARAMS
+  Bool      getReWriteParamSetsFlag         ()      { return m_bReWriteParamSetsFlag; }
+#endif
   Int       getGOPSize                      ()      { return  m_iGOPSize; }
   Int       getMaxDecPicBuffering           (UInt tlayer) { return m_maxDecPicBuffering[tlayer]; }
   Int       getNumReorderPics               (UInt tlayer) { return m_numReorderPics[tlayer]; }
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+  Double    getIntraQpFactor                ()                        const { return m_dIntraQpFactor;                }
+  Int       getIntraQPOffset                () const    { return  m_intraQPOffset; }
+  Int       getLambdaFromQPEnable           () const    { return  m_lambdaFromQPEnable; }
+protected:
+  Int       getBaseQP                       () const { return  m_iQP; } // public should use getQPForPicture.
+public:
+  Int       getQPForPicture                 (const UInt gopIndex, TComSlice *pSlice); // Function actually defined in TEncTop.cpp
+#else
   Int       getQP                           ()      { return  m_iQP; }
-
+#endif
   Int       getPad                          ( Int i )      { assert (i < 2 );                      return  m_aiPad[i]; }
 
   //======== Transform =============
@@ -667,6 +724,10 @@ public:
   Void      setUseFastDecisionForMerge      ( Bool  b )     { m_useFastDecisionForMerge = b; }
   Void      setUseCbfFastMode            ( Bool  b )     { m_bUseCbfFastMode = b; }
   Void      setUseEarlySkipDetection        ( Bool  b )     { m_useEarlySkipDetection = b; }
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+  Void      setUseSaveLoadEncInfo           ( Bool  b )     { m_useSaveLoadEncInfo = b; }
+  Void      setUseSaveLoadSplitDecision     ( Bool  b )     { m_useSaveLoadSplitDecision = b; }
+#endif
   Void      setUseConstrainedIntraPred      ( Bool  b )     { m_bUseConstrainedIntraPred = b; }
   Void      setFastUDIUseMPMEnabled         ( Bool  b )     { m_bFastUDIUseMPMEnabled = b; }
   Void      setFastMEForGenBLowDelayEnabled ( Bool  b )     { m_bFastMEForGenBLowDelayEnabled = b; }
@@ -694,6 +755,10 @@ public:
   Bool      getUseFastDecisionForMerge      ()      { return m_useFastDecisionForMerge; }
   Bool      getUseCbfFastMode               ()      { return m_bUseCbfFastMode; }
   Bool      getUseEarlySkipDetection        ()      { return m_useEarlySkipDetection; }
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+  Bool      getUseSaveLoadEncInfo           ()      { return m_useSaveLoadEncInfo; }
+  Bool      getUseSaveLoadSplitDecision     ()      { return m_useSaveLoadSplitDecision; }
+#endif
   Bool      getUseConstrainedIntraPred      ()      { return m_bUseConstrainedIntraPred; }
   Bool      getFastUDIUseMPMEnabled         ()      { return m_bFastUDIUseMPMEnabled; }
   Bool      getFastMEForGenBLowDelayEnabled ()      { return m_bFastMEForGenBLowDelayEnabled; }
@@ -738,6 +803,10 @@ public:
   Void  setSliceArgument               ( Int  i )                    { m_sliceArgument = i;          }
   SliceConstraint getSliceMode         () const                      { return m_sliceMode;           }
   Int   getSliceArgument               ()                            { return m_sliceArgument;       }
+#if JVET_D0033_ADAPTIVE_CLIPPING
+  Void setTchClipParam(ClipParam& tchClipParam) { m_ClipParam = tchClipParam; }
+  const ClipParam& getTchClipParam() const { return m_ClipParam; }
+#endif
   //====== Dependent Slice ========
   Void  setSliceSegmentMode            ( SliceConstraint  i )        { m_sliceSegmentMode = i;       }
   Void  setSliceSegmentArgument        ( Int  i )                    { m_sliceSegmentArgument = i;   }

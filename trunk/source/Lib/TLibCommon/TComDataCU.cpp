@@ -6278,7 +6278,11 @@ Void TComDataCU::getInterMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TComM
         abCandIsInter[iCount] = true;
 
 #if VCEG_AZ06_IC
+#if FIX_TICKET33
+        if( getSlice()->getApplyIC() )
+#else
         if( getSlice()->getSPS()->getICFlag() )
+#endif
         {
           pbICFlag[iCount] = bAtmvpAva ? !bICFlag : false;
         }

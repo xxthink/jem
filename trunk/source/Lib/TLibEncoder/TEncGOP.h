@@ -166,7 +166,11 @@ public:
 
   TComList<TComPic*>*   getListPic()      { return m_pcListPic; }
 
+#if JVET_D0134_PSNR
+  Void  printOutSummary      ( UInt uiNumAllPicCoded, Bool isField, const Bool printMSEBasedSNR, const Bool printSequenceMSE, const Bool trueBitdepthPSNR, const BitDepths &bitDepths );
+#else
   Void  printOutSummary      ( UInt uiNumAllPicCoded, Bool isField, const Bool printMSEBasedSNR, const Bool printSequenceMSE, const BitDepths &bitDepths );
+#endif
 #if !JVET_C0038_GALF
   Void  preLoopFilterPicAll  ( TComPic* pcPic, UInt64& ruiDist );
 #endif

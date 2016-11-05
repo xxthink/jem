@@ -1147,6 +1147,9 @@ Void TEncTop::xInitPPS()
   {
     m_cPPS.setDependentSliceSegmentsEnabledFlag( true );
   }
+#if JVET_D0033_ADAPTIVE_CLIPPING
+  m_cPPS.m_clip_enabled=m_ClipParam.isActive;
+#endif
 }
 
 //Function for initializing m_RPSList, a list of TComReferencePictureSet, based on the GOPEntry objects read from the config file.
@@ -1448,4 +1451,51 @@ Void  TEncCfg::xCheckGSParameters()
     }
   }
 }
+
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+Int TEncCfg::getQPForPicture(const UInt gopIndex, TComSlice *pSlice) 
+{
+  const Int lumaQpBDOffset = pSlice->getSPS()->getQpBDOffset(CHANNEL_TYPE_LUMA);
+  Int qp;
+
+  if (getCostMode()==COST_LOSSLESS_CODING)
+  {
+    qp=LOSSLESS_AND_MIXED_LOSSLESS_RD_COST_TEST_QP;
+  }
+  else
+  {
+    const SliceType sliceType=pSlice->getSliceType();
+
+    qp = getBaseQP();
+
+    if(sliceType==I_SLICE)
+    {
+      qp += getIntraQPOffset();
+    }
+    else
+    {
+      if (!(( getMaxDeltaQP() == 0 ) && (qp == -lumaQpBDOffset ) && (pSlice->getPPS()->getTransquantBypassEnableFlag())))
+      {
+        const GOPEntry &gopEntry=getGOPEntry(gopIndex);
+        // adjust QP according to the QP offset for the GOP entry.
+        qp +=gopEntry.m_QPOffset;
+
+        // adjust QP according to QPOffsetModel for the GOP entry.
+        Double dqpOffset=qp*gopEntry.m_QPOffsetModelScale+gopEntry.m_QPOffsetModelOffset+0.5;
+        Int qpOffset = (Int)floor(Clip3<Double>(0.0, 3.0, dqpOffset));
+        qp += qpOffset ;
+      }
+    }
+
+    // modify QP if a fractional QP was originally specified, cause dQPs to be 0 or 1.
+    const Int* pdQPs = getdQPs();
+    if ( pdQPs )
+    {
+      qp += pdQPs[ pSlice->getPOC() ];
+    }
+  }
+  qp = Clip3( -lumaQpBDOffset, MAX_QP, qp );
+  return qp;
+}
+#endif
 //! \}

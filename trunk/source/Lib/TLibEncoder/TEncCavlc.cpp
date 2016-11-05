@@ -228,6 +228,13 @@ Void TEncCavlc::codePPS( const TComPPS* pcPPS )
   WRITE_FLAG( pcPPS->getListsModificationPresentFlag(), "lists_modification_present_flag");
   WRITE_UVLC( pcPPS->getLog2ParallelMergeLevelMinus2(), "log2_parallel_merge_level_minus2");
   WRITE_FLAG( pcPPS->getSliceHeaderExtensionPresentFlag() ? 1 : 0, "slice_segment_header_extension_present_flag");
+#if JVET_D0033_ADAPTIVE_CLIPPING
+  WRITE_FLAG( pcPPS->m_clip_enabled, "tch clip param enabled_flag");
+  if (pcPPS->m_clip_enabled) {
+     assert(ClipParam::cquantiz/2<4);
+     WRITE_CODE( (ClipParam::cquantiz/2), 2,"tch clip param quantiz");
+  }
+#endif
 
   Bool pps_extension_present_flag=false;
   Bool pps_extension_flags[NUM_PPS_EXTENSION_FLAGS]={false};
@@ -1164,6 +1171,54 @@ Void TEncCavlc::codeSliceHeader         ( TComSlice* pcSlice )
       WRITE_FLAG(pcSlice->getLFCrossSliceBoundaryFlag()?1:0, "slice_loop_filter_across_slices_enabled_flag");
     }
   }
+#if JVET_D0033_ADAPTIVE_CLIPPING
+  if (sliceSegmentRsAddress==0&&pcSlice->getPPS()->m_clip_enabled) { // only for first header and when ON
+      WRITE_FLAG(pcSlice->getPic()->m_aclip_prm.isActive?1:0, "TchClipAdaptive_flag");
+
+      if (pcSlice->getPic()->m_aclip_prm.isActive)
+      {
+          const ClipParam &prm=pcSlice->getPic()->m_aclip_prm;
+
+
+              Int code,scode;
+
+          scode=(prm.Y().m);
+          code=(scode>>ClipParam::cquantiz);
+              assert(code<(1<<(ClipParam::nbBitsY-ClipParam::cquantiz)));
+              WRITE_CODE(code, ClipParam::nbBitsY-ClipParam::cquantiz, "TchClipAdaptive_Y_MIN");
+
+
+          scode=(prm.Y().M);
+          code=(scode>>ClipParam::cquantiz);
+              assert(code<(1<<(ClipParam::nbBitsY-ClipParam::cquantiz)));
+              WRITE_CODE(code, ClipParam::nbBitsY-ClipParam::cquantiz, "TchClipAdaptive_Y_MAX");
+              WRITE_FLAG(prm.isChromaActive?1:0, "TchClipAdaptive_flag_chroma");
+              if (prm.isChromaActive)
+              {
+              scode=prm.U().m;
+              code=(scode>>ClipParam::cquantiz);
+                  assert(code<(1<<(ClipParam::nbBitsUV-ClipParam::cquantiz)));
+              WRITE_CODE(code, ClipParam::nbBitsUV-ClipParam::cquantiz, "TchClipAdaptive_C0_MIN");
+
+              scode=prm.U().M;
+              code=(scode>>ClipParam::cquantiz);
+                  assert(code<(1<<(ClipParam::nbBitsUV-ClipParam::cquantiz)));
+              WRITE_CODE(code, ClipParam::nbBitsUV-ClipParam::cquantiz, "TchClipAdaptive_C0_MAX");
+
+              scode=prm.V().m;
+              code=(scode>>ClipParam::cquantiz);
+                  assert(code<(1<<(ClipParam::nbBitsUV-ClipParam::cquantiz)));
+              WRITE_CODE(code, ClipParam::nbBitsUV-ClipParam::cquantiz, "TchClipAdaptive_C1_MIN");
+
+              scode=prm.V().M;
+              code=(scode>>ClipParam::cquantiz);
+                  assert(code<(1<<(ClipParam::nbBitsUV-ClipParam::cquantiz)));
+                  WRITE_CODE(code, ClipParam::nbBitsUV-ClipParam::cquantiz, "TchClipAdaptive_C1_MAX");
+              }
+   
+      }
+  }
+#endif
   if(pcSlice->getPPS()->getSliceHeaderExtensionPresentFlag())
   {
     WRITE_UVLC(0,"slice_segment_header_extension_length");
@@ -1521,6 +1576,14 @@ Void TEncCavlc::codeCoeffNxN    ( TComTU& /*rTu*/, TCoeff* /*pcCoef*/, const Com
 {
   assert(0);
 }
+
+#if JVET_D0123_ME_CTX_LUT_BITS
+Void TEncCavlc::estPuMeBit  (estPuMeBitsSbacStruct* /*pcEstPuMeBitsSbac*/)
+{
+  // printf("error : no VLC mode support in this version\n");
+  return;
+}
+#endif
 
 Void TEncCavlc::estBit( estBitsSbacStruct* /*pcEstBitsCabac*/, Int /*width*/, Int /*height*/, ChannelType /*chType*/ 
 #if RDOQ_BIT_ESTIMATE_FIX_TICKET29

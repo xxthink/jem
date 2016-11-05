@@ -572,7 +572,11 @@ inline __m128i simdClip3( __m128i mmMin , __m128i mmMax , __m128i mmPix )
  * \param isFirst    Flag indicating whether it is the first filtering operation
  * \param isLast     Flag indicating whether it is the last filtering operation
  */
+#if JVET_D0033_ADAPTIVE_CLIPPING
+Void TComInterpolationFilter::filterCopy(Int bitDepth, const Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Bool isFirst, Bool isLast, ComponentID compID)
+#else
 Void TComInterpolationFilter::filterCopy(Int bitDepth, const Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Bool isFirst, Bool isLast)
+#endif
 {
   Int row, col;
 
@@ -609,14 +613,19 @@ Void TComInterpolationFilter::filterCopy(Int bitDepth, const Pel *src, Int srcSt
   {
     const Int shift = std::max<Int>(2, (IF_INTERNAL_PREC - bitDepth));
 
+#if !JVET_D0033_ADAPTIVE_CLIPPING
     Pel maxVal = (1 << bitDepth) - 1;
     Pel minVal = 0;
+#endif
     for (row = 0; row < height; row++)
     {
       for (col = 0; col < width; col++)
       {
         Pel val = src[ col ];
         val = rightShift_round((val + IF_INTERNAL_OFFS), shift);
+#if JVET_D0033_ADAPTIVE_CLIPPING
+        val=ClipA(val,compID);
+#else
         if (val < minVal)
         {
           val = minVal;
@@ -625,6 +634,7 @@ Void TComInterpolationFilter::filterCopy(Int bitDepth, const Pel *src, Int srcSt
         {
           val = maxVal;
         }
+#endif
         dst[col] = val;
       }
 
@@ -650,8 +660,13 @@ Void TComInterpolationFilter::filterCopy(Int bitDepth, const Pel *src, Int srcSt
  * \param  height     Height of block
  * \param  coeff      Pointer to filter taps
  */
+#if JVET_D0033_ADAPTIVE_CLIPPING
+template<Int N, Bool isVertical, Bool isFirst, Bool isLast>
+Void TComInterpolationFilter::filter(Int bitDepth, Pel const *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, TFilterCoeff const *coeff, ComponentID compID)
+#else
 template<Int N, Bool isVertical, Bool isFirst, Bool isLast>
 Void TComInterpolationFilter::filter(Int bitDepth, Pel const *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, TFilterCoeff const *coeff)
+#endif
 {
   Int row, col;
 
@@ -685,12 +700,20 @@ Void TComInterpolationFilter::filter(Int bitDepth, Pel const *src, Int srcStride
   // negative for bit depths greater than 14, shift will remain non-negative for bit depths of 8->20
   assert(shift >= 0);
 
+#if JVET_D0033_ADAPTIVE_CLIPPING
+  Short minVal=0;
+#endif
   if ( isLast )
   {
     shift += (isFirst) ? 0 : headRoom;
     offset = 1 << (shift - 1);
     offset += (isFirst) ? 0 : IF_INTERNAL_OFFS << IF_FILTER_PREC;
+#if JVET_D0033_ADAPTIVE_CLIPPING
+    minVal = g_ClipParam.min(compID);
+    maxVal = g_ClipParam.max(compID);
+#else
     maxVal = (1 << bitDepth) - 1;
+#endif
   }
   else
   {
@@ -704,7 +727,9 @@ Void TComInterpolationFilter::filter(Int bitDepth, Pel const *src, Int srcStride
   {
     if( N == 8 && !( width & 0x07 ) )
     {
+#if !JVET_D0033_ADAPTIVE_CLIPPING
       Short minVal = 0;
+#endif
       __m128i mmOffset = _mm_set1_epi32( offset );
       __m128i mmCoeff[8];
       __m128i mmMin = _mm_set1_epi16( minVal );
@@ -729,7 +754,9 @@ Void TComInterpolationFilter::filter(Int bitDepth, Pel const *src, Int srcStride
     }
     else if( N == 8 && !( width & 0x03 ) )
     {
+#if !JVET_D0033_ADAPTIVE_CLIPPING
       Short minVal = 0;
+#endif
       __m128i mmOffset = _mm_set1_epi32( offset );
       __m128i mmCoeff[8];
       __m128i mmMin = _mm_set1_epi16( minVal );
@@ -754,7 +781,9 @@ Void TComInterpolationFilter::filter(Int bitDepth, Pel const *src, Int srcStride
     }
     else if( N == 4 && !( width & 0x03 ) )
     {
+#if !JVET_D0033_ADAPTIVE_CLIPPING
       Short minVal = 0;
+#endif
       __m128i mmOffset = _mm_set1_epi32( offset );
       __m128i mmCoeff[8];
       __m128i mmMin = _mm_set1_epi16( minVal );
@@ -779,7 +808,9 @@ Void TComInterpolationFilter::filter(Int bitDepth, Pel const *src, Int srcStride
     }
     else if( N == 2 && !( width & 0x07 ) )
     {
+#if !JVET_D0033_ADAPTIVE_CLIPPING
       Short minVal = 0;
+#endif
       __m128i mmOffset = _mm_set1_epi32( offset );
       __m128i mmCoeff[2];
       __m128i mmMin = _mm_set1_epi16( minVal );
@@ -804,7 +835,9 @@ Void TComInterpolationFilter::filter(Int bitDepth, Pel const *src, Int srcStride
     }
     else if( N == 2 && !( width & 0x03 ) )
     {
+#if !JVET_D0033_ADAPTIVE_CLIPPING
       Short minVal = 0;
+#endif
       __m128i mmOffset = _mm_set1_epi32( offset );
       __m128i mmCoeff[8];
       __m128i mmMin = _mm_set1_epi16( minVal );
@@ -857,8 +890,12 @@ Void TComInterpolationFilter::filter(Int bitDepth, Pel const *src, Int srcStride
       Pel val = ( sum + offset ) >> shift;
       if ( isLast )
       {
+#if JVET_D0033_ADAPTIVE_CLIPPING
+        val = ClipA(val,compID);
+#else
         val = ( val < 0 ) ? 0 : val;
         val = ( val > maxVal ) ? maxVal : val;
+#endif
       }
       dst[col] = val;
     }
@@ -882,16 +919,29 @@ Void TComInterpolationFilter::filter(Int bitDepth, Pel const *src, Int srcStride
  * \param  isLast     Flag indicating whether it is the last filtering operation
  * \param  coeff      Pointer to filter taps
  */
+#if JVET_D0033_ADAPTIVE_CLIPPING
+template<Int N>
+Void TComInterpolationFilter::filterHor(Int bitDepth, Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Bool isLast, TFilterCoeff const *coeff, ComponentID compID)
+#else
 template<Int N>
 Void TComInterpolationFilter::filterHor(Int bitDepth, Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Bool isLast, TFilterCoeff const *coeff)
+#endif
 {
   if ( isLast )
   {
+#if JVET_D0033_ADAPTIVE_CLIPPING
+      filter<N, false, true, true>(bitDepth, src, srcStride, dst, dstStride, width, height, coeff, compID);
+#else
     filter<N, false, true, true>(bitDepth, src, srcStride, dst, dstStride, width, height, coeff);
+#endif
   }
   else
   {
+#if JVET_D0033_ADAPTIVE_CLIPPING
+      filter<N, false, true, false>(bitDepth, src, srcStride, dst, dstStride, width, height, coeff, compID);
+#else
     filter<N, false, true, false>(bitDepth, src, srcStride, dst, dstStride, width, height, coeff);
+#endif
   }
 }
 
@@ -910,6 +960,28 @@ Void TComInterpolationFilter::filterHor(Int bitDepth, Pel *src, Int srcStride, P
  * \param  isLast     Flag indicating whether it is the last filtering operation
  * \param  coeff      Pointer to filter taps
  */
+#if JVET_D0033_ADAPTIVE_CLIPPING
+template<Int N>
+Void TComInterpolationFilter::filterVer(Int bitDepth, Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Bool isFirst, Bool isLast, TFilterCoeff const *coeff, ComponentID compID)
+{
+    if (isFirst && isLast)
+    {
+        filter<N, true, true, true>(bitDepth, src, srcStride, dst, dstStride, width, height, coeff, compID);
+    }
+    else if (isFirst && !isLast)
+    {
+        filter<N, true, true, false>(bitDepth, src, srcStride, dst, dstStride, width, height, coeff, compID);
+    }
+    else if (!isFirst && isLast)
+    {
+        filter<N, true, false, true>(bitDepth, src, srcStride, dst, dstStride, width, height, coeff, compID);
+    }
+    else
+    {
+        filter<N, true, false, false>(bitDepth, src, srcStride, dst, dstStride, width, height, coeff, compID);
+    }
+}
+#else
 template<Int N>
 Void TComInterpolationFilter::filterVer(Int bitDepth, Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Bool isFirst, Bool isLast, TFilterCoeff const *coeff)
 {
@@ -930,6 +1002,7 @@ Void TComInterpolationFilter::filterVer(Int bitDepth, Pel *src, Int srcStride, P
     filter<N, true, false, false>(bitDepth, src, srcStride, dst, dstStride, width, height, coeff);
   }
 }
+#endif
 
 #if COM16_C1016_AFFINE
 #if !JVET_C0025_AFFINE_FILTER_SIMPLIFICATION
@@ -950,7 +1023,11 @@ Void TComInterpolationFilter::filterVer(Int bitDepth, Pel *src, Int srcStride, P
  * \param  coeff      Pointer to filter taps
  */
 template<Int N, Bool isVertical, Bool isFirst, Bool isLast>
-Void TComInterpolationFilter::filterAffine(Int bitDepth, Pel const *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, TFilterCoeff const *coeff)
+Void TComInterpolationFilter::filterAffine(Int bitDepth, Pel const *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, TFilterCoeff const *coeff
+                                           #if JVET_D0033_ADAPTIVE_CLIPPING
+                                                       , ComponentID compID
+                                           #endif
+                                           )
 {
   Int row, col;
 
@@ -984,12 +1061,20 @@ Void TComInterpolationFilter::filterAffine(Int bitDepth, Pel const *src, Int src
   // negative for bit depths greater than 14, shift will remain non-negative for bit depths of 8->20
   assert(shift >= 0);
 
+#if JVET_D0033_ADAPTIVE_CLIPPING
+    Short minVal=0;
+#endif
   if ( isLast )
   {
     shift += (isFirst) ? 0 : headRoom;
     offset = 1 << (shift - 1);
     offset += (isFirst) ? 0 : IF_INTERNAL_OFFS << IF_FILTER_PREC_AFFINE;
+#if JVET_D0033_ADAPTIVE_CLIPPING
+        minVal = g_ClipParam.min(compID);
+        maxVal = g_ClipParam.max(compID);
+#else
     maxVal = (1 << bitDepth) - 1;
+#endif
   }
   else
   {
@@ -1003,7 +1088,9 @@ Void TComInterpolationFilter::filterAffine(Int bitDepth, Pel const *src, Int src
   {
     if( N == 8 && !( width & 0x07 ) )
     {
+#if !JVET_D0033_ADAPTIVE_CLIPPING
       Short minVal = 0;
+#endif
       __m128i mmOffset = _mm_set1_epi32( offset );
       __m128i mmCoeff[8];
       __m128i mmMin = _mm_set1_epi16( minVal );
@@ -1028,7 +1115,9 @@ Void TComInterpolationFilter::filterAffine(Int bitDepth, Pel const *src, Int src
     }
     else if( N == 8 && !( width & 0x03 ) )
     {
+#if !JVET_D0033_ADAPTIVE_CLIPPING
       Short minVal = 0;
+#endif
       __m128i mmOffset = _mm_set1_epi32( offset );
       __m128i mmCoeff[8];
       __m128i mmMin = _mm_set1_epi16( minVal );
@@ -1053,7 +1142,9 @@ Void TComInterpolationFilter::filterAffine(Int bitDepth, Pel const *src, Int src
     }
     else if( N == 4 && !( width & 0x03 ) )
     {
+#if !JVET_D0033_ADAPTIVE_CLIPPING
       Short minVal = 0;
+#endif
       __m128i mmOffset = _mm_set1_epi32( offset );
       __m128i mmCoeff[8];
       __m128i mmMin = _mm_set1_epi16( minVal );
@@ -1078,7 +1169,9 @@ Void TComInterpolationFilter::filterAffine(Int bitDepth, Pel const *src, Int src
     }
     else if( N == 2 && !( width & 0x07 ) )
     {
+#if !JVET_D0033_ADAPTIVE_CLIPPING
       Short minVal = 0;
+#endif
       __m128i mmOffset = _mm_set1_epi32( offset );
       __m128i mmCoeff[2];
       __m128i mmMin = _mm_set1_epi16( minVal );
@@ -1103,7 +1196,9 @@ Void TComInterpolationFilter::filterAffine(Int bitDepth, Pel const *src, Int src
     }
     else if( N == 2 && !( width & 0x03 ) )
     {
+#if !JVET_D0033_ADAPTIVE_CLIPPING
       Short minVal = 0;
+#endif
       __m128i mmOffset = _mm_set1_epi32( offset );
       __m128i mmCoeff[8];
       __m128i mmMin = _mm_set1_epi16( minVal );
@@ -1156,8 +1251,12 @@ Void TComInterpolationFilter::filterAffine(Int bitDepth, Pel const *src, Int src
       Pel val = ( sum + offset ) >> shift;
       if ( isLast )
       {
+#if JVET_D0033_ADAPTIVE_CLIPPING
+                val = ClipA(val,compID);
+#else
         val = ( val < 0 ) ? 0 : val;
         val = ( val > maxVal ) ? maxVal : val;
+#endif
       }
       dst[col] = val;
     }
@@ -1182,15 +1281,27 @@ Void TComInterpolationFilter::filterAffine(Int bitDepth, Pel const *src, Int src
  * \param  coeff      Pointer to filter taps
  */
 template<Int N>
-Void TComInterpolationFilter::filterHorAffine(Int bitDepth, Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Bool isLast, TFilterCoeff const *coeff)
+Void TComInterpolationFilter::filterHorAffine(Int bitDepth, Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Bool isLast, TFilterCoeff const *coeff
+                                              #if JVET_D0033_ADAPTIVE_CLIPPING
+                                                          ,ComponentID compID
+                                              #endif
+                                              )
 {
   if ( isLast )
   {
-    filterAffine<N, false, true, true>(bitDepth, src, srcStride, dst, dstStride, width, height, coeff);
+        filterAffine<N, false, true, true>(bitDepth, src, srcStride, dst, dstStride, width, height, coeff
+                                   #if JVET_D0033_ADAPTIVE_CLIPPING
+                                               , compID
+                                   #endif
+                                           );
   }
   else
   {
-    filterAffine<N, false, true, false>(bitDepth, src, srcStride, dst, dstStride, width, height, coeff);
+        filterAffine<N, false, true, false>(bitDepth, src, srcStride, dst, dstStride, width, height, coeff
+                                    #if JVET_D0033_ADAPTIVE_CLIPPING
+                                                , compID
+                                    #endif
+                                            );
   }
 }
 
@@ -1210,23 +1321,43 @@ Void TComInterpolationFilter::filterHorAffine(Int bitDepth, Pel *src, Int srcStr
  * \param  coeff      Pointer to filter taps
  */
 template<Int N>
-Void TComInterpolationFilter::filterVerAffine(Int bitDepth, Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Bool isFirst, Bool isLast, TFilterCoeff const *coeff)
+Void TComInterpolationFilter::filterVerAffine(Int bitDepth, Pel *src, Int srcStride, Pel *dst, Int dstStride, Int width, Int height, Bool isFirst, Bool isLast, TFilterCoeff const *coeff
+                                              #if JVET_D0033_ADAPTIVE_CLIPPING
+                                              ,ComponentID compID
+                                              #endif
+                                              )
 {
   if ( isFirst && isLast )
   {
-    filterAffine<N, true, true, true>(bitDepth, src, srcStride, dst, dstStride, width, height, coeff);
+        filterAffine<N, true, true, true>(bitDepth, src, srcStride, dst, dstStride, width, height, coeff
+                                  #if JVET_D0033_ADAPTIVE_CLIPPING
+                                              , compID
+                                  #endif
+                                          );
   }
   else if ( isFirst && !isLast )
   {
-    filterAffine<N, true, true, false>(bitDepth, src, srcStride, dst, dstStride, width, height, coeff);
+        filterAffine<N, true, true, false>(bitDepth, src, srcStride, dst, dstStride, width, height, coeff
+                                   #if JVET_D0033_ADAPTIVE_CLIPPING
+                                               , compID
+                                   #endif
+                                           );
   }
   else if ( !isFirst && isLast )
   {
-    filterAffine<N, true, false, true>(bitDepth, src, srcStride, dst, dstStride, width, height, coeff);
+        filterAffine<N, true, false, true>(bitDepth, src, srcStride, dst, dstStride, width, height, coeff
+                                   #if JVET_D0033_ADAPTIVE_CLIPPING
+                                               , compID
+                                   #endif
+                                           );
   }
   else
   {
-    filterAffine<N, true, false, false>(bitDepth, src, srcStride, dst, dstStride, width, height, coeff);
+        filterAffine<N, true, false, false>(bitDepth, src, srcStride, dst, dstStride, width, height, coeff
+                                    #if JVET_D0033_ADAPTIVE_CLIPPING
+                                                , compID
+                                    #endif
+                                            );
   }
 }
 #endif
@@ -1259,7 +1390,11 @@ Void TComInterpolationFilter::filterHor(const ComponentID compID, Pel *src, Int 
 {
   if ( frac == 0 )
   {
+#if JVET_D0033_ADAPTIVE_CLIPPING
+      filterCopy(bitDepth, src, srcStride, dst, dstStride, width, height, true, isLast, compID);
+#else
     filterCopy(bitDepth, src, srcStride, dst, dstStride, width, height, true, isLast );
+#endif
   }
   else if (isLuma(compID))
   {
@@ -1270,10 +1405,18 @@ Void TComInterpolationFilter::filterHor(const ComponentID compID, Pel *src, Int 
 #endif
 #if VCEG_AZ07_FRUC_MERGE
     if( nFilterIdx == 1 )
-      filterHor<NTAPS_LUMA_FRUC>(bitDepth, src, srcStride, dst, dstStride, width, height, isLast, m_lumaFilterBilinear[frac]);
+      filterHor<NTAPS_LUMA_FRUC>(bitDepth, src, srcStride, dst, dstStride, width, height, isLast, m_lumaFilterBilinear[frac]
+#if JVET_D0033_ADAPTIVE_CLIPPING
+      , compID
+#endif
+      );
     else
 #endif
-    filterHor<NTAPS_LUMA>(bitDepth, src, srcStride, dst, dstStride, width, height, isLast, m_lumaFilter[frac]);
+    filterHor<NTAPS_LUMA>(bitDepth, src, srcStride, dst, dstStride, width, height, isLast, m_lumaFilter[frac]
+#if JVET_D0033_ADAPTIVE_CLIPPING
+    , compID
+#endif
+    );
   }
   else
   {
@@ -1283,7 +1426,11 @@ Void TComInterpolationFilter::filterHor(const ComponentID compID, Pel *src, Int 
 #else
     assert(frac >=0 && csx<2 && (frac<<(1-csx)) < CHROMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS);
 #endif
-    filterHor<NTAPS_CHROMA>(bitDepth, src, srcStride, dst, dstStride, width, height, isLast, m_chromaFilter[frac<<(1-csx)]);
+    filterHor<NTAPS_CHROMA>(bitDepth, src, srcStride, dst, dstStride, width, height, isLast, m_chromaFilter[frac<<(1-csx)]
+#if JVET_D0033_ADAPTIVE_CLIPPING
+        , compID
+#endif
+        );
   }
 }
 
@@ -1312,7 +1459,11 @@ Void TComInterpolationFilter::filterVer(const ComponentID compID, Pel *src, Int 
 {
   if ( frac == 0 )
   {
+#if JVET_D0033_ADAPTIVE_CLIPPING
+      filterCopy(bitDepth, src, srcStride, dst, dstStride, width, height, isFirst, isLast, compID);
+#else
     filterCopy(bitDepth, src, srcStride, dst, dstStride, width, height, isFirst, isLast );
+#endif
   }
   else if (isLuma(compID))
   {
@@ -1323,10 +1474,18 @@ Void TComInterpolationFilter::filterVer(const ComponentID compID, Pel *src, Int 
 #endif
 #if VCEG_AZ07_FRUC_MERGE
     if( nFilterIdx == 1 )
-      filterVer<NTAPS_LUMA_FRUC>(bitDepth, src, srcStride, dst, dstStride, width, height, isFirst, isLast, m_lumaFilterBilinear[frac]);
+      filterVer<NTAPS_LUMA_FRUC>(bitDepth, src, srcStride, dst, dstStride, width, height, isFirst, isLast, m_lumaFilterBilinear[frac]
+#if JVET_D0033_ADAPTIVE_CLIPPING
+      , compID
+#endif
+      );
     else
 #endif
-    filterVer<NTAPS_LUMA>(bitDepth, src, srcStride, dst, dstStride, width, height, isFirst, isLast, m_lumaFilter[frac]);
+    filterVer<NTAPS_LUMA>(bitDepth, src, srcStride, dst, dstStride, width, height, isFirst, isLast, m_lumaFilter[frac]
+#if JVET_D0033_ADAPTIVE_CLIPPING
+    , compID
+#endif
+    );
   }
   else
   {
@@ -1336,7 +1495,11 @@ Void TComInterpolationFilter::filterVer(const ComponentID compID, Pel *src, Int 
 #else
     assert(frac >=0 && csy<2 && (frac<<(1-csy)) < CHROMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS);
 #endif
-    filterVer<NTAPS_CHROMA>(bitDepth, src, srcStride, dst, dstStride, width, height, isFirst, isLast, m_chromaFilter[frac<<(1-csy)]);
+    filterVer<NTAPS_CHROMA>(bitDepth, src, srcStride, dst, dstStride, width, height, isFirst, isLast, m_chromaFilter[frac<<(1-csy)]
+#if JVET_D0033_ADAPTIVE_CLIPPING
+        , compID
+#endif
+        );
   }
 }
 
@@ -1361,17 +1524,29 @@ Void TComInterpolationFilter::filterHorAffine(const ComponentID compID, Pel *src
 {
   if ( frac == 0 )
   {
-    filterCopy(bitDepth, src, srcStride, dst, dstStride, width, height, true, isLast );
+        filterCopy(bitDepth, src, srcStride, dst, dstStride, width, height, true, isLast
+           #if JVET_D0033_ADAPTIVE_CLIPPING
+                   ,compID
+           #endif
+                   );
   }
   else if (isLuma(compID))
   {
     assert(frac >= 0 && frac < NFRACS_LUMA_AFFINE);
-    filterHorAffine<NTAPS_LUMA>( bitDepth, src, srcStride, dst, dstStride, width, height, isLast, m_lumaFilterAffine+frac*NTAPS_LUMA );
+        filterHorAffine<NTAPS_LUMA>( bitDepth, src, srcStride, dst, dstStride, width, height, isLast, m_lumaFilterAffine+frac*NTAPS_LUMA
+                             #if JVET_D0033_ADAPTIVE_CLIPPING
+                                     ,compID
+                             #endif
+                                     );
   }
   else
   {
     assert(frac >= 0 && frac < NFRACS_CHROMA_AFFINE);
-    filterHorAffine<NTAPS_CHROMA>( bitDepth, src, srcStride, dst, dstStride, width, height, isLast, m_chromaFilterAffine+frac*NTAPS_CHROMA );
+        filterHorAffine<NTAPS_CHROMA>( bitDepth, src, srcStride, dst, dstStride, width, height, isLast, m_chromaFilterAffine+frac*NTAPS_CHROMA
+                               #if JVET_D0033_ADAPTIVE_CLIPPING
+                                       ,compID
+                               #endif
+                                       );
   }
 }
 
@@ -1396,12 +1571,20 @@ Void TComInterpolationFilter::filterVerAffine(const ComponentID compID, Pel *src
 {
   if ( frac == 0 )
   {
-    filterCopy(bitDepth, src, srcStride, dst, dstStride, width, height, isFirst, isLast );
+        filterCopy(bitDepth, src, srcStride, dst, dstStride, width, height, isFirst, isLast
+           #if JVET_D0033_ADAPTIVE_CLIPPING
+                   ,compID
+           #endif
+                   );
   }
   else if (isLuma(compID))
   {
     assert(frac >= 0 && frac < NFRACS_LUMA_AFFINE);
-    filterVerAffine<NTAPS_LUMA>( bitDepth, src, srcStride, dst, dstStride, width, height, isFirst, isLast, m_lumaFilterAffine+frac*NTAPS_LUMA );
+        filterVerAffine<NTAPS_LUMA>( bitDepth, src, srcStride, dst, dstStride, width, height, isFirst, isLast, m_lumaFilterAffine+frac*NTAPS_LUMA
+                             #if JVET_D0033_ADAPTIVE_CLIPPING
+                                     ,compID
+                             #endif
+                                     );
   }
   else
   {

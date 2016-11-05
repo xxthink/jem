@@ -287,6 +287,9 @@ Void TEncSlice::initEncSlice( TComPic* pcPic, Int pocLast, Int pocCurr, Int iGOP
   // QP setting
   // ------------------------------------------------------------------------------------------------------------------
 
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+  dQP = m_pcCfg->getQPForPicture(iGOPid, rpcSlice);
+#else
   dQP = m_pcCfg->getQP();
   if(eSliceType!=I_SLICE)
   {
@@ -308,11 +311,16 @@ Void TEncSlice::initEncSlice( TComPic* pcPic, Int pocLast, Int pocCurr, Int iGOP
     dQP=LOSSLESS_AND_MIXED_LOSSLESS_RD_COST_TEST_QP;
     m_pcCfg->setDeltaQpRD(0);
   }
+#endif
 
   // ------------------------------------------------------------------------------------------------------------------
   // Lambda computation
   // ------------------------------------------------------------------------------------------------------------------
 
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+  const Int temporalId=m_pcCfg->getGOPEntry(iGOPid).m_temporalId;
+  const std::vector<Double> &intraLambdaModifiers=m_pcCfg->getIntraLambdaModifier();
+#endif
   Int iQP;
   Double dOrigQP = dQP;
 
@@ -341,11 +349,39 @@ Void TEncSlice::initEncSlice( TComPic* pcPic, Int pocLast, Int pocCurr, Int iGOP
     Double dQPFactor = m_pcCfg->getGOPEntry(iGOPid).m_QPFactor;
     if ( eSliceType==I_SLICE )
     {
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+      if (m_pcCfg->getIntraQpFactor()>=0.0 && m_pcCfg->getGOPEntry(iGOPid).m_sliceType != I_SLICE)
+      {
+        dQPFactor=m_pcCfg->getIntraQpFactor();
+      }
+      else
+      {
+        if(m_pcCfg->getLambdaFromQPEnable())
+        {
+          dQPFactor=0.57;
+        }
+        else
+        {
+          dQPFactor=0.57*dLambda_scale;
+        }
+      }
+#else
       dQPFactor=0.57*dLambda_scale;
+#endif
     }
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+    else if( m_pcCfg->getLambdaFromQPEnable() )
+    {
+      dQPFactor=0.57*dQPFactor;
+    }
+#endif
     dLambda = dQPFactor*pow( 2.0, qp_temp/3.0 );
 
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+    if(!m_pcCfg->getLambdaFromQPEnable() && depth>0)
+#else
     if ( depth>0 )
+#endif
     {
 #if FULL_NBIT
         dLambda *= Clip3( 2.00, 4.00, (qp_temp_orig / 6.0) ); // (j == B_SLICE && p_cur_frm->layer != 0 )
@@ -359,6 +395,18 @@ Void TEncSlice::initEncSlice( TComPic* pcPic, Int pocLast, Int pocCurr, Int iGOP
     {
       dLambda *= 0.95;
     }
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+    Double lambdaModifier;
+    if( rpcSlice->getSliceType( ) != I_SLICE || intraLambdaModifiers.empty())
+    {
+      lambdaModifier = m_pcCfg->getLambdaModifier( temporalId );
+    }
+    else
+    {
+      lambdaModifier = intraLambdaModifiers[ (temporalId < intraLambdaModifiers.size()) ? temporalId : (intraLambdaModifiers.size()-1) ];
+    }
+    dLambda *= lambdaModifier;
+#endif
 
 #if JVET_B0039_QP_FIX
     Double lambdaRef = 0.57*pow(2.0, qp_temp/3.0);
@@ -379,10 +427,24 @@ Void TEncSlice::initEncSlice( TComPic* pcPic, Int pocLast, Int pocCurr, Int iGOP
   dQP     = m_pdRdPicQp    [0];
   iQP     = m_piRdPicQp    [0];
 
-  if( rpcSlice->getSliceType( ) != I_SLICE )
+#if !JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+  const Int temporalId=m_pcCfg->getGOPEntry(iGOPid).m_temporalId;
+  const std::vector<Double> &intraLambdaModifiers=m_pcCfg->getIntraLambdaModifier();
+#endif
+
+#if !JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+  Double lambdaModifier;
+  if( rpcSlice->getSliceType( ) != I_SLICE || intraLambdaModifiers.empty())
   {
-    dLambda *= m_pcCfg->getLambdaModifier( m_pcCfg->getGOPEntry(iGOPid).m_temporalId );
+    lambdaModifier = m_pcCfg->getLambdaModifier( temporalId );
   }
+  else
+  {
+    lambdaModifier = intraLambdaModifiers[ (temporalId < intraLambdaModifiers.size()) ? temporalId : (intraLambdaModifiers.size()-1) ];
+  }
+
+  dLambda *= lambdaModifier;
+#endif
 
   setUpLambda(rpcSlice, dLambda, iQP);
 
