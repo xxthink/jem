@@ -58,6 +58,9 @@ protected:
   Char*     m_pchInputFile;                                   ///< source file name
   Char*     m_pchBitstreamFile;                               ///< output bitstream file
   Char*     m_pchReconFile;                                   ///< output reconstruction file
+#if JVET_D0186_PRECISEPSNR
+  Char*     m_pchPreciseLogFile;                              ///< precise log file
+#endif
   Double    m_adLambdaModifier[ MAX_TLAYER ];                 ///< Lambda modifier array for each temporal layer
   // source specification
   Int       m_iFrameRate;                                     ///< source frame-rates (Hz)

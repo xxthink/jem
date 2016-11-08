@@ -87,6 +87,9 @@ class TEncGOP
 private:
 
   TEncAnalyze             m_gcAnalyzeAll;
+#if JVET_D0186_PRECISEPSNR
+  TEncAnalyze             m_gcAnalyzeNoFirst;
+#endif
   TEncAnalyze             m_gcAnalyzeI;
   TEncAnalyze             m_gcAnalyzeP;
   TEncAnalyze             m_gcAnalyzeB;
@@ -171,6 +174,10 @@ public:
 #else
   Void  printOutSummary      ( UInt uiNumAllPicCoded, Bool isField, const Bool printMSEBasedSNR, const Bool printSequenceMSE, const BitDepths &bitDepths );
 #endif
+#if JVET_D0186_PRECISEPSNR
+  Void  printOutPreciseSummary(const Char * filename, Bool isField, const Bool trueBitdepthPSNR, const BitDepths &bitDepths);
+#endif
+
 #if !JVET_C0038_GALF
   Void  preLoopFilterPicAll  ( TComPic* pcPic, UInt64& ruiDist );
 #endif
