@@ -52,6 +52,7 @@
 ///////////////////////////////////////////////////////////
 #define JVET_D0134_PSNR                                   1
 #define JVET_D0135_PARAMS                                 1
+#define JVET_D0186_PRECISEPSNR                            1
 
 #define JVET_D0033_ADAPTIVE_CLIPPING                      1
 #define JVET_D0033_ADAPTIVE_CLIPPING_ENC_METHOD           1

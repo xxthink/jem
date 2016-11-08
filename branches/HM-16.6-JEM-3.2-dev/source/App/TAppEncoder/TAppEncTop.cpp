@@ -665,6 +665,12 @@ Void TAppEncTop::encode()
   }
 
   m_cTEncTop.printSummary(m_isField);
+#if JVET_D0186_PRECISEPSNR
+  if (m_pchPreciseLogFile != NULL)
+  {
+    m_cTEncTop.printPreciseSummary(m_pchPreciseLogFile, m_isField);
+  }
+#endif  
 
   // delete original YUV buffer
   pcPicYuvOrg->destroy();

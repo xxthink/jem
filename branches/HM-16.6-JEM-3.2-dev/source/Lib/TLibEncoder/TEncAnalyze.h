@@ -100,9 +100,17 @@ public:
   }
 
 #if JVET_D0134_PSNR
-  Void calculateCombinedValues(const ChromaFormat chFmt, Double &PSNRyuv, Double &MSEyuv, const Bool trueBitdepthPSNR, const BitDepths &bitDepths)
+  Void calculateCombinedValues(const ChromaFormat chFmt, Double &PSNRyuv, Double &MSEyuv, const Bool trueBitdepthPSNR, const BitDepths &bitDepths
+#if JVET_D0186_PRECISEPSNR
+    , UInt * pmaxval = 0
+#endif
+    )
 #else
-  Void calculateCombinedValues(const ChromaFormat chFmt, Double &PSNRyuv, Double &MSEyuv, const BitDepths &bitDepths)
+  Void calculateCombinedValues(const ChromaFormat chFmt, Double &PSNRyuv, Double &MSEyuv, const BitDepths &bitDepths
+#if JVET_D0186_PRECISEPSNR
+    , UInt * pmaxval = 0
+#endif
+    )
 #endif
   {
     MSEyuv    = 0;
@@ -140,7 +148,54 @@ public:
 
     MSEyuv /= Double(scale);  // i.e. divide by 6 for 4:2:0, 8 for 4:2:2 etc.
     PSNRyuv = (MSEyuv==0 ? 999.99 : 10*log10((maxval*maxval)/MSEyuv));
+#if JVET_D0186_PRECISEPSNR
+    if (pmaxval != 0)
+    {
+      *pmaxval = maxval;
+    }
+#endif
   }
+
+#if JVET_D0186_PRECISEPSNR
+  Void    printOutPrecise(FILE * fd, Char cDelim, const ChromaFormat chFmt, const Bool printMSEBasedSNR, const Bool printSequenceMSE
+#if JVET_D0134_PSNR
+    , const Bool trueBitdepthPSNR
+#endif
+    , const BitDepths &bitDepths)
+  {
+    fprintf(fd, "\tTotal Frames | %16s %16s %16s %16s %16s %6s\n", "Bitrate", "Y-PSNR", "U-PSNR", "V-PSNR", "YUV-MSE", "MAXVAL");
+
+    Double dFps = m_dFrmRate; //--CFG_KDY
+    Double dScale = dFps / 1000 / (Double)m_uiNumPic;
+
+    Double PSNRyuv = MAX_DOUBLE;
+    Double MSEyuv = MAX_DOUBLE;
+    UInt maxval = 0;
+    
+    calculateCombinedValues(chFmt, PSNRyuv, MSEyuv
+#if JVET_D0134_PSNR
+       , trueBitdepthPSNR
+#endif  
+       , bitDepths
+       , &maxval
+    );
+
+    union udouble {
+      Double d;
+      uint64_t u;
+    };
+
+    udouble vals[5] = {};
+    vals[0].d = getBits() * dScale;
+    vals[1].d = getPsnr(COMPONENT_Y) / (Double)getNumPic();
+    vals[2].d = getPsnr(COMPONENT_Cb) / (Double)getNumPic();
+    vals[3].d = getPsnr(COMPONENT_Cr) / (Double)getNumPic();
+    vals[4].d = MSEyuv;
+
+    fprintf(fd, "\t%9d    %c %016llx %016llx %016llx %016llx %016llx %6d", getNumPic(), cDelim, (long long unsigned int)vals[0].u, (long long unsigned int)vals[1].u, 
+      (long long unsigned int)vals[2].u, (long long unsigned int)vals[3].u, (long long unsigned int)vals[4].u, maxval);
+  }
+#endif
 
 #if JVET_D0134_PSNR
   Void    printOut ( Char cDelim, const ChromaFormat chFmt, const Bool printMSEBasedSNR, const Bool printSequenceMSE, const Bool trueBitdepthPSNR, const BitDepths &bitDepths )

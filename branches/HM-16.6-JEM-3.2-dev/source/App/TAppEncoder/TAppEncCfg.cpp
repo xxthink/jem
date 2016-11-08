@@ -108,6 +108,9 @@ TAppEncCfg::TAppEncCfg()
 : m_pchInputFile()
 , m_pchBitstreamFile()
 , m_pchReconFile()
+#if JVET_D0186_PRECISEPSNR
+, m_pchPreciseLogFile()
+#endif
 , m_inputColourSpaceConvert(IPCOLOURSPACE_UNCHANGED)
 , m_snrInternalColourSpace(false)
 , m_outputInternalColourSpace(false)
@@ -145,6 +148,9 @@ TAppEncCfg::~TAppEncCfg()
   free(m_pchInputFile);
   free(m_pchBitstreamFile);
   free(m_pchReconFile);
+#if JVET_D0186_PRECISEPSNR
+  free(m_pchPreciseLogFile);
+#endif
   free(m_pchdQPFile);
   free(m_scalingListFile);
 }
@@ -671,6 +677,9 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   string cfg_InputFile;
   string cfg_BitstreamFile;
   string cfg_ReconFile;
+#if JVET_D0186_PRECISEPSNR
+  string cfg_PreciseLogFile;
+#endif
   string cfg_dQPFile;
   string cfg_ScalingListFile;
 
@@ -728,6 +737,9 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   ("InputFile,i",                                     cfg_InputFile,                               string(""), "Original YUV input file name")
   ("BitstreamFile,b",                                 cfg_BitstreamFile,                           string(""), "Bitstream output file name")
   ("ReconFile,o",                                     cfg_ReconFile,                               string(""), "Reconstructed YUV output file name")
+#if JVET_D0186_PRECISEPSNR
+  ("PreciseLog,p",                                    cfg_PreciseLogFile,                          string(""), "Log for precise metrics")
+#endif
   ("SourceWidth,-wdt",                                m_iSourceWidth,                                       0, "Source picture width")
   ("SourceHeight,-hgt",                               m_iSourceHeight,                                      0, "Source picture height")
   ("InputBitDepth",                                   m_inputBitDepth[CHANNEL_TYPE_LUMA],                   8, "Bit-depth of input file")
@@ -1243,6 +1255,9 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   m_pchInputFile = cfg_InputFile.empty() ? NULL : strdup(cfg_InputFile.c_str());
   m_pchBitstreamFile = cfg_BitstreamFile.empty() ? NULL : strdup(cfg_BitstreamFile.c_str());
   m_pchReconFile = cfg_ReconFile.empty() ? NULL : strdup(cfg_ReconFile.c_str());
+#if JVET_D0186_PRECISEPSNR
+  m_pchPreciseLogFile = cfg_PreciseLogFile.empty() ? NULL : strdup(cfg_PreciseLogFile.c_str());
+#endif
   m_pchdQPFile = cfg_dQPFile.empty() ? NULL : strdup(cfg_dQPFile.c_str());
 
   m_framesToBeEncoded = ( m_framesToBeEncoded + m_temporalSubsampleRatio - 1 ) / m_temporalSubsampleRatio;

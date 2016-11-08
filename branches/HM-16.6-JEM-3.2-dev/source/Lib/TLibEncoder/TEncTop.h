@@ -202,6 +202,17 @@ public:
   Void printSummary(Bool isField) { m_cGOPEncoder.printOutSummary (m_uiNumAllPicCoded, isField, m_printMSEBasedSequencePSNR, m_printSequenceMSE, m_cSPS.getBitDepths()); }
 #endif
 
+#if JVET_D0186_PRECISEPSNR
+  Void printPreciseSummary(const Char * filename, Bool isField) { 
+    m_cGOPEncoder.printOutPreciseSummary(filename, isField
+#if JVET_D0134_PSNR
+      , m_trueBidepthPSNR
+#endif
+      , m_cSPS.getBitDepths()
+    );
+  }
+#endif
+
 #if ALF_HM3_REFACTOR
   TEncAdaptiveLoopFilter* getAdaptiveLoopFilter () { return  &m_cAdaptiveLoopFilter;  }
 #endif
