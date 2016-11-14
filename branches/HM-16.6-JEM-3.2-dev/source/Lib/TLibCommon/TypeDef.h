@@ -309,6 +309,7 @@
 
 #define FIX_TICKET30                                      1  ///< Fix of ticket #30 (Use of uninitialized Cabac coder for Intra 128x128 blocks)
 #define FIX_TICKET33                                      1  ///< Fix of ticket #33 (Block level IC flag is set based on slice level IC flag)
+#define FIX_TICKET34                                      1  ///< Fix of ticket #34 (Intra-fast encoder-side decisions based on possibly incorrect obmc pred buffer)
 
 ///////////////////////////////////////////////////////////
 // KTA tools section end
