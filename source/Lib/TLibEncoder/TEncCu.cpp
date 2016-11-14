@@ -1780,6 +1780,13 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
           if (rpcBestCU->getPredictionMode(0)==MODE_INTER && !rpcBestCU->getSlice()->isIntra())
           {
 #if JVET_C0024_PBINTRA_FAST_FIX
+#if FIX_TICKET34            
+            // redundant MC process to make sure that m_pppcPredYuvBest has the correct moiton compensation prediction data
+            m_pcPredSearch->motionCompensation ( rpcBestCU, m_pppcPredYuvBest[uiWidthIdx][uiHeightIdx] ); 
+#if COM16_C806_OBMC
+            m_pcPredSearch->subBlockOBMC( rpcBestCU, 0, m_pppcPredYuvBest[uiWidthIdx][uiHeightIdx], m_pppcTmpYuv1[uiWidthIdx][uiHeightIdx], m_pppcTmpYuv2[uiWidthIdx][uiHeightIdx] );
+#endif
+#endif
             DistParam distParam;
             const Bool bUseHadamard=rpcTempCU->getCUTransquantBypass(0) == 0;
             m_pcRdCost->setDistParam(distParam, rpcTempCU->getSlice()->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA), m_pppcOrigYuv[uiWidthIdx][uiHeightIdx]->getAddr(COMPONENT_Y)
@@ -4266,8 +4273,16 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
     }
 #if JVET_C0024_QTBT
     rpcTempCU->copyPartFrom( m_pppcTempCUWoOBMC[uiWIdx][uiHIdx], 0, uhDepth, rpcTempCU->getWidth(0), rpcTempCU->getHeight(0) );
+#if FIX_TICKET34
+    if (nOBMC == 0)
+      m_pppcPredYuvWoOBMC[uiWIdx][uiHIdx]->copyToPartYuv(m_pppcPredYuvTemp[uiWIdx][uiHIdx], 0);
+#endif
 #else
     rpcTempCU->copyPartFrom( m_ppcTempCUWoOBMC[uhDepth], 0, uhDepth );
+#if FIX_TICKET34
+    if (nOBMC == 0)
+      m_ppcPredYuvWoOBMC[uhDepth]->copyToPartYuv(m_ppcPredYuvTemp[uhDepth], 0);
+#endif
 #endif
     rpcTempCU->setOBMCFlagSubParts( ( Bool )nOBMC , 0 , uhDepth );
 #endif
@@ -4276,14 +4291,22 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
 #endif
 #if JVET_C0024_QTBT
     m_pcPredSearch->encodeResAndCalcRdInterCU( rpcTempCU, m_pppcOrigYuv[uiWIdx][uiHIdx], 
+#if FIX_TICKET34
+        // no special treatment now
+#else
 #if COM16_C806_OBMC
     nOBMC == 0 ? m_pppcPredYuvWoOBMC[uiWIdx][uiHIdx] :
+#endif
 #endif
     m_pppcPredYuvTemp[uiWIdx][uiHIdx], m_pppcResiYuvTemp[uiWIdx][uiHIdx], m_pppcResiYuvBest[uiWIdx][uiHIdx], m_pppcRecoYuvTemp[uiWIdx][uiHIdx], false 
 #else
   m_pcPredSearch->encodeResAndCalcRdInterCU( rpcTempCU, m_ppcOrigYuv[uhDepth], 
+#if FIX_TICKET34
+        // no special treatment now
+#else
 #if COM16_C806_OBMC
     nOBMC == 0 ? m_ppcPredYuvWoOBMC[uhDepth] :
+#endif
 #endif
     m_ppcPredYuvTemp[uhDepth], m_ppcResiYuvTemp[uhDepth], m_ppcResiYuvBest[uhDepth], m_ppcRecoYuvTemp[uhDepth], false 
 #endif
