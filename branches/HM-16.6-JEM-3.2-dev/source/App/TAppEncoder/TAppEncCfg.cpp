@@ -844,7 +844,7 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   ("GOPSize,g",                                       m_iGOPSize,                                           1, "GOP size of temporal structure")
 
 #if JVET_D0135_PARAMS
-  ("ReWriteParamSetsFlag",                            m_bReWriteParamSetsFlag,                          false, "Enable rewriting of Parameter sets before every (intra) random access point")
+  ("ReWriteParamSetsFlag",                            m_bReWriteParamSetsFlag,                           true, "Enable rewriting of Parameter sets before every (intra) random access point")
 #endif 
 
   // motion search options
