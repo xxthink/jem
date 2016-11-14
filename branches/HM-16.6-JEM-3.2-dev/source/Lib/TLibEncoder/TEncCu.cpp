@@ -2182,17 +2182,31 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #if JVET_D0077_SAVE_LOAD_ENC_INFO
       if( saveLoadTag == SAVE_ENC_INFO )
       {
+#if COM16_C806_EMT
         m_pcPredSearch->setSaveLoadEmtFlag(uiWidthIdx, uiHeightIdx, rpcBestCU->getEmtCuFlag(0));
         m_pcPredSearch->setSaveLoadEmtIdx(uiWidthIdx, uiHeightIdx, rpcBestCU->getEmtTuIdx(0));
+#endif
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
         m_pcPredSearch->setSaveLoadRotIdx(uiWidthIdx, uiHeightIdx, rpcBestCU->getROTIdx(rpcBestCU->getTextType(),0));
+#endif
+#if COM16_C1046_PDPC_INTRA
         m_pcPredSearch->setSaveLoadPdpcIdx(uiWidthIdx, uiHeightIdx, rpcBestCU->getPDPCIdx(0));
+#endif
         if( !rpcBestCU->isIntra(0) )
         {
+#if m_SaveLoadFrucMode
           m_pcPredSearch->setSaveLoadFrucMode(uiWidthIdx, uiHeightIdx, rpcBestCU->getFRUCMgrMode(0));
+#endif
+#if VCEG_AZ07_IMV
           m_pcPredSearch->setSaveLoadIMVFlag(uiWidthIdx, uiHeightIdx, rpcBestCU->getiMVFlag(0));
+#endif
+#if VCEG_AZ06_IC
           m_pcPredSearch->setSaveLoadICFlag(uiWidthIdx, uiHeightIdx, rpcBestCU->getICFlag(0));
+#endif
           m_pcPredSearch->setSaveLoadMergeFlag(uiWidthIdx, uiHeightIdx, rpcBestCU->getMergeFlag(0));
+#if COM16_C1016_AFFINE
           m_pcPredSearch->setSaveLoadAffineFlag(uiWidthIdx, uiHeightIdx, rpcBestCU->getAffineFlag(0));
+#endif
           m_pcPredSearch->setSaveLoadInterDir(uiWidthIdx, uiHeightIdx, rpcBestCU->getInterDir(0));
     }
         dNonSplitCost = dCostTempBest = rpcBestCU->getTotalCost();
