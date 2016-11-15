@@ -2194,7 +2194,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #endif
         if( !rpcBestCU->isIntra(0) )
         {
-#if m_SaveLoadFrucMode
+#if VCEG_AZ07_FRUC_MERGE
           m_pcPredSearch->setSaveLoadFrucMode(uiWidthIdx, uiHeightIdx, rpcBestCU->getFRUCMgrMode(0));
 #endif
 #if VCEG_AZ07_IMV
