@@ -2073,6 +2073,33 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
   assert ( (m_iNumPicCoded == iNumPicRcvd) );
 }
 
+#if JVET_D0186_PRECISEPSNR
+Void TEncGOP::printOutPreciseSummary(const Char * filename, Bool isField, const Bool trueBitdepthPSNR, const BitDepths &bitDepths)
+{
+  const Int rateMultiplier = (isField ? 2 : 1);
+  m_gcAnalyzeAll.setFrmRate(m_pcCfg->getFrameRate()*rateMultiplier / (Double)m_pcCfg->getTemporalSubsampleRatio());
+  m_gcAnalyzeNoFirst.setFrmRate(m_pcCfg->getFrameRate()*rateMultiplier / (Double)m_pcCfg->getTemporalSubsampleRatio());
+
+  FILE *fp = fopen(filename, "w");
+  fprintf(fp, "\n\nPrecise All --------------------------------------------------------\n");
+
+  const ChromaFormat chFmt = m_pcCfg->getChromaFormatIdc();
+
+#if JVET_D0134_PSNR
+#define MAYBE_trueBitdepthPSNR , trueBitdepthPSNR
+#else
+#define MAYBE_trueBitdepthPSNR
+#endif
+
+  m_gcAnalyzeAll.printOutPrecise(fp, 'x', chFmt, false, false MAYBE_trueBitdepthPSNR, bitDepths);
+  fprintf(fp, "\n");
+
+  fprintf(fp, "\n\nPrecise Excluding First --------------------------------------------------------\n");
+  m_gcAnalyzeNoFirst.printOutPrecise(fp, 'x', chFmt, false, false MAYBE_trueBitdepthPSNR, bitDepths);
+  fprintf(fp, "\n");
+}
+#endif
+
 #if JVET_D0134_PSNR
 Void TEncGOP::printOutSummary(UInt uiNumAllPicCoded, Bool isField, const Bool printMSEBasedSNR, const Bool printSequenceMSE, const Bool trueBitdepthPSNR, const BitDepths &bitDepths)
 #else
@@ -2080,8 +2107,7 @@ Void TEncGOP::printOutSummary(UInt uiNumAllPicCoded, Bool isField, const Bool pr
 #endif
 {
   assert (uiNumAllPicCoded == m_gcAnalyzeAll.getNumPic());
-
-
+  
   //--CFG_KDY
   const Int rateMultiplier=(isField?2:1);
   m_gcAnalyzeAll.setFrmRate( m_pcCfg->getFrameRate()*rateMultiplier / (Double)m_pcCfg->getTemporalSubsampleRatio());
@@ -2466,6 +2492,13 @@ Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const Acces
   {
     m_gcAnalyzeB.addResult (dPSNR, (Double)uibits, MSEyuvframe);
   }
+
+#if JVET_D0186_PRECISEPSNR
+  if (pcSlice->getPOC() > 0)
+  {
+    m_gcAnalyzeNoFirst.addResult(dPSNR, (Double)uibits, MSEyuvframe);
+  }
+#endif
 
   Char c = (pcSlice->isIntra() ? 'I' : pcSlice->isInterP() ? 'P' : 'B');
   if (!pcSlice->isReferenced())

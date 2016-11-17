@@ -52,6 +52,7 @@
 ///////////////////////////////////////////////////////////
 #define JVET_D0134_PSNR                                   1
 #define JVET_D0135_PARAMS                                 1
+#define JVET_D0186_PRECISEPSNR                            1
 
 #define JVET_D0033_ADAPTIVE_CLIPPING                      1
 #define JVET_D0033_ADAPTIVE_CLIPPING_ENC_METHOD           1
@@ -308,6 +309,7 @@
 
 #define FIX_TICKET30                                      1  ///< Fix of ticket #30 (Use of uninitialized Cabac coder for Intra 128x128 blocks)
 #define FIX_TICKET33                                      1  ///< Fix of ticket #33 (Block level IC flag is set based on slice level IC flag)
+#define FIX_TICKET34                                      1  ///< Fix of ticket #34 (Intra-fast encoder-side decisions based on possibly incorrect obmc pred buffer)
 
 ///////////////////////////////////////////////////////////
 // KTA tools section end
