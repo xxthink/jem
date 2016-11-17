@@ -1780,6 +1780,13 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
           if (rpcBestCU->getPredictionMode(0)==MODE_INTER && !rpcBestCU->getSlice()->isIntra())
           {
 #if JVET_C0024_PBINTRA_FAST_FIX
+#if FIX_TICKET34            
+            // redundant MC process to make sure that m_pppcPredYuvBest has the correct moiton compensation prediction data
+            m_pcPredSearch->motionCompensation ( rpcBestCU, m_pppcPredYuvBest[uiWidthIdx][uiHeightIdx] ); 
+#if COM16_C806_OBMC
+            m_pcPredSearch->subBlockOBMC( rpcBestCU, 0, m_pppcPredYuvBest[uiWidthIdx][uiHeightIdx], m_pppcTmpYuv1[uiWidthIdx][uiHeightIdx], m_pppcTmpYuv2[uiWidthIdx][uiHeightIdx] );
+#endif
+#endif
             DistParam distParam;
             const Bool bUseHadamard=rpcTempCU->getCUTransquantBypass(0) == 0;
             m_pcRdCost->setDistParam(distParam, rpcTempCU->getSlice()->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA), m_pppcOrigYuv[uiWidthIdx][uiHeightIdx]->getAddr(COMPONENT_Y)
@@ -2175,17 +2182,31 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #if JVET_D0077_SAVE_LOAD_ENC_INFO
       if( saveLoadTag == SAVE_ENC_INFO )
       {
+#if COM16_C806_EMT
         m_pcPredSearch->setSaveLoadEmtFlag(uiWidthIdx, uiHeightIdx, rpcBestCU->getEmtCuFlag(0));
         m_pcPredSearch->setSaveLoadEmtIdx(uiWidthIdx, uiHeightIdx, rpcBestCU->getEmtTuIdx(0));
+#endif
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
         m_pcPredSearch->setSaveLoadRotIdx(uiWidthIdx, uiHeightIdx, rpcBestCU->getROTIdx(rpcBestCU->getTextType(),0));
+#endif
+#if COM16_C1046_PDPC_INTRA
         m_pcPredSearch->setSaveLoadPdpcIdx(uiWidthIdx, uiHeightIdx, rpcBestCU->getPDPCIdx(0));
+#endif
         if( !rpcBestCU->isIntra(0) )
         {
+#if VCEG_AZ07_FRUC_MERGE
           m_pcPredSearch->setSaveLoadFrucMode(uiWidthIdx, uiHeightIdx, rpcBestCU->getFRUCMgrMode(0));
+#endif
+#if VCEG_AZ07_IMV
           m_pcPredSearch->setSaveLoadIMVFlag(uiWidthIdx, uiHeightIdx, rpcBestCU->getiMVFlag(0));
+#endif
+#if VCEG_AZ06_IC
           m_pcPredSearch->setSaveLoadICFlag(uiWidthIdx, uiHeightIdx, rpcBestCU->getICFlag(0));
+#endif
           m_pcPredSearch->setSaveLoadMergeFlag(uiWidthIdx, uiHeightIdx, rpcBestCU->getMergeFlag(0));
+#if COM16_C1016_AFFINE
           m_pcPredSearch->setSaveLoadAffineFlag(uiWidthIdx, uiHeightIdx, rpcBestCU->getAffineFlag(0));
+#endif
           m_pcPredSearch->setSaveLoadInterDir(uiWidthIdx, uiHeightIdx, rpcBestCU->getInterDir(0));
     }
         dNonSplitCost = dCostTempBest = rpcBestCU->getTotalCost();
@@ -4266,8 +4287,16 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
     }
 #if JVET_C0024_QTBT
     rpcTempCU->copyPartFrom( m_pppcTempCUWoOBMC[uiWIdx][uiHIdx], 0, uhDepth, rpcTempCU->getWidth(0), rpcTempCU->getHeight(0) );
+#if FIX_TICKET34
+    if (nOBMC == 0)
+      m_pppcPredYuvWoOBMC[uiWIdx][uiHIdx]->copyToPartYuv(m_pppcPredYuvTemp[uiWIdx][uiHIdx], 0);
+#endif
 #else
     rpcTempCU->copyPartFrom( m_ppcTempCUWoOBMC[uhDepth], 0, uhDepth );
+#if FIX_TICKET34
+    if (nOBMC == 0)
+      m_ppcPredYuvWoOBMC[uhDepth]->copyToPartYuv(m_ppcPredYuvTemp[uhDepth], 0);
+#endif
 #endif
     rpcTempCU->setOBMCFlagSubParts( ( Bool )nOBMC , 0 , uhDepth );
 #endif
@@ -4276,14 +4305,22 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
 #endif
 #if JVET_C0024_QTBT
     m_pcPredSearch->encodeResAndCalcRdInterCU( rpcTempCU, m_pppcOrigYuv[uiWIdx][uiHIdx], 
+#if FIX_TICKET34
+        // no special treatment now
+#else
 #if COM16_C806_OBMC
     nOBMC == 0 ? m_pppcPredYuvWoOBMC[uiWIdx][uiHIdx] :
+#endif
 #endif
     m_pppcPredYuvTemp[uiWIdx][uiHIdx], m_pppcResiYuvTemp[uiWIdx][uiHIdx], m_pppcResiYuvBest[uiWIdx][uiHIdx], m_pppcRecoYuvTemp[uiWIdx][uiHIdx], false 
 #else
   m_pcPredSearch->encodeResAndCalcRdInterCU( rpcTempCU, m_ppcOrigYuv[uhDepth], 
+#if FIX_TICKET34
+        // no special treatment now
+#else
 #if COM16_C806_OBMC
     nOBMC == 0 ? m_ppcPredYuvWoOBMC[uhDepth] :
+#endif
 #endif
     m_ppcPredYuvTemp[uhDepth], m_ppcResiYuvTemp[uhDepth], m_ppcResiYuvBest[uhDepth], m_ppcRecoYuvTemp[uhDepth], false 
 #endif
