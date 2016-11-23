@@ -385,9 +385,18 @@ Void TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComT
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
       , dummyNzTs
 #endif
+#if SIGNPRED
+      , pcCU->getSignHidden(compID) + rTu.getCoefficientOffset(compID)
+      , false
+#endif
       );
 #else
-    m_pcEntropyCoderIf->codeCoeffNxN( rTu, (pcCU->getCoeff(compID) + rTu.getCoefficientOffset(compID)), compID);
+    m_pcEntropyCoderIf->codeCoeffNxN( rTu, (pcCU->getCoeff(compID) + rTu.getCoefficientOffset(compID)), compID
+#if SIGNPRED
+                  , pcCU->getSignHidden(compID) + rTu.getCoefficientOffset(compID)
+                  , false
+#endif
+      );
 #endif
   }
 
@@ -610,6 +619,10 @@ Void TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComT
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
                   , iNonZeroCoeffNonTs
 #endif
+#if SIGNPRED
+                  , pcCU->getSignHidden(compID) + subTUIterator.getCoefficientOffset(compID)
+                  , false
+#endif
                   );
               }
 #if COM16_C806_EMT
@@ -636,6 +649,10 @@ Void TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComT
 #endif
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
                 , iNonZeroCoeffNonTs
+#endif
+#if SIGNPRED
+                  , pcCU->getSignHidden(compID) + rTu.getCoefficientOffset(compID)
+                  , false
 #endif
                 );
             }
@@ -1044,6 +1061,9 @@ Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
   , Int& iNonZeroCoeffNonTs
 #endif
+#if SIGNPRED
+  , TComTrQuant *trQuant
+#endif
   )
 {
 #if ENVIRONMENT_VARIABLE_DEBUG_AND_TEST
@@ -1076,7 +1096,11 @@ Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
     }
   }
 
-  TComTURecurse tuRecurse(pcCU, uiAbsPartIdx, uiDepth);
+  TComTURecurse tuRecurse(pcCU, uiAbsPartIdx, uiDepth
+#if SIGNPRED
+    , trQuant
+#endif
+    );
 #if ENVIRONMENT_VARIABLE_DEBUG_AND_TEST
   if (bDebugRQT)
   {
@@ -1229,7 +1253,11 @@ Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
 #endif 
 }
 
+#if SIGNPRED
+Void TEncEntropy::encodeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID, UChar *pcSDHStorage, Bool getSignPredCombos )
+#else
 Void TEncEntropy::encodeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID)
+#endif
 {
   TComDataCU *pcCU = rTu.getCU();
 
@@ -1263,6 +1291,10 @@ Void TEncEntropy::encodeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
             , iNonZeroCoeffNonTs
 #endif
+#if SIGNPRED
+              , pcSDHStorage + (subTUIterator.GetSectionNumber() * subTUSize)
+              , getSignPredCombos
+#endif
             );
         }
       }
@@ -1277,6 +1309,10 @@ Void TEncEntropy::encodeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID
 #endif
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
         , iNonZeroCoeffNonTs
+#endif
+#if SIGNPRED
+        , pcSDHStorage
+        , getSignPredCombos
 #endif
         );
     }

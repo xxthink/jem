@@ -667,6 +667,9 @@ Void TEncCavlc::codeSPS( const TComSPS* pcSPS )
 #if COM16_C983_RSAF
  WRITE_FLAG( pcSPS->getUseRSAF() ? 1 : 0,                "rsaf_enabled_flag" );
 #endif
+#if SIGNPRED
+  WRITE_UVLC( pcSPS->getMaxNumPredSigns() ,              "max_pred_signs");
+#endif
   // KTA tools
 
   Bool sps_extension_present_flag=false;
@@ -1571,6 +1574,10 @@ Void TEncCavlc::codeCoeffNxN    ( TComTU& /*rTu*/, TCoeff* /*pcCoef*/, const Com
 #endif
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
   , Int& iNonZeroCoeffNonTs
+#endif
+#if SIGNPRED
+  , UChar * /*pcSDHStorage*/
+  , Bool /*getSignPredCombos*/
 #endif
   )
 {

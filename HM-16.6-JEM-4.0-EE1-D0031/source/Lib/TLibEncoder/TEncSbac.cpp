@@ -142,6 +142,9 @@ TEncSbac::TEncSbac()
 #if COM16_C1016_AFFINE
 , m_cCUAffineFlagSCModel               ( 1,             1,               NUM_AFFINE_FLAG_CTX           , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
+#if SIGNPRED
+, m_TUSignResidueSCModel               (1,              1,               NUM_TU_SIGN_RESIDUE_CTX       , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 {
   assert( m_numContextModels <= MAX_NUM_CTX_MOD );
 }
@@ -243,6 +246,9 @@ Void TEncSbac::resetEntropy           (const TComSlice *pSlice)
 #if COM16_C1016_AFFINE
   m_cCUAffineFlagSCModel.initBuffer               ( eSliceType, iQp, (UChar*)INIT_AFFINE_FLAG );
 #endif
+#if SIGNPRED
+  m_TUSignResidueSCModel.initBuffer               ( eSliceType, iQp, (UChar*)INIT_TU_SIGN_RESIDUE );
+#endif
 
   for (UInt statisticIndex = 0; statisticIndex < RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS ; statisticIndex++)
   {
@@ -342,6 +348,9 @@ SliceType TEncSbac::determineCabacInitIdx(const TComSlice *pSlice)
 #endif
 #if COM16_C1016_AFFINE
       curCost += m_cCUAffineFlagSCModel.calcCost               ( curSliceType, qp, (UChar*)INIT_AFFINE_FLAG );
+#endif
+#if SIGNPRED
+      curCost += m_TUSignResidueSCModel.calcCost               ( curSliceType, qp, (UChar*)INIT_TU_SIGN_RESIDUE );
 #endif
       if (curCost < bestCost)
       {
@@ -1988,12 +1997,95 @@ Void TEncSbac::codeLastSignificantXY( UInt uiPosX, UInt uiPosY, Int width, Int h
   }
 }
 
+#if SIGNPRED
+Void TEncSbac::codeSignResidue(UInt symbol, UChar ctxt)
+{
+  m_pcBinIf->encodeBin(symbol, m_TUSignResidueSCModel.get(0, 0, ctxt));
+}
+
+// code all signs for a TB.
+// includes compressed (residues) and uncompressed signs.
+// if rTU.mPredYuv and mSignPred are non-null, we find the signs to compress first, storing results in puCU->m_signHidden.
+Void TEncSbac::codeSigns(TComTU& rTU, TCoeff* pcCoef, ComponentID compID, UChar *pcSDHStorage, Bool getSignPredCombos)
+{
+  TComDataCU *pcCU = rTU.getCU();
+  const UInt uiAbsPartIdx=rTU.GetAbsPartIdxTU();
+  const TComRectangle &tuRect  =rTU.getRect(compID);
+  const UInt uiWidth           = tuRect.width;
+  const UInt uiHeight          = tuRect.height;
+  const QpParam cQP(*pcCU, compID);
+
+  UInt  uiPelXCur    = pcCU->getCUPelX() + g_auiRasterToPelX[ g_auiZscanToRaster[uiAbsPartIdx] ];
+  UInt  uiPelYCur    = pcCU->getCUPelY() + g_auiRasterToPelY[ g_auiZscanToRaster[uiAbsPartIdx] ];
+  Bool useTransformSkip = pcCU->getTransformSkip(uiAbsPartIdx, compID);
+  Bool transQuantBypass = pcCU->getCUTransquantBypass(uiAbsPartIdx);
+  Bool signPredValid = isLuma(compID)                                && uiPelXCur != 0 && uiPelYCur != 0 && !transQuantBypass && !useTransformSkip;
+
+  UInt numberofacceptedsigns = 0;
+  UInt chgfreq[MAXMAXNUMBEROFSIGNS];
+  UInt chgprobas[MAXMAXNUMBEROFSIGNS];
+
+  if (signPredValid && getSignPredCombos)
+  {
+      // We guess our signs and record the results.  We're in RDO.
+      rTU.GetTrQuant()->xFindAndApplySignPredictors(rTU, compID, rTU.GetPredYuv(), pcCoef, pcSDHStorage, DIR_REAL_TO_RESIDUE);
+  }
+
+  if (signPredValid)
+    rTU.GetTrQuant()->getCompressibleSigns(rTU, pcCoef, pcSDHStorage, numberofacceptedsigns, chgfreq, chgprobas);
+
+  // Write EP signs.
+  for (Int freq = 0; freq < uiWidth*uiHeight; freq++)
+  {
+    int j;
+    if (pcCoef[freq] == 0)
+      continue;
+    if (pcSDHStorage[freq] == SIGN_HIDDEN)
+        continue; // it's hidden, we don't write anything.
+    for (j = 0; j < numberofacceptedsigns; j++)
+    {
+      if (chgfreq[j] == freq)
+        break;
+    }
+    if (j < numberofacceptedsigns)
+      continue; // it's predicted -- we'll read it later.
+
+    UInt signSymbol = pcCoef[freq] < 0 ? 1 : 0;
+    m_pcBinIf->encodeBinEP(signSymbol);
+    DTRACE_CABAC_VL( g_nSymbolCounter++ )
+    DTRACE_CABAC_T( "\tsignEP " )
+    DTRACE_CABAC_V( signSymbol )
+    DTRACE_CABAC_T( "\n" )
+  }
+
+  // Write sign residues.
+  for (Int i = 0; i < numberofacceptedsigns; i++)
+  {
+    assert(pcCoef[chgfreq[i]] != 0);
+    assert(pcSDHStorage[chgfreq[i]] == SIGN_PRED_CORRECT || pcSDHStorage[chgfreq[i]] == SIGN_PRED_INCORRECT);
+    UInt signSymbol = pcSDHStorage[chgfreq[i]] == SIGN_PRED_CORRECT ? 0 : 1;
+    codeSignResidue(signSymbol, chgprobas[i]);
+    DTRACE_CABAC_VL( g_nSymbolCounter++ )
+    DTRACE_CABAC_T( "\tsignPred" )
+    DTRACE_CABAC_T( " ctxt " )
+    DTRACE_CABAC_V( chgprobas[i] )
+    DTRACE_CABAC_T( "  res " )
+    DTRACE_CABAC_V( signSymbol )
+    DTRACE_CABAC_T( "\n" )
+  }
+}
+#endif
+
 Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID 
 #if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
   , Int& bCbfCU
 #endif
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
   , Int& iNonZeroCoeffNonTs
+#endif
+#if SIGNPRED
+  , UChar * pcSDHStorage
+  , Bool getSignPredCombos
 #endif
   )
 {
@@ -2127,6 +2219,11 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
       beValid = pcCU->getSlice()->getPPS()->getSignHideFlag();
     }
   }
+
+#if SIGNPRED
+  if (getSignPredCombos && pcSDHStorage)
+      memset(pcSDHStorage, 0, uiWidth*uiHeight*sizeof(pcSDHStorage[0]));
+#endif
 
   //--------------------------------------------------------------------------------------------------
 
@@ -2521,6 +2618,16 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
         m_pcBinIf->align();
       }
 #if !VCEG_AZ07_CTX_RESIDUALCODING
+#if SIGNPRED
+      // signs after all RLs.
+      if (beValid && signHidden)
+      {
+        if (getSignPredCombos)
+            pcSDHStorage[codingParameters.scan[ firstNZPosInCG ]] =  SIGN_HIDDEN;
+        else
+            assert(pcSDHStorage[codingParameters.scan[ firstNZPosInCG ]] == SIGN_HIDDEN);
+      }
+#else
       if( beValid && signHidden )
       {
         m_pcBinIf->encodeBinsEP( (coeffSigns >> 1), numNonZero-1 );
@@ -2529,6 +2636,7 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
       {
         m_pcBinIf->encodeBinsEP( coeffSigns, numNonZero );
       }
+#endif // !SIGNPRED
 #endif
       Int iFirstCoeff2 = 1;
       if (escapeDataPresentInGroup)
@@ -2592,6 +2700,15 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
 #else
       if( beValid && signHidden )
 #endif
+#if SIGNPRED
+      {
+      // signs after all RLs.
+        if (getSignPredCombos)
+          pcSDHStorage[codingParameters.scan[ firstNZPosInCG ]] = SIGN_HIDDEN;
+        else
+          assert(pcSDHStorage[codingParameters.scan[ firstNZPosInCG ]] == SIGN_HIDDEN);
+      }
+#else
       {
         m_pcBinIf->encodeBinsEP( (coeffSigns >> 1), numNonZero-1 );
       }
@@ -2599,6 +2716,7 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
       {
         m_pcBinIf->encodeBinsEP( coeffSigns, numNonZero );
       }
+#endif // !SIGNPRED
 #endif
     }
   }
@@ -2626,6 +2744,10 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
     }
   }
 #endif
+#if SIGNPRED
+  codeSigns(rTu, pcCoef, compID, pcSDHStorage, getSignPredCombos);
+#endif
+
   return;
 }
 

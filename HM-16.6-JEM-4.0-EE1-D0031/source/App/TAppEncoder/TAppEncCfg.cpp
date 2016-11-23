@@ -1215,6 +1215,9 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 #if JVET_D0033_ADAPTIVE_CLIPPING
   ("AClip,-aclip", m_ClipParam.isActive, true, "Slice Level Adpative Clipping (Automated by default)")
 #endif
+#if SIGNPRED
+  ("MaxNumPredSigns",                            m_maxNumPredSigns, 0, "Max number of signs to predict per TU")
+#endif
   ;
 
   for(Int i=1; i<MAX_GOP+1; i++)
@@ -2584,6 +2587,10 @@ Void TAppEncCfg::xCheckParameter()
     xConfirmPara(m_timeCodeSEINumTs > MAX_TIMECODE_SEI_SETS, "Number of time sets cannot exceed 3");
   }
 
+#if SIGNPRED
+  xConfirmPara(!(m_maxNumPredSigns >= 0 && m_maxNumPredSigns <= MAXMAXNUMBEROFSIGNS) , "MaxNumPredSigns must be in the range [0..8]");
+#endif
+
 #undef xConfirmPara
   if (check_failed)
   {
@@ -2884,6 +2891,9 @@ Void TAppEncCfg::xPrintParameter()
 #endif
 #if JVET_D0033_ADAPTIVE_CLIPPING
   printf("ACLIP:%d ",m_ClipParam.isActive?1:0);
+#endif
+#if SIGNPRED
+  printf("MaxNumPredSigns:%d ", m_maxNumPredSigns);
 #endif
     printf("\n\n");
 

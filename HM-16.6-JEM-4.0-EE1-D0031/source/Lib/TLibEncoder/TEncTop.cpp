@@ -314,6 +314,9 @@ Void TEncTop::init(Bool isFieldCoding)
 #if VCEG_AZ08_USE_KLT
                    m_useKLT,
 #endif
+#if SIGNPRED
+                   m_maxNumPredSigns,
+#endif
                    m_useRDOQ,
                    m_useRDOQTS,
 #if T0196_SELECTIVE_RDOQ
@@ -893,6 +896,9 @@ Void TEncTop::xInitSPS()
 #endif
 #if COM16_C983_RSAF
   m_cSPS.setUseRSAF( m_useRSAF );
+#endif
+#if SIGNPRED
+  m_cSPS.setMaxNumPredSigns(m_maxNumPredSigns);
 #endif
 }
 

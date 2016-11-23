@@ -52,6 +52,18 @@
 
 //! \ingroup TLibCommon
 //! \{
+
+
+#if SIGNPRED
+// Returns context to use, higher context numbers imply higher probabilities.
+UChar const g_SignPredContext[2][2] =
+{
+    {0, 1}, // intra; lowamp, otheramps.
+    {0, 1}  // inter; lowamp, otheramps.
+};
+#endif
+
+
 #if JVET_C0024_AMAX_BT
 UInt g_uiBlkSize[ 10 ];
 UInt g_uiNumBlk[ 10 ];

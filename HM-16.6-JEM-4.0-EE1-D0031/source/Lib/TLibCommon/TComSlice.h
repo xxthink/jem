@@ -890,6 +890,9 @@ private:
 #if COM16_C983_RSAF
   Bool             m_useRSAF;
 #endif
+#if SIGNPRED
+  UInt             m_maxNumPredSigns;
+#endif
  // Parameter
   BitDepths        m_bitDepths;
   Int              m_qpBDOffset[MAX_NUM_CHANNEL_TYPE];
@@ -1199,6 +1202,11 @@ public:
 
   // WAS: getAlignCABACBeforeBypass and setAlignCABACBeforeBypass
   // Now: getSpsRangeExtension().getCabacBypassAlignmentEnabledFlag and getSpsRangeExtension().setCabacBypassAlignmentEnabledFlag
+
+#if SIGNPRED
+ UInt                   getMaxNumPredSigns()  const                                                { return m_maxNumPredSigns; }
+ Void                   setMaxNumPredSigns ( UInt n )                                              { m_maxNumPredSigns = n; }
+#endif
 };
 
 

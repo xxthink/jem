@@ -129,7 +129,60 @@ Void TComYuv::copyToPicComponent  ( const ComponentID compID, TComPicYuv* pcPicY
 }
 
 
+#if SIGNPRED && !JVET_C0024_QTBT
+Void TComYuv::copyToPicComponent  ( const ComponentID compID, const UInt x, const UInt y, const UInt uiWidth, const UInt uiHeight, TComPicYuv* pcPicYuvDst, const UInt ctuRsAddr, const UInt uiAbsZorderIdx) const
+{
+  const UInt  iSrcStride  = getStride(compID);
+  const UInt  iDstStride  = pcPicYuvDst->getStride(compID);
 
+  const Pel* pSrc     = getAddr(compID)+y*iSrcStride+x;
+        Pel* pDst     = pcPicYuvDst->getAddr ( compID, ctuRsAddr, uiAbsZorderIdx );
+
+  for ( Int yy = 0; yy < uiHeight; yy++)
+  {
+    ::memcpy( pDst, pSrc, sizeof(Pel)*uiWidth);
+    pDst += iDstStride;
+    pSrc += iSrcStride;
+  }
+}
+
+Void TComYuv::copyAddToPicComponent  ( const ComponentID compID, TComYuv *pResi, TComYuv *pReco, UInt uiAbsPartIdx, TComPicYuv* pcPicYuvDst, const UInt ctuRsAddr, const UInt uiPicAbsZorderIdx, const UInt uiWidth, const UInt uiHeight, const Int clipbd )
+{
+  // like intra code.
+  Pel* pelPred      = getAddr(compID, uiAbsPartIdx);
+  UInt predStride   = getStride(compID);
+  Pel* pelReco      = pReco ? pReco->getAddr( compID, uiAbsPartIdx ) : NULL;
+  UInt recoStride   = pReco ? pReco->getStride(compID) : 0;
+  Pel* pelResi      = pResi->getAddr( compID, uiAbsPartIdx);
+  UInt resiStride   = pResi->getStride(compID);
+  Pel* pelRecIPred  = pcPicYuvDst->getAddr( compID, ctuRsAddr, uiPicAbsZorderIdx );
+  UInt uiRecIPredStride = pcPicYuvDst->getStride(compID);
+
+#if O0043_BEST_EFFORT_DECODING
+  const Int bitDepthDelta = sps.getStreamBitDepth(toChannelType(compID)) - clipbd;
+#endif
+
+  for( UInt uiY = 0; uiY < uiHeight; uiY++ )
+  {
+    for( UInt uiX = 0; uiX < uiWidth; uiX++ )
+    {
+#if O0043_BEST_EFFORT_DECODING
+      Pel pel = ClipBD( rightShiftEvenRounding<Pel>(pelPred[ uiX ] + pelResi[ uiX ], bitDepthDelta), clipbd );
+#else
+      Pel pel = ClipBD( pelPred[ uiX ] + pelResi[ uiX ], clipbd );
+#endif
+      if (pelReco)
+        pelReco[uiX] = pel;
+      pelRecIPred[ uiX ] = pel;
+    }
+    pelPred     += predStride;
+    pelResi     += resiStride;
+    if (pelReco)
+      pelReco     += recoStride;
+    pelRecIPred += uiRecIPredStride;
+  }
+}
+#endif
 
 Void TComYuv::copyFromPicYuv   ( const TComPicYuv* pcPicYuvSrc, const UInt ctuRsAddr, const UInt uiAbsZorderIdx )
 {

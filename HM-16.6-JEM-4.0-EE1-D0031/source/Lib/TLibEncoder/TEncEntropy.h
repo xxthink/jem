@@ -164,6 +164,10 @@ public:
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
     , Int& iNonZeroCoeffNonTs
 #endif
+#if SIGNPRED
+    , UChar * pcSDHStorage
+    , Bool getSignPredCombos
+#endif
     ) = 0;
   virtual Void codeTransformSkipFlags ( TComTU &rTu, ComponentID component ) = 0;
 #if VCEG_AZ08_KLT_COMMON
@@ -348,9 +352,16 @@ public:
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
     , Int& iNonZeroCoeffNonTs
 #endif
+#if SIGNPRED
+    , TComTrQuant *trQuant
+#endif
     );
 
+#if SIGNPRED
+  Void encodeCoeffNxN         ( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID, UChar *pcSDHStorage, Bool getSignPredCombos );
+#else
   Void encodeCoeffNxN         ( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID );
+#endif
 
   Void estimateBit             ( estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, ChannelType chType 
 #if RDOQ_BIT_ESTIMATE_FIX_TICKET29

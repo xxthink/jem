@@ -130,6 +130,11 @@
 #if VCEG_AZ08_KLT_COMMON
 #define NUM_KLT_FLAG_CTX              1       ///< number of context models for KLT 
 #endif
+
+#if SIGNPRED
+#define  NUM_TU_SIGN_RESIDUE_CTX      2       ///< number of context models for sign compression
+#endif
+
 //--------------------------------------------------------------------------------------------------
 
 // context size definitions for significance map
@@ -876,6 +881,17 @@ INIT_KLT_FLAG[3][2 * NUM_KLT_FLAG_CTX] =
   { 139, 139 },
 };
 #endif
+
+#if SIGNPRED
+static const UChar
+INIT_TU_SIGN_RESIDUE[NUMBER_OF_SLICE_TYPES][NUM_TU_SIGN_RESIDUE_CTX] =
+{
+  { 0x9A, 0x98 },
+  { 0x9A, 0x98 },
+  { 0x9A, 0x98 },
+};
+#endif
+
 //! \}
 
 #endif

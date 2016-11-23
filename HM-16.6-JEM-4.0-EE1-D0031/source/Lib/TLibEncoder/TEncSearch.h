@@ -74,6 +74,14 @@ private:
   TCoeff**        m_ppcQTTempCoeff[MAX_NUM_COMPONENT /* 0->Y, 1->Cb, 2->Cr*/];
 #endif
   TCoeff*         m_pcQTTempCoeff[MAX_NUM_COMPONENT];
+#if SIGNPRED
+#if JVET_C0024_QTBT
+  UChar***        m_pppcQTTempSDHStorage[MAX_NUM_COMPONENT];
+#else
+  UChar**         m_ppcQTTempSDHStorage[MAX_NUM_COMPONENT];
+#endif
+  UChar*          m_pcQTTempSDHStorage[MAX_NUM_COMPONENT];
+#endif
 #if ADAPTIVE_QP_SELECTION
 #if JVET_C0024_QTBT
   TCoeff***       m_pppcQTTempArlCoeff[MAX_NUM_COMPONENT];
@@ -104,6 +112,9 @@ private:
   Char*           m_phQTTempCrossComponentPredictionAlpha[MAX_NUM_COMPONENT];
   Pel*            m_pSharedPredTransformSkip[MAX_NUM_COMPONENT];
   TCoeff*         m_pcQTTempTUCoeff[MAX_NUM_COMPONENT];
+#if SIGNPRED
+  UChar*          m_pcQTTempTUSDHStorage[MAX_NUM_COMPONENT];
+#endif
   UChar*          m_puhQTTempTransformSkipFlag[MAX_NUM_COMPONENT];
 #if VCEG_AZ08_KLT_COMMON
   UChar*          m_puhQTTempKLTFlag[MAX_NUM_COMPONENT];
@@ -416,7 +427,11 @@ protected:
 
   Void  xEncCoeffQT               ( TComTU &rTu,
                                     ComponentID  component,
-                                    Bool         bRealCoeff );
+                                    Bool         bRealCoeff
+#if SIGNPRED
+                                    , Bool         getSignPredCombos
+#endif
+                                  );
   Void  xEncIntraHeader           ( TComDataCU*  pcCU,
                                     UInt         uiTrDepth,
                                     UInt         uiAbsPartIdx,
@@ -425,11 +440,19 @@ protected:
   UInt  xGetIntraBitsQT           ( TComTU &rTu,
                                     Bool         bLuma,
                                     Bool         bChroma,
-                                    Bool         bRealCoeff );
+                                    Bool         bRealCoeff
+#if SIGNPRED
+                                  , Bool         getSignPredCombos
+#endif
+    );
 
   UInt  xGetIntraBitsQTChroma    ( TComTU &rTu,
                                    ComponentID compID,
-                                   Bool          bRealCoeff );
+                                   Bool          bRealCoeff
+#if SIGNPRED
+                                 , Bool          getSignPredCombos
+#endif
+    );
 
   Void  xIntraCodingTUBlock       (       TComYuv*      pcOrgYuv,
                                           TComYuv*      pcPredYuv,
@@ -789,11 +812,19 @@ protected:
   Void xEncodeInterResidualQT( const ComponentID compID, TComTU &rTu );
 #endif  
   Void xEstimateInterResidualQT( TComYuv* pcResi, Double &rdCost, UInt &ruiBits, Distortion &ruiDist, Distortion *puiZeroDist, TComTU &rTu 
-#if VCEG_AZ08_INTER_KLT
+#if VCEG_AZ08_INTER_KLT || SIGNPRED
       , TComYuv* pcPred
 #endif
+#if SIGNPRED
+      , TComYuv* pcReco
+#endif
       DEBUG_STRING_FN_DECLARE(sDebug) );
-  Void xSetInterResidualQTData( TComYuv* pcResi, Bool bSpatial, TComTU &rTu  );
+  Void xSetInterResidualQTData(
+#if SIGNPRED
+    TComYuv* pcPred,
+    TComYuv* pcReco,
+#endif
+    TComYuv* pcResi, Bool bSpatial, TComTU &rTu  );
 
   UInt  xModeBitsIntra ( TComDataCU* pcCU, UInt uiMode, UInt uiPartOffset, UInt uiDepth, const ChannelType compID 
 #if VCEG_AZ07_INTRA_65ANG_MODES

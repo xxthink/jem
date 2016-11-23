@@ -45,7 +45,12 @@ static     const UInt         partIdxStepShift  [TComTU::NUMBER_OF_SPLIT_MODES] 
 
 //----------------------------------------------------------------------------------------------------------------------
 
-TComTU::TComTU(TComDataCU *pcCU, const UInt absPartIdxCU, const UInt cuDepth, const UInt initTrDepthRelCU)
+TComTU::TComTU(TComDataCU *pcCU, const UInt absPartIdxCU, const UInt cuDepth, const UInt initTrDepthRelCU
+#if SIGNPRED
+           ,TComTrQuant *trQuant,
+      const TComYuv *predYuv
+#endif
+  )
   : mChromaFormat(pcCU->getSlice()->getSPS()->getChromaFormatIdc()),
     mbProcessLastOfLevel(true), // does not matter. the top level is not 4 quadrants.
     mCuDepth(cuDepth),
@@ -59,6 +64,10 @@ TComTU::TComTU(TComDataCU *pcCU, const UInt absPartIdxCU, const UInt cuDepth, co
     mLog2TrLumaSize(0),
 #endif
     mpParent(NULL)
+#if SIGNPRED
+    , mTrQuant(trQuant)
+    , mPredYuv(predYuv)
+#endif
 {
 #if !JVET_C0024_QTBT
   const TComSPS *pSPS=pcCU->getSlice()->getSPS();
@@ -88,8 +97,17 @@ TComTU::TComTU(TComDataCU *pcCU, const UInt absPartIdxCU, const UInt cuDepth, co
 
 
 TComTURecurse::TComTURecurse(      TComDataCU *pcCU,
-                             const UInt        absPartIdxCU)
-  : TComTU(pcCU, absPartIdxCU, pcCU->getDepth(absPartIdxCU), 0)
+                             const UInt        absPartIdxCU
+#if SIGNPRED
+                            ,      TComTrQuant *trQuant,
+                             const TComYuv    *predYuv
+#endif
+  )
+  : TComTU(pcCU, absPartIdxCU, pcCU->getDepth(absPartIdxCU), 0
+#if SIGNPRED
+           , trQuant, predYuv
+#endif
+    )
 { }
 
 
@@ -108,6 +126,10 @@ TComTU::TComTU(TComTU &parent, const Bool bProcessLastOfLevel, const TU_SPLIT_MO
     mLog2TrLumaSize(parent.mLog2TrLumaSize - ((splitMode != QUAD_SPLIT) ? 0 : 1)), //no change in width for vertical split
 #endif
     mpParent(&parent)
+#if SIGNPRED
+    ,mTrQuant(parent.mTrQuant)
+    ,mPredYuv(parent.mPredYuv)
+#endif
 {
   for(UInt i=0; i<MAX_NUM_COMPONENT; i++)
   {

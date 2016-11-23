@@ -128,6 +128,9 @@ TComDataCU::TComDataCU()
 #if VCEG_AZ08_KLT_COMMON
     m_puhKLTFlag[comp]                    = NULL;
 #endif
+#if SIGNPRED
+    m_signHidden[comp]                    = NULL;
+#endif
   }
 #if ADAPTIVE_QP_SELECTION
   m_ArlCoeffIsAliasedAllocation = false;
@@ -353,6 +356,9 @@ Void TComDataCU::create( ChromaFormat chromaFormatIDC, UInt uiNumPartition, UInt
       }
 #endif
       m_pcIPCMSample[compID] = (Pel*   )xMalloc(Pel , totalSize);
+#if SIGNPRED
+      m_signHidden[compID]   = (UChar *)xMalloc(UChar, totalSize);
+#endif
 #if JVET_C0024_ITSKIP
       m_puiSkipWidth[compID] = (UInt*)xMalloc(UInt,    uiNumPartition);
       memset( m_puiSkipWidth[compID], 0, uiNumPartition * sizeof( UInt ) );
@@ -683,6 +689,13 @@ Void TComDataCU::destroy()
         xFree(m_pcIPCMSample[comp]);
         m_pcIPCMSample[comp] = NULL;
       }
+#if SIGNPRED
+      if (m_signHidden[comp])
+      {
+        xFree(m_signHidden[comp]);
+        m_signHidden[comp] = NULL;
+      }
+#endif
 #if JVET_C0024_ITSKIP
       if ( m_puiSkipWidth[comp] ) {xFree(m_puiSkipWidth[comp]); m_puiSkipWidth[comp] = NULL;}
       if ( m_puiSkipHeight[comp] ) {xFree(m_puiSkipHeight[comp]); m_puiSkipHeight[comp] = NULL;}
@@ -942,6 +955,9 @@ Void TComDataCU::initCtu( TComPic* pcPic, UInt ctuRsAddr )
     memset( m_pcTrCoeff[comp], 0, sizeof(TCoeff)* numCoeffY>>componentShift );
 #if ADAPTIVE_QP_SELECTION
     memset( m_pcArlCoeff[comp], 0, sizeof(TCoeff)* numCoeffY>>componentShift );
+#endif
+#if SIGNPRED
+    memset( m_signHidden[comp], 0, (numCoeffY>>componentShift)*sizeof(m_signHidden[0][0]));
 #endif
   }
 
@@ -1347,6 +1363,9 @@ Void TComDataCU::initSubBT(TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiCUDepth,
     memset( m_pcArlCoeff[ch], 0, sizeof(TCoeff)*(numCoeffY>>componentShift) );
 #endif
     memset( m_pcIPCMSample[ch], 0, sizeof(Pel)* (numCoeffY>>componentShift) );
+#if SIGNPRED
+    memset( m_signHidden[ch], 0, sizeof(m_signHidden[0][0])* (numCoeffY>>componentShift) );
+#endif
   }
 
   for(UInt i=0; i<NUM_REF_PIC_LIST_01; i++)
@@ -1553,6 +1572,9 @@ Void TComDataCU::initSubCU( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth, 
     memset( m_pcArlCoeff[ch], 0, sizeof(TCoeff)*(numCoeffY>>componentShift) );
 #endif
     memset( m_pcIPCMSample[ch], 0, sizeof(Pel)* (numCoeffY>>componentShift) );
+#if SIGNPRED
+    memset(m_signHidden[ch], 0, (numCoeffY>>componentShift)*sizeof(m_signHidden[0][0]));
+#endif
   }
 
   for(UInt i=0; i<NUM_REF_PIC_LIST_01; i++)
@@ -1766,6 +1788,9 @@ Void TComDataCU::copySubCU( TComDataCU* pcCU, UInt uiAbsPartIdx )
     m_pcArlCoeff[ch] = pcCU->getArlCoeff(component) + offset;
 #endif
     m_pcIPCMSample[ch] = pcCU->getPCMSample(component) + offset;
+#if SIGNPRED
+    m_signHidden[ch] = pcCU->getSignHidden(ComponentID(ch))+offset;
+#endif
   }
 }
 
@@ -2027,6 +2052,9 @@ Void TComDataCU::copySameSizeCUFrom(TComDataCU* pcCU, UInt uiPartUnitIdx, UInt u
         memcpy(m_pcArlCoeff[ch] + offset, pcCU->getArlCoeff(component), sizeof(TCoeff)*(numCoeffY >> componentShift));
 #endif
         memcpy(m_pcIPCMSample[ch] + offset, pcCU->getPCMSample(component), sizeof(Pel)*(numCoeffY >> componentShift));
+#if SIGNPRED
+        memcpy(m_signHidden[ch]+offset, pcCU->getSignHidden(component), (numCoeffY >> componentShift)*sizeof(m_signHidden[0][0]));
+#endif
     }
 
     m_uiTotalBins += pcCU->getTotalBins();
@@ -2322,6 +2350,9 @@ Void TComDataCU::copyPartFrom( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDept
     memcpy( m_pcArlCoeff[ch] + offset, pcCU->getArlCoeff(component), sizeof(TCoeff)*(numCoeffY>>componentShift) );
 #endif
     memcpy( m_pcIPCMSample[ch] + offset, pcCU->getPCMSample(component), sizeof(Pel)*(numCoeffY>>componentShift) );
+#if SIGNPRED
+    memcpy(m_signHidden[ch]+offset, pcCU->getSignHidden(component), (numCoeffY>>componentShift)*sizeof(m_signHidden[0][0]));
+#endif
   }
 
   m_uiTotalBins += pcCU->getTotalBins();
@@ -2480,6 +2511,9 @@ Void TComDataCU::copyToPic( UChar uhDepth )
       memcpy( pCtu->getArlCoeff(component) + (offsetY>>componentShift), m_pcArlCoeff[component], sizeof(TCoeff)*(numCoeffY>>componentShift) );
 #endif
       memcpy( pCtu->getPCMSample(component) + (offsetY>>componentShift), m_pcIPCMSample[component], sizeof(Pel)*(numCoeffY>>componentShift) );
+#if SIGNPRED
+      memcpy(pCtu->getSignHidden(component)+(offsetY>>componentShift), m_signHidden[component], (numCoeffY>>componentShift)*sizeof(m_signHidden[0][0]));
+#endif
     }
   }
   else
@@ -2532,6 +2566,9 @@ Void TComDataCU::copyToPic( UChar uhDepth )
       memcpy( pCtu->getArlCoeff(component) + (offsetY>>componentShift), m_pcArlCoeff[component], sizeof(TCoeff)*(numCoeffY>>componentShift) );
 #endif
       memcpy( pCtu->getPCMSample(component) + (offsetY>>componentShift), m_pcIPCMSample[component], sizeof(Pel)*(numCoeffY>>componentShift) );
+#if SIGNPRED
+      memcpy(pCtu->getSignHidden(component)+(offsetY>>componentShift), m_signHidden[component], (numCoeffY>>componentShift)*sizeof(m_signHidden[0][0]));
+#endif
     }
     //maybe need to add chromaQP, getCUTransquantBypass, getIPCMFlag,..., which not impact CTC, JCA
   }
