@@ -204,7 +204,15 @@ public:
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
     , Int& iNonZeroCoeffNonTs
 #endif
+#if SIGNPRED
+    , UChar * pcSDHStorage
+    , Bool getSignPredCombos
+#endif
     );
+#if SIGNPRED
+  Void codeSignResidue(UInt symbol, UChar ctxt);
+  Void codeSigns(TComTU& rTU, TCoeff* pcCoef, ComponentID compID, UChar *pcSDHStorage, Bool getSignPredCombos);
+#endif
   Void codeTransformSkipFlags ( TComTU &rTu, ComponentID component );
 #if VCEG_AZ08_KLT_COMMON
   Void codeKLTFlags           ( TComTU &rTu, ComponentID component );
@@ -369,6 +377,10 @@ private:
 
 #if COM16_C1016_AFFINE
   ContextModel3DBuffer m_cCUAffineFlagSCModel;
+#endif
+
+#if SIGNPRED
+  ContextModel3DBuffer m_TUSignResidueSCModel;
 #endif
 
   UInt m_golombRiceAdaptationStatistics[RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS];

@@ -41,6 +41,9 @@ class TComTU; // forward declaration
 #include "TComChromaFormat.h"
 
 class TComDataCU; // forward declaration
+#if SIGNPRED
+class TComTrQuant;
+#endif
 
 //----------------------------------------------------------------------------------------------------------------------
 
@@ -71,6 +74,10 @@ class TComTU
     UInt          mLog2TrLumaSize;
 #endif
     TComTU       *mpParent;
+#if SIGNPRED
+    TComTrQuant  *mTrQuant;
+    const TComYuv*mPredYuv;
+#endif
 
     TComTU(const TComTU &);           // not defined - do not use
     TComTU&operator=(const TComTU &); // not defined - do not use
@@ -79,7 +86,12 @@ class TComTU
     TComTU(      TComDataCU *pcCU,
            const UInt        absPartIdxCU,
            const UInt        cuDepth,
-           const UInt        initTrDepthRelCU);
+           const UInt        initTrDepthRelCU
+#if SIGNPRED
+          ,TComTrQuant      *trQuant,// = NULL,
+           const TComYuv    *predYuv = NULL
+#endif
+      );
 
   protected:
     TComTU(      TComTU        &parentLevel,
@@ -115,6 +127,10 @@ class TComTU
       return mTrDepthRelCU[isLuma(chType) ? COMPONENT_Y : COMPONENT_Cb];
     }
 
+#if SIGNPRED
+    const TComYuv     *GetPredYuv()                            const { return mPredYuv; }
+          TComTrQuant *GetTrQuant()                            const { return mTrQuant; }
+#endif
     UInt GetAbsPartIdxCU()                                     const { return mAbsPartIdxCU; }
     UInt GetRelPartIdxTU()                                     const { return mAbsPartIdxTURelCU; }
     UInt GetRelPartIdxTU(const ComponentID compID)             const { return ProcessingAllQuadrants(compID) ? mAbsPartIdxTURelCU : (mAbsPartIdxTURelCU & (~0x3)); }
@@ -149,11 +165,25 @@ class TComTURecurse : public TComTU
 
     TComTURecurse(      TComDataCU *pcCU,
                   const UInt        absPartIdxCU,
-                  const UInt        forcedDepthOfCU)
-      : TComTU(pcCU, absPartIdxCU, forcedDepthOfCU, 0) { }
+                  const UInt        forcedDepthOfCU
+#if SIGNPRED
+                 ,      TComTrQuant*trQuant = NULL,
+                  const TComYuv    *predYuv = NULL
+#endif
+      )
+      : TComTU(pcCU, absPartIdxCU, forcedDepthOfCU, 0
+#if SIGNPRED
+               , trQuant, predYuv
+#endif
+        ) { }
 
     TComTURecurse(      TComDataCU *pcCU,
-                  const UInt        absPartIdxCU); // CU's depth is taken from CU->getDepth(idx)
+                  const UInt        absPartIdxCU
+#if SIGNPRED
+                 ,      TComTrQuant*trQuant = NULL,
+                  const TComYuv    *predYuv = NULL
+#endif
+      ); // CU's depth is taken from CU->getDepth(idx)
 
     TComTURecurse(      TComTU        &parentLevel,                            //Parent TU from which recursion children are derived
                   const Bool           bProcessLastOfLevel,                    //If true (and the split results in a "step-up" for chroma), the chroma TU is colocated with the last luma TU instead of the first

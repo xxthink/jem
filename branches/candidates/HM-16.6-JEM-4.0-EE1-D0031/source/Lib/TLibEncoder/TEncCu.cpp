@@ -3483,6 +3483,9 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
     , iNonZeroCoeffNonTs
 #endif
+#if SIGNPRED
+    , m_pcTrQuant
+#endif
     );
   setCodeChromaQpAdjFlag( codeChromaQpAdj );
   setdQPFlag( bCodeDQP );
@@ -4648,6 +4651,9 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
 #endif
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
     , iNonZeroCoeffNonTs
+#endif
+#if SIGNPRED
+    , m_pcTrQuant
 #endif
     );
   setCodeChromaQpAdjFlag( codeChromaQpAdjFlag );

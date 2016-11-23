@@ -1643,6 +1643,9 @@ TComSPS::TComSPS()
 #if COM16_C983_RSAF
 , m_useRSAF                   (false)
 #endif
+#if SIGNPRED
+, m_maxNumPredSigns           (0)
+#endif
 , m_bPCMFilterDisableFlag     (false)
 , m_uiBitsForPOC              (  8)
 , m_numLongTermRefPicSPS      (  0)

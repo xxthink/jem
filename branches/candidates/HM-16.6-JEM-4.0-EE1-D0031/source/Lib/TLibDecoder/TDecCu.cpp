@@ -935,7 +935,11 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
   // Coefficient decoding
   Bool bCodeDQP = getdQPFlag();
   Bool isChromaQpAdjCoded = getIsChromaQpAdjCoded();
-  m_pcEntropyDecoder->decodeCoeff( pcCU, uiAbsPartIdx, uiDepth, bCodeDQP, isChromaQpAdjCoded );
+  m_pcEntropyDecoder->decodeCoeff(
+#if SIGNPRED
+    m_pcTrQuant,
+#endif
+    pcCU, uiAbsPartIdx, uiDepth, bCodeDQP, isChromaQpAdjCoded );
   setIsChromaQpAdjCoded( isChromaQpAdjCoded );
   setdQPFlag( bCodeDQP );
 
@@ -1158,7 +1162,17 @@ Void TDecCu::xDecompressCU( TComDataCU* pCtu, UInt uiAbsPartIdx,  UInt uiDepth )
     xFillPCMBuffer(m_ppcCU[uiDepth], uiDepth);
   }
 
+#if SIGNPRED
+  // luma has already been reconstructed in the pic.
+  for(Int comp=0; comp<pcPic->getNumberValidComponents(); comp++)
+  {
+    if (isLuma((ComponentID)comp))
+      continue;
+    m_ppcYuvReco[uiDepth]->copyToPicComponent  ( (ComponentID)comp, pcPic->getPicYuvRec (), pCtu->getCtuRsAddr(), uiAbsPartIdx );
+  }
+#else
   xCopyToPic( m_ppcCU[uiDepth], pcPic, uiAbsPartIdx, uiDepth );
+#endif
 #endif
 }
 
@@ -1374,6 +1388,9 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
   //===== inverse transform =====
   Pel*      piResi            = pcResiYuv->getAddr( compID, uiAbsPartIdx );
   TCoeff*   pcCoeff           = pcCU->getCoeff(compID) + rTu.getCoefficientOffset(compID);//( uiNumCoeffInc * uiAbsPartIdx );
+#if SIGNPRED
+  UChar*    SDHStorage        = pcCU->getSignHidden(compID) + rTu.getCoefficientOffset(compID);//( uiNumCoeffInc * uiAbsPartIdx );
+#endif
 
   const QpParam cQP(*pcCU, compID);
 
@@ -1386,7 +1403,21 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
 
   if (pcCU->getCbf(uiAbsPartIdx, compID, rTu.GetTransformDepthRel()) != 0)
   {
+#if SIGNPRED
+    // analyze our coeffs to get sign predictors, apply correct signs to dequant coeffs.
+    m_pcTrQuant->xFindAndApplySignPredictors(rTu, compID, pcPredYuv, pcCoeff, SDHStorage, DIR_RESIDUE_TO_REAL);
+    m_pcTrQuant->invTransformNxN( false,
+#if SIGNPRED_TOPLEFT
+                                  false,
+#endif
+                                  rTu, compID, piResi, uiStride, pcCoeff, cQP
+#if VCEG_AZ08_KLT_COMMON
+                                  , false
+#endif
+                                  DEBUG_STRING_PASS_INTO(psDebug) );
+#else
     m_pcTrQuant->invTransformNxN( rTu, compID, piResi, uiStride, pcCoeff, cQP DEBUG_STRING_PASS_INTO(psDebug) );
+#endif
   }
   else
   {
@@ -1554,6 +1585,9 @@ TDecCu::xIntraRecBlkTM( TComYuv*    pcRecoYuv,
     //===== inverse transform =====
     Pel*      piResi = pcResiYuv->getAddr(compID, uiAbsPartIdx);
     TCoeff*   pcCoeff = pcCU->getCoeff(compID) + rTu.getCoefficientOffset(compID);
+#if SIGNPRED
+    UChar*    pcSDHStorage = pcCU->getSignHidden(compID) + rTu.getCoefficientOffset(compID);
+#endif
 
     const QpParam cQP(*pcCU, compID);
 
@@ -1574,7 +1608,18 @@ TDecCu::xIntraRecBlkTM( TComYuv*    pcRecoYuv,
             scan = codingParameters.scan;
             recoverOrderCoeff(pcCoeff, scan, uiWidth, uiHeight);
         }
+#if SIGNPRED
+        // analyze our coeffs to get sign predictors, apply correct signs to dequant coeffs.
+        m_pcTrQuant->xFindAndApplySignPredictors(rTu, compID, pcPredYuv, pcCoeff, pcSDHStorage, DIR_RESIDUE_TO_REAL);
+        m_pcTrQuant->invTransformNxN(false,
+#if SIGNPRED_TOPLEFT
+                                     false,
+#endif
+                                     rTu, compID, piResi, uiStride, pcCoeff, cQP, useKLT
+                                     DEBUG_STRING_PASS_INTO(psDebug));
+#else
         m_pcTrQuant->invTransformNxN(rTu, compID, piResi, uiStride, pcCoeff, cQP, useKLT DEBUG_STRING_PASS_INTO(psDebug));
+#endif
         if (useKLT)
         {
             reOrderCoeff(pcCoeff, scan, uiWidth, uiHeight);

@@ -181,7 +181,11 @@ public:
   Void parseIPCMInfo      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth);
 
   Void parseLastSignificantXY( UInt& uiPosLastX, UInt& uiPosLastY, Int width, Int height, ComponentID component, UInt uiScanIdx );
-  Void parseCoeffNxN      ( class TComTU &rTu, ComponentID compID  
+  Void parseCoeffNxN      (
+#if SIGNPRED
+    TComTrQuant *trQuant,
+#endif
+  class TComTU &rTu, ComponentID compID  
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& bCbfCU
 #endif
@@ -190,6 +194,14 @@ public:
 #endif
     );
   Void parseTransformSkipFlags ( class TComTU &rTu, ComponentID component );
+#if SIGNPRED
+#if RExt__DECODER_DEBUG_BIT_STATISTICS
+  Void parseSignResidue(UInt& symbol, UChar ctxt, const class TComCodingStatisticsClassType &whichStat);
+#else
+  Void parseSignResidue(UInt& symbol, UChar ctxt);
+#endif
+  Void parseSigns(TComTrQuant *trQuant, TComTU &rTU, TCoeff* pcCoef, ComponentID compID);
+#endif
 
 #if VCEG_AZ08_KLT_COMMON
   Void parseKLTFlags      ( TComTU &rTu, ComponentID component);
@@ -319,6 +331,10 @@ private:
 #endif
 
   UInt m_golombRiceAdaptationStatistics[RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS];
+
+#if SIGNPRED
+  ContextModel3DBuffer m_TUSignResidueSCModel;
+#endif
 };
 
 //! \}

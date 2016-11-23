@@ -42,6 +42,12 @@
 
 #include<stdio.h>
 #include<iostream>
+
+#if SIGNPRED
+extern UChar const g_SignPredContext[2][2]; // [!isIntra][amp >= 600]
+#endif
+
+
 #if VCEG_AZ08_KLT_COMMON
 extern short **g_ppsEigenVector[USE_MORE_BLOCKSIZE_DEPTH_MAX];
 #endif

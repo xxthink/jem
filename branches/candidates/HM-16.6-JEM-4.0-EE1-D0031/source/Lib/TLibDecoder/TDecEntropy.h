@@ -143,7 +143,11 @@ public:
 
   virtual Void parseIPCMInfo     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth) = 0;
 
-  virtual Void parseCoeffNxN( class TComTU &rTu, ComponentID compID  
+  virtual Void parseCoeffNxN(
+#if SIGNPRED
+    TComTrQuant *trQuant,
+#endif
+  class TComTU &rTu, ComponentID compID  
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& bCbfCU
 #endif
@@ -305,9 +309,17 @@ public:
 
 private:
 #if JVET_C0024_QTBT
-  Void xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjCoded, TComTU &rTu, ComponentID compID);
+  Void xDecodeTransform        (
+#if SIGNPRED
+    TComTrQuant *trQuant,
+#endif
+    Bool& bCodeDQP, Bool& isChromaQpAdjCoded, TComTU &rTu, ComponentID compID);
 #else
-  Void xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjCoded, TComTU &rTu, const Int quadtreeTULog2MinSizeInCU 
+  Void xDecodeTransform        (
+#if SIGNPRED
+    TComTrQuant *trQuant,
+#endif
+    Bool& bCodeDQP, Bool& isChromaQpAdjCoded, TComTU &rTu, const Int quadtreeTULog2MinSizeInCU 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& bCbfCU
 #endif
@@ -319,7 +331,11 @@ private:
 
 public:
 
-  Void decodeCoeff             ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool& bCodeDQP, Bool& isChromaQpAdjCoded );
+  Void decodeCoeff             (
+#if SIGNPRED
+    TComTrQuant *trQuant,
+#endif
+    TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool& bCodeDQP, Bool& isChromaQpAdjCoded );
 
 #if QTBT_NSST
   Int countNonZeroCoeffs       ( TCoeff* pcCoef, UInt uiSize );

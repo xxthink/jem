@@ -142,6 +142,9 @@ TDecSbac::TDecSbac()
 #if COM16_C1016_AFFINE
 , m_cCUAffineFlagSCModel                     ( 1,             1,               NUM_AFFINE_FLAG_CTX                  , m_contextModels + m_numContextModels,          m_numContextModels)
 #endif
+#if SIGNPRED
+, m_TUSignResidueSCModel                     (1,              1,                      NUM_TU_SIGN_RESIDUE_CTX              , m_contextModels + m_numContextModels, m_numContextModels)
+#endif
 {
   assert( m_numContextModels <= MAX_NUM_CTX_MOD );
 }
@@ -266,6 +269,9 @@ Void TDecSbac::resetEntropy(TComSlice* pSlice)
 #endif
 #if COM16_C1016_AFFINE
   m_cCUAffineFlagSCModel.initBuffer               ( sliceType, qp, (UChar*)INIT_AFFINE_FLAG );
+#endif
+#if SIGNPRED
+  m_TUSignResidueSCModel.initBuffer               ( sliceType, qp, (UChar*)INIT_TU_SIGN_RESIDUE );
 #endif
 
   for (UInt statisticIndex = 0; statisticIndex < RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS ; statisticIndex++)
@@ -2121,7 +2127,99 @@ Void TDecSbac::parseLastSignificantXY( UInt& uiPosLastX, UInt& uiPosLastY, Int w
   }
 }
 
-Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID 
+#if SIGNPRED
+Void TDecSbac::parseSignResidue(UInt& symbol, UChar ctxt RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(const class TComCodingStatisticsClassType &whichStat))
+{
+  m_pcTDecBinIf->decodeBin(symbol, m_TUSignResidueSCModel.get(0, 0, ctxt) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(whichStat));
+}
+
+// determine all signs for a TB.
+// includes compressed (residues) and uncompressed signs.
+Void TDecSbac::parseSigns(TComTrQuant *trQuant, TComTU &rTU, TCoeff* pcCoef, ComponentID compID)
+{
+  TComDataCU *pcCU = rTU.getCU();
+  const UInt uiAbsPartIdx=rTU.GetAbsPartIdxTU();
+  const TComRectangle &tuRect  =rTU.getRect(compID);
+  const UInt uiWidth           = tuRect.width;
+  const UInt uiHeight          = tuRect.height;
+  const QpParam cQP(*pcCU, compID);
+  UChar *SDHStorage = pcCU->getSignHidden(compID)+rTU.getCoefficientOffset(compID);
+  UInt  uiPelXCur    = pcCU->getCUPelX() + g_auiRasterToPelX[ g_auiZscanToRaster[uiAbsPartIdx] ];
+  UInt  uiPelYCur    = pcCU->getCUPelY() + g_auiRasterToPelY[ g_auiZscanToRaster[uiAbsPartIdx] ];
+  Bool useTransformSkip = pcCU->getTransformSkip(uiAbsPartIdx, compID);
+  Bool transQuantBypass = pcCU->getCUTransquantBypass(uiAbsPartIdx);
+  Bool signPredValid = isLuma(compID)                                && uiPelXCur != 0 && uiPelYCur != 0 && !transQuantBypass && !useTransformSkip;
+#if RExt__DECODER_DEBUG_BIT_STATISTICS
+  const UInt         uiLog2BlockWidth  = g_aucConvertToBit[ uiWidth  ] + 2;
+#endif
+
+  UInt numberofacceptedsigns = 0;
+  UInt chgfreq[MAXMAXNUMBEROFSIGNS];
+  UInt chgprobas[MAXMAXNUMBEROFSIGNS];
+#if RExt__DECODER_DEBUG_BIT_STATISTICS
+  TComCodingStatisticsClassType ctype_epsigns(STATS__CABAC_BITS__EPSIGN_BIT, uiLog2BlockWidth, compID);
+  TComCodingStatisticsClassType ctype_compressedsigns(STATS__CABAC_BITS__COMPRESSEDSIGN_BIT, uiLog2BlockWidth, compID);
+#endif
+
+  if (signPredValid)
+    trQuant->getCompressibleSigns(rTU, pcCoef, SDHStorage, numberofacceptedsigns, chgfreq, chgprobas);
+
+  // Read EP signs.
+  for (Int freq = 0; freq < uiWidth*uiHeight; freq++)
+  {
+    int j;
+    if (pcCoef[freq] == 0)
+      continue;
+    if (SDHStorage[freq] == SIGN_HIDDEN)
+        continue; // it's hidden, we don't read anything.
+    for (j = 0; j < numberofacceptedsigns; j++)
+    {
+      if (chgfreq[j] == freq)
+        break;
+    }
+    if (j < numberofacceptedsigns)
+      continue; // it's predicted -- we'll read it later.
+
+    UInt signSymbol;
+    m_pcTDecBinIf->decodeBinEP(signSymbol RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype_epsigns));
+    DTRACE_CABAC_VL( g_nSymbolCounter++ )
+    DTRACE_CABAC_T( "\tsignEP " )
+    DTRACE_CABAC_V( signSymbol )
+    DTRACE_CABAC_T( "\n" )
+
+    if (signSymbol == 1)
+      pcCoef[freq] *= -1;
+  }
+
+  // Read sign residues.
+  // We determine if the predictor is good or bad during the reconstruction process.
+  for (Int i = 0; i < numberofacceptedsigns; i++)
+  {
+    assert(pcCoef[chgfreq[i]] != 0);
+    UInt signSymbol;
+    parseSignResidue(signSymbol, chgprobas[i] RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype_compressedsigns));
+    DTRACE_CABAC_VL( g_nSymbolCounter++ )
+    DTRACE_CABAC_T( "\tsignPred" )
+    DTRACE_CABAC_T( " ctxt " )
+    DTRACE_CABAC_V( chgprobas[i] )
+    DTRACE_CABAC_T( " res " )
+    DTRACE_CABAC_V( signSymbol )
+    DTRACE_CABAC_T( "\n" )
+#if SIGNPRED
+    SDHStorage[chgfreq[i]] = signSymbol == 0 ? SIGN_PRED_CORRECT : SIGN_PRED_INCORRECT;
+#else
+    if (signSymbol == 1) // -ve implies error, which we've signaled with a 1.
+      pcCoef[chgfreq[i]] *= -1;
+#endif
+  }
+}
+#endif
+
+Void TDecSbac::parseCoeffNxN(
+#if SIGNPRED
+  TComTrQuant *trQuant,
+#endif
+  TComTU &rTu, ComponentID compID 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& bCbfCU
 #endif
@@ -2636,7 +2734,10 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
       const Bool alignGroup = escapeDataPresentInGroup && alignCABACBeforeBypass;
 
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
+#if SIGNPRED
+#else
       TComCodingStatisticsClassType ctype_signs((alignGroup ? STATS__CABAC_BITS__ALIGNED_SIGN_BIT    : STATS__CABAC_BITS__SIGN_BIT   ), uiLog2BlockWidth, compID);
+#endif
       TComCodingStatisticsClassType ctype_escs ((alignGroup ? STATS__CABAC_BITS__ALIGNED_ESCAPE_BITS : STATS__CABAC_BITS__ESCAPE_BITS), uiLog2BlockWidth, compID);
 #endif
 
@@ -2645,6 +2746,9 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
         m_pcTDecBinIf->align();
       }
 #if !VCEG_AZ07_CTX_RESIDUALCODING
+#if SIGNPRED
+      // signs are determined after all RLs for everything.
+#else
       UInt coeffSigns;
       if ( signHidden && beValid )
       {
@@ -2656,6 +2760,7 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
         m_pcTDecBinIf->decodeBinsEP( coeffSigns, numNonZero RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype_signs) );
         coeffSigns <<= 32 - numNonZero;
       }
+#endif
 #endif
       Int iFirstCoeff2 = 1;
       if (escapeDataPresentInGroup)
@@ -2720,6 +2825,9 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
       }
 
 #if VCEG_AZ07_CTX_RESIDUALCODING
+#if SIGNPRED
+      // signs are determined after all RLs for everything.
+#else
       UInt coeffSigns;
 #if JVET_C0024_QTBT
       if ( signHidden && beValid && uiWidth>=4 && uiHeight>=4)
@@ -2736,6 +2844,7 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
         coeffSigns <<= 32 - numNonZero;
       }
 #endif
+#endif
       for( Int idx = 0; idx < numNonZero; idx++ )
       {
         Int blkPos = pos[ idx ];
@@ -2746,6 +2855,9 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
         if ( idx == numNonZero-1 && signHidden && beValid )
         {
           // Infer sign of 1st element.
+#if SIGNPRED
+          pcCU->setSignHidden(compID, rTu.getCoefficientOffset(compID)+blkPos, SIGN_HIDDEN);
+#endif
           if (absSum&0x1)
           {
             pcCoef[ blkPos ] = -pcCoef[ blkPos ];
@@ -2753,9 +2865,13 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
         }
         else
         {
+#if SIGNPRED
+          // signs are determined after all RLs for everything.
+#else
           Int sign = static_cast<Int>( coeffSigns ) >> 31;
           pcCoef[ blkPos ] = ( pcCoef[ blkPos ] ^ sign ) - sign;
           coeffSigns <<= 1;
+#endif
         }
       }
     }
@@ -2857,6 +2973,11 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
 
 #endif
 
+#if SIGNPRED
+  // classify signs (compressed, non compressed).
+  // read them.
+  parseSigns(trQuant, rTu, pcCoef, compID);
+#endif
   return;
 }
 

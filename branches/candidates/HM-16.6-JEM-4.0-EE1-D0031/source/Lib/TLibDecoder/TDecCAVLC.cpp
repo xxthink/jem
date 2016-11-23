@@ -909,6 +909,9 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
 #if COM16_C983_RSAF
   READ_FLAG( uiCode, "rsaf_enabled_flag");      pcSPS->setUseRSAF( uiCode );
 #endif
+#if SIGNPRED
+  READ_UVLC( uiCode , "max_pred_signs");        pcSPS->setMaxNumPredSigns(uiCode);
+#endif
   // KTA tools
 
   READ_FLAG( uiCode, "sps_extension_present_flag");
@@ -2007,7 +2010,11 @@ Void TDecCavlc::parseChromaQpAdjustment( TComDataCU* /*pcCU*/, UInt /*uiAbsPartI
   assert(0);
 }
 
-Void TDecCavlc::parseCoeffNxN( TComTU &/*rTu*/, ComponentID /*compID*/ 
+Void TDecCavlc::parseCoeffNxN(
+#if SIGNPRED
+  TComTrQuant * /*trQuant*/,
+#endif
+  TComTU &/*rTu*/, ComponentID /*compID*/ 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& /*g_bCbfCU*/
 #endif

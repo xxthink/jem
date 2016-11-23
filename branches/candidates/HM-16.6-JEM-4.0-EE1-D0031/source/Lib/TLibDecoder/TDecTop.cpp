@@ -421,6 +421,9 @@ Void TDecTop::xActivateParameterSets()
 #if VCEG_AZ08_USE_KLT
         , sps->getUseKLT()
 #endif
+#if SIGNPRED
+      , sps->getMaxNumPredSigns()
+#endif
 );
 #else
     m_cTrQuant.init     ( sps->getMaxTrSize() 

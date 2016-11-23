@@ -134,7 +134,11 @@ public:
   Void parseDeltaQP         ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth );
   Void parseChromaQpAdjustment( TComDataCU* cu, UInt absPartIdx, UInt depth);
 
-  Void parseCoeffNxN        ( class TComTU &rTu, ComponentID compID 
+  Void parseCoeffNxN        (
+#if SIGNPRED
+    TComTrQuant *trQuant,
+#endif
+  class TComTU &rTu, ComponentID compID 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& bCbfCU
 #endif

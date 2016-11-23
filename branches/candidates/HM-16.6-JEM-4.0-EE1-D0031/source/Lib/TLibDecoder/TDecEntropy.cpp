@@ -788,7 +788,11 @@ Void TDecEntropy::decodeMVPIdxPU( TComDataCU* pcSubCU, UInt uiPartAddr, UInt uiD
 }
 
 #if JVET_C0024_QTBT
-Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjCoded, TComTU &rTu, ComponentID compID)
+Void TDecEntropy::xDecodeTransform        (
+#if SIGNPRED
+  TComTrQuant *trQuant,
+#endif
+  Bool& bCodeDQP, Bool& isChromaQpAdjCoded, TComTU &rTu, ComponentID compID)
 {
   TComDataCU *pcCU=rTu.getCU();
   const UInt uiAbsPartIdx=rTu.GetAbsPartIdxTU();
@@ -820,20 +824,32 @@ Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjC
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
     Int  dummyNzTs;
 #endif
-    m_pcEntropyDecoderIf->parseCoeffNxN( rTu, compID, dummyCbf
+    m_pcEntropyDecoderIf->parseCoeffNxN(
+#if SIGNPRED
+      trQuant,
+#endif
+      rTu, compID, dummyCbf
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
       , dummyNzTs
 #endif
       );
 #else
-    m_pcEntropyDecoderIf->parseCoeffNxN( rTu, compID);
+    m_pcEntropyDecoderIf->parseCoeffNxN(
+#if SIGNPRED
+      trQuant,
+#endif
+      rTu, compID);
 #endif
   }
   //need to add qp coding, crosscomponentpred,... JCA
 }
 #else
 
-Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjCoded, TComTU &rTu, const Int quadtreeTULog2MinSizeInCU 
+Void TDecEntropy::xDecodeTransform        (
+#if SIGNPRED
+  TComTrQuant *trQuant,
+#endif
+  Bool& bCodeDQP, Bool& isChromaQpAdjCoded, TComTU &rTu, const Int quadtreeTULog2MinSizeInCU 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     , Bool& bCbfCU
 #endif
@@ -927,12 +943,16 @@ Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjC
 
     do
     {
-      xDecodeTransform( bCodeDQP, isChromaQpAdjCoded, tuRecurseChild, quadtreeTULog2MinSizeInCU 
+      xDecodeTransform(
+#if SIGNPRED
+        trQuant,
+#endif
+        bCodeDQP, isChromaQpAdjCoded, tuRecurseChild, quadtreeTULog2MinSizeInCU 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
-    ,  bCbfCU
+        ,  bCbfCU
 #endif
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
-    , iNonZeroCoeffNonTs
+        , iNonZeroCoeffNonTs
 #endif
     );
       UInt childTUAbsPartIdx=tuRecurseChild.GetAbsPartIdxTU();
@@ -1065,7 +1085,11 @@ Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjC
                   printf("Call NxN for chan %d width=%d height=%d cbf=%d\n", compID, subTUIterator.getRect(compID).width, subTUIterator.getRect(compID).height, 1);
                 }
 #endif
-                m_pcEntropyDecoderIf->parseCoeffNxN( subTUIterator, compID 
+                m_pcEntropyDecoderIf->parseCoeffNxN(
+#if SIGNPRED
+                  trQuant,
+#endif
+                  subTUIterator, compID 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     ,  bCbfCU
 #endif
@@ -1085,7 +1109,11 @@ Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjC
 
             if(cbf[compID] != 0)
             {
-              m_pcEntropyDecoderIf->parseCoeffNxN( rTu, compID 
+              m_pcEntropyDecoderIf->parseCoeffNxN(
+#if SIGNPRED
+                trQuant,
+#endif
+                rTu, compID 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     ,  bCbfCU
 #endif
@@ -1121,7 +1149,11 @@ Void TDecEntropy::decodeChromaQpAdjustment( TComDataCU* pcCU, UInt uiAbsPartIdx 
 
 
 //! decode coefficients
-Void TDecEntropy::decodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool& bCodeDQP, Bool& isChromaQpAdjCoded )
+Void TDecEntropy::decodeCoeff(
+#if SIGNPRED
+  TComTrQuant *trQuant,
+#endif
+  TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool& bCodeDQP, Bool& isChromaQpAdjCoded )
 {
   if( pcCU->isIntra(uiAbsPartIdx) )
   {
@@ -1169,7 +1201,11 @@ Void TDecEntropy::decodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
     for(UInt ch=COMPONENT_Cb; ch<numValidComponent; ch++)
     {
       const ComponentID compID=ComponentID(ch);
-      xDecodeTransform( bCodeDQP, isChromaQpAdjCoded, tuRecurse, compID);
+      xDecodeTransform(
+#if SIGNPRED
+        trQuant,
+#endif
+        bCodeDQP, isChromaQpAdjCoded, tuRecurse, compID);
 #if JVET_C0024_DELTA_QP_FIX
       if( pcCU->getCbf( uiAbsPartIdx, compID ) )
       {
@@ -1181,7 +1217,11 @@ Void TDecEntropy::decodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
   }
   if (isLuma(pcCU->getTextType()))
   {
-    xDecodeTransform( bCodeDQP, isChromaQpAdjCoded, tuRecurse, COMPONENT_Y);
+    xDecodeTransform(
+#if SIGNPRED
+     trQuant,
+#endif
+      bCodeDQP, isChromaQpAdjCoded, tuRecurse, COMPONENT_Y);
 #if JVET_C0024_DELTA_QP_FIX
     if( pcCU->getCbf( uiAbsPartIdx, COMPONENT_Y ) )
     {
@@ -1238,7 +1278,11 @@ Void TDecEntropy::decodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
   Int iNonZeroCoeffNonTs = 0;
 #endif
-  xDecodeTransform( bCodeDQP, isChromaQpAdjCoded, tuRecurse, quadtreeTULog2MinSizeInCU 
+  xDecodeTransform(
+#if SIGNPRED
+    *trQuant,
+#endif
+    bCodeDQP, isChromaQpAdjCoded, tuRecurse, quadtreeTULog2MinSizeInCU 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     ,  bCbfCU
 #endif

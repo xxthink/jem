@@ -170,6 +170,10 @@ public:
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
     , Int& iNonZeroCoeffNonTs
 #endif
+#if SIGNPRED
+    , UChar *pcSDHStorage
+    , Bool getSignPredCombos
+#endif
     );
   Void codeTransformSkipFlags ( TComTU &rTu, ComponentID component );
 

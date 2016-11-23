@@ -47,6 +47,24 @@
 //! \ingroup TLibCommon
 //! \{
 
+#define SIGNPRED 1
+#define SIGNPRED_TOPLEFT 1 // top-left inverse transform optimisation
+
+#define SIGN_HIDDEN 1 // in SDH storage, sign is hidden.
+#define SIGN_PRED_CORRECT 2 // in SDH storage, sign prediction was correct.
+#define SIGN_PRED_INCORRECT 3  // in SDH storage, sign prediction was incorrect.
+
+#define MAXMAXNUMBEROFSIGNS 8 // actual value is a parameter.
+#define AMPLITUDENORMALIZATIONFACTOR 600
+
+#if SIGNPRED
+enum SignPredDirection
+{
+  DIR_RESIDUE_TO_REAL = 0, // decoder uses this
+  DIR_REAL_TO_RESIDUE = 1  // encoder uses this
+};
+#endif
+
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////

@@ -165,6 +165,9 @@ private:
   TCoeff*        m_pcArlCoeff[MAX_NUM_COMPONENT];  // ARL coefficient buffer (0->Y, 1->Cb, 2->Cr)
   Bool           m_ArlCoeffIsAliasedAllocation;  ///< ARL coefficient buffer is an alias of the global buffer and must not be free()'d
 #endif
+#if SIGNPRED
+  UChar*         m_signHidden[MAX_NUM_COMPONENT]; ///< true if sign data hiding has been applied to this coefficient.
+#endif
 
   Pel*           m_pcIPCMSample[MAX_NUM_COMPONENT];    ///< PCM sample buffer (0->Y, 1->Cb, 2->Cr)
 
@@ -556,6 +559,11 @@ public:
   TCoeff*       getArlCoeff           ( ComponentID component ) { return m_pcArlCoeff[component]; }
 #endif
   Pel*          getPCMSample          ( ComponentID component ) { return m_pcIPCMSample[component]; }
+#if SIGNPRED
+  UChar*        getSignHidden(ComponentID component) {return m_signHidden[component];}
+  UChar         getSignHidden(ComponentID component, Int idx) {return m_signHidden[component][idx];}
+  Void          setSignHidden(ComponentID component, Int idx, UChar signHidden) {m_signHidden[component][idx] = signHidden;}
+#endif
 
   UChar         getCbf    ( UInt uiIdx, ComponentID eType )                  { return m_puhCbf[eType][uiIdx];  }
   UChar*        getCbf    ( ComponentID eType )                              { return m_puhCbf[eType];         }

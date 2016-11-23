@@ -105,6 +105,10 @@ public:
   //  Copy YUV buffer to picture buffer
   Void         copyToPicYuv               ( TComPicYuv* pcPicYuvDst, const UInt ctuRsAddr, const UInt uiAbsZorderIdx, const UInt uiPartDepth = 0, const UInt uiPartIdx = 0 ) const ;
   Void         copyToPicComponent         ( const ComponentID id, TComPicYuv* pcPicYuvDst, const UInt iCtuRsAddr, const UInt uiAbsZorderIdx, const UInt uiPartDepth = 0, const UInt uiPartIdx = 0 ) const ;
+#if SIGNPRED
+  Void         copyToPicComponent         ( const ComponentID id, const UInt x, const UInt y, const UInt width, const UInt height, TComPicYuv* pcPicYuvDst, const UInt iCtuRsAddr, const UInt uiAbsZorderIdx) const ;
+  Void         copyAddToPicComponent      ( const ComponentID compID, TComYuv *pResi, TComYuv* pReco, const UInt uiAbsPartIdx, TComPicYuv *pRecoPic, const UInt ctuRsAddr, const UInt uiAbsZorderIdx, const UInt uiWidth, const UInt uiHeight, const Int bitDepth );
+#endif
 
   //  Copy YUV buffer from picture buffer
   Void         copyFromPicYuv             ( const TComPicYuv* pcPicYuvSrc, const  UInt ctuRsAddr, const UInt uiAbsZorderIdx );

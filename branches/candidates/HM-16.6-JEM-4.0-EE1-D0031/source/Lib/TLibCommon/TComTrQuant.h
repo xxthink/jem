@@ -70,132 +70,137 @@ extern UInt g_uiDepth2MinCandiNum[5];
 #if VCEG_AZ05_ROT_TR
  __inline static Short  xMult ( Int i, UInt uiShift ) { return ((i)>>uiShift); }
 #endif
+#if SIGNPRED_TOPLEFT
+#define TOPLEFTARG Bool topLeft, 
+#else
+#define TOPLEFTARG 
+#endif
 #if COM16_C806_EMT
 #if JVET_D0077_TRANSFORM_OPT
 #if JVET_C0024_QTBT
 void fastForwardDCT2_B2    (TCoeff *block, TCoeff *coeff, Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use);
-void fastInverseDCT2_B2    (TCoeff *coeff, TCoeff *block, Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT2_B2    (TCoeff *coeff, TCoeff *block, Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDCT2_B128  (TCoeff *block, TCoeff *coeff, Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use);
-void fastInverseDCT2_B128  (TCoeff *coeff, TCoeff *block, Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT2_B128  (TCoeff *coeff, TCoeff *block, Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 #endif
 void fastForwardDCT2_B4 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use);
-void fastInverseDCT2_B4 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT2_B4 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDCT2_B8 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use);
-void fastInverseDCT2_B8 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT2_B8 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDCT2_B16(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use);
-void fastInverseDCT2_B16(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT2_B16(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDCT2_B32(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use);
-void fastInverseDCT2_B32(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT2_B32(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDCT2_B64(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use);
-void fastInverseDCT2_B64(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT2_B64(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 
 void fastForwardDST7_B4 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use);
-void fastInverseDST7_B4 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDST7_B4 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDST7_B8 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use);
-void fastInverseDST7_B8 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDST7_B8 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDST7_B16(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use);
-void fastInverseDST7_B16(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDST7_B16(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDST7_B32(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use);
-void fastInverseDST7_B32(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDST7_B32(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 #if JVET_C0024_QTBT
 void fastForwardDST7_B64(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use);
-void fastInverseDST7_B64(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDST7_B64(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDST7_B128(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use);
-void fastInverseDST7_B128(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDST7_B128(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 #endif
 
 void fastForwardDCT5_B4 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use);
-void fastInverseDCT5_B4 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT5_B4 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDCT5_B8 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use);
-void fastInverseDCT5_B8 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT5_B8 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDCT5_B16(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use);
-void fastInverseDCT5_B16(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT5_B16(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDCT5_B32(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use);
-void fastInverseDCT5_B32(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT5_B32(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 #if JVET_C0024_QTBT
 void fastForwardDCT5_B64(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use);
-void fastInverseDCT5_B64(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT5_B64(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDCT5_B128(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use);
-void fastInverseDCT5_B128(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT5_B128(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 #endif
 
 void fastForwardDCT8_B4 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use);
-void fastInverseDCT8_B4 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT8_B4 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDCT8_B8 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use);
-void fastInverseDCT8_B8 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT8_B8 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDCT8_B16(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use);
-void fastInverseDCT8_B16(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT8_B16(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDCT8_B32(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use);
-void fastInverseDCT8_B32(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT8_B32(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 #if JVET_C0024_QTBT
 void fastForwardDCT8_B64(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use);
-void fastInverseDCT8_B64(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT8_B64(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDCT8_B128(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use);
-void fastInverseDCT8_B128(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT8_B128(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 #endif
 
 void fastForwardDST1_B4 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use);
-void fastInverseDST1_B4 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDST1_B4 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDST1_B8 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use);
-void fastInverseDST1_B8 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDST1_B8 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDST1_B16(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use);
-void fastInverseDST1_B16(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDST1_B16(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDST1_B32(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use);
-void fastInverseDST1_B32(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDST1_B32(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 #if JVET_C0024_QTBT
 void fastForwardDST1_B64(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use);
-void fastInverseDST1_B64(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDST1_B64(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDST1_B128(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use);
-void fastInverseDST1_B128(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDST1_B128(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 #endif
 
 typedef void FwdTrans (TCoeff *, TCoeff *, Int, Int, Int, Int, Int);
-typedef void InvTrans (TCoeff *, TCoeff *, Int, Int, Int, Int, Int, const TCoeff, const TCoeff);
+typedef void InvTrans (TCoeff *, TCoeff *, Int, Int, Int, Int, Int, TOPLEFTARG const TCoeff, const TCoeff);
 
 #else//JVET_D0077_TRANSFORM_OPT
 
 #if JVET_C0024_QTBT
 void fastForwardDCT2_B2 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDCT2_B2 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT2_B2 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 #if JVET_C0024_ZERO_OUT_FIX 
 void fastForwardDCT2_B128(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2);
 #else
 void fastForwardDCT2_B128(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
 #endif
 #if JVET_C0024_ITSKIP || JVET_C0024_ZERO_OUT_FIX
-void fastInverseDCT2_B128(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT2_B128(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 #else
-void fastInverseDCT2_B128(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT2_B128(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 #endif
 #endif
 void fastForwardDCT2_B4 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDCT2_B4 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT2_B4 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDCT2_B8 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDCT2_B8 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT2_B8 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDCT2_B16(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDCT2_B16(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT2_B16(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDCT2_B32(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDCT2_B32(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT2_B32(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 #if JVET_C0024_ZERO_OUT_FIX
 void fastForwardDCT2_B64(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2);
 #else
 void fastForwardDCT2_B64(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
 #endif
 #if JVET_C0024_ITSKIP || JVET_C0024_ZERO_OUT_FIX
-void fastInverseDCT2_B64(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT2_B64(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 #else
-void fastInverseDCT2_B64(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT2_B64(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 #endif
 
 void fastForwardDST7_B4 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDST7_B4 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDST7_B4 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 
 void fastForwardDST7_B8 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDST7_B8 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDST7_B8 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDST7_B16(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDST7_B16(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDST7_B16(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDST7_B32(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDST7_B32(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDST7_B32(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 #if JVET_C0024_QTBT
 #if JVET_C0024_ZERO_OUT_FIX
 void fastForwardDST7_B64(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2);
@@ -204,20 +209,20 @@ void fastForwardDST7_B128(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int i
 void fastInverseDST7_B128(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, const TCoeff outputMinimum, const TCoeff outputMaximum);
 #else
 void fastForwardDST7_B64(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDST7_B64(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDST7_B64(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDST7_B128(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDST7_B128(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDST7_B128(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 #endif
 #endif
 
 void fastForwardDCT5_B4 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDCT5_B4 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT5_B4 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDCT5_B8 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDCT5_B8 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT5_B8 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDCT5_B16(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDCT5_B16(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT5_B16(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDCT5_B32(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDCT5_B32(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT5_B32(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 #if JVET_C0024_QTBT
 #if JVET_C0024_ZERO_OUT_FIX
 void fastForwardDCT5_B64(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2);
@@ -226,20 +231,20 @@ void fastForwardDCT5_B128(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int i
 void fastInverseDCT5_B128(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, const TCoeff outputMinimum, const TCoeff outputMaximum);
 #else
 void fastForwardDCT5_B64(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDCT5_B64(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT5_B64(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDCT5_B128(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDCT5_B128(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT5_B128(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 #endif
 #endif
 
 void fastForwardDCT8_B4 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDCT8_B4 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT8_B4 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDCT8_B8 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDCT8_B8 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT8_B8 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDCT8_B16(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDCT8_B16(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT8_B16(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDCT8_B32(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDCT8_B32(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT8_B32(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 #if JVET_C0024_QTBT
 #if JVET_C0024_ZERO_OUT_FIX
 void fastForwardDCT8_B64(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2);
@@ -248,20 +253,20 @@ void fastForwardDCT8_B128(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int i
 void fastInverseDCT8_B128(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, const TCoeff outputMinimum, const TCoeff outputMaximum);
 #else
 void fastForwardDCT8_B64(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDCT8_B64(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT8_B64(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDCT8_B128(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDCT8_B128(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDCT8_B128(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 #endif
 #endif
 
 void fastForwardDST1_B4 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDST1_B4 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDST1_B4 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDST1_B8 (TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDST1_B8 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDST1_B8 (TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDST1_B16(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDST1_B16(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDST1_B16(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDST1_B32(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDST1_B32(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDST1_B32(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 #if JVET_C0024_QTBT
 #if JVET_C0024_ZERO_OUT_FIX
 void fastForwardDST1_B64(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2);
@@ -270,15 +275,19 @@ void fastForwardDST1_B128(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int i
 void fastInverseDST1_B128(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int iSkipLine, Int iSkipLine2, const TCoeff outputMinimum, const TCoeff outputMaximum);
 #else
 void fastForwardDST1_B64(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDST1_B64(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDST1_B64(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 void fastForwardDST1_B128(TCoeff *block,TCoeff *coeff,Int shift, Int line, Int zo, Int use);
-void fastInverseDST1_B128(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, const TCoeff outputMinimum, const TCoeff outputMaximum);
+void fastInverseDST1_B128(TCoeff *coeff,TCoeff *block,Int shift, Int line, Int zo, Int use, TOPLEFTARG const TCoeff outputMinimum, const TCoeff outputMaximum);
 #endif
 #endif
 
 typedef void FwdTrans (TCoeff *, TCoeff *, Int, Int, Int, Int);
+#if SIGNPRED_TOPLEFT
+typedef void InvTrans (TCoeff *, TCoeff *, Int, Int, Int, Int, Bool, const TCoeff, const TCoeff);
+#else
 typedef void InvTrans (TCoeff *, TCoeff *, Int, Int, Int, Int, const TCoeff, const TCoeff);
 #endif//JVET_D0077_TRANSFORM_OPT
+#endif
 #endif
 
 typedef struct
@@ -386,6 +395,9 @@ public:
 #if VCEG_AZ08_USE_KLT
                               UInt  uiUseKLT              = 0,
 #endif
+#if SIGNPRED
+                              UInt maxNumPredSigns        = 0,
+#endif
                               Bool useRDOQ                = false,
                               Bool useRDOQTS              = false,
 #if T0196_SELECTIVE_RDOQ
@@ -435,7 +447,14 @@ Void InvNsst8x8( Int* src, UInt uiMode, UChar index );
                      );
 
 
-  Void invTransformNxN(      TComTU       & rTu,
+  Void invTransformNxN(
+#if SIGNPRED
+                             Bool doneDequant,
+#endif
+#if SIGNPRED_TOPLEFT
+                             Bool wantTopLeft,
+#endif
+                             TComTU       & rTu,
                        const ComponentID    compID,
                              Pel         *pcResidual,
                        const UInt           uiStride,
@@ -610,6 +629,26 @@ Void InvNsst8x8( Int* src, UInt uiMode, UChar index );
   DistType calcPatchDiff(Pel *ref, UInt uiStride, Pel **tarPatch, UInt uiPatchSize, UInt uiTempSize, DistType iMax);
   Void xSetSearchRange(TComDataCU* pcCU, TComMv& cMvPred, Int iSrchRng, TComMv& rcMvSrchRngLT, TComMv& rcMvSrchRngRB);
 #endif
+#if SIGNPRED
+  static UInt findAmplitudeBin(TCoeff dequantInput);
+  static Void getTopAndLeft(Pel const *rec, Int recStride, int uiWidth, int uiHeight, Pel *top, Pel *left, int leftStep);
+  static UInt cost(Pel const *decodedtop, Pel const *decodedleft, Pel const *top, Pel const *left, UInt uiWidth, UInt uiHeight);
+  static UInt getIdxOfMin(UInt const *ptable, UInt size);
+#endif
+#if SIGNPRED
+  Void xSignPredCombos(
+                      TComTU &rTU,
+                      const TComYuv* pcPredictorYuv, Int const* quantCoeff,
+                      UInt numberofacceptedsigns, UInt* chgfreq, UInt* costs
+                      );
+  Void xFindAndApplySignPredictors(
+                      TComTU &rTU, ComponentID compID,
+                      const TComYuv*  pcPredictorYuv,
+                      TCoeff* quantCoeff,
+                      UChar *SDHStorage,
+                      enum SignPredDirection signPredDirection
+                     );
+#endif
 
 protected:
 #if ADAPTIVE_QP_SELECTION
@@ -674,6 +713,15 @@ protected:
 #if VCEG_AZ08_FAST_DERIVE_KLT
   EigenType **m_pppdTmpEigenVector;
 #endif
+#endif
+
+#if SIGNPRED
+  Int     m_maxNumPredSigns;
+  TCoeff *m_quantCoeffCopy;
+  TCoeff *m_localCoeffs;
+  TCoeff *m_zeroCoeffs;
+  Pel    *m_resi;
+  Int     m_resiStride;
 #endif
 
 private:
@@ -768,6 +816,12 @@ __inline UInt              xGetCodedLevel  ( Double&          rd64CodedCost,
                  const ComponentID   compID,
                  const QpParam      &cQP );
 
+#if SIGNPRED
+  public:
+  Void getCompressibleSigns(TComTU &rTU, Int const *quantCoeff, UChar *SDHStorage, UInt &numberofacceptedsigns, UInt *chgfreq, UInt *chgproba);
+  private:
+#endif
+
   // inverse transform
   Void xIT    ( const Int channelBitDepth, Bool useDST, TCoeff* plCoef, Pel* pResidual, UInt uiStride, Int iWidth, Int iHeight, const Int maxLog2TrDynamicRange 
 #if COM16_C806_EMT
@@ -780,6 +834,9 @@ __inline UInt              xGetCodedLevel  ( Double&          rd64CodedCost,
 #endif
 #if VCEG_AZ08_KLT_COMMON
     , Bool useKLT
+#endif
+#if SIGNPRED_TOPLEFT
+    , Bool wantTopLeft
 #endif
     );
 

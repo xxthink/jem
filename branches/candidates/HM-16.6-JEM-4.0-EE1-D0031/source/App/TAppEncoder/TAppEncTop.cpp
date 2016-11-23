@@ -494,6 +494,9 @@ Void TAppEncTop::xInitLibCfg()
 #if JVET_D0033_ADAPTIVE_CLIPPING
     m_cTEncTop.setTchClipParam(m_ClipParam);
 #endif
+#if SIGNPRED
+  m_cTEncTop.setMaxNumPredSigns                 (m_maxNumPredSigns);
+#endif
   m_cTEncTop.setSummaryOutFilename                                ( m_summaryOutFilename );
   m_cTEncTop.setSummaryPicFilenameBase                            ( m_summaryPicFilenameBase );
   m_cTEncTop.setSummaryVerboseness                                ( m_summaryVerboseness );
