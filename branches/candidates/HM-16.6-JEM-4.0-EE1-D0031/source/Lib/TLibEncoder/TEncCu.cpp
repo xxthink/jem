@@ -3468,6 +3468,10 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
   m_pcEntropyCoder->encodeICFlag  ( pcCU, uiAbsPartIdx );
 #endif
   // Encode Coefficients
+#if SIGNPRED && !SIGNPRED_RDO
+  UInt uiWidthIdx = g_aucConvertToBit[uiCTUSize];
+  UInt uiHeightIdx = g_aucConvertToBit[uiCTUSize];
+#endif
   Bool bCodeDQP = getdQPFlag();
   Bool codeChromaQpAdj = getCodeChromaQpAdjFlag();
 #if  VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
@@ -3484,7 +3488,10 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
     , iNonZeroCoeffNonTs
 #endif
 #if SIGNPRED
-    , m_pcTrQuant
+    , m_pcTrQuant // implies we want to perform signpred processing (generate or re-use).
+#if !SIGNPRED_RDO
+    , m_pppcPredYuvBest[uiWidthIdx][uiHeightIdx]
+#endif
 #endif
     );
   setCodeChromaQpAdjFlag( codeChromaQpAdj );
@@ -4653,7 +4660,13 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
     , iNonZeroCoeffNonTs
 #endif
 #if SIGNPRED
+#if SIGNPRED_RDO
     , m_pcTrQuant
+#else
+      // we don't want to perform signpred processing.
+    , NULL
+    , NULL
+#endif
 #endif
     );
   setCodeChromaQpAdjFlag( codeChromaQpAdjFlag );
@@ -4968,7 +4981,7 @@ Void TEncCu::xCopyYuv2Tmp( UInt uiPartUnitIdx, UInt uiNextDepth )
   UInt uiNextWIdx = uiWIdx - ((uiSplitMethod & 1)==0 ? 1: 0);
   UInt uiNextHIdx = uiHIdx - ((uiSplitMethod & 2)==0 ? 1: 0);
   m_pppcRecoYuvBest[uiNextWIdx][uiNextHIdx]->copyToPartYuv( m_pppcRecoYuvTemp[uiWIdx][uiHIdx], uiPartUnitIdx );
-  m_pppcPredYuvBest[uiNextWIdx][uiNextHIdx]->copyToPartYuv( m_pppcPredYuvBest[uiWIdx][uiHIdx], uiPartUnitIdx );
+  m_pppcPredYuvBest[uiNextWIdx][uiNextHIdx]->copyToPartYuv( m_pppcPredYuvTemp[uiWIdx][uiHIdx], uiPartUnitIdx );
 #else
   UInt uiCurrDepth = uiNextDepth - 1;
   m_ppcRecoYuvBest[uiNextDepth]->copyToPartYuv( m_ppcRecoYuvTemp[uiCurrDepth], uiPartUnitIdx );

@@ -4343,9 +4343,6 @@ void fastInverseDST7_B32(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int z
 }
 
 
-
-
-
 #if JVET_C0024_QTBT
 #if JVET_C0024_ZERO_OUT_FIX || JVET_D0077_TRANSFORM_OPT
 void fastForwardDST7_B64(TCoeff *block, TCoeff *coeff,Int shift, Int line, Int iSkipLine, Int iSkipLine2
@@ -4811,8 +4808,8 @@ void fastInverseDST7_B128(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int 
 #endif
 #endif
 }
-#endif
 
+#endif
 
 
 
@@ -5870,6 +5867,7 @@ void fastInverseDCT8_B128(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int 
 #endif
 #endif
 }
+
 #endif
 
 
@@ -8886,7 +8884,6 @@ Void TComTrQuant::xDeQuant(       TComTU        &rTu,
   const Bool bClipTransformShiftTo0 = (pcCU->getTransformSkip(uiAbsPartIdx, compID) != 0) && pcCU->getSlice()->getSPS()->getSpsRangeExtension().getExtendedPrecisionProcessingFlag();
   const Int  originalTransformShift = getTransformShift(channelBitDepth, uiLog2TrSize, maxLog2TrDynamicRange);
   const Int  iTransformShift        = bClipTransformShiftTo0 ? std::max<Int>(0, originalTransformShift) : originalTransformShift;
-
   const Int QP_per = cQP.per;
   const Int QP_rem = cQP.rem;
 
@@ -16116,13 +16113,18 @@ Void TComTrQuant::getCompressibleSigns(TComTU &rTU, Int const *quantCoeff, UChar
   const UInt uiWidth           = tuRect.width;
   const UInt uiHeight          = tuRect.height;
   const QpParam cQP(*pcCU, COMPONENT_Y);
+#if SIGNPRED_HIGHEST != 2
   const UInt uiAbsPartIdx=rTU.GetAbsPartIdxTU();
   UInt intraMode = pcCU->isIntra(uiAbsPartIdx) ? 0 : 1;
+#endif
   numberofacceptedsigns = 0;
 
   // assert(m_maxNumPredSigns > 0);
   if (m_maxNumPredSigns == 0)
       return;
+#if SIGNPRED_HIGHEST
+  int lowestIdx = 0; // 0 is a safe value to start.
+#else
   int loProba = g_SignPredContext[intraMode][0];
   int hiProba = g_SignPredContext[intraMode][1];
   if (loProba > hiProba)
@@ -16133,6 +16135,7 @@ Void TComTrQuant::getCompressibleSigns(TComTU &rTU, Int const *quantCoeff, UChar
 
   int loProbaFreqs[MAXMAXNUMBEROFSIGNS];
   int nLoProbaFreqs = 0;
+#endif
 
   // dequant input coeffs after setting all to positive.
   int lastPos = -1;
@@ -16150,6 +16153,29 @@ Void TComTrQuant::getCompressibleSigns(TComTU &rTU, Int const *quantCoeff, UChar
   {
     if (quantCoeff[freq] == 0 || SDHStorage[freq] == SIGN_HIDDEN)
         continue;
+#if SIGNPRED_HIGHEST
+    // store highest found.
+    if (numberofacceptedsigns < m_maxNumPredSigns)
+    {
+        // store and update lowest.
+        chgfreq[numberofacceptedsigns] = freq;
+        if (m_localCoeffs[freq] < m_localCoeffs[chgfreq[lowestIdx]])
+            lowestIdx = numberofacceptedsigns;
+        numberofacceptedsigns++;
+    }
+    else if (m_localCoeffs[freq] > m_localCoeffs[chgfreq[lowestIdx]])
+    {
+        // update lowest.
+        chgfreq[lowestIdx] = freq;
+        lowestIdx = 0;
+        for (int i = 1; i < numberofacceptedsigns; i++)
+        {
+            if (m_localCoeffs[chgfreq[i]] < m_localCoeffs[chgfreq[lowestIdx]])
+                lowestIdx = i;
+        }
+    }
+  }
+#else
     int proba = g_SignPredContext[intraMode][findAmplitudeBin(m_localCoeffs[freq])];
     if (proba == hiProba)
     {
@@ -16176,8 +16202,33 @@ Void TComTrQuant::getCompressibleSigns(TComTU &rTU, Int const *quantCoeff, UChar
           numberofacceptedsigns++;
       }
   }
+#endif
+#if SIGNPRED_HIGHEST == 2
+  // sort our output to have highest first.  small number of signs assumed.
+  for (int i = 0; i < numberofacceptedsigns-1; i++)
+  {
+      int largestPos = i;
+      int largestVal = m_localCoeffs[chgfreq[i]];
+      for (int j = i+1; j < numberofacceptedsigns; j++)
+      {
+          if (m_localCoeffs[chgfreq[j]] > largestVal)
+          {
+              largestPos = j;
+              largestVal = m_localCoeffs[chgfreq[j]];
+          }
+      }
+      if (largestPos != i)
+      {
+          swap(chgfreq[i], chgfreq[largestPos]);
+      }
+  }
+#endif
+#if SIGNPRED_HIGHEST
+  // init the probas.
+  for (int i = 0; i < numberofacceptedsigns; i++)
+      chgproba[i] = findAmplitudeBin(m_localCoeffs[chgfreq[i]]);
+#endif
 }
-
 
 // Get cost of each sign-change combination with the given set of signs to change.
 // We inverse transform each combination.

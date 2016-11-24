@@ -386,8 +386,13 @@ Void TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComT
       , dummyNzTs
 #endif
 #if SIGNPRED
+#if SIGNPRED_RDO
       , pcCU->getSignHidden(compID) + rTu.getCoefficientOffset(compID)
       , false
+#else
+      , rTu.GetTrQuant() == NULL ? NULL : pcCU->getSignHidden(compID) + rTu.getCoefficientOffset(compID)
+      , rTu.GetTrQuant() != NULL && g_spFinalEncode != 2 ? true : false
+#endif
 #endif
       );
 #else
@@ -1062,7 +1067,10 @@ Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
   , Int& iNonZeroCoeffNonTs
 #endif
 #if SIGNPRED
-  , TComTrQuant *trQuant
+  , TComTrQuant *trQuant // non-NULL implies signpred processing (generate or re-use)
+#if !SIGNPRED_RDO
+  , TComYuv *pcPred
+#endif
 #endif
   )
 {
@@ -1099,6 +1107,9 @@ Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
   TComTURecurse tuRecurse(pcCU, uiAbsPartIdx, uiDepth
 #if SIGNPRED
     , trQuant
+#if !SIGNPRED_RDO
+    , NULL
+#endif
 #endif
     );
 #if ENVIRONMENT_VARIABLE_DEBUG_AND_TEST
@@ -1253,7 +1264,7 @@ Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
 #endif 
 }
 
-#if SIGNPRED
+#if SIGNPRED && SIGNPRED_RDO
 Void TEncEntropy::encodeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID, UChar *pcSDHStorage, Bool getSignPredCombos )
 #else
 Void TEncEntropy::encodeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID)
@@ -1311,8 +1322,13 @@ Void TEncEntropy::encodeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID
         , iNonZeroCoeffNonTs
 #endif
 #if SIGNPRED
+#if SIGNPRED_RDO
         , pcSDHStorage
         , getSignPredCombos
+#else
+        , NULL
+        , false
+#endif
 #endif
         );
     }

@@ -2161,6 +2161,7 @@ Void TDecSbac::parseSigns(TComTrQuant *trQuant, TComTU &rTU, TCoeff* pcCoef, Com
   TComCodingStatisticsClassType ctype_compressedsigns(STATS__CABAC_BITS__COMPRESSEDSIGN_BIT, uiLog2BlockWidth, compID);
 #endif
 
+  // signPredValid = signPredValid && uiPelXCur == 16 && uiPelYCur == 32 && rTU.getRect(COMPONENT_Y).width == 16 && rTU.getRect(COMPONENT_Y).height == 16;
   if (signPredValid)
     trQuant->getCompressibleSigns(rTU, pcCoef, SDHStorage, numberofacceptedsigns, chgfreq, chgprobas);
 
@@ -2316,6 +2317,9 @@ Void TDecSbac::parseCoeffNxN(
   TComCodingStatisticsClassType ctype_gt2(STATS__CABAC_BITS__GT2_FLAG, uiLog2BlockWidth, compID);
 #endif
 
+#if SIGNPRED && !SIGNPRED_RDO
+  memset(pcCU->getSignHidden(compID)+rTu.getCoefficientOffset(compID), 0, uiWidth*uiHeight*sizeof(pcCU->getSignHidden(compID)[0]));
+#endif
   Bool beValid;
   if (pcCU->getCUTransquantBypass(uiAbsPartIdx))
   {

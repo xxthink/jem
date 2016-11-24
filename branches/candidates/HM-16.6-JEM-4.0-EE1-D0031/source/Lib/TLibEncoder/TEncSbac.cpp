@@ -2027,8 +2027,13 @@ Void TEncSbac::codeSigns(TComTU& rTU, TCoeff* pcCoef, ComponentID compID, UChar 
 
   if (signPredValid && getSignPredCombos)
   {
+#if SIGNPRED_RDO
       // We guess our signs and record the results.  We're in RDO.
       rTU.GetTrQuant()->xFindAndApplySignPredictors(rTU, compID, rTU.GetPredYuv(), pcCoef, pcSDHStorage, DIR_REAL_TO_RESIDUE);
+#else
+      // We guess our signs and record the results.  We're performing a final encode (or determining slice bits).
+      rTU.GetTrQuant()->xFindAndApplySignPredictors(rTU, compID, NULL, pcCoef, pcSDHStorage, DIR_REAL_TO_RESIDUE);
+#endif
   }
 
   if (signPredValid)
@@ -2619,14 +2624,36 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
       }
 #if !VCEG_AZ07_CTX_RESIDUALCODING
 #if SIGNPRED
-      // signs after all RLs.
-      if (beValid && signHidden)
+#if SIGNPRED_RDO
       {
+      // signs after all RLs.
         if (getSignPredCombos)
-            pcSDHStorage[codingParameters.scan[ firstNZPosInCG ]] =  SIGN_HIDDEN;
+          pcSDHStorage[codingParameters.scan[ firstNZPosInCG ]] = SIGN_HIDDEN;
         else
-            assert(pcSDHStorage[codingParameters.scan[ firstNZPosInCG ]] == SIGN_HIDDEN);
+          assert(pcSDHStorage[codingParameters.scan[ firstNZPosInCG ]] == SIGN_HIDDEN);
       }
+#else
+      {
+        // signs after all RLs if we do signpred.  we check and/or store here.
+        if (pcSDHStorage != NULL)
+        {
+          if (getSignPredCombos)
+            pcSDHStorage[codingParameters.scan[ firstNZPosInCG ]] = SIGN_HIDDEN;
+          else
+            assert(pcSDHStorage[codingParameters.scan[ firstNZPosInCG ]] == SIGN_HIDDEN);
+        }
+        else
+        {
+            // just emit the signs as before, we're in RDO.
+            m_pcBinIf->encodeBinsEP( (coeffSigns >> 1), numNonZero-1 );
+        }
+      }
+      else if (pcSDHStorage == NULL)
+      {
+        // just emit the signs as before, we're in RDO.
+        m_pcBinIf->encodeBinsEP( coeffSigns, numNonZero );
+      }
+#endif
 #else
       if( beValid && signHidden )
       {
@@ -2701,6 +2728,7 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
       if( beValid && signHidden )
 #endif
 #if SIGNPRED
+#if SIGNPRED_RDO
       {
       // signs after all RLs.
         if (getSignPredCombos)
@@ -2708,6 +2736,28 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
         else
           assert(pcSDHStorage[codingParameters.scan[ firstNZPosInCG ]] == SIGN_HIDDEN);
       }
+#else
+      {
+        // signs after all RLs if we do signpred.  we check and/or store here.
+        if (pcSDHStorage != NULL)
+        {
+          if (getSignPredCombos)
+            pcSDHStorage[codingParameters.scan[ firstNZPosInCG ]] = SIGN_HIDDEN;
+          else
+            assert(pcSDHStorage[codingParameters.scan[ firstNZPosInCG ]] == SIGN_HIDDEN);
+        }
+        else
+        {
+            // just emit the signs as before, we're in RDO.
+            m_pcBinIf->encodeBinsEP( (coeffSigns >> 1), numNonZero-1 );
+        }
+      }
+      else if (pcSDHStorage == NULL)
+      {
+        // just emit the signs as before, we're in RDO.
+        m_pcBinIf->encodeBinsEP( coeffSigns, numNonZero );
+      }
+#endif
 #else
       {
         m_pcBinIf->encodeBinsEP( (coeffSigns >> 1), numNonZero-1 );
@@ -2744,8 +2794,27 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
     }
   }
 #endif
-#if SIGNPRED
-  codeSigns(rTu, pcCoef, compID, pcSDHStorage, getSignPredCombos);
+#if SIGNPRED && !SIGNPRED_RDO
+  switch (g_spFinalEncode)
+  {
+  case 0: assert(pcSDHStorage == NULL); // rdo, no processing.
+          assert(rTu.GetTrQuant() == NULL);
+          break;
+  case 1: assert(pcSDHStorage != NULL); // slice-limit final encode -- gen combos and maybe write.
+          assert(getSignPredCombos);
+          assert(rTu.GetTrQuant() != NULL);
+          break;
+  case 2: assert(pcSDHStorage != NULL); // final encode -- reuse combos and write.
+          assert(!getSignPredCombos);
+          assert(rTu.GetTrQuant() != NULL); 
+          break;
+  default:
+      assert(false);
+  }
+  if (pcSDHStorage != NULL)
+    codeSigns(rTu, pcCoef, compID, pcSDHStorage, getSignPredCombos);
+#else
+    codeSigns(rTu, pcCoef, compID, pcSDHStorage, getSignPredCombos);
 #endif
 
   return;
