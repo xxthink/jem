@@ -354,10 +354,13 @@ public:
 #endif
 #if SIGNPRED
     , TComTrQuant *trQuant
+#if !SIGNPRED_RDO
+    , TComYuv *pcPred
+#endif
 #endif
     );
 
-#if SIGNPRED
+#if SIGNPRED && SIGNPRED_RDO
   Void encodeCoeffNxN         ( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID, UChar *pcSDHStorage, Bool getSignPredCombos );
 #else
   Void encodeCoeffNxN         ( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID );

@@ -61,6 +61,9 @@ UChar const g_SignPredContext[2][2] =
     {0, 1}, // intra; lowamp, otheramps.
     {0, 1}  // inter; lowamp, otheramps.
 };
+#if !SIGNPRED_RDO
+Int g_spFinalEncode;
+#endif
 #endif
 
 

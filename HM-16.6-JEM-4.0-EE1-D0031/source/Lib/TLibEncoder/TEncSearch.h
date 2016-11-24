@@ -74,7 +74,7 @@ private:
   TCoeff**        m_ppcQTTempCoeff[MAX_NUM_COMPONENT /* 0->Y, 1->Cb, 2->Cr*/];
 #endif
   TCoeff*         m_pcQTTempCoeff[MAX_NUM_COMPONENT];
-#if SIGNPRED
+#if SIGNPRED && SIGNPRED_RDO
 #if JVET_C0024_QTBT
   UChar***        m_pppcQTTempSDHStorage[MAX_NUM_COMPONENT];
 #else
@@ -97,6 +97,10 @@ private:
 
 #if JVET_C0024_QTBT
   TComYuv**       m_ppcQTTempTComYuv;
+#if SIGNPRED && !SIGNPRED_RDO
+  TComYuv**       m_ppcQTTempTComYuvPred; // intra pred temp.
+  TComYuv         m_cQTTempPredTComYuv; // load and store.
+#endif
 #else
   TComYuv*        m_pcQTTempTComYuv;
 #endif
@@ -428,7 +432,7 @@ protected:
   Void  xEncCoeffQT               ( TComTU &rTu,
                                     ComponentID  component,
                                     Bool         bRealCoeff
-#if SIGNPRED
+#if SIGNPRED && SIGNPRED_RDO
                                     , Bool         getSignPredCombos
 #endif
                                   );
@@ -441,7 +445,7 @@ protected:
                                     Bool         bLuma,
                                     Bool         bChroma,
                                     Bool         bRealCoeff
-#if SIGNPRED
+#if SIGNPRED && SIGNPRED_RDO
                                   , Bool         getSignPredCombos
 #endif
     );
@@ -449,7 +453,7 @@ protected:
   UInt  xGetIntraBitsQTChroma    ( TComTU &rTu,
                                    ComponentID compID,
                                    Bool          bRealCoeff
-#if SIGNPRED
+#if SIGNPRED && SIGNPRED_RDO
                                  , Bool          getSignPredCombos
 #endif
     );
@@ -521,7 +525,11 @@ protected:
                                       DEBUG_STRING_FN_DECLARE(sDebug));
 #endif
 
-  Void  xSetIntraResultLumaQT     ( TComYuv*     pcRecoYuv,
+  Void  xSetIntraResultLumaQT     (
+#if SIGNPRED && !SIGNPRED_RDO
+                                    TComYuv*     pcPredYuv,
+#endif
+                                    TComYuv*     pcRecoYuv,
                                     TComTU &rTu);
 
   Void xStoreCrossComponentPredictionResult  (       Pel    *pResiLuma,

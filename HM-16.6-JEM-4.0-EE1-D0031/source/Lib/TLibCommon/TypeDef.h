@@ -48,7 +48,10 @@
 //! \{
 
 #define SIGNPRED 1
+#define SIGNPRED_RDO 1 // 1 => original in-RDO code, 0 => no RDO processing, decisions are made after.
+
 #define SIGNPRED_TOPLEFT 1 // top-left inverse transform optimisation
+#define SIGNPRED_HIGHEST 0
 
 #define SIGN_HIDDEN 1 // in SDH storage, sign is hidden.
 #define SIGN_PRED_CORRECT 2 // in SDH storage, sign prediction was correct.
