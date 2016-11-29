@@ -4492,7 +4492,13 @@ void fastInverseDST7_B64(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int z
   const Int  cutoff = uiTrSize - iSkipLine2;
   for (i=0; i<reducedLine; i++)
   {
+#if SIGNPRED_TOPLEFT
+    Int const all = i == 0 || !topLeft;
+    Int const jlim = all ? uiTrSize : 1;
+    for (j=0; j<jlim; j++)
+#else
     for (j=0; j<uiTrSize; j++)
+#endif
     {
       iSum = 0;
       for (k=0; k<cutoff; k++)
@@ -4728,7 +4734,13 @@ void fastInverseDST7_B128(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int 
   const Int  cutoff = uiTrSize - iSkipLine2;
   for (i=0; i<reducedLine; i++)
   {
+#if SIGNPRED_TOPLEFT
+    Int const all = i == 0 || !topLeft;
+    Int const jlim = all ? uiTrSize : 1;
+    for (j=0; j<jlim; j++)
+#else
     for (j=0; j<uiTrSize; j++)
+#endif
     {
       iSum = 0;
       for (k=0; k<cutoff; k++)
@@ -5328,7 +5340,13 @@ void fastInverseDCT8_B32(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int z
   const Int  cutoff = uiTrSize - iSkipLine2;
   for (i=0; i<reducedLine; i++)
   {
+#if SIGNPRED_TOPLEFT
+    Int const all = i == 0 || !topLeft;
+    Int const jlim = all ? uiTrSize : 1;
+    for (j=0; j<jlim; j++)
+#else
     for (j=0; j<uiTrSize; j++)
+#endif
     {
       iSum = 0;
       for (k=0; k<cutoff; k++)
@@ -5552,7 +5570,13 @@ void fastInverseDCT8_B64(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int z
   const Int  cutoff = uiTrSize - iSkipLine2;
   for (i=0; i<reducedLine; i++)
   {
+#if SIGNPRED_TOPLEFT
+    Int const all = i == 0 || !topLeft;
+    Int const jlim = all ? uiTrSize : 1;
+    for (j=0; j<jlim; j++)
+#else
     for (j=0; j<uiTrSize; j++)
+#endif
     {
       iSum = 0;
       for (k=0; k<cutoff; k++)
@@ -5786,7 +5810,13 @@ void fastInverseDCT8_B128(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int 
   const Int  cutoff = uiTrSize - iSkipLine2;
   for (i=0; i<reducedLine; i++)
   {
+#if SIGNPRED_TOPLEFT
+    Int const all = i == 0 || !topLeft;
+    Int const jlim = all ? uiTrSize : 1;
+    for (j=0; j<jlim; j++)
+#else
     for (j=0; j<uiTrSize; j++)
+#endif
     {
       iSum = 0;
       for (k=0; k<cutoff; k++)
@@ -6504,7 +6534,13 @@ void fastInverseDCT5_B64(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int z
   const Int  cutoff = uiTrSize - iSkipLine2;
   for (i=0; i<reducedLine; i++)
   {
+#if SIGNPRED_TOPLEFT
+    Int const all = i == 0 || !topLeft;
+    Int const jlim = all ? uiTrSize : 1;
+    for (j=0; j<jlim; j++)
+#else
     for (j=0; j<uiTrSize; j++)
+#endif
     {
       iSum = 0;
       for (k=0; k<cutoff; k++)
@@ -6732,7 +6768,13 @@ void fastInverseDCT5_B128(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int 
   const Int  cutoff = uiTrSize - iSkipLine2;
   for (i=0; i<reducedLine; i++)
   {
+#if SIGNPRED_TOPLEFT
+    Int const all = i == 0 || !topLeft;
+    Int const jlim = all ? uiTrSize : 1;
+    for (j=0; j<jlim; j++)
+#else
     for (j=0; j<uiTrSize; j++)
+#endif
     {
       iSum = 0;
       for (k=0; k<cutoff; k++)
@@ -7445,7 +7487,13 @@ void fastInverseDST1_B64(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int z
   const Int  cutoff = uiTrSize - iSkipLine2;
   for (i=0; i<reducedLine; i++)
   {
+#if SIGNPRED_TOPLEFT
+    Int const all = i == 0 || !topLeft;
+    Int const jlim = all ? uiTrSize : 1;
+    for (j=0; j<jlim; j++)
+#else
     for (j=0; j<uiTrSize; j++)
+#endif
     {
       iSum = 0;
       for (k=0; k<cutoff; k++)
@@ -7673,7 +7721,13 @@ void fastInverseDST1_B128(TCoeff *coeff, TCoeff *block,Int shift, Int line, Int 
   const Int  cutoff = uiTrSize - iSkipLine2;
   for (i=0; i<reducedLine; i++)
   {
+#if SIGNPRED_TOPLEFT
+    Int const all = i == 0 || !topLeft;
+    Int const jlim = all ? uiTrSize : 1;
+    for (j=0; j<jlim; j++)
+#else
     for (j=0; j<uiTrSize; j++)
+#endif
     {
       iSum = 0;
       for (k=0; k<cutoff; k++)
@@ -16113,7 +16167,7 @@ Void TComTrQuant::getCompressibleSigns(TComTU &rTU, Int const *quantCoeff, UChar
   const UInt uiWidth           = tuRect.width;
   const UInt uiHeight          = tuRect.height;
   const QpParam cQP(*pcCU, COMPONENT_Y);
-#if SIGNPRED_HIGHEST != 2
+#if !(SIGNPRED_HIGHEST == 1 || SIGNPRED_HIGHEST == 2)
   const UInt uiAbsPartIdx=rTU.GetAbsPartIdxTU();
   UInt intraMode = pcCU->isIntra(uiAbsPartIdx) ? 0 : 1;
 #endif
@@ -16122,7 +16176,8 @@ Void TComTrQuant::getCompressibleSigns(TComTU &rTU, Int const *quantCoeff, UChar
   // assert(m_maxNumPredSigns > 0);
   if (m_maxNumPredSigns == 0)
       return;
-#if SIGNPRED_HIGHEST
+#if SIGNPRED_HIGHEST == 1 || SIGNPRED_HIGHEST == 2
+  // single bucket.
   int lowestIdx = 0; // 0 is a safe value to start.
 #else
   int loProba = g_SignPredContext[intraMode][0];
@@ -16135,6 +16190,11 @@ Void TComTrQuant::getCompressibleSigns(TComTU &rTU, Int const *quantCoeff, UChar
 
   int loProbaFreqs[MAXMAXNUMBEROFSIGNS];
   int nLoProbaFreqs = 0;
+#if SIGNPRED_HIGHEST
+  // highest coeffs in each bucket.
+  int lowestHiIdx = 0;
+  int lowestLoIdx = 0;
+#endif
 #endif
 
   // dequant input coeffs after setting all to positive.
@@ -16153,7 +16213,7 @@ Void TComTrQuant::getCompressibleSigns(TComTU &rTU, Int const *quantCoeff, UChar
   {
     if (quantCoeff[freq] == 0 || SDHStorage[freq] == SIGN_HIDDEN)
         continue;
-#if SIGNPRED_HIGHEST
+#if SIGNPRED_HIGHEST == 1 || SIGNPRED_HIGHEST == 2
     // store highest found.
     if (numberofacceptedsigns < m_maxNumPredSigns)
     {
@@ -16177,6 +16237,54 @@ Void TComTrQuant::getCompressibleSigns(TComTU &rTU, Int const *quantCoeff, UChar
   }
 #else
     int proba = g_SignPredContext[intraMode][findAmplitudeBin(m_localCoeffs[freq])];
+#if SIGNPRED_HIGHEST
+    if (proba == hiProba)
+    {
+        // store it directly.
+        if (numberofacceptedsigns < m_maxNumPredSigns)
+        {
+            // store directly, update lowest.
+            chgfreq[numberofacceptedsigns] = freq;
+            chgproba[numberofacceptedsigns] = proba;
+            if (m_localCoeffs[freq] < m_localCoeffs[chgfreq[lowestHiIdx]])
+                lowestHiIdx = numberofacceptedsigns;
+            numberofacceptedsigns++;
+        }
+        else if (m_localCoeffs[freq] > m_localCoeffs[chgfreq[lowestHiIdx]])
+        {
+            // update lowest.
+            chgfreq[lowestHiIdx] = freq;
+            lowestHiIdx = 0;
+            for (int i = 1; i < numberofacceptedsigns; i++)
+            {
+                if (m_localCoeffs[chgfreq[i]] < m_localCoeffs[chgfreq[lowestHiIdx]])
+                    lowestHiIdx = i;
+            }
+        }
+    }
+    else
+    {
+        if (nLoProbaFreqs < m_maxNumPredSigns)
+        {
+            // store, update lowest.
+            loProbaFreqs[nLoProbaFreqs] = freq;
+            if (m_localCoeffs[freq] < m_localCoeffs[loProbaFreqs[lowestLoIdx]])
+                lowestLoIdx = nLoProbaFreqs;
+            nLoProbaFreqs++;
+        }
+        else if (m_localCoeffs[freq] > m_localCoeffs[loProbaFreqs[lowestLoIdx]])
+        {
+            // update lowest.
+            loProbaFreqs[lowestLoIdx] = freq;
+            lowestLoIdx = 0;
+            for (int i = 1; i < nLoProbaFreqs; i++)
+            {
+                if (m_localCoeffs[loProbaFreqs[i]] < m_localCoeffs[loProbaFreqs[lowestLoIdx]])
+                    lowestLoIdx = i;
+            }
+        }
+    }
+#else
     if (proba == hiProba)
     {
         // store it directly.
@@ -16189,6 +16297,7 @@ Void TComTrQuant::getCompressibleSigns(TComTU &rTU, Int const *quantCoeff, UChar
     // else, lo proba.  keep for possibly later.
     if (nLoProbaFreqs < m_maxNumPredSigns)
         loProbaFreqs[nLoProbaFreqs++] = freq;
+#endif
   }
   if (numberofacceptedsigns < m_maxNumPredSigns)
   {

@@ -2794,7 +2794,8 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
     }
   }
 #endif
-#if SIGNPRED && !SIGNPRED_RDO
+#if SIGNPRED
+#if !SIGNPRED_RDO
   switch (g_spFinalEncode)
   {
   case 0: assert(pcSDHStorage == NULL); // rdo, no processing.
@@ -2815,6 +2816,7 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
     codeSigns(rTu, pcCoef, compID, pcSDHStorage, getSignPredCombos);
 #else
     codeSigns(rTu, pcCoef, compID, pcSDHStorage, getSignPredCombos);
+#endif
 #endif
 
   return;

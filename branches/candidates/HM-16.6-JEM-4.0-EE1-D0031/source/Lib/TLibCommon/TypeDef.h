@@ -50,8 +50,13 @@
 #define SIGNPRED 1
 #define SIGNPRED_RDO 1 // 1 => original in-RDO code, 0 => no RDO processing, decisions are made after.
 
+#if SIGNPRED
 #define SIGNPRED_TOPLEFT 1 // top-left inverse transform optimisation
-#define SIGNPRED_HIGHEST 0
+#else
+#define SIGNPRED_TOPLEFT 0 // top-left inverse transform optimisation
+#endif
+
+#define SIGNPRED_HIGHEST 0 // non-rdo testing.
 
 #define SIGN_HIDDEN 1 // in SDH storage, sign is hidden.
 #define SIGN_PRED_CORRECT 2 // in SDH storage, sign prediction was correct.
