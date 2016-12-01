@@ -340,7 +340,7 @@
 
 // This can be enabled by the makefile
 #ifndef ENC_DEC_TRACE
-#define ENC_DEC_TRACE                                     1
+#define ENC_DEC_TRACE                                     0
 #endif
 #define DEC_NUH_TRACE                                     0 ///< When trace enabled, enable tracing of NAL unit headers at the decoder (currently not possible at the encoder)
 
