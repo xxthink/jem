@@ -61,6 +61,19 @@ int main(int argc, char* argv[])
   fprintf( stdout, NVM_BITS );
   fprintf( stdout, "\n\n" );
 
+#if JVET_D0046_EE3_TEST1_0
+  fprintf( stdout, "\nSorry, JEM4.0 EE3 D0046 Test #1_0 has not to be cross-checked\n\n" );
+  return 1;
+#endif
+#if JVET_D0046_EE3_TEST2
+  fprintf( stdout, "\nSorry, JEM4.0 EE3 D0046 Test #2 is not already available for cross-check\n\n" );
+  return 1;
+#endif
+#if JVET_D0046_EE3_TEST3
+  fprintf( stdout, "\nSorry, JEM4.0 EE3 D0046 Test #3 is not already available for cross-check\n\n" );
+  return 1;
+#endif
+
   // create application encoder class
   cTAppEncTop.create();
 

@@ -159,6 +159,9 @@ protected:
 #if VCEG_AZ07_FRUC_MERGE
   TComRdCost              m_cFRUCRDCost;
   std::list <TComMvField> m_listMVFieldCand[2];
+#if TCH_ARO_FRUC_ADD_CAND
+  RefPicList              m_bilatBestRefPicList;
+#endif
   TComYuv                 m_cYuvPredFrucTemplate[2];      // 0: top, 1: left
   Bool                    m_bFrucTemplateAvailabe[2];
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
@@ -251,10 +254,18 @@ protected:
 #endif
 #if VCEG_AZ07_FRUC_MERGE
   Bool xFrucFindBlkMv( TComDataCU * pCU , UInt uiPUIdx );
-  Bool xFrucFindBlkMv4Pred( TComDataCU * pCU , UInt uiPUIdx , RefPicList eTargetRefPicList , Int nTargetRefIdx );
+  Bool xFrucFindBlkMv4Pred( TComDataCU * pCU , UInt uiPUIdx , RefPicList eTargetRefPicList , Int nTargetRefIdx
+#if TCH_ARO_FRUC_ADD_CAND
+                          , AMVPInfo* pInfo = NULL
+#endif
+                          );
   Bool xFrucRefineSubBlkMv( TComDataCU * pCU , UInt uiDepth , UInt uiPUIdx , Bool bTM );
 
-  Void xFrucCollectBlkStartMv( TComDataCU * pCU , UInt uiPUIdx , RefPicList eTargetRefList = REF_PIC_LIST_0 , Int nTargetRefIdx = -1 );
+  Void xFrucCollectBlkStartMv( TComDataCU * pCU , UInt uiPUIdx , RefPicList eTargetRefList = REF_PIC_LIST_0 , Int nTargetRefIdx = -1
+#if TCH_ARO_FRUC_ADD_CAND
+                             , AMVPInfo* pInfo = NULL
+#endif
+                             );
   Void xFrucCollectSubBlkStartMv( TComDataCU * pCU , UInt uiAbsPartIdx , RefPicList eRefPicList , const TComMvField & rMvStart , Int nSubBlkWidth , Int nSubBlkHeight 
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
     , UInt uiSubBlkRasterIdx , UInt uiSubBlkRasterStep
@@ -308,7 +319,11 @@ public:
   Void motionCompensation         ( TComDataCU*  pcCU, TComYuv* pcYuvPred, RefPicList eRefPicList = REF_PIC_LIST_X, Int iPartIdx = -1 );
 
 #if VCEG_AZ07_FRUC_MERGE
-  Bool deriveFRUCMV( TComDataCU * pCU , UInt uiDepth , UInt uiAbsPartIdx , UInt uiPUIdx , Int nTargetRefIdx = -1 , RefPicList eTargetRefList = REF_PIC_LIST_0 );
+  Bool deriveFRUCMV( TComDataCU * pCU , UInt uiDepth , UInt uiAbsPartIdx , UInt uiPUIdx , Int nTargetRefIdx = -1 , RefPicList eTargetRefList = REF_PIC_LIST_0
+#if TCH_ARO_FRUC_ADD_CAND
+                   , AMVPInfo* pInfo = NULL
+#endif
+                   );
 #endif
 
   // motion vector prediction
