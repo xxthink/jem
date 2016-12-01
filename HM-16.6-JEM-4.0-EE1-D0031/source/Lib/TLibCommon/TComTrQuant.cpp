@@ -8165,7 +8165,7 @@ void xITrMxN_EMT(Int bitDepth, TCoeff *coeff, TCoeff *block, Int iWidth, Int iHe
 #if JVET_D0077_TRANSFORM_OPT
 #if SIGNPRED_TOPLEFT
   fastInvTrans[nTrIdxVer][nLog2HeightMinus1]( coeff, tmp, shift_1st,  iWidth, uiSkipWidth, uiSkipHeight, 1, false, clipMinimum, clipMaximum );
-  fastInvTrans[nTrIdxHor][nLog2WidthMinus1]( tmp, block, shift_2nd, iHeight, 0, uiSkipWidth, 1, false, clipMinimum, clipMaximum );
+  fastInvTrans[nTrIdxHor][nLog2WidthMinus1]( tmp, block, shift_2nd, iHeight, 0, uiSkipWidth, 1, wantTopLeft, clipMinimum, clipMaximum );
 #else
   fastInvTrans[nTrIdxVer][nLog2HeightMinus1]( coeff, tmp, shift_1st,  iWidth, uiSkipWidth, uiSkipHeight, 1, clipMinimum, clipMaximum );
   fastInvTrans[nTrIdxHor][nLog2WidthMinus1]( tmp, block, shift_2nd, iHeight, 0, uiSkipWidth, 1, clipMinimum, clipMaximum );
