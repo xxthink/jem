@@ -259,7 +259,11 @@ static const UInt notFirstGroupNeighbourhoodContextOffset[MAX_NUM_CHANNEL_TYPE] 
 #if JVET_B0039_INC_NUM_QP_PROB
 #define NUM_QP_PROB                  JVET_B0039_INC_NUM_QP_PROB                //could be set to N (N>5, depending on the allowed QPs in a coded sequence)
 #else
+#if FIX_TICKET36
+#define NUM_QP_PROB                  52                ///< Number of total allowed positive QP values, aligned with HEVC. may need to change if more QP values are allowed
+#else
 #define NUM_QP_PROB                  5                //could be set to N (N>5, depending on the allowed QPs in a coded sequence)
+#endif
 #endif
 #define NUM_CTX_PBSLICE              MAX_NUM_CTX_MOD //could be set to the exact number of used contexts later
 #endif
