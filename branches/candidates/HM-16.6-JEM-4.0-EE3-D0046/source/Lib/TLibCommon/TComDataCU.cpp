@@ -7304,7 +7304,11 @@ Void TComDataCU::fillMvpCand ( UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefP
 #if VCEG_AZ07_FRUC_MERGE
   if( getSlice()->getSPS()->getUseFRUCMgrMode() )
   {
-    if( pPred != NULL && pPred->deriveFRUCMV( this , getDepth( uiPartAddr ) , uiPartAddr , uiPartIdx , iRefIdx , eRefPicList ) )
+    if( pPred != NULL && pPred->deriveFRUCMV( this , getDepth( uiPartAddr ) , uiPartAddr , uiPartIdx , iRefIdx , eRefPicList
+#if TCH_ARO_FRUC_ADD_CAND
+        , pInfo
+#endif
+        ) )
     {
       const TComMv & rMV = getCUMvField( eRefPicList )->getMv( uiPartAddr );
       if( pInfo->iN == 0 )

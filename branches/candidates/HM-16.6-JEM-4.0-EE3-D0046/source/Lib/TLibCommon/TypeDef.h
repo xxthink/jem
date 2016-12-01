@@ -48,6 +48,110 @@
 //! \{
 
 ///////////////////////////////////////////////////////////
+// JEM4.0 EE3 D0046 section starts
+///////////////////////////////////////////////////////////
+
+
+
+#define JVET_D0046_EE3_TEST1_1          1 ///< EE3 test#1.1: get individual performance of high precision FRUC of JVET-D0046
+#define JVET_D0046_EE3_TEST1_2          0 ///< EE3 test#1.2: get individual performance of candidates addition in FRUC list of JVET-D0046
+#define JVET_D0046_EE3_TEST2            0 ///< EE3 test#2:   test#1.2 + adjust the number of added candidates
+#define JVET_D0046_EE3_TEST3            0 ///< EE3 test#3:   test#2 + remove/move some sub-blocks candidates from FRUC list
+
+
+#if JVET_D0046_EE3_TEST1_1
+#define TCH_ARO_FRUC_OPT                0 ///< some optimizations (not changing encoding and decoding results)
+#define TCH_ARO_FRUC_HIGH_PREC          1 ///< do refinement with decremental shift in case of high precision mv storage
+#define TCH_ARO_FRUC_ADD_CAND           0 ///< add AMVP candidates before merge ones in AMVP mode, and add some candidate mv to initial FRUC list in all cases
+#if TCH_ARO_FRUC_ADD_CAND
+  #define NB_FRUC_CAND_ADDED_AMVP       5 ///< for AMVP CU, number of added candidates in top, left, top-left, top-right, below-left <0-5>
+  #define NB_FRUC_CAND_ADDED            5 ///< for merge CU, number of added candidates in top, left, top-left, top-right, below-left <0-5>
+  #define NB_FRUC_CAND_ADDED_SUB        5 ///< for sub-blocks of merge CU, number of added candidates in top, left, top-left, top-right, below-left <0-5>
+#endif
+
+#define TCH_ARO_FRUC_ADD_CAND_BEFORE    0 ///< add spatial candidates of sub-blocks before temporal ones
+#define TCH_ARO_FRUC_REM_SUBCAND        0 ///< remove some sub-blocks candidates not much selected
+#if TCH_ARO_FRUC_REM_SUBCAND
+  #define NB_FRUC_CAND_ATMVP            4 ///< for sub-blocks of merge CU, number of ATMVP candidates
+#endif
+#endif
+
+#if JVET_D0046_EE3_TEST1_2
+#define TCH_ARO_FRUC_OPT                0 ///< some optimizations (not changing encoding and decoding results)
+#define TCH_ARO_FRUC_HIGH_PREC          0 ///< do refinement with decremental shift in case of high precision mv storage
+#define TCH_ARO_FRUC_ADD_CAND           1 ///< add AMVP candidates before merge ones in AMVP mode, and add some candidate mv to initial FRUC list in all cases
+#if TCH_ARO_FRUC_ADD_CAND
+  #define NB_FRUC_CAND_ADDED_AMVP       5 ///< for AMVP CU, number of added candidates in top, left, top-left, top-right, below-left <0-5>
+  #define NB_FRUC_CAND_ADDED            5 ///< for merge CU, number of added candidates in top, left, top-left, top-right, below-left <0-5>
+  #define NB_FRUC_CAND_ADDED_SUB        5 ///< for sub-blocks of merge CU, number of added candidates in top, left, top-left, top-right, below-left <0-5>
+#endif
+
+#define TCH_ARO_FRUC_ADD_CAND_BEFORE    0 ///< add spatial candidates of sub-blocks before temporal ones
+#define TCH_ARO_FRUC_REM_SUBCAND        0 ///< remove some sub-blocks candidates not much selected
+#if TCH_ARO_FRUC_REM_SUBCAND
+  #define NB_FRUC_CAND_ATMVP            4 ///< for sub-blocks of merge CU, number of ATMVP candidates
+#endif
+#endif
+
+#if JVET_D0046_EE3_TEST2
+#define TCH_ARO_FRUC_OPT                0 ///< some optimizations (not changing encoding and decoding results)
+#define TCH_ARO_FRUC_HIGH_PREC          0 ///< do refinement with decremental shift in case of high precision mv storage
+#define TCH_ARO_FRUC_ADD_CAND           1 ///< add AMVP candidates before merge ones in AMVP mode, and add some candidate mv to initial FRUC list in all cases
+#if TCH_ARO_FRUC_ADD_CAND
+  #define NB_FRUC_CAND_ADDED_AMVP       2 ///< for AMVP CU, number of added candidates in top, left, top-left, top-right, below-left <0-5>
+  #define NB_FRUC_CAND_ADDED            2 ///< for merge CU, number of added candidates in top, left, top-left, top-right, below-left <0-5>
+  #define NB_FRUC_CAND_ADDED_SUB        4 ///< for sub-blocks of merge CU, number of added candidates in top, left, top-left, top-right, below-left <0-5>
+#endif
+
+#define TCH_ARO_FRUC_ADD_CAND_BEFORE    0 ///< add spatial candidates of sub-blocks before temporal ones
+#define TCH_ARO_FRUC_REM_SUBCAND        0 ///< remove some sub-blocks candidates not much selected
+#if TCH_ARO_FRUC_REM_SUBCAND
+  #define NB_FRUC_CAND_ATMVP            4 ///< for sub-blocks of merge CU, number of ATMVP candidates
+#endif
+#endif
+
+#if JVET_D0046_EE3_TEST3
+#define TCH_ARO_FRUC_OPT                0 ///< some optimizations (not changing encoding and decoding results)
+#define TCH_ARO_FRUC_HIGH_PREC          0 ///< do refinement with decremental shift in case of high precision mv storage
+#define TCH_ARO_FRUC_ADD_CAND           1 ///< add AMVP candidates before merge ones in AMVP mode, and add some candidate mv to initial FRUC list in all cases
+#if TCH_ARO_FRUC_ADD_CAND
+  #define NB_FRUC_CAND_ADDED_AMVP       2 ///< for AMVP CU, number of added candidates in top, left, top-left, top-right, below-left <0-5>
+  #define NB_FRUC_CAND_ADDED            2 ///< for merge CU, number of added candidates in top, left, top-left, top-right, below-left <0-5>
+  #define NB_FRUC_CAND_ADDED_SUB        4 ///< for sub-blocks of merge CU, number of added candidates in top, left, top-left, top-right, below-left <0-5>
+#endif
+
+#define TCH_ARO_FRUC_ADD_CAND_BEFORE    1 ///< add spatial candidates of sub-blocks before temporal ones
+#define TCH_ARO_FRUC_REM_SUBCAND        1 ///< remove some sub-blocks candidates not much selected
+#if TCH_ARO_FRUC_REM_SUBCAND
+  #define NB_FRUC_CAND_ATMVP            4 ///< for sub-blocks of merge CU, number of ATMVP candidates
+#endif
+#endif
+
+
+
+#define JVET_D0046_EE3_TEST1_0          0 ///< EE3 test#1.0: get individual performance of optimizations of JVET-D0046
+#if JVET_D0046_EE3_TEST1_0
+#define TCH_ARO_FRUC_OPT                1 ///< some optimizations (not changing encoding and decoding results)
+#define TCH_ARO_FRUC_HIGH_PREC          0 ///< do refinement with decremental shift in case of high precision mv storage
+#define TCH_ARO_FRUC_ADD_CAND           0 ///< add AMVP candidates before merge ones in AMVP mode, and add some candidate mv to initial FRUC list in all cases
+#if TCH_ARO_FRUC_ADD_CAND
+  #define NB_FRUC_CAND_ADDED_AMVP       5 ///< for AMVP CU, number of added candidates in top, left, top-left, top-right, below-left <0-5>
+  #define NB_FRUC_CAND_ADDED            5 ///< for merge CU, number of added candidates in top, left, top-left, top-right, below-left <0-5>
+  #define NB_FRUC_CAND_ADDED_SUB        5 ///< for sub-blocks of merge CU, number of added candidates in top, left, top-left, top-right, below-left <0-5>
+#endif
+
+#define TCH_ARO_FRUC_ADD_CAND_BEFORE    0 ///< add spatial candidates of sub-blocks before temporal ones
+#define TCH_ARO_FRUC_REM_SUBCAND        0 ///< remove some sub-blocks candidates not much selected
+#if TCH_ARO_FRUC_REM_SUBCAND
+  #define NB_FRUC_CAND_ATMVP            4 ///< for sub-blocks of merge CU, number of ATMVP candidates
+#endif
+#endif
+
+///////////////////////////////////////////////////////////
+// JEM4.0 EE3 D0046 section end
+///////////////////////////////////////////////////////////
+
+
 // KTA tools section start
 ///////////////////////////////////////////////////////////
 #define JVET_D0134_PSNR                                   1

@@ -530,10 +530,18 @@ Void TComPicSym::initFRUCMVP()
       Int nTargetRefPOC = pCurSlice->getRefPOC( eRefPicList , nTargetRefIdx );
       Int nCurRefIdx = nRefIdx; 
       Int nCurRefPOC = pCurSlice->getRefPOC( eRefPicList , nCurRefIdx );
+#if TCH_ARO_FRUC_OPT
+      Int nColPOC = nCurRefPOC;  //Equal to nCurRefPOC since nCurRefIdx = nRefIdx
+#else
       Int nColPOC = pCurSlice->getRefPOC( eRefPicList , nRefIdx );
+#endif
       TComPic * pColPic = pCurSlice->getRefPic( eRefPicList , nRefIdx );
       assert( getNumberOfCtusInFrame() == pColPic->getNumberOfCtusInFrame() );
+#if TCH_ARO_FRUC_OPT
+      for( UInt uiColPicCUAddr = 0 ; uiColPicCUAddr < getNumberOfCtusInFrame() ; uiColPicCUAddr++ )
+#else
       for( UInt uiColPicCUAddr = 0 ; uiColPicCUAddr < pColPic->getNumberOfCtusInFrame() ; uiColPicCUAddr++ )
+#endif
       {
         TComDataCU * pColPicCU = pColPic->getCtu( uiColPicCUAddr );
         for( UInt uiAbsPartIdxColPicCU = 0 ; uiAbsPartIdxColPicCU < pColPic->getNumPartitionsInCtu() ; uiAbsPartIdxColPicCU++ )
@@ -559,7 +567,9 @@ Void TComPicSym::initFRUCMVP()
               && 0 <= yCurPic && yCurPic < pCurSlice->getSPS()->getPicHeightInLumaSamples() )
             {
               UInt uiCurPicCUAddr = ( yCurPic >> nCUSizeLog2 ) * getFrameWidthInCtus() + ( xCurPic >> nCUSizeLog2 );
-              assert( MIN_PU_SIZE == 4 );
+#if !TCH_ARO_FRUC_OPT
+              assert( MIN_PU_SIZE == 4 );     //Already done at the beginning
+#endif
               UInt uiAbsPartIdxCurPicCU = g_auiRasterToZscan[( ( yCurPic & nBlkPosMask ) >> 2 ) * nWidthInNumSPU + ( ( xCurPic & nBlkPosMask ) >> 2 )];
               TComCUMvField * pCurPicFRUCCUMVField = getCtu( uiCurPicCUAddr )->getFRUCUniLateralMVField( eRefPicList );
               if( pCurPicFRUCCUMVField->getRefIdx( uiAbsPartIdxCurPicCU ) < 0 )
