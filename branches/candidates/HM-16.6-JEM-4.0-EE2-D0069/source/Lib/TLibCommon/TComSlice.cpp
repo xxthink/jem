@@ -717,6 +717,9 @@ Void TComSlice::copySliceInfo(TComSlice *pSrc)
   m_eNalUnitType         = pSrc->m_eNalUnitType;
   m_eSliceType           = pSrc->m_eSliceType;
   m_iSliceQp             = pSrc->m_iSliceQp;
+#if BILATERAL_FILTER && (BILATERAL_FILTER_TEST==1)
+  TComBilateralFilter::instance()->createBilateralFilterTable(getSliceQp());
+#endif
 #if ADAPTIVE_QP_SELECTION
   m_iSliceQpBase         = pSrc->m_iSliceQpBase;
 #endif

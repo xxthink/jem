@@ -47,6 +47,9 @@
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
 #include "TLibCommon/TComCodingStatistics.h"
 #endif
+#if BILATERAL_FILTER && (BILATERAL_FILTER_TEST==3)
+#include "TLibCommon/TComBilateralFilter.h"
+#endif
 
 //! \ingroup TAppDecoder
 //! \{
@@ -439,6 +442,22 @@ Void TAppDecTop::xWriteOutput( TComList<TComPic*>* pcListPic, UInt tId )
         (numPicsNotYetDisplayed >  numReorderPicsHighestTid || dpbFullness > maxDecPicBufferingHighestTid))
       {
         // write to file
+#if BILATERAL_FILTER && (BILATERAL_FILTER_TEST==3)
+        // Bilateral filter
+        TComPicYuv *apcTmpPic = new TComPicYuv;
+        apcTmpPic->create(pcPic->getPicYuvRec()->getWidth(COMPONENT_Y)
+                          , pcPic->getPicYuvRec()->getHeight(COMPONENT_Y) 
+                          , pcPic->getPicYuvRec()->getChromaFormat()
+                          , pcPic->getSlice(0)->getSPS()->getCTUSize()
+                          , pcPic->getSlice(0)->getSPS()->getCTUSize()
+                          , pcPic->getSlice(0)->getSPS()->getMaxTotalCUDepth()
+                          , true);
+
+        pcPic->getPicYuvRec()->copyToPic(apcTmpPic);
+
+        TComBilateralFilter::instance()->createBilateralFilterTable(pcPic->getSlice(0)->getSliceQp());
+        TComBilateralFilter::instance()->bilateralFilterPic(pcPic);
+#endif
          numPicsNotYetDisplayed--;
         if(pcPic->getSlice(0)->isReferenced() == false)
         {
@@ -458,6 +477,13 @@ Void TAppDecTop::xWriteOutput( TComList<TComPic*>* pcListPic, UInt tId )
                                          conf.getWindowBottomOffset() + defDisp.getWindowBottomOffset(),
                                          NUM_CHROMA_FORMAT, m_bClipOutputVideoToRec709Range  );
         }
+#if BILATERAL_FILTER && (BILATERAL_FILTER_TEST==3)
+        // Bilateral filter, restore picture buffer
+        apcTmpPic->copyToPic(pcPic->getPicYuvRec());
+        apcTmpPic->destroy();
+        delete apcTmpPic;
+        apcTmpPic = NULL;
+#endif
 
         // update POC of display order
         m_iPOCLastDisplay = pcPic->getPOC();
@@ -562,6 +588,23 @@ Void TAppDecTop::xFlushOutput( TComList<TComPic*>* pcListPic )
 
       if ( pcPic->getOutputMark() )
       {
+#if BILATERAL_FILTER && (BILATERAL_FILTER_TEST==3)
+        // Bilateral filter
+        TComPicYuv *apcTmpPic = new TComPicYuv;
+        apcTmpPic->create(pcPic->getPicYuvRec()->getWidth(COMPONENT_Y)
+                          , pcPic->getPicYuvRec()->getHeight(COMPONENT_Y) 
+                          , pcPic->getPicYuvRec()->getChromaFormat()
+                          , pcPic->getSlice(0)->getSPS()->getCTUSize()
+                          , pcPic->getSlice(0)->getSPS()->getCTUSize()
+                          , pcPic->getSlice(0)->getSPS()->getMaxTotalCUDepth()
+                          , true);
+
+        pcPic->getPicYuvRec()->copyToPic(apcTmpPic);
+
+        TComBilateralFilter::instance()->createBilateralFilterTable(pcPic->getSlice(0)->getSliceQp());
+        TComBilateralFilter::instance()->bilateralFilterPic(pcPic);
+#endif
+
         // write to file
         if ( m_pchReconFile )
         {
@@ -576,6 +619,13 @@ Void TAppDecTop::xFlushOutput( TComList<TComPic*>* pcListPic )
                                          conf.getWindowBottomOffset() + defDisp.getWindowBottomOffset(),
                                          NUM_CHROMA_FORMAT, m_bClipOutputVideoToRec709Range );
         }
+#if BILATERAL_FILTER && (BILATERAL_FILTER_TEST==3)
+        // Bilateral filter, restore picture buffer
+        apcTmpPic->copyToPic(pcPic->getPicYuvRec());
+        apcTmpPic->destroy();
+        delete apcTmpPic;
+        apcTmpPic = NULL;
+#endif
 
         // update POC of display order
         m_iPOCLastDisplay = pcPic->getPOC();

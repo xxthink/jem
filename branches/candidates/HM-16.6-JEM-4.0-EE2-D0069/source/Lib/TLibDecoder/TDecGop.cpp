@@ -42,6 +42,9 @@
 #include "TDecBinCoderCABAC.h"
 #include "libmd5/MD5.h"
 #include "TLibCommon/SEI.h"
+#if BILATERAL_FILTER && (BILATERAL_FILTER_TEST==2)
+#include "TLibCommon/TComBilateralFilter.h"
+#endif
 
 #include <time.h>
 
@@ -215,6 +218,12 @@ Void TDecGop::filterPicture(TComPic* pcPic)
 
   //-- For time output for each slice
   clock_t iBeforeTime = clock();
+
+#if BILATERAL_FILTER && (BILATERAL_FILTER_TEST==2)
+  // Bilateral filter
+  TComBilateralFilter::instance()->createBilateralFilterTable(pcSlice->getSliceQp());
+  TComBilateralFilter::instance()->bilateralFilterPic(pcPic);
+#endif
 
   // deblocking filter
   Bool bLFCrossTileBoundary = pcSlice->getPPS()->getLoopFilterAcrossTilesEnabledFlag();

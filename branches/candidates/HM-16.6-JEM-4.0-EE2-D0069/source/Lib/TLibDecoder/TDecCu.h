@@ -47,7 +47,9 @@
 #if VCEG_AZ08_INTER_KLT
 #include "TLibCommon/TComPrediction.h"
 #endif
-
+#if BILATERAL_FILTER && (BILATERAL_FILTER_TEST==1)
+#include "TLibCommon/TComBilateralFilter.h"
+#endif
 //! \ingroup TLibDecoder
 //! \{
 

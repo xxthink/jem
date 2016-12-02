@@ -226,14 +226,14 @@ static Void offsetSubTUCBFs(TComTU &rTu, const ComponentID compID)
 #endif
 
 TEncSearch::TEncSearch()
-#if JVET_C0024_QTBT
+#if defined (JVET_C0024_QTBT) || defined (BILATERAL_FILTER)
 : m_ppcQTTempTComYuv(NULL)
 #else
 : m_puhQTTempTrIdx(NULL)
 , m_pcQTTempTComYuv(NULL)
 #endif
 #if VCEG_AZ08_INTER_KLT
-#if JVET_C0024_QTBT
+#if defined (JVET_C0024_QTBT) || defined (BILATERAL_FILTER)
 , m_ppcQTTempTComYuvRec (NULL)
 #else
 , m_pcQTTempTComYuvRec (NULL)
@@ -363,7 +363,7 @@ Void TEncSearch::destroy()
 
     for (UInt ch=0; ch<MAX_NUM_COMPONENT; ch++)
     {
-#if JVET_C0024_QTBT
+#if defined (JVET_C0024_QTBT) || defined (BILATERAL_FILTER)
         for (UInt uiWIdx = 0; uiWIdx < uiNumLayersAllocated; uiWIdx++)
         {
             for (UInt uiHIdx = 0; uiHIdx < uiNumLayersAllocated; uiHIdx++)
@@ -402,13 +402,13 @@ Void TEncSearch::destroy()
 #endif
     }
 
-#if JVET_C0024_QTBT
+#if defined (JVET_C0024_QTBT) || defined (BILATERAL_FILTER)
     for (UInt uiWIdx = 0; uiWIdx < uiNumLayersAllocated; uiWIdx++)
     {
         for (UInt uiHIdx = 0; uiHIdx < uiNumLayersAllocated; uiHIdx++)
         {
             m_ppcQTTempTComYuv[uiWIdx][uiHIdx].destroy();
-#if JVET_C0024_QTBT
+#if (defined (JVET_C0024_QTBT) || defined (BILATERAL_FILTER)) && VCEG_AZ08_INTER_KLT
 #if VCEG_AZ08_INTER_KLT
 #if VCEG_AZ08_USE_KLT
             if (m_pcTrQuant->getUseInterKLT())
@@ -422,7 +422,7 @@ Void TEncSearch::destroy()
 #endif
         }
         delete[] m_ppcQTTempTComYuv[uiWIdx];
-#if JVET_C0024_QTBT && VCEG_AZ08_INTER_KLT
+#if (defined (JVET_C0024_QTBT) || defined (BILATERAL_FILTER)) && VCEG_AZ08_INTER_KLT
         if (m_pcTrQuant->getUseInterKLT())
         {
           delete[] m_ppcQTTempTComYuvRec[uiWIdx];
@@ -430,7 +430,7 @@ Void TEncSearch::destroy()
 #endif
     }
     delete[] m_ppcQTTempTComYuv;
-#if JVET_C0024_QTBT && VCEG_AZ08_INTER_KLT
+#if (defined (JVET_C0024_QTBT) || defined (BILATERAL_FILTER)) && VCEG_AZ08_INTER_KLT
     if (m_pcTrQuant->getUseInterKLT())
     {
       delete[] m_ppcQTTempTComYuvRec;
@@ -708,7 +708,7 @@ Void TEncSearch::init(TEncCfg*      pcEncCfg,
   if (m_pcTrQuant->getUseInterKLT())
   {
 #endif
-#if JVET_C0024_QTBT
+#if defined (JVET_C0024_QTBT) || defined (BILATERAL_FILTER)
   m_ppcQTTempTComYuvRec = new TComYuv* [uiNumLayersToAllocate];
 #else
   m_pcQTTempTComYuvRec = new TComYuv[uiNumLayersToAllocate];
@@ -789,7 +789,7 @@ Void TEncSearch::init(TEncCfg*      pcEncCfg,
     m_puhQTTempExplicitRdpcmMode[ch]               = new UChar [uiNumPartitions];
 #endif
   }
-#if JVET_C0024_QTBT
+#if defined (JVET_C0024_QTBT) || defined (BILATERAL_FILTER)
   m_ppcQTTempTComYuv  = new TComYuv* [uiNumLayersToAllocate];
 #else
   m_puhQTTempTrIdx   = new UChar  [uiNumPartitions];
@@ -2333,6 +2333,23 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
       }
     }
   }
+#if BILATERAL_FILTER && (BILATERAL_FILTER_TEST==1)
+  if (isLuma(compID))
+  {
+    if( uiAbsSum )
+    {
+      TComBilateralFilter::instance()->bilateralFilterIntra(pcCU, uiWidth, uiHeight, piReco, uiStride, 0);
+      for( UInt uiY = 0; uiY < uiHeight; uiY++ )
+      {
+        memcpy(piRecQt + uiY * uiRecQtStride, piReco + uiY * uiStride, uiWidth * sizeof(Short));
+        memcpy(piRecIPred + uiY * uiRecIPredStride, piReco + uiY * uiStride , uiWidth * sizeof(Short));
+        uiY++;
+        memcpy(piRecQt + uiY * uiRecQtStride, piReco + uiY * uiStride, uiWidth * sizeof(Short));
+        memcpy(piRecIPred + uiY * uiRecIPredStride, piReco + uiY * uiStride , uiWidth * sizeof(Short));
+      }
+    }
+  }
+#endif
 
   //===== update distortion =====
   ruiDist += m_pcRdCost->getDistPart( bitDepth, piReco, uiStride, piOrg, uiStride, uiWidth, uiHeight, compID );
@@ -2653,6 +2670,21 @@ Bool TEncSearch::xIntraCodingTUBlockTM(TComYuv*    pcOrgYuv,
             }
         }
     }
+#if BILATERAL_FILTER && (BILATERAL_FILTER_TEST==1)
+  if (isLuma(compID))
+  {
+    if( uiAbsSum )
+    {
+      TComBilateralFilter::instance()->bilateralFilterIntra(pcCU, uiWidth, uiHeight, piReco, uiStride, 0);
+
+      for( UInt uiY = 0; uiY < uiHeight; uiY++ )
+      {
+        memcpy(piRecQt + uiY * uiRecQtStride, piReco + uiY * uiStride, uiWidth * sizeof(Short));
+        memcpy(piRecIPred + uiY * uiRecIPredStride, piReco + uiY * uiStride , uiWidth * sizeof(Short));
+      }
+    }
+  }
+#endif
 
     //===== update distortion =====
     ruiDist += m_pcRdCost->getDistPart(bitDepth, piReco, uiStride, piOrg, uiStride, uiWidth, uiHeight, compID);
@@ -4309,7 +4341,7 @@ TEncSearch::xSetIntraResultLumaQT(TComYuv* pcRecoYuv, TComTU &rTu)
 
     if (numCoeffInBlock!=0)
     {
-#if JVET_C0024_QTBT
+#if defined (JVET_C0024_QTBT) || defined (BILATERAL_FILTER)
       assert(coeffOffset==0);
       const TCoeff* srcCoeff = m_pppcQTTempCoeff[COMPONENT_Y][uiWIdx][uiHIdx] + coeffOffset;
 #else
@@ -4393,7 +4425,7 @@ Void TEncSearch::xStoreIntraResultQT(const ComponentID compID, TComTU &rTu )
       ::memcpy( pcArlCoeffDst, pcArlCoeffSrc, sizeof( TCoeff ) * uiNumCoeff );
 #endif
       //===== copy reconstruction =====
-#if JVET_C0024_QTBT
+#if defined (JVET_C0024_QTBT) || defined (BILATERAL_FILTER)
       m_ppcQTTempTComYuv[ uiWIdx][uiHIdx ].copyPartToPartComponent( compID, &m_pcQTTempTransformSkipTComYuv, uiAbsPartIdx, tuRect.width, tuRect.height );
 #else
       m_pcQTTempTComYuv[ uiQTLayer ].copyPartToPartComponent( compID, &m_pcQTTempTransformSkipTComYuv, uiAbsPartIdx, tuRect.width, tuRect.height );
@@ -4460,7 +4492,7 @@ Void TEncSearch::xLoadIntraResultQT(const ComponentID compID, TComTU &rTu)
       ::memcpy( pcArlCoeffDst, pcArlCoeffSrc, sizeof( TCoeff ) * uiNumCoeff );
 #endif
       //===== copy reconstruction =====
-#if JVET_C0024_QTBT
+#if defined (JVET_C0024_QTBT) || defined (BILATERAL_FILTER)
       m_pcQTTempTransformSkipTComYuv.copyPartToPartComponent( compID, &m_ppcQTTempTComYuv[ uiWIdx][uiHIdx ], uiAbsPartIdx, tuRect.width, tuRect.height );
 #else
       m_pcQTTempTransformSkipTComYuv.copyPartToPartComponent( compID, &m_pcQTTempTComYuv[ uiQTLayer ], uiAbsPartIdx, tuRect.width, tuRect.height );
@@ -9849,6 +9881,22 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
 #endif
                                   DEBUG_STRING_PASS_INTO_OPTIONAL(&sSingleStringTest, (DebugOptionList::DebugString_InvTran.getInt()&debugPredModeMask))
                                   );
+#endif
+#if BILATERAL_FILTER && (BILATERAL_FILTER_TEST==1)
+                            if (isLuma(compID))
+                            {
+                              if (currAbsSum > 0)
+                              {
+                                Pel *pcPtrPred = pcPred->getAddr(compID, uiAbsPartIdx);
+                                UInt uiStridePred = pcPred->getStride(compID);
+                                Pel *pcPtrRes = m_ppcQTTempTComYuv[uiWIdx][uiHIdx].getAddr(compID, uiAbsPartIdx);
+                                UInt uiStrideRes = m_ppcQTTempTComYuv[uiWIdx][uiHIdx].getStride(compID);
+                                Pel *pcPtrRec = m_ppcQTTempTComYuv[uiWIdx][uiHIdx].getAddr(compID, uiAbsPartIdx);
+                                UInt uiStrideRec = m_ppcQTTempTComYuv[uiWIdx][uiHIdx].getStride(compID);
+                                const Int clipbd = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
+                                TComBilateralFilter::instance()->bilateralFilterInter(pcCU, tuWidth, tuHeight, pcPtrRes, uiStrideRes, pcPtrPred, uiStridePred, pcPtrRec, uiStrideRec, clipbd, 0);
+                              }
+                            }
 #endif
 #if VCEG_AZ08_INTER_KLT
                               if (useKLT)

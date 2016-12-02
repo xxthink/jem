@@ -9288,6 +9288,24 @@ Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,
         std::cout << (*psDebug);
       }
 #endif
+#if BILATERAL_FILTER && (BILATERAL_FILTER_TEST==1)
+      if (isLuma(compID))
+      {
+        if (pcCU->getCbf(absPartIdxTU, compID, uiTrMode) != 0)
+        {
+          Pel* piPred = pcPred->getAddr(compID, absPartIdxTU);
+          UInt uiPredStride = pcPred->getStride(compID);
+          Pel* piResi = pResidual->getAddr(compID, absPartIdxTU);
+          UInt uiStrideRes = pResidual->getStride(compID);
+          UInt uiZOrder = pcCU->getZorderIdxInCtu() + absPartIdxTU;
+          TComPicYuv *picRec = pcCU->getPic()->getPicYuvRec();
+          Pel* piReco = picRec->getAddr(compID, pcCU->getCtuRsAddr(), uiZOrder);
+          UInt uiRecStride = picRec->getStride(compID);
+          const Int clipbd = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
+          TComBilateralFilter::instance()->bilateralFilterInter(pcCU, tuRect.width, tuRect.height, piResi, uiStrideRes, piPred, uiPredStride,  piReco, uiRecStride, clipbd, 0);
+        }
+      }
+#endif
     }
 
     if (isChroma(compID) && (pcCU->getCrossComponentPredictionAlpha(absPartIdxTU, compID) != 0))

@@ -48,6 +48,9 @@
 #if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
 #include "TLibCommon/TComBitStream.h"
 #endif
+#if BILATERAL_FILTER && (BILATERAL_FILTER_TEST==1)
+#include "TLibCommon/TComBilateralFilter.h"
+#endif
 //! \ingroup TLibCommon
 //! \{
 
@@ -1724,7 +1727,14 @@ public:
   Void                        checkCRA(const TComReferencePictureSet *pReferencePictureSet, Int& pocCRA, NalUnitType& associatedIRAPType, TComList<TComPic *>& rcListPic);
   Void                        decodingRefreshMarking(Int& pocCRA, Bool& bRefreshPending, TComList<TComPic*>& rcListPic, const bool bEfficientFieldIRAPEnabled);
   Void                        setSliceType( SliceType e )                            { m_eSliceType        = e;                                      }
+#if BILATERAL_FILTER && (BILATERAL_FILTER_TEST==1)
+  Void                        setSliceQp( Int i )                                    {
+                                                                                       m_iSliceQp          = i;
+                                                                                       TComBilateralFilter::instance()->createBilateralFilterTable(m_iSliceQp);
+                                                                                     }
+#else
   Void                        setSliceQp( Int i )                                    { m_iSliceQp          = i;                                      }
+#endif
 #if ADAPTIVE_QP_SELECTION
   Void                        setSliceQpBase( Int i )                                { m_iSliceQpBase      = i;                                      }
 #endif
