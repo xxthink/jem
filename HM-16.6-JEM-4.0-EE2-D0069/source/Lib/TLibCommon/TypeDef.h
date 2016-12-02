@@ -50,6 +50,15 @@
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////
+#define BILATERAL_FILTER 1
+#if BILATERAL_FILTER
+#define BILATERAL_FILTER_TEST 1 //1: Bilateral filter after transform as proposed
+                                //2: Bilateral filter prior to the de-blocking
+                                //3: Bilateral filter as postprocessing
+
+#define BILATERAL_FILTER_NO_SUBBOCK 1   // bug fix to use bilateral filter for whole block instead of for subblocks                                        
+#endif
+
 #define JVET_D0134_PSNR                                   1
 #define JVET_D0135_PARAMS                                 1
 #define JVET_D0186_PRECISEPSNR                            1

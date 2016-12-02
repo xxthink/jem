@@ -49,6 +49,9 @@
 #include "TEncEntropy.h"
 #include "TEncSbac.h"
 #include "TEncCfg.h"
+#if BILATERAL_FILTER && (BILATERAL_FILTER_TEST==1)
+#include "TLibCommon/TComBilateralFilter.h"
+#endif
 
 
 //! \ingroup TLibEncoder
@@ -87,13 +90,13 @@ private:
 #endif
   UChar*          m_puhQTTempCbf[MAX_NUM_COMPONENT];
 
-#if JVET_C0024_QTBT
+#if defined (JVET_C0024_QTBT) || defined (BILATERAL_FILTER)
   TComYuv**       m_ppcQTTempTComYuv;
 #else
   TComYuv*        m_pcQTTempTComYuv;
 #endif
 #if VCEG_AZ08_INTER_KLT
-#if JVET_C0024_QTBT
+#if defined (JVET_C0024_QTBT) || defined (BILATERAL_FILTER)
   TComYuv**       m_ppcQTTempTComYuvRec;
 #else
   TComYuv*        m_pcQTTempTComYuvRec;

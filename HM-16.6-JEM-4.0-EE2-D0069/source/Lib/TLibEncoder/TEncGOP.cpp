@@ -48,9 +48,11 @@
 #include "NALwrite.h"
 #include <time.h>
 #include <math.h>
-
 #include <deque>
 using namespace std;
+#if BILATERAL_FILTER && (BILATERAL_FILTER_TEST==2)
+#include "TLibCommon/TComBilateralFilter.h"
+#endif
 
 #if JVET_D0033_ADAPTIVE_CLIPPING
 namespace {
@@ -1731,6 +1733,12 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     {
       m_pcSAO->getPreDBFStatistics(pcPic);
     }
+
+#if BILATERAL_FILTER && (BILATERAL_FILTER_TEST==2)
+  // Bilateral filter
+  TComBilateralFilter::instance()->createBilateralFilterTable(pcSlice->getSliceQp());
+  TComBilateralFilter::instance()->bilateralFilterPic(pcPic);
+#endif
 
     //-- Loop filter
     Bool bLFCrossTileBoundary = pcSlice->getPPS()->getLoopFilterAcrossTilesEnabledFlag();
