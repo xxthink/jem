@@ -229,6 +229,10 @@ public:
 #if COM16_C1016_AFFINE
   Void codeAffineFlag    ( TComDataCU* pcCU, UInt uiAbsPartIdx );
 #endif
+
+#if QC_LM_ANGULAR_PREDICTION
+  Void codeLMEP(TComDataCU* pcCU, UInt uiAbsPartIdx);
+#endif
 };
 
 //! \}

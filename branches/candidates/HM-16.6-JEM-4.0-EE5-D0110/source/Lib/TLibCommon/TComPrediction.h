@@ -125,6 +125,15 @@ protected:
   Pel*   m_pLumaRecBuffer;       ///< array for downsampled reconstructed luma sample
   Int    m_iLumaRecStride;       ///< stride of #m_pLumaRecBuffer array
 
+#if QC_LM_MF
+  Pel*   m_pLumaRecBufferMul[QC_LM_FILTER_NUM];
+#endif
+
+#if QC_LM_ANGULAR_PREDICTION
+  Int  m_iCurAngMode;
+  Pel *m_pLMTmpYUV;
+#endif
+
 #if COM16_C806_LMCHROMA
   UInt m_uiaLMShift[ 32 ];       // Table for multiplication to substitue of division operation
 #endif
@@ -317,6 +326,22 @@ public:
   // Angular Intra
   Void predIntraAng               ( const ComponentID compID, UInt uiDirMode, Pel *piOrg /* Will be null for decoding */, UInt uiOrgStride, Pel* piPred, UInt uiStride, TComTU &rTu, const Bool bUseFilteredPredSamples, const Bool bUseLosslessDPCM = false );
 
+#if QC_MMLM
+  struct MMLM_parameter
+  {
+      Int Inf;  // Inferio boundary
+      Int Sup;  // Superior bounday
+      Int a;
+      Int b;
+      Int shift;
+  };
+  Int xCalcLMParametersGeneralized(Int x, Int y, Int xx, Int xy, Int iCountShift, Int bitDepth, Int &a, Int &b, Int &iShift);
+  Int xLMSampleClassifiedTraining(Int count, Int LumaSamples[], Int ChrmSamples[], Int GroupNum, Int bitDepth, MMLM_parameter parameters[]);
+  Int xGetMMLMParameters(TComTU& rTu, const ComponentID compID, UInt uiWidth, UInt uiHeight, Int &numClass, MMLM_parameter parameters[]);
+#endif
+
+
+
 #if COM16_C806_LMCHROMA
   Void predLMIntraChroma ( TComTU& rTu, ComponentID compID, Pel* pPred, UInt uiPredStride, UInt uiCWidth, UInt uiCHeight );
   Void getLumaRecPixels  ( TComTU& rTu, UInt uiCWidth, UInt uiCHeight );
@@ -325,6 +350,20 @@ public:
   Void xCalcLMParameters ( Int x, Int y, Int xx, Int xy, Int iCountShift, Int iPredType, Int bitDepth, Int &a, Int &b, Int &iShift );
 #endif
 
+#if QC_LM_MF
+  Void xFilterGroup(Pel* pMulDst[QC_LM_FILTER_NUM], Int i, Pel* piSrc, Int iRecStride, Bool bAboveAvaillable, Bool bLeftAvaillable);
+#endif
+
+#if QC_LM_ANGULAR_PREDICTION
+  Pel * getLMTmpYUV(){ return m_pLMTmpYUV; }
+  Void EnhanceChromaANGPred(TComTU& rTu, ComponentID compID, Pel* pPred, UInt uiStride, Pel* pPredAng, UInt uiStrideAng, Pel* pPredLM, UInt uiStrideLM, UInt uiWidth, UInt uiHeight, UInt uiDirMode);
+#endif
+
+  Void predLMIntraChroma(TComTU& rTu, ComponentID compID, Pel* pPred, UInt uiPredStride, UInt uiCWidth, UInt uiCHeight
+#if QC_MORE_LM_MODE
+      , Int LMtype = LM_CHROMA_IDX
+#endif
+      );
 #if COM16_C1016_AFFINE
   Bool xCheckIdenticalAffineMotion ( TComDataCU* pcCU, UInt PartAddr, Int iWidth, Int iHeight );
   Void xPredAffineBlk              ( const ComponentID compID, TComDataCU *cu, TComPicYuv *refPic, UInt partAddr, TComMv acMv[3], Int width, Int height, TComYuv *dstPic, Bool bi, const Int bitDepth );

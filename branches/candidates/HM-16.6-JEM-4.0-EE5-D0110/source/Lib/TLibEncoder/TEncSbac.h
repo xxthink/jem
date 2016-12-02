@@ -210,6 +210,10 @@ public:
   Void codeKLTFlags           ( TComTU &rTu, ComponentID component );
 #endif
 
+#if QC_MORE_LM_MODE
+  Void codeLMModes(TComDataCU* pcCU, UInt uiAbsPartIdx, Int iMode);
+#endif
+
   // -------------------------------------------------------------------------------------------------------------------
   // for RD-optimizatioon
   // -------------------------------------------------------------------------------------------------------------------
@@ -278,6 +282,10 @@ public:
 
 #if COM16_C1016_AFFINE
   Void codeAffineFlag    ( TComDataCU* pcCU, UInt uiAbsPartIdx );
+#endif
+
+#if QC_LM_ANGULAR_PREDICTION
+  Void codeLMEP(TComDataCU* pcCU, UInt uiAbsPartIdx);
 #endif
 
 private:
@@ -369,6 +377,10 @@ private:
 
 #if COM16_C1016_AFFINE
   ContextModel3DBuffer m_cCUAffineFlagSCModel;
+#endif
+
+#if QC_LM_ANGULAR_PREDICTION
+  ContextModel3DBuffer m_cLMEPSCModel;
 #endif
 
   UInt m_golombRiceAdaptationStatistics[RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS];

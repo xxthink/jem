@@ -193,6 +193,10 @@ public:
   Void  parseAffineMvd      ( TComDataCU* pcCU, UInt uiAbsPartAddr, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList );
 #endif
 
+#if QC_LM_ANGULAR_PREDICTION
+  Void parseLMEP(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth);
+#endif
+
 protected:
   Bool  xMoreRbspData();
 #if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME

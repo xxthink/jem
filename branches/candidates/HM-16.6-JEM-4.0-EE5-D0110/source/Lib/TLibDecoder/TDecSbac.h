@@ -230,6 +230,13 @@ public:
 
   Void  parseExplicitRdpcmMode( TComTU &rTu, ComponentID compID );
 
+#if QC_LM_ANGULAR_PREDICTION
+  Void parseLMEP(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth);
+#endif
+#if QC_MORE_LM_MODE
+  Int  parseLMMode(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth);
+#endif
+
 private:
   ContextModel         m_contextModels[MAX_NUM_CTX_MOD];
   Int                  m_numContextModels;
@@ -318,6 +325,9 @@ private:
   ContextModel3DBuffer m_cCUAffineFlagSCModel;
 #endif
 
+#if QC_LM_ANGULAR_PREDICTION
+  ContextModel3DBuffer m_cLMEPSCModel;
+#endif
   UInt m_golombRiceAdaptationStatistics[RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS];
 };
 

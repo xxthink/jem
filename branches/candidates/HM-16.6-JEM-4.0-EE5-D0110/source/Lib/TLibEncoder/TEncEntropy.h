@@ -153,6 +153,10 @@ public:
   virtual Void codeRefFrmIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList )      = 0;
   virtual Void codeMvd           ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList )      = 0;
 
+#if QC_LM_ANGULAR_PREDICTION
+  virtual Void codeLMEP(TComDataCU* pcCU, UInt uiAbsPartIdx) = 0;
+#endif
+
   virtual Void codeCrossComponentPrediction( TComTU &rTu, ComponentID compID ) = 0;
 
   virtual Void codeDeltaQP       ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
@@ -414,6 +418,9 @@ public:
 #if COM16_C1016_AFFINE
   Void encodeAffineFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiPuIdx );
 #endif
+
+
+
 };// END CLASS DEFINITION TEncEntropy
 
 //! \}

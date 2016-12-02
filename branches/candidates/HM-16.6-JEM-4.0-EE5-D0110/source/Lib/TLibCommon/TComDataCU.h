@@ -128,6 +128,11 @@ private:
 #if COM16_C1046_PDPC_INTRA
   Char*          m_PDPCIdx;             ///< array of PDPCIdxs
 #endif
+
+#if QC_LM_ANGULAR_PREDICTION
+  Char*          m_pcChromaPredLMEnhanced;
+#endif
+
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 #if JVET_C0024_QTBT
   Char*          m_ROTIdx[MAX_NUM_CHANNEL_TYPE]; // 0-> Luma, 1-> Chroma
@@ -395,6 +400,15 @@ public:
   Char          getPDPCIdx               (UInt idx)                  { return m_PDPCIdx[idx]; }
   Void          setPDPCIdx               (UInt idx, Char PDPCIdx)    { m_PDPCIdx[idx] = PDPCIdx; }
   Void          setPDPCIdxSubParts       (Char PDPCIdx, UInt absPartIdx, UInt depth);
+#endif
+
+#if QC_LM_ANGULAR_PREDICTION
+  Char*         getChromaPredLMEnhanced(){ return m_pcChromaPredLMEnhanced; }
+  Char          getChromaPredLMEnhanced(UInt idx) { return m_pcChromaPredLMEnhanced[idx]; }
+  Void          setChromaPredLMEnhanced(UInt idx, Char Token){ m_pcChromaPredLMEnhanced[idx] = Token; }
+  Void          setChromaPredLMEnhancedSubParts(Char Token, UInt absPartIdx, UInt depth);
+
+  UInt          getCtxCPLME(UInt   uiAbsPartIdx);
 #endif
 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
@@ -921,9 +935,15 @@ public:
   // member functions for symbol prediction (most probable / mode conversion)
   // -------------------------------------------------------------------------------------------------------------------
 
-  UInt          getIntraSizeIdx                 ( UInt uiAbsPartIdx                                       );
 
+
+  UInt          getIntraSizeIdx                 ( UInt uiAbsPartIdx                                       );
+#if QC_MORE_LM_MODE
+  Int           getLMSymbolList(Int *pModeList, Int uiAbsPartIdx);
+  Int           getAllowedChromaDir(UInt uiAbsPartIdx, UInt* uiModeList);
+#else
   Void          getAllowedChromaDir             ( UInt uiAbsPartIdx, UInt* uiModeList );
+#endif
   Void          getIntraDirPredictor            ( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM_MOST_PROBABLE_MODES], const ComponentID compID
 #if VCEG_AZ07_INTRA_65ANG_MODES && !JVET_C0055_INTRA_MPM
     , Int &iAboveLeftCase

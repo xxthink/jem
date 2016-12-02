@@ -238,9 +238,18 @@ static const Int FAST_UDI_MAX_RDMODE_NUM =                         67; ///< maxi
 static const Int FAST_UDI_MAX_RDMODE_NUM =                         35; ///< maximum number of RD comparison in fast-UDI estimation loop
 #endif
 
+#if QC_MORE_LM_MODE
+static const Int NUM_INTRA_MODE_NON_ANG = (1 + QC_MMLM_EXPLICIT + QC_LM_FILTER_NUM);
+#endif
+
 #if VCEG_AZ07_INTRA_65ANG_MODES
+#if QC_MORE_LM_MODE
+static const Int NUM_INTRA_MODE = (67 + NUM_INTRA_MODE_NON_ANG);
+static const Int NUM_DIR = ((64 >> 2) + 1);
+#else
 static const Int NUM_INTRA_MODE =                                  68;
 static const Int NUM_DIR =                (((NUM_INTRA_MODE-4)>>2)+1);
+#endif
 static const Int PLANAR_IDX =                                       0;
 static const Int DC_IDX =                                           1; ///< index for intra DC mode
 static const Int VER_IDX =                          (3*(NUM_DIR-1)+2); ///< index for intra VERTICAL   mode
@@ -248,8 +257,35 @@ static const Int HOR_IDX =                          (1*(NUM_DIR-1)+2); ///< inde
 static const Int DIA_IDX =                          (2*(NUM_DIR-1)+2); ///< index for intra Diagonal mode
 static const Int VDIA_IDX =                         (4*(NUM_DIR-1)+2); ///< index for intra DC mode
 #if COM16_C806_LMCHROMA
+#if QC_MORE_LM_MODE
+static const Int NUM_CHROMA_MODE = (6 + QC_MMLM_EXPLICIT + QC_LM_FILTER_NUM); ///< total number of chroma modes
+enum ADDITIONAL_CHROMA_MODE
+{
+    LM_CHROMA_IDX = 67,
+#if QC_MMLM_EXPLICIT
+    MMLM_CHROMA_IDX,
+#if QC_MMLM_EXPLICIT > 1
+    MMLM_CHROMA_IDX2,
+#endif
+#endif
+#if QC_LM_MF
+    LM_CHROMA_F1_IDX,
+#if QC_LM_FILTER_NUM > 1
+    LM_CHROMA_F2_IDX,
+#if QC_LM_FILTER_NUM > 2
+    LM_CHROMA_F3_IDX,
+#if QC_LM_FILTER_NUM > 3
+    LM_CHROMA_F4_IDX,
+#endif
+#endif
+#endif
+#endif
+};
+
+#else
 static const Int NUM_CHROMA_MODE =                                  6; ///< total number of chroma modes
 static const Int LM_CHROMA_IDX =                 (NUM_INTRA_MODE - 1); ///< chroma mode index for derived from LM mode
+#endif
 #else
 static const Int NUM_CHROMA_MODE =                                  5; ///< total number of chroma modes
 #endif

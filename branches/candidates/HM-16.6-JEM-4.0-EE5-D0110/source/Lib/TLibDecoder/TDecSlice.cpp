@@ -300,4 +300,5 @@ Void TDecSlice::InterpolatePic(TComPic* pcPic)
     m_pcCuDecoder->getPointerPrediction()->interpolatePic(pcPic);
 }
 #endif
+
 //! \}

@@ -158,6 +158,18 @@ TComPrediction::TComPrediction()
 #if VCEG_AZ08_INTER_KLT
   m_tempPicYuv = NULL;
 #endif
+
+#if QC_LM_MF
+  for (Int i = 0; i < QC_LM_FILTER_NUM; i++)
+  {
+      m_pLumaRecBufferMul[i] = 0;
+  }
+#endif
+
+#if QC_LM_ANGULAR_PREDICTION
+  m_pLMTmpYUV = new Pel[MAX_CU_SIZE * MAX_CU_SIZE];
+#endif
+
 }
 
 TComPrediction::~TComPrediction()
@@ -221,6 +233,25 @@ Void TComPrediction::destroy()
     m_pLumaRecBuffer = 0;
   }
   m_iLumaRecStride = 0;
+
+#if QC_LM_MF
+  for (Int i = 0; i < QC_LM_FILTER_NUM; i++)
+  {
+      if (m_pLumaRecBufferMul[i])
+      {
+          delete[]m_pLumaRecBufferMul[i];
+          m_pLumaRecBufferMul[i] = 0;
+      }
+  }
+#endif
+
+#if QC_LM_ANGULAR_PREDICTION
+  if (m_pLMTmpYUV != NULL)
+  {
+      delete[]m_pLMTmpYUV;
+      m_pLMTmpYUV = NULL;
+  }
+#endif
 
   for (UInt i = 0; i < LUMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS; i++)
   {
@@ -329,7 +360,13 @@ Void TComPrediction::initTempBuff(ChromaFormat chromaFormatIDC
 #endif
   }
 
-
+#if QC_MMLM_SAMPLE_NEIGHBOR_LINES > 1
+  m_iLumaRecStride = (MAX_CU_SIZE >> 1) + QC_MMLM_SAMPLE_NEIGHBOR_LINES;
+  if (!m_pLumaRecBuffer)
+  {
+      m_pLumaRecBuffer = new Pel[m_iLumaRecStride * m_iLumaRecStride];
+  }
+#else
   if (m_iLumaRecStride != (MAX_CU_SIZE>>1) + 1)
   {
     m_iLumaRecStride =  (MAX_CU_SIZE>>1) + 1;
@@ -338,6 +375,17 @@ Void TComPrediction::initTempBuff(ChromaFormat chromaFormatIDC
       m_pLumaRecBuffer = new Pel[ m_iLumaRecStride * m_iLumaRecStride ];
     }
   }
+#endif
+
+#if QC_LM_MF
+  for (Int i = 0; i < QC_LM_FILTER_NUM; i++)
+  {
+      if (!m_pLumaRecBufferMul[i])
+      {
+          m_pLumaRecBufferMul[i] = new Pel[m_iLumaRecStride * m_iLumaRecStride];
+      }
+  }
+#endif
 
 #if COM16_C806_LMCHROMA
   Int shift = bitDepthY + 4;   
@@ -4956,15 +5004,139 @@ Int   isLeftAvailable       ( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdx
  *
  * This function derives the prediction samples for chroma LM mode (chroma intra coding)
  */
-Void TComPrediction::predLMIntraChroma( TComTU& rTu, const ComponentID compID, Pel* pPred, UInt uiPredStride, UInt uiCWidth, UInt uiCHeight )
+Void TComPrediction::predLMIntraChroma( TComTU& rTu, const ComponentID compID, Pel* pPred, UInt uiPredStride, UInt uiCWidth, UInt uiCHeight 
+#if QC_MORE_LM_MODE
+    , Int LMtype
+#endif
+    )
 {
+#if QC_MMLM_EXPLICIT
+    if (LMtype == MMLM_CHROMA_IDX
+#if QC_LM_MF
+        || (LMtype >= LM_CHROMA_F1_IDX && LMtype < (LM_CHROMA_F1_IDX + QC_LM_FILTER_NUM))
+#endif        
+        )
+    {
+#if QC_LM_MF
+        Pel *pLumaSaved = m_pLumaRecBuffer;
+        if (LMtype >= LM_CHROMA_F1_IDX && LMtype < (LM_CHROMA_F1_IDX + QC_LM_FILTER_NUM))
+        {
+            Int iLumaIdx = LMtype - LM_CHROMA_F1_IDX;
+            m_pLumaRecBuffer = m_pLumaRecBufferMul[iLumaIdx];
+        }
+#endif
+        // LLS parameters estimation -->
+        TComPrediction::MMLM_parameter parameters[2];
+        Int iGroupNum = 2;
+        xGetMMLMParameters(rTu, compID, uiCWidth, uiCHeight, iGroupNum, parameters);
+
+        // get prediction -->
+        Int  iLumaStride = m_iLumaRecStride;
+
+        Pel  *pLuma = m_pLumaRecBuffer + (iLumaStride + 1) * QC_MMLM_SAMPLE_NEIGHBOR_LINES;
+#if !JVET_D0033_ADAPTIVE_CLIPPING
+        const TComSPS &sps = *(rTu.getCU()->getSlice()->getSPS());
+        Int maxV = (1 << sps.getBitDepth(CHANNEL_TYPE_CHROMA)) - 1;
+#endif
+        for (Int i = 0; i < uiCHeight; i++)
+        {
+            for (Int j = 0; j < uiCWidth; j++)
+            {
+                Int a, b, iShift;
+                if (pLuma[j] <= parameters[0].Sup)
+                {
+                    a = parameters[0].a;
+                    b = parameters[0].b;
+                    iShift = parameters[0].shift;
+                }
+                else
+                {
+                    a = parameters[1].a;
+                    b = parameters[1].b;
+                    iShift = parameters[1].shift;
+                }
+#if JVET_D0033_ADAPTIVE_CLIPPING
+                pPred[j] = ClipA(((a * pLuma[j]) >> iShift) + b, compID);
+#else
+                pPred[j] = Clip3(0, maxV, ((a * pLuma[j]) >> iShift) + b);
+#endif
+
+            }
+
+            pPred += uiPredStride;
+            pLuma += iLumaStride;
+        }
+
+#if QC_LM_MF
+        m_pLumaRecBuffer = pLumaSaved;
+#endif
+    }
+    else
+#endif
+#if QC_MMLM_EXPLICIT > 1
+    if (LMtype == MMLM_CHROMA_IDX2)
+    {
+        // LLS parameters estimation -->
+        TComPrediction::MMLM_parameter parameters[3];
+        Int iGroupNum = 3;
+        xGetMMLMParameters(rTu, compID, uiCWidth, uiCHeight, iGroupNum, parameters);
+
+        // get prediction -->
+        Int  iLumaStride = m_iLumaRecStride;
+
+        Pel  *pLuma = m_pLumaRecBuffer + (iLumaStride + 1) * QC_MMLM_SAMPLE_NEIGHBOR_LINES;
+
+        const TComSPS &sps = *(rTu.getCU()->getSlice()->getSPS());
+        Int maxV = (1 << sps.getBitDepth(CHANNEL_TYPE_CHROMA)) - 1;
+
+
+        for (Int i = 0; i < uiCHeight; i++)
+        {
+            for (Int j = 0; j < uiCWidth; j++)
+            {
+                Int a, b, iShift;
+                if (pLuma[j] <= parameters[0].Sup)
+                {
+                    a = parameters[0].a;
+                    b = parameters[0].b;
+                    iShift = parameters[0].shift;
+                }
+                else if (pLuma[j] <= parameters[1].Sup)
+                {
+                    a = parameters[1].a;
+                    b = parameters[1].b;
+                    iShift = parameters[1].shift;
+                }
+                else
+                {
+                    a = parameters[2].a;
+                    b = parameters[2].b;
+                    iShift = parameters[2].shift;
+                }
+                pPred[j] = Clip3(0, maxV, ((a * pLuma[j]) >> iShift) + b);
+
+            }
+
+            pPred += uiPredStride;
+            pLuma += iLumaStride;
+        }
+    }
+    else
+#endif
+    {
+
   // LLS parameters estimation -->
   Int a, b, iShift;
   xGetLMParameters( rTu, compID, uiCWidth, uiCHeight, 0, a, b, iShift );
 
   // get prediction -->
   Int  iLumaStride = m_iLumaRecStride;
+
+#if QC_MMLM_SAMPLE_NEIGHBOR_LINES > 1
+  Pel  *pLuma = m_pLumaRecBuffer + (iLumaStride + 1) * QC_MMLM_SAMPLE_NEIGHBOR_LINES;
+#else
   Pel  *pLuma = m_pLumaRecBuffer + iLumaStride + 1;
+#endif
 
 #if !JVET_D0033_ADAPTIVE_CLIPPING
   const TComSPS &sps = *(rTu.getCU()->getSlice()->getSPS());
@@ -4986,7 +5158,48 @@ Void TComPrediction::predLMIntraChroma( TComTU& rTu, const ComponentID compID, P
     pLuma += iLumaStride;
   }
   // <-- end of get prediction
+
+#if QC_MMLM_EXPLICIT
+    }
+#endif
 }
+
+#if QC_LM_MF
+Void TComPrediction::xFilterGroup(Pel* pMulDst[], Int i, Pel* piSrc, Int iRecStride, Bool bAboveAvaillable, Bool bLeftAvaillable)
+{
+    pMulDst[0][i] = (piSrc[1] + piSrc[iRecStride + 1] + 1) >> 1;
+#if QC_LM_FILTER_NUM > 1
+    pMulDst[1][i] = (piSrc[iRecStride] + piSrc[iRecStride + 1] + 1) >> 1;
+#if QC_LM_FILTER_NUM > 2
+    pMulDst[3][i] = (piSrc[0] + piSrc[1] + 1) >> 1;
+#if QC_LM_FILTER_NUM > 3
+    pMulDst[2][i] = (piSrc[0] + piSrc[1] + piSrc[iRecStride] + piSrc[iRecStride + 1] + 2) >> 2;
+#endif
+#endif
+#endif
+
+}
+#endif
+
+
+#if QC_LM_ANGULAR_PREDICTION
+Void TComPrediction::EnhanceChromaANGPred(TComTU& rTu, ComponentID compID, Pel* pPred, UInt uiStride, Pel* pPredAng, UInt uiStrideAng, Pel* pPredLM, UInt uiStrideLM, UInt uiWidth, UInt uiHeight, UInt uiDirMode)
+{
+    assert(compID == COMPONENT_Cb || compID == COMPONENT_Cr);
+
+    for (Int i = 0; i < uiHeight; i++)
+    {
+        for (Int j = 0; j < uiWidth; j++)
+        {
+            pPred[j] = (pPredAng[j] + pPredLM[j] + 1) >> 1;
+        }
+        pPred += uiStride;
+        pPredAng += uiStrideAng;
+        pPredLM += uiStrideLM;
+    }
+
+}
+#endif
 
 /** Function for deriving downsampled luma sample of current chroma block and its above, left causal pixel
  * \param pcPattern pointer to neighbouring pixel access pattern
@@ -4998,11 +5211,31 @@ Void TComPrediction::predLMIntraChroma( TComTU& rTu, const ComponentID compID, P
  */
 Void TComPrediction::getLumaRecPixels( TComTU& rTu, UInt uiCWidth, UInt uiCHeight )
 {
+
+#if QC_MMLM_SAMPLE_NEIGHBOR_LINES > 1
+    Pel  *pDst0 = m_pLumaRecBuffer + (m_iLumaRecStride + 1) * QC_MMLM_SAMPLE_NEIGHBOR_LINES;
+#else
   Pel* pDst0 = m_pLumaRecBuffer + m_iLumaRecStride + 1;
+#endif
+
   Int iDstStride = m_iLumaRecStride;
+
+#if QC_LM_MF
+  Pel *pMulDst0[QC_LM_FILTER_NUM];
+  for (Int i = 0; i < QC_LM_FILTER_NUM; i++)
+  {
+#if QC_MMLM_SAMPLE_NEIGHBOR_LINES > 1
+      pMulDst0[i] = m_pLumaRecBufferMul[i] + (m_iLumaRecStride + 1) * QC_MMLM_SAMPLE_NEIGHBOR_LINES;
+#else
+      pMulDst0[i] = m_pLumaRecBufferMul[i] + m_iLumaRecStride + 1;
+#endif
+  }
+  Pel* pMulDst[QC_LM_FILTER_NUM];
+#endif
 
   TComDataCU *pcCU=rTu.getCU();
   const UInt uiZorderIdxInPart=rTu.GetAbsPartIdxTU();
+
   Pel *pRecSrc0 = pcCU->getPic()->getPicYuvRec()->getAddr(COMPONENT_Y, pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu()+uiZorderIdxInPart);
   Int iRecStride = pcCU->getPic()->getPicYuvRec()->getStride(COMPONENT_Y);;
 
@@ -5062,6 +5295,62 @@ Void TComPrediction::getLumaRecPixels( TComTU& rTu, UInt uiCWidth, UInt uiCHeigh
         + 4) >> 3;
       }
     }
+
+#if QC_MMLM_SAMPLE_NEIGHBOR_LINES > 1
+    for (int line = 2; line <= QC_MMLM_SAMPLE_NEIGHBOR_LINES; line++)
+    {
+        pDst = pDst0 - iDstStride * line;
+        piSrc = pRecSrc0 - iRecStride2 * line;
+
+        for (Int i = 0; i < uiCWidth; i++)
+        {
+            if (i == 0 && !bLeftAvaillable)
+            {
+                pDst[i] = (piSrc[2 * i] + piSrc[2 * i + iRecStride] + 1) >> 1;
+            }
+            else
+            {
+                pDst[i] = (((piSrc[2 * i] * 2) + piSrc[2 * i - 1] + piSrc[2 * i + 1])
+                    + ((piSrc[2 * i + iRecStride] * 2) + piSrc[2 * i - 1 + iRecStride] + piSrc[2 * i + 1 + iRecStride])
+                    + 4) >> 3;
+            }
+        }
+    }
+#endif
+
+#if QC_LM_MF
+    for (Int i = 0; i < QC_LM_FILTER_NUM; i++)
+    {
+        pMulDst[i] = pMulDst0[i] - iDstStride;
+    }
+
+    piSrc = pRecSrc0 - iRecStride2;
+
+    for (Int i = 0; i < uiCWidth; i++)
+    {
+
+        xFilterGroup(pMulDst, i, &piSrc[2 * i], iRecStride, bAboveAvaillable, i != 0 || bLeftAvaillable);
+    }
+
+#if QC_MMLM_SAMPLE_NEIGHBOR_LINES > 1
+    for (int line = 2; line <= QC_MMLM_SAMPLE_NEIGHBOR_LINES; line++)
+    {
+        for (Int i = 0; i < QC_LM_FILTER_NUM; i++)
+        {
+            pMulDst[i] = pMulDst0[i] - iDstStride * line;
+        }
+
+        piSrc = pRecSrc0 - iRecStride2 * line;
+
+        for (Int i = 0; i < uiCWidth; i++)
+        {
+            xFilterGroup(pMulDst, i, &piSrc[2 * i], iRecStride, bAboveAvaillable, i != 0 || bLeftAvaillable);
+        }
+    }
+#endif
+
+#endif
+
   }
 
   if (bLeftAvaillable)
@@ -5076,6 +5365,83 @@ Void TComPrediction::getLumaRecPixels( TComTU& rTu, UInt uiCWidth, UInt uiCHeigh
       piSrc += iRecStride2; 
       pDst += iDstStride;    
     }
+
+#if QC_MMLM_SAMPLE_NEIGHBOR_LINES > 1
+    for (int line = 2; line <= QC_MMLM_SAMPLE_NEIGHBOR_LINES; line++)
+    {
+        pDst = pDst0 - line;
+        piSrc = pRecSrc0 - 2 * line - 1;
+
+        if (pcCU->getCUPelX() > 4)
+        {
+            for (Int j = 0; j < uiCHeight; j++)
+            {
+                pDst[0] = ((piSrc[1] * 2 + piSrc[0] + piSrc[2])
+                    + (piSrc[1 + iRecStride] * 2 + piSrc[iRecStride] + piSrc[2 + iRecStride])
+                    + 4) >> 3;
+                piSrc += iRecStride2;
+                pDst += iDstStride;
+            }
+        }
+        else
+        {
+            for (Int j = 0; j < uiCHeight; j++)
+            {
+                pDst[0] = ((piSrc[1] * 3 + piSrc[2])
+                    + (piSrc[1 + iRecStride] * 3 + piSrc[2 + iRecStride])
+                    + 4) >> 3;
+                piSrc += iRecStride2;
+                pDst += iDstStride;
+            }
+        }
+    }
+#endif
+
+#if QC_LM_MF
+    for (Int i = 0; i < QC_LM_FILTER_NUM; i++)
+    {
+        pMulDst[i] = pMulDst0[i] - 1;
+    }
+
+    piSrc = pRecSrc0 - 2;
+    for (Int j = 0; j < uiCHeight; j++)
+    {
+        //Filter group 1
+
+        xFilterGroup(pMulDst, 0, piSrc, iRecStride, j != 0 || bAboveAvaillable, bLeftAvaillable);
+
+        piSrc += iRecStride2;
+
+        for (Int i = 0; i < QC_LM_FILTER_NUM; i++)
+        {
+            pMulDst[i] += iDstStride;
+        }
+    }
+
+#if QC_MMLM_SAMPLE_NEIGHBOR_LINES > 1
+    for (int line = 2; line <= QC_MMLM_SAMPLE_NEIGHBOR_LINES; line++)
+    {
+        for (Int i = 0; i < QC_LM_FILTER_NUM; i++)
+        {
+            pMulDst[i] = pMulDst0[i] - line;
+        }
+        piSrc = pRecSrc0 - 2 * line;
+
+        for (Int j = 0; j < uiCHeight; j++)
+        {
+
+            xFilterGroup(pMulDst, 0, piSrc, iRecStride, j != 0 || bAboveAvaillable, bLeftAvaillable);
+
+            piSrc += iRecStride2;
+
+            for (Int i = 0; i < QC_LM_FILTER_NUM; i++)
+            {
+                pMulDst[i] += iDstStride;
+            }
+        }
+    }
+#endif
+#endif
   }
 
   // inner part from reconstructed picture buffer
@@ -5097,6 +5463,24 @@ Void TComPrediction::getLumaRecPixels( TComTU& rTu, UInt uiCWidth, UInt uiCHeigh
     pDst0 += iDstStride;
     pRecSrc0 += iRecStride2;
   }
+
+#if QC_LM_MF
+  pRecSrc0 = pcCU->getPic()->getPicYuvRec()->getAddr(COMPONENT_Y, pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu() + uiZorderIdxInPart);
+
+  for (Int j = 0; j < uiCHeight; j++)
+  {
+      for (Int i = 0; i < uiCWidth; i++)
+      {
+          xFilterGroup(pMulDst0, i, &pRecSrc0[2 * i], iRecStride, j != 0 || bAboveAvaillable, i != 0 || bLeftAvaillable);
+      }
+      for (Int i = 0; i < QC_LM_FILTER_NUM; i++)
+      {
+          pMulDst0[i] += iDstStride;
+      }
+
+      pRecSrc0 += iRecStride2;
+  }
+#endif
 }
 
 /** Function for deriving LM parameter for predciton of Cr from Cb.
@@ -5160,6 +5544,434 @@ Int GetFloorLog2( UInt x )
   }
   return bits;
 }
+
+#if QC_MMLM
+
+Int TComPrediction::xCalcLMParametersGeneralized(Int x, Int y, Int xx, Int xy, Int count, Int bitDepth, Int &a, Int &b, Int &iShift)
+{
+
+    UInt uiInternalBitDepth = bitDepth;
+    if (count == 0)
+    {
+        a = 0;
+        b = 1 << (uiInternalBitDepth - 1);
+        iShift = 0;
+        return -1;
+    }
+    assert(count <= 512);
+
+    //Int avgX = x / count;
+    //Int avgY = y / count;
+
+
+    Int avgX = (x * g_aiLMDivTableLow[count - 1] + 32768) >> 16;
+    Int avgY = (y * g_aiLMDivTableLow[count - 1] + 32768) >> 16;
+    avgX = (x * g_aiLMDivTableHigh[count - 1] + avgX) >> 16;
+    avgY = (y * g_aiLMDivTableHigh[count - 1] + avgY) >> 16;
+
+
+    Int RErrX = x - avgX * count;// x % count;
+    Int RErrY = y - avgY * count;// y % count;
+
+    Int iB = 7;
+    iShift = 13 - iB;
+
+    {
+        Int a1 = xy - (avgX*avgY * count) - avgX*RErrY - avgY*RErrX;
+        Int a2 = xx - (avgX*avgX * count) - 2 * avgX*RErrX;
+
+        const Int iShiftA1 = uiInternalBitDepth - 2;
+        const Int iShiftA2 = 5;
+        const Int iAccuracyShift = uiInternalBitDepth + 4;
+
+        Int iScaleShiftA2 = 0;
+        Int iScaleShiftA1 = 0;
+        Int a1s = a1;
+        Int a2s = a2;
+
+        iScaleShiftA1 = a1 == 0 ? 0 : GetFloorLog2(abs(a1)) - iShiftA1;
+        iScaleShiftA2 = a2 == 0 ? 0 : GetFloorLog2(abs(a2)) - iShiftA2;
+
+        if (iScaleShiftA1 < 0)
+        {
+            iScaleShiftA1 = 0;
+        }
+
+        if (iScaleShiftA2 < 0)
+        {
+            iScaleShiftA2 = 0;
+        }
+
+        Int iScaleShiftA = iScaleShiftA2 + iAccuracyShift - iShift - iScaleShiftA1;
+
+        a2s = a2 >> iScaleShiftA2;
+
+        a1s = a1 >> iScaleShiftA1;
+
+        if (a2s >= 32)
+        {
+            UInt a2t = m_uiaLMShift[a2s - 32];
+            // a2t = ClipC( a2t );  //???????????? to be updated
+            a = a1s * a2t;
+        }
+        else
+        {
+            a = 0;
+        }
+
+        if (iScaleShiftA < 0)
+        {
+            a = a << -iScaleShiftA;
+        }
+        else
+        {
+            a = a >> iScaleShiftA;
+        }
+        a = Clip3(-(1 << (15 - iB)), (1 << (15 - iB)) - 1, a);
+        a = a << iB;
+
+        Short n = 0;
+        if (a != 0)
+        {
+            n = GetFloorLog2(abs(a) + ((a < 0 ? -1 : 1) - 1) / 2) - 5;
+        }
+
+        iShift = (iShift + iB) - n;
+        a = a >> n;
+
+        b = avgY - ((a * avgX) >> iShift);
+
+        return 0;
+    }
+}
+
+
+/*
+Return: Group Num
+count: sample count
+LumaSamples & ChrmSamples: Samples of luma and chroma components
+GroupNum: Number of groups to be classified.
+0 if not specified. (Output the self-determined number )
+1 if not specified but at least 2
+*/
+
+Int TComPrediction::xLMSampleClassifiedTraining(Int count, Int LumaSamples[], Int ChrmSamples[], Int GroupNum,
+    Int bitDepth, MMLM_parameter parameters[])
+{
+    //assert(GroupNum == 2); // Currently only support 2 groups
+
+    //Initialize
+
+    for (Int i = 0; i < GroupNum; i++)
+    {
+        parameters[i].Inf = 0;
+        parameters[i].Sup = (1 << bitDepth) - 1;
+        parameters[i].a = 0;
+        parameters[i].b = 1 << (bitDepth - 1);
+        parameters[i].shift = 0;
+    }
+
+    if (count < 4)//
+    {
+        return -1;
+    }
+
+    Int GroupTag[1024];
+
+    Int GroupCount[3] = { 0, 0, 0 };
+
+    Int mean = 0;
+    Int meanC = 0;
+
+    Int iMaxLuma = -1;
+    Int iMinLuma = 0xffffff;
+    for (int i = 0; i < count; i++)
+    {
+        mean += LumaSamples[i];
+        meanC += ChrmSamples[i];
+        if (LumaSamples[i] < iMinLuma)
+        {
+            iMinLuma = LumaSamples[i];
+        }
+        if (LumaSamples[i] > iMaxLuma)
+        {
+            iMaxLuma = LumaSamples[i];
+        }
+    }
+
+    assert(count <= 512);
+
+    Int meand = (mean  * g_aiLMDivTableLow[count - 1] + 32768) >> 16;
+    Int meanCd = (meanC * g_aiLMDivTableLow[count - 1] + 32768) >> 16;
+    mean = (mean  * g_aiLMDivTableHigh[count - 1] + meand + 32768) >> 16;
+    meanC = (meanC * g_aiLMDivTableHigh[count - 1] + meanCd + 32768) >> 16;
+
+    //Division should be replaced later
+    //mean = (mean + count / 2) / count;
+    //meanC = (meanC + count / 2) / count;
+
+
+
+
+    Int meanDiff = meanC - mean;
+
+    mean = max(1, mean);
+
+    Int iTh[2] = { 0, 0 };
+
+    if (GroupNum == 2)
+    {
+        iTh[0] = mean;
+
+        parameters[0].Inf = 0;
+        parameters[0].Sup = mean - 1;
+
+        parameters[1].Inf = mean;
+        parameters[1].Sup = (1 << bitDepth) - 1;
+
+    }
+    else if (GroupNum == 3)
+    {
+        iTh[0] = max(iMinLuma + 1, (iMinLuma + mean + 1) >> 1);
+        iTh[1] = min(iMaxLuma - 1, (iMaxLuma + mean + 1) >> 1);
+
+        parameters[0].Inf = 0;
+        parameters[0].Sup = iTh[0] - 1;
+
+        parameters[1].Inf = iTh[0];
+        parameters[1].Sup = iTh[1] - 1;
+
+        parameters[2].Inf = iTh[1];
+        parameters[2].Sup = (1 << bitDepth) - 1;
+    }
+    else
+    {
+        assert(0);
+    }
+    for (Int i = 0; i < count; i++)
+    {
+        if (LumaSamples[i] < iTh[0])
+        {
+            GroupTag[i] = 0;
+            GroupCount[0]++;
+        }
+        else if (LumaSamples[i] < iTh[1] || GroupNum == 2)
+        {
+            GroupTag[i] = 1;
+            GroupCount[1]++;
+        }
+        else
+        {
+            GroupTag[i] = 2;
+            GroupCount[2]++;
+        }
+    }
+    Int iBiggestGroup = 0;
+    for (Int i = 1; i < GroupNum; i++)
+    {
+        if (GroupCount[i] > iBiggestGroup)
+        {
+            iBiggestGroup = i;
+        }
+    }
+
+    for (int group = 0; group < GroupNum; group++)
+    {
+        // If there is only 1 sample in a group, add the nearest value of the two neighboring pixels to the group.
+        if (GroupCount[group] < 2)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                if (GroupTag[i] == group)
+                {
+                    for (Int k = 1; (i + k < count) || (i - k >= 0); k++)
+                    {
+                        if (i + k < count && GroupTag[i + k] == iBiggestGroup)
+                        {
+                            GroupTag[i + k] = group;
+                            GroupCount[group]++;
+                            GroupCount[iBiggestGroup]--;
+                            break;
+                        }
+                        if (i - k >= 0 && GroupTag[i - k] == iBiggestGroup)
+                        {
+                            GroupTag[i - k] = group;
+                            GroupCount[group]++;
+                            GroupCount[iBiggestGroup]--;
+                            break;
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+
+    Int x[3], y[3], xy[3], xx[3];
+    for (Int group = 0; group < GroupNum; group++)
+    {
+        x[group] = y[group] = xy[group] = xx[group] = 0;
+    }
+    for (Int i = 0; i < count; i++)
+    {
+        Int group = GroupTag[i];
+        x[group] += LumaSamples[i];
+        y[group] += ChrmSamples[i];
+        xx[group] += LumaSamples[i] * LumaSamples[i];
+        xy[group] += LumaSamples[i] * ChrmSamples[i];
+    }
+
+    for (Int group = 0; group < GroupNum; group++)
+    {
+        Int a, b, iShift;
+        if (GroupCount[group] > 1)
+        {
+            xCalcLMParametersGeneralized(x[group], y[group], xx[group], xy[group], GroupCount[group], bitDepth, a, b, iShift);
+
+            parameters[group].a = a;
+            parameters[group].b = b;
+            parameters[group].shift = iShift;
+        }
+        else
+        {
+            parameters[group].a = 0;
+            parameters[group].b = meanDiff;
+            parameters[group].shift = 0;
+        }
+    }
+    return 0;
+}
+
+Int TComPrediction::xGetMMLMParameters(TComTU& rTu, const ComponentID compID, UInt uiWidth, UInt uiHeight, Int &numClass, MMLM_parameter parameters[])
+{
+
+    Pel *pSrcColor0, *pCurChroma0;
+    Int iSrcStride, iCurStride;
+
+    TComDataCU *pcCU = rTu.getCU();
+    const TComSPS &sps = *(pcCU->getSlice()->getSPS());
+    const UInt uiZorderIdxInPart = rTu.GetAbsPartIdxTU();
+    const UInt uiTuWidth = rTu.getRect(compID).width;
+    const UInt uiTuHeight = rTu.getRect(compID).height;
+#if JVET_C0024_QTBT
+    assert(uiTuWidth == uiWidth && uiTuHeight == uiHeight);
+    const Int  iBaseUnitSize = sps.getCTUSize() >> sps.getMaxTotalCUDepth();
+#else
+    const Int  iBaseUnitSize = sps.getMaxCUWidth() >> sps.getMaxTotalCUDepth();
+#endif
+    const Int  iUnitWidth = iBaseUnitSize >> pcCU->getPic()->getPicYuvRec()->getComponentScaleX(compID);
+    const Int  iUnitHeight = iBaseUnitSize >> pcCU->getPic()->getPicYuvRec()->getComponentScaleY(compID);
+    const Int  iTUWidthInUnits = uiTuWidth / iUnitWidth;
+    const Int  iTUHeightInUnits = uiTuHeight / iUnitHeight;
+
+    const Int  iPartIdxStride = pcCU->getPic()->getNumPartInCtuWidth();
+    const UInt uiPartIdxLT = pcCU->getZorderIdxInCtu() + uiZorderIdxInPart;
+    const UInt uiPartIdxRT = g_auiRasterToZscan[g_auiZscanToRaster[uiPartIdxLT] + iTUWidthInUnits - 1];
+    const UInt uiPartIdxLB = g_auiRasterToZscan[g_auiZscanToRaster[uiPartIdxLT] + ((iTUHeightInUnits - 1) * iPartIdxStride)];
+
+    Bool tempbuf[MAX_NUM_PART_IDXS_IN_CTU_WIDTH * 4 + 1];
+    Int availlableUnit = isLeftAvailable(pcCU, uiPartIdxLT, uiPartIdxLB, tempbuf + MAX_NUM_PART_IDXS_IN_CTU_WIDTH);
+#if JVET_C0024_QTBT
+    Bool bLeftAvaillable = availlableUnit == iTUHeightInUnits ? true : false;
+#else
+    Bool bLeftAvaillable = availlableUnit == iTUWidthInUnits ? true : false;
+#endif
+    availlableUnit = isAboveAvailable(pcCU, uiPartIdxLT, uiPartIdxRT, tempbuf + MAX_NUM_PART_IDXS_IN_CTU_WIDTH);
+#if JVET_C0024_QTBT
+    Bool bAboveAvaillable = availlableUnit == iTUWidthInUnits ? true : false;
+#else
+    Bool bAboveAvaillable = availlableUnit == iTUHeightInUnits ? true : false;
+#endif
+
+    UInt uiInternalBitDepth = sps.getBitDepth(CHANNEL_TYPE_CHROMA);
+
+
+    iSrcStride = m_iLumaRecStride;
+    pSrcColor0 = m_pLumaRecBuffer + (iSrcStride + 1) * QC_MMLM_SAMPLE_NEIGHBOR_LINES;
+
+
+    pCurChroma0 = pcCU->getPic()->getPicYuvRec()->getAddr(compID, pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu() + uiZorderIdxInPart);
+    iCurStride = pcCU->getPic()->getPicYuvRec()->getStride(compID);;
+    //pCurChroma0 -= (iCurStride + 1);
+
+
+    Int count = 0;
+    Int LumaSamples[512];
+    Int ChrmSamples[512];
+
+
+    Int i, j;
+
+    Pel *pSrc = pSrcColor0 - iSrcStride;
+    Pel *pCur = pCurChroma0 - iCurStride;
+
+    Bool bAdditionalLine = true;
+
+    if (bAboveAvaillable)
+    {
+        for (j = 0; j < uiWidth; j++)
+        {
+            LumaSamples[count] = pSrc[j];
+            ChrmSamples[count] = pCur[j];
+            count++;
+        }
+        if (bAdditionalLine)
+        {
+            for (int line = 2; line <= QC_MMLM_SAMPLE_NEIGHBOR_LINES; line++)
+            {
+                pSrc = pSrcColor0 - line * iSrcStride;
+                pCur = pCurChroma0 - line * iCurStride;
+
+                for (j = 0; j < uiWidth; j++)
+                {
+                    LumaSamples[count] = pSrc[j];
+                    ChrmSamples[count] = pCur[j];
+                    count++;
+                }
+            }
+        }
+    }
+
+    if (bLeftAvaillable)
+    {
+        pSrc = pSrcColor0 - 1;
+        pCur = pCurChroma0 - 1;
+
+        for (i = 0; i < uiHeight; i++)
+        {
+            LumaSamples[count] = pSrc[0];
+            ChrmSamples[count] = pCur[0];
+            count++;
+
+            pSrc += iSrcStride;
+            pCur += iCurStride;
+        }
+
+        if (bAdditionalLine)
+        {
+            for (int line = 2; line <= QC_MMLM_SAMPLE_NEIGHBOR_LINES; line++)
+            {
+                pSrc = pSrcColor0 - line;
+                pCur = pCurChroma0 - line;
+
+                for (i = 0; i < uiHeight; i++)
+                {
+                    LumaSamples[count] = pSrc[0];
+                    ChrmSamples[count] = pCur[0];
+                    count++;
+
+                    pSrc += iSrcStride;
+                    pCur += iCurStride;
+                }
+            }
+        }
+    }
+
+    xLMSampleClassifiedTraining(count, LumaSamples, ChrmSamples, numClass, uiInternalBitDepth, parameters);
+    return 2;
+}
+#endif
 
 /** Function for deriving the parameters of linear prediction model.
  * \param x, y, xx, yy sum of reference samples of source component, target component, square of source component and multiplication of source component and target component
@@ -5318,7 +6130,12 @@ Void TComPrediction::xGetLMParameters( TComTU& rTu, const ComponentID compID, UI
   if (iPredType == 0) //chroma from luma
   {
     iSrcStride = m_iLumaRecStride;
+
+#if QC_MMLM_SAMPLE_NEIGHBOR_LINES > 1
+    pSrcColor0 = m_pLumaRecBuffer + (iSrcStride + 1) * QC_MMLM_SAMPLE_NEIGHBOR_LINES;
+#else
     pSrcColor0 = m_pLumaRecBuffer + iSrcStride + 1;
+#endif
 
     pCurChroma0  = m_piYuvExt[compID][PRED_BUF_UNFILTERED];
 
@@ -5334,6 +6151,7 @@ Void TComPrediction::xGetLMParameters( TComTU& rTu, const ComponentID compID, UI
     assert (compID == COMPONENT_Cr);
 
 //    pSrcColor0   = pcPattern->getAdiCbBuf( uiWidth, uiHeight, getPredicBuf() );
+
     pSrcColor0   = m_piYuvExt[COMPONENT_Cb][PRED_BUF_UNFILTERED];
     pCurChroma0  = m_piYuvExt[COMPONENT_Cr][PRED_BUF_UNFILTERED];
 //    pCurChroma0  = pcPattern->getAdiCrBuf( uiWidth, uiHeight, getPredicBuf() ); 

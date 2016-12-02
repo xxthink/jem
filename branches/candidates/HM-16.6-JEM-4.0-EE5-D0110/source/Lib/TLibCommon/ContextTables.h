@@ -67,6 +67,11 @@
 #if COM16_C1046_PDPC_INTRA
 #define NUM_PDPC_CTX                  2      /// < number of context models for MPI Idx coding
 #endif
+
+#if QC_LM_ANGULAR_PREDICTION
+#define NUM_CPLE_CTX                  3
+#endif
+
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
  #define NUM_ROT_TR_CTX               7       /// < number of context models for ROT Idx coding
 #endif
@@ -108,7 +113,12 @@
 #define NUM_INTRA_PREDICT_CTX         1       ///< number of context models for intra prediction
 #endif
 
+#if QC_MORE_LM_MODE
+#define NUM_CHROMA_PRED_CTX           (2 + LM_SYMBOL_NUM - 1 )      ///< number of context models for intra prediction (chroma)
+#else
 #define NUM_CHROMA_PRED_CTX           2       ///< number of context models for intra prediction (chroma)
+#endif
+
 #define NUM_INTER_DIR_CTX             5       ///< number of context models for inter prediction direction
 #define NUM_MV_RES_CTX                2       ///< number of context models for motion vector difference
 #define NUM_CHROMA_QP_ADJ_FLAG_CTX    1       ///< number of context models for chroma_qp_adjustment_flag
@@ -340,6 +350,18 @@ INIT_ROT_TR_IDX[3][NUM_ROT_TR_CTX] =
   { 139,139,139,139,139,139,139 }, 
 };
 #endif
+
+#if QC_LM_ANGULAR_PREDICTION
+static const UChar
+INIT_CPLE_FLAG[NUMBER_OF_SLICE_TYPES][NUM_CPLE_CTX] =
+{
+    { CNU, CNU, CNU },
+    { CNU, CNU, CNU },
+    { CNU, CNU, CNU },
+};
+#endif
+
+
 static const UChar
 INIT_MERGE_FLAG_EXT[NUMBER_OF_SLICE_TYPES][NUM_MERGE_FLAG_EXT_CTX] =
 {
@@ -456,6 +478,43 @@ INIT_INTRA_PRED_MODE[NUMBER_OF_SLICE_TYPES][NUM_INTRA_PREDICT_CTX] =
 #endif
 };
 
+#if QC_MORE_LM_MODE
+static const UChar
+INIT_CHROMA_PRED_MODE[NUMBER_OF_SLICE_TYPES][NUM_CHROMA_PRED_CTX] =
+{
+#if NUM_CHROMA_PRED_CTX == 3
+    { 152, 139, 154 },
+    { 152, 139, 154 },
+    { 63, 139, 154 },
+#elif NUM_CHROMA_PRED_CTX == 4
+    { 152, 139, 154, 154 },
+    { 152, 139, 154, 154 },
+    { 63, 139, 154, 154 },
+#elif NUM_CHROMA_PRED_CTX == 5
+    { 152, 139, 154, 154, 154 },
+    { 152, 139, 154, 154, 154 },
+    { 63, 139, 154, 154, 154 },
+#elif NUM_CHROMA_PRED_CTX == 6
+    { 152, 139, 154, 154, 154, 154 },
+    { 152, 139, 154, 154, 154, 154 },
+    { 63, 139, 154, 154, 154, 154 },
+#elif NUM_CHROMA_PRED_CTX == 7
+    { 152, 139, 154, 154, 154, 154, 154 },
+    { 152, 139, 154, 154, 154, 154, 154 },
+    { 63, 139, 154, 154, 154, 154, 154 },
+#elif NUM_CHROMA_PRED_CTX == 8
+    { 152, 139, 154, 154, 154, 154, 154, 154 },
+    { 152, 139, 154, 154, 154, 154, 154, 154 },
+    { 63, 139, 154, 154, 154, 154, 154, 154 },
+#elif NUM_CHROMA_PRED_CTX == 9
+    { 152, 139, 154, 154, 154, 154, 154, 154, 154 },
+    { 152, 139, 154, 154, 154, 154, 154, 154, 154 },
+    { 63, 139, 154, 154, 154, 154, 154, 154, 154 },
+#else
+#error("Wrong NUM_CHROMA_PRED_CTX!");
+#endif
+};
+#else
 static const UChar
 INIT_CHROMA_PRED_MODE[NUMBER_OF_SLICE_TYPES][NUM_CHROMA_PRED_CTX] =
 {
@@ -463,6 +522,7 @@ INIT_CHROMA_PRED_MODE[NUMBER_OF_SLICE_TYPES][NUM_CHROMA_PRED_CTX] =
   { 152,  139, },
   {  63,  139, },
 };
+#endif
 
 static const UChar
 INIT_INTER_DIR[NUMBER_OF_SLICE_TYPES][NUM_INTER_DIR_CTX] =

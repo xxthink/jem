@@ -2569,4 +2569,13 @@ Void  TDecCavlc::parseAffineMvd( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UI
   assert(0);
 }
 #endif
+
+
+#if QC_LM_ANGULAR_PREDICTION
+Void TDecCavlc::parseLMEP(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth)
+{
+    assert(0);
+}
+#endif
+
 //! \}
