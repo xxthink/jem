@@ -4962,7 +4962,11 @@ Void TEncCu::xCopyYuv2Tmp( UInt uiPartUnitIdx, UInt uiNextDepth )
   UInt uiNextWIdx = uiWIdx - ((uiSplitMethod & 1)==0 ? 1: 0);
   UInt uiNextHIdx = uiHIdx - ((uiSplitMethod & 2)==0 ? 1: 0);
   m_pppcRecoYuvBest[uiNextWIdx][uiNextHIdx]->copyToPartYuv( m_pppcRecoYuvTemp[uiWIdx][uiHIdx], uiPartUnitIdx );
+#if FIX_TICKET37
+  m_pppcPredYuvBest[uiNextWIdx][uiNextHIdx]->copyToPartYuv( m_pppcPredYuvTemp[uiWIdx][uiHIdx], uiPartUnitIdx );
+#else
   m_pppcPredYuvBest[uiNextWIdx][uiNextHIdx]->copyToPartYuv( m_pppcPredYuvBest[uiWIdx][uiHIdx], uiPartUnitIdx );
+#endif
 #else
   UInt uiCurrDepth = uiNextDepth - 1;
   m_ppcRecoYuvBest[uiNextDepth]->copyToPartYuv( m_ppcRecoYuvTemp[uiCurrDepth], uiPartUnitIdx );
