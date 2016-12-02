@@ -58,6 +58,10 @@
 #define JVET_D0033_ADAPTIVE_CLIPPING_ENC_METHOD           1
 
 #define JVET_D0123_ME_CTX_LUT_BITS                        1
+#define HIS_DMVR     1 //HiSilicon's Decoder-side motion vector refinement based on bilateral template matching
+#if HIS_DMVR
+#define HIS_DMVR_INTME_RANGE       1
+#endif
 
 #define JVET_C0024_QTBT                                   1
 

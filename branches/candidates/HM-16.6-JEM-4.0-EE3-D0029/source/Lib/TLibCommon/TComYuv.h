@@ -121,7 +121,9 @@ public:
   //  Copy Small YUV buffer to the part of other Big YUV buffer
   Void         copyToPartYuv              ( TComYuv*    pcYuvDst,    const UInt uiDstPartIdx ) const ;
   Void         copyToPartComponent        ( const ComponentID id, TComYuv*    pcYuvDst,    const UInt uiDstPartIdx ) const ;
-
+#if HIS_DMVR
+  Void         copyToPartXYComponent      ( const ComponentID compID, const UInt uiAbsZorderIdx, TComYuv* pcYuvDst, const UInt uiPelX, const UInt uiPelY, const Int iWidth, const Int iHeight ) const;
+#endif
   //  Copy the part of Big YUV buffer to other Small YUV buffer
   Void         copyPartToYuv              ( TComYuv*    pcYuvDst,   const UInt uiSrcPartIdx ) const;
   Void         copyPartToComponent        ( const ComponentID id, TComYuv*    pcYuvDst,    const UInt uiSrcPartIdx ) const;
@@ -158,8 +160,14 @@ public:
 #if VCEG_AZ05_BIO                  
     , bool bBIOapplied
 #endif
-);
+#if HIS_DMVR
+    , Bool bOnlyLuma=false
+#endif
+    );
 
+#if HIS_DMVR
+  Void         toLast                     ( const UInt iPartUnitIdx, const UInt iWidth, const UInt iHeight, const BitDepths &clipBitDepths );
+#endif
   Void         removeHighFreq             ( const TComYuv* pcYuvSrc, const UInt uiPartIdx, const UInt uiWidth, const UInt uiHeight
                                           , const Int bitDepths[MAX_NUM_CHANNEL_TYPE], const Bool bClipToBitDepths
                                           );

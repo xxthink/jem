@@ -189,6 +189,9 @@ protected:
   __inline Void gradFilter1DVer (Pel* piSrc, Int iSrcStride,  Int iWidth, Int iHeight, Int iDstStride,  Pel*& rpiDst, Int iMV, const Int iShift);
 #endif
   Void xPredInterUni            ( TComDataCU* pcCU,                          UInt uiPartAddr,               Int iWidth, Int iHeight, RefPicList eRefPicList, TComYuv* pcYuvPred
+#if HIS_DMVR    
+    , Bool bRefineflag
+#endif
 #if VCEG_AZ05_BIO
     , Bool bBIOApplied =false
 #endif
@@ -197,7 +200,10 @@ protected:
     , Bool bOBMC = false
 #endif
     );
-  Void xPredInterBi             ( TComDataCU* pcCU,                          UInt uiPartAddr,               Int iWidth, Int iHeight,                         TComYuv* pcYuvPred          
+  Void xPredInterBi             ( TComDataCU* pcCU,                          UInt uiPartAddr,               Int iWidth, Int iHeight,                         TComYuv* pcYuvPred
+#if HIS_DMVR    
+    , Bool bRefineflag
+#endif
 #if VCEG_AZ07_FRUC_MERGE
     , Bool bOBMC = false
 #endif
@@ -213,12 +219,26 @@ protected:
     , Bool bICFlag      = false
 #endif
     );
+#if HIS_DMVR
+  UInt xMVRefineCost(TComDataCU* pcCU, TComPicYuv* pRefPic, UInt uiAbsPartIdx, TComMv cMv, Int iWidth, Int iHeight, TComYuv* pOrgYuv, TComYuv* pDstYuv);
+  Void xBIPMVRefine(TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefPicList, Int iWidth, Int iHeight, TComYuv* pOrgYuv, TComYuv* pDstYuv, UInt uiMaxSearchRounds, UInt nSearchStepShift, UInt& uiMinCost);
+  UInt xDirectMCCost(Int iBitDepth, Pel* pRef, UInt uiRefStride, Pel* pOrg, UInt uiOrgStride, Int iWidth, Int iHeight);
+  Void xPredInterLines(TComDataCU *cu, TComPicYuv *refPic, UInt partAddr, TComMv *mv, Int width, Int height, Pel* dstPix, Int dstStride, Bool bi, const Int bitDepth);
+  Void xFillPredBorder(TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefPicList, Int iWidth, Int iHeight, TComYuv* pDstYuv);
+  Void xGenerateFracPixel(TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefPicList, Int iWidth, Int iHeight, UInt nSearchStepShift);
+#endif
   Void xWeightedAverage         ( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, Int iRefIdx0, Int iRefIdx1, UInt uiPartAddr, Int iWidth, Int iHeight, TComYuv* pcYuvDst, const BitDepths &clipBitDepths  
+#if HIS_DMVR    
+    , Bool bRefineflag
+#endif
 #if VCEG_AZ05_BIO                  
     , Bool bBIOapplied 
 #endif
 #if COM16_C1045_BIO_HARMO_IMPROV || JVET_C0027_BIO
     , TComDataCU * pCu
+#endif
+#if HIS_DMVR
+    , Bool bOBMC
 #endif
     );
 
@@ -247,7 +267,11 @@ protected:
 #if COM16_C806_OBMC
   Void xSubblockOBMC ( const ComponentID eComp, TComDataCU* pcCU, Int uiAbsPartIdx, TComYuv* pcYuvPredDst, TComYuv* pcYuvPredSrc, Int iWidth, Int iHeight, Int iDir, Bool bOBMCSimp );
   Void xSubtractOBMC ( TComDataCU* pcCU, Int uiAbsPartIdx, TComYuv* pcYuvPredDst, TComYuv* pcYuvPredSrc, Int iWidth, Int iHeight, Int iDir, Bool bOBMCSimp );
-  Void xSubBlockMotionCompensation ( TComDataCU* pcCU, TComYuv* pcYuvPred, Int uiPartAddr, Int iWidth, Int iHeight  );
+  Void xSubBlockMotionCompensation ( TComDataCU* pcCU, TComYuv* pcYuvPred, Int uiPartAddr, Int iWidth, Int iHeight
+#if HIS_DMVR    
+    , Bool bRefineflag
+#endif
+      );
 #endif
 #if VCEG_AZ07_FRUC_MERGE
   Bool xFrucFindBlkMv( TComDataCU * pCU , UInt uiPUIdx );
@@ -286,7 +310,11 @@ public:
   TComPrediction();
   virtual ~TComPrediction();
 #if COM16_C806_OBMC
-  Void subBlockOBMC ( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv *pcYuvPred, TComYuv *pcYuvTmpPred1, TComYuv *pcYuvTmpPred2, Bool bOBMC4ME = false );
+  Void subBlockOBMC ( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv *pcYuvPred, TComYuv *pcYuvTmpPred1, TComYuv *pcYuvTmpPred2
+#if HIS_DMVR
+    , Bool bRefineflag = true
+#endif
+    , Bool bOBMC4ME = false );
 #endif
 #if COM16_C806_LMCHROMA
   Void    initTempBuff(ChromaFormat chromaFormatIDC, Int bitDepthY
@@ -305,7 +333,11 @@ public:
   ChromaFormat getChromaFormat() const { return m_cYuvPredTemp.getChromaFormat(); }
 
   // inter
-  Void motionCompensation         ( TComDataCU*  pcCU, TComYuv* pcYuvPred, RefPicList eRefPicList = REF_PIC_LIST_X, Int iPartIdx = -1 );
+  Void motionCompensation         ( TComDataCU*  pcCU, TComYuv* pcYuvPred
+#if HIS_DMVR
+    , Bool bRefineflag = true
+#endif
+    , RefPicList eRefPicList = REF_PIC_LIST_X, Int iPartIdx = -1 );
 
 #if VCEG_AZ07_FRUC_MERGE
   Bool deriveFRUCMV( TComDataCU * pCU , UInt uiDepth , UInt uiAbsPartIdx , UInt uiPUIdx , Int nTargetRefIdx = -1 , RefPicList eTargetRefList = REF_PIC_LIST_0 );
