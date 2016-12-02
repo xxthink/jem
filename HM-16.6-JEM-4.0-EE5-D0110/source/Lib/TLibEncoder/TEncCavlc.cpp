@@ -1965,4 +1965,10 @@ Void TEncCavlc::codeAffineFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
 }
 #endif
 
+#if QC_LM_ANGULAR_PREDICTION
+Void TEncCavlc::codeLMEP(TComDataCU* pcCU, UInt uiAbsPartIdx)
+{
+    assert(0);
+}
+#endif
 //! \}

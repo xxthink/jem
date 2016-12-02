@@ -261,6 +261,12 @@ const Char* nalUnitTypeToString(NalUnitType type);
 extern const Char *MatrixType[SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM];
 extern const Char *MatrixType_DC[SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM];
 
+#if QC_MMLM
+extern Int g_aiLMDivTable[];
+extern Int g_aiLMDivTableLow[];
+extern Int g_aiLMDivTableHigh[];
+#endif
+
 extern const Int g_quantTSDefault4x4[4*4];
 extern const Int g_quantIntraDefault8x8[8*8];
 extern const Int g_quantInterDefault8x8[8*8];
@@ -277,5 +283,13 @@ extern const Int g_pdpc_pred_param[5][2][35][7];
 #endif
 
 //! \}
+#if QC_MORE_LM_MODE
+Bool   IsLMMode(UInt uiIntraMode);
+extern const Int g_aiLAP_MinSize[];
+extern const Int g_aiMFLM_MinSize[];
+extern const Int g_aiMMLM_MinSize[];
+extern const Int g_aiNonLMPosThrs[];
+#endif
+
 
 #endif  //__TCOMROM__

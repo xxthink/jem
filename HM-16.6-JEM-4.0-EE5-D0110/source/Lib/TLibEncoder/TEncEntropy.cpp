@@ -685,6 +685,22 @@ Void TEncEntropy::encodeIntraDirModeChroma( TComDataCU* pcCU, UInt uiAbsPartIdx 
     printf("coding chroma Intra dir: %d, uiAbsPartIdx: %d, luma dir: %d\n", cdir, uiAbsPartIdx, pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx));
   }
 #endif
+
+#if QC_LM_ANGULAR_PREDICTION
+  UInt uiIntraDirChroma = pcCU->getIntraDir(CHANNEL_TYPE_CHROMA, uiAbsPartIdx);
+  if (uiIntraDirChroma == LM_CHROMA_IDX
+#if QC_MORE_LM_MODE
+      || IsLMMode(uiIntraDirChroma)
+#endif
+      )
+  {
+      //not signal when LM is used
+  }
+  else
+  {
+      m_pcEntropyCoderIf->codeLMEP(pcCU, uiAbsPartIdx);
+  }
+#endif
 }
 
 

@@ -315,6 +315,9 @@ Void TDecCu::decodeCtu( TComDataCU* pCtu, Bool& isLastCtuOfSliceSegment )
   {
     pCtu->getSlice()->setTextType(CHANNEL_TYPE_CHROMA);
     pCtu->getPic()->setCodedAreaInCTU(0);
+#if QC_MORE_LM_MODE
+    pCtu->getPic()->setCodedBlkInCTU(false, 0, 0, uiCTUSize >> MIN_CU_LOG2, uiCTUSize >> MIN_CU_LOG2);
+#endif
 #if JVET_C0024_DELTA_QP_FIX
     if ( pCtu->getSlice()->getPPS()->getUseDQP() )
     {
@@ -1343,10 +1346,19 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
   //===== get prediction signal =====
 
 #if COM16_C806_LMCHROMA
-  if( uiChFinalMode == LM_CHROMA_IDX )
+  if( uiChFinalMode == LM_CHROMA_IDX 
+#if QC_MORE_LM_MODE
+      || IsLMMode(uiChFinalMode)
+#endif
+      )
   {
     m_pcPrediction->getLumaRecPixels( rTu, uiWidth, uiHeight );
+#if QC_MORE_LM_MODE
+    Int iLMType = uiChFinalMode;
+    m_pcPrediction->predLMIntraChroma(rTu, compID, piPred, uiStride, uiWidth, uiHeight, iLMType);
+#else
     m_pcPrediction->predLMIntraChroma( rTu, compID, piPred, uiStride, uiWidth, uiHeight );
+#endif
   }
   else
   {
@@ -1358,6 +1370,21 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
   }
 #endif
     m_pcPrediction->predIntraAng( compID,   uiChFinalMode, 0 /* Decoder does not have an original image */, 0, piPred, uiStride, rTu, bUseFilteredPredictions );
+
+
+#if QC_LM_ANGULAR_PREDICTION
+    if (pcCU->getChromaPredLMEnhanced(uiAbsPartIdx) && (compID == COMPONENT_Cr || compID == COMPONENT_Cb))
+    {
+        Pel* pPredTmp = NULL;
+        pPredTmp = m_pcPrediction->getLMTmpYUV();
+        m_pcPrediction->getLumaRecPixels(rTu, uiWidth, uiHeight);
+        Int iTargetMode = MMLM_CHROMA_IDX;
+
+        m_pcPrediction->predLMIntraChroma(rTu, compID, pPredTmp, uiWidth, uiWidth, uiHeight, iTargetMode);
+
+        m_pcPrediction->EnhanceChromaANGPred(rTu, compID, piPred, uiStride, piPred, uiStride, pPredTmp, uiWidth, uiWidth, uiHeight, uiChFinalMode);
+    }
+#endif
 
 #if COM16_C806_LMCHROMA
     if( compID == COMPONENT_Cr && pcCU->getSlice()->getSPS()->getUseLMChroma() )

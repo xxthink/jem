@@ -187,6 +187,10 @@ public:
   virtual Void parseAffineFlag    ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPuIdx ) = 0;
   virtual Void parseAffineMvd     ( TComDataCU* pcCU, UInt uiAbsPartAddr, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList ) = 0;
 #endif
+
+#if QC_LM_ANGULAR_PREDICTION
+  virtual Void parseLMEP(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth) = 0;
+#endif
 };
 
 /// entropy decoder class

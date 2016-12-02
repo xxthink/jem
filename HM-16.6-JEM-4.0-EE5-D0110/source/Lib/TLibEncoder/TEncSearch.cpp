@@ -340,6 +340,21 @@ TEncSearch::TEncSearch()
   m_phFRUCSBlkRefineDist[1] = new UChar[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH];
   assert( m_pMvFieldFRUC != NULL && m_phInterDirFRUC != NULL );
 #endif
+
+#if QC_LM_ANGULAR_PREDICTION
+  m_pChromaPredSaved = new Pel*[12];//(5 ANG + MMLM2)*(Cb+Cr)
+  for (Int k = 0; k < 12; k++)
+  {
+      m_pChromaPredSaved[k] = new Pel[MAX_CU_SIZE * MAX_CU_SIZE];
+  }
+#endif
+#if   QC_LM_MF
+  m_pLMMFPredSaved = new Pel*[8];//4*(Cb+Cr)
+  for (Int k = 0; k < 8; k++)
+  {
+      m_pLMMFPredSaved[k] = new Pel[MAX_CU_SIZE * MAX_CU_SIZE];
+  }
+#endif
 }
 
 
@@ -602,6 +617,22 @@ Void TEncSearch::destroy()
   {
     delete[] m_tmpDerivate[1];
   }
+#endif
+
+#if QC_LM_ANGULAR_PREDICTION
+  for (Int k = 0; k < 12; k++)
+  {
+      delete[]m_pChromaPredSaved[k];
+  }
+  delete[]m_pChromaPredSaved;
+#endif
+
+#if QC_LM_MF
+  for (Int k = 0; k < 8; k++)
+  {
+      delete[]m_pLMMFPredSaved[k];
+  }
+  delete[]m_pLMMFPredSaved;
 #endif
 }
 
@@ -2014,6 +2045,20 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
   //===== init availability pattern =====
   DEBUG_STRING_NEW(sTemp)
 
+#if QC_LM_MF
+  if ((uiChFinalMode >= LM_CHROMA_F1_IDX) && (uiChFinalMode < LM_CHROMA_F1_IDX + QC_LM_FILTER_NUM))
+  {
+      Pel* piOrgPred = m_pLMMFPredSaved[(uiChFinalMode - LM_CHROMA_F1_IDX) * 2 + compID - COMPONENT_Cb];
+      Pel* piSavPred = piPred;
+      for (Int i = 0; i < uiHeight; i++)
+      {
+          memcpy(piSavPred, piOrgPred, sizeof(Pel)* uiWidth);
+          piOrgPred += uiWidth;
+          piSavPred += uiStride;
+      }
+  }
+  else
+#endif
 #if !DEBUG_STRING
   if( default0Save1Load2 != 2 )
 #endif
@@ -2024,7 +2069,12 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
 #if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
                                                                                 , sps.getUseRSAF()
 #endif
-                                                                                 );
+         
+                                                                                );
+#if QC_MORE_LM_MODE
+    if (compID == COMPONENT_Y)
+    {
+#endif
       initIntraPatternChType( rTu, compID, bUseFilteredPredictions, (compID==COMPONENT_Y) ? bFilter : false  DEBUG_STRING_PASS_INTO(sDebug) );
       
       //tell predIntraAng to select the correct prediction buffer in getPredictorPtr()
@@ -2042,19 +2092,79 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
 
     initIntraPatternChType( rTu, compID, bUseFilteredPredictions DEBUG_STRING_PASS_INTO(sDebug) );
 #endif
-
+#if QC_MORE_LM_MODE
+  }
+#endif
     //===== get prediction signal =====
 #if COM16_C806_LMCHROMA
-    if( uiChFinalMode == LM_CHROMA_IDX )
+    if( uiChFinalMode == LM_CHROMA_IDX 
+#if QC_MORE_LM_MODE
+        || IsLMMode(uiChFinalMode)
+#endif
+        )
     {
-      getLumaRecPixels( rTu, uiWidth, uiHeight );
-      predLMIntraChroma( rTu, compID, piPred, uiStride, uiWidth, uiHeight ); 
+#if !QC_MORE_LM_MODE
+            getLumaRecPixels(rTu, uiWidth, uiHeight);
+#endif
+
+#if QC_MORE_LM_MODE
+            Int iLMType = 0;
+            iLMType = uiChFinalMode;
+            predLMIntraChroma(rTu, compID, piPred, uiStride, uiWidth, uiHeight, iLMType);
+#else
+            predLMIntraChroma(rTu, compID, piPred, uiStride, uiWidth, uiHeight);
+#endif
+#if QC_LM_ANGULAR_PREDICTION
+            Int iTargetMode = MMLM_CHROMA_IDX;
+            if (uiChFinalMode == iTargetMode && (uiWidth + uiHeight >= g_aiLAP_MinSize[pcCU->getSlice()->isIntra() ? 0 : 1]))
+            {
+                Pel* piOrgPred = piPred;
+                Pel* piSavPred = m_pChromaPredSaved[0 + compID - COMPONENT_Cb];
+                for (Int i = 0; i < uiHeight; i++)
+                {
+                    memcpy(piSavPred, piOrgPred, sizeof(Pel)* uiWidth);
+                    piOrgPred += uiStride;
+                    piSavPred += uiWidth;
+                }
+            }
+#endif
+//#if QC_LM_MF
+//        }
+//#endif
     }
     else
     {
 #endif
+
+#if QC_LM_ANGULAR_PREDICTION
+        if (pcCU->getChromaPredLMEnhanced(uiAbsPartIdx) && (compID == COMPONENT_Cr || compID == COMPONENT_Cb))
+        {
+            assert(m_iCurAngMode >= 1 && m_iCurAngMode <= 5);
+            Pel* piAngPred = m_pChromaPredSaved[m_iCurAngMode * 2 + compID - COMPONENT_Cb];
+            Pel* piLMPred = m_pChromaPredSaved[0 + (compID - COMPONENT_Cb)];
+            EnhanceChromaANGPred(rTu, compID, piPred, uiStride, piAngPred, uiWidth, piLMPred, uiWidth, uiWidth, uiHeight, uiChFinalMode);
+
+        }
+        else
+        {
+#endif
       predIntraAng( compID, uiChFinalMode, piOrg, uiStride, piPred, uiStride, rTu, bUseFilteredPredictions );
 
+#if QC_LM_ANGULAR_PREDICTION
+      if ((uiWidth + uiHeight >= g_aiLAP_MinSize[pcCU->getSlice()->isIntra() ? 0 : 1]) && (compID == COMPONENT_Cr || compID == COMPONENT_Cb))
+      {
+          assert(m_iCurAngMode >= 1 && m_iCurAngMode <= 5);
+          Pel* piOrgPred = piPred;
+          Pel* piSavPred = m_pChromaPredSaved[m_iCurAngMode * 2 + compID - COMPONENT_Cb];
+          for (Int i = 0; i < uiHeight; i++)
+          {
+              memcpy(piSavPred, piOrgPred, sizeof(Pel)* uiWidth);
+              piOrgPred += uiStride;
+              piSavPred += uiWidth;
+          }
+      }
+        }
+#endif
 #if COM16_C806_LMCHROMA
       if( compID == COMPONENT_Cr && pcCU->getSlice()->getSPS()->getUseLMChroma() )
       { 
@@ -2166,7 +2276,11 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
 #endif
 
 #if COM16_C806_CR_FROM_CB_LAMBDA_ADJUSTMENT
-  if ( uiChFinalMode != LM_CHROMA_IDX && pcCU->getSlice()->getSPS()->getUseLMChroma() )
+  if ( 
+#if QC_MORE_LM_MODE
+      !IsLMMode(uiChFinalMode) &&
+#endif 
+      uiChFinalMode != LM_CHROMA_IDX && pcCU->getSlice()->getSPS()->getUseLMChroma() )
   {
     if (compID == COMPONENT_Cb)
     {
@@ -5333,7 +5447,11 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
       for( Int modeIdx = 0; modeIdx < numModesForFullRD; modeIdx++ )
       {
         UInt uiParentMode = uiParentCandList[modeIdx];
+#if QC_MORE_LM_MODE
+        if (uiParentMode>2 && uiParentMode<(NUM_INTRA_MODE - NUM_INTRA_MODE_NON_ANG - 1))
+#else
         if( uiParentMode>2 && uiParentMode<(NUM_INTRA_MODE-2) )
+#endif
         {
           for( Int subModeIdx = -1; subModeIdx <= 1; subModeIdx+=2 )
           {
@@ -6094,6 +6212,21 @@ TEncSearch::estIntraPredChromaQT(TComDataCU* pcCU,
 
   do
   {
+
+#if QC_LM_ANGULAR_PREDICTION
+      UInt   uiBestCPLEFlag = 0;
+#endif
+#if QC_LM_MF
+      UInt auiSATDModeList[QC_LM_FILTER_NUM];
+      UInt auiSATDSortedcost[QC_LM_FILTER_NUM];
+#endif
+#if QC_LM_MF || QC_LM_ANGULAR_PREDICTION
+      const UInt csx = getComponentScaleX(COMPONENT_Cb, pcCU->getSlice()->getSPS()->getChromaFormatIdc());
+      const UInt csy = getComponentScaleY(COMPONENT_Cb, pcCU->getSlice()->getSPS()->getChromaFormatIdc());
+
+      Int iBlockSize = (pcCU->getHeight(0) >> csy) + (pcCU->getWidth(0) >> csx);
+#endif
+
     UInt       uiBestMode  = 0;
     Distortion uiBestDist  = 0;
     Double     dBestCost   = MAX_DOUBLE;
@@ -6111,6 +6244,9 @@ TEncSearch::estIntraPredChromaQT(TComDataCU* pcCU,
         UInt  uiMaxMode = NUM_CHROMA_MODE;
 
         //----- check chroma modes -----
+#if QC_MORE_LM_MODE
+        uiMaxMode =
+#endif
         pcCU->getAllowedChromaDir( uiPartOffset, uiModeList );
 
 #if ENVIRONMENT_VARIABLE_DEBUG_AND_TEST
@@ -6149,12 +6285,138 @@ TEncSearch::estIntraPredChromaQT(TComDataCU* pcCU,
 #endif
         DEBUG_STRING_NEW(sPU)
 
+#if QC_MORE_LM_MODE
+            const TComRectangle &puRect = tuRecurseWithPU.getRect(COMPONENT_Cb);
+        const UInt uiAbsPartIdx = tuRecurseWithPU.GetAbsPartIdxTU();
+        DistParam distParam;
+        const Bool bUseHadamard = true;
+        Int iCurLMMFIdx = 0;
+        getLumaRecPixels(tuRecurseWithPU, puRect.width, puRect.height);
+
+        initIntraPatternChType(tuRecurseWithPU, COMPONENT_Cb, false, false  DEBUG_STRING_PASS_INTO(sDebug));
+        initIntraPatternChType(tuRecurseWithPU, COMPONENT_Cr, false, false  DEBUG_STRING_PASS_INTO(sDebug));
+#endif
+
+#if QC_LM_MF
+
+        //SATD checking for LMMF candidates
+        const Int iLMMFinRDNum = 1;
+
+
+
+        if (pcCU->getSlice()->getSPS()->getUseLMChroma() && iBlockSize >= g_aiMFLM_MinSize[pcCU->getSlice()->isIntra() ? 0 : 1])
+        {
+            for (UInt uiMode = LM_CHROMA_F1_IDX; uiMode < LM_CHROMA_F1_IDX + QC_LM_FILTER_NUM; uiMode++)
+            {
+                UInt uiSad = 0;
+
+                Pel* piOrg = pcOrgYuv->getAddr(COMPONENT_Cb, uiAbsPartIdx);
+                Pel* piPred = pcPredYuv->getAddr(COMPONENT_Cb, uiAbsPartIdx);
+                UInt uiStride = pcPredYuv->getStride(COMPONENT_Cb);
+                m_pcRdCost->setDistParam(distParam, pcCU->getSlice()->getSPS()->getBitDepth(CHANNEL_TYPE_CHROMA), piOrg, uiStride, piPred, uiStride, puRect.width, puRect.height, bUseHadamard);
+                distParam.bApplyWeight = false;
+
+                predLMIntraChroma(tuRecurseWithPU, COMPONENT_Cb, piPred, uiStride, puRect.width, puRect.height, uiMode);
+
+                Pel* piOrgPred = piPred;
+                Pel* piSavPred = m_pLMMFPredSaved[(uiMode - LM_CHROMA_F1_IDX) * 2];
+                for (Int i = 0; i < puRect.height; i++)
+                {
+                    memcpy(piSavPred, piOrgPred, sizeof(Pel)* puRect.width);
+                    piOrgPred += uiStride;
+                    piSavPred += puRect.width;
+                }
+
+                uiSad += distParam.DistFunc(&distParam);
+
+
+                piOrg = pcOrgYuv->getAddr(COMPONENT_Cr, uiAbsPartIdx);
+                piPred = pcPredYuv->getAddr(COMPONENT_Cr, uiAbsPartIdx);
+                uiStride = pcPredYuv->getStride(COMPONENT_Cr);
+                m_pcRdCost->setDistParam(distParam, pcCU->getSlice()->getSPS()->getBitDepth(CHANNEL_TYPE_CHROMA), piOrg, uiStride, piPred, uiStride, puRect.width, puRect.height, bUseHadamard);
+                distParam.bApplyWeight = false;
+
+                predLMIntraChroma(tuRecurseWithPU, COMPONENT_Cr, piPred, uiStride, puRect.width, puRect.height, uiMode);
+
+                piOrgPred = piPred;
+                piSavPred = m_pLMMFPredSaved[(uiMode - LM_CHROMA_F1_IDX) * 2 + 1];
+                for (Int i = 0; i < puRect.height; i++)
+                {
+                    memcpy(piSavPred, piOrgPred, sizeof(Pel)* puRect.width);
+                    piOrgPred += uiStride;
+                    piSavPred += puRect.width;
+                }
+
+                uiSad += distParam.DistFunc(&distParam);
+
+                auiSATDSortedcost[iCurLMMFIdx] = uiSad;
+                auiSATDModeList[iCurLMMFIdx] = uiMode;
+                for (Int k = iCurLMMFIdx; k > 0 && auiSATDSortedcost[k] < auiSATDSortedcost[k - 1]; k--)
+                {
+                    UInt tmp = auiSATDSortedcost[k];
+                    auiSATDSortedcost[k] = auiSATDSortedcost[k - 1];
+                    auiSATDSortedcost[k - 1] = tmp;
+
+                    tmp = auiSATDModeList[k];
+                    auiSATDModeList[k] = auiSATDModeList[k - 1];
+                    auiSATDModeList[k - 1] = tmp;
+                }
+                iCurLMMFIdx++;
+            }
+        }
+#endif
+
+#if QC_LM_ANGULAR_PREDICTION
+        Int iLAPRD = iBlockSize >= (g_aiLAP_MinSize[pcCU->getSlice()->isIntra() ? 0 : 1]) ? 2 : 1;
+
+        Double adModecost[NUM_CHROMA_MODE];
+        Double adSortedcost[NUM_CHROMA_MODE];
+
+        Int iSecondRDtime = 2;
+        adSortedcost[0] = adSortedcost[1] = adSortedcost[2] = adSortedcost[3] = adSortedcost[4] = MAX_DOUBLE;
+        for (UInt uiCPLEFlag = 0; uiCPLEFlag < iLAPRD; uiCPLEFlag++)
+        {
+            m_iCurAngMode = 0;
+#endif
+
         for( UInt uiMode = uiMinMode; uiMode < uiMaxMode; uiMode++ )
         {
+#if QC_LM_ANGULAR_PREDICTION
+            if (IsLMMode(uiModeList[uiMode]) && uiCPLEFlag)
+            {
+                continue;
+            }
+#endif
 #if COM16_C806_LMCHROMA
           if ( !pcCU->getSlice()->getSPS()->getUseLMChroma() && uiModeList[uiMode] == LM_CHROMA_IDX )
           {
             continue;
+          }
+#endif
+
+#if QC_MORE_LM_MODE
+          if (!pcCU->getSlice()->getSPS()->getUseLMChroma() && IsLMMode(uiModeList[uiMode]))
+          {
+              continue;
+          }
+#endif
+
+#if QC_LM_MF
+          if (uiModeList[uiMode] >= LM_CHROMA_F1_IDX &&  uiModeList[uiMode] < LM_CHROMA_F1_IDX + QC_LM_FILTER_NUM)
+          {
+              Bool bNeedRD = false;
+              for (Int i = 0; i < iLMMFinRDNum; i++)
+              {
+                  if (auiSATDModeList[i] == uiModeList[uiMode])
+                  {
+                      bNeedRD = true;
+                      break;
+                  }
+              }
+              if (!bNeedRD)
+              {
+                  continue;
+              }
           }
 #endif
 
@@ -6172,11 +6434,31 @@ TEncSearch::estIntraPredChromaQT(TComDataCU* pcCU,
               uiIntraMode = PLANAR_IDX;
             }
 #endif
+#if QC_MORE_LM_MODE
+            else if (IsLMMode(uiIntraMode))
+            {
+                uiIntraMode = PLANAR_IDX;
+            }
+#endif 
             const Int iNumberOfPassesROT = ( uiIntraMode<=DC_IDX ) ? 3 : 4;
             if( iNumberOfPassesROT <= pcCU->getROTIdx(CHANNEL_TYPE_CHROMA, uiPartOffset) )
             {
               continue;
             }
+          }
+#endif
+
+
+
+#if QC_LM_ANGULAR_PREDICTION
+          if (!IsLMMode(uiModeList[uiMode]))
+          {
+              m_iCurAngMode++;
+              assert(m_iCurAngMode <= 5);
+              if (uiCPLEFlag == 1 && adModecost[m_iCurAngMode - 1] > adSortedcost[iSecondRDtime - 1])
+              {
+                  continue;
+              }
           }
 #endif
           //----- restore context models -----
@@ -6190,6 +6472,10 @@ TEncSearch::estIntraPredChromaQT(TComDataCU* pcCU,
           //----- chroma coding -----
           Distortion uiDist = 0;
           pcCU->setIntraDirSubParts  ( CHANNEL_TYPE_CHROMA, uiModeList[uiMode], uiPartOffset, uiDepthCU+uiInitTrDepth );
+#if QC_LM_ANGULAR_PREDICTION
+          pcCU->setChromaPredLMEnhancedSubParts(uiCPLEFlag, uiPartOffset, uiDepthCU + uiInitTrDepth);
+#endif
+          
           xRecurIntraChromaCodingQT       ( pcOrgYuv, pcPredYuv, pcResiYuv, resiLuma, uiDist, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sMode) );
 
           if( pcCU->getSlice()->getPPS()->getUseTransformSkip() )
@@ -6204,6 +6490,20 @@ TEncSearch::estIntraPredChromaQT(TComDataCU* pcCU,
           UInt    uiBits = xGetIntraBitsQT( tuRecurseWithPU, false, true, false );
           Double  dCost  = m_pcRdCost->calcRdCost( uiBits, uiDist );
 
+#if QC_LM_ANGULAR_PREDICTION
+          if (!IsLMMode(uiModeList[uiMode]) && uiCPLEFlag == 0)
+          {
+              adSortedcost[m_iCurAngMode - 1] = adModecost[m_iCurAngMode - 1] = dCost;
+
+              for (Int k = m_iCurAngMode - 1; k > 0 && adSortedcost[k] < adSortedcost[k - 1]; k--)
+              {
+                  double tmp = adSortedcost[k];
+                  adSortedcost[k] = adSortedcost[k - 1];
+                  adSortedcost[k - 1] = tmp;
+              }
+          }
+#endif
+
           //----- compare -----
           if( dCost < dBestCost )
           {
@@ -6211,7 +6511,9 @@ TEncSearch::estIntraPredChromaQT(TComDataCU* pcCU,
             dBestCost   = dCost;
             uiBestDist  = uiDist;
             uiBestMode  = uiModeList[uiMode];
-
+#if QC_LM_ANGULAR_PREDICTION
+            uiBestCPLEFlag = uiCPLEFlag;
+#endif
             xSetIntraResultChromaQT( pcRecoYuv, tuRecurseWithPU );
 #if JVET_C0024_QTBT            
             UInt uiRaster = g_auiZscanToRaster[pcCU->getZorderIdxInCtu()];
@@ -6240,7 +6542,9 @@ TEncSearch::estIntraPredChromaQT(TComDataCU* pcCU,
 #endif
           }
         }
-
+#if QC_LM_ANGULAR_PREDICTION
+        }
+#endif
         DEBUG_STRING_APPEND(sDebug, sPU)
 
         //----- set data -----
@@ -6297,8 +6601,11 @@ TEncSearch::estIntraPredChromaQT(TComDataCU* pcCU,
           }
         }
       }
-
+#if QC_LM_ANGULAR_PREDICTION
+      pcCU->setChromaPredLMEnhancedSubParts(uiBestCPLEFlag, uiPartOffset, uiDepthCU + uiInitTrDepth);
+#endif
       pcCU->setIntraDirSubParts( CHANNEL_TYPE_CHROMA, uiBestMode, uiPartOffset, uiDepthCU+uiInitTrDepth );
+
       pcCU->getTotalDistortion      () += uiBestDist;
     }
 

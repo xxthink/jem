@@ -47,6 +47,30 @@
 //! \ingroup TLibCommon
 //! \{
 
+
+#define QC_MMLM                                         1
+#define QC_LM_MF                                        1
+#define QC_LM_ANGULAR_PREDICTION                        1
+
+#if QC_MMLM
+#define QC_MMLM_EXPLICIT                                1 // Multi-modle Linear mode
+#define QC_MMLM_SAMPLE_NEIGHBOR_LINES                   2
+#else 
+#define QC_MMLM_EXPLICIT                                0 
+#endif
+
+#if QC_LM_MF
+#define QC_LM_FILTER_NUM                                4
+#else
+#define QC_LM_FILTER_NUM                                0
+#endif
+
+#define QC_MORE_LM_MODE                                 (QC_LM_MF || QC_MMLM_EXPLICIT )
+
+#if QC_MORE_LM_MODE
+#define LM_SYMBOL_NUM                                   ( 2 + QC_MMLM_EXPLICIT + QC_LM_FILTER_NUM )
+#endif
+
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////

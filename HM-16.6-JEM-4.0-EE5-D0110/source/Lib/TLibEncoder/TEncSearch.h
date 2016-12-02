@@ -136,6 +136,14 @@ private:
   UChar         * m_phFRUCSBlkRefineDist[2];
 #endif
 
+#if QC_LM_ANGULAR_PREDICTION
+  Pel             **m_pChromaPredSaved;
+#endif
+
+#if   QC_LM_MF
+  Pel             **m_pLMMFPredSaved;
+#endif
+
 #if COM16_C806_LARGE_CTU
 #if JVET_C0024_QTBT
   Pel*            m_resiSingleBuffer[MAX_CU_DEPTH][MAX_CU_DEPTH][NUMBER_OF_STORED_RESIDUAL_TYPES];

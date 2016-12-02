@@ -8529,6 +8529,13 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
             uiIntraMode = PLANAR_IDX;
           }
 #endif
+
+#if QC_MORE_LM_MODE
+          if (IsLMMode(uiIntraMode))
+          {
+              uiIntraMode = PLANAR_IDX;
+          }
+#endif
         }
 
         assert( uiIntraMode<NUM_INTRA_MODE-1 );
@@ -8915,6 +8922,13 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
         else if( uiIntraMode == LM_CHROMA_IDX )
         {
           uiIntraMode = PLANAR_IDX;
+        }
+#endif
+
+#if QC_MORE_LM_MODE
+        if (IsLMMode(uiIntraMode))
+        {
+            uiIntraMode = PLANAR_IDX;
         }
 #endif
       }
