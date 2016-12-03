@@ -95,6 +95,9 @@ public:
   UInt              m_uiPartAddr;
   TComMv*           m_mvPred;
   PartSize          m_ePartSize;
+#if MVD_BINARIZATION_CTX
+  UInt        m_uiEGParam;
+#endif 
 #endif
 
   // ROI & pattern information, (ROI = &pattern[AboveOffset][LeftOffset])

@@ -109,6 +109,9 @@ private:
   Void  xReadUnarySymbol    ( UInt& ruiSymbol, ContextModel* pcSCModel, Int iOffset, const class TComCodingStatisticsClassType &whichStat );
   Void  xReadUnaryMaxSymbol ( UInt& ruiSymbol, ContextModel* pcSCModel, Int iOffset, UInt uiMaxSymbol, const class TComCodingStatisticsClassType &whichStat );
   Void  xReadEpExGolomb     ( UInt& ruiSymbol, UInt uiCount, const class TComCodingStatisticsClassType &whichStat );
+#if MVD_BINARIZATION_CTX
+  Void  xReadEpExGolombMvd     ( UInt& ruiSymbol, UInt uiCount, ContextModel* pcSCModel,  const class TComCodingStatisticsClassType &whichStat );
+#endif
   Void  xReadCoefRemainExGolomb ( UInt &rSymbol, UInt &rParam, const Bool useLimitedPrefixLength, const Int maxLog2TrDynamicRange, const class TComCodingStatisticsClassType &whichStat );
 #else
 #if JVET_B0051_NON_MPM_MODE || JVET_C0038_GALF
@@ -117,6 +120,9 @@ private:
   Void  xReadUnarySymbol    ( UInt& ruiSymbol, ContextModel* pcSCModel, Int iOffset );
   Void  xReadUnaryMaxSymbol ( UInt& ruiSymbol, ContextModel* pcSCModel, Int iOffset, UInt uiMaxSymbol );
   Void  xReadEpExGolomb     ( UInt& ruiSymbol, UInt uiCount );
+#if MVD_BINARIZATION_CTX
+  Void  xReadEpExGolombMvd( UInt& ruiSymbol, UInt uiCount, ContextModel* pcSCModel );
+#endif
   Void  xReadCoefRemainExGolomb ( UInt &rSymbol, UInt &rParam, const Bool useLimitedPrefixLength, const Int maxLog2TrDynamicRange );
 #endif
 private:
@@ -167,8 +173,12 @@ public:
 
   Void parseInterDir      ( TComDataCU* pcCU, UInt& ruiInterDir, UInt uiAbsPartIdx );
   Void parseRefFrmIdx     ( TComDataCU* pcCU, Int& riRefFrmIdx, RefPicList eRefList );
+#if MVD_BINARIZATION_CTX
+  Void parseMvdGr0( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList );
+  Void parseMvdRemain( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList );
+#else
   Void parseMvd           ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList );
-
+#endif
   Void parseCrossComponentPrediction ( class TComTU &rTu, ComponentID compID );
 
   Void parseTransformSubdivFlag( UInt& ruiSubdivFlag, UInt uiLog2TransformBlockSize );
@@ -225,7 +235,12 @@ public:
 
 #if COM16_C1016_AFFINE
   Void  parseAffineFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPuIdx );
-  Void  parseAffineMvd        ( TComDataCU* pcCU, UInt uiAbsPartAddr, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList );
+#if MVD_BINARIZATION_CTX
+  Void  parseAffineMvdGr0      ( TComDataCU* pcCU, UInt uiAbsPartAddr, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList );
+  Void  parseAffineMvdRemain      ( TComDataCU* pcCU, UInt uiAbsPartAddr, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList );
+#else
+  Void  parseAffineMvd      ( TComDataCU* pcCU, UInt uiAbsPartAddr, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList );
+#endif
 #endif
 
   Void  parseExplicitRdpcmMode( TComTU &rTu, ComponentID compID );

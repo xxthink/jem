@@ -504,6 +504,21 @@ Void TEncSbac::xWriteEpExGolomb( UInt uiSymbol, UInt uiCount )
   m_pcBinIf->encodeBinsEP( bins, numBins );
 }
 
+#if MVD_BINARIZATION_CTX
+Void TEncSbac::xWriteEpExGolombMvd( UInt uiSymbol, UInt uiCount, ContextModel* pcSCModel )
+{
+  while( uiSymbol >= (UInt)(1<<uiCount) )
+  {
+    m_pcBinIf->encodeBin(1, *(pcSCModel) );
+    uiSymbol -= 1 << uiCount;
+    uiCount  ++;
+  }
+  m_pcBinIf->encodeBin(0, *(pcSCModel) );
+  assert( uiCount <= 32 );
+  m_pcBinIf->encodeBinsEP( uiSymbol, uiCount );
+}
+#endif
+
 
 /** Coding of coeff_abs_level_minus3
  * \param symbol                  value of coeff_abs_level_minus3
@@ -793,6 +808,15 @@ Void TEncSbac::codeiMVFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
   UInt uiSymbol = pcCU->getiMVFlag( uiAbsPartIdx ) ? 1 : 0;
   UInt uiCtxiMV = pcCU->getCtxiMVFlag( uiAbsPartIdx ) ;
   m_pcBinIf->encodeBin( uiSymbol, m_cCUiMVFlagSCModel.get( 0, 0, uiCtxiMV ) );
+
+#if  MULTI_PEL_MVD
+  if (uiSymbol)
+  {
+    uiSymbol = pcCU->getiMVFlag( uiAbsPartIdx ) > 1 ? 1 : 0;  
+    m_pcBinIf->encodeBin( uiSymbol, m_cCUiMVFlagSCModel.get( 0, 0, 3 ) );
+  }
+#endif
+
   DTRACE_CABAC_VL( g_nSymbolCounter++ );
   DTRACE_CABAC_T( "\tiMVFlag" );
   DTRACE_CABAC_T( "\tuiCtxiMV: ");
@@ -1462,7 +1486,147 @@ Void TEncSbac::codeRefFrmIdx( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eR
   }
   return;
 }
+#if MVD_BINARIZATION_CTX
+Void TEncSbac::codeMvdGr0              ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList )
+{
+  if(pcCU->getSlice()->getMvdL1ZeroFlag() && eRefList == REF_PIC_LIST_1 && pcCU->getInterDir(uiAbsPartIdx)==3)
+  {
+    return;
+  }
 
+  const TComCUMvField* pcCUMvField = pcCU->getCUMvField( eRefList );
+#if VCEG_AZ07_IMV || VCEG_AZ07_FRUC_MERGE || VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+  Int iHor = pcCUMvField->getMvd( uiAbsPartIdx ).getHor();
+  Int iVer = pcCUMvField->getMvd( uiAbsPartIdx ).getVer();
+#else
+  const Int iHor = pcCUMvField->getMvd( uiAbsPartIdx ).getHor();
+  const Int iVer = pcCUMvField->getMvd( uiAbsPartIdx ).getVer();
+#endif
+  ContextModel* pCtx = m_cCUMvdSCModel.get( 0 );
+
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+  assert( iHor == ( iHor >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE ) );
+  assert( iVer == ( iVer >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE ) );
+  iHor >>= VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE;
+  iVer >>= VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE;
+#endif
+
+#if VCEG_AZ07_IMV
+  if( pcCU->getiMVFlag( uiAbsPartIdx ) && pcCU->getSlice()->getSPS()->getIMV() )
+  {
+    assert( ( iHor & 0x03 ) == 0 && ( iVer & 0x03 ) == 0 );
+    iHor >>= 2;
+    iVer >>= 2;
+  }
+#if  MULTI_PEL_MVD
+  if (pcCU->getiMVFlag( uiAbsPartIdx ) == 2)
+  {
+    assert( ( iHor % MVD_PEL_NUM ) == 0 && ( iVer % MVD_PEL_NUM ) == 0 );
+    iHor /= MVD_PEL_NUM;
+    iVer /= MVD_PEL_NUM;
+  }
+#endif
+#endif
+  m_pcBinIf->encodeBin( iHor != 0 ? 1 : 0, *pCtx );
+  m_pcBinIf->encodeBin( iVer != 0 ? 1 : 0, *pCtx );
+
+  return;
+}
+
+Void TEncSbac::codeMvdRemain           ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList )
+{
+  if(pcCU->getSlice()->getMvdL1ZeroFlag() && eRefList == REF_PIC_LIST_1 && pcCU->getInterDir(uiAbsPartIdx)==3)
+  {
+    return;
+  }
+
+  const TComCUMvField* pcCUMvField = pcCU->getCUMvField( eRefList );
+#if VCEG_AZ07_IMV || VCEG_AZ07_FRUC_MERGE || VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+  Int iHor = pcCUMvField->getMvd( uiAbsPartIdx ).getHor();
+  Int iVer = pcCUMvField->getMvd( uiAbsPartIdx ).getVer();
+#else
+  const Int iHor = pcCUMvField->getMvd( uiAbsPartIdx ).getHor();
+  const Int iVer = pcCUMvField->getMvd( uiAbsPartIdx ).getVer();
+#endif
+
+  ContextModel* pCtx = m_cCUMvdSCModel.get( 0 );
+
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+  assert( iHor == ( iHor >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE ) );
+  assert( iVer == ( iVer >> VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE ) );
+  iHor >>= VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE;
+  iVer >>= VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE;
+#endif
+
+#if VCEG_AZ07_IMV
+  if( pcCU->getiMVFlag( uiAbsPartIdx ) && pcCU->getSlice()->getSPS()->getIMV() )
+  {
+    assert( ( iHor & 0x03 ) == 0 && ( iVer & 0x03 ) == 0 );
+    iHor >>= 2;
+    iVer >>= 2;
+#if  MULTI_PEL_MVD
+    if (pcCU->getiMVFlag( uiAbsPartIdx ) == 2)
+    {
+      assert( ( iHor % MVD_PEL_NUM ) == 0 && ( iVer % MVD_PEL_NUM ) == 0 );
+      iHor /= MVD_PEL_NUM;
+      iVer /= MVD_PEL_NUM;
+    }
+#endif
+  }
+#endif
+  const Bool bHorAbsGr0 = iHor != 0;
+  const Bool bVerAbsGr0 = iVer != 0;
+  const UInt uiHorAbs   = 0 > iHor ? -iHor : iHor;
+  const UInt uiVerAbs   = 0 > iVer ? -iVer : iVer;
+
+    pCtx+= (pcCU->getiMVFlag(uiAbsPartIdx))?2:1;
+
+  if( bHorAbsGr0 )
+  {
+    m_pcBinIf->encodeBin( uiHorAbs > 1 ? 1 : 0, *pCtx );
+  }
+
+  if( bVerAbsGr0 )
+  {
+    m_pcBinIf->encodeBin( uiVerAbs > 1 ? 1 : 0, *pCtx );
+  }
+
+  UInt uiEGParam = 2;
+
+  if (pcCU->getiMVFlag(uiAbsPartIdx))
+  {
+    uiEGParam=1;
+  }
+  else if (abs( pcCU->getSlice()->getPOC() - pcCU->getSlice()->getRefPOC(eRefList, pcCUMvField->getRefIdx(uiAbsPartIdx) ))  ==1 )
+  {
+    uiEGParam=1;
+  }
+  pCtx = m_cCUMvdSCModel.get(0) + 3+ uiEGParam;
+
+
+  if( bHorAbsGr0 )
+  {
+    if( uiHorAbs > 1 )
+    {
+      xWriteEpExGolombMvd( uiHorAbs-2, uiEGParam, pCtx);
+    }
+
+    m_pcBinIf->encodeBinEP( 0 > iHor ? 1 : 0 );
+  }
+
+  if( bVerAbsGr0 )
+  {
+    if( uiVerAbs > 1 )
+    {
+      xWriteEpExGolombMvd( uiVerAbs-2, uiEGParam, pCtx);
+    }
+
+    m_pcBinIf->encodeBinEP( 0 > iVer ? 1 : 0 );
+  }
+
+  return;
+}
+#else
 Void TEncSbac::codeMvd( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList )
 {
   if(pcCU->getSlice()->getMvdL1ZeroFlag() && eRefList == REF_PIC_LIST_1 && pcCU->getInterDir(uiAbsPartIdx)==3)
@@ -1494,6 +1658,14 @@ Void TEncSbac::codeMvd( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList
     iHor >>= 2;
     iVer >>= 2;
   }
+#if  MULTI_PEL_MVD
+    if (pcCU->getiMVFlag( uiAbsPartIdx ) == 2)
+    {
+      assert( ( iHor % MVD_PEL_NUM ) == 0 && ( iVer % MVD_PEL_NUM ) == 0 );
+      iHor /= MVD_PEL_NUM;
+      iVer /= MVD_PEL_NUM;
+    }
+#endif
 #endif
 
   m_pcBinIf->encodeBin( iHor != 0 ? 1 : 0, *pCtx );
@@ -1503,6 +1675,7 @@ Void TEncSbac::codeMvd( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList
   const Bool bVerAbsGr0 = iVer != 0;
   const UInt uiHorAbs   = 0 > iHor ? -iHor : iHor;
   const UInt uiVerAbs   = 0 > iVer ? -iVer : iVer;
+
   pCtx++;
 
   if( bHorAbsGr0 )
@@ -1537,6 +1710,7 @@ Void TEncSbac::codeMvd( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList
 
   return;
 }
+#endif
 
 Void TEncSbac::codeCrossComponentPrediction( TComTU &rTu, ComponentID compID )
 {

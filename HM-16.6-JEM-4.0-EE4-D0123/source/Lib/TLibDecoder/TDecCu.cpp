@@ -2182,6 +2182,14 @@ Void TDecCu::xDeriveCUMV( TComDataCU * pcCU , UInt uiAbsPartIdx , UInt uiDepth )
           {
             iMvdHor <<= 2;
             iMvdVer <<= 2;
+
+#if  MULTI_PEL_MVD
+            if( pcCU->getiMVFlag( uiSubPartIdx ) == 2)
+            {
+              iMvdHor *= MVD_PEL_NUM;
+              iMvdVer *= MVD_PEL_NUM;
+            }
+#endif
           }
 #endif
           TComMv cMv( iMvdHor, iMvdVer );
@@ -2196,6 +2204,7 @@ Void TDecCu::xDeriveCUMV( TComDataCU * pcCU , UInt uiAbsPartIdx , UInt uiDepth )
 #endif
           m_pcPrediction->getMvPredAMVP( pcSubCU, uiPartIdx, uiSubPartIdx - uiAbsPartIdx, RefPicList( uiRefListIdx ), cMv );
           cMv += TComMv( iMvdHor, iMvdVer );
+         
           pcSubCU->getCUMvField( RefPicList( uiRefListIdx ) )->setAllMv( cMv, ePartSize, uiSubPartIdx - uiAbsPartIdx, 0, uiPartIdx);
 #if COM16_C1016_AFFINE
           }

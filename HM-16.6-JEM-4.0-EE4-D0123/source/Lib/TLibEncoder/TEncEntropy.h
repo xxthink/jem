@@ -151,8 +151,12 @@ public:
   virtual Void codeIntraDirChroma( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
   virtual Void codeInterDir      ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
   virtual Void codeRefFrmIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList )      = 0;
+#if MVD_BINARIZATION_CTX
+  virtual Void codeMvdGr0              ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList ) = 0;
+  virtual Void codeMvdRemain           ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList ) = 0;
+#else
   virtual Void codeMvd           ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList )      = 0;
-
+#endif
   virtual Void codeCrossComponentPrediction( TComTU &rTu, ComponentID compID ) = 0;
 
   virtual Void codeDeltaQP       ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
@@ -282,7 +286,12 @@ public:
   Void encodePUWise       ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void encodeInterDirPU   ( TComDataCU* pcSubCU, UInt uiAbsPartIdx  );
   Void encodeRefFrmIdxPU  ( TComDataCU* pcSubCU, UInt uiAbsPartIdx, RefPicList eRefList );
+#if MVD_BINARIZATION_CTX
+  Void encodeMvdGr0PU   ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList );
+  Void encodeMvdRemainPU( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList );
+#else
   Void encodeMvdPU        ( TComDataCU* pcSubCU, UInt uiAbsPartIdx, RefPicList eRefList );
+#endif
   Void encodeMVPIdxPU     ( TComDataCU* pcSubCU, UInt uiAbsPartIdx, RefPicList eRefList );
   Void encodeMergeFlag    ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void encodeMergeIndex   ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );

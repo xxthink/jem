@@ -123,6 +123,9 @@ private:
   Void  xWriteUnarySymbol    ( UInt uiSymbol, ContextModel* pcSCModel, Int iOffset );
   Void  xWriteUnaryMaxSymbol ( UInt uiSymbol, ContextModel* pcSCModel, Int iOffset, UInt uiMaxSymbol );
   Void  xWriteEpExGolomb     ( UInt uiSymbol, UInt uiCount );
+#if MVD_BINARIZATION_CTX
+  Void  xWriteEpExGolombMvd  ( UInt uiSymbol, UInt uiCount ,ContextModel* pcSCModel);
+#endif
   Void  xWriteCoefRemainExGolomb ( UInt symbol, UInt &rParam, const Bool useLimitedPrefixLength, const Int maxLog2TrDynamicRange );
 
   Void  xCopyFrom            ( const TEncSbac* pSrc );
@@ -189,7 +192,12 @@ public:
   Void codeIntraDirChroma      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeInterDir            ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeRefFrmIdx           ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList );
+#if MVD_BINARIZATION_CTX
+  Void codeMvdGr0              ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList );
+  Void codeMvdRemain           ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList );
+#else
   Void codeMvd                 ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList );
+#endif
 
   Void codeCrossComponentPrediction( TComTU &rTu, ComponentID compID );
 

@@ -156,8 +156,12 @@ public:
   Void codeIntraDirChroma( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeInterDir      ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void codeRefFrmIdx     ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList );
+#if MVD_BINARIZATION_CTX
+  Void codeMvdGr0              ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList );
+  Void codeMvdRemain           ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList );
+#else
   Void codeMvd           ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList );
-
+#endif
   Void codeCrossComponentPrediction( TComTU &rTu, ComponentID compID );
 
   Void codeDeltaQP       ( TComDataCU* pcCU, UInt uiAbsPartIdx );

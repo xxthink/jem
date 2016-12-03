@@ -1965,12 +1965,21 @@ Void TDecCavlc::parseRefFrmIdx( TComDataCU* /*pcCU*/, Int& /*riRefFrmIdx*/, RefP
 {
   assert(0);
 }
-
+#if MVD_BINARIZATION_CTX
+Void TDecCavlc::parseMvdGr0( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList )
+{
+  assert(0);
+}
+Void TDecCavlc::parseMvdRemain( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList )
+{
+  assert(0);
+}
+#else
 Void TDecCavlc::parseMvd( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiPartIdx*/, UInt /*uiDepth*/, RefPicList /*eRefList*/ )
 {
   assert(0);
 }
-
+#endif
 Void TDecCavlc::parseCrossComponentPrediction( class TComTU& /*rTu*/, ComponentID /*compID*/ )
 {
   assert(0);
@@ -2564,9 +2573,21 @@ Void TDecCavlc::parseAffineFlag( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UI
   assert(0);
 }
 
+#if MVD_BINARIZATION_CTX
+Void  TDecCavlc::parseAffineMvdGr0      ( TComDataCU* pcCU, UInt uiAbsPartAddr, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList )
+{
+  assert(0);
+}
+Void  TDecCavlc::parseAffineMvdRemain      ( TComDataCU* pcCU, UInt uiAbsPartAddr, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList )
+{
+  assert(0);
+}
+#else
+
 Void  TDecCavlc::parseAffineMvd( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiPartIdx*/, UInt /*uiDepth*/, RefPicList /*eRefList*/ )
 {
   assert(0);
 }
+#endif
 #endif
 //! \}

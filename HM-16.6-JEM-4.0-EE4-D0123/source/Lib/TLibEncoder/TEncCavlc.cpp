@@ -1537,12 +1537,21 @@ Void TEncCavlc::codeRefFrmIdx( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, RefP
 {
   assert(0);
 }
-
+#if MVD_BINARIZATION_CTX
+Void TEncCavlc::codeMvdGr0              ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList )
+{
+  assert(0);
+}
+Void TEncCavlc::codeMvdRemain           ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList )
+{
+  assert(0);
+}
+#else
 Void TEncCavlc::codeMvd( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, RefPicList /*eRefList*/ )
 {
   assert(0);
 }
-
+#endif
 Void TEncCavlc::codeCrossComponentPrediction( TComTU& /*rTu*/, ComponentID /*compID*/ )
 {
   assert(0);

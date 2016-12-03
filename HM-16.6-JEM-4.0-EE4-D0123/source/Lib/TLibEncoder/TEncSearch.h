@@ -326,8 +326,16 @@ protected:
 
   // sub-functions for ME
 #if JVET_D0123_ME_CTX_LUT_BITS
+#if MVD_BINARIZATION_CTX
+  __inline UInt xGetBitsEpExGolomb( UInt uiSymbol, UInt uiCount, Int* piMvbits);
+#else
   __inline UInt xGetBitsEpExGolomb( UInt uiSymbol, UInt uiCount );
+#endif
+#if MVD_BINARIZATION_CTX
+  __inline UInt xGetMvdBitsLut (TComDataCU* pcCU, UInt uiAbsPartIdx, Int iCurVal, UInt uiEGParam);
+#else
   __inline UInt xGetMvdBitsLut (TComDataCU* pcCU, UInt uiAbsPartIdx, Int iCurVal);
+#endif
   __inline UInt xMvdBits(TComPattern* pcPatternKey, Int iX, Int iY);
 #endif
   __inline Void xTZSearchHelp         ( TComPattern* pcPatternKey, IntTZSearchStruct& rcStruct, const Int iSearchX, const Int iSearchY, const UChar ucPointNr, const UInt uiDistance );
@@ -564,8 +572,16 @@ protected:
                                     Distortion& ruiCost 
 #if VCEG_AZ07_IMV || JVET_D0123_ME_CTX_LUT_BITS
                                     , UInt uiPartAddr
+#if MVD_BINARIZATION_CTX
+                                    , Int iRefIdx
+#endif
 #endif
                                     );
+
+#if MULTI_PEL_MVD
+  Bool intMvRefineNeeded (TComDataCU* pcCU, Int iPartIdx) { return pcCU->getiMVFlag(iPartIdx) != 0 ? true : false; }
+  Void intMvRefine ( TComDataCU* pcCU, RefPicList eRefPicList, TComPattern* pcPatternKey, Pel* piRefY, Int iRefStride, TComMv& rcMv, TComMv& rcMvPred, Int& riMVPIdx, UInt& ruiBits, Distortion& ruiCost, Double fWeight  );
+#endif
 
   Distortion xGetTemplateCost    ( TComDataCU*  pcCU,
                                     UInt        uiPartAddr,
@@ -661,6 +677,9 @@ protected:
                                     TComMv*      pcMvPred,
                                     Int          iRefIdxPred,
                                     TComMv&      rcMv,
+#if MULTI_PEL_MVD
+                                    Int& riMVPIdx, 
+#endif
                                     UInt&        ruiBits,
                                     Distortion&  ruiCost,
                                     Bool         bBi = false  );
@@ -774,6 +793,9 @@ protected:
                                   Distortion& ruiCost
 #if JVET_D0123_ME_CTX_LUT_BITS
                                   , UInt uiPartAddr
+#if MVD_BINARIZATION_CTX
+                                  , Int iRefIdx
+#endif
 #endif
                                   );
 #endif
