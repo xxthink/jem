@@ -841,18 +841,28 @@ Bool TDecTop::decode(InputNALUnit& nalu, Int& iSkipFrame, Int& iPOCLastDisplay
   m_cEntropyDecoder.setEntropyDecoder (&m_cCavlcDecoder);
   m_cEntropyDecoder.setBitstream      (&(nalu.getBitstream()));
 
+  Bool status = false;
   switch (nalu.m_nalUnitType)
   {
     case NAL_UNIT_VPS:
       xDecodeVPS(nalu.getBitstream().getFifo());
+#if SHARP_DQP_BIT_STAT  // in decode
+      m_cGopDecoder.updateFrameBitStat(&(nalu.getBitstream()), false);
+#endif
       return false;
 
     case NAL_UNIT_SPS:
       xDecodeSPS(nalu.getBitstream().getFifo());
+#if SHARP_DQP_BIT_STAT  // in decode
+      m_cGopDecoder.updateFrameBitStat(&(nalu.getBitstream()),false);
+#endif
       return false;
 
     case NAL_UNIT_PPS:
       xDecodePPS(nalu.getBitstream().getFifo());
+#if SHARP_DQP_BIT_STAT  // in decode
+      m_cGopDecoder.updateFrameBitStat(&(nalu.getBitstream()),false);
+#endif
       return false;
 
     case NAL_UNIT_PREFIX_SEI:
@@ -888,10 +898,15 @@ Bool TDecTop::decode(InputNALUnit& nalu, Int& iSkipFrame, Int& iPOCLastDisplay
     case NAL_UNIT_CODED_SLICE_RASL_N:
     case NAL_UNIT_CODED_SLICE_RASL_R:
 #if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
-      return xDecodeSlice(nalu, iSkipFrame, iPOCLastDisplay, m_apcStats);
+      status= xDecodeSlice(nalu, iSkipFrame, iPOCLastDisplay, m_apcStats);
 #else
-      return xDecodeSlice(nalu, iSkipFrame, iPOCLastDisplay);
+      status= xDecodeSlice(nalu, iSkipFrame, iPOCLastDisplay);
 #endif
+#if SHARP_DQP_BIT_STAT  // in decode
+      if (status == false)  // real decoding, not just finding new picture
+        m_cGopDecoder.updateFrameBitStat(&(nalu.getBitstream()),true);
+#endif
+      return status;
       break;
 
     case NAL_UNIT_EOS:
@@ -909,6 +924,9 @@ Bool TDecTop::decode(InputNALUnit& nalu, Int& iSkipFrame, Int& iPOCLastDisplay
         UInt picType;
         audReader.parseAccessUnitDelimiter(&(nalu.getBitstream()),picType);
         printf ("Note: found NAL_UNIT_ACCESS_UNIT_DELIMITER\n");
+#if SHARP_DQP_BIT_STAT  // in decode
+      m_cGopDecoder.updateFrameBitStat(&(nalu.getBitstream()),false);
+#endif
         return false;
       }
 
@@ -921,6 +939,9 @@ Bool TDecTop::decode(InputNALUnit& nalu, Int& iSkipFrame, Int& iPOCLastDisplay
         UInt size;
         fdReader.parseFillerData(&(nalu.getBitstream()),size);
         printf ("Note: found NAL_UNIT_FILLER_DATA with %u bytes payload.\n", size);
+#if SHARP_DQP_BIT_STAT  // in decode
+      m_cGopDecoder.updateFrameBitStat(&(nalu.getBitstream()),false);
+#endif
         return false;
       }
 
@@ -944,6 +965,9 @@ Bool TDecTop::decode(InputNALUnit& nalu, Int& iSkipFrame, Int& iPOCLastDisplay
     case NAL_UNIT_RESERVED_VCL31:
       printf ("Note: found reserved VCL NAL unit.\n");
       xParsePrefixSEIsForUnknownVCLNal();
+#if SHARP_DQP_BIT_STAT  // in decode
+      m_cGopDecoder.updateFrameBitStat(&(nalu.getBitstream()),false);
+#endif
       return false;
 
     case NAL_UNIT_RESERVED_NVCL41:
