@@ -946,9 +946,15 @@ Void TEncCu::encodeCtu ( TComDataCU* pCtu )
 #endif
     }
 #endif
+#if SEP_TREE_CHROMA_IMPROVEMENTS
+    pCtu->getPic()->setCodedBlkInCTU(false, 0, 0, uiCTUSize>>MIN_CU_LOG2, uiCTUSize>>MIN_CU_LOG2); 
+#endif
 
     xEncodeCU( pCtu, 0, 0, uiCTUSize, uiCTUSize );  
   }
+#if SEP_TREE_CHROMA_IMPROVEMENTS
+  pCtu->getPic()->setCodedBlkInCTU(false, 0, 0, uiCTUSize>>MIN_CU_LOG2, uiCTUSize>>MIN_CU_LOG2); 
+#endif
   // --- write terminating bit ---
   finishCU(pCtu,0);
 #endif

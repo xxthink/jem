@@ -8508,6 +8508,12 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
         UInt uiIntraMode = pcCU->getIntraDir( toChannelType(compID), uiAbsPartIdx);
         if( compID != COMPONENT_Y )
         {
+#if SEP_TREE_CHROMA_IMPROVEMENTS && COM16_C806_LMCHROMA
+          if( uiIntraMode == LM_CHROMA_IDX )
+          {
+            uiIntraMode = PLANAR_IDX;
+          }
+#else
           if( uiIntraMode == DM_CHROMA_IDX )
           {
 #if JVET_C0024_QTBT
@@ -8528,6 +8534,7 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
           {
             uiIntraMode = PLANAR_IDX;
           }
+#endif
 #endif
         }
 
@@ -8896,6 +8903,12 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
       UInt uiIntraMode = pcCU->getIntraDir( toChannelType(compID), uiAbsPartIdx);
       if( compID != COMPONENT_Y )
       {
+#if SEP_TREE_CHROMA_IMPROVEMENTS && COM16_C806_LMCHROMA
+        if( uiIntraMode == LM_CHROMA_IDX )
+        {
+          uiIntraMode = PLANAR_IDX;
+        }
+#else
         if( uiIntraMode == DM_CHROMA_IDX )
         {
 #if JVET_C0024_QTBT
@@ -8916,6 +8929,7 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
         {
           uiIntraMode = PLANAR_IDX;
         }
+#endif
 #endif
       }
 
@@ -9392,16 +9406,19 @@ Void TComTrQuant::rdpcmNxN   ( TComTU& rTu, const ComponentID compID, Pel* pcRes
     const ChannelType chType = toChannelType(compID);
     const UInt uiChPredMode  = pcCU->getIntraDir( chType, uiAbsPartIdx );
 #if JVET_C0024_QTBT
+#if SEP_TREE_CHROMA_IMPROVEMENTS
+    const UInt uiChCodedMode = uiChPredMode;
+#else
     const UInt uiChCodedMode = (uiChPredMode==DM_CHROMA_IDX && isChroma(compID)) 
       ? (pcCU->getSlice()->isIntra()? pcCU->getPic()->getCtu(pcCU->getCtuRsAddr())->getIntraDir(CHANNEL_TYPE_LUMA, pcCU->getZorderIdxInCtu()+uiAbsPartIdx)
       :pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx)) : uiChPredMode;
+#endif
 #else
     const TComSPS *sps=pcCU->getSlice()->getSPS();
     const UInt partsPerMinCU = 1<<(2*(sps->getMaxTotalCUDepth() - sps->getLog2DiffMaxMinCodingBlockSize()));
     const UInt uiChCodedMode = (uiChPredMode==DM_CHROMA_IDX && isChroma(compID)) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, getChromasCorrespondingPULumaIdx(uiAbsPartIdx, chFmt, partsPerMinCU)) : uiChPredMode;
 #endif
     const UInt uiChFinalMode = ((chFmt == CHROMA_422)       && isChroma(compID)) ? g_chroma422IntraAngleMappingTable[uiChCodedMode] : uiChCodedMode;
-
     if (uiChFinalMode == VER_IDX || uiChFinalMode == HOR_IDX)
     {
       rdpcmMode = (uiChFinalMode == VER_IDX) ? RDPCM_VER : RDPCM_HOR;
@@ -9470,16 +9487,19 @@ Void TComTrQuant::invRdpcmNxN( TComTU& rTu, const ComponentID compID, Pel* pcRes
       const ChannelType chType = toChannelType(compID);
       const UInt uiChPredMode  = pcCU->getIntraDir( chType, uiAbsPartIdx );
 #if JVET_C0024_QTBT
+#if SEP_TREE_CHROMA_IMPROVEMENTS
+      const UInt uiChCodedMode = uiChPredMode;
+#else
       const UInt uiChCodedMode = (uiChPredMode==DM_CHROMA_IDX && isChroma(compID)) 
         ? (pcCU->getSlice()->isIntra()? pcCU->getPic()->getCtu(pcCU->getCtuRsAddr())->getIntraDir(CHANNEL_TYPE_LUMA, pcCU->getZorderIdxInCtu()+uiAbsPartIdx)
         :pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx)) : uiChPredMode;
+#endif
 #else
       const TComSPS *sps=pcCU->getSlice()->getSPS();
       const UInt partsPerMinCU = 1<<(2*(sps->getMaxTotalCUDepth() - sps->getLog2DiffMaxMinCodingBlockSize()));
       const UInt uiChCodedMode = (uiChPredMode==DM_CHROMA_IDX && isChroma(compID)) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, getChromasCorrespondingPULumaIdx(uiAbsPartIdx, chFmt, partsPerMinCU)) : uiChPredMode;
 #endif
       const UInt uiChFinalMode = ((chFmt == CHROMA_422)       && isChroma(compID)) ? g_chroma422IntraAngleMappingTable[uiChCodedMode] : uiChCodedMode;
-
       if (uiChFinalMode == VER_IDX || uiChFinalMode == HOR_IDX)
       {
         rdpcmMode = (uiChFinalMode == VER_IDX) ? RDPCM_VER : RDPCM_HOR;
