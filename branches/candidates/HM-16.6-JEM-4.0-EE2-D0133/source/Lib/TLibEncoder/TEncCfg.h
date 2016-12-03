@@ -492,6 +492,10 @@ protected:
 #if COM16_C983_RSAF
   Bool      m_useRSAF;
 #endif
+#if SAO_PEAK
+  Bool      m_usePeakSAO;
+  Bool      m_useCSAO;
+#endif 
  std::string m_summaryOutFilename;                           ///< filename to use for producing summary output file.
   std::string m_summaryPicFilenameBase;                       ///< Base filename to use for producing summary picture output files. The actual filenames used will have I.txt, P.txt and B.txt appended.
   UInt        m_summaryVerboseness;                           ///< Specifies the level of the verboseness of the text output.
@@ -1221,6 +1225,12 @@ public:
 #if COM16_C983_RSAF
   Bool getUseRSAF()                                             { return m_useRSAF; }
   Void setUseRSAF(Bool b)                                       { m_useRSAF = b;    }
+#endif
+#if SAO_PEAK
+  Bool getUsePeakSAO ()                                         { return m_usePeakSAO; } 
+  Void setUsePeakSAO ( Bool b )                                 { m_usePeakSAO  = b;   }
+  Bool getUseCSAO () const                                      { return m_useCSAO;    } 
+  Void setUseCSAO ( Bool b )                                    { m_useCSAO  = b;      }
 #endif
 };
 

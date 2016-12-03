@@ -46,7 +46,7 @@
 
 //! \ingroup TLibCommon
 //! \{
-
+#define SAO_PEAK                                          1
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////
@@ -999,6 +999,30 @@ enum NalUnitType
 class TComPicSym;
 
 #define MAX_NUM_SAO_CLASSES  32  //(NUM_SAO_EO_GROUPS > NUM_SAO_BO_GROUPS)?NUM_SAO_EO_GROUPS:NUM_SAO_BO_GROUPS
+
+#if SAO_PEAK
+#define NORM_MAX               8
+#define PEAKSAO_TYPE_NUM       2
+#define PEAKSAO_MAX_GROUP_NUM  2
+#define MIN_DIFF               2
+#define MAX_DIFF_NEIGH         9 
+
+
+#define OFFSET_MAX             32
+#define OFFSET_MAX_MIN1        (OFFSET_MAX - 1)
+#define PeakSAO_PADDED_SAMPLES 4
+#define NEIGHBOUR_SAMPLE_NUM   4
+
+struct saoNeighStruct
+{
+  UChar offset[MAX_DIFF_NEIGH+1]; 
+  Int   norm;
+  Int   signalled;      // norm and offsets to be signaled or not
+  UChar peakSAOType[2]; //[0]: =1: norm shared; =0:norm are seperately coded (default value); [1]: type index =0: only one group; =1: two groups
+  Int   derivedMaxDiff; //how many classes within a group
+  Bool  bEnabled;  
+};
+#endif
 
 struct SAOOffset
 {

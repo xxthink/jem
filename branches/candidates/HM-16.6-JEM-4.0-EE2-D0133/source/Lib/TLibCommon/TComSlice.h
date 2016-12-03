@@ -890,6 +890,10 @@ private:
 #if COM16_C983_RSAF
   Bool             m_useRSAF;
 #endif
+#if SAO_PEAK
+  Bool             m_usePeakSAO;
+  Bool             m_useCSAO; 
+#endif
  // Parameter
   BitDepths        m_bitDepths;
   Int              m_qpBDOffset[MAX_NUM_CHANNEL_TYPE];
@@ -1172,7 +1176,12 @@ public:
  Bool                   getUseRSAF ()  const                                                       { return m_useRSAF; }
  Void                   setUseRSAF ( Bool b )                                                      { m_useRSAF = b;    }
 #endif
-
+#if SAO_PEAK
+  Bool                  getUsePeakSAO () const                                                     { return m_usePeakSAO; } 
+  Void                  setUsePeakSAO ( Bool b )                                                   { m_usePeakSAO  = b; }
+  Bool                  getUseCSAO () const                                                        { return m_useCSAO; } 
+  Void                  setUseCSAO ( Bool b )                                                      { m_useCSAO  = b; }
+#endif
   // KTA tools
 
   // Sequence parameter set range extension syntax

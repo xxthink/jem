@@ -3601,5 +3601,59 @@ Void TEncSbac::codeCtxUpdateInfo  ( TComSlice* pcSlice,  TComStats* apcStats )
   return;
 }
 #endif
+#if SAO_PEAK
+Void TEncSbac::codePeakSAOParam  ( TComSlice* pcSlice, saoNeighStruct* saoBlkParam)
+{
+  m_pcBinIf->encodeBinEP(saoBlkParam[0].bEnabled ? 1 : 0);
+  if(saoBlkParam[0].bEnabled)
+  {
+    m_pcBinIf->encodeBinsEP(saoBlkParam[0].peakSAOType[1], 1);
+    m_pcBinIf->encodeBinsEP(saoBlkParam[0].derivedMaxDiff - MIN_DIFF, 3); //to be checked, Li
+    for (Int j = 0; j < g_uiPeakSAONumClass[saoBlkParam[0].peakSAOType[1]]; j ++)
+    {
+      m_pcBinIf->encodeBinEP( saoBlkParam[j].signalled );
+      if (saoBlkParam[j].signalled)
+      {
+        m_pcBinIf->encodeBinsEP( saoBlkParam[j].norm, 3 );
+        //check whether the offsets are in ascending order
+        Bool bAscending = true;
+        for (Int diff=1; diff<= saoBlkParam[0].derivedMaxDiff; diff++)
+        {
+          if(saoBlkParam[j].offset[diff] < saoBlkParam[j].offset[diff-1])
+          {
+            bAscending = false;
+            break;
+          }
+        }
+        m_pcBinIf->encodeBinEP(bAscending ? 1: 0);        
+        for (Int diff=0; diff<= saoBlkParam[0].derivedMaxDiff; diff++)
+        {
+          Int iOffset = (bAscending && diff) ? (saoBlkParam[j].offset[diff] - saoBlkParam[j].offset[diff-1]) : (saoBlkParam[j].offset[diff]);         
+          m_pcBinIf->encodeBinEP( iOffset ? 1 : 0);          
+          if ( iOffset )
+          {
+            Bool bCodeLast = ( OFFSET_MAX > iOffset );
+            while( --iOffset )
+            {         
+              m_pcBinIf->encodeBinEP( 1 );
+            }
+            if( bCodeLast )
+            {          
+              m_pcBinIf->encodeBinEP( 0 );
+            }
+          }
+        }
+      }
+      else
+      {
+        for (Int diff=0; diff<= saoBlkParam[0].derivedMaxDiff; diff++)
+        {
+          assert( saoBlkParam[j].offset[diff] == 0 );
+        }
+      }
+    }
 
+  }
+}
+#endif
 //! \}

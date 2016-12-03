@@ -1951,5 +1951,14 @@ Void TEncEntropy::encodeAffineFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt ui
   m_pcEntropyCoderIf->codeAffineFlag( pcCU, uiAbsPartIdx );
 }
 #endif
+#if SAO_PEAK
+Void TEncEntropy::encodePeakSAOParam  (saoNeighStruct* saoInfo, TComSlice* pSlice)
+{
+  Int currentWrittenBits = m_pcEntropyCoderIf->getNumberOfWrittenBits();
+  m_pcEntropyCoderIf->codePeakSAOParam( pSlice, saoInfo);
+  currentWrittenBits = m_pcEntropyCoderIf->getNumberOfWrittenBits() - currentWrittenBits;
+  //printf("\n PSAO: %2d", currentWrittenBits );
+}
+#endif
 
 //! \}

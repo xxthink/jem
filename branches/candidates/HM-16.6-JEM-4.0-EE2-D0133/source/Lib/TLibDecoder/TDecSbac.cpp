@@ -3556,5 +3556,73 @@ Void TDecSbac::parseAffineMvd( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiPartI
   return;
 }
 #endif
+#if SAO_PEAK
+Void TDecSbac::parsePeakSAOParam  ( saoNeighStruct* saoInfo, TComSlice* pcSlice )
+{
+  UInt uiType, uiMaxDiffMin2, uiSymbol; 
+  m_pcTDecBinIf->decodeBinEP(uiSymbol RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD_EP));
+  if(uiSymbol == 0)
+  {
+    saoInfo[0].bEnabled = false;
+  }
+  else
+  {
+    saoInfo[0].bEnabled = true;
+    m_pcTDecBinIf->decodeBinsEP(uiType, 1 RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD_EP));
+    m_pcTDecBinIf->decodeBinsEP(uiMaxDiffMin2, 3 RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD_EP)); 
+    saoInfo[0].peakSAOType[1] = uiType;
+    saoInfo[0].derivedMaxDiff = uiMaxDiffMin2 + MIN_DIFF;
+
+    for (Int j = 0; j < g_uiPeakSAONumClass[saoInfo[0].peakSAOType[1]]; j++)
+    {
+      m_pcTDecBinIf->decodeBinEP( uiSymbol RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD_EP));
+      saoInfo[j].signalled = uiSymbol; 
+      if (saoInfo[j].signalled == 0)
+      {
+        for (Int diff=0; diff<= saoInfo[0].derivedMaxDiff; diff++)
+        {      
+          saoInfo[j].offset[diff] = 0;
+        }
+      }
+      else
+      {
+        m_pcTDecBinIf->decodeBinsEP( uiSymbol, 3 RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD_EP));
+        saoInfo[j].norm = uiSymbol;
+        UInt uiPrevOffset = 0;
+        Bool bAscending = false;
+        m_pcTDecBinIf->decodeBinEP(uiSymbol RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD_EP));
+        if( uiSymbol )
+        {
+          bAscending = true;
+        }
+        for (Int diff = 0; diff <= saoInfo[0].derivedMaxDiff; diff++)
+        {      
+          m_pcTDecBinIf->decodeBinEP( uiSymbol RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD_EP));
+          if( uiSymbol == 1 )
+          {
+            uiSymbol = 0;
+            UInt uiCont;
+            do
+            {
+              m_pcTDecBinIf->decodeBinEP( uiCont RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD_EP));
+              uiSymbol++;
+            } while( uiCont && ( uiSymbol < OFFSET_MAX_MIN1 ) );
+
+            if( uiCont && ( uiSymbol == OFFSET_MAX_MIN1 ) )
+            {
+              uiSymbol++;
+            }
+          }
+          saoInfo[j].offset[diff] = (uiPrevOffset + uiSymbol);
+          if( bAscending )
+          {
+            uiPrevOffset = saoInfo[j].offset[diff];
+          }
+        }
+      }
+    }
+  }
+}
+#endif
 
 //! \}

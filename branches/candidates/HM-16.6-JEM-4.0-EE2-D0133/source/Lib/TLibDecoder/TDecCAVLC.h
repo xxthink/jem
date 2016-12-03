@@ -192,6 +192,9 @@ public:
   Void  parseAffineFlag     ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPuIdx );
   Void  parseAffineMvd      ( TComDataCU* pcCU, UInt uiAbsPartAddr, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList );
 #endif
+#if SAO_PEAK
+  Void parsePeakSAOParam  ( saoNeighStruct* saoInfo, TComSlice* pcSlice );
+#endif
 
 protected:
   Bool  xMoreRbspData();

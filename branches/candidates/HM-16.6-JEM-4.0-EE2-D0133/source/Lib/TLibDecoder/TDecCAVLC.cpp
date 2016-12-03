@@ -780,7 +780,13 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
     }
   }
   READ_FLAG( uiCode, "amp_enabled_flag" );                          pcSPS->setUseAMP( uiCode );
+#if SAO_PEAK
+  READ_FLAG( uiCode, "HEVC_sample_adaptive_offset_enabled_flag" );       pcSPS->setUseCSAO ( uiCode ? true : false );
+  READ_FLAG( uiCode, "Peak_sample_adaptive_offset_enabled_flag" );       pcSPS->setUsePeakSAO ( uiCode ? true : false );
+  pcSPS->setUseSAO( (pcSPS->getUseCSAO() || pcSPS->getUsePeakSAO() )? true: false);
+#else
   READ_FLAG( uiCode, "sample_adaptive_offset_enabled_flag" );       pcSPS->setUseSAO ( uiCode ? true : false );
+#endif
 
   READ_FLAG( uiCode, "pcm_enabled_flag" ); pcSPS->setUsePCM( uiCode ? true : false );
   if( pcSPS->getUsePCM() )
@@ -1321,7 +1327,11 @@ Void TDecCavlc::parseSliceHeader (TComSlice* pcSlice, ParameterSetManager *param
         pcSlice->setEnableTMVPFlag(false);
       }
     }
+#if SAO_PEAK 
+    if(sps->getUseCSAO())
+#else
     if(sps->getUseSAO())
+#endif
     {
       READ_FLAG(uiCode, "slice_sao_luma_flag");  pcSlice->setSaoEnabledFlag(CHANNEL_TYPE_LUMA, (Bool)uiCode);
 
@@ -1597,8 +1607,11 @@ Void TDecCavlc::parseSliceHeader (TComSlice* pcSlice, ParameterSetManager *param
       pcSlice->setDeblockingFilterBetaOffsetDiv2( 0 );
       pcSlice->setDeblockingFilterTcOffsetDiv2  ( 0 );
     }
-
+#if SAO_PEAK 
+    Bool isSAOEnabled = sps->getUseCSAO() && (pcSlice->getSaoEnabledFlag(CHANNEL_TYPE_LUMA) || (bChroma && pcSlice->getSaoEnabledFlag(CHANNEL_TYPE_CHROMA)));
+#else
     Bool isSAOEnabled = sps->getUseSAO() && (pcSlice->getSaoEnabledFlag(CHANNEL_TYPE_LUMA) || (bChroma && pcSlice->getSaoEnabledFlag(CHANNEL_TYPE_CHROMA)));
+#endif
     Bool isDBFEnabled = (!pcSlice->getDeblockingFilterDisable());
 
     if(pps->getLoopFilterAcrossSlicesEnabledFlag() && ( isSAOEnabled || isDBFEnabled ))
@@ -2569,4 +2582,11 @@ Void  TDecCavlc::parseAffineMvd( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UI
   assert(0);
 }
 #endif
+#if SAO_PEAK
+Void TDecCavlc::parsePeakSAOParam  ( saoNeighStruct* saoInfo, TComSlice* pcSlice )
+{
+  assert(0);
+}
+#endif
+
 //! \}

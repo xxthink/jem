@@ -78,6 +78,9 @@ extern Bool g_bInitAMaxBT;
 #endif
 #endif
 
+#if SAO_PEAK
+extern UInt g_uiPeakSAONumClass[PEAKSAO_TYPE_NUM];
+#endif
 // flexible conversion from relative to absolute index
 extern       UInt   g_auiZscanToRaster[ MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH ];
 extern       UInt   g_auiRasterToZscan[ MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH ];

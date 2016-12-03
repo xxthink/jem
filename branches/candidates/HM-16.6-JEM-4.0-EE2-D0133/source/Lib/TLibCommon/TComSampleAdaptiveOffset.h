@@ -60,12 +60,56 @@ template <typename T> Int sgn(T val)
   return (T(0) < val) - (val < T(0));
 }
 
+
 class TComSampleAdaptiveOffset
 {
 public:
   TComSampleAdaptiveOffset();
   virtual ~TComSampleAdaptiveOffset();
   Void SAOProcess(TComPic* pDecPic);
+
+#if SAO_PEAK
+  Void PeakSAOProcess(TComPic* pDecPic);
+  Void preAnalysisNeighInfo (Bool bEnc, TComPicYuv* imgRec, Int imgHeight, Int imgWidht, TComPicYuv* imgOrg, saoNeighStruct* pPeakSAO = NULL);
+  Void initPeakSAOVariable(Int imgHeight, Int imgWidth);
+  Void freePeakSAOVariable(Int imgHeight, Int imgWidth);
+  
+  Void destroyMatrix5D_UChar(UChar *****m3D, Int d1, Int d2, Int d3);
+  Void destroyMatrix4D_UChar(UChar ****m3D, Int d1, Int d2);
+  Void destroyMatrix3D_UChar(UChar ***m3D, Int d1);
+  Void destroyMatrix_UChar(UChar **m2D);
+
+  Void destroyMatrix3D_UInt(UInt ***m3D, Int d1);
+  Void destroyMatrix_UInt  (UInt **m2D);
+
+  Void initMatrix3D_UInt(UInt ****m3D, Int d1, Int d2, Int d3);
+  Void initMatrix_UInt(UInt ***m2D, Int d1, Int d2);
+  
+  Void initMatrix_UChar(UChar ***m2D, Int d1, Int d2);
+  Void initMatrix3D_UChar(UChar ****m3D, Int d1, Int d2, Int d3);
+  Void initMatrix3DContiguous_UChar(UChar ****m3D, Int d1, Int d2, Int d3);
+
+  inline Void resetPeakSAOParam(UInt ****m3D, Int d1, Int d2, Int d3)
+  {
+    memset( &(*(m3D)[0][0][0]), 0, d1*d2*d3*sizeof(UInt));
+  }
+  inline Void resetPeakSAOParam(UChar ****m3D, Int d1, Int d2, Int d3)
+  {
+    memset( &(*(m3D)[0][0][0]), 0, d1*d2*d3*sizeof(UChar));
+  }
+  Void initMatrix4D_UChar(UChar *****m3D, Int d1, Int d2, Int d3, Int d4);
+  Void initMatrix5D_UChar(UChar ******m2D, Int d1, Int d2, Int d3, Int d4, Int d5);
+
+
+  Void destroyMatrix5D_Double(Double *****m5D, Int d1, Int d2, Int d3);
+  Void destroyMatrix4D_Double(Double ****m4D, Int d1, Int d2);
+  Void destroyMatrix3D_Double(Double ***m3D, Int d1);
+  Void destroyMatrix_Double(Double **m2D);
+  Void initMatrix5D_Double(Double ******m5D, Int d1, Int d2, Int d3, Int d4, Int d5);
+  Void initMatrix4D_Double(Double  *****m4D, Int d1, Int d2, Int d3, Int d4);
+  Void initMatrix3D_Double(Double   ****m3D, Int d1, Int d2, Int d3);
+  Void initMatrix_Double  (Double    ***m2D, Int d1, Int d2);
+#endif
   Void create( Int picWidth, Int picHeight, ChromaFormat format, UInt maxCUWidth, UInt maxCUHeight, UInt maxCUDepth, UInt lumaBitShift, UInt chromaBitShift );
   Void destroy();
   Void reconstructBlkSAOParams(TComPic* pic, SAOBlkParam* saoBlkParams);
@@ -86,6 +130,15 @@ protected:
   Void xPCMRestoration(TComPic* pcPic);
   Void xPCMCURestoration ( TComDataCU* pcCU, UInt uiAbsZorderIdx, UInt uiDepth );
   Void xPCMSampleRestoration (TComDataCU* pcCU, UInt uiAbsZorderIdx, UInt uiDepth, const ComponentID compID);
+
+#if SAO_PEAK    
+  Void getPeakIdx   (Pel* src, Int srcStride, Int x, Int y, Int* idxArr);  
+  Void peakOffset   (TComPic* pPic, TComPicYuv* resYuv, TComPicYuv* scrYuv, Int height, Int width);
+  //decoder function for speed-up
+  Void peakOffsetDec(TComPic* pPic, TComPicYuv* resYuv, TComPicYuv* scrYuv, Int height, Int width); 
+  Void getPeakIdxDec(Pel* src, Int srcStride, Int x, Int y, Int* idxArr, Int* sign4, Int* neighSum4);
+#endif
+
 protected:
   UInt m_offsetStepLog2[MAX_NUM_COMPONENT]; //offset step
   TComPicYuv*   m_tempPicYuv; //temporary buffer
@@ -106,6 +159,16 @@ protected:
   Char* m_signLineBuf1;
   Char* m_signLineBuf2;
   ChromaFormat m_chromaFormatIDC;
+#if SAO_PEAK
+  Int    m_max_val; //maximum value for pixel sample
+  Double *****           saoStat;  //only used in encoder
+  Double*                offsetErr;
+  Double**               diffError;  
+  UChar ***              OffsetBest;
+  UChar *****            OffsetTemp;
+  UInt*** neighSum4;
+  UChar*** sign4;
+#endif
 private:
   Bool m_picSAOEnabled[MAX_NUM_COMPONENT];
 };

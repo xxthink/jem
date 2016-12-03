@@ -219,6 +219,9 @@ public:
 #if COM16_C1016_AFFINE
   virtual Void codeAffineFlag    ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
 #endif
+#if SAO_PEAK
+  virtual Void codePeakSAOParam  ( TComSlice* pcSlice, saoNeighStruct* saoBlkParam) = 0;
+#endif
 };
 
 /// entropy encoder class
@@ -361,6 +364,9 @@ public:
   Void estimatePuMeBit        ( estPuMeBitsSbacStruct* pcMePuEstBitsSbac );
 #endif
   Void encodeSAOBlkParam(SAOBlkParam& saoBlkParam, const BitDepths &bitDepths, Bool* sliceEnabled, Bool leftMergeAvail, Bool aboveMergeAvail){m_pcEntropyCoderIf->codeSAOBlkParam(saoBlkParam, bitDepths, sliceEnabled, leftMergeAvail, aboveMergeAvail, false);}
+#if SAO_PEAK
+  Void encodePeakSAOParam(saoNeighStruct* saoInfo, TComSlice* pSlice);
+#endif
 
   static Int countNonZeroCoeffs( TCoeff* pcCoef, UInt uiSize );
 

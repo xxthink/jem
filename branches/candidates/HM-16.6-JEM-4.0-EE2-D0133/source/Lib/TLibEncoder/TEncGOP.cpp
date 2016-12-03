@@ -1782,6 +1782,17 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
       m_pcSAO->setEntropyCoder(m_pcEntropyCoder);
 #endif
       m_pcSAO->initRDOCabacCoder(m_pcEncTop->getRDGoOnSbacCoder(), pcSlice);
+#if SAO_PEAK
+      if(pcSlice->getSPS()->getUsePeakSAO())
+      {
+        m_pcSAO->PeakSAOProcess( pcPic, pcPic->getSlice(0)->getLambdas() );
+      }
+      if(!pcSlice->getSPS()->getUseCSAO())
+      {
+        memset(sliceEnabled, false, sizeof(Bool)*MAX_NUM_COMPONENT);
+      }
+      else
+#endif
       m_pcSAO->SAOProcess(pcPic, sliceEnabled, pcPic->getSlice(0)->getLambdas(), m_pcCfg->getTestSAODisableAtPictureLevel(), m_pcCfg->getSaoEncodingRate(), m_pcCfg->getSaoEncodingRateChroma(), m_pcCfg->getSaoCtuBoundary());
       m_pcSAO->PCMLFDisableProcess(pcPic);
       m_pcEncTop->getRDGoOnSbacCoder()->setBitstream(NULL);

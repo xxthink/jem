@@ -64,6 +64,9 @@ TComPicSym::TComPicSym()
 ,m_puiTileIdxMap(NULL)
 ,m_ctuRsToTsAddrMap(NULL)
 ,m_saoBlkParams(NULL)
+#if SAO_PEAK
+,saoInfo(NULL)
+#endif
 #if ADAPTIVE_QP_SELECTION
 ,m_pParentARLBuffer(NULL)
 #endif
@@ -136,7 +139,9 @@ Void TComPicSym::create  ( const TComSPS &sps, const TComPPS &pps, UInt uiMaxDep
   }
 
   m_saoBlkParams = new SAOBlkParam[m_numCtusInFrame];
-
+#if SAO_PEAK
+  saoInfo = new saoNeighStruct[PEAKSAO_MAX_GROUP_NUM];
+#endif
 
   xInitTiles();
   xInitCtuTsRsAddrMaps();
@@ -169,6 +174,12 @@ Void TComPicSym::destroy()
   {
     delete[] m_saoBlkParams; m_saoBlkParams = NULL;
   }
+#if SAO_PEAK
+  if(saoInfo)
+  {
+    delete [] saoInfo; saoInfo = NULL;
+  }
+#endif
 
 #if ADAPTIVE_QP_SELECTION
   delete [] m_pParentARLBuffer;
