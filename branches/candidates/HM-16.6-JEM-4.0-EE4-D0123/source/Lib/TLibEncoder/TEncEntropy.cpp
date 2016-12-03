@@ -738,6 +738,9 @@ Void TEncEntropy::encodePuMotionInfo(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt u
 #else
   PartSize ePartSize = pcCU->getPartitionSize( uiAbsPartIdx );
 #endif
+#if VCEG_AZ07_IMV
+  Bool bNonZeroMvd = false;
+#endif
     encodeMergeFlag( pcCU, uiAbsPartIdx );
     if ( pcCU->getMergeFlag( uiAbsPartIdx ) )
     {
@@ -787,9 +790,15 @@ Void TEncEntropy::encodePuMotionInfo(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt u
         if ( pcCU->getSlice()->getNumRefIdx( RefPicList( uiRefListIdx ) ) > 0 )
         {
           encodeRefFrmIdxPU ( pcCU, uiAbsPartIdx, RefPicList( uiRefListIdx ) );
-
+#if MVD_BINARIZATION_CTX
+          encodeMvdGr0PU    ( pcCU, uiAbsPartIdx, RefPicList( uiRefListIdx ) );
+#else
           encodeMvdPU       ( pcCU, uiAbsPartIdx, RefPicList( uiRefListIdx ) );
-
+#endif
+#if VCEG_AZ07_IMV
+          bNonZeroMvd |= ( pcCU->getCUMvField( RefPicList( uiRefListIdx ) )->getMvd( uiAbsPartIdx ).getHor() != 0 );
+          bNonZeroMvd |= ( pcCU->getCUMvField( RefPicList( uiRefListIdx ) )->getMvd( uiAbsPartIdx ).getVer() != 0 );
+#endif
           encodeMVPIdxPU    ( pcCU, uiAbsPartIdx, RefPicList( uiRefListIdx ) );
 #if ENVIRONMENT_VARIABLE_DEBUG_AND_TEST
           if (bDebugPred)
@@ -804,6 +813,29 @@ Void TEncEntropy::encodePuMotionInfo(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt u
         }
       }
     } 
+
+#if VCEG_AZ07_IMV
+  if( bNonZeroMvd && pcCU->getSlice()->getSPS()->getIMV() )
+  {
+    encodeiMVFlag( pcCU , uiAbsPartIdx );
+  }
+  if( !bNonZeroMvd )
+  {
+    assert( pcCU->getiMVFlag( uiAbsPartIdx ) == 0 );
+  }
+#if MVD_BINARIZATION_CTX
+  if (bNonZeroMvd || pcCU->getAffineFlag(uiAbsPartIdx))
+  {
+      for ( UInt uiRefListIdx = 0; uiRefListIdx < 2; uiRefListIdx++ )
+      {
+        if ( pcCU->getSlice()->getNumRefIdx( RefPicList( uiRefListIdx ) ) > 0 )
+        {
+          encodeMvdRemainPU    ( pcCU, uiAbsPartIdx, RefPicList( uiRefListIdx ) );
+        }
+      }
+  }
+#endif
+#endif
   return;
 }
 #endif
@@ -881,7 +913,12 @@ Void TEncEntropy::encodePUWise( TComDataCU* pcCU, UInt uiAbsPartIdx )
         if ( pcCU->getSlice()->getNumRefIdx( RefPicList( uiRefListIdx ) ) > 0 )
         {
           encodeRefFrmIdxPU ( pcCU, uiSubPartIdx, RefPicList( uiRefListIdx ) );
+#if MVD_BINARIZATION_CTX
+          encodeMvdGr0PU       ( pcCU, uiSubPartIdx, RefPicList( uiRefListIdx ) );
+          //encodeMvdRemainPU    ( pcCU, uiAbsPartIdx, RefPicList( uiRefListIdx ) );
+#else
           encodeMvdPU       ( pcCU, uiSubPartIdx, RefPicList( uiRefListIdx ) );
+#endif
 #if VCEG_AZ07_IMV
           bNonZeroMvd |= ( pcCU->getCUMvField( RefPicList( uiRefListIdx ) )->getMvd( uiSubPartIdx ).getHor() != 0 );
           bNonZeroMvd |= ( pcCU->getCUMvField( RefPicList( uiRefListIdx ) )->getMvd( uiSubPartIdx ).getVer() != 0 );
@@ -911,6 +948,18 @@ Void TEncEntropy::encodePUWise( TComDataCU* pcCU, UInt uiAbsPartIdx )
   {
     assert( pcCU->getiMVFlag( uiAbsPartIdx ) == 0 );
   }
+#if MVD_BINARIZATION_CTX
+  if (bNonZeroMvd || pcCU->getAffineFlag(uiAbsPartIdx))
+  {
+      for ( UInt uiRefListIdx = 0; uiRefListIdx < 2; uiRefListIdx++ )
+      {
+        if ( pcCU->getSlice()->getNumRefIdx( RefPicList( uiRefListIdx ) ) > 0 )
+        {
+          encodeMvdRemainPU    ( pcCU, uiAbsPartIdx, RefPicList( uiRefListIdx ) );
+        }
+      }
+  }
+#endif
 #endif
   return;
 }
@@ -946,6 +995,62 @@ Void TEncEntropy::encodeRefFrmIdxPU( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPic
 }
 
 //! encode motion vector difference for a PU block
+#if MVD_BINARIZATION_CTX
+Void TEncEntropy::encodeMvdGr0PU( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList )
+{
+  assert( pcCU->isInter( uiAbsPartIdx ) );
+
+#if COM16_C1016_AFFINE
+  if ( pcCU->isAffine(uiAbsPartIdx) )
+  {
+    if ( pcCU->getInterDir( uiAbsPartIdx ) & ( 1 << eRefList ) )
+    {
+      // derive LT, RT
+      UInt uiPartIdxLT, uiPartIdxRT, uiAbsIndexInLCU;
+      uiAbsIndexInLCU = pcCU->getZorderIdxInCtu();
+      pcCU->deriveLeftRightTopIdxGeneral( uiAbsPartIdx, 0, uiPartIdxLT, uiPartIdxRT );
+
+      m_pcEntropyCoderIf->codeMvdGr0( pcCU, uiPartIdxLT - uiAbsIndexInLCU, eRefList );
+      m_pcEntropyCoderIf->codeMvdGr0( pcCU, uiPartIdxRT - uiAbsIndexInLCU, eRefList );
+    }
+    return;
+  }
+#endif
+
+  if ( pcCU->getInterDir( uiAbsPartIdx ) & ( 1 << eRefList ) )
+  {
+    m_pcEntropyCoderIf->codeMvdGr0( pcCU, uiAbsPartIdx, eRefList );
+  }
+  return;
+}
+Void TEncEntropy::encodeMvdRemainPU( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList )
+{
+  assert( pcCU->isInter( uiAbsPartIdx ) );
+
+#if COM16_C1016_AFFINE
+  if ( pcCU->isAffine(uiAbsPartIdx) )
+  {
+    if ( pcCU->getInterDir( uiAbsPartIdx ) & ( 1 << eRefList ) )
+    {
+      // derive LT, RT
+      UInt uiPartIdxLT, uiPartIdxRT, uiAbsIndexInLCU;
+      uiAbsIndexInLCU = pcCU->getZorderIdxInCtu();
+      pcCU->deriveLeftRightTopIdxGeneral( uiAbsPartIdx, 0, uiPartIdxLT, uiPartIdxRT );
+
+      m_pcEntropyCoderIf->codeMvdRemain( pcCU, uiPartIdxLT - uiAbsIndexInLCU, eRefList );
+      m_pcEntropyCoderIf->codeMvdRemain( pcCU, uiPartIdxRT - uiAbsIndexInLCU, eRefList );
+    }
+    return;
+  }
+#endif
+
+  if ( pcCU->getInterDir( uiAbsPartIdx ) & ( 1 << eRefList ) )
+  {
+    m_pcEntropyCoderIf->codeMvdRemain( pcCU, uiAbsPartIdx, eRefList );
+  }
+  return;
+}
+#else
 Void TEncEntropy::encodeMvdPU( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList )
 {
   assert( pcCU->isInter( uiAbsPartIdx ) );
@@ -973,7 +1078,7 @@ Void TEncEntropy::encodeMvdPU( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList e
   }
   return;
 }
-
+#endif
 Void TEncEntropy::encodeMVPIdxPU( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList )
 {
   if ( (pcCU->getInterDir( uiAbsPartIdx ) & ( 1 << eRefList )) )

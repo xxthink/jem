@@ -85,7 +85,11 @@
 #endif
 
 #if VCEG_AZ07_IMV
+#if  MULTI_PEL_MVD
+#define NUM_IMV_FLAG_CTX              4       ///< number of context models for iMV flag
+#else
 #define NUM_IMV_FLAG_CTX              3       ///< number of context models for iMV flag
+#endif
 #endif
 #if VCEG_AZ07_FRUC_MERGE
 #define NUM_FRUCMGRMODE_CTX           3
@@ -110,7 +114,11 @@
 
 #define NUM_CHROMA_PRED_CTX           2       ///< number of context models for intra prediction (chroma)
 #define NUM_INTER_DIR_CTX             5       ///< number of context models for inter prediction direction
+#if MVD_BINARIZATION_CTX 
+#define NUM_MV_RES_CTX                6       ///< number of context models for motion vector difference
+#else
 #define NUM_MV_RES_CTX                2       ///< number of context models for motion vector difference
+#endif
 #define NUM_CHROMA_QP_ADJ_FLAG_CTX    1       ///< number of context models for chroma_qp_adjustment_flag
 #define NUM_CHROMA_QP_ADJ_IDC_CTX     1       ///< number of context models for chroma_qp_adjustment_idc
 
@@ -384,9 +392,15 @@ static const UChar
 static const UChar 
   INIT_IMV_FLAG[NUMBER_OF_SLICE_TYPES][NUM_IMV_FLAG_CTX] =
 {
+#if  MULTI_PEL_MVD
+  { 197,  185,  201, 185,}, 
+  { 197,  185,  201, 185,}, 
+  { CNU,  CNU,  CNU, 185,}, 
+#else
   { 197,  185,  201, }, 
   { 197,  185,  201, }, 
   { CNU,  CNU,  CNU, }, 
+#endif
 };
 #endif
 
@@ -475,9 +489,15 @@ INIT_INTER_DIR[NUMBER_OF_SLICE_TYPES][NUM_INTER_DIR_CTX] =
 static const UChar
 INIT_MVD[NUMBER_OF_SLICE_TYPES][NUM_MV_RES_CTX] =
 {
+#if MVD_BINARIZATION_CTX 
+  { 169,  198, 198, 198, CNU, CNU},
+  { 140,  198, 198, 198, CNU, CNU},
+  { CNU,  CNU, CNU, CNU, CNU, CNU},
+#else
   { 169,  198, },
   { 140,  198, },
   { CNU,  CNU, },
+#endif
 };
 
 static const UChar

@@ -47,6 +47,14 @@
 //! \ingroup TLibCommon
 //! \{
 
+
+#define MVD_BINARIZATION_CTX               1   
+
+#define MULTI_PEL_MVD                      1
+#if MULTI_PEL_MVD                  
+#define MVD_PEL_NUM                        4
+#endif
+
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////

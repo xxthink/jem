@@ -291,6 +291,12 @@ UInt TComRdCost::xGetExpGolombNumberOfBits( Int iVal
   if( iMvFlag )
   {
     iVal >>= 2;
+#if MULTI_PEL_MVD
+    if (iMvFlag == 2)
+    {
+      iVal /= MVD_PEL_NUM;
+    }
+#endif
   }
 #endif
 

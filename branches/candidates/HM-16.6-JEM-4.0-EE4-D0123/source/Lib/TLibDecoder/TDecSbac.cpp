@@ -414,6 +414,35 @@ Void TDecSbac::xReadEpExGolomb( UInt& ruiSymbol, UInt uiCount )
   ruiSymbol = uiSymbol;
 }
 
+
+#if MVD_BINARIZATION_CTX
+#if RExt__DECODER_DEBUG_BIT_STATISTICS
+Void TDecSbac::xReadEpExGolombMvd( UInt& ruiSymbol, UInt uiCount, ContextModel* pcSCModel  , const class TComCodingStatisticsClassType &whichStat )
+#else
+Void TDecSbac::xReadEpExGolombMvd( UInt& ruiSymbol, UInt uiCount, ContextModel* pcSCModel )
+#endif
+{
+  UInt uiSymbol = 0;
+  UInt uiBit = 1;
+
+  while( uiBit )
+  {
+    m_pcTDecBinIf->decodeBin( uiBit, *pcSCModel RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(whichStat) );
+    uiSymbol += uiBit << uiCount++;
+  }
+
+  if ( --uiCount )
+  {
+    UInt bins;
+    m_pcTDecBinIf->decodeBinsEP( bins, uiCount RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(whichStat) );
+    uiSymbol += bins;
+  }
+
+  ruiSymbol = uiSymbol;
+}
+#endif
+
+
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
 Void TDecSbac::xReadUnarySymbol( UInt& ruiSymbol, ContextModel* pcSCModel, Int iOffset, const class TComCodingStatisticsClassType &whichStat )
 #else
@@ -641,7 +670,14 @@ Void TDecSbac::parseiMVFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 
   if( uiSymbol )
   {
+#if  MULTI_PEL_MVD
+    m_pcTDecBinIf->decodeBin( uiSymbol, m_cCUiMVFlagSCModel.get( 0, 0, 3 ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__IMV_FLAG) );
+    uiSymbol ++;
+    pcCU->setiMVFlagSubParts( uiSymbol,        uiAbsPartIdx, uiDepth );
+#else
     pcCU->setiMVFlagSubParts( true,        uiAbsPartIdx, uiDepth );
+#endif
+
   }
 }
 #endif
@@ -1570,7 +1606,155 @@ Void TDecSbac::parseRefFrmIdx( TComDataCU* pcCU, Int& riRefFrmIdx, RefPicList eR
 
   return;
 }
+#if MVD_BINARIZATION_CTX
+Void TDecSbac::parseMvdGr0( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList )
+{
+  UInt uiHorAbs;
+  UInt uiVerAbs;
+  ContextModel *pCtx = m_cCUMvdSCModel.get( 0 );
 
+  if(pcCU->getSlice()->getMvdL1ZeroFlag() && eRefList == REF_PIC_LIST_1 && pcCU->getInterDir(uiAbsPartIdx)==3)
+  {
+    uiHorAbs=0;
+    uiVerAbs=0;
+  }
+  else
+  {
+    m_pcTDecBinIf->decodeBin( uiHorAbs, *pCtx RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD) );
+    m_pcTDecBinIf->decodeBin( uiVerAbs, *pCtx RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD) );
+  }
+  TComMv cMv(uiHorAbs, uiVerAbs );
+#if JVET_C0024_QTBT
+  pcCU->getCUMvField( eRefList )->setAllMvd( cMv, SIZE_2Nx2N, uiAbsPartIdx, uiDepth, uiPartIdx );
+#else
+  pcCU->getCUMvField( eRefList )->setAllMvd( cMv, pcCU->getPartitionSize( uiAbsPartIdx ), uiAbsPartIdx, uiDepth, uiPartIdx );
+#endif
+  return;
+}
+Void TDecSbac::parseMvdRemain( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList )
+{
+  UInt uiSymbol;
+  UInt uiHorAbs;
+  UInt uiVerAbs;
+  UInt uiHorSign = 0;
+  UInt uiVerSign = 0;
+  ContextModel *pCtx = m_cCUMvdSCModel.get( 0 );
+
+  if(pcCU->getSlice()->getMvdL1ZeroFlag() && eRefList == REF_PIC_LIST_1 && pcCU->getInterDir(uiAbsPartIdx)==3)
+  {
+    uiHorAbs=0;
+    uiVerAbs=0;
+  }
+  else
+  {
+    uiHorAbs =pcCU->getCUMvField( eRefList )->getMvd( uiAbsPartIdx).getHor();
+    uiVerAbs =pcCU->getCUMvField( eRefList )->getMvd( uiAbsPartIdx).getVer();
+
+    const Bool bHorAbsGr0 = uiHorAbs != 0;
+    const Bool bVerAbsGr0 = uiVerAbs != 0;
+
+#if MVD_BINARIZATION_CTX
+    pCtx+= (pcCU->getiMVFlag(uiAbsPartIdx))?2:1;
+
+    if( bHorAbsGr0 )
+    {
+      m_pcTDecBinIf->decodeBin( uiSymbol, *pCtx RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD) );
+      uiHorAbs += uiSymbol;
+    }
+
+    if( bVerAbsGr0 )
+    {
+      m_pcTDecBinIf->decodeBin( uiSymbol, *pCtx RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD) );
+      uiVerAbs += uiSymbol;
+    }
+
+    UInt uiEGParam = 2;
+    if (pcCU->getiMVFlag(uiAbsPartIdx))
+    {
+      uiEGParam=1;
+    }
+    else if (abs( pcCU->getSlice()->getPOC() - pcCU->getSlice()->getRefPOC(eRefList, pcCU->getCUMvField(eRefList)->getRefIdx(uiAbsPartIdx) ))  ==1 )
+    {
+      uiEGParam=1;
+    }
+
+    pCtx = m_cCUMvdSCModel.get(0) + 3+ uiEGParam;
+
+    if( bHorAbsGr0 )
+    {
+      if( 2 == uiHorAbs )
+      {
+        xReadEpExGolombMvd( uiSymbol, uiEGParam, pCtx RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD_EP) );
+        uiHorAbs += uiSymbol;
+      }
+
+      m_pcTDecBinIf->decodeBinEP( uiHorSign RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD_EP) );
+    }
+
+    if( bVerAbsGr0 )
+    {
+      if( 2 == uiVerAbs )
+      {
+        xReadEpExGolombMvd( uiSymbol, uiEGParam, pCtx RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD_EP) );
+        uiVerAbs += uiSymbol;
+      }
+
+      m_pcTDecBinIf->decodeBinEP( uiVerSign RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD_EP) );
+    }
+#else
+    pCtx++;
+    if( bHorAbsGr0 )
+    {
+      m_pcTDecBinIf->decodeBin( uiSymbol, *pCtx RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD) );
+      uiHorAbs += uiSymbol;
+    }
+
+    if( bVerAbsGr0 )
+    {
+      m_pcTDecBinIf->decodeBin( uiSymbol, *pCtx RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD) );
+      uiVerAbs += uiSymbol;
+    }
+
+    if( bHorAbsGr0 )
+    {
+      if( 2 == uiHorAbs )
+      {
+        xReadEpExGolomb( uiSymbol, 1 RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD_EP) );
+        uiHorAbs += uiSymbol;
+      }
+
+      m_pcTDecBinIf->decodeBinEP( uiHorSign RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD_EP) );
+    }
+
+    if( bVerAbsGr0 )
+    {
+      if( 2 == uiVerAbs )
+      {
+        xReadEpExGolomb( uiSymbol, 1 RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD_EP) );
+        uiVerAbs += uiSymbol;
+      }
+
+      m_pcTDecBinIf->decodeBinEP( uiVerSign RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD_EP) );
+    }
+#endif
+  }
+
+
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+  TComMv cMv( uiHorSign ? -Int( uiHorAbs ): uiHorAbs, uiVerSign ? -Int( uiVerAbs ) : uiVerAbs );
+  cMv <<= VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE;
+#else
+  const TComMv cMv( uiHorSign ? -Int( uiHorAbs ): uiHorAbs, uiVerSign ? -Int( uiVerAbs ) : uiVerAbs );
+#endif
+
+#if JVET_C0024_QTBT
+  pcCU->getCUMvField( eRefList )->setAllMvd( cMv, SIZE_2Nx2N, uiAbsPartIdx, uiDepth, uiPartIdx );
+#else
+  pcCU->getCUMvField( eRefList )->setAllMvd( cMv, pcCU->getPartitionSize( uiAbsPartIdx ), uiAbsPartIdx, uiDepth, uiPartIdx );
+#endif
+  return;
+}
+#else
 Void TDecSbac::parseMvd( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList )
 {
   UInt uiSymbol;
@@ -1643,6 +1827,7 @@ Void TDecSbac::parseMvd( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiPartIdx, UI
 #endif
   return;
 }
+#endif
 
 Void TDecSbac::parseCrossComponentPrediction( TComTU &rTu, ComponentID compID )
 {
@@ -3481,6 +3666,136 @@ Void TDecSbac::parseAffineFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDept
   pcCU->setAffineFlagSubParts( uiSymbol ? true : false, uiAbsPartIdx, uiPuIdx, uiDepth );
 }
 
+#if MVD_BINARIZATION_CTX
+Void  TDecSbac::parseAffineMvdGr0      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList )
+{
+  TComMv acMvd[3];
+
+  for ( Int i=0; i<2; i++ )
+  {
+    UInt uiHorAbs;
+    UInt uiVerAbs;
+    ContextModel *pCtx = m_cCUMvdSCModel.get( 0 );
+
+    if(pcCU->getSlice()->getMvdL1ZeroFlag() && eRefList == REF_PIC_LIST_1 && pcCU->getInterDir(uiAbsPartIdx)==3)
+    {
+      uiHorAbs=0;
+      uiVerAbs=0;
+    }
+    else
+    {
+      m_pcTDecBinIf->decodeBin( uiHorAbs, *pCtx  RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD) );
+      m_pcTDecBinIf->decodeBin( uiVerAbs, *pCtx  RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD) );
+    }
+
+    TComMv cMv(uiHorAbs, uiVerAbs );
+    acMvd[i] = cMv;
+  }
+
+  pcCU->setAllAffineMvd( uiAbsPartIdx, uiPartIdx, acMvd, eRefList, uiDepth );
+  return;
+}
+
+Void  TDecSbac::parseAffineMvdRemain      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList )
+{
+  TComMv acMvd[3];
+
+  
+    Int iWidth  = pcCU->getWidth(uiAbsPartIdx);
+    Int iPartW = iWidth/pcCU->getPic()->getMinCUWidth();
+
+    // Get partIdx of four corner
+    UInt uiPartIdxLT = uiAbsPartIdx + pcCU->getZorderIdxInCtu();
+    UInt uiPartIdxRT = g_auiRasterToZscan[ g_auiZscanToRaster[uiPartIdxLT] + iPartW - 1 ];
+    // Set other position
+    // Set LT, RT, LB and RB
+    acMvd[0] = pcCU->getCUMvField(eRefList)->getMvd( uiPartIdxLT - pcCU->getZorderIdxInCtu() );
+    acMvd[1] = pcCU->getCUMvField(eRefList)->getMvd( uiPartIdxRT - pcCU->getZorderIdxInCtu() );
+  
+  for ( Int i=0; i<2; i++ )
+  {
+    UInt uiSymbol;
+    UInt uiHorAbs;
+    UInt uiVerAbs;
+    UInt uiHorSign = 0;
+    UInt uiVerSign = 0;
+    ContextModel *pCtx = m_cCUMvdSCModel.get( 0 );
+
+    if(pcCU->getSlice()->getMvdL1ZeroFlag() && eRefList == REF_PIC_LIST_1 && pcCU->getInterDir(uiAbsPartIdx)==3)
+    {
+      uiHorAbs=0;
+      uiVerAbs=0;
+    }
+    else
+    {
+      uiHorAbs = acMvd[i].getHor();
+      uiVerAbs = acMvd[i].getVer();
+      const Bool bHorAbsGr0 = uiHorAbs != 0;
+      const Bool bVerAbsGr0 = uiVerAbs != 0;
+
+      pCtx++;
+
+      if( bHorAbsGr0 )
+      {
+        m_pcTDecBinIf->decodeBin( uiSymbol, *pCtx RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD) );
+        uiHorAbs += uiSymbol;
+      }
+
+      if( bVerAbsGr0 )
+      {
+        m_pcTDecBinIf->decodeBin( uiSymbol, *pCtx RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD) );
+        uiVerAbs += uiSymbol;
+      }
+
+      UInt uiEGParam = 2;
+      if (pcCU->getiMVFlag(uiAbsPartIdx))
+      {
+        uiEGParam=1;
+      }
+      else if (abs( pcCU->getSlice()->getPOC() - pcCU->getSlice()->getRefPOC(eRefList, pcCU->getCUMvField(eRefList)->getRefIdx(uiAbsPartIdx) ))  ==1 )
+      {
+        uiEGParam=1;
+      }
+
+      pCtx = m_cCUMvdSCModel.get(0) + 3+ uiEGParam;
+
+      if( bHorAbsGr0 )
+      {
+        if( 2 == uiHorAbs )
+        {
+          xReadEpExGolombMvd( uiSymbol, uiEGParam, pCtx RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD_EP) );
+          uiHorAbs += uiSymbol;
+        }
+
+        m_pcTDecBinIf->decodeBinEP( uiHorSign RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD_EP) );
+      }
+
+      if( bVerAbsGr0 )
+      {
+        if( 2 == uiVerAbs )
+        {
+          xReadEpExGolombMvd( uiSymbol, uiEGParam, pCtx RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD_EP) );
+          uiVerAbs += uiSymbol;
+        }
+
+        m_pcTDecBinIf->decodeBinEP( uiVerSign RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD_EP) );
+      }
+    }
+
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+    TComMv cMv( uiHorSign ? -Int( uiHorAbs ): uiHorAbs, uiVerSign ? -Int( uiVerAbs ) : uiVerAbs );
+    cMv <<= VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE;
+#else
+    const TComMv cMv( uiHorSign ? -Int( uiHorAbs ): uiHorAbs, uiVerSign ? -Int( uiVerAbs ) : uiVerAbs );
+#endif
+    acMvd[i] = cMv;
+  }
+
+  pcCU->setAllAffineMvd( uiAbsPartIdx, uiPartIdx, acMvd, eRefList, uiDepth );
+  return;
+}
+
+#else
 Void TDecSbac::parseAffineMvd( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList )
 {
   TComMv acMvd[3];
@@ -3555,6 +3870,7 @@ Void TDecSbac::parseAffineMvd( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiPartI
   pcCU->setAllAffineMvd( uiAbsPartIdx, uiPartIdx, acMvd, eRefList, uiDepth );
   return;
 }
+#endif
 #endif
 
 //! \}
