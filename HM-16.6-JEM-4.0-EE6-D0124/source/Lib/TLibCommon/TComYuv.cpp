@@ -489,6 +489,27 @@ UInt TComYuv::sadLuma( TComYuv* pcYuvSrc0 )
 }
 #endif
 
+#if SHARP_LUMA_RES_SCALING
+Int  TComYuv::getAvgPred(Pel* piPred, UInt uiWidth, UInt uiHeight, UInt uiStride) {
+    Int avgPred = 0;
+    for( UInt uiY = 0; uiY < uiHeight; uiY++ )
+    {
+        for( UInt uiX = 0; uiX < uiWidth; uiX++ )
+        {
+            avgPred += piPred[ uiX ];
+        }
+        piPred += uiStride;
+    }
+    avgPred  = avgPred/(uiWidth*uiHeight);
+    return avgPred;
+}
+Int  TComYuv::getAvgPred(TComYuv* pcYuvSrc, UInt uiTrUnitIdx, UInt uiWidth, UInt uiHeight) {
+    Pel* piPred = pcYuvSrc->getAddr( COMPONENT_Y, uiTrUnitIdx, uiWidth );
+    UInt  uiStride = pcYuvSrc->getStride(COMPONENT_Y);
+    Int avgPred = getAvgPred(piPred, uiWidth, uiHeight, uiStride);
+    return avgPred;
+}
+#endif
 
 Void TComYuv::addAvg( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const UInt iPartUnitIdx, const UInt uiWidth, const UInt uiHeight, const BitDepths &clipBitDepths 
 #if VCEG_AZ05_BIO                  

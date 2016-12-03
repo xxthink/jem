@@ -7282,6 +7282,92 @@ Void TComTrQuant::signBitHidingHDQ( TCoeff* pQCoef, TCoeff* pCoef, TCoeff* delta
   return;
 }
 
+#if SHARP_LUMA_RES_SCALING
+Int TComTrQuant::xConvertDCCoeffToDCVal(TComTU       &rTu, Int DCCoeff, Int uiWidth, const ComponentID compID)
+{
+#if SHARP_DSCALE_PRED_ONLY // not use DC in the scaling
+  return 0;        // do not actually use DC, so return 0.  
+#endif
+  Int DCVal;
+  const TComSPS *pSPS = rTu.getCU()->getSlice()->getSPS();
+  const Int channelBitDepth = pSPS->getBitDepth(toChannelType(compID));
+  const Int  maxLog2TrDynamicRange = pSPS->getMaxLog2TrDynamicRange(toChannelType(compID));
+  Int iTransformShift = getTransformShift(channelBitDepth, rTu.GetEquivalentLog2TrSize(compID), maxLog2TrDynamicRange);
+  if (pSPS->getSpsRangeExtension().getExtendedPrecisionProcessingFlag())
+  {
+    iTransformShift = std::max<Int>(0, iTransformShift);
+  }
+  if (iTransformShift > 0)
+    DCVal = (DCCoeff + (1<<(iTransformShift-1)) ) >> iTransformShift;
+  else
+    DCVal = DCCoeff << iTransformShift;
+  Int rounding = 1<<(g_aucConvertToBit[uiWidth]+1);
+  DCVal = (DCVal+rounding)>>(g_aucConvertToBit[uiWidth]+2);   // DCVal/uiWidth
+  return DCVal;
+}
+Int TComTrQuant::xResidualScale(       TComTU       &rTu,
+                                TCoeff      * pSrc,
+                                TCoeff      * pDes,
+                                Int         avgPred,
+                              const ComponentID   compID,
+                              Int dQP
+                          )
+{
+    const TComRectangle &rect = rTu.getRect(compID);
+    const UInt uiWidth        = rect.width;
+    const UInt uiHeight       = rect.height;
+    if (compID == COMPONENT_Y ) 
+    {
+      Int DCVal = xConvertDCCoeffToDCVal(rTu, pSrc[0], uiWidth, compID);
+      Int lutIndex = max(0, min(avgPred + DCVal, SHARP_QP_LUMA_LUT_MAXSIZE-1) );
+      dQP = g_lumaQPLUT[lutIndex];
+    }
+    Int real_res_scale = getLumaResScale(dQP);
+#if SHARP_DSCALE_PRED_ONLY 
+    Int startPos = 0;     // dQP is determined by pred only
+#else
+    Int startPos = (compID == COMPONENT_Y)? 1: 0;
+#endif
+    for( Int uiBlockPos = startPos; uiBlockPos < uiWidth*uiHeight; uiBlockPos++ )
+    {        
+      Int rnd = 1<<(SHARP_LUMA_RESCALE_PRECISION-1);
+      pDes[uiBlockPos] = (pSrc[uiBlockPos]* real_res_scale+rnd)>>SHARP_LUMA_RESCALE_PRECISION; // Jane to check Int
+    }
+    return dQP;
+}
+Int TComTrQuant::xResidualDeScale(       TComTU       &rTu,
+                                TCoeff      * pSrc,
+                                TCoeff      * pDes,
+                                Int         avgPred,
+                          const ComponentID   compID,
+                          const QpParam      &cQP, // not used
+                          Int dQP
+                          )
+{
+    const TComRectangle &rect = rTu.getRect(compID);
+    const UInt uiWidth        = rect.width;
+    const UInt uiHeight       = rect.height;  
+    int DCVal = 0;
+    if (compID == COMPONENT_Y ) 
+    {     
+        DCVal = xConvertDCCoeffToDCVal(rTu, pSrc[0], uiWidth, compID);
+        Int lutIndex = max(0, min(avgPred + DCVal, SHARP_QP_LUMA_LUT_MAXSIZE-1) );
+        dQP = g_lumaQPLUT[lutIndex];
+    }
+    Int real_res_scale = getLumaResScale(dQP);
+#if SHARP_DSCALE_PRED_ONLY
+    Int startPos = 0;
+#else
+    Int startPos = (compID == COMPONENT_Y)? 1: 0;
+#endif
+    for( Int uiBlockPos = startPos; uiBlockPos < uiWidth*uiHeight; uiBlockPos++ )
+    {
+        Int rnd = real_res_scale>>1;
+        pDes[uiBlockPos] = ((pSrc[uiBlockPos]<<SHARP_LUMA_RESCALE_PRECISION)+rnd) / real_res_scale;
+    }
+    return dQP;
+}
+#endif
 
 Void TComTrQuant::xQuant(       TComTU       &rTu,
                                 TCoeff      * pSrc,
@@ -8312,6 +8398,9 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
 #endif
                                       TCoeff        & uiAbsSum,
                                 const QpParam       & cQP 
+#if SHARP_LUMA_RES_SCALING
+                                 ,     Int          avgPred
+#endif
 #if VCEG_AZ08_KLT_COMMON
                                 , Bool useKLT
 #endif
@@ -8382,6 +8471,28 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
 #if DEBUG_TRANSFORM_AND_QUANTISE
       std::cout << g_debugCounter << ": " << uiWidth << "x" << uiHeight << " channel " << compID << " TU between transform and quantiser\n";
       printBlock(m_plTempCoeff, uiWidth, uiHeight, uiWidth);
+#endif
+#if SHARP_LUMA_RES_SCALING
+   if (pcCU->getSlice()->getPPS()->getUseDQP_ResScale() )
+   {
+      if ( ! pcCU->getTransformSkip(uiAbsPartIdx, compID)) // each comp may have differnt TransformSkip flag
+      {
+          Int dQP=0;
+          if ( compID == COMPONENT_Y) 
+          {
+              dQP = xResidualScale( rTu, m_plTempCoeff, m_plTempCoeff, avgPred, compID, 0);
+              pcCU->setInferDQPSubParts(dQP, uiAbsPartIdx, uiWidth, uiHeight) ; // this is not final one, may be modified by dQp from xResidualDeScale
+          }
+          else {
+              dQP = pcCU->getInferDQP(uiAbsPartIdx);              
+              xResidualScale( rTu, m_plTempCoeff, m_plTempCoeff, avgPred, compID, dQP);
+          }
+      }
+      else if (compID == COMPONENT_Y) {
+          Int dQP = g_lumaQPLUT[avgPred];
+          pcCU->setInferDQPSubParts(dQP, uiAbsPartIdx, uiWidth, uiHeight) ;
+      }
+   }
 #endif
 #if VCEG_AZ05_ROT_TR
 #if JVET_C0024_QTBT
@@ -8679,6 +8790,14 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
 #else
   pcCU->setCbfPartRange((((uiAbsSum > 0) ? 1 : 0) << uiOrgTrDepth), compID, uiAbsPartIdx, rTu.GetAbsPartIdxNumParts(compID));
 #endif
+#if SHARP_LUMA_RES_SCALING && !SHARP_DSCALE_PRED_ONLY  // enc cbp0 after xQuant, resume the dQP to use predOnly
+  Bool cbfIs0 = (uiAbsSum == 0);
+  if (pcCU->getSlice()->getPPS()->getUseDQP_ResScale() && compID == COMPONENT_Y && cbfIs0) 
+  {      
+      Int dQP = g_lumaQPLUT[avgPred];
+      pcCU->setInferDQPSubParts(dQP, uiAbsPartIdx, uiWidth, uiHeight) ;
+  }
+#endif
 }
 
 
@@ -8688,6 +8807,9 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
                                   const UInt           uiStride,
                                         TCoeff       * pcCoeff,
                                   const QpParam       &cQP
+#if SHARP_LUMA_RES_SCALING
+                                   ,     Int avgPred
+#endif
 #if VCEG_AZ08_KLT_COMMON
                                   , Bool useKLT
 #endif
@@ -9038,6 +9160,27 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
       }
     }
 #endif
+#if SHARP_LUMA_RES_SCALING
+    if (pcCU->getSlice()->getPPS()->getUseDQP_ResScale() ) {
+        if (!pcCU->getTransformSkip(uiAbsPartIdx, compID))
+        {
+            Int dQP = 0;
+            if (compID == COMPONENT_Y) // luma
+            {
+                dQP=xResidualDeScale( rTu, m_plTempCoeff, m_plTempCoeff, avgPred, compID, cQP, 0);
+                pcCU->setInferDQPSubParts(dQP, uiAbsPartIdx, uiWidth, uiHeight) ;              
+            }
+            else {
+                dQP = pcCU->getInferDQP(uiAbsPartIdx);               
+                xResidualDeScale( rTu, m_plTempCoeff, m_plTempCoeff, avgPred, compID, cQP, dQP);
+            }
+        }
+        else if (compID == COMPONENT_Y) {
+            Int dQP = g_lumaQPLUT[avgPred];
+            pcCU->setInferDQPSubParts(dQP, uiAbsPartIdx, uiWidth, uiHeight) ;
+      }
+    }
+#endif
 #if DEBUG_TRANSFORM_AND_QUANTISE
     std::cout << g_debugCounter << ": " << uiWidth << "x" << uiHeight << " channel " << compID << " TU between dequantiser and inverse-transform\n";
     printBlock(m_plTempCoeff, uiWidth, uiHeight, uiWidth);
@@ -9111,6 +9254,9 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
 Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,
                                         TComYuv *pResidual,
                                         TComTU &rTu
+#if SHARP_LUMA_RES_SCALING
+                                        , Int avgPred
+#endif
 #if VCEG_AZ08_INTER_KLT
                                         , TComYuv* pcPred
 #endif
@@ -9231,7 +9377,11 @@ Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,
                     }
                 }
             }
+#if !SHARP_LUMA_RES_SCALING
             invTransformNxN(rTu, compID, pResi, uiStride, pcCoeff, cQP, useKLT DEBUG_STRING_PASS_INTO(psDebug));
+#else
+            invTransformNxN(rTu, compID, pResi, uiStride, pcCoeff, cQP, avgPred, useKLT DEBUG_STRING_PASS_INTO(psDebug));
+#endif
             if (compID == COMPONENT_Y)
             {
 #if !JVET_D0033_ADAPTIVE_CLIPPING
@@ -9276,11 +9426,19 @@ Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,
         }
         else
         {
+#if !SHARP_LUMA_RES_SCALING
             invTransformNxN(rTu, compID, pResi, uiStride, pcCoeff, cQP, useKLT DEBUG_STRING_PASS_INTO(psDebug));
+#else
+            invTransformNxN(rTu, compID, pResi, uiStride, pcCoeff, cQP, avgPred, useKLT DEBUG_STRING_PASS_INTO(psDebug));
+#endif
         }
 #endif
 #else
+#if !SHARP_LUMA_RES_SCALING
       invTransformNxN( rTu, compID, pResi, uiStride, pcCoeff, cQP DEBUG_STRING_PASS_INTO(psDebug) );
+#else
+        invTransformNxN( rTu, compID, pResi, uiStride, pcCoeff, cQP, avgPred DEBUG_STRING_PASS_INTO(psDebug) );
+#endif
 #endif
 #if DEBUG_STRING
       if (psDebug != 0)
@@ -9833,7 +9991,7 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
 #endif
                                                             TCoeff       &uiAbsSum,
                                                       const ComponentID   compID,
-                                                      const QpParam      &cQP  
+                                                      const QpParam      &cQP0  
                                                     )
 {
   const TComRectangle  & rect             = rTu.getRect(compID);
@@ -9931,6 +10089,21 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
   memset( sigRateDelta, 0, sizeof(Int   ) *  uiMaxNumCoeff );
   memset( deltaU,       0, sizeof(TCoeff) *  uiMaxNumCoeff );
 
+  QpParam      cQP = cQP0 ;
+#if SHARP_LUMA_RES_SCALING
+  Int resScale = 0;
+  if (pcCU->getSlice()->getPPS()->getUseDQP_ResScale() ) 
+  {
+      Int dQP = pcCU->getInferDQP(uiAbsPartIdx);
+      resScale =  getLumaResScale(dQP);
+      Int qp0 = pcCU->getQP(0); // save CU qp
+      Int actualQP = pcCU->getQP(uiAbsPartIdx) - dQP;
+      pcCU->setQP(0, actualQP); 
+      QpParam cQP1(*pcCU, compID); // utilize pcCU structure to initialize cQP1
+      cQP = cQP1;
+      pcCU->setQP(0, qp0);  // resume CU qp
+  }
+#endif
   const Int iQBits = QUANT_SHIFT + cQP.per + iTransformShift;                   // Right shift of non-RDOQ quantizer;  level = (coeff*uiQ + offset)>>q_bits
 #if JVET_C0024_QTBT
   const Double *const pdErrScale = getErrScaleCoeff(scalingListType, (uiLog2BlockWidth-1), (uiLog2BlockHeight-1), cQP.rem);
@@ -10032,9 +10205,29 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
       const Double errorScale              = (enableScalingLists) ? pdErrScale[uiBlkPos] : defaultErrorScale;
 
 #if JVET_C0024_QTBT && !JVET_C0024_QTBT_FIX_QUANT_TICKET25
+#if !SHARP_LUMA_RES_SCALING
       const Int64  tmpLevel                = (Int64(abs(plSrcCoeff[ uiBlkPos ])) * quantisationCoefficient * iWHScale + iWHOffset)>>iWHShift;
 #else
+      Int64  tmpLevel                = (Int64(abs(plSrcCoeff[ uiBlkPos ])) * quantisationCoefficient * iWHScale + iWHOffset)>>iWHShift;
+      if (pcCU->getSlice()->getPPS()->getUseDQP_ResScale())
+      {
+          Int rnd = resScale>>1;
+          Int srcCoeffActual = ((plSrcCoeff[ uiBlkPos ]<<SHARP_LUMA_RESCALE_PRECISION)+rnd) / resScale;
+          tmpLevel = (Int64(abs(srcCoeffActual)) * quantisationCoefficient * iWHScale + iWHOffset)>>iWHShift;
+      }
+#endif
+#else
+#if !SHARP_LUMA_RES_SCALING
       const Int64  tmpLevel                = Int64(abs(plSrcCoeff[ uiBlkPos ])) * quantisationCoefficient;
+#else
+      Int64  tmpLevel = Int64(abs(plSrcCoeff[uiBlkPos])) * quantisationCoefficient;
+      if (pcCU->getSlice()->getPPS()->getUseDQP_ResScale())
+      {
+        Int rnd = resScale >> 1;
+        Int srcCoeffActual = ((plSrcCoeff[uiBlkPos] << SHARP_LUMA_RESCALE_PRECISION) + rnd) / resScale;
+        tmpLevel = Int64(abs(srcCoeffActual)) * quantisationCoefficient;
+      }
+#endif
 #endif
 
       const Intermediate_Int lLevelDouble  = (Intermediate_Int)min<Int64>(tmpLevel, std::numeric_limits<Intermediate_Int>::max() - (Intermediate_Int(1) << (iQBits - 1)));

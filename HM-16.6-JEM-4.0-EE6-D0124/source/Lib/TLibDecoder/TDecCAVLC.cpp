@@ -224,6 +224,19 @@ Void TDecCavlc::parsePPS(TComPPS* pcPPS)
   pcPPS->setUseTransformSkip ( uiCode ? true : false );
 
   READ_FLAG( uiCode, "cu_qp_delta_enabled_flag" );            pcPPS->setUseDQP( uiCode ? true : false );
+#if SHARP_LUMA_RES_SCALING // signalling
+  READ_FLAG( uiCode, "cu_dqp_resscale_enabled_flag" );        pcPPS->setUseDQP_ResScale( uiCode ? true : false );
+  if (pcPPS->getUseDQP_ResScale()) {
+      READ_UVLC( uiCode, "num_luma_dqp_change_points"); pcPPS->setNbrOfUsedDQPChangePoints(uiCode);         
+      READ_SVLC( iCode,  "delta_dqp_change_point");  pcPPS->setDQpChangePoint(0, iCode);
+      READ_SVLC( iCode, "delta_luma_dqp_change_point");  pcPPS->setLumaDQpChangePoint(0, iCode);
+      for (Int i=1; i < pcPPS->getNbrOfUsedDQPChangePoints(); i++)
+      {
+          READ_SVLC( iCode,  "delta_dqp_change_point"); pcPPS->setDQpChangePoint(i, iCode + pcPPS->getDQpChangePoint(i-1));
+          READ_SVLC( iCode, "delta_luma_dqp_change_point"); pcPPS->setLumaDQpChangePoint(i, iCode + pcPPS->getLumaDQpChangePoint(i-1));
+      }
+  }
+#endif
   if( pcPPS->getUseDQP() )
   {
     READ_UVLC( uiCode, "diff_cu_qp_delta_depth" );
