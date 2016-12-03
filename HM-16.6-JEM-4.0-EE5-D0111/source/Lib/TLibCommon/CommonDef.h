@@ -247,8 +247,17 @@ static const Int VER_IDX =                          (3*(NUM_DIR-1)+2); ///< inde
 static const Int HOR_IDX =                          (1*(NUM_DIR-1)+2); ///< index for intra HORIZONTAL mode
 static const Int DIA_IDX =                          (2*(NUM_DIR-1)+2); ///< index for intra Diagonal mode
 static const Int VDIA_IDX =                         (4*(NUM_DIR-1)+2); ///< index for intra DC mode
+#if SEP_TREE_CHROMA_IMPROVEMENTS
+static const Int NUM_RD_CHROMAMODE =                                6; ///< total number of RD checks for chroma modes
+#endif
 #if COM16_C806_LMCHROMA
+#if SEP_TREE_CHROMA_IMPROVEMENTS
+static const Int NUM_ADDITIONAL_DM_MODES  =                         8;
+static const Int NUM_DM_MODES             =   (NUM_ADDITIONAL_DM_MODES+1);
+static const Int NUM_CHROMA_MODE          =   NUM_DM_MODES + 1; ///< total number of chroma modes
+#else
 static const Int NUM_CHROMA_MODE =                                  6; ///< total number of chroma modes
+#endif
 static const Int LM_CHROMA_IDX =                 (NUM_INTRA_MODE - 1); ///< chroma mode index for derived from LM mode
 #else
 static const Int NUM_CHROMA_MODE =                                  5; ///< total number of chroma modes

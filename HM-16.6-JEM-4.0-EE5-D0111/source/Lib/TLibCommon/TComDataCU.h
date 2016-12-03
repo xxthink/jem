@@ -429,11 +429,19 @@ public:
   UChar*        getHeight             ()                        { return m_puhHeight[getTextType()];         }
   UShort        getHeight             ( UInt uiIdx )            { return (UShort)m_puhHeight[getTextType()][uiIdx] << MIN_CU_LOG2;  }
 #else
+#if SEP_TREE_CHROMA_IMPROVEMENTS
+  UChar*        getWidth              ()             const           { return m_puhWidth[getTextType()];          }
+  UChar         getWidth              ( UInt uiIdx ) const           { return m_puhWidth[getTextType()][uiIdx];   }
+
+  UChar*        getHeight             ()             const           { return m_puhHeight[getTextType()];         }
+  UChar         getHeight             ( UInt uiIdx ) const           { return m_puhHeight[getTextType()][uiIdx];  }
+#else
   UChar*        getWidth              ()                        { return m_puhWidth[getTextType()];          }
   UChar         getWidth              ( UInt uiIdx )            { return m_puhWidth[getTextType()][uiIdx];   }
 
   UChar*        getHeight             ()                        { return m_puhHeight[getTextType()];         }
   UChar         getHeight             ( UInt uiIdx )            { return m_puhHeight[getTextType()][uiIdx];  }
+#endif
 #endif
 #else
 #if COM16_C806_LARGE_CTU
@@ -800,13 +808,13 @@ public:
                                               UInt uiCurrPartUnitIdx,
                                               Bool bEnforceSliceRestriction=true,
                                               Bool bEnforceTileRestriction=true );
+
   TComDataCU*   getPUAbove                  ( UInt&  uiAPartUnitIdx,
                                               UInt uiCurrPartUnitIdx,
                                               Bool bEnforceSliceRestriction=true,
                                               Bool planarAtCTUBoundary = false,
                                               Bool bEnforceTileRestriction=true );
   TComDataCU*   getPUAboveLeft              ( UInt&  uiALPartUnitIdx, UInt uiCurrPartUnitIdx, Bool bEnforceSliceRestriction=true );
-
   TComDataCU*   getQpMinCuLeft              ( UInt&  uiLPartUnitIdx , UInt uiCurrAbsIdxInCtu );
   TComDataCU*   getQpMinCuAbove             ( UInt&  uiAPartUnitIdx , UInt uiCurrAbsIdxInCtu );
   Char          getRefQP                    ( UInt   uiCurrAbsIdxInCtu                       );
@@ -922,14 +930,25 @@ public:
   // -------------------------------------------------------------------------------------------------------------------
 
   UInt          getIntraSizeIdx                 ( UInt uiAbsPartIdx                                       );
+#if SEP_TREE_CHROMA_IMPROVEMENTS
+  Void          addDefaultChromaModes           ( Bool includedMode[NUM_INTRA_MODE],  Int uiIntraDirPred[NUM_DM_MODES > NUM_MOST_PROBABLE_MODES ? NUM_DM_MODES: NUM_MOST_PROBABLE_MODES]) const;
+  UInt          getDMMode                       ( UInt uiAbsPartIdx, UInt uiDMIdx, UInt uiChMode[NUM_DM_MODES] = NULL, UInt* iTotalCnt = NULL) ;
+#endif
 
   Void          getAllowedChromaDir             ( UInt uiAbsPartIdx, UInt* uiModeList );
+#if SEP_TREE_CHROMA_IMPROVEMENTS
+Void getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM_DM_MODES], const ComponentID compID
+#if VCEG_AZ07_INTRA_65ANG_MODES && !JVET_C0055_INTRA_MPM
+                                      , Int &iLeftAboveCase
+#endif
+                                      , Int* piMode = NULL );
+#else
   Void          getIntraDirPredictor            ( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM_MOST_PROBABLE_MODES], const ComponentID compID
 #if VCEG_AZ07_INTRA_65ANG_MODES && !JVET_C0055_INTRA_MPM
     , Int &iAboveLeftCase
 #endif
     , Int* piMode = NULL );
-
+#endif
   // -------------------------------------------------------------------------------------------------------------------
   // member functions for SBAC context
   // -------------------------------------------------------------------------------------------------------------------
@@ -972,7 +991,11 @@ public:
   UInt&         getTUSkipWidth(ComponentID compID, UInt uiAbsPartIdx)                { return m_puiSkipWidth[compID][uiAbsPartIdx];}
   UInt&         getTUSkipHeight(ComponentID compID, UInt uiAbsPartIdx)               { return m_puiSkipHeight[compID][uiAbsPartIdx];}
 #endif
+#if SEP_TREE_CHROMA_IMPROVEMENTS
+  UInt          getCoefScanIdx(const UInt uiAbsPartIdx, const UInt uiWidth, const UInt uiHeight, const ComponentID compID) ;
+#else
   UInt          getCoefScanIdx(const UInt uiAbsPartIdx, const UInt uiWidth, const UInt uiHeight, const ComponentID compID) const ;
+#endif
 
 #if VCEG_AZ08_INTER_KLT
   Void          interpolatePic                 ( TComPic* pcPic );

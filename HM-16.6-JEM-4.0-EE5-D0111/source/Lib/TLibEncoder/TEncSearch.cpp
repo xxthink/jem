@@ -1985,9 +1985,13 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
 
   const UInt           uiChPredMode     = pcCU->getIntraDir( chType, uiAbsPartIdx );
 #if JVET_C0024_QTBT
+#if SEP_TREE_CHROMA_IMPROVEMENTS
+  const UInt uiChCodedMode = (uiChPredMode >= DM_CHROMA_IDX && !bIsLuma) ? pcCU->getDMMode(uiAbsPartIdx, uiChPredMode - DM_CHROMA_IDX) : uiChPredMode;
+#else
   const UInt           uiChCodedMode    = (uiChPredMode==DM_CHROMA_IDX && !bIsLuma) 
     ? (pcCU->getSlice()->isIntra()? pcCU->getPic()->getCtu(pcCU->getCtuRsAddr())->getIntraDir(CHANNEL_TYPE_LUMA, pcCU->getZorderIdxInCtu()+uiAbsPartIdx)
     :pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx)) : uiChPredMode;
+#endif
 #else
   const UInt           partsPerMinCU    = 1<<(2*(sps.getMaxTotalCUDepth() - sps.getLog2DiffMaxMinCodingBlockSize()));
   const UInt           uiChCodedMode    = (uiChPredMode==DM_CHROMA_IDX && !bIsLuma) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, getChromasCorrespondingPULumaIdx(uiAbsPartIdx, chFmt, partsPerMinCU)) : uiChPredMode;
@@ -1999,7 +2003,11 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
   const Int            bufferOffset                         = blkX + (blkY * MAX_CU_SIZE);
         Pel  *const    encoderLumaResidual                  = resiLuma[RESIDUAL_ENCODER_SIDE ] + bufferOffset;
         Pel  *const    reconstructedLumaResidual            = resiLuma[RESIDUAL_RECONSTRUCTED] + bufferOffset;
+#if SEP_TREE_CHROMA_IMPROVEMENTS
+  const Bool           bUseCrossCPrediction                 = isChroma(compID) && (uiChPredMode >= DM_CHROMA_IDX) && checkCrossCPrediction;
+#else
   const Bool           bUseCrossCPrediction                 = isChroma(compID) && (uiChPredMode == DM_CHROMA_IDX) && checkCrossCPrediction;
+#endif
   const Bool           bUseReconstructedResidualForEstimate = m_pcEncCfg->getUseReconBasedCrossCPredictionEstimate();
         Pel *const     lumaResidualForEstimate              = bUseReconstructedResidualForEstimate ? reconstructedLumaResidual : encoderLumaResidual;
 
@@ -4675,11 +4683,15 @@ TEncSearch::xRecurIntraChromaCodingQT(TComYuv*    pcOrgYuv,
         UInt       singleCbfCTmp             = 0;
         Char       bestCrossCPredictionAlpha = 0;
         Int        bestTransformSkipMode     = 0;
-
+#if SEP_TREE_CHROMA_IMPROVEMENTS
+        const Bool checkCrossComponentPrediction =    (pcCU->getIntraDir(CHANNEL_TYPE_CHROMA, subTUAbsPartIdx) >= DM_CHROMA_IDX)
+                                                   &&  pcCU->getSlice()->getPPS()->getPpsRangeExtension().getCrossComponentPredictionEnabledFlag()
+                                                   && (pcCU->getCbf(subTUAbsPartIdx,  COMPONENT_Y, uiTrDepth) != 0);
+#else
         const Bool checkCrossComponentPrediction =    (pcCU->getIntraDir(CHANNEL_TYPE_CHROMA, subTUAbsPartIdx) == DM_CHROMA_IDX)
                                                    &&  pcCU->getSlice()->getPPS()->getPpsRangeExtension().getCrossComponentPredictionEnabledFlag()
                                                    && (pcCU->getCbf(subTUAbsPartIdx,  COMPONENT_Y, uiTrDepth) != 0);
-
+#endif
         const Int  crossCPredictionModesToTest = checkCrossComponentPrediction ? 2 : 1;
         const Int  transformSkipModesToTest    = checkTransformSkip            ? 2 : 1;
         const Int  totalModesToTest            = crossCPredictionModesToTest * transformSkipModesToTest;
@@ -6101,15 +6113,23 @@ TEncSearch::estIntraPredChromaQT(TComDataCU* pcCU,
     //----- init mode list -----
     if (tuRecurseWithPU.ProcessChannelSection(CHANNEL_TYPE_CHROMA))
     {
+#if SEP_TREE_CHROMA_IMPROVEMENTS
+      UInt uiModeList[NUM_CHROMA_MODE];
+#else
       UInt uiModeList[FAST_UDI_MAX_RDMODE_NUM];
+#endif
+
 #if !JVET_C0024_QTBT
       const UInt  uiQPartNum     = uiQNumParts;
 #endif
       const UInt  uiPartOffset   = tuRecurseWithPU.GetAbsPartIdxTU();
       {
         UInt  uiMinMode = 0;
+#if SEP_TREE_CHROMA_IMPROVEMENTS
+        UInt  uiMaxMode = 6;
+#else
         UInt  uiMaxMode = NUM_CHROMA_MODE;
-
+#endif
         //----- check chroma modes -----
         pcCU->getAllowedChromaDir( uiPartOffset, uiModeList );
 
@@ -6162,6 +6182,12 @@ TEncSearch::estIntraPredChromaQT(TComDataCU* pcCU,
           if( pcCU->getSlice()->isIntra() )
           {
             UInt uiIntraMode = uiModeList[uiMode];
+#if SEP_TREE_CHROMA_IMPROVEMENTS && COM16_C806_LMCHROMA            
+            if( uiIntraMode == LM_CHROMA_IDX )
+            {
+              uiIntraMode = PLANAR_IDX;
+            }
+#else
             if( uiIntraMode == DM_CHROMA_IDX )
             {
               uiIntraMode = pcCU->getPic()->getCtu(pcCU->getCtuRsAddr())->getIntraDir(CHANNEL_TYPE_LUMA, pcCU->getZorderIdxInCtu()+uiPartOffset);
@@ -6171,6 +6197,7 @@ TEncSearch::estIntraPredChromaQT(TComDataCU* pcCU,
             {
               uiIntraMode = PLANAR_IDX;
             }
+#endif
 #endif
             const Int iNumberOfPassesROT = ( uiIntraMode<=DC_IDX ) ? 3 : 4;
             if( iNumberOfPassesROT <= pcCU->getROTIdx(CHANNEL_TYPE_CHROMA, uiPartOffset) )
@@ -6189,6 +6216,9 @@ TEncSearch::estIntraPredChromaQT(TComDataCU* pcCU,
           DEBUG_STRING_NEW(sMode)
           //----- chroma coding -----
           Distortion uiDist = 0;
+#if SEP_TREE_CHROMA_IMPROVEMENTS
+          assert(uiModeList[uiMode]<=(LM_CHROMA_IDX+NUM_DM_MODES));
+#endif
           pcCU->setIntraDirSubParts  ( CHANNEL_TYPE_CHROMA, uiModeList[uiMode], uiPartOffset, uiDepthCU+uiInitTrDepth );
           xRecurIntraChromaCodingQT       ( pcOrgYuv, pcPredYuv, pcResiYuv, resiLuma, uiDist, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sMode) );
 
