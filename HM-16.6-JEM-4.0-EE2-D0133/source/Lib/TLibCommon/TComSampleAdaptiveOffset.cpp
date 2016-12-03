@@ -53,7 +53,285 @@ SAOOffset::~SAOOffset()
 {
 
 }
+#if SAO_PEAK
+Void TComSampleAdaptiveOffset::initMatrix_UInt(UInt ***m2D, Int d1, Int d2)
+{
+  Int i;
+  
+  if(!(*m2D = (UInt **) calloc(d1, sizeof(UInt *))))
+    FATAL_ERROR_0("initMatrix_double: memory allocation problem\n", -1);
+  if(!((*m2D)[0] = (UInt *) calloc(d1 * d2, sizeof(UInt))))
+    FATAL_ERROR_0("initMatrix_double: memory allocation problem\n", -1);
+  
+  for(i = 1; i < d1; i++)
+    (*m2D)[i] = (*m2D)[i-1] + d2;
+}
+Void TComSampleAdaptiveOffset::initMatrix_UChar(UChar ***m2D, Int d1, Int d2)
+{
+  Int i;
+  
+  if(!(*m2D = (UChar **) calloc(d1, sizeof(UChar *))))
+    FATAL_ERROR_0("initMatrix_double: memory allocation problem\n", -1);
+  if(!((*m2D)[0] = (UChar *) calloc(d1 * d2, sizeof(UChar))))
+    FATAL_ERROR_0("initMatrix_double: memory allocation problem\n", -1);
+  
+  for(i = 1; i < d1; i++)
+    (*m2D)[i] = (*m2D)[i-1] + d2;
+}
+Void TComSampleAdaptiveOffset::initMatrix_Double(Double ***m2D, Int d1, Int d2)
+{
+  Int i;
+  
+  if(!(*m2D = (Double **) calloc(d1, sizeof(Double *))))
+    FATAL_ERROR_0("initMatrix_double: memory allocation problem\n", -1);
+  if(!((*m2D)[0] = (Double *) calloc(d1 * d2, sizeof(Double))))
+    FATAL_ERROR_0("initMatrix_double: memory allocation problem\n", -1);
+  
+  for(i = 1; i < d1; i++)
+    (*m2D)[i] = (*m2D)[i-1] + d2;
+}
 
+Void TComSampleAdaptiveOffset::initMatrix3D_UInt(UInt ****m3D, Int d1, Int d2, Int d3)
+{
+  Int  i, j;
+  
+  (*m3D) = (UInt ***) malloc(d1*d2*d3*sizeof(UInt) + d1*d2*sizeof(UInt*) + d1*sizeof(UInt**));
+  for(i = 0; i < d1; i ++)
+  {
+    (*m3D)[i] = (UInt **)( (Char*) (*m3D) + d1*sizeof(UInt *) + i * d2*sizeof(UInt*) );
+    for(j = 0; j < d2; j++)
+    {
+      (*m3D)[i][j] = (UInt *) ((Char*)(*m3D)+ d1 *sizeof(UInt *) + d1*d2*sizeof(UInt*) + (i*d2*d3+ j*d3)*sizeof(UInt)); 
+    }
+  }
+}
+Void TComSampleAdaptiveOffset::initMatrix3DContiguous_UChar(UChar ****m3D, Int d1, Int d2, Int d3)
+{
+  Int  i, j;
+  
+  (*m3D) = (UChar ***) malloc(d1*d2*d3*sizeof(UChar) + d1*d2*sizeof(UChar*) + d1*sizeof(UChar**));
+  for(i = 0; i < d1; i ++)
+  {
+    (*m3D)[i] = (UChar **)( (Char*) (*m3D) + d1*sizeof(UChar *) + i * d2*sizeof(UChar*) );
+    for(j = 0; j < d2; j++)
+    {
+      (*m3D)[i][j] = (UChar *) ((Char*)(*m3D)+ d1 *sizeof(UChar *) + d1*d2*sizeof(UChar*) + (i*d2*d3+ j*d3)*sizeof(UChar)); 
+    }
+  }
+}
+Void TComSampleAdaptiveOffset::initMatrix3D_Double(Double ****m3D, Int d1, Int d2, Int d3)
+{
+  Int  j;
+  
+  if(!((*m3D) = (Double ***) calloc(d1, sizeof(Double **))))
+    FATAL_ERROR_0("initMatrix3D_double: memory allocation problem\n", -1);
+  
+  for(j = 0; j < d1; j++)
+    initMatrix_Double((*m3D) + j, d2, d3);
+}
+Void TComSampleAdaptiveOffset::initMatrix3D_UChar(UChar ****m3D, Int d1, Int d2, Int d3)
+{
+  Int  j;
+  
+  if(!((*m3D) = (UChar ***) calloc(d1, sizeof(UChar **))))
+    FATAL_ERROR_0("initMatrix4D_double: memory allocation problem\n", -1);
+  
+  for(j = 0; j < d1; j++)
+    initMatrix_UChar((*m3D) + j, d2, d3);
+}
+Void TComSampleAdaptiveOffset::initMatrix4D_UChar(UChar *****m4D, Int d1, Int d2, Int d3, Int d4)
+{
+  Int  j;
+  
+  if(!((*m4D) = (UChar ****) calloc(d1, sizeof(UChar ***))))
+    FATAL_ERROR_0("initMatrix4D_double: memory allocation problem\n", -1);
+  
+  for(j = 0; j < d1; j++)
+    initMatrix3D_UChar((*m4D) + j, d2, d3, d4);
+}
+
+Void TComSampleAdaptiveOffset::initMatrix4D_Double(Double *****m4D, Int d1, Int d2, Int d3, Int d4)
+{
+  Int  j;
+  
+  if(!((*m4D) = (Double ****) calloc(d1, sizeof(Double ***))))
+    FATAL_ERROR_0("initMatrix4D_double: memory allocation problem\n", -1);
+  
+  for(j = 0; j < d1; j++)
+    initMatrix3D_Double((*m4D) + j, d2, d3, d4);
+}
+
+Void TComSampleAdaptiveOffset::initMatrix5D_UChar(UChar ******m5D, Int d1, Int d2, Int d3, Int d4, Int d5)
+{
+  Int  j;
+  
+  if(!((*m5D) = (UChar *****) calloc(d1, sizeof(UChar ****))))
+    FATAL_ERROR_0("initMatrix4D_double: memory allocation problem\n", -1);
+  
+  for(j = 0; j < d1; j++)
+    initMatrix4D_UChar((*m5D) + j, d2, d3, d4, d5);
+}
+Void TComSampleAdaptiveOffset::initMatrix5D_Double(Double ******m5D, Int d1, Int d2, Int d3, Int d4, Int d5)
+{
+  Int  j;
+  
+  if(!((*m5D) = (Double *****) calloc(d1, sizeof(Double ****))))
+    FATAL_ERROR_0("initMatrix4D_double: memory allocation problem\n", -1);
+  
+  for(j = 0; j < d1; j++)
+    initMatrix4D_Double((*m5D) + j, d2, d3, d4, d5);
+}
+Void TComSampleAdaptiveOffset::destroyMatrix_UInt(UInt **m2D)
+{
+  if(m2D)
+  {
+    if(m2D[0])
+      free(m2D[0]);
+    else
+      FATAL_ERROR_0("destroyMatrix_double: memory free problem\n", -1);
+    free(m2D);
+  } 
+  else
+  {
+    FATAL_ERROR_0("destroyMatrix_double: memory free problem\n", -1);
+  }
+}
+Void TComSampleAdaptiveOffset::destroyMatrix_UChar(UChar **m2D)
+{
+  if(m2D)
+  {
+    if(m2D[0])
+      free(m2D[0]);
+    else
+      FATAL_ERROR_0("destroyMatrix_double: memory free problem\n", -1);
+    free(m2D);
+  } 
+  else
+  {
+    FATAL_ERROR_0("destroyMatrix_double: memory free problem\n", -1);
+  }
+}
+Void TComSampleAdaptiveOffset::destroyMatrix5D_UChar(UChar *****m3D, Int d1, Int d2, Int d3)
+{
+  Int i;
+  
+  if(m3D)
+  {
+    for(i = 0; i < d1; i++)
+      destroyMatrix4D_UChar(m3D[i], d2, d3);
+    free(m3D);
+  } 
+  else
+  {
+    FATAL_ERROR_0("destroyMatrix3D_double: memory free problem\n", -1);
+  }
+}
+Void TComSampleAdaptiveOffset::destroyMatrix4D_UChar(UChar ****m3D, Int d1, Int d2)
+{
+  Int i;
+  
+  if(m3D)
+  {
+    for(i = 0; i < d1; i++)
+      destroyMatrix3D_UChar(m3D[i], d2);
+    free(m3D);
+  } 
+  else
+  {
+    FATAL_ERROR_0("destroyMatrix3D_double: memory free problem\n", -1);
+  }
+}
+Void TComSampleAdaptiveOffset::destroyMatrix3D_UChar(UChar ***m3D, Int d1)
+{
+  Int i;
+  
+  if(m3D)
+  {
+    for(i = 0; i < d1; i++)
+      destroyMatrix_UChar(m3D[i]);
+    free(m3D);
+  } 
+  else
+  {
+    FATAL_ERROR_0("destroyMatrix3D_double: memory free problem\n", -1);
+  }
+}
+Void TComSampleAdaptiveOffset::destroyMatrix3D_UInt(UInt ***m3D, Int d1)
+{
+  if(m3D)
+  {
+    free(m3D);
+  } 
+}
+Void TComSampleAdaptiveOffset::destroyMatrix_Double(Double **m2D)
+{
+  if(m2D)
+  {
+    if(m2D[0])
+      free(m2D[0]);
+    else
+      FATAL_ERROR_0("destroyMatrix_double: memory free problem\n", -1);
+    free(m2D);
+  } 
+  else
+  {
+    FATAL_ERROR_0("destroyMatrix_double: memory free problem\n", -1);
+  }
+}
+
+Void TComSampleAdaptiveOffset::destroyMatrix3D_Double(Double ***m3D, Int d1)
+{
+  Int i;
+  
+  if(m3D)
+  {
+    for(i = 0; i < d1; i++)
+      destroyMatrix_Double(m3D[i]);
+    free(m3D);
+  } 
+  else
+  {
+    FATAL_ERROR_0("destroyMatrix3D_double: memory free problem\n", -1);
+  }
+}
+
+
+Void TComSampleAdaptiveOffset::destroyMatrix4D_Double(Double ****m4D, Int d1, Int d2)
+{
+  Int  j;
+  
+  if(m4D)
+  {
+    for(j = 0; j < d1; j++)
+    {
+      destroyMatrix3D_Double(m4D[j], d2);
+    }
+    free(m4D);
+  } 
+  else
+  {
+    FATAL_ERROR_0("destroyMatrix4D_double: memory free problem\n", -1);
+  }
+}
+
+Void TComSampleAdaptiveOffset::destroyMatrix5D_Double(Double *****m5D, Int d1, Int d2, Int d3)
+{
+  Int  j;
+  
+  if(m5D)
+  {
+    for(j = 0; j < d1; j++)
+    {
+      destroyMatrix4D_Double(m5D[j], d2, d3);
+    }
+    free(m5D);
+  } 
+  else
+  {
+    FATAL_ERROR_0("destroyMatrix4D_double: memory free problem\n", -1);
+  }
+}
+#endif
 Void SAOOffset::reset()
 {
   modeIdc = SAO_MODE_OFF;
@@ -107,6 +385,11 @@ TComSampleAdaptiveOffset::TComSampleAdaptiveOffset()
   m_lineBufWidth = 0;
   m_signLineBuf1 = NULL;
   m_signLineBuf2 = NULL;
+#if SAO_PEAK
+  saoStat = NULL;
+  offsetErr = NULL;
+  diffError = NULL;  
+#endif
 }
 
 
@@ -679,6 +962,321 @@ Void TComSampleAdaptiveOffset::offsetCTU(Int ctuRsAddr, TComPicYuv* srcYuv, TCom
 
 }
 
+#if SAO_PEAK  
+Void TComSampleAdaptiveOffset::getPeakIdxDec(Pel* src, Int srcStride, Int x, Int y, Int* idxArr, Int* iSign4, Int* iNeighSum4)
+{
+  Int k, diff;
+  //encoder only
+  //4x4 and 8x8
+  for (k=0; k<4; k++)
+  {
+    diff = src[idxArr[k]] - src[0];
+    if ( diff > 0 )
+    {
+      iSign4[0]++;
+      iNeighSum4[0] += diff;
+    }
+    else if ( diff < 0 )
+    {
+      iSign4[1]++;
+      iNeighSum4[1] -= diff;
+    }
+  }
+}
+
+Void TComSampleAdaptiveOffset::getPeakIdx(Pel* src, Int srcStride, Int x, Int y, Int* idxArr)
+{
+  Int k, diff;
+  for (k=0; k<4; k++)
+  {
+    diff = src[idxArr[k]] - src[0];
+    if ( diff > 0 )
+    {
+      sign4[0][y][x]++;
+      neighSum4[0][y][x] += diff;
+    }
+    else if ( diff < 0 )
+    {
+      sign4[1][y][x]++;
+      neighSum4[1][y][x] -= diff;
+    }
+  }
+}
+#endif
+
+#if SAO_PEAK
+Void TComSampleAdaptiveOffset::preAnalysisNeighInfo (Bool bEnc, TComPicYuv* imgRec, Int height, Int width, TComPicYuv* imgOrg, saoNeighStruct* pPeakSAO)
+{
+  Pel* imgY_rec = imgRec->getAddr(COMPONENT_Y);
+  Int  recStride = imgRec->getStride(COMPONENT_Y);
+  //for ( Int comp = COMPONENT_Y; comp < COMPONENT_Y + 1 /*MAX_NUM_COMPONENT*/; comp ++ )
+  {
+    Int idxArr[NEIGHBOUR_SAMPLE_NUM] = {recStride, -recStride, 1, -1};
+    Pel* imgY_org;
+    Int  orgStride = 0, mostFreqSign4, norm, offset, diff, class4;
+    Double normDouble;
+    Pel temp;
+    Int diff4[NORM_MAX];
+    imgY_org = imgOrg->getAddr(COMPONENT_Y);
+    orgStride  = imgOrg->getStride(COMPONENT_Y);
+
+    for (Int j = 0; j < height; j++)
+    {
+      for (Int i = 0; i < width; i++)
+      {
+        getPeakIdx(imgY_rec + i, recStride, i, j, idxArr);
+        mostFreqSign4 = sign4[0][j][i] > sign4[1][j][i] ? 0 : 1;
+        class4 = max(-1, sign4[mostFreqSign4][j][i] - 2);
+        if (class4 > 0)
+        {
+          for (norm=0; norm<NORM_MAX; norm++)
+          {
+            normDouble = (Double)(1<<norm);
+            diff = ROUND((Double)neighSum4[mostFreqSign4][j][i]/(sign4[mostFreqSign4][j][i]*normDouble));
+            diff4[norm]=min(MAX_DIFF_NEIGH, diff);
+          }
+
+          //3 or 4 neighs are lgr or smaller than current
+          for (offset=-OFFSET_MAX; offset<=OFFSET_MAX; offset++)
+          {
+            temp = imgY_org[i] - max(0, min ( imgY_rec[i] + offset, m_max_val));
+            offsetErr[offset + OFFSET_MAX]=temp*temp;
+          } //distortion for each offset value.
+
+          for (norm=0; norm<NORM_MAX; norm++)
+          {
+            diff=diff4[norm];
+            if (mostFreqSign4==0)
+            {
+              for (offset=0; offset<=OFFSET_MAX; offset++)
+              {
+                saoStat[0][0][norm][diff][offset]+=offsetErr[OFFSET_MAX+offset];
+                saoStat[1][class4-1][norm][diff][offset]+=offsetErr[OFFSET_MAX+offset];
+              }
+            }
+            else 
+            {
+              for (offset=-OFFSET_MAX; offset<=0; offset++)
+              {
+                saoStat[0][0][norm][diff][-offset]+=offsetErr[OFFSET_MAX+offset];
+                saoStat[1][class4-1][norm][diff][-offset]+=offsetErr[OFFSET_MAX+offset];
+              }
+            }
+          }
+        }
+      }
+      imgY_rec += recStride;
+      imgY_org += orgStride;
+    }
+  }//comp
+}
+Void TComSampleAdaptiveOffset::initPeakSAOVariable(Int imgHeight, Int imgWidth)
+{
+  initMatrix3D_UInt(&neighSum4, 2, imgHeight, imgWidth);
+  initMatrix3DContiguous_UChar(&sign4    , 2, imgHeight, imgWidth);
+
+  resetPeakSAOParam(&neighSum4, 2, imgHeight, imgWidth);
+  resetPeakSAOParam(&sign4    , 2, imgHeight, imgWidth);
+  initMatrix3D_UChar   (&OffsetBest, PEAKSAO_TYPE_NUM, PEAKSAO_MAX_GROUP_NUM, MAX_DIFF_NEIGH + 1);
+  initMatrix5D_UChar   (&OffsetTemp, PEAKSAO_TYPE_NUM, PEAKSAO_MAX_GROUP_NUM, NORM_MAX, MAX_DIFF_NEIGH + 1, MAX_DIFF_NEIGH + 1);
+  initMatrix5D_Double  (&saoStat, PEAKSAO_TYPE_NUM, PEAKSAO_MAX_GROUP_NUM, NORM_MAX, MAX_DIFF_NEIGH + 1, OFFSET_MAX + 1);
+  initMatrix_Double    (&diffError, MAX_DIFF_NEIGH + 1, OFFSET_MAX + 1);
+  offsetErr = (Double *) calloc((2*OFFSET_MAX + 1), sizeof(Double));
+}
+Void TComSampleAdaptiveOffset::freePeakSAOVariable(Int imgHeight, Int imgWidth)
+{
+  if(neighSum4) { free(neighSum4);  neighSum4 = NULL; }
+  if(sign4)     { free(sign4);      sign4     = NULL; }
+  if(offsetErr) { free(offsetErr);  offsetErr = NULL; }
+
+  destroyMatrix5D_Double (saoStat, PEAKSAO_TYPE_NUM, PEAKSAO_MAX_GROUP_NUM, NORM_MAX);
+  destroyMatrix_Double   (diffError);
+  destroyMatrix5D_UChar  (OffsetTemp, PEAKSAO_TYPE_NUM, PEAKSAO_MAX_GROUP_NUM, NORM_MAX );
+  destroyMatrix3D_UChar  (OffsetBest, PEAKSAO_TYPE_NUM );
+
+}
+Void TComSampleAdaptiveOffset::peakOffsetDec(TComPic* pPic, TComPicYuv* resYuv, TComPicYuv* scrYuv, Int height, Int width)
+{
+  UInt mostFreqSign4, offset = 0, norm, diff;
+  Double normDouble;
+  saoNeighStruct* saoInfo = pPic->getPicSym()->getPeakSAOParam();
+  UInt maxDiffBest = saoInfo[0].derivedMaxDiff;
+  UInt classBest = saoInfo[0].peakSAOType[1];
+  Int iSign4[2], iNeighSum4[2];
+  Int iSize = sizeof(Int) << 1;
+
+  Pel* src     = scrYuv->getAddr(COMPONENT_Y);
+  Int  srcStride  = scrYuv->getStride(COMPONENT_Y);
+  Pel* res     = resYuv->getAddr(COMPONENT_Y);
+  Int  resStride  = resYuv->getStride(COMPONENT_Y);
+  Int idxArr[NEIGHBOUR_SAMPLE_NUM] = {srcStride, -srcStride, 1, -1};
+
+  if(classBest == 1)
+  {
+    for (Int j = 0; j < height ; j++ )
+    {
+      for (Int i = 0; i < width ; i++ )
+      {
+        memset(iSign4, 0, iSize);
+        memset(iNeighSum4, 0, iSize);
+
+        getPeakIdxDec(res + i, resStride, i, j, idxArr, iSign4, iNeighSum4);
+        mostFreqSign4 = iSign4[0] > iSign4[1] ? 0 : 1;
+        Int class4 = iSign4[mostFreqSign4] - 2;
+        if (class4 > 0 )
+        {          
+          Int idx = class4 -1;
+          norm = saoInfo[idx].norm;
+          normDouble=(Double)(1<<norm);
+          diff=ROUND((Double)iNeighSum4[mostFreqSign4]/(iSign4[mostFreqSign4]*normDouble));
+          diff = min(maxDiffBest, diff);
+          offset = saoInfo[idx].offset[diff];
+          if (mostFreqSign4 == 0)
+          {
+            src[i] = (res[i] + offset);
+            if(src[i] > m_max_val)
+            {
+              src[i] = m_max_val;
+            }
+          }
+          else 
+          {
+            src[i] = (res[i] - offset);
+            if(src[i] < 0)
+            {
+              src[i] = 0;
+            }
+          }
+        }
+      }
+      src += srcStride;
+      res += resStride;
+    }
+  }
+  else
+  {
+    norm = saoInfo[0].norm;
+    normDouble=(Double)(1<<norm);
+    for (Int j = 0; j < height ; j++ )
+    {
+      for (Int i = 0; i < width ; i++ )
+      {
+        memset(iSign4, 0, iSize);
+        memset(iNeighSum4, 0, iSize);
+        getPeakIdxDec(res + i, resStride, i, j, idxArr, iSign4, iNeighSum4);
+        mostFreqSign4 = iSign4[0] > iSign4[1] ? 0 : 1;
+        Int class4 = iSign4[mostFreqSign4] - 2;
+
+        if (class4 > 0)
+        {
+          diff=ROUND((Double)iNeighSum4[mostFreqSign4]/(iSign4[mostFreqSign4]*normDouble));
+          diff = min(maxDiffBest, diff);
+          offset = saoInfo[0].offset[diff];
+          if (mostFreqSign4 == 0)
+          {              
+            src[i] = (res[i] + offset);
+            if(src[i] > m_max_val)
+            {
+              src[i] = m_max_val;
+            }
+          }
+          else
+          {
+            src[i] = (res[i] - offset);
+            if(src[i] < 0)
+            {
+              src[i] = 0;
+            }
+          }
+        }
+      }
+      src += srcStride;
+      res += resStride;
+    }
+  }
+}
+Void TComSampleAdaptiveOffset::peakOffset(TComPic* pPic, TComPicYuv* resYuv, TComPicYuv* scrYuv, Int height, Int width)
+{
+  UInt mostFreqSign4, offset = 0, norm, diff;
+  Double normDouble;
+  saoNeighStruct* saoInfo = pPic->getPicSym()->getPeakSAOParam();
+  UInt maxDiffBest = saoInfo[0].derivedMaxDiff;
+  UInt classBest = saoInfo[0].peakSAOType[1];
+
+  Pel* src     = scrYuv->getAddr(COMPONENT_Y);
+  Int  srcStride  = scrYuv->getStride(COMPONENT_Y);
+  Pel* res     = resYuv->getAddr(COMPONENT_Y);
+  Int  resStride  = resYuv->getStride(COMPONENT_Y);
+
+  for (Int j = 0; j < height ; j++ )
+  {
+    for (Int i = 0; i < width ; i++ )
+    {
+      mostFreqSign4 = sign4[0][j][i] > sign4[1][j][i] ? 0 : 1;
+      Int class4 = sign4[mostFreqSign4][j][i] - 2;
+      if (class4 > 0 )
+      {
+        if (classBest == 0)
+        {
+          norm = saoInfo[0].norm;
+          normDouble=(Double)(1<<norm);
+          diff=ROUND((Double)neighSum4[mostFreqSign4][j][i]/(sign4[mostFreqSign4][j][i]*normDouble));
+          diff = min(maxDiffBest, diff);
+          offset = saoInfo[0].offset[diff];
+        }
+        else 
+        {
+          assert (classBest == 1);
+          Int idx = class4 -1;
+          norm = saoInfo[idx].norm;
+          normDouble=(Double)(1<<norm);
+          diff=ROUND((Double)neighSum4[mostFreqSign4][j][i]/(sign4[mostFreqSign4][j][i]*normDouble));
+          diff = min(maxDiffBest, diff);
+          offset = saoInfo[idx].offset[diff];
+        }
+        if (mostFreqSign4 == 0)
+        {
+          src[i] = (res[i] + offset);
+          if(src[i] > m_max_val)
+          {
+            src[i] = m_max_val;
+          }
+        }
+        else 
+        {
+          src[i] = (res[i] - offset);
+          if(src[i] < 0)
+          {
+            src[i] = 0;
+          }
+        }
+      }
+    }
+    src += srcStride;
+    res += resStride;
+  }
+}
+
+Void TComSampleAdaptiveOffset::PeakSAOProcess(TComPic* pDecPic)
+{
+  saoNeighStruct* pPeakSAO = pDecPic->getPicSym()->getPeakSAOParam();
+  if(pPeakSAO[0].bEnabled == false)
+  {
+    return;
+  }
+  TComPicYuv* resYuv = pDecPic->getPicYuvRec();
+  TComPicYuv* srcYuv = m_tempPicYuv;
+  resYuv->copyToPic(srcYuv);
+  srcYuv->setBorderExtension(false);
+  srcYuv->extendPicBorder(PeakSAO_PADDED_SAMPLES);
+
+  Int imgHeight = resYuv->getHeight(COMPONENT_Y);
+  Int imgWidht  = resYuv->getWidth(COMPONENT_Y);
+  m_max_val = (1 << pDecPic->getSlice(0)->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA)) - 1;
+  
+  peakOffsetDec(pDecPic, srcYuv, resYuv, imgHeight, imgWidht);  
+}
+#endif
 
 Void TComSampleAdaptiveOffset::SAOProcess(TComPic* pDecPic)
 {

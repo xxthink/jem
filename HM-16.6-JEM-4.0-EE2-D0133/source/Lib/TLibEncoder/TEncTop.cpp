@@ -894,6 +894,10 @@ Void TEncTop::xInitSPS()
 #if COM16_C983_RSAF
   m_cSPS.setUseRSAF( m_useRSAF );
 #endif
+#if SAO_PEAK
+  m_cSPS.setUsePeakSAO ( m_usePeakSAO );
+  m_cSPS.setUseCSAO    ( m_useCSAO );
+#endif
 }
 
 Void TEncTop::xInitHrdParameters()

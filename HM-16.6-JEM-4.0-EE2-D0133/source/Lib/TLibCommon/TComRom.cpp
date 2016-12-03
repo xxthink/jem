@@ -60,6 +60,9 @@ UInt g_uiPrevISlicePOC = 0;
 Bool g_bInitAMaxBT = false;
 #endif
 #endif
+#if SAO_PEAK
+UInt g_uiPeakSAONumClass[PEAKSAO_TYPE_NUM] = {1, 2};
+#endif
 
 #if VCEG_AZ08_KLT_COMMON
 short **g_ppsEigenVector[USE_MORE_BLOCKSIZE_DEPTH_MAX];

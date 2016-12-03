@@ -1158,6 +1158,10 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 #if ALF_HM3_REFACTOR
   ("ALF",                                             m_useALF, true, "Adaptive Loop Filter")
 #endif
+#if SAO_PEAK
+  ("PeakSAO",                                         m_usePeakSAO, true, "Peak SAO")
+  ("CSAO",                                            m_useCSAO, true, "conventional SAO")
+#endif
 #if COM16_C806_EMT
   ("EMT,-emt",                                        m_useEMT,       3,  "Enhanced Multiple Transform (EMT)\n"
                                                                            "\t0:  Disable EMT\n"

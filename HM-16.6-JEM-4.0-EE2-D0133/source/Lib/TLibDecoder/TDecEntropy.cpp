@@ -1867,5 +1867,15 @@ Void TDecEntropy::decodeAffineFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt ui
   m_pcEntropyDecoderIf->parseAffineFlag( pcCU, uiAbsPartIdx, uiDepth, uiPuIdx );
 }
 #endif
+#if SAO_PEAK 
+Void TDecEntropy::decodePeakSAOParam(saoNeighStruct* saoInfo, TComSlice* pcSlice)
+{
+  if ( !pcSlice->getSPS()->getUsePeakSAO() )
+  {
+    return;
+  }
+  m_pcEntropyDecoderIf->parsePeakSAOParam( saoInfo, pcSlice );
+}
+#endif
 
 //! \}

@@ -105,6 +105,7 @@ public:
                     , Bool aboveMergeAvail
                     , Bool onlyEstMergeInfo = false
                     );
+
 #if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
   Int  getCtxNumber()     { return m_numContextModels; }
   Void codeCtxUpdateInfo  ( TComSlice* pcSlice,  TComStats* apcStats );
@@ -278,6 +279,9 @@ public:
 
 #if COM16_C1016_AFFINE
   Void codeAffineFlag    ( TComDataCU* pcCU, UInt uiAbsPartIdx );
+#endif
+#if SAO_PEAK
+  Void codePeakSAOParam  ( TComSlice* pcSlice, saoNeighStruct* saoBlkParam);
 #endif
 
 private:

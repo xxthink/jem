@@ -4334,8 +4334,10 @@ Void TEncAdaptiveLoopFilter::xFilterTapDecision_qc(TComPicYuv* pcPicOrg, TComPic
   copyALFParam(m_pcTempAlfParam, m_pcBestAlfParam);
 }
 
-
+#if !SAO_PEAK
 #define ROUND(a)  (((a) < 0)? (int)((a) - 0.5) : (int)((a) + 0.5))
+#endif
+
 #define REG              0.0001
 #define REG_SQR          0.0000001
 

@@ -1202,7 +1202,13 @@ Void TEncSlice::encodeSlice   ( TComPic* pcPic, TComOutputBitstream* pcSubstream
       m_pcSbacCoder->loadContextsFromPrev( pcSlice->getStatsHandle(), pcSlice->getSliceType(), pcSlice->getCtxMapQPIdx(), true, pcSlice->getCtxMapQPIdxforStore(), (pcSlice->getPOC() > pcSlice->getStatsHandle()->m_uiLastIPOC) ); 
     }
 #endif
-
+#if SAO_PEAK 
+    if( pcSlice->getSPS()->getUsePeakSAO() && ctuRsAddr == 0 )
+    {
+      saoNeighStruct* saoInfo = pcPic->getPicSym()->getPeakSAOParam();
+      m_pcEntropyCoder->encodePeakSAOParam(saoInfo, pcSlice);
+    }
+#endif
 #if ALF_HM3_REFACTOR
     if( pcSlice->getSPS()->getUseALF() && ctuRsAddr == 0 )
     {
@@ -1228,7 +1234,11 @@ Void TEncSlice::encodeSlice   ( TComPic* pcPic, TComOutputBitstream* pcSubstream
     }
 #endif
 
+#if SAO_PEAK
+    if(pcSlice->getSPS()->getUseCSAO())
+#else
     if ( pcSlice->getSPS()->getUseSAO() )
+#endif
     {
       Bool bIsSAOSliceEnabled = false;
       Bool sliceEnabled[MAX_NUM_COMPONENT];

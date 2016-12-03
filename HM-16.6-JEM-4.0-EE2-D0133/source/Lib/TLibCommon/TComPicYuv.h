@@ -154,7 +154,7 @@ public:
 
   //  Extend function of picture buffer
   Void          extendPicBorder   (
-#if ALF_HM3_REFACTOR
+#if ALF_HM3_REFACTOR || SAO_PEAK
     Int nMargin = -1      // use default margin
 #endif
     );

@@ -187,6 +187,9 @@ public:
   virtual Void parseAffineFlag    ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPuIdx ) = 0;
   virtual Void parseAffineMvd     ( TComDataCU* pcCU, UInt uiAbsPartAddr, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList ) = 0;
 #endif
+#if SAO_PEAK
+  virtual Void parsePeakSAOParam  ( saoNeighStruct* saoInfo, TComSlice* pcSlice ) = 0;
+#endif
 };
 
 /// entropy decoder class
@@ -350,7 +353,9 @@ public:
 #if COM16_C1016_AFFINE
   Void decodeAffineFlag        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPuIdx );
 #endif
-
+#if SAO_PEAK 
+  Void decodePeakSAOParam(saoNeighStruct* saoInfo, TComSlice* pcSlice);    
+#endif
 
 };// END CLASS DEFINITION TDecEntropy
 

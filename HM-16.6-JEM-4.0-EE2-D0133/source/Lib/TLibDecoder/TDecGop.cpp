@@ -223,6 +223,12 @@ Void TDecGop::filterPicture(TComPic* pcPic)
 
   if( pcSlice->getSPS()->getUseSAO() )
   {
+#if SAO_PEAK
+    if(pcSlice->getSPS()->getUsePeakSAO())
+    {
+      m_pcSAO->PeakSAOProcess( pcPic );
+    }
+#endif
     m_pcSAO->reconstructBlkSAOParams(pcPic, pcPic->getPicSym()->getSAOBlkParam());
     m_pcSAO->SAOProcess(pcPic);
     m_pcSAO->PCMLFDisableProcess(pcPic);

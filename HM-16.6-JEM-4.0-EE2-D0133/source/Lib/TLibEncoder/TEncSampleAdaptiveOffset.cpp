@@ -242,8 +242,58 @@ Void TEncSampleAdaptiveOffset::initRDOCabacCoder(TEncSbac* pcRDGoOnSbacCoder, TC
   m_pcRDGoOnSbacCoder->store( m_pppcRDSbacCoder[SAO_CABACSTATE_PIC_INIT]);
 }
 
+#if SAO_PEAK 
+Void TEncSampleAdaptiveOffset::PeakSAOProcess(TComPic* pPic, const Double *lambdas )
+{
+  TComPicYuv* orgYuv= pPic->getPicYuvOrg();
+  TComPicYuv* resYuv= pPic->getPicYuvRec();
+  TComSlice*  pSlice = pPic->getSlice(0);
+  Int imgHeight = resYuv->getHeight(COMPONENT_Y);
+  Int imgWidht  = resYuv->getWidth(COMPONENT_Y);
 
+  memcpy(m_lambda, lambdas, sizeof(m_lambda));
+  m_max_val = (1 << pSlice->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA)) - 1;
+ 
+  TComPicYuv* srcYuv = m_tempPicYuv;
+  resYuv->copyToPic(srcYuv);
+  srcYuv->setBorderExtension(false);
+  srcYuv->extendPicBorder(PeakSAO_PADDED_SAMPLES);
+  
+  initPeakSAOVariable(imgHeight, imgWidht);
 
+  preAnalysisNeighInfo(true, srcYuv, imgHeight, imgWidht, orgYuv);
+  derivePeakOffset(pPic, orgYuv, srcYuv);
+
+  saoNeighStruct* saoInfo = pPic->getPicSym()->getPeakSAOParam();
+
+  if(saoInfo[0].bEnabled)
+  {
+    peakOffset(pPic, resYuv, srcYuv, imgHeight, imgWidht);
+    UInt64 uiMinRate = MAX_INT;
+    UInt64 uiMinDist = MAX_INT;
+    Double dMinCost  = MAX_DOUBLE;
+
+    UInt64  uiOrigRate;
+    UInt64  uiOrigDist;
+    Double  dOrigCost;
+    xCalcPeakSAORDCost( orgYuv, resYuv, NULL, uiOrigRate, uiOrigDist, dOrigCost, pSlice);
+    xCalcPeakSAORDCost( orgYuv, srcYuv, saoInfo, uiMinRate, uiMinDist, dMinCost, pSlice );
+
+    if(dMinCost < dOrigCost)
+    {
+      //copy from temp buffer to reconstruction buffer
+      srcYuv->copyToPic(resYuv);
+      saoInfo[0].bEnabled = true;
+    }
+    else
+    {
+      saoInfo[0].bEnabled = false;
+    }
+  }
+
+  freePeakSAOVariable(imgHeight, imgWidht);
+}
+#endif
 Void TEncSampleAdaptiveOffset::SAOProcess(TComPic* pPic, Bool* sliceEnabled, const Double *lambdas, const Bool bTestSAODisableAtPictureLevel, const Double saoEncodingRate, const Double saoEncodingRateChroma, Bool isPreDBFSamplesUsed )
 {
   TComPicYuv* orgYuv= pPic->getPicYuvOrg();
@@ -1331,6 +1381,338 @@ Void TEncSampleAdaptiveOffset::getBlkStats(const ComponentID compIdx, const Int 
     }
   }
 }
+
+
+#if SAO_PEAK
+Void TEncSampleAdaptiveOffset::derivePeakOffsetWOpredDiffeNorm(TComPic* pPic, TComPicYuv* resYuv, TComPicYuv* srcYuv, Int bitsOverNorm, Double lambda, Int maxDiff)
+{
+  //Int bSignaledBestTemp[PEAKSAO_TYPE_NUM][PEAKSAO_MAX_GROUP_NUM];
+  Double error=0, errorTemp=0, errorNorm, errorNormBest=0, errorClass[PEAKSAO_TYPE_NUM][PEAKSAO_MAX_GROUP_NUM];
+  Int offset, diff, i, j, norm;
+
+  for (i = 0; i < PEAKSAO_TYPE_NUM; i ++)
+  {
+    for (j = 0; j < g_uiPeakSAONumClass[i]; j ++)
+    {
+      // different norms within the class
+      for (norm = 0; norm < NORM_MAX; norm++)
+      {
+        errorNorm = bitsOverNorm*lambda;
+        for (offset = 0; offset <= OFFSET_MAX; offset++)
+        {
+          diffError[maxDiff][offset]=0;
+        }
+
+        for (diff = 0; diff <= MAX_DIFF_NEIGH; diff++)
+        {
+          if (diff < maxDiff)
+          {
+            for (offset = 0; offset <= OFFSET_MAX; offset++)
+            {
+              diffError[diff][offset] = saoStat[i][j][norm][diff][offset];
+            }
+          }
+          else
+          {
+            for (offset = 0; offset <= OFFSET_MAX; offset++)
+            {
+              diffError[maxDiff][offset] += saoStat[i][j][norm][diff][offset];
+            }
+          }
+        }
+        for (diff = 0; diff <= maxDiff; diff++)
+        {
+          error=lambda;
+          OffsetTemp[i][j][norm][maxDiff][diff] = 0;
+          for (offset = 1; offset <= OFFSET_MAX; offset++)
+          {
+            errorTemp = diffError[diff][offset]-diffError[diff][0]+(offset+1)*lambda;
+            if (errorTemp < error)
+            {
+              error=errorTemp;
+              OffsetTemp[i][j][norm][maxDiff][diff] = offset;
+            }
+          }
+          errorNorm += error;
+        }
+       // Int SignaledFalg = 1;
+        if (errorNorm > (maxDiff+1) * lambda) //fixed by Li
+        {
+          errorNorm = (maxDiff+1) * lambda;
+         // SignaledFalg = 0;
+        }
+
+        if (errorNorm < errorNormBest || norm == 0)
+        {
+          errorNormBest = errorNorm;
+          normBestTemp[0][i][j] = norm;
+         // bSignaledBestTemp[i][j] = SignaledFalg;
+        }
+      }
+      errorClass[i][j] = errorNormBest;
+      //printf("%2d %2d %2d\n", i, j, errorNormBest);
+    }
+  }
+
+  for (i=0; i<2; i++)
+  {
+    errorClassBest[0][i]=0;
+    for (j=0; j<g_uiPeakSAONumClass[i]; j++)
+    {
+      errorClassBest[0][i]+=errorClass[i][j];
+    }
+  }
+
+  //printf("%.2f %.2f %.2f %.2f\n", errorClassBest[0][0], errorClassBest[0][1], errorClassBest[0][2], errorClassBest[0][3]);
+}
+
+Double TEncSampleAdaptiveOffset::derivePeakOffsetWOpred(TComPic* pPic, TComPicYuv* resYuv, TComPicYuv* srcYuv, Int bitsOverNorm, Double lambda, Int* normSliceBest, Int* maxDiffSliceBest, Int* classSliceBest, Int* signalledSliceBest)
+{
+  Double error=0, errorTemp=0, errorNorm, errorNormBest=0;
+  Int maxDiffBest = MIN_DIFF, classBest[2] = {0, 0}, maxDiff, diff, j, norm;
+  UChar offset;
+  Double errorBestDiff = MAX_DOUBLE;
+
+  //different total number of classes within one group
+  for (maxDiff = MIN_DIFF; maxDiff <  MAX_DIFF_NEIGH + 1; maxDiff++) 
+  {
+    derivePeakOffsetWOpredDiffeNorm( pPic, resYuv, srcYuv, bitsOverNorm, lambda, maxDiff );
+    xCalcPeakNormCost(maxDiff, &maxDiffBest, classBest, &errorBestDiff);
+  }
+
+  //copy to global parameters
+  assert(classBest[0] == 0);
+  errorNormBest = classBest[0] == 0 ? 0: bitsOverNorm*lambda;
+  if (classBest[1] == 3)
+  {
+    errorNormBest+=4*lambda;
+  }
+
+  for (j=0; j<g_uiPeakSAONumClass[classBest[1]]; j++)
+  {
+    normSliceBest[j] = normBest[j];
+    norm = normBest[j];
+
+    errorNorm = classBest[0] == 0 ? bitsOverNorm*lambda : 0;
+    for (offset=0; offset<=OFFSET_MAX; offset++)
+    {
+      diffError[maxDiffBest][offset]=0;
+    }
+    for (diff=0; diff<=MAX_DIFF_NEIGH; diff++)
+    {
+      if (diff<maxDiffBest)
+      {
+        for (offset=0; offset<=OFFSET_MAX; offset++)
+        {
+          diffError[diff][offset]=saoStat[classBest[1]][j][norm][diff][offset];
+        }
+      }
+      else
+      {
+        for (offset=0; offset<=OFFSET_MAX; offset++)
+        {
+          diffError[maxDiffBest][offset]+=saoStat[classBest[1]][j][norm][diff][offset];
+        }
+      }
+    }
+
+    for (diff=0; diff<=maxDiffBest; diff++)
+    {
+      error=lambda;
+      OffsetBest[classBest[1]][j][diff] = 0;
+      for (offset=1; offset<=OFFSET_MAX; offset++)
+      {
+        errorTemp=diffError[diff][offset]-diffError[diff][0]+(offset+1)*lambda;
+        if (errorTemp<error)
+        {
+          error=errorTemp;
+          OffsetBest[classBest[1]][j][diff] = offset;
+        }
+      }
+      errorNorm+=error;
+    }
+
+    signalledSliceBest[j] = 1;
+    if (errorNorm>(maxDiff+1)*lambda && classBest[0]==0)
+    {
+      errorNorm = (maxDiff+1)*lambda;
+      signalledSliceBest[j] = 0;
+      for(diff=0; diff<=maxDiffBest; diff++)
+      {
+        OffsetBest[classBest[1]][j][diff] = 0;
+      }
+    }
+    errorNormBest+=errorNorm;
+  }
+
+  *maxDiffSliceBest = maxDiffBest;
+  classSliceBest[0] = classBest[0];
+  classSliceBest[1] = classBest[1];
+
+  //printf("%2d %2d %2d %2d %2d %2d", normBest[0], normBest[1],normBest[2], normBest[3], normBest[4], normBest[5]);
+  return errorNormBest;
+}
+Void TEncSampleAdaptiveOffset::xCalcPeakNormCost(Int maxDiff, Int *maxDiffBest, Int* classBest, Double* errorBestDiff)
+{
+  Int i, j, newBestError = 0;
+  for (i=0; i<1; i++)
+  {
+    for (j=0; j<PEAKSAO_TYPE_NUM; j++)
+    {
+      if (errorClassBest[i][j] < (*errorBestDiff))
+      {
+        (*errorBestDiff) = errorClassBest[i][j];
+        *maxDiffBest = maxDiff;
+        classBest[0]=i; 
+        classBest[1]=j;
+        newBestError=1;
+      }
+    }
+  }
+
+  if (newBestError)
+  {
+    i = classBest[1];
+    for (j = 0; j< g_uiPeakSAONumClass[i]; j++)
+    {
+      normBest[j] = normBestTemp[classBest[0]][i][j];
+    }
+  }
+}
+Void TEncSampleAdaptiveOffset::xStorePeakSAOParam (Int* classBest, Int maxDiffBest, Int* signalled, saoNeighStruct* saoInfo)
+{
+  Int i, j, diff;
+  // store best type, offset
+  for( i = 0; i < PEAKSAO_MAX_GROUP_NUM; i ++)
+  {
+    saoInfo[i].peakSAOType[1] = classBest[1];
+    saoInfo[i].peakSAOType[0] = classBest[0];
+    saoInfo[i].derivedMaxDiff = maxDiffBest;
+  }
+
+  for (j = 0; j < g_uiPeakSAONumClass[classBest[1]]; j ++)
+  {
+    for (diff = 0; diff <= maxDiffBest; diff++)
+    {
+      saoInfo[j].offset[diff] = OffsetBest[classBest[1]][j][diff];
+    }
+    saoInfo[j].signalled = signalled[j];
+    saoInfo[j].norm = normBest[j];
+  }
+}
+
+Void TEncSampleAdaptiveOffset::derivePeakOffset(TComPic* pPic, TComPicYuv* orgYuv, TComPicYuv* srcYuv)
+{
+  Int signalled[PEAKSAO_MAX_GROUP_NUM];
+
+  Double errorNorm, errorNormBest=MAX_DOUBLE;
+  Int maxDiffBest=2, classBest[2] = {0, 0},  i, j ;
+  Int bitsOverNorm = (Int)(log10((Double)NORM_MAX)/log10(2.0));
+
+
+  saoNeighStruct* saoInfo = pPic->getPicSym()->getPeakSAOParam();
+
+  for ( Int comp = COMPONENT_Y; comp < COMPONENT_Y + 1 /*MAX_NUM_COMPONENT*/; comp ++ )
+  {
+    ComponentID compID = ComponentID(comp);
+    Double lambda = m_lambda[compID] * ((pPic->getSlice(0)->getSPS()->getBitDepth(toChannelType(compID))-8)<<3);
+
+    errorNorm = derivePeakOffsetWOpred (pPic, orgYuv, srcYuv, bitsOverNorm, lambda, normBest, &maxDiffBest, classBest, signalled);
+ 
+    if(errorNorm < errorNormBest)
+    {
+      xStorePeakSAOParam(classBest, maxDiffBest, signalled, saoInfo);
+    }
+  }
+  //reset signalled
+  for (j=0; j< g_uiPeakSAONumClass[saoInfo[0].peakSAOType[1]]; j++)
+  {
+    Bool allZeroFlag = true;
+    if(saoInfo[j].signalled)
+    {
+      for( i=0; i<= saoInfo[j].derivedMaxDiff; i++)
+      {
+        if(saoInfo[j].offset[i])
+        {
+          allZeroFlag = false;
+          break;
+        }
+      }
+      if(allZeroFlag)
+      {
+        saoInfo[j].signalled = 0; //reset to 0 to avoid unnecessary signaling of offsets
+      }
+    }
+    else
+    {
+      for( i=0; i<= saoInfo[j].derivedMaxDiff; i++)
+      {
+        saoInfo[j].offset[i] = 0;
+      }
+    }
+  }
+ // saoInfo[0].bEnabled = true;
+  
+  Bool bPeakOffEnabled = false;
+  for (j=0; j< g_uiPeakSAONumClass[saoInfo[0].peakSAOType[1]]; j++)
+  {
+    if(saoInfo[j].signalled)
+    {
+      saoInfo[0].bEnabled = true;
+      bPeakOffEnabled = true;
+      break;
+    }
+  }
+  if(bPeakOffEnabled == false)
+  {
+    saoInfo[0].bEnabled = false;
+  }
+}
+UInt64 TEncSampleAdaptiveOffset::xCalcPeakSAOSSD(Pel* pOrg, Pel* pCmp, Int iWidth, Int iHeight, Int iOrgStride, Int iCmpStride, Int BitIncrement )
+{
+  UInt64 uiSSD = 0;
+  Int x, y;
+  
+  UInt uiShift = BitIncrement << 1;
+  Int iTemp;
+  
+  for( y = 0; y < iHeight; y++ )
+  {
+    for( x = 0; x < iWidth; x++ )
+    {
+      iTemp = pOrg[x] - pCmp[x]; uiSSD += ( iTemp * iTemp ) >> uiShift;
+    }
+    pOrg += iOrgStride;
+    pCmp += iCmpStride;
+  }
+  
+  return uiSSD;;
+}
+
+Void TEncSampleAdaptiveOffset::xCalcPeakSAORDCost(TComPicYuv* pcPicOrg, TComPicYuv* pcPicCmp, saoNeighStruct* saoInfo, UInt64& ruiRate, UInt64& ruiDist, Double& rdCost, TComSlice * pSlice)
+{
+  ruiDist = 0;
+  rdCost = 0;
+  if(saoInfo != NULL)
+  {
+    UInt uiCurrBits = m_pcRDGoOnSbacCoder->getBinIf()->getNumWrittenBits();
+    m_pcRDGoOnSbacCoder->codePeakSAOParam(pSlice, saoInfo);
+    ruiRate = m_pcRDGoOnSbacCoder->getBinIf()->getNumWrittenBits() - uiCurrBits;
+  }
+  else
+  {
+    ruiRate = 1;
+  }  
+  for ( Int comp = COMPONENT_Y; comp < COMPONENT_Y + 1 /*MAX_NUM_COMPONENT*/; comp ++ )
+  {
+    ComponentID compID = ComponentID(comp);
+    ruiDist     += xCalcPeakSAOSSD(pcPicOrg->getAddr(COMPONENT_Y), pcPicCmp->getAddr(compID), pcPicOrg->getWidth(compID), pcPicOrg->getHeight(compID), pcPicOrg->getStride(compID), pcPicCmp->getStride(compID), pSlice->getSPS()->getBitDepth(toChannelType(compID)) - 8);
+    rdCost      += (Double)(ruiRate) * m_lambda[compID] + (Double)(ruiDist);
+  }
+}
+
+#endif
+
 
 
 //! \}

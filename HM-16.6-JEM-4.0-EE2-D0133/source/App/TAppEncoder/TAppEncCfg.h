@@ -473,6 +473,11 @@ protected:
 #if JVET_D0033_ADAPTIVE_CLIPPING
   ClipParam m_ClipParam;
 #endif
+#if SAO_PEAK
+  Bool      m_usePeakSAO; 
+  Bool      m_useCSAO;
+#endif
+
   std::string m_summaryOutFilename;                           ///< filename to use for producing summary output file.
   std::string m_summaryPicFilenameBase;                       ///< Base filename to use for producing summary picture output files. The actual filenames used will have I.txt, P.txt and B.txt appended.
   UInt        m_summaryVerboseness;                           ///< Specifies the level of the verboseness of the text output.

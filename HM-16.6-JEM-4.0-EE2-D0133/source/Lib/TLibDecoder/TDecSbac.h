@@ -228,6 +228,10 @@ public:
   Void  parseAffineMvd        ( TComDataCU* pcCU, UInt uiAbsPartAddr, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList );
 #endif
 
+#if SAO_PEAK
+  Void parsePeakSAOParam  ( saoNeighStruct* saoInfo, TComSlice* pcSlice );
+#endif
+
   Void  parseExplicitRdpcmMode( TComTU &rTu, ComponentID compID );
 
 private:

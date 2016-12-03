@@ -553,7 +553,12 @@ Void TEncCavlc::codeSPS( const TComSPS* pcSPS )
     }
   }
   WRITE_FLAG( pcSPS->getUseAMP() ? 1 : 0,                                            "amp_enabled_flag" );
+#if SAO_PEAK
+  WRITE_FLAG( pcSPS->getUseCSAO() ? 1 : 0,                                           "HEVC_sample_adaptive_offset_enabled_flag");
+  WRITE_FLAG( pcSPS->getUsePeakSAO() ? 1 : 0,                                        "Peak_sample_adaptive_offset_enabled_flag");
+#else
   WRITE_FLAG( pcSPS->getUseSAO() ? 1 : 0,                                            "sample_adaptive_offset_enabled_flag");
+#endif
 
   WRITE_FLAG( pcSPS->getUsePCM() ? 1 : 0,                                            "pcm_enabled_flag");
   if( pcSPS->getUsePCM() )
@@ -981,7 +986,11 @@ Void TEncCavlc::codeSliceHeader         ( TComSlice* pcSlice )
         WRITE_FLAG( pcSlice->getEnableTMVPFlag() ? 1 : 0, "slice_temporal_mvp_enabled_flag" );
       }
     }
+#if SAO_PEAK 
+    if(pcSlice->getSPS()->getUseCSAO())
+#else
     if(pcSlice->getSPS()->getUseSAO())
+#endif
     {
        WRITE_FLAG( pcSlice->getSaoEnabledFlag(CHANNEL_TYPE_LUMA), "slice_sao_luma_flag" );
        if (chromaEnabled)
@@ -1162,8 +1171,11 @@ Void TEncCavlc::codeSliceHeader         ( TComSlice* pcSlice )
         }
       }
     }
-
+#if SAO_PEAK 
+    Bool isSAOEnabled = pcSlice->getSPS()->getUseCSAO() && (pcSlice->getSaoEnabledFlag(CHANNEL_TYPE_LUMA) || (chromaEnabled && pcSlice->getSaoEnabledFlag(CHANNEL_TYPE_CHROMA)));
+#else
     Bool isSAOEnabled = pcSlice->getSPS()->getUseSAO() && (pcSlice->getSaoEnabledFlag(CHANNEL_TYPE_LUMA) || (chromaEnabled && pcSlice->getSaoEnabledFlag(CHANNEL_TYPE_CHROMA)));
+#endif
     Bool isDBFEnabled = (!pcSlice->getDeblockingFilterDisable());
 
     if(pcSlice->getPPS()->getLoopFilterAcrossSlicesEnabledFlag() && ( isSAOEnabled || isDBFEnabled ))
@@ -1960,6 +1972,12 @@ Void TEncCavlc:: codeCtxUpdateInfo           (TComSlice* pcSlice,  TComStats* ap
 
 #if COM16_C1016_AFFINE
 Void TEncCavlc::codeAffineFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
+{
+  assert(0);
+}
+#endif
+#if SAO_PEAK
+Void TEncCavlc::codePeakSAOParam  ( TComSlice* pcSlice, saoNeighStruct* saoBlkParam)
 {
   assert(0);
 }

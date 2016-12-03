@@ -149,6 +149,26 @@ Void TDecSlice::decompressSlice(TComInputBitstream** ppcSubstreams, TComPic* pcP
       pcSbacDecoder->loadContextsFromPrev( pcSlice->getStatsHandle(), pcSlice->getSliceType(), pcSlice->getCtxMapQPIdx(), true, pcSlice->getCtxMapQPIdxforStore(), (pcSlice->getPOC() > pcSlice->getStatsHandle()->m_uiLastIPOC)  ); 
     }
 #endif
+#if SAO_PEAK 
+    if( pcSlice->getSPS()->getUsePeakSAO() && ctuRsAddr == 0 )
+    {
+      saoNeighStruct* saoInfo = pcPic->getPicSym()->getPeakSAOParam();
+      m_pcEntropyDecoder->decodePeakSAOParam(saoInfo, pcSlice);
+
+      //for debug
+      /*printf ("\n%d, %2d \n", saoInfo[0].peakSAOType, saoInfo[0].derivedMaxDiff);  
+      for (Int j=0; j< g_uiPeakSAONumClass[saoInfo[0].peakSAOType]; j++)
+      {
+        printf("offset ");
+        for(Int i=0; i<= saoInfo[j].derivedMaxDiff; i++)
+        {
+          printf("%2d ", saoInfo[j].offset[i]);
+        }
+        printf("Norm: %2d ", saoInfo[j].norm);
+        printf("\n");
+      }*/
+    }
+#endif
 
 #if ALF_HM3_REFACTOR
     if ( pcSlice->getSPS()->getUseALF() && ctuRsAddr == 0 )
@@ -194,7 +214,11 @@ Void TDecSlice::decompressSlice(TComInputBitstream** ppcSubstreams, TComPic* pcP
     g_bJustDoIt = g_bEncDecTraceEnable;
 #endif
 
+#if SAO_PEAK 
+    if ( pcSlice->getSPS()->getUseCSAO() )
+#else
     if ( pcSlice->getSPS()->getUseSAO() )
+#endif
     {
       SAOBlkParam& saoblkParam = (pcPic->getPicSym()->getSAOBlkParam())[ctuRsAddr];
       Bool bIsSAOSliceEnabled = false;

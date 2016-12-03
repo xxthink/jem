@@ -106,6 +106,10 @@ private:
   UInt*         m_ctuRsToTsAddrMap;    ///< for a given RS (Raster-Scan) address, returns the TS (Tile-Scan; coding order) address. cf CtbAddrRsToTs in specification.
 
   SAOBlkParam  *m_saoBlkParams;
+#if SAO_PEAK
+  saoNeighStruct* saoInfo;
+#endif
+
 #if ADAPTIVE_QP_SELECTION
   TCoeff*       m_pParentARLBuffer;
 #endif
@@ -156,6 +160,9 @@ public:
   UInt               getCtuRsToTsAddrMap( Int ctuRsAddr ) const            { return *(m_ctuRsToTsAddrMap + (ctuRsAddr>=m_numCtusInFrame ? m_numCtusInFrame : ctuRsAddr)); }
   SAOBlkParam*       getSAOBlkParam()                                      { return m_saoBlkParams;}
   const SAOBlkParam* getSAOBlkParam() const                                { return m_saoBlkParams;}
+#if SAO_PEAK
+  saoNeighStruct*    getPeakSAOParam()                                     { return saoInfo; }
+#endif
   Void               deriveLoopFilterBoundaryAvailibility(Int ctuRsAddr,
                                                           Bool& isLeftAvail, Bool& isRightAvail, Bool& isAboveAvail, Bool& isBelowAvail,
                                                           Bool& isAboveLeftAvail, Bool& isAboveRightAvail, Bool& isBelowLeftAvail, Bool& isBelowRightAvail);

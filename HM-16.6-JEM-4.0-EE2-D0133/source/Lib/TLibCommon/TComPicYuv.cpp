@@ -225,7 +225,7 @@ Void  TComPicYuv::copyToPic (TComPicYuv*  pcPicYuvDst
 
 
 Void TComPicYuv::extendPicBorder (
-#if ALF_HM3_REFACTOR
+#if ALF_HM3_REFACTOR || SAO_PEAK
   Int nMargin 
 #endif
   )
@@ -242,7 +242,7 @@ Void TComPicYuv::extendPicBorder (
     const Int iStride=getStride(ch);
     const Int iWidth=getWidth(ch);
     const Int iHeight=getHeight(ch);
-#if ALF_HM3_REFACTOR
+#if ALF_HM3_REFACTOR || SAO_PEAK 
     const Int iMarginX=nMargin>0?nMargin:getMarginX(ch);
     const Int iMarginY=nMargin>0?nMargin:getMarginY(ch);
 #else

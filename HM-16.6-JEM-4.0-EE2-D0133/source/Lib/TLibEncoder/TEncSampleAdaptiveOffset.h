@@ -99,6 +99,11 @@ public:
   virtual ~TEncSampleAdaptiveOffset();
 
   //interface
+#if SAO_PEAK
+  Void initPeakSAOEncData();
+  Void destroyPeakSAOEncData();
+  Void PeakSAOProcess(TComPic* pPic, const Double *lambdas );
+#endif
   Void createEncData(Bool isPreDBFSamplesUsed);
   Void destroyEncData();
   Void initRDOCabacCoder(TEncSbac* pcRDGoOnSbacCoder, TComSlice* pcSlice) ;
@@ -110,6 +115,16 @@ public:
 public: //methods
   Void getPreDBFStatistics(TComPic* pPic);
 private: //methods
+#if SAO_PEAK 
+  Void derivePeakOffset                (TComPic* pPic, TComPicYuv* resYuv, TComPicYuv* srcYuv);
+  Double derivePeakOffsetWOpred        (TComPic* pPic, TComPicYuv* resYuv, TComPicYuv* srcYuv, Int bitsOverNorm, Double lambda, Int* normSliceBest, Int* maxDiffSliceBest, Int* classSliceBest, Int* signalledSliceBest);
+  Void derivePeakOffsetWOpredDiffeNorm (TComPic* pPic, TComPicYuv* resYuv, TComPicYuv* srcYuv, Int bitsOverNorm, Double lambda, Int maxDiff);
+ 
+  Void xCalcPeakNormCost  (Int maxDiff, Int *maxDiffBest, Int* classBest, Double* errorBestDiff);
+  Void xStorePeakSAOParam (Int* classBest, Int maxDiffBest, Int* signalled, saoNeighStruct* saoInfom);
+  Void xCalcPeakSAORDCost (TComPicYuv* pcPicOrg, TComPicYuv* pcPicCmp, saoNeighStruct* saoInfo, UInt64& ruiRate, UInt64& ruiDist, Double& rdCost, TComSlice * pSlice);
+  UInt64 xCalcPeakSAOSSD  (Pel* pOrg, Pel* pCmp, Int iWidth, Int iHeight, Int iOrgStride, Int iCmpStride, Int BitIncrement );
+#endif
   Void getStatistics(SAOStatData*** blkStats, TComPicYuv* orgYuv, TComPicYuv* srcYuv,TComPic* pPic, Bool isCalculatePreDeblockSamples = false);
 #if PARALLEL_ENCODING_SAO_FIX
   Void decidePicParams(Bool* sliceEnabled, TComPic* pic, const Double saoEncodingRate, const Double saoEncodingRateChroma);
@@ -147,6 +162,11 @@ private: //members
   Int                    m_skipLinesB[MAX_NUM_COMPONENT][NUM_SAO_NEW_TYPES];
 #if VCEG_AZ07_BAC_ADAPT_WDOW
   TEncEntropy*           m_pcEntropyCoder;
+#endif
+#if SAO_PEAK
+  Double errorClassBest[2][PEAKSAO_TYPE_NUM];
+  Int normBestTemp[2][PEAKSAO_TYPE_NUM][PEAKSAO_MAX_GROUP_NUM];
+  Int normBest[PEAKSAO_MAX_GROUP_NUM];
 #endif
 };
 

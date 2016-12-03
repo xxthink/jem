@@ -434,6 +434,9 @@ static const Double PBINTRA_RATIO     =                             1.1;
 #if JVET_C0024_ZERO_OUT_FIX
 static const Int    JVET_C0024_ZERO_OUT_TH =                        32;
 #endif
+#if SAO_PEAK
+#define ROUND( a )  ( (int) ( (a) + 0.5 ) )
+#endif
 
 //QTBT high level parameters
 //for I slice luma CTB configuration para.
