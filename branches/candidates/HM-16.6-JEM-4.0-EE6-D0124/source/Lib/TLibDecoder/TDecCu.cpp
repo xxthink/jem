@@ -349,6 +349,12 @@ Void TDecCu::decompressCtu( TComDataCU* pCtu )
 
   if (pCtu->getSlice()->isIntra())
   {
+#if SHARP_LUMA_STORE_DQP
+    if ( pCtu->getSlice()->getPPS()->getUseDQP_ResScale())  // copy luma inferred qp to chroma
+    {
+      memcpy( pCtu->getInferDQPChannel(CHANNEL_TYPE_CHROMA), pCtu->getInferDQPChannel(CHANNEL_TYPE_LUMA), sizeof(Char)*pCtu->getPic()->getNumPartitionsInCtu());
+    }
+#endif
     pCtu->getSlice()->setTextType(CHANNEL_TYPE_CHROMA);
     pCtu->getPic()->setCodedBlkInCTU(false, 0, 0, uiCTUSize>>MIN_CU_LOG2, uiCTUSize>>MIN_CU_LOG2);
     pCtu->getPic()->setCodedAreaInCTU(0);
@@ -1084,6 +1090,14 @@ Void TDecCu::xDecompressCU( TComDataCU* pCtu, UInt uiAbsPartIdx,  UInt uiDepth )
     }
     return;
   }
+#if SHARP_LUMA_STORE_DQP
+  if (pCtu->getSlice()->getPPS()->getUseDQP_ResScale() && isChroma(pCtu->getTextType())) 
+  {
+    Char* lumaInferDQP = pCtu->getInferDQPChannel(CHANNEL_TYPE_LUMA);
+    Int iInferDQP = lumaInferDQP[uiAbsPartIdx];       // use the  luma QP of the top left block colocated with chroma
+    pCtu->setInferDQPSubParts( iInferDQP, uiAbsPartIdx, uiWidth, uiHeight);
+  }
+#endif
   UInt uiWidthIdx = g_aucConvertToBit[uiWidth];
   UInt uiHeightIdx = g_aucConvertToBit[uiHeight];
 
@@ -1187,8 +1201,19 @@ Void TDecCu::xReconInter( TComDataCU* pcCU, UInt uiDepth )
   }
 #endif
 
+#if SHARP_LUMA_RES_SCALING
+  Int   avgPred = 0;
+  if (pcCU->getSlice()->getPPS()->getUseDQP_ResScale())
+  {
+    avgPred = m_pppcYuvReco[uiWidthIdx][uiHeightIdx]->getAvgPred(m_pppcYuvReco[uiWidthIdx][uiHeightIdx], 0,  pcCU->getWidth( 0 ), pcCU->getHeight( 0 ));
+    Int dQP = g_lumaQPLUT[avgPred];
+    pcCU->setInferDQPSubParts(dQP, 0, pcCU->getWidth(0), pcCU->getHeight(0)) ;
+  }
+   xDecodeInterTexture( pcCU, uiDepth, avgPred );
+#else
   // inter recon
   xDecodeInterTexture( pcCU, uiDepth );
+#endif
 
 #if DEBUG_STRING
   if (DebugOptionList::DebugString_Resi.getInt()&debugPredModeMask)
@@ -1371,6 +1396,15 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
   ss << sTemp;
 #endif
 
+#if SHARP_LUMA_RES_SCALING
+  Int avgPred = 0;
+  if (compID == COMPONENT_Y && pcCU->getSlice()->getPPS()->getUseDQP_ResScale())
+  {
+      avgPred = pcPredYuv->getAvgPred(piPred, uiWidth, uiHeight, uiStride);
+      Int dQP = g_lumaQPLUT[avgPred];
+      pcCU->setInferDQPSubParts(dQP, uiAbsPartIdx, uiWidth, uiHeight);
+  }
+#endif
   //===== inverse transform =====
   Pel*      piResi            = pcResiYuv->getAddr( compID, uiAbsPartIdx );
   TCoeff*   pcCoeff           = pcCU->getCoeff(compID) + rTu.getCoefficientOffset(compID);//( uiNumCoeffInc * uiAbsPartIdx );
@@ -1386,7 +1420,11 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
 
   if (pcCU->getCbf(uiAbsPartIdx, compID, rTu.GetTransformDepthRel()) != 0)
   {
+#if SHARP_LUMA_RES_SCALING
+    m_pcTrQuant->invTransformNxN( rTu, compID, piResi, uiStride, pcCoeff, cQP, avgPred DEBUG_STRING_PASS_INTO(psDebug) ); 
+#else
     m_pcTrQuant->invTransformNxN( rTu, compID, piResi, uiStride, pcCoeff, cQP DEBUG_STRING_PASS_INTO(psDebug) );
+#endif
   }
   else
   {
@@ -1550,6 +1588,15 @@ TDecCu::xIntraRecBlkTM( TComYuv*    pcRecoYuv,
         useKLT = m_pcTrQuant->calcKLTIntra(piPred, uiStride, uiBlkSize);
     }
     assert(foundCandiNum >= 1);
+#if SHARP_LUMA_RES_SCALING
+  Int avgPred = 0;
+  if (compID == COMPONENT_Y && pcCU->getSlice()->getPPS()->getUseDQP_ResScale())
+  {
+      avgPred = pcPredYuv->getAvgPred(piPred, uiWidth, uiHeight, uiStride);
+      Int dQP = g_lumaQPLUT[avgPred];
+      pcCU->setInferDQPSubParts(dQP, uiAbsPartIdx, uiWidth, uiHeight);
+  }
+#endif
 
     //===== inverse transform =====
     Pel*      piResi = pcResiYuv->getAddr(compID, uiAbsPartIdx);
@@ -1574,7 +1621,11 @@ TDecCu::xIntraRecBlkTM( TComYuv*    pcRecoYuv,
             scan = codingParameters.scan;
             recoverOrderCoeff(pcCoeff, scan, uiWidth, uiHeight);
         }
+#if SHARP_LUMA_RES_SCALING
+        m_pcTrQuant->invTransformNxN(rTu, compID, piResi, uiStride, pcCoeff, cQP, avgPred, useKLT DEBUG_STRING_PASS_INTO(psDebug));
+#else
         m_pcTrQuant->invTransformNxN(rTu, compID, piResi, uiStride, pcCoeff, cQP, useKLT DEBUG_STRING_PASS_INTO(psDebug));
+#endif
         if (useKLT)
         {
             reOrderCoeff(pcCoeff, scan, uiWidth, uiHeight);
@@ -1817,8 +1868,11 @@ Void TDecCu::xCopyToPic( TComDataCU* pcCU, TComPic* pcPic, UInt uiZorderIdx, UIn
   return;
 }
 #endif
-
+#if !SHARP_LUMA_RES_SCALING
 Void TDecCu::xDecodeInterTexture ( TComDataCU* pcCU, UInt uiDepth )
+#else
+Void TDecCu::xDecodeInterTexture ( TComDataCU* pcCU, UInt uiDepth, Int avgPred )
+#endif
 {
 #if JVET_C0024_QTBT
   UInt uiWidthIdx = g_aucConvertToBit[pcCU->getWidth(0)];
@@ -1839,13 +1893,21 @@ Void TDecCu::xDecodeInterTexture ( TComDataCU* pcCU, UInt uiDepth )
     DEBUG_STRING_OUTPUT(std::cout, debug_reorder_data_inter_token[compID])
 #if VCEG_AZ08_INTER_KLT
 #if JVET_C0024_QTBT
-    m_pcTrQuant->invRecurTransformNxN ( compID, m_pppcYuvResi[uiWidthIdx][uiHeightIdx], tuRecur, pcPred);
+    m_pcTrQuant->invRecurTransformNxN ( compID, m_pppcYuvResi[uiWidthIdx][uiHeightIdx], tuRecur 
+#if SHARP_LUMA_RES_SCALING
+    , avgPred
+#endif    
+    , pcPred);
 #else
     m_pcTrQuant->invRecurTransformNxN ( compID, m_ppcYuvResi[uiDepth], tuRecur, pcPred);
 #endif
 #else
 #if JVET_C0024_QTBT
-    m_pcTrQuant->invRecurTransformNxN ( compID, m_pppcYuvResi[uiWidthIdx][uiHeightIdx], tuRecur );
+    m_pcTrQuant->invRecurTransformNxN ( compID, m_pppcYuvResi[uiWidthIdx][uiHeightIdx], 
+#if SHARP_LUMA_RES_SCALING
+    , avgPred, 
+#endif     
+    tuRecur );
 #else
     m_pcTrQuant->invRecurTransformNxN ( compID, m_ppcYuvResi[uiDepth], tuRecur );
 #endif

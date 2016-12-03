@@ -1,0 +1,46 @@
+*** This luma adaptive QP control code is built on top of  HM-16.6-JEM-4.0-EE6-Anchor *** 
+
+This support luma adaptive coeffiicent scaling (either use DC + prediction to scale AC, or use prediction only to scale all coefficients. 
+Comparing to the luma adaptive QP control with explict delta QP signalling supported in HM-16.6-JEM-4.0-EE6-Anchor, methods in this EE6 branch does not signal delta QP.
+
+Below are example config parameters to control the luma adaptive QP and coefficient scaling:
+
+### example: enable luma adaptive coefficient scaling
+LumaDeltaQP                   : 2           # Luma activity based deltaQP control  -- 0: disabled;  1: send dQP; 2: coefficient scaling
+LumaDQPFile                   : lumaDQP_SDR_6.txt    # File containing luma change points used to derive the luma QP LUT. If file is not exist, use Default luma DQP LUT. 
+
+Note: For coding SDR in ST-2084 with luma adaptive coefficient scaling and when SHARP_DSCALE_PRED_ONLY is 0, use CTC QP -6 and LumaDQPFile=lumaDQP_SDR_6.txt (in cfg directory) to get proper DC quantization, For all other test, use CTC QP and default luma DQP LUT defined in the code.
+
+Related Macros:
+
+(1) Code for luma adaptive coefficient scaling are under
+    #define SHARP_LUMA_DELTA_QP                1            ///< enable luma adaptive QP
+    #define SHARP_LUMA_RES_SCALING             1            ///< enable coefficient scaling based on luma predciton and DC 
+
+    Here the target QP for each block is similar to the adaptive QP approach, But the delta QP is not signalled. Transform coefficients are scaled based on reconstructed luma pixel. 
+    Refer JVET-C0095 for details.
+    #SHARP_DSCALE_PRED_ONLY                   0             ///< 1: only use prediction to obtain the scale  0: use pred and DC coefficient to obtain scale
+
+(2) #define SHARP_QP_LUMA_LUT_HDR                0             ///< 0: use default LUT for SDR in ST-2084 container; 1: use default LUT for HDR
+
+There are two default LUT table defined in the code,  define SHARP_QP_LUMA_LUT_HDR 1 for HDR data,  0 for SDR data converted to ST-2084 
+The LUT table can also be input from a file through command line or config file parameter LumaDQPFile
+
+(3) 
+#define SHARP_WEIGHT_DISTORTION              1            ///< use weighted distortion in RD decision
+#define SHARP_WEIGHT_DISTORTION_OUTPUT       1            ///< printout weighted PSNR
+
+To make RD decision align with the luma adaptive QP adjustment, JVET-C0095 proposed a weighted PSNR metric.
+They are incorporated into encoder RD decision, and are enabled by the above macros.
+The weighted PSNR is printed out in the encoder log file as:
+
+WPSNR SUMMARY---------------------------------------------------
+	Total Frames |   Bitrate     Y-PSNR    U-PSNR    V-PSNR    YUV-PSNR
+        7    w     210.9357   36.6616   40.2324   40.4726   37.5797
+
+
+
+
+  
+  
+  

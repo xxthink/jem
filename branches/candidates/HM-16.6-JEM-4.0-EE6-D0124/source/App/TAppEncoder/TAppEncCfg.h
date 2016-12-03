@@ -154,7 +154,20 @@ protected:
 
   Int       m_cbQpOffset;                                     ///< Chroma Cb QP Offset (0:default)
   Int       m_crQpOffset;                                     ///< Chroma Cr QP Offset (0:default)
-
+#if ERICSSON_CHROMA_QPSCALE
+  Double    m_fCbQpScale;                                     ///< Chroma Cb QP Scale (1.0:default)
+  Double    m_fCrQpScale;                                     ///< Chroma Cr QP Scale (1.0:default)
+  Double    m_fChromaQpScale;                                 ///< Chroma QP Scale (0.0:default)
+  Double    m_fChromaQpOffset;                                ///< Chroma QP Offset (0.0:default)
+#endif
+  
+#if SHARP_LUMA_DELTA_QP 
+  UInt      m_useLumaDeltaQP;                                ///< use deltaQP determined by block luma activity
+  std::string m_lumaQpLUTFileName;                           ///< data used to derive luma QP LUT 
+  UInt     m_uiNbrOfUsedDQPChangePoints;                     /// number of used qp luma pairs used to derive luma QP LUT
+  Int      m_dQPChangePoints[SHARP_MAX_LUMA_DQP];            /// qp luma pair used to derive luma QP LUT
+  Int      m_dQPLumaChangePoints[SHARP_MAX_LUMA_DQP];        /// qp luma pair used to derive luma QP LUT
+#endif
 #if ADAPTIVE_QP_SELECTION
   Bool      m_bUseAdaptQpSelect;
 #endif
