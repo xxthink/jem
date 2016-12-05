@@ -178,6 +178,12 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setExtendedPrecisionProcessingFlag                   ( m_extendedPrecisionProcessingFlag );
   m_cTEncTop.setHighPrecisionOffsetsEnabledFlag                   ( m_highPrecisionOffsetsEnabledFlag );
   //====== Tool list ========
+#if SHARP_LUMA_DELTA_QP
+  m_cTEncTop.setUseLumaDeltaQp                                    (m_useLumaDeltaQP);
+  m_cTEncTop.setNbrOfUsedDQPChangePoints                          (m_uiNbrOfUsedDQPChangePoints);
+  m_cTEncTop.setDQpChangePoints                                   (m_dQPChangePoints);
+  m_cTEncTop.setLumaDQpChangePoints                               (m_dQPLumaChangePoints);
+#endif
 #if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
   m_cTEncTop.setDeltaQpRD( (m_costMode==COST_LOSSLESS_CODING) ? 0 : m_uiDeltaQpRD );
 #else

@@ -1586,7 +1586,25 @@ Void TEncSbac::codeCrossComponentPrediction( TComTU &rTu, ComponentID compID )
 
 Void TEncSbac::codeDeltaQP( TComDataCU* pcCU, UInt uiAbsPartIdx )
 {
+#if SHARP_LUMA_RES_SCALING  
+  Int iDQp;
+  if (pcCU->getSlice()->getPPS()->getUseDQP_ResScale()) {     
+    // during compressCtu RDO pcCU->getQP returns the QP without luma adptive adjustment
+    // after compressCtu, pcCU->getQP are updated by xUpdateCUQP, so it returns the QP with luma adaptive adjustment
+    Int cuQP = pcCU->getQP( uiAbsPartIdx );
+    if (g_CUQP_updated_flag) 
+    {
+      Int avgInferDQP = pcCU->getAvgInferDQP( uiAbsPartIdx , pcCU->getDepth(uiAbsPartIdx));
+      cuQP = cuQP + avgInferDQP;
+    }
+
+    iDQp  = cuQP - pcCU->getSlice()->getSliceQp();   
+  }
+  else
+    iDQp  = pcCU->getQP( uiAbsPartIdx ) - pcCU->getRefQP( uiAbsPartIdx );
+#else
   Int iDQp  = pcCU->getQP( uiAbsPartIdx ) - pcCU->getRefQP( uiAbsPartIdx );
+#endif
 
   Int qpBdOffsetY =  pcCU->getSlice()->getSPS()->getQpBDOffset(CHANNEL_TYPE_LUMA);
   iDQp = (iDQp + 78 + qpBdOffsetY + (qpBdOffsetY/2)) % (52 + qpBdOffsetY) - 26 - (qpBdOffsetY/2);
