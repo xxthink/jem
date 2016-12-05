@@ -85,6 +85,10 @@ private:
 #if !JVET_C0024_QTBT
   UChar*          m_puhQTTempTrIdx;
 #endif
+#if SHARP_LUMA_STORE_DQP
+  Char*             m_tmpInferDQP[MAX_NUM_COMPONENT]; 
+  Char*             m_tmpInferDQPSingle[MAX_NUM_COMPONENT];
+#endif
   UChar*          m_puhQTTempCbf[MAX_NUM_COMPONENT];
 
 #if JVET_C0024_QTBT
@@ -789,6 +793,9 @@ protected:
   Void xEncodeInterResidualQT( const ComponentID compID, TComTU &rTu );
 #endif  
   Void xEstimateInterResidualQT( TComYuv* pcResi, Double &rdCost, UInt &ruiBits, Distortion &ruiDist, Distortion *puiZeroDist, TComTU &rTu 
+#if SHARP_LUMA_RES_SCALING
+      , Int avgPred
+#endif       
 #if VCEG_AZ08_INTER_KLT
       , TComYuv* pcPred
 #endif

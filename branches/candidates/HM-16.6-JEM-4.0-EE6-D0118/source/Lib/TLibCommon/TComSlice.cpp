@@ -68,6 +68,9 @@ TComSlice::TComSlice()
 #if ADAPTIVE_QP_SELECTION
 , m_iSliceQpBase                  ( 0 )
 #endif
+#if SHARP_LUMA_DELTA_QP && JVET_B0039_QP_FIX
+, m_iSliceQpLambdaOffset           ( 0 )
+#endif
 , m_ChromaQpAdjEnabled            ( false )
 , m_deblockingFilterDisable       ( false )
 , m_deblockingFilterOverrideFlag  ( false )
@@ -719,6 +722,9 @@ Void TComSlice::copySliceInfo(TComSlice *pSrc)
   m_iSliceQp             = pSrc->m_iSliceQp;
 #if ADAPTIVE_QP_SELECTION
   m_iSliceQpBase         = pSrc->m_iSliceQpBase;
+#endif
+#if SHARP_LUMA_DELTA_QP && JVET_B0039_QP_FIX
+  m_iSliceQpLambdaOffset  = pSrc->m_iSliceQpLambdaOffset;
 #endif
   m_ChromaQpAdjEnabled = pSrc->m_ChromaQpAdjEnabled;
   m_deblockingFilterDisable   = pSrc->m_deblockingFilterDisable;
@@ -1711,6 +1717,9 @@ TComPPS::TComPPS()
 , m_SPSId                            (0)
 , m_picInitQPMinus26                 (0)
 , m_useDQP                           (false)
+#if SHARP_LUMA_RES_SCALING
+,m_useDQP_ResScale                   (false)
+#endif
 , m_bConstrainedIntraPred            (false)
 , m_bSliceChromaQpFlag               (false)
 , m_uiMaxCuDQPDepth                  (0)

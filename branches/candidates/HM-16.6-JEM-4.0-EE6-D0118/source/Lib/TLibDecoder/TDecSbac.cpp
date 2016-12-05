@@ -1755,10 +1755,21 @@ Void TDecSbac::parseDeltaQP( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
     {
       iDQp = -iDQp;
     }
+
+#if SHARP_LUMA_RES_SCALING
+    if (pcCU->getSlice()->getPPS()->getUseDQP_ResScale())
+        qp = (((Int) pcCU->getSlice()->getSliceQp() + iDQp + 52 + 2*qpBdOffsetY )%(52+ qpBdOffsetY)) -  qpBdOffsetY;  
+    else
+#endif
     qp = (((Int) pcCU->getRefQP( uiAbsPartIdx ) + iDQp + 52 + 2*qpBdOffsetY )%(52+qpBdOffsetY)) - qpBdOffsetY;
   }
   else
   {
+#if SHARP_LUMA_RES_SCALING
+      if (pcCU->getSlice()->getPPS()->getUseDQP_ResScale())
+          qp = pcCU->getSlice()->getSliceQp();
+      else
+#endif
     qp = pcCU->getRefQP(uiAbsPartIdx);
   }
 

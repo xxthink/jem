@@ -144,7 +144,11 @@ protected:
 
   Void xReconPCM                ( TComDataCU* pcCU, UInt uiDepth );
 
+#if SHARP_LUMA_RES_SCALING
+  Void xDecodeInterTexture      ( TComDataCU* pcCU, UInt uiDepth, Int avgPred );
+#else
   Void xDecodeInterTexture      ( TComDataCU* pcCU, UInt uiDepth );
+#endif
   Void xDecodePCMTexture        ( TComDataCU* pcCU, const UInt uiPartIdx, const Pel *piPCM, Pel* piReco, const UInt uiStride, const UInt uiWidth, const UInt uiHeight, const ComponentID compID);
 
 #if !JVET_C0024_QTBT

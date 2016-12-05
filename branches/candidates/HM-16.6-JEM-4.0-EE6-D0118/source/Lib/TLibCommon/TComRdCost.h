@@ -103,6 +103,9 @@ public:
 #if VCEG_AZ06_IC
     bMRFlag = false;
 #endif
+#if SHARP_WEIGHT_DISTORTION
+    compIdx = COMPONENT_Y;
+#endif
   }
 };
 
@@ -116,6 +119,9 @@ private:
   CostMode                m_costMode;
   Double                  m_distortionWeight[MAX_NUM_COMPONENT]; // only chroma values are used.
   Double                  m_dLambda;
+#if SHARP_WEIGHT_DISTORTION
+  Double                  m_dLambda_unadjusted;
+#endif
   Double                  m_sqrtLambda;
 #if RExt__HIGH_BIT_DEPTH_SUPPORT
   Double                  m_dLambdaMotionSAD[2 /* 0=standard, 1=for transquant bypass when mixed-lossless cost evaluation enabled*/];
@@ -145,7 +151,9 @@ public:
   Void    setDistortionWeight  ( const ComponentID compID, const Double distortionWeight ) { m_distortionWeight[compID] = distortionWeight; }
   Void    setLambda      ( Double dLambda, const BitDepths &bitDepths );
   Void    setFrameLambda ( Double dLambda ) { m_dFrameLambda = dLambda; }
-
+#if SHARP_WEIGHT_DISTORTION
+  Void    saveUnadjustedLambda() {m_dLambda_unadjusted = m_dLambda;}
+#endif
   Double  getSqrtLambda ()   { return m_sqrtLambda; }
 
   Double  getLambda() { return m_dLambda; }
@@ -247,7 +255,15 @@ private:
   static Distortion xGetSSE32         ( DistParam* pcDtParam );
   static Distortion xGetSSE64         ( DistParam* pcDtParam );
   static Distortion xGetSSE16N        ( DistParam* pcDtParam );
-
+#if SHARP_WEIGHT_DISTORTION
+  static Distortion xGetSSE_WTD           ( DistParam* pcDtParam );
+  static Distortion xGetSSE4_WTD          ( DistParam* pcDtParam );
+  static Distortion xGetSSE8_WTD          ( DistParam* pcDtParam );
+  static Distortion xGetSSE16_WTD         ( DistParam* pcDtParam );
+  static Distortion xGetSSE32_WTD         ( DistParam* pcDtParam );
+  static Distortion xGetSSE64_WTD         ( DistParam* pcDtParam );
+  static Distortion xGetSSE16N_WTD        ( DistParam* pcDtParam );
+#endif
   static Distortion xGetSAD           ( DistParam* pcDtParam );
   static Distortion xGetSAD4          ( DistParam* pcDtParam );
   static Distortion xGetSAD8          ( DistParam* pcDtParam );
