@@ -21,11 +21,12 @@ CrQpScale                     : 1.79        # Scale factor depending on capture 
 Changes related to luma adaptive QP with explicit delta QP signalling are under macros starting with   SHARP_
 
 ### example config parameters 1: enable luma adaptive delta QP at CTU level
-LumaDeltaQP                   : 1           # Luma activity based deltaQP control  -- 0: disabled;  1: send dQP
+### Note: this parameter name is changed to be consistent with JCTVC-X1020
+LumaLevelToDeltaQPMode        : 1           # Luma activity based deltaQP control  -- 0: disabled;  1: send dQP
 MaxCuDQPDepth                 : 0           # Max depth of delta QP, should be less than MaxPartitionDepth
 
 ### example config parameters 2: enable luma adaptive delta QP at CU level of depth 3
-LumaDeltaQP                   : 1           # Luma activity based deltaQP control  -- 0: disabled;  1: send dQP;
+LumaLevelToDeltaQPMode        : 1           # Luma activity based deltaQP control  -- 0: disabled;  1: send dQP;
 MaxCuDQPDepth                 : 3           # Max depth of delta QP, should be less than MaxPartitionDepth
 
 Related Macros:

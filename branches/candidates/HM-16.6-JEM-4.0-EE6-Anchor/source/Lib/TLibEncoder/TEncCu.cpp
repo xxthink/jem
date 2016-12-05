@@ -3082,7 +3082,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
           rpcTempCU->setQPSubCUs( rpcTempCU->getRefQP( 0 ), 0, uiDepth, uiWidth, uiHeight, uiFirstNonZeroPartIdx, foundNonZeroCbf );
           
           m_pcEntropyCoder->resetBits();
-          m_pcEntropyCoder->encodeQP( rpcTempCU, 0, false );
+          m_pcEntropyCoder->encodeQP(rpcTempCU, uiFirstNonZeroPartIdx, false);
 #if SHARP_LUMA_DELTA_QP  && !SHARP_WEIGHT_DISTORTION       
           if (m_pcEncCfg->getUseLumaDeltaQp() && pps.getMaxCuDQPDepth() >= 1)  // deeper than CTU level
           { // add the dQP cost  
