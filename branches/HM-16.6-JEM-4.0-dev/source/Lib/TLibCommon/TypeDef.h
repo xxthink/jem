@@ -315,6 +315,7 @@
 #define FIX_TICKET33                                      1  ///< Fix of ticket #33 (Block level IC flag is set based on slice level IC flag)
 #define FIX_TICKET34                                      1  ///< Fix of ticket #34 (Intra-fast encoder-side decisions based on possibly incorrect obmc pred buffer)
 #define FIX_TICKET37                                      1  ///< Fix of ticket #37 (incorrect m_pppcPredYuvBest buffer copy)
+#define FIX_TICKET39                                      1  ///< Fix of ticket #39 (encoder bug of delta QP)
 
 ///////////////////////////////////////////////////////////
 // KTA tools section end

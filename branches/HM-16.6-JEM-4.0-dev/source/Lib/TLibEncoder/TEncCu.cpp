@@ -2932,7 +2932,11 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
           rpcTempCU->setQPSubCUs( rpcTempCU->getRefQP( 0 ), 0, uiDepth, uiWidth, uiHeight, uiFirstNonZeroPartIdx, foundNonZeroCbf );
           
           m_pcEntropyCoder->resetBits();
+#if FIX_TICKET39
+          m_pcEntropyCoder->encodeQP( rpcTempCU, uiFirstNonZeroPartIdx, false );
+#else
           m_pcEntropyCoder->encodeQP( rpcTempCU, 0, false );
+#endif
           rpcTempCU->getTotalBits() += m_pcEntropyCoder->getNumberOfWrittenBits(); // dQP bits
           rpcTempCU->getTotalBins() += ((TEncBinCABAC *)((TEncSbac*)m_pcEntropyCoder->m_pcEntropyCoderIf)->getEncBinIf())->getBinsCoded();
           rpcTempCU->getTotalCost()  = m_pcRdCost->calcRdCost( rpcTempCU->getTotalBits(), rpcTempCU->getTotalDistortion() );
