@@ -990,8 +990,11 @@ Void TComAdaptiveLoopFilter::create( Int iPicWidth, Int iPicHeight, ChromaFormat
   initMatrix_int(&m_imgY_hor, m_ALF_WIN_VERSIZE+2*m_VAR_SIZE+3, m_ALF_WIN_HORSIZE+2*m_VAR_SIZE+3);
 #endif
 
-
+#if FIX_TICKET40
+  get_mem2Dpel(&m_varImgMethods, m_img_height, m_img_width);
+#else
   get_mem2Dpel(&m_varImgMethods, m_img_width, m_img_width);
+#endif
   initMatrix_int(&m_filterCoeffSym, m_NO_VAR_BINS, m_MAX_SQR_FILT_LENGTH);
   initMatrix_int(&m_filterCoeffPrevSelected, m_NO_VAR_BINS, m_MAX_SQR_FILT_LENGTH); 
   initMatrix_int(&m_filterCoeffTmp, m_NO_VAR_BINS, m_MAX_SQR_FILT_LENGTH);      
