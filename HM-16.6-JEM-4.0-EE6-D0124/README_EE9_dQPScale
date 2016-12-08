@@ -6,7 +6,8 @@ Comparing to the luma adaptive QP control with explict delta QP signalling suppo
 Below are example config parameters to control the luma adaptive QP and coefficient scaling:
 
 ### example: enable luma adaptive coefficient scaling
-LumaDeltaQP                   : 2           # Luma activity based deltaQP control  -- 0: disabled;  1: send dQP; 2: coefficient scaling
+### Note: this parameter name is changed to be consistent with JCTVC-X1020
+LumaLevelToDeltaQPMode        : 2                    # Luma activity based deltaQP control  -- 0: disabled;  1: send dQP; 2: coefficient scaling
 LumaDQPFile                   : lumaDQP_SDR_6.txt    # File containing luma change points used to derive the luma QP LUT. If file is not exist, use Default luma DQP LUT. 
 
 Note: For coding SDR in ST-2084 with luma adaptive coefficient scaling and when SHARP_DSCALE_PRED_ONLY is 0, use CTC QP -6 and LumaDQPFile=lumaDQP_SDR_6.txt (in cfg directory) to get proper DC quantization, For all other test, use CTC QP and default luma DQP LUT defined in the code.
@@ -23,8 +24,7 @@ Related Macros:
 
 (2) #define SHARP_QP_LUMA_LUT_HDR                0             ///< 0: use default LUT for SDR in ST-2084 container; 1: use default LUT for HDR
 
-There are two default LUT table defined in the code,  define SHARP_QP_LUMA_LUT_HDR 1 for HDR data,  0 for SDR data converted to ST-2084 
-The LUT table can also be input from a file through command line or config file parameter LumaDQPFile
+There are two default LUT table defined in the code,  define SHARP_QP_LUMA_LUT_HDR 1 for HDR data,  0 for SDR data converted to ST-2084. This is also used to get the correct weight to compute the WPSNR inside the code. The LUT table can also be input from a file through command line or config file parameter LumaDQPFile
 
 (3) 
 #define SHARP_WEIGHT_DISTORTION              1            ///< use weighted distortion in RD decision
