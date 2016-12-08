@@ -701,7 +701,9 @@ public:
   Double    getIntraQpFactor                ()                        const { return m_dIntraQpFactor;                }
   Int       getIntraQPOffset                () const    { return  m_intraQPOffset; }
   Int       getLambdaFromQPEnable           () const    { return  m_lambdaFromQPEnable; }
+#if !SHARP_LUMA_DELTA_QP
 protected:
+#endif
   Int       getBaseQP                       () const { return  m_iQP; } // public should use getQPForPicture.
 public:
   Int       getQPForPicture                 (const UInt gopIndex, TComSlice *pSlice); // Function actually defined in TEncTop.cpp
