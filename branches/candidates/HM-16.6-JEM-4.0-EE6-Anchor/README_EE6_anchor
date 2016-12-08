@@ -33,7 +33,7 @@ Related Macros:
 (1) #define SHARP_LUMA_DELTA_QP                1            ///< enable luma adaptive QP, only intended for HDR or SDR data in ST-2084 
 (2) #define SHARP_QP_LUMA_LUT_HDR              0             ///< 0: use default LUT for SDR in ST-2084 container; 1: use default LUT for HDR
 There are two default LUT table defined in the code,  define SHARP_QP_LUMA_LUT_HDR 1 for HDR data,  0 for SDR data converted to ST-2084 
-The LUT table can also be input from a file through command line or config file parameter LumaDQPFile
+This is also used to get the correct weight to compute the WPSNR inside the code. The LUT table can also be input from a file through command line or config file parameter LumaDQPFile
 
 (3) 
 #define SHARP_WEIGHT_DISTORTION              1            ///< use weighted distortion in RD decision

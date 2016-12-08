@@ -385,7 +385,19 @@ Void TEncSlice::initEncSlice( TComPic* pcPic, Int pocLast, Int pocCurr, Int iGOP
   // ------------------------------------------------------------------------------------------------------------------
 
 #if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+#if SHARP_LUMA_DELTA_QP
+  Int backupBaseQP = m_pcCfg->getBaseQP();
+  if (m_pcCfg->getUseLumaDeltaQp() > 0)   // luma adaptive dqp or coefficient scaling
+  {
+    Int actualQPForLambda = m_pcCfg->getBaseQP() - g_lumaQPLUT[0];
+    assert(actualQPForLambda >= 0);    assert(actualQPForLambda <= MAX_QP);
+    m_pcCfg->setQP(actualQPForLambda);
+  }
+#endif
   dQP = m_pcCfg->getQPForPicture(iGOPid, rpcSlice);
+#if SHARP_LUMA_DELTA_QP  
+  m_pcCfg->setQP(backupBaseQP); // resume base QP
+#endif
 #else
   dQP = m_pcCfg->getQP();
   if(eSliceType!=I_SLICE)
@@ -425,9 +437,12 @@ Void TEncSlice::initEncSlice( TComPic* pcPic, Int pocLast, Int pocCurr, Int iGOP
   Int iQP;
   Double dOrigQP = dQP;
 
-#if SHARP_WEIGHT_DISTORTION
+#if SHARP_LUMA_DELTA_QP && !JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
   if( m_pcCfg->getUseLumaDeltaQp() > 0 )   // luma adaptive dqp or coefficient scaling
-    dOrigQP = dQP - g_lumaQPLUT[0]; 
+  {
+    dOrigQP = dQP - g_lumaQPLUT[0];
+    assert(dOrigQP >= 0);    assert(dOrigQP <= MAX_QP);
+  }
 #endif
   // pre-compute lambda and QP values for all possible QP candidates
   for ( Int iDQpIdx = 0; iDQpIdx < 2 * m_pcCfg->getDeltaQpRD() + 1; iDQpIdx++ )
@@ -563,7 +578,9 @@ Void TEncSlice::initEncSlice( TComPic* pcPic, Int pocLast, Int pocCurr, Int iGOP
   // an alternative way is to weight the distortion to before the luma QP adjustment, then the cost function becomes
   // costB = weightedDistortion + Lambda * R          -- currently, costB is used to calculat final cost, and when DF_FUNC is DF_DEFAULT 
   m_pcRdCost->saveUnadjustedLambda();
+#endif
 
+#if SHARP_LUMA_DELTA_QP
    // resume the iQP
   if( m_pcCfg->getUseLumaDeltaQp() > 0 )   // luma adaptive dqp or coefficient scaling
     iQP = iQP + g_lumaQPLUT[0];           
