@@ -55,8 +55,8 @@
 
 #define JVET_D0046_EE3_TEST1_1          1 ///< EE3 test#1.1: get individual performance of high precision FRUC of JVET-D0046
 #define JVET_D0046_EE3_TEST1_2          0 ///< EE3 test#1.2: get individual performance of candidates addition in FRUC list of JVET-D0046
-#define JVET_D0046_EE3_TEST2            0 ///< EE3 test#2:   test#1.2 + adjust the number of added candidates
-#define JVET_D0046_EE3_TEST3            0 ///< EE3 test#3:   test#2 + remove/move some sub-blocks candidates from FRUC list
+#define JVET_D0046_EE3_TEST2            0 ///< EE3 test#2:   test#1.2 + adjust the number of added candidates and place in FRUC list
+#define JVET_D0046_EE3_TEST3            0 ///< EE3 test#3:   test#2 + remove some sub-blocks candidates from FRUC list
 
 
 #if JVET_D0046_EE3_TEST1_1
@@ -68,8 +68,8 @@
   #define NB_FRUC_CAND_ADDED            5 ///< for merge CU, number of added candidates in top, left, top-left, top-right, below-left <0-5>
   #define NB_FRUC_CAND_ADDED_SUB        5 ///< for sub-blocks of merge CU, number of added candidates in top, left, top-left, top-right, below-left <0-5>
 #endif
+#define TCH_ARO_FRUC_ADD_CAND_BEFORE    0 ///< add spatial candidates of sub-blocks after initial one
 
-#define TCH_ARO_FRUC_ADD_CAND_BEFORE    0 ///< add spatial candidates of sub-blocks before temporal ones
 #define TCH_ARO_FRUC_REM_SUBCAND        0 ///< remove some sub-blocks candidates not much selected
 #if TCH_ARO_FRUC_REM_SUBCAND
   #define NB_FRUC_CAND_ATMVP            4 ///< for sub-blocks of merge CU, number of ATMVP candidates
@@ -85,8 +85,8 @@
   #define NB_FRUC_CAND_ADDED            5 ///< for merge CU, number of added candidates in top, left, top-left, top-right, below-left <0-5>
   #define NB_FRUC_CAND_ADDED_SUB        5 ///< for sub-blocks of merge CU, number of added candidates in top, left, top-left, top-right, below-left <0-5>
 #endif
+#define TCH_ARO_FRUC_ADD_CAND_BEFORE    0 ///< add spatial candidates of sub-blocks after initial one
 
-#define TCH_ARO_FRUC_ADD_CAND_BEFORE    0 ///< add spatial candidates of sub-blocks before temporal ones
 #define TCH_ARO_FRUC_REM_SUBCAND        0 ///< remove some sub-blocks candidates not much selected
 #if TCH_ARO_FRUC_REM_SUBCAND
   #define NB_FRUC_CAND_ATMVP            4 ///< for sub-blocks of merge CU, number of ATMVP candidates
@@ -102,8 +102,8 @@
   #define NB_FRUC_CAND_ADDED            2 ///< for merge CU, number of added candidates in top, left, top-left, top-right, below-left <0-5>
   #define NB_FRUC_CAND_ADDED_SUB        4 ///< for sub-blocks of merge CU, number of added candidates in top, left, top-left, top-right, below-left <0-5>
 #endif
+#define TCH_ARO_FRUC_ADD_CAND_BEFORE    1 ///< add spatial candidates of sub-blocks after initial one
 
-#define TCH_ARO_FRUC_ADD_CAND_BEFORE    0 ///< add spatial candidates of sub-blocks before temporal ones
 #define TCH_ARO_FRUC_REM_SUBCAND        0 ///< remove some sub-blocks candidates not much selected
 #if TCH_ARO_FRUC_REM_SUBCAND
   #define NB_FRUC_CAND_ATMVP            4 ///< for sub-blocks of merge CU, number of ATMVP candidates
@@ -119,8 +119,8 @@
   #define NB_FRUC_CAND_ADDED            2 ///< for merge CU, number of added candidates in top, left, top-left, top-right, below-left <0-5>
   #define NB_FRUC_CAND_ADDED_SUB        4 ///< for sub-blocks of merge CU, number of added candidates in top, left, top-left, top-right, below-left <0-5>
 #endif
+#define TCH_ARO_FRUC_ADD_CAND_BEFORE    1 ///< add spatial candidates of sub-blocks after initial one
 
-#define TCH_ARO_FRUC_ADD_CAND_BEFORE    1 ///< add spatial candidates of sub-blocks before temporal ones
 #define TCH_ARO_FRUC_REM_SUBCAND        1 ///< remove some sub-blocks candidates not much selected
 #if TCH_ARO_FRUC_REM_SUBCAND
   #define NB_FRUC_CAND_ATMVP            4 ///< for sub-blocks of merge CU, number of ATMVP candidates
@@ -139,8 +139,8 @@
   #define NB_FRUC_CAND_ADDED            5 ///< for merge CU, number of added candidates in top, left, top-left, top-right, below-left <0-5>
   #define NB_FRUC_CAND_ADDED_SUB        5 ///< for sub-blocks of merge CU, number of added candidates in top, left, top-left, top-right, below-left <0-5>
 #endif
+#define TCH_ARO_FRUC_ADD_CAND_BEFORE    0 ///< add spatial candidates of sub-blocks after initial one
 
-#define TCH_ARO_FRUC_ADD_CAND_BEFORE    0 ///< add spatial candidates of sub-blocks before temporal ones
 #define TCH_ARO_FRUC_REM_SUBCAND        0 ///< remove some sub-blocks candidates not much selected
 #if TCH_ARO_FRUC_REM_SUBCAND
   #define NB_FRUC_CAND_ATMVP            4 ///< for sub-blocks of merge CU, number of ATMVP candidates
