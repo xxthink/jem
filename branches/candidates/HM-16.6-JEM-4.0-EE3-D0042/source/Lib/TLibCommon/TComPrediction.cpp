@@ -119,8 +119,12 @@ TComPrediction::TComPrediction()
 : m_pLumaRecBuffer(0)
 , m_iLumaRecStride(0)
 {
-#if VCEG_AZ05_BIO 
-#define BIO_TEMP_BUFFER_SIZE      (MAX_CU_SIZE+4)*(MAX_CU_SIZE+4) 
+#if VCEG_AZ05_BIO
+#if EE3_D0042 // no block extension is needed
+#define BIO_TEMP_BUFFER_SIZE      (MAX_CU_SIZE)*(MAX_CU_SIZE)
+#else
+#define BIO_TEMP_BUFFER_SIZE      (MAX_CU_SIZE+4)*(MAX_CU_SIZE+4)
+#endif
   m_pGradX0 = new Pel [BIO_TEMP_BUFFER_SIZE];
   m_pGradY0 = new Pel [BIO_TEMP_BUFFER_SIZE];
   m_pGradX1 = new Pel [BIO_TEMP_BUFFER_SIZE];
