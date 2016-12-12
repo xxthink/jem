@@ -2245,6 +2245,17 @@ Pel optical_flow_averaging( Int64 s1,Int64 s2,Int64 s3,Int64 s5,Int64 s6,
   return( ClipBD((Short)((pSrcY0Temp + pSrcY1Temp + b +offset) >> shiftNum),bitDepth));
 #endif
 }
+#if EE3_D0042 // averaging with weights decreasing with distance from predicted sample
+Void averagebio (Int64 * A, Int width,Int step)
+{
+A[0]=(A[0]<<1);
+for(int i=1;i<width;i++)
+{
+A[step]=(A[0]>>1)+A[step];
+A+=step;
+}
+}
+#endif
 #endif
 
 Void TComPrediction::xWeightedAverage( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, Int iRefIdx0, Int iRefIdx1, UInt uiPartIdx, Int iWidth, Int iHeight, TComYuv* pcYuvDst, const BitDepths &clipBitDepths 
