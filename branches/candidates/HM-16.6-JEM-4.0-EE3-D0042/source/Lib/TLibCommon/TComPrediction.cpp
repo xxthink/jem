@@ -2298,14 +2298,23 @@ static Int64 m_piDotProduct6[BIO_TEMP_BUFFER_SIZE];
       static Int64 m_piS6[BIO_TEMP_BUFFER_SIZE];
 #endif
       Int x=0, y=0;
-
+#if EE3_D0042
+Int iHeightG = iHeight;
+Int iWidthG  = iWidth ;
+#else
       Int iHeightG = iHeight + 4;
       Int iWidthG  = iWidth  + 4;
       Int iStrideTemp = 2+2*iWidthG;
+#endif
       Pel* pGradX0 = m_pGradX0; Pel* pGradX1 = m_pGradX1; 
-      Pel* pGradY0 = m_pGradY0; Pel* pGradY1 = m_pGradY1;    
+      Pel* pGradY0 = m_pGradY0; Pel* pGradY1 = m_pGradY1;
+#if EE3_D0042
+Pel* pSrcY0 = pcYuvSrc0->getAddr( COMPONENT_Y, uiPartIdx );
+Pel* pSrcY1 = pcYuvSrc1->getAddr( COMPONENT_Y, uiPartIdx );
+#else
       Pel* pSrcY0 = m_pPred0; 
       Pel* pSrcY1 = m_pPred1;
+#endif
       Int iSrc0Stride = iWidthG;
       Int iSrc1Stride = iWidthG;   
       Pel* pDstY = pcYuvDst->getAddr(COMPONENT_Y,uiPartIdx); 
