@@ -2433,6 +2433,25 @@ m_piDotProductTemp5+=iWidth;
 m_piDotProductTemp6+=iWidth;
 }
 m_piDotProductTemp1 = m_piDotProduct1; m_piDotProductTemp2 = m_piDotProduct2; m_piDotProductTemp3 = m_piDotProduct3; m_piDotProductTemp5 = m_piDotProduct5; m_piDotProductTemp6 = m_piDotProduct6;
+int sss=(iHeight-1)*iWidth;
+for(int j=0;j<iWidth;j++)
+{
+averagebio( m_piDotProductTemp1,iHeight,iWidth);
+averagebio( m_piDotProductTemp1+sss,iHeight,-iWidth);
+averagebio( m_piDotProductTemp2,iHeight,iWidth);
+averagebio( m_piDotProductTemp2+sss,iHeight,-iWidth);
+averagebio( m_piDotProductTemp3,iHeight,iWidth);
+averagebio( m_piDotProductTemp3+sss,iHeight,-iWidth);
+averagebio( m_piDotProductTemp5,iHeight,iWidth);
+averagebio( m_piDotProductTemp5+sss,iHeight,-iWidth);
+averagebio( m_piDotProductTemp6,iHeight,iWidth);
+averagebio( m_piDotProductTemp6+sss,iHeight,-iWidth);
+m_piDotProductTemp1++;
+m_piDotProductTemp2++;
+m_piDotProductTemp3++;
+m_piDotProductTemp5++;
+m_piDotProductTemp6++;
+}
 m_piDotProductTemp1 = m_piDotProduct1;
 m_piDotProductTemp2 = m_piDotProduct2;
 m_piDotProductTemp3 = m_piDotProduct3;
