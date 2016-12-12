@@ -1823,24 +1823,35 @@ Void TComPrediction::xPredInterBlk(const ComponentID compID, TComDataCU *cu, TCo
   const ChromaFormat chFmt = cu->getPic()->getChromaFormat();
 #if VCEG_AZ05_BIO 
   if ( bBIOapplied)
-  { 
+  {
+#if EE3_D0042 // no block extension is needed
+Pel* pGradY= m_pGradY0;  Pel* pGradX= m_pGradX0;  Pel *pPred= dst;
+Int iWidthG   = width;
+Int iHeightG = height;
+#else
     Pel* pGradY= m_pGradY0;  Pel* pGradX= m_pGradX0;  Pel *pPred= m_pPred0;
     Int iWidthG   = width + 4;
     Int iHeightG = height + 4;
+#endif
     if (iRefListIdx == 0)
     {    
       pGradY = m_pGradY0;
       pGradX = m_pGradX0;
+#if !EE3_D0042
       pPred = m_pPred0;
+#endif
     }
     else
     {
       pGradY = m_pGradY1;
       pGradX = m_pGradX1;
+#if !EE3_D0042
       pPred  = m_pPred1 ;
+#endif
     }
-
+#if !EE3_D0042
     ref -=(2+2*refStride);
+#endif
 #if JVET_B058_HIGH_PRECISION_MOTION_VECTOR_MC && !JVET_C0027_BIO
     xGradFilterY(ref , refStride,pGradY,iWidthG,iWidthG,iHeightG, yFrac>>VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE,  xFrac>>VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE,  bitDepth);
     xGradFilterX(ref , refStride,pGradX,iWidthG,iWidthG,iHeightG, yFrac>>VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE,  xFrac>>VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE,  bitDepth);
@@ -1854,7 +1865,9 @@ Void TComPrediction::xPredInterBlk(const ComponentID compID, TComDataCU *cu, TCo
 #endif
 #endif
     xPredInterFrac( ref , pPred, iWidthG, refStride, xFrac, yFrac, iWidthG, iHeightG,bi, chFmt,  bitDepth);
+#if !EE3_D0042
     ref +=(2+2*refStride);
+#endif
 
   }
   else
