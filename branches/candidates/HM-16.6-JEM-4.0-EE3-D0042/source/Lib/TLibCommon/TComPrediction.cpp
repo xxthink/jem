@@ -129,8 +129,10 @@ TComPrediction::TComPrediction()
   m_pGradY0 = new Pel [BIO_TEMP_BUFFER_SIZE];
   m_pGradX1 = new Pel [BIO_TEMP_BUFFER_SIZE];
   m_pGradY1 = new Pel [BIO_TEMP_BUFFER_SIZE];
+#if !EE3_D0042
   m_pPred0  = new Pel [BIO_TEMP_BUFFER_SIZE];
   m_pPred1  = new Pel [BIO_TEMP_BUFFER_SIZE];
+#endif
   iRefListIdx = -1;  
 #endif
 #if COM16_C1046_PDPC_INTRA
@@ -176,8 +178,10 @@ Void TComPrediction::destroy()
   if( m_pGradY0 != NULL )     {delete [] m_pGradY0 ; m_pGradY0= NULL;}
   if( m_pGradX1 != NULL )     {delete [] m_pGradX1 ; m_pGradX1= NULL;}
   if( m_pGradY1 != NULL )     {delete [] m_pGradY1 ; m_pGradY1= NULL;}
+#if !EE3_D0042
   if( m_pPred0  != NULL )     {delete [] m_pPred0  ; m_pPred0 = NULL;}
   if( m_pPred1  != NULL )     {delete [] m_pPred1  ; m_pPred1 = NULL;}
+#endif
 #endif
 
 #if COM16_C1046_PDPC_INTRA
