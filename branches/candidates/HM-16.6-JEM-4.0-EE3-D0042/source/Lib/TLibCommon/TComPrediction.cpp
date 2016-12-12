@@ -2432,7 +2432,15 @@ m_piDotProductTemp3+=iWidth;
 m_piDotProductTemp5+=iWidth;
 m_piDotProductTemp6+=iWidth;
 }
-
+m_piDotProductTemp1 = m_piDotProduct1;
+m_piDotProductTemp2 = m_piDotProduct2;
+m_piDotProductTemp3 = m_piDotProduct3;
+m_piDotProductTemp5 = m_piDotProduct5;
+m_piDotProductTemp6 = m_piDotProduct6;
+pGradX0 = m_pGradX0 ;  pGradX1 = m_pGradX1;
+pGradY0 = m_pGradY0  ; pGradY1 = m_pGradY1;
+pSrcY0Temp = pSrcY0;
+pSrcY1Temp = pSrcY1;
 #else
       m_piDotProductTemp1 = m_piDotProduct1+2;m_piDotProductTemp2 = m_piDotProduct2+2;m_piDotProductTemp3 = m_piDotProduct3+2;m_piDotProductTemp5 = m_piDotProduct5+2;m_piDotProductTemp6 = m_piDotProduct6+2;
       m_pS1loc=m_piS1temp+2;m_pS2loc=m_piS2temp+2;m_pS3loc=m_piS3temp+2;m_pS5loc=m_piS5temp+2;m_pS6loc=m_piS6temp+2;      
