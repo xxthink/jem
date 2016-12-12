@@ -2432,6 +2432,7 @@ m_piDotProductTemp3+=iWidth;
 m_piDotProductTemp5+=iWidth;
 m_piDotProductTemp6+=iWidth;
 }
+m_piDotProductTemp1 = m_piDotProduct1; m_piDotProductTemp2 = m_piDotProduct2; m_piDotProductTemp3 = m_piDotProduct3; m_piDotProductTemp5 = m_piDotProduct5; m_piDotProductTemp6 = m_piDotProduct6;
 m_piDotProductTemp1 = m_piDotProduct1;
 m_piDotProductTemp2 = m_piDotProduct2;
 m_piDotProductTemp3 = m_piDotProduct3;
