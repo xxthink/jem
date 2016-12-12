@@ -2364,7 +2364,13 @@ Pel* pSrcY1 = pcYuvSrc1->getAddr( COMPONENT_Y, uiPartIdx );
       static const Int64 regularizator_2 =regularizator_1<<1;
       static const Int64 denom_min_1 = 700* (1<< (bitDepth-8))* (1<< (bitDepth-8));
       static const Int64 denom_min_2 = denom_min_1<<1;
-
+#if EE3_D0042
+Int64* m_piDotProductTemp1 = m_piDotProduct1;
+Int64* m_piDotProductTemp2 = m_piDotProduct2;
+Int64* m_piDotProductTemp3 = m_piDotProduct3;
+Int64* m_piDotProductTemp5 = m_piDotProduct5;
+Int64* m_piDotProductTemp6 = m_piDotProduct6;
+#else
       Int64* m_piDotProductTemp1 = m_piDotProduct1;Int64* m_piDotProductTemp2 = m_piDotProduct2;Int64* m_piDotProductTemp3 = m_piDotProduct3;Int64* m_piDotProductTemp5 = m_piDotProduct5;Int64* m_piDotProductTemp6 = m_piDotProduct6;
       Int64* m_pS1loc=m_piS1temp;Int64* m_pS2loc=m_piS2temp;Int64* m_pS3loc=m_piS3temp;Int64* m_pS5loc=m_piS5temp;Int64* m_pS6loc=m_piS6temp;
       Int64* m_pS1loc_1=m_piS1temp;Int64* m_pS2loc_1=m_piS2temp;Int64* m_pS3loc_1=m_piS3temp;Int64* m_pS5loc_1=m_piS5temp;Int64* m_pS6loc_1=m_piS6temp;
@@ -2375,7 +2381,7 @@ Pel* pSrcY1 = pcYuvSrc1->getAddr( COMPONENT_Y, uiPartIdx );
       Int64* m_pS1loc2=m_piS1temp;Int64* m_pS2loc2=m_piS2temp;Int64* m_pS3loc2=m_piS3temp;Int64* m_pS5loc2=m_piS5temp;Int64* m_pS6loc2=m_piS6temp;
       Int64* m_piSS1loc=m_piS1;Int64* m_piSS2loc=m_piS2;Int64* m_piSS3loc=m_piS3;Int64* m_piSS5loc=m_piS5;Int64* m_piSS6loc=m_piS6;
       Int64* m_piSS1loc_1=m_piS1;Int64* m_piSS2loc_1=m_piS2;Int64* m_piSS3loc_1=m_piS3;Int64* m_piSS5loc_1=m_piS5;Int64* m_piSS6loc_1=m_piS6;
-
+#endif
       Int64 temp=0, tempX=0, tempY=0;
       for (y = 0; y < iHeightG; y ++)    
       {
