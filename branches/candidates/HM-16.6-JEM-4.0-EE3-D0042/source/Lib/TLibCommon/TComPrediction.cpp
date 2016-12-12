@@ -2272,6 +2272,15 @@ Void TComPrediction::xWeightedAverage( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, I
 #if VCEG_AZ05_BIO 
     if (bBIOapplied)
     {
+#if EE3_D0042 
+//for weighted averaging implementation few temporal buffers are used
+//there is no need to use Int64
+static Int64 m_piDotProduct1[BIO_TEMP_BUFFER_SIZE];
+static Int64 m_piDotProduct2[BIO_TEMP_BUFFER_SIZE];
+static Int64 m_piDotProduct3[BIO_TEMP_BUFFER_SIZE];
+static Int64 m_piDotProduct5[BIO_TEMP_BUFFER_SIZE];
+static Int64 m_piDotProduct6[BIO_TEMP_BUFFER_SIZE];
+#else
       static Int64 m_piDotProduct1[BIO_TEMP_BUFFER_SIZE];
       static Int64 m_piDotProduct2[BIO_TEMP_BUFFER_SIZE];
       static Int64 m_piDotProduct3[BIO_TEMP_BUFFER_SIZE];
@@ -2287,6 +2296,7 @@ Void TComPrediction::xWeightedAverage( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, I
       static Int64 m_piS3[BIO_TEMP_BUFFER_SIZE];
       static Int64 m_piS5[BIO_TEMP_BUFFER_SIZE];
       static Int64 m_piS6[BIO_TEMP_BUFFER_SIZE];
+#endif
       Int x=0, y=0;
 
       Int iHeightG = iHeight + 4;
