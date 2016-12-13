@@ -64,7 +64,7 @@ inline Int64 abs (Int64 x) { return _abs64(x); };
 // Version information
 // ====================================================================================================================
 
-#define NV_VERSION        "HM-16.6-JEM-4.0"                 ///< Current software version
+#define NV_VERSION        "HM-16.6-JEM-4.1"                 ///< Current software version
 
 // ====================================================================================================================
 // Platform information
