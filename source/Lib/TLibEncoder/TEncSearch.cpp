@@ -5018,10 +5018,24 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #if JVET_D0127_REDUNDANCY_REMOVAL
 #if JVET_C0024_QTBT
   Bool NSSTFlag = (pcCU->getROTIdx(CHANNEL_TYPE_LUMA, 0) == 0);
-  Bool NSSTSaveFlag = (pcCU->getROTIdx(CHANNEL_TYPE_LUMA, 0) == 0) && (pcCU->getPDPCIdx(0) == 0) && (pcCU->getEmtCuFlag(0) == 0);
+  Bool NSSTSaveFlag = (pcCU->getROTIdx(CHANNEL_TYPE_LUMA, 0) == 0)
+#if COM16_C1046_PDPC_INTRA
+      && (pcCU->getPDPCIdx(0) == 0)
+#endif
+#if COM16_C806_EMT
+      && (pcCU->getEmtCuFlag(0) == 0)
+#endif
+      ;
 #else
   Bool NSSTFlag = (pcCU->getROTIdx(0) == 0);
-  Bool NSSTSaveFlag = (pcCU->getROTIdx(0) == 0) && (pcCU->getPDPCIdx(0) == 0) && (pcCU->getEmtCuFlag(0) == 0);
+  Bool NSSTSaveFlag = (pcCU->getROTIdx(0) == 0)
+#if COM16_C1046_PDPC_INTRA
+      && (pcCU->getPDPCIdx(0) == 0)
+#endif
+#if COM16_C806_EMT
+      && (pcCU->getEmtCuFlag(0) == 0)
+#endif
+      ;
 #endif
   static UInt   uiSavedRdModeListNSST[35], uiSavedNumRdModesNSST, uiSavedHadModeListNSST[35];
   static Double dSavedModeCostNSST[35], dSavedHadListNSST[FAST_UDI_MAX_RDMODE_NUM];
