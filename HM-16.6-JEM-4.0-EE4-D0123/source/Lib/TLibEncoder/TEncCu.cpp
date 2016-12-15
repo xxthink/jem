@@ -1130,7 +1130,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #endif
 
 #if MULTI_PEL_MVD
-  m_dBestMvDPelCost[0] = m_dBestMvDPelCost[1] = m_dBestMvDPelCost[2] = MAX_DOUBLE;
+  m_dBestMvDPelCost[0] = m_dBestMvDPelCost[1] = m_dBestMvDPelCost[2] = MAX_DOUBLE/2;
 #endif
 
   const UInt numberValidComponents = rpcBestCU->getPic()->getNumberValidComponents();
@@ -1408,6 +1408,32 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         if( m_pcEncCfg->getIMV() && !rpcBestCU->getSlice()->isIntra() )
 #endif
         {
+#if MULTI_PEL_MVD
+          for( UChar iMv = 1; iMv < 3; iMv ++ )
+          {
+            if (iMv == 2 && m_dBestMvDPelCost[0] * 1.06 < m_dBestMvDPelCost[1])
+            {
+              break;
+            }
+#if VCEG_AZ06_IC
+            for( UInt uiICId = 0; uiICId < ( bICEnabled ? 2 : 1 ); uiICId++ )
+            {
+              Bool bICFlag = uiICId ? true : false;
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+              if( saveLoadTag == LOAD_ENC_INFO && bICFlag != m_pcPredSearch->getSaveLoadICFlag( uiWidthIdx, uiHeightIdx ) )
+              {
+                continue;
+              }
+#endif
+              rpcTempCU->setICFlagSubParts(bICFlag, 0, uiDepth);
+#endif
+              xCheckRDCostInter( rpcBestCU, rpcTempCU, SIZE_2Nx2N , false , iMv );
+              rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
+#if VCEG_AZ06_IC
+            }
+#endif
+          }
+#else
           // always check SIZE_2Nx2N
 #if VCEG_AZ06_IC
           for( UInt uiICId = 0; uiICId < ( bICEnabled ? 2 : 1 ); uiICId++ )
@@ -1425,6 +1451,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
             rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
 #if VCEG_AZ06_IC
           }
+#endif
 #endif
         }
 #endif
@@ -1671,12 +1698,10 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #if MULTI_PEL_MVD
           for( UChar iMv = 1; iMv < 3; iMv ++ )
           {
-#if MULTI_PEL_MVD
             if (iMv == 2 && m_dBestMvDPelCost[0] * 1.06 < m_dBestMvDPelCost[1])
             {
               break;
             }
-#endif
 #if VCEG_AZ06_IC
           for( UInt uiICId = 0; uiICId < ( bICEnabled ? 2 : 1 ); uiICId++ )
           {
@@ -4260,7 +4285,6 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
   m_pcPredSearch->predInterSearch ( rpcTempCU, m_ppcOrigYuv[uhDepth], m_ppcPredYuvTemp[uhDepth], m_ppcResiYuvTemp[uhDepth], m_ppcRecoYuvTemp[uhDepth] DEBUG_STRING_PASS_INTO(sTest), false, bUseMRG );
 #endif
 #endif
-
 #else
 #if COM16_C806_OBMC
   m_pcPredSearch->predInterSearch ( rpcTempCU, m_ppcOrigYuv[uhDepth], m_ppcPredYuvTemp[uhDepth], m_ppcResiYuvTemp[uhDepth], m_ppcRecoYuvTemp[uhDepth], m_ppcPredYuvWoOBMC[uhDepth], m_ppcTmpYuv1[uhDepth], m_ppcTmpYuv2[uhDepth] );

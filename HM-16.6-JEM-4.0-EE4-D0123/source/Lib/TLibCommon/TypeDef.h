@@ -47,14 +47,6 @@
 //! \ingroup TLibCommon
 //! \{
 
-
-#define MVD_BINARIZATION_CTX               1   
-
-#define MULTI_PEL_MVD                      1
-#if MULTI_PEL_MVD                  
-#define MVD_PEL_NUM                        4
-#endif
-
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////
@@ -199,6 +191,14 @@
 #endif
 
 #define VCEG_AZ07_IMV                                     1  ///< Locally adaptive motion vector resolution (AMVR)
+
+#if VCEG_AZ07_IMV
+#define MULTI_PEL_MVD                                     1
+#if MULTI_PEL_MVD                  
+#define MVD_PEL_NUM                                       4
+#define MVD_BINARIZATION_CTX                              1   
+#endif
+#endif
 
 #define VCEG_AZ07_FRUC_MERGE                              1  ///< Pattern matched motion vector derivation
 
