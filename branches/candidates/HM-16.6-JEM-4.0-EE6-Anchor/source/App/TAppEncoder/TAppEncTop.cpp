@@ -186,6 +186,7 @@ Void TAppEncTop::xInitLibCfg()
   //====== Tool list ========
 #if SHARP_LUMA_DELTA_QP
   m_cTEncTop.setUseLumaDeltaQp                                    (m_useLumaDeltaQP);
+  m_cTEncTop.setIsSDR                                             (m_bIsSDR);
   m_cTEncTop.setNbrOfUsedDQPChangePoints                          (m_uiNbrOfUsedDQPChangePoints);
   m_cTEncTop.setDQpChangePoints                                   (m_dQPChangePoints);
   m_cTEncTop.setLumaDQpChangePoints                               (m_dQPLumaChangePoints);

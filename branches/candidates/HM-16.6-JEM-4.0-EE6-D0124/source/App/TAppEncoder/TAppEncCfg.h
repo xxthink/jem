@@ -163,6 +163,7 @@ protected:
   
 #if SHARP_LUMA_DELTA_QP 
   UInt      m_useLumaDeltaQP;                                ///< use deltaQP determined by block luma activity
+  Bool      m_bIsSDR;                                        ///< whether this is SDR converted to PQ  or HDR
   std::string m_lumaQpLUTFileName;                           ///< data used to derive luma QP LUT 
   UInt     m_uiNbrOfUsedDQPChangePoints;                     /// number of used qp luma pairs used to derive luma QP LUT
   Int      m_dQPChangePoints[SHARP_MAX_LUMA_DQP];            /// qp luma pair used to derive luma QP LUT

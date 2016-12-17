@@ -1,22 +1,17 @@
 #!/bin/sh
 #
-# convert from SDR BT709 to ST2084 BT2020
-# Note: HDRTools by Alexis Tourapis v0.13 is used in our test 
+# convert from SDR BT709 to ST2084 BT2100
+# Note: HDRTools by Alexis Tourapis v0.13 + an EE6 patch is used in the data conversion 
 # https://gitlab.com/standards/HDRTools/
 # 
-# For content denoted as conforming to the broadcast legal range, the content should first be clipped to the broadcast 
-# legal range value. Since currently it is not sure if HDRTools v0.13 has done the clipping already, so we do it in an 
-# extra step using ffmpeg first, refer yuv_clip2LegalRange.sh
-
-
-execDir="/nas_home/HDRTools/HDRTools_v0.13/bin"         # change this to proper directory
+execDir="/nas_home/HDRTools/HDRTools_v0.13_EE6/bin"         # change this to proper directory
 exec="$execDir/HDRConvert"
-cfgDir="$execDir/CfE_cfgFiles"
+cfgDir="$execDir/CfE_cfgFiles"                              # default config file from HDRTools/bin/CfE_cfgFiles are used
 inDir="/nas_share/Sequences"    
 
 seqCfgDir="./per-sequence"
 exrDir="./EXR"
-outDir="./PQ_BT2020"
+outDir="./PQ_BT2100"
 
 seqcfgnames=("A10_Tango" "A11_Drums100" "A12_CampfireParty" "A13_ToddlerFountain" "A20_CatRobot" "A21_TrafficFlow" "A22_DaylightRoad" "A23_Rollercoaster" "S05Kimono" "S06ParkScene" "S07Cactus" "S08BasketballDrive" "S09BQTerrace" "S10BasketballDrill" "S11BQMall" "S12PartyScene" "S13RaceHorsesC" "S14BasketballPass" "S15BQSquare" "S16BlowingBubbles" "S17RaceHorses" "S18FourPeople" "S19Johnny" "S20KristenAndSara" "S21BasketballDrillText" "S22ChinaSpeed" "S23SlideEditing" "S24SlideShow")
  
@@ -42,7 +37,7 @@ do
    
     # input/output
     tmpExr=$exrDir/"$seq"_"%03d".exr
-    outseq=PQ2020_"$seq"    
+    outseq=PQ2100_"$seq"    
     
     # set correct bitdepth
     if (( $idx < 8 )); then
@@ -55,6 +50,6 @@ do
     $exec -f $cfgDir/HDRConvertYCbCr420ToEXR2020.cfg -f $seqcfgfile -p SourceFile=$inDir/"$seq"  -p OutputFile=$tmpExr -p NumberOfFrames=$nframe
           
     # EXR to YUV with ST2084
-    $exec -f $cfgDir/HDRConvertEXR2020ToYCbCr420.cfg -p SourceFile=$tmpExr -p OutputFile=$outDir/$outseq -p SourceWidth=$width -p SourceHeight=$height -p NumberOfFrames=$nframe -p OutputSampleRange=1
+    $exec -f $cfgDir/HDRConvertEXR2020ToYCbCr420.cfg -p SourceFile=$tmpExr -p OutputFile=$outDir/$outseq -p SourceWidth=$width -p SourceHeight=$height -p OutputTransferMinBrightness=0.01  -p NumberOfFrames=$nframe
     
 done  # loop sequence

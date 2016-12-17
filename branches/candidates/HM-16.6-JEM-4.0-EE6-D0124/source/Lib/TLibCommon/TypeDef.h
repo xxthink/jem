@@ -108,7 +108,6 @@
 #if SHARP_LUMA_DELTA_QP
 #define SHARP_MAX_LUMA_DQP                 20              ///< max allowed positions for delta QP change based on luma
 #define SHARP_QP_LUMA_LUT_MAXSIZE          1024            ///< max LUT size for QP offset based on luma
-#define SHARP_QP_LUMA_LUT_HDR                0             ///< 0: use default LUT for SDR in ST-2084; 1: use default LUT for HDR
 
 // scale transform transform coefficient instead of explicit sending delta QP
 #define SHARP_LUMA_RES_SCALING                1            ///< enable coefficient scaling based on luma predciton and DC 
@@ -125,7 +124,7 @@
 #endif // end of JVET_C0024_QTBT
 
 /////////////////////////////////////////////////////////////////////////////////////
-// EE6 Chroma scaling for HDR data (Implementation to be confirmed by Ericsson
+// EE6 Chroma scaling for HDR data
 ////////////////////////////////////////////////////////////////////////////////////
 #define ERICSSON_CHROMA_QPSCALE             1                ///< chroma QP scale for HDR data 
 /////////////////////////////////////////////////////////////////////////////////////

@@ -279,6 +279,7 @@ protected:
   UInt      m_uiNbrOfUsedDQPChangePoints;                  ///< number of used qp luma pairs used to derive luma QP LUT
   Int       m_dQPChangePoints[SHARP_MAX_LUMA_DQP];           /// qp luma pair used to derive luma QP LUT
   Int       m_dQPLumaChangePoints[SHARP_MAX_LUMA_DQP];       /// qp luma pair used to derive luma QP LUT
+  Bool      m_bIsSDR;
 #endif
   Int*      m_aidQP;
   UInt      m_uiDeltaQpRD;
@@ -660,6 +661,8 @@ public:
   Int*    getDQpChangePoints                ()               { return   &m_dQPChangePoints[0]; }
   Void    setLumaDQpChangePoints            ( Int*   DQp )   { for (Int i=0; i < SHARP_MAX_LUMA_DQP; i++) m_dQPLumaChangePoints[i] = DQp[i]; }
   Int*    getLumaDQpChangePoints            ()               { return   &m_dQPLumaChangePoints[0]; }
+  Bool    getIsSDR                          ()               { return m_bIsSDR; }
+  Void    setIsSDR                          (Bool flag)      { m_bIsSDR = flag; }
 #endif
 
 #if ADAPTIVE_QP_SELECTION

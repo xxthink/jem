@@ -1,0 +1,244 @@
+From 483c4e68e73667c52a098d361ece155cb36712b6 Mon Sep 17 00:00:00 2001
+From: jzhao <jzhao@sharplabs.com>
+Date: Wed, 14 Dec 2016 16:08:14 -0800
+Subject: [PATCH] EE6 changes
+
+---
+ common/inc/Defines.H                      |  3 +++
+ common/inc/Frame.H                        |  7 +++++++
+ common/inc/TransferFunction.H             | 15 +++++++++++++--
+ common/src/Frame.cpp                      | 31 +++++++++++++++++++++++++++++++
+ common/src/TransferFunction.cpp           | 25 +++++++++++++++++++++++++
+ common/src/TransferFunctionNormalize.cpp  | 10 ++++++++++
+ projects/HDRConvert/src/HDRConvertYUV.cpp |  5 +++++
+ 7 files changed, 94 insertions(+), 2 deletions(-)
+
+diff --git a/common/inc/Defines.H b/common/inc/Defines.H
+index c89410e..4a36242 100755
+--- a/common/inc/Defines.H
++++ b/common/inc/Defines.H
+@@ -58,6 +58,9 @@
+ #define INT_INF 0x7fffffff
+ #define FLT_INF 1e30F
+ 
++#define EE6_NORM_OFFSET             1   // allow the output normalization have minimum value
++#define EE6_CLIP_SR_STANDARD        1   // make sure that YUV input dentoed as SR_STANDARD are indeed within range
++
+ #define ENABLE_SSE_OPT      0
+ 
+ #if (defined(WIN32) || defined(WIN64)) && !defined(__GNUC__)
+diff --git a/common/inc/Frame.H b/common/inc/Frame.H
+index f877690..5cafe6e 100755
+--- a/common/inc/Frame.H
++++ b/common/inc/Frame.H
+@@ -63,6 +63,10 @@ private:
+   void copyArea(const float  *iComp, float  *oComp, int iMinY, int iMaxY, int iMinX, int iMaxX, int oMinX, int oMinY, int iWidth, int iHeight, int oWidth, int oHeight, bool flip);
+   void copyArea(const imgpel *iComp, imgpel *oComp, int iMinY, int iMaxY, int iMinX, int iMaxX, int oMinX, int oMinY, int iWidth, int iHeight, int oWidth, int oHeight, bool flip);
+   void copyArea(const uint16 *iComp, uint16 *oComp, int iMinY, int iMaxY, int iMinX, int iMaxX, int oMinX, int oMinY, int iWidth, int iHeight, int oWidth, int oHeight, bool flip);
++#if EE6_CLIP_SR_STANDARD
++  void clipComponent(imgpel *oComp, int compSize, int minPelValue, int maxPelValue);
++  void clipComponent(uint16 *oComp, int compSize, int minPelValue, int maxPelValue);
++#endif
+ public:
+   
+   FrameFormat    m_format;            //!< Consolidated format parameters
+@@ -124,6 +128,9 @@ public:
+   void copy(Frame *f, int sourceMinX, int sourceMinY, int sourceMaxX, int sourceMaxY, int targetX, int targetY);
+   void copy(Frame *f, int component, int sourceMinX, int sourceMinY, int sourceMaxX, int sourceMaxY, int targetX, int targetY);
+ 
++#if EE6_CLIP_SR_STANDARD
++  void clipStandardInputYUV();
++#endif
+   bool equalType    (Frame *f);
+   bool equalTypePart(Frame *f);
+   bool equalSize    (Frame *f);
+diff --git a/common/inc/TransferFunction.H b/common/inc/TransferFunction.H
+index d6061a6..ec7f0ce 100644
+--- a/common/inc/TransferFunction.H
++++ b/common/inc/TransferFunction.H
+@@ -89,7 +89,10 @@ class TransferFunction {
+ protected:
+   double                  m_normalFactor;
+   double                  m_invNormalFactor;
+-
++#if EE6_NORM_OFFSET  
++  double                   m_minValue;
++  double                   m_maxValue;
++#endif
+   // LUT related
+   bool                    m_enableLUT;
+   uint32                  m_binsLUT;
+@@ -128,6 +131,10 @@ public:
+   TransferFunction() {
+     m_normalFactor = 1.0;
+     m_invNormalFactor = 1.0;
++#if EE6_NORM_OFFSET  
++    m_minValue = 0.0;
++    m_maxValue = 10000.0;
++#endif
+     m_enableLUT = FALSE;
+     m_enableFwdDerivLUT = FALSE;
+     m_binsLUT = 1;
+@@ -157,7 +164,11 @@ public:
+   
+   double  getNormalFactor()       const { return m_normalFactor; };
+   void    setNormalFactor(double value) { m_normalFactor = value; m_invNormalFactor = 1.0 / value; };
+-  
++#if EE6_NORM_OFFSET
++  // map value from [0, m_maxValue] to [m_minValue,  m_maxValue] and vice versa
++  double  getMappedValInRange(double value)  { return (value - m_minValue) * m_maxValue / (m_maxValue - m_minValue); }
++  double  getInvMappedValInRange(double value)       const { return (m_minValue + value * (m_maxValue - m_minValue) / m_maxValue); }
++#endif
+   void    forward           (Frame *frame);
+   void    forward           (Frame *frame, int component);
+   void    inverse           (Frame *frame);
+diff --git a/common/src/Frame.cpp b/common/src/Frame.cpp
+index 568a757..00465d5 100644
+--- a/common/src/Frame.cpp
++++ b/common/src/Frame.cpp
+@@ -817,9 +817,40 @@ void Frame::copy(Frame *f, int component, int sourceMinX, int sourceMinY, int so
+   }
+ }
+ 
++#if EE6_CLIP_SR_STANDARD
++void Frame::clipComponent(imgpel *oComp, int compSize, int minPelValue, int maxPelValue) {
++  for (int i = 0; i < compSize; i++) {
++   *oComp = (imgpel)iClip(int(*oComp), minPelValue, maxPelValue);
++   oComp++;
++  }
++}
++
++void Frame::clipComponent(uint16 *oComp, int compSize, int minPelValue, int maxPelValue) {
++  for (int i = 0; i < compSize; i++) {
++    *oComp = (uint16)iClip(int(*oComp), minPelValue, maxPelValue);
++    oComp++;
++  }
++}
+ 
++// make sure input YUV claimed to be in standard range are indeed within range
++void Frame::clipStandardInputYUV() {
++ 
++  if (m_isFloat || m_sampleRange != SR_STANDARD || m_colorSpace != CM_YCbCr)
++    return;
+ 
++  if (m_bitDepth == 8) {
++    clipComponent(m_comp[Y_COMP], m_compSize[Y_COMP], 16, 235);
++    clipComponent(m_comp[U_COMP], m_compSize[U_COMP], 16, 240);
++    clipComponent(m_comp[V_COMP], m_compSize[V_COMP], 16, 240);
++  }
++  else {    
++    clipComponent(m_ui16Comp[Y_COMP], m_compSize[Y_COMP], 16 << (m_bitDepthComp[Y_COMP] - 8), 235 << (m_bitDepthComp[Y_COMP] - 8));
++    clipComponent(m_ui16Comp[U_COMP], m_compSize[U_COMP], 16 << (m_bitDepthComp[U_COMP] - 8), 240 << (m_bitDepthComp[U_COMP] - 8));
++    clipComponent(m_ui16Comp[V_COMP], m_compSize[V_COMP], 16 << (m_bitDepthComp[V_COMP] - 8), 240 << (m_bitDepthComp[V_COMP] - 8));
++  }
+ 
++}
++#endif
+ 
+ //-----------------------------------------------------------------------------
+ // End of file
+diff --git a/common/src/TransferFunction.cpp b/common/src/TransferFunction.cpp
+index c1688ac..79157a3 100644
+--- a/common/src/TransferFunction.cpp
++++ b/common/src/TransferFunction.cpp
+@@ -317,6 +317,11 @@ TransferFunction *TransferFunction::create(int method, bool singleStep, float sc
+       exit(EXIT_FAILURE);
+   }
+   
++#if EE6_NORM_OFFSET  
++  result->m_minValue = minValue;
++  result->m_maxValue = maxValue;
++#endif
++
+   if (singleStep == TRUE) {
+     result->m_normalFactor = scale;
+     result->m_invNormalFactor = 1.0 / scale;
+@@ -520,11 +525,21 @@ void TransferFunction::forward( Frame* out, const Frame *inp ) {
+         for (int i = 0; i < inp->m_size; i++) {
+           // ideally, we should remove the double cast. However, we are currently keeping compatibility with the old code
+           //out->m_floatData[i] = (float) (m_normalFactor * forward((double) inp->m_floatData[i]));
++#if EE6_NORM_OFFSET
++          if (m_minValue != 0)
++            out->m_floatData[i] = (float)(m_normalFactor * (double)((float)forward(getMappedValInRange((double)inp->m_floatData[i]))));
++          else
++#endif
+           out->m_floatData[i] = (float) (m_normalFactor * (double) ((float) forward((double) inp->m_floatData[i])));
+         }
+       }
+       else {
+         for (int i = 0; i < inp->m_size; i++) {
++#if EE6_NORM_OFFSET
++          if (m_minValue != 0)
++            out->m_floatData[i] = (float)(m_normalFactor * (double)(forwardLUT(getMappedValInRange((double)inp->m_floatData[i]))));
++          else
++#endif
+           out->m_floatData[i] = (float) (m_normalFactor * (double) forwardLUT((double) inp->m_floatData[i]));
+         }        
+       }
+@@ -584,11 +599,21 @@ void TransferFunction::inverse( Frame* out, const Frame *inp ) {
+     if (inp->m_isFloat == TRUE && out->m_isFloat == TRUE && inp->m_size == out->m_size) {
+       if (m_enableLUT == FALSE) {
+         for (int i = 0; i < inp->m_size; i++) {
++#if EE6_NORM_OFFSET
++          if (m_minValue != 0)
++            out->m_floatData[i] = (float)inverse(getInvMappedValInRange((double)inp->m_floatData[i]) / m_normalFactor);
++          else
++#endif
+           out->m_floatData[i] = (float) inverse((double) inp->m_floatData[i] / m_normalFactor);
+         }
+       }
+       else {
+         for (int i = 0; i < inp->m_size; i++) {
++#if EE6_NORM_OFFSET
++          if (m_minValue != 0)
++            out->m_floatData[i] = (float)inverseLUT(getInvMappedValInRange((double)inp->m_floatData[i]) / m_normalFactor);
++          else
++#endif
+           out->m_floatData[i] = (float) inverseLUT((double) inp->m_floatData[i] / m_normalFactor);
+         }        
+       }
+diff --git a/common/src/TransferFunctionNormalize.cpp b/common/src/TransferFunctionNormalize.cpp
+index e15c283..bfc42db 100644
+--- a/common/src/TransferFunctionNormalize.cpp
++++ b/common/src/TransferFunctionNormalize.cpp
+@@ -79,11 +79,21 @@ TransferFunctionNormalize::~TransferFunctionNormalize() {
+ // Public methods
+ //-----------------------------------------------------------------------------
+ double TransferFunctionNormalize::forward(double value) {
++#if EE6_NORM_OFFSET
++  if (m_minValue != 0)
++    return getMappedValInRange(value * m_scale);
++  else
++#endif
+   return value * m_scale;
+ }
+ 
+ double TransferFunctionNormalize::inverse(double value) {
++#if EE6_NORM_OFFSET
++  if (m_minValue !=0 )
++  value = getInvMappedValInRange(value);
++#endif
+   return (value / m_scale);
++
+ }
+ 
+ 
+diff --git a/projects/HDRConvert/src/HDRConvertYUV.cpp b/projects/HDRConvert/src/HDRConvertYUV.cpp
+index 0e5a125..aaa06ea 100644
+--- a/projects/HDRConvert/src/HDRConvertYUV.cpp
++++ b/projects/HDRConvert/src/HDRConvertYUV.cpp
+@@ -508,6 +508,11 @@ void HDRConvertYUV::process( ProjectParameters *inputParams ) {
+     if (m_inputFrame->readOneFrame(m_inputFile, iCurrentFrameToProcess, m_inputFile->m_fileHeader, m_startFrame) == TRUE) {
+       // Now copy input frame buffer to processing frame buffer for any subsequent processing
+       m_inputFrame->copyFrame(m_iFrameStore);
++#if EE6_CLIP_SR_STANDARD
++      if (m_iFrameStore->m_sampleRange == SR_STANDARD) {
++        m_iFrameStore->clipStandardInputYUV();
++      }
++#endif
+     }
+     else {
+       inputParams->m_numberOfFrames = frameNumber;
+-- 
+1.9.5.msysgit.0
+
