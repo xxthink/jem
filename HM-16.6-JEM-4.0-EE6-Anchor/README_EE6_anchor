@@ -2,16 +2,17 @@
 it contains luma adaptive QP technology by Sharp and chroma QP scaling by Ericsson used in MPEG-HDR anchor3.2. Refer JCTVC-W0054 for details.  
 
 ///////////////////////////////////////////////////////////////////////
-//           Chroma QP scaling -- to be verified by Ericsson       ////
+//           Chroma QP scaling                                     ////
 //////////////////////////////////////////////////////////////////////
 
 Changes related to chroma QP scaling are under ERICSSON_CHROMA_QPSCALE
 
-## example config parameters
-ChromaQpScale                 : -0.46       # Linear chroma QP offset mapping (scale) based on QP
-ChromaQpOffset                : 9.26        # Linear chroma QP offset mapping (offset) based on QP
-CbQpScale                     : 1.14        # Scale factor depending on capture and representation color space
-CrQpScale                     : 1.79        # Scale factor depending on capture and representation color space 
+## example config parameters. They are already included in the per-sequence config files
+
+WCGPPSChromaQpScale                 : -0.46       # Linear chroma QP offset mapping (scale) based on QP
+WCGPPSChromaQpOffset                : 9.26        # Linear chroma QP offset mapping (offset) based on QP
+WCGPPSCbQpScale                     : 1.14        # Scale factor depending on capture and representation color space
+WCGPPSCrQpScale                     : 1.79        # Scale factor depending on capture and representation color space 
 
 
 /////////////////////////////////////////////////////////////////////
@@ -21,18 +22,21 @@ CrQpScale                     : 1.79        # Scale factor depending on capture 
 Changes related to luma adaptive QP with explicit delta QP signalling are under macros starting with   SHARP_
 
 ### example config parameters 1: enable luma adaptive delta QP at CTU level
-### Note: this parameter name is changed to be consistent with JCTVC-X1020
+###
 LumaLevelToDeltaQPMode        : 1           # Luma activity based deltaQP control  -- 0: disabled;  1: send dQP
 MaxCuDQPDepth                 : 0           # Max depth of delta QP, should be less than MaxPartitionDepth
 
 ### example config parameters 2: enable luma adaptive delta QP at CU level of depth 3
 LumaLevelToDeltaQPMode        : 1           # Luma activity based deltaQP control  -- 0: disabled;  1: send dQP;
-MaxCuDQPDepth                 : 3           # Max depth of delta QP, should be less than MaxPartitionDepth
+MaxCuDQPDepth                 : 1           # Max depth of delta QP, should be less than MaxPartitionDepth
+isSDR                         : 1           # 1 (default): SDR in PQ2100 container,   0: HDR
+
+Note: the per-sequence config files have been modifed to use the converted SDR files, ChromaQpScale etc. parameters.
 
 Related Macros:
 (1) #define SHARP_LUMA_DELTA_QP                1            ///< enable luma adaptive QP, only intended for HDR or SDR data in ST-2084 
-(2) #define SHARP_QP_LUMA_LUT_HDR              0             ///< 0: use default LUT for SDR in ST-2084 container; 1: use default LUT for HDR
-There are two default LUT table defined in the code,  define SHARP_QP_LUMA_LUT_HDR 1 for HDR data,  0 for SDR data converted to ST-2084 
+
+There are two default LUT table defined in the code,  parameter isSDR specified in sequence config file is used to select which LUT is used. 
 This is also used to get the correct weight to compute the WPSNR inside the code. The LUT table can also be input from a file through command line or config file parameter LumaDQPFile
 
 (3) 

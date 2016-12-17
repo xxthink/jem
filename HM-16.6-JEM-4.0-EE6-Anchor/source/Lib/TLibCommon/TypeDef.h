@@ -108,17 +108,16 @@
 #if SHARP_LUMA_DELTA_QP
 #define SHARP_MAX_LUMA_DQP                 20              ///< max allowed positions for delta QP change based on luma
 #define SHARP_QP_LUMA_LUT_MAXSIZE          1024            ///< max LUT size for QP offset based on luma
-#define SHARP_QP_LUMA_LUT_HDR                0            ///< 0: use default LUT for SDR in ST-2084; 1: use default LUT for HDR
 #define SHARP_WEIGHT_DISTORTION              1            ///< use weighted distortion in RD decision
 #define SHARP_WEIGHT_DISTORTION_OUTPUT       1            ///< printout weighted PSNR
 
-#define SHARP_DQP_BIT_STAT                   0             ///< for decoder output frame bits and deltaQP bits count
+#define SHARP_DQP_BIT_STAT                   1             ///< for decoder output frame bits and deltaQP bits count
 #endif  // end of Luma adaptive QP control related macros
 
 #endif // end of JVET_C0024_QTBT
 
 /////////////////////////////////////////////////////////////////////////////////////
-// EE6 Chroma scaling for HDR data (Implementation to be confirmed by Ericsson
+// EE6 Chroma scaling for HDR data
 ////////////////////////////////////////////////////////////////////////////////////
 #define ERICSSON_CHROMA_QPSCALE             1                ///< chroma QP scale for HDR data
 /////////////////////////////////////////////////////////////////////////////////////

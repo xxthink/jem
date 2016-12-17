@@ -1129,14 +1129,22 @@ static UInt calculateCollocatedFromL1Flag(TEncCfg *pCfg, const Int GOPid, const 
 Void TEncGOP::initPQWeightTable() {
   for (Int i=0; i < 1024; i++) {
     Double x = i;
+    Double y;
 
-#if SHARP_QP_LUMA_LUT_HDR
-    Double y=0.015*x-1.5;   // this is the Equation used to derive the luma qp LUT for HDR in MPEG HDR anchor3.2 (JCTCX-X1020) before -6 offset 
-    y=y<3? 3:(y>12? 12:y);   
-#else    
-    Double y=0.03*x-3.0;        // this is the Equation used to derive the luma qp LUT for SDR in ST-2084
-     y=y<0? 0:(y>12? 12:y);
-#endif
+    // todo: make the weight table more flexible
+    if (m_pcCfg->getIsSDR() == false)
+    {
+      fprintf(stderr, "set HDR weight table\n");
+      y=0.015*x-1.5;   // this is the Equation used to derive the luma qp LUT for HDR in MPEG HDR anchor3.2 (JCTCX-X1020) before -6 offset 
+      y=y<3? 3:(y>12? 12:y);   
+    }
+    else
+    {
+      fprintf(stderr, "set SDR weight table\n");
+      y = 0.03*x - 3.0;        // this is the Equation used to derive the luma qp LUT for SDR in ST-2084
+      y = y<0 ? 0 : (y>12 ? 12 : y);
+    }
+
     g_weight_pqto709[i] = pow(2.0, y/3.0);      // or power(10, dQp/10)      they are almost equal 
   }
 }
