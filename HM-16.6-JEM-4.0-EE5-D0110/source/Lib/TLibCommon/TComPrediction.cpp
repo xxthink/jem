@@ -5372,18 +5372,18 @@ Void TComPrediction::getLumaRecPixels( TComTU& rTu, UInt uiCWidth, UInt uiCHeigh
         pDst = pDst0 - line;
         piSrc = pRecSrc0 - 2 * line - 1;
 
-        if (pcCU->getCUPelX() > 4)
-        {
-            for (Int j = 0; j < uiCHeight; j++)
-            {
-                pDst[0] = ((piSrc[1] * 2 + piSrc[0] + piSrc[2])
-                    + (piSrc[1 + iRecStride] * 2 + piSrc[iRecStride] + piSrc[2 + iRecStride])
-                    + 4) >> 3;
-                piSrc += iRecStride2;
-                pDst += iDstStride;
-            }
-        }
-        else
+        //if (pcCU->getCUPelX() > 4)
+        //{
+        //    for (Int j = 0; j < uiCHeight; j++)
+        //    {
+        //        pDst[0] = ((piSrc[1] * 2 + piSrc[0] + piSrc[2])
+        //            + (piSrc[1 + iRecStride] * 2 + piSrc[iRecStride] + piSrc[2 + iRecStride])
+        //            + 4) >> 3;
+        //        piSrc += iRecStride2;
+        //        pDst += iDstStride;
+        //    }
+        //}
+        //else
         {
             for (Int j = 0; j < uiCHeight; j++)
             {

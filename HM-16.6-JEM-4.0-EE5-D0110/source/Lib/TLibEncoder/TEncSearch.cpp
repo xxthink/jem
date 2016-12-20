@@ -6286,24 +6286,22 @@ TEncSearch::estIntraPredChromaQT(TComDataCU* pcCU,
         DEBUG_STRING_NEW(sPU)
 
 #if QC_MORE_LM_MODE
-            const TComRectangle &puRect = tuRecurseWithPU.getRect(COMPONENT_Cb);
+        const TComRectangle &puRect = tuRecurseWithPU.getRect(COMPONENT_Cb);
+        getLumaRecPixels(tuRecurseWithPU, puRect.width, puRect.height);
+        initIntraPatternChType(tuRecurseWithPU, COMPONENT_Cb, false, false  DEBUG_STRING_PASS_INTO(sDebug));
+        initIntraPatternChType(tuRecurseWithPU, COMPONENT_Cr, false, false  DEBUG_STRING_PASS_INTO(sDebug)); 
+ 
+#endif
+
+#if QC_LM_MF
         const UInt uiAbsPartIdx = tuRecurseWithPU.GetAbsPartIdxTU();
         DistParam distParam;
         const Bool bUseHadamard = true;
         Int iCurLMMFIdx = 0;
-        getLumaRecPixels(tuRecurseWithPU, puRect.width, puRect.height);
-
-        initIntraPatternChType(tuRecurseWithPU, COMPONENT_Cb, false, false  DEBUG_STRING_PASS_INTO(sDebug));
-        initIntraPatternChType(tuRecurseWithPU, COMPONENT_Cr, false, false  DEBUG_STRING_PASS_INTO(sDebug));
-#endif
-
-#if QC_LM_MF
 
         //SATD checking for LMMF candidates
         const Int iLMMFinRDNum = 1;
-
-
-
+        
         if (pcCU->getSlice()->getSPS()->getUseLMChroma() && iBlockSize >= g_aiMFLM_MinSize[pcCU->getSlice()->isIntra() ? 0 : 1])
         {
             for (UInt uiMode = LM_CHROMA_F1_IDX; uiMode < LM_CHROMA_F1_IDX + QC_LM_FILTER_NUM; uiMode++)
