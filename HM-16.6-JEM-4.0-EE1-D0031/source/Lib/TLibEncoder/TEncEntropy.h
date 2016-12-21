@@ -354,7 +354,7 @@ public:
 #endif
 #if SIGNPRED
     , TComTrQuant *trQuant
-#if !SIGNPRED_RDO
+#if !SIGNPRED_RDO || PARTIALRDO
     , TComYuv *pcPred
 #endif
 #endif

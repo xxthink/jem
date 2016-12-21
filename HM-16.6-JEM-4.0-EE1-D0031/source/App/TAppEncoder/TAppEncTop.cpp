@@ -497,6 +497,9 @@ Void TAppEncTop::xInitLibCfg()
 #if SIGNPRED
   m_cTEncTop.setMaxNumPredSigns                 (m_maxNumPredSigns);
 #endif
+#if PARTIALRDO
+  m_cTEncTop.setSignPredBlkSzRDOLimit           (m_signPredBlkSzRDOLimit);
+#endif
   m_cTEncTop.setSummaryOutFilename                                ( m_summaryOutFilename );
   m_cTEncTop.setSummaryPicFilenameBase                            ( m_summaryPicFilenameBase );
   m_cTEncTop.setSummaryVerboseness                                ( m_summaryVerboseness );

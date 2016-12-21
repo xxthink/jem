@@ -228,7 +228,7 @@ static Void offsetSubTUCBFs(TComTU &rTu, const ComponentID compID)
 TEncSearch::TEncSearch()
 #if JVET_C0024_QTBT
 : m_ppcQTTempTComYuv(NULL)
-#if SIGNPRED && !SIGNPRED_RDO
+#if SIGNPRED && (!SIGNPRED_RDO||PARTIALRDO)
 , m_ppcQTTempTComYuvPred(NULL)
 #endif
 #else
@@ -440,7 +440,7 @@ Void TEncSearch::destroy()
         for (UInt uiHIdx = 0; uiHIdx < uiNumLayersAllocated; uiHIdx++)
         {
             m_ppcQTTempTComYuv[uiWIdx][uiHIdx].destroy();
-#if SIGNPRED && !SIGNPRED_RDO
+#if SIGNPRED && (!SIGNPRED_RDO||PARTIALRDO)
             m_ppcQTTempTComYuvPred[uiWIdx][uiHIdx].destroy();
 #endif
 #if JVET_C0024_QTBT
@@ -457,7 +457,7 @@ Void TEncSearch::destroy()
 #endif
         }
         delete[] m_ppcQTTempTComYuv[uiWIdx];
-#if SIGNPRED && !SIGNPRED_RDO
+#if SIGNPRED && (!SIGNPRED_RDO||PARTIALRDO)
         delete[] m_ppcQTTempTComYuvPred[uiWIdx];
 #endif
 #if JVET_C0024_QTBT && VCEG_AZ08_INTER_KLT
@@ -468,7 +468,7 @@ Void TEncSearch::destroy()
 #endif
     }
     delete[] m_ppcQTTempTComYuv;
-#if SIGNPRED && !SIGNPRED_RDO
+#if SIGNPRED && (!SIGNPRED_RDO||PARTIALRDO)
     delete[] m_ppcQTTempTComYuvPred;
 #endif
 #if JVET_C0024_QTBT && VCEG_AZ08_INTER_KLT
@@ -574,7 +574,7 @@ Void TEncSearch::destroy()
 #endif
   }
   m_pcQTTempTransformSkipTComYuv.destroy();
-#if SIGNPRED && !SIGNPRED_RDO
+#if SIGNPRED && (!SIGNPRED_RDO||PARTIALRDO)
   m_cQTTempPredTComYuv.destroy();
 #endif
 #if COM16_C806_LMCHROMA
@@ -858,7 +858,7 @@ Void TEncSearch::init(TEncCfg*      pcEncCfg,
   }
 #if JVET_C0024_QTBT
   m_ppcQTTempTComYuv  = new TComYuv* [uiNumLayersToAllocate];
-#if SIGNPRED && !SIGNPRED_RDO
+#if SIGNPRED && (!SIGNPRED_RDO||PARTIALRDO)
   m_ppcQTTempTComYuvPred  = new TComYuv* [uiNumLayersToAllocate];
 #endif
 #else
@@ -873,7 +873,7 @@ Void TEncSearch::init(TEncCfg*      pcEncCfg,
   for (UInt uiWIdx=0; uiWIdx<uiNumLayersToAllocate; uiWIdx++)
   {
       m_ppcQTTempTComYuv[uiWIdx] = new TComYuv[uiNumLayersToAllocate];
-#if SIGNPRED && !SIGNPRED_RDO
+#if SIGNPRED && (!SIGNPRED_RDO||PARTIALRDO)
       m_ppcQTTempTComYuvPred[uiWIdx] = new TComYuv[uiNumLayersToAllocate];
 #endif
 #if VCEG_AZ08_INTER_KLT
@@ -889,7 +889,7 @@ Void TEncSearch::init(TEncCfg*      pcEncCfg,
       for (UInt uiHIdx=0; uiHIdx<uiNumLayersToAllocate; uiHIdx++)
       {
           m_ppcQTTempTComYuv[uiWIdx][uiHIdx].create(1<<(uiWIdx+MIN_CU_LOG2), 1<<(uiHIdx+MIN_CU_LOG2), pcEncCfg->getChromaFormatIdc() );
-#if SIGNPRED && !SIGNPRED_RDO
+#if SIGNPRED && (!SIGNPRED_RDO||PARTIALRDO)
           m_ppcQTTempTComYuvPred[uiWIdx][uiHIdx].create(1<<(uiWIdx+MIN_CU_LOG2), 1<<(uiHIdx+MIN_CU_LOG2), pcEncCfg->getChromaFormatIdc() );
 #endif
 #if JVET_C0024_QTBT
@@ -913,7 +913,7 @@ Void TEncSearch::init(TEncCfg*      pcEncCfg,
   }
 #endif
   m_pcQTTempTransformSkipTComYuv.create( maxCUWidth, maxCUHeight, pcEncCfg->getChromaFormatIdc() );
-#if SIGNPRED && !SIGNPRED_RDO
+#if SIGNPRED && (!SIGNPRED_RDO||PARTIALRDO)
   m_cQTTempPredTComYuv.create( maxCUWidth, maxCUHeight, pcEncCfg->getChromaFormatIdc() );
 #endif
   m_tmpYuvPred.create(MAX_CU_SIZE, MAX_CU_SIZE, pcEncCfg->getChromaFormatIdc());
@@ -4487,7 +4487,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
 
 Void
 TEncSearch::xSetIntraResultLumaQT(
-#if SIGNPRED && !SIGNPRED_RDO
+#if SIGNPRED && (!SIGNPRED_RDO||PARTIALRDO)
     TComYuv* pcPredYuv,
 #endif
     TComYuv* pcRecoYuv, TComTU &rTu)
@@ -4543,7 +4543,7 @@ TEncSearch::xSetIntraResultLumaQT(
 #endif
 #if JVET_C0024_QTBT
       m_ppcQTTempTComYuv[ uiWIdx][uiHIdx ].copyPartToPartComponent( COMPONENT_Y, pcRecoYuv, uiAbsPartIdx, tuRect.width, tuRect.height );
-#if SIGNPRED && !SIGNPRED_RDO
+#if SIGNPRED && (!SIGNPRED_RDO||PARTIALRDO)
       m_ppcQTTempTComYuvPred[ uiWIdx][uiHIdx ].copyPartToPartComponent( COMPONENT_Y, pcPredYuv, uiAbsPartIdx, tuRect.width, tuRect.height );
 #endif
 #else
@@ -4622,7 +4622,7 @@ Void TEncSearch::xStoreIntraResultQT(const ComponentID compID, TComTU &rTu )
       //===== copy reconstruction =====
 #if JVET_C0024_QTBT
       m_ppcQTTempTComYuv[ uiWIdx][uiHIdx ].copyPartToPartComponent( compID, &m_pcQTTempTransformSkipTComYuv, uiAbsPartIdx, tuRect.width, tuRect.height );
-#if SIGNPRED && !SIGNPRED_RDO
+#if SIGNPRED && (!SIGNPRED_RDO||PARTIALRDO)
       m_ppcQTTempTComYuvPred[ uiWIdx][uiHIdx ].copyPartToPartComponent( compID, &m_cQTTempPredTComYuv, uiAbsPartIdx, tuRect.width, tuRect.height );
 #endif
 #else
@@ -4701,7 +4701,7 @@ Void TEncSearch::xLoadIntraResultQT(const ComponentID compID, TComTU &rTu)
       //===== copy reconstruction =====
 #if JVET_C0024_QTBT
       m_pcQTTempTransformSkipTComYuv.copyPartToPartComponent( compID, &m_ppcQTTempTComYuv[ uiWIdx][uiHIdx ], uiAbsPartIdx, tuRect.width, tuRect.height );
-#if SIGNPRED && !SIGNPRED_RDO
+#if SIGNPRED && (!SIGNPRED_RDO||PARTIALRDO)
       m_cQTTempPredTComYuv.copyPartToPartComponent( compID, &m_ppcQTTempTComYuvPred[ uiWIdx][uiHIdx ], uiAbsPartIdx, tuRect.width, tuRect.height );
 #endif
 #else
@@ -5187,7 +5187,7 @@ TEncSearch::xSetIntraResultChromaQT(TComYuv*    pcRecoYuv, TComTU &rTu)
 Void
 TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
                                TComYuv*    pcOrgYuv,
-#if SIGNPRED && !SIGNPRED_RDO
+#if SIGNPRED && (!SIGNPRED_RDO||PARTIALRDO)
                                TComYuv*    pcPredYuvParam,
 #else
                                TComYuv*    pcPredYuv,
@@ -5208,7 +5208,7 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
   const UInt    uiHeight          = pcCU     ->getHeight  ( 0 ) ;
   const UInt    uiWIdx = g_aucConvertToBit[uiWidth];
   const UInt    uiHIdx = g_aucConvertToBit[uiHeight];
-#if SIGNPRED && !SIGNPRED_RDO
+#if SIGNPRED && (!SIGNPRED_RDO||PARTIALRDO)
   TComYuv *pcPredYuv = &m_ppcQTTempTComYuvPred[uiWIdx][uiHIdx];
 #endif
 #else
@@ -5972,7 +5972,7 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         }
 #endif
 
-#if SIGNPRED && !SIGNPRED_RDO
+#if SIGNPRED && (!SIGNPRED_RDO||PARTIALRDO)
         xSetIntraResultLumaQT( pcPredYuvParam, pcRecoYuv, tuRecurseWithPU );
 #else
         xSetIntraResultLumaQT( pcRecoYuv, tuRecurseWithPU );
@@ -11147,6 +11147,9 @@ Void  TEncSearch::xAddSymbolBitsInter( TComDataCU* pcCU, UInt& ruiBits )
 #if SIGNPRED
 #if SIGNPRED_RDO
       , m_pcTrQuant
+#if PARTIALRDO
+      , NULL
+#endif
 #else
       , NULL
       , NULL

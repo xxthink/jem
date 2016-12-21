@@ -495,6 +495,9 @@ protected:
 #if SIGNPRED
   Int       m_maxNumPredSigns;
 #endif
+#if PARTIALRDO
+  Int       m_signPredBlkSzRDOLimit;
+#endif
  std::string m_summaryOutFilename;                           ///< filename to use for producing summary output file.
   std::string m_summaryPicFilenameBase;                       ///< Base filename to use for producing summary picture output files. The actual filenames used will have I.txt, P.txt and B.txt appended.
   UInt        m_summaryVerboseness;                           ///< Specifies the level of the verboseness of the text output.
@@ -1228,6 +1231,10 @@ public:
 #if SIGNPRED
   Void setMaxNumPredSigns(Int n)                                { m_maxNumPredSigns = n; }
   Int  getMaxNumPredSigns()                                     { return m_maxNumPredSigns;}
+#endif
+#if PARTIALRDO
+  Void setSignPredBlkSzRDOLimit(Int n)                          { m_signPredBlkSzRDOLimit = n; }
+  Int  getSignPredBlkSzRDOLimit()                               { return m_signPredBlkSzRDOLimit;}
 #endif
 };
 

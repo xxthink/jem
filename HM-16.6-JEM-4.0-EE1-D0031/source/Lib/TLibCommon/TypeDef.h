@@ -47,16 +47,40 @@
 //! \ingroup TLibCommon
 //! \{
 
-#define SIGNPRED 1
-#define SIGNPRED_RDO 1 // 1 => original in-RDO code, 0 => no RDO processing, decisions are made after.
+#define SIGNPRED 1 // basic support.
+
+#define SIGNPRED_Q15 0 // original code. complete RDO.
+#define SIGNPRED_Q6 1 // partial RDO. RDO blocks if w<=16 && h<=16 by default.
+
+#if SIGNPRED_Q15 && SIGNPRED_Q6
+#error just one question setting.
+#endif
+
+// #define SIGNPRED_RDO 1 // 1 => original in-RDO code with a PARTIAL option below, 0 => no RDO processing, decisions are made after.
+// #define PARTIALRDO 1 // some blocks in-rdo, others after-rdo.
+// #define SIGNPRED_HIGHEST 11 // 0 => original coeff choice, stop after finding x high enough.
+//                             // 11 => look at all coeffs, keep highest.
+
+#if SIGNPRED_Q15
+#define SIGNPRED_RDO 1
+#define PARTIALRDO 0
+#define SIGPNRED_HIGHEST 0
+#endif
+#if SIGNPRED_Q6
+#define SIGNPRED_RDO 1
+#define PARTIALRDO 1
+#define SIGNPRED_HIGHEST 11
+#endif
+
+#if PARTIALRDO && !SIGNPRED_RDO
+#error cannot have PARTIALRDO without SIGNPRED_RDO
+#endif
 
 #if SIGNPRED
 #define SIGNPRED_TOPLEFT 1 // top-left inverse transform optimisation
 #else
 #define SIGNPRED_TOPLEFT 0 // top-left inverse transform optimisation
 #endif
-
-#define SIGNPRED_HIGHEST 0 // non-rdo testing.
 
 #define SIGN_HIDDEN 1 // in SDH storage, sign is hidden.
 #define SIGN_PRED_CORRECT 2 // in SDH storage, sign prediction was correct.
@@ -71,6 +95,10 @@ enum SignPredDirection
   DIR_RESIDUE_TO_REAL = 0, // decoder uses this
   DIR_REAL_TO_RESIDUE = 1  // encoder uses this
 };
+#endif
+
+#if PARTIALRDO
+#define sprdo(w,h) (((w) <= g_rdoWH && (h) <= g_rdoWH))
 #endif
 
 ///////////////////////////////////////////////////////////

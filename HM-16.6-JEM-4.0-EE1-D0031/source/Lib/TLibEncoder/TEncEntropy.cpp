@@ -386,7 +386,10 @@ Void TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComT
       , dummyNzTs
 #endif
 #if SIGNPRED
-#if SIGNPRED_RDO
+#if PARTIALRDO
+      , rTu.GetTrQuant() == NULL || (!sprdo(rTu.getRect(compID).width, rTu.getRect(compID).height) && !g_spFinalEncode) ? NULL : pcCU->getSignHidden(compID) + rTu.getCoefficientOffset(compID)
+      , rTu.GetTrQuant() != NULL && !sprdo(rTu.getRect(compID).width, rTu.getRect(compID).height) && g_spFinalEncode != 2 ? true : false
+#elif SIGNPRED_RDO
       , pcCU->getSignHidden(compID) + rTu.getCoefficientOffset(compID)
       , false
 #else
@@ -1068,7 +1071,7 @@ Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
 #endif
 #if SIGNPRED
   , TComTrQuant *trQuant // non-NULL implies signpred processing (generate or re-use)
-#if !SIGNPRED_RDO
+#if !SIGNPRED_RDO || PARTIALRDO
   , TComYuv *pcPred
 #endif
 #endif
@@ -1322,7 +1325,10 @@ Void TEncEntropy::encodeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID
         , iNonZeroCoeffNonTs
 #endif
 #if SIGNPRED
-#if SIGNPRED_RDO
+#if PARTIALRDO
+        , sprdo(rTu.getRect(compID).width, rTu.getRect(compID).height) ? pcSDHStorage : NULL
+        , sprdo(rTu.getRect(compID).width, rTu.getRect(compID).height) ? getSignPredCombos : false
+#elif SIGNPRED_RDO
         , pcSDHStorage
         , getSignPredCombos
 #else

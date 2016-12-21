@@ -45,8 +45,11 @@
 
 #if SIGNPRED
 extern UChar const g_SignPredContext[2][2]; // [!isIntra][amp >= 600]
-#if !SIGNPRED_RDO
-extern Int         g_spFinalEncode; // for the moment, 0 (rdo, no signpred processing), 1 (1st encodeCtu, should have getsignpredcombos set), 2 (final encode, no combos).
+#if PARTIALRDO
+extern Int g_rdoWH;
+#endif
+#if !SIGNPRED_RDO || PARTIALRDO
+extern Int g_spFinalEncode; // for the moment, 0 (rdo, no signpred processing), 1 (1st encodeCtu for slice size limit, should have getsignpredcombos set), 2 (final encode, no combos).
 #endif
 #endif
 
