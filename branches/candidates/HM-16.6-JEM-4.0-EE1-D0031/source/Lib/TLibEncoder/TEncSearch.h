@@ -97,7 +97,7 @@ private:
 
 #if JVET_C0024_QTBT
   TComYuv**       m_ppcQTTempTComYuv;
-#if SIGNPRED && !SIGNPRED_RDO
+#if SIGNPRED && (!SIGNPRED_RDO||PARTIALRDO)
   TComYuv**       m_ppcQTTempTComYuvPred; // intra pred temp.
   TComYuv         m_cQTTempPredTComYuv; // load and store.
 #endif
@@ -526,7 +526,7 @@ protected:
 #endif
 
   Void  xSetIntraResultLumaQT     (
-#if SIGNPRED && !SIGNPRED_RDO
+#if SIGNPRED && (!SIGNPRED_RDO||PARTIALRDO)
                                     TComYuv*     pcPredYuv,
 #endif
                                     TComYuv*     pcRecoYuv,

@@ -985,11 +985,11 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
     pRDSbacCoder->setBinsCoded( 0 );
 
     // encode CTU and calculate the true bit counters.
-#if SIGNPRED && !SIGNPRED_RDO
+#if SIGNPRED && (!SIGNPRED_RDO||PARTIALRDO)
     g_spFinalEncode = 1; // checking. generate combos.
 #endif
     m_pcCuEncoder->encodeCtu( pCtu );
-#if SIGNPRED && !SIGNPRED_RDO
+#if SIGNPRED && (!SIGNPRED_RDO||PARTIALRDO)
     g_spFinalEncode = 0;
 #endif
 
@@ -1274,11 +1274,11 @@ Void TEncSlice::encodeSlice   ( TComPic* pcPic, TComOutputBitstream* pcSubstream
 #if ENC_DEC_TRACE
     g_bJustDoIt = g_bEncDecTraceEnable;
 #endif
-#if SIGNPRED && !SIGNPRED_RDO
+#if SIGNPRED && (!SIGNPRED_RDO||PARTIALRDO)
     g_spFinalEncode = 2; // we don't re-do our combos, we reuse previous results.
 #endif
       m_pcCuEncoder->encodeCtu( pCtu );
-#if SIGNPRED && !SIGNPRED_RDO
+#if SIGNPRED && (!SIGNPRED_RDO||PARTIALRDO)
     g_spFinalEncode = 0;
 #endif
 #if ENC_DEC_TRACE

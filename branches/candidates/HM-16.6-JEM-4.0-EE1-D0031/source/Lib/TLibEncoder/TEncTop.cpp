@@ -339,6 +339,11 @@ Void TEncTop::init(Bool isFieldCoding)
   m_iMaxRefPicNum = 0;
 
   xInitScalingLists();
+
+#if PARTIALRDO
+  // global block size limit for now, accessible at all levels.
+  g_rdoWH = m_signPredBlkSzRDOLimit;
+#endif
 }
 
 Void TEncTop::xInitScalingLists()

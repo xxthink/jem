@@ -3468,7 +3468,7 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
   m_pcEntropyCoder->encodeICFlag  ( pcCU, uiAbsPartIdx );
 #endif
   // Encode Coefficients
-#if SIGNPRED && !SIGNPRED_RDO
+#if SIGNPRED && (!SIGNPRED_RDO || PARTIALRDO)
   UInt uiWidthIdx = g_aucConvertToBit[uiCTUSize];
   UInt uiHeightIdx = g_aucConvertToBit[uiCTUSize];
 #endif
@@ -3491,6 +3491,8 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
     , m_pcTrQuant // implies we want to perform signpred processing (generate or re-use).
 #if !SIGNPRED_RDO
     , m_pppcPredYuvBest[uiWidthIdx][uiHeightIdx]
+#elif PARTIALRDO
+    , sprdo(uiWidth, uiHeight) ? NULL : m_pppcPredYuvBest[uiWidthIdx][uiHeightIdx]
 #endif
 #endif
     );
@@ -4660,7 +4662,10 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
     , iNonZeroCoeffNonTs
 #endif
 #if SIGNPRED
-#if SIGNPRED_RDO
+#if PARTIALRDO
+      , sprdo(rpcBestCU->getWidth(0), rpcBestCU->getHeight(0)) ? m_pcTrQuant : NULL,
+      NULL
+#elif SIGNPRED_RDO
     , m_pcTrQuant
 #else
       // we don't want to perform signpred processing.

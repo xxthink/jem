@@ -61,8 +61,12 @@ UChar const g_SignPredContext[2][2] =
     {0, 1}, // intra; lowamp, otheramps.
     {0, 1}  // inter; lowamp, otheramps.
 };
-#if !SIGNPRED_RDO
-Int g_spFinalEncode;
+#if PARTIALRDO
+// should move into encoder config.
+Int g_rdoWH;
+#endif
+#if !SIGNPRED_RDO || PARTIALRDO
+Int g_spFinalEncode; // for the moment, 0 (rdo, no signpred processing), 1 (1st encodeCtu for slice size limit, should have getsignpredcombos set), 2 (final encode, no combos).
 #endif
 #endif
 

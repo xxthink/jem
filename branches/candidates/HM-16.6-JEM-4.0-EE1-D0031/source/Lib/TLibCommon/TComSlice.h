@@ -893,6 +893,9 @@ private:
 #if SIGNPRED
   UInt             m_maxNumPredSigns;
 #endif
+#if PARTIALRDO
+  Int              m_signPredBlkSzRDOLimit;
+#endif
  // Parameter
   BitDepths        m_bitDepths;
   Int              m_qpBDOffset[MAX_NUM_CHANNEL_TYPE];
@@ -1206,6 +1209,10 @@ public:
 #if SIGNPRED
  UInt                   getMaxNumPredSigns()  const                                                { return m_maxNumPredSigns; }
  Void                   setMaxNumPredSigns ( UInt n )                                              { m_maxNumPredSigns = n; }
+#endif
+#if PARTIALRDO
+ Int                    getSignPredBlkSzRDOLimit()  const                                          { return m_signPredBlkSzRDOLimit; }
+ Void                   setSignPredBlkSzRDOLimit ( Int n )                                         { m_signPredBlkSzRDOLimit = n; }
 #endif
 };
 

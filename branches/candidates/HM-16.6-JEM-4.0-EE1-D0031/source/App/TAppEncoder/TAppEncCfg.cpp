@@ -1218,6 +1218,9 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 #if SIGNPRED
   ("MaxNumPredSigns",                            m_maxNumPredSigns, 0, "Max number of signs to predict per TU")
 #endif
+#if PARTIALRDO
+  ("SignPredBlkSzRDOLimit",                      m_signPredBlkSzRDOLimit, 16, "encoder RDO if blk width and height <= this limit")
+#endif
   ;
 
   for(Int i=1; i<MAX_GOP+1; i++)
@@ -2894,6 +2897,9 @@ Void TAppEncCfg::xPrintParameter()
 #endif
 #if SIGNPRED
   printf("MaxNumPredSigns:%d ", m_maxNumPredSigns);
+#endif
+#if PARTIALRDO
+  printf("SignPredBlkSzRDOLimit:%d ", m_signPredBlkSzRDOLimit);
 #endif
     printf("\n\n");
 

@@ -254,9 +254,6 @@ protected:
   Void  xCopyYuv2Tmp        ( UInt uiPartUnitIdx, UInt uiWidth, UInt uiHeight, UInt uiSplitMethod=0 );
 #else
   Void  xCopyYuv2Pic        (TComPic* rpcPic, UInt uiCUAddr, UInt uiAbsPartIdx, UInt uiDepth, UInt uiSrcDepth );
-#if SIGNPRED
-  Void  xCopyY2Pic          (TComPic* rpcPic, UInt uiCUAddr, UInt uiAbsPartIdx, UInt uiDepth, UInt uiSrcDepth );
-#endif
   Void  xCopyYuv2Tmp        ( UInt uhPartUnitIdx, UInt uiDepth );
 #endif
 
