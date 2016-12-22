@@ -2350,6 +2350,7 @@ Pel optical_flow_averaging( Int64 s1,Int64 s2,Int64 s3,Int64 s5,Int64 s6,
 #endif
 
 #if HIS_DMVR
+#if HIS_DMVR_HALF_ME
 Void TComPrediction::xGenerateFracPixel(TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefPicList, Int iWidth, Int iHeight, UInt nSearchStepShift)
 {
 TComPicYuv* pRefPic = pcCU->getSlice()->getRefPic(eRefPicList, pcCU->getCUMvField(eRefPicList)->getRefIdx(uiAbsPartIdx))->getPicYuvRec();
@@ -2376,6 +2377,7 @@ mvOffset <<= nSearchStepShift;
 cMv += mvOffset;
 xPredInterBlk( COMPONENT_Y , pcCU , pRefPic , uiAbsPartIdx , &cMv , iWidth+1 , iHeight+1 , &(m_filteredBlock[1][1]) , false , pcCU->getSlice()->getSPS()->getBitDepth( CHANNEL_TYPE_LUMA ));
 }
+#endif
 
 Void TComPrediction::xFillPredBorder(TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefPicList, Int iWidth, Int iHeight, TComYuv* pDstYuv)
 {
@@ -2416,21 +2418,6 @@ m_cFRUCRDCost.setDistParam( cDistParam , iBitDepth , pRef , uiRefStride ,
 pOrg, uiOrgStride , iWidth , iHeight , false );
 #if VCEG_AZ06_IC
 cDistParam.bMRFlag = false;
-#endif
-UInt uiCost = cDistParam.DistFunc( &cDistParam );
-return uiCost;
-}
-
-UInt TComPrediction::xMVRefineCost(TComDataCU* pcCU, TComPicYuv* pRefPic, UInt uiAbsPartIdx, TComMv cMv, Int iWidth, Int iHeight, TComYuv* pOrgYuv, TComYuv* pDstYuv)
-{
-xPredInterBlk( COMPONENT_Y , pcCU , pRefPic , uiAbsPartIdx , &cMv , iWidth , iHeight , pDstYuv , false , pcCU->getSlice()->getSPS()->getBitDepth( CHANNEL_TYPE_LUMA ));
-
-DistParam cDistParam;
-cDistParam.bApplyWeight = false;
-m_cFRUCRDCost.setDistParam( cDistParam , pcCU->getSlice()->getSPS()->getBitDepth( CHANNEL_TYPE_LUMA ) , pDstYuv->getAddr( COMPONENT_Y , uiAbsPartIdx) , pDstYuv->getStride( COMPONENT_Y ) ,
-pOrgYuv->getAddr( COMPONENT_Y , uiAbsPartIdx ) , pOrgYuv->getStride( COMPONENT_Y ) , iWidth , iHeight , false );
-#if VCEG_AZ06_IC
-cDistParam.bMRFlag = pcCU->getICFlag( uiAbsPartIdx );
 #endif
 UInt uiCost = cDistParam.DistFunc( &cDistParam );
 return uiCost;
@@ -2482,7 +2469,7 @@ Int iRefStride = m_cYuvPredTemp.getStride(COMPONENT_Y);
 Pel* pRef = m_cYuvPredTemp.getAddrPix(COMPONENT_Y, HIS_DMVR_INTME_RANGE +cMvD.getHor(), HIS_DMVR_INTME_RANGE +cMvD.getVer());
 uiCost = xDirectMCCost(pcCU->getSlice()->getSPS()->getBitDepth( CHANNEL_TYPE_LUMA ), pRef, iRefStride, pOrgYuv->getAddr( COMPONENT_Y , uiAbsPartIdx ) , pOrgYuv->getStride( COMPONENT_Y ), iWidth, iHeight);
 }
-else if (nSearchStepShift == 1+VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE)
+else
 {
 Int iRefStride = m_filteredBlock[0][0].getStride(COMPONENT_Y);
 Pel* pRef = m_filteredBlock[ pSearchOffset[nDirect].getAbsHor() ][ pSearchOffset[nDirect].getAbsVer() ].getAddr(COMPONENT_Y, uiAbsPartIdx);
@@ -2495,10 +2482,6 @@ if (pSearchOffset[nDirect].getVer()==1)
 pRef += iRefStride;
 }
 uiCost = xDirectMCCost(pcCU->getSlice()->getSPS()->getBitDepth( CHANNEL_TYPE_LUMA ), pRef, iRefStride, pOrgYuv->getAddr( COMPONENT_Y , uiAbsPartIdx ) , pOrgYuv->getStride( COMPONENT_Y ), iWidth, iHeight);
-}
-else
-{
-uiCost = xMVRefineCost(pcCU, pRefPic, uiAbsPartIdx, cMvTemp, iWidth, iHeight, pOrgYuv, pDstYuv ); 
 }
 
 if( uiCost < uiMinCost )
@@ -2515,8 +2498,8 @@ Int nStep = 2 - ( nBestDirect & 0x01 );
 
 nDirectStart = nBestDirect - nStep;
 nDirectEnd = nBestDirect + nStep;
-
 }
+
 pcCU->getCUMvField( eRefPicList )->setAllMv( cBestMv, SIZE_2Nx2N, 0, 0 ); 
 }
 #endif
@@ -2560,8 +2543,10 @@ xFillPredBorder(pCu, uiPartIdx, REF_PIC_LIST_0, iWidth, iHeight, &m_cYuvPredTemp
 
 //mv refinement
 xBIPMVRefine(pCu, uiPartIdx, REF_PIC_LIST_0, iWidth, iHeight, pcYuvDst, pcYuvSrc0, HIS_DMVR_INTME_RANGE, 2+VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE, uiMinCost);
+#if HIS_DMVR_HALF_ME
 xGenerateFracPixel(pCu, uiPartIdx, REF_PIC_LIST_0, iWidth, iHeight, 1+VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE);   
 xBIPMVRefine(pCu, uiPartIdx, REF_PIC_LIST_0, iWidth, iHeight, pcYuvDst, pcYuvSrc0, 1  , 1+VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE, uiMinCost);
+#endif
 
 //get new prediction
 TComMv cMv = pCu->getCUMvField(REF_PIC_LIST_0)->getMv(uiPartIdx);
@@ -2581,8 +2566,10 @@ pcYuvSrc1->getAddr( COMPONENT_Y , uiPartIdx ) , pcYuvSrc1->getStride( COMPONENT_
 pcYuvSrc1->copyToPartXYComponent(COMPONENT_Y, uiPartIdx, &m_cYuvPredTemp, HIS_DMVR_INTME_RANGE, HIS_DMVR_INTME_RANGE, iWidth, iHeight);
 xFillPredBorder(pCu, uiPartIdx, REF_PIC_LIST_1, iWidth, iHeight, &m_cYuvPredTemp); 
 xBIPMVRefine(pCu, uiPartIdx, REF_PIC_LIST_1, iWidth, iHeight, pcYuvDst, pcYuvSrc1, HIS_DMVR_INTME_RANGE, 2+VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE, uiMinCost);
+#if HIS_DMVR_HALF_ME
 xGenerateFracPixel(pCu, uiPartIdx, REF_PIC_LIST_1, iWidth, iHeight, 1+VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE);   
-xBIPMVRefine(pCu, uiPartIdx, REF_PIC_LIST_1, iWidth, iHeight, pcYuvDst, pcYuvSrc1, 1  , 1+VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE, uiMinCost);    
+xBIPMVRefine(pCu, uiPartIdx, REF_PIC_LIST_1, iWidth, iHeight, pcYuvDst, pcYuvSrc1, 1  , 1+VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE, uiMinCost);
+#endif
 
 //get new prediction
 cMv = pCu->getCUMvField(REF_PIC_LIST_1)->getMv(uiPartIdx);
