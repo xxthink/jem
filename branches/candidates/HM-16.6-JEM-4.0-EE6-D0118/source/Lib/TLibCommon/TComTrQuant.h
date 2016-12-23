@@ -430,9 +430,8 @@ Void InvNsst8x8( Int* src, UInt uiMode, UChar index );
                            TCoeff         & uiAbsSum,
                      const QpParam        & cQP 
 #if SHARP_LUMA_RES_SCALING
-                       ,   Int          avgPred
+                     ,   Int          avgPred
 #endif
-
 #if VCEG_AZ08_KLT_COMMON
                      , Bool useKLT = false
 #endif

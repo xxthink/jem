@@ -7337,7 +7337,7 @@ Int TComTrQuant::xResidualScale(       TComTU       &rTu,
       Int rnd = 1<<(SHARP_LUMA_RESCALE_PRECISION-1);
       pDes[uiBlockPos] = (pSrc[uiBlockPos]* real_res_scale+rnd)>>SHARP_LUMA_RESCALE_PRECISION; // Jane to check Int
     }
-
+#endif
     return dQP;
 }
 
