@@ -1036,11 +1036,10 @@ Void TEncTop::xInitPPS()
   }
 #if SHARP_LUMA_DELTA_QP
   if (getUseLumaDeltaQp() ) { 
-
 #if SHARP_LUMA_RES_SCALING // dQP flag control
       if (getUseLumaDeltaQp() == 2) {  // enable DQP_ResScale, not enable DQP flag, so no deltaQP is sent
+        bUseDQP = false;
         m_cPPS.setUseDQP_ResScale(true);
-
         m_cPPS.setNbrOfUsedDQPChangePoints(m_uiNbrOfUsedDQPChangePoints);
         m_cPPS.setDQpChangePoints(m_dQPChangePoints);
         m_cPPS.setLumaDQpChangePoints(m_dQPLumaChangePoints);
@@ -1089,8 +1088,16 @@ Void TEncTop::xInitPPS()
   m_cPPS.getPpsRangeExtension().setLog2SaoOffsetScale(CHANNEL_TYPE_LUMA,   m_log2SaoOffsetScale[CHANNEL_TYPE_LUMA  ]);
   m_cPPS.getPpsRangeExtension().setLog2SaoOffsetScale(CHANNEL_TYPE_CHROMA, m_log2SaoOffsetScale[CHANNEL_TYPE_CHROMA]);
 
+#if ERICSSON_CHROMA_QPSCALE
+  Double chromaQp = m_chromaQpScale * m_iQP + m_chromaQpOffset;
+  Int cbQP = chromaQp < 0 ? (Int)(m_chromaCbQpScale * chromaQp - 0.5) : (Int)(m_chromaCbQpScale * chromaQp + 0.5);
+  Int crQP = chromaQp < 0 ? (Int)(m_chromaCrQpScale * chromaQp - 0.5) : (Int)(m_chromaCrQpScale * chromaQp + 0.5);
+  m_cPPS.setQpOffset(COMPONENT_Cb, Clip3( -12, 12, min(0, cbQP) + m_chromaCbQpOffset ));
+  m_cPPS.setQpOffset(COMPONENT_Cr, Clip3( -12, 12, min(0, crQP) + m_chromaCrQpOffset));
+#else
   m_cPPS.setQpOffset(COMPONENT_Cb, m_chromaCbQpOffset );
   m_cPPS.setQpOffset(COMPONENT_Cr, m_chromaCrQpOffset );
+#endif
 
   m_cPPS.setEntropyCodingSyncEnabledFlag( m_iWaveFrontSynchro > 0 );
   m_cPPS.setTilesEnabledFlag( (m_iNumColumnsMinus1 > 0 || m_iNumRowsMinus1 > 0) );

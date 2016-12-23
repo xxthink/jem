@@ -1118,11 +1118,12 @@ Void TComDataCU::initEstData( const UInt uiDepth, const Int qp, const Bool bTran
     m_pbIPCMFlag[ui]    = 0;
 #if JVET_C0024_DELTA_QP_FIX
     m_phQP[eCType][ui]  = qp;
-#if SHARP_LUMA_STORE_DQP
-    m_phInferDQP[eCType][ui]   = 0;
-#endif
 #else
     m_phQP[ui]          = qp;
+#endif
+#if SHARP_LUMA_STORE_DQP
+    if (isLuma(getTextType()))
+      m_phInferDQP[eCType][ui]    = 0;        // do not reset InferDQP if Chroma, because the m_phInferDQP is prefilled with luma inferDQP
 #endif
     m_ChromaQpAdj[ui]   = 0;
     m_pbMergeFlag[ui]   = 0;
@@ -1255,19 +1256,11 @@ Void TComDataCU::initSubBT(TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiCUDepth,
 
 #if JVET_C0024_DELTA_QP_FIX
     memset(m_phQP[getTextType()] + uiZorderDst, qp, uiCurrPartNumb );
-#if SHARP_LUMA_STORE_DQP
-    if (getTextType() == 1)
-    {
-        if ((pcCU->getInferDQP() != NULL) && (m_phInferDQP[CHANNEL_TYPE_LUMA] != NULL))
-        {
-            // copy inferDQP derived for 
-            memcpy(m_phInferDQP[CHANNEL_TYPE_LUMA] + uiZorderDst, pcCU->getInferDQP() + uiZorderSrc, m_uiNumPartition*sizeof(Char));
-        }
-    }
-    memset(m_phInferDQP[getTextType()] + uiZorderDst, 0, uiCurrPartNumb );
-#endif
 #else
     memset(m_phQP + uiZorderDst, qp, uiCurrPartNumb );
+#endif
+#if SHARP_LUMA_STORE_DQP
+    memset( m_phInferDQP[getTextType()]+uiZorderDst,      0,  uiCurrPartNumb );
 #endif
     memset(m_pbMergeFlag + uiZorderDst, false, uiCurrPartNumb );
     memset(m_puhMergeIndex + uiZorderDst, 0, uiCurrPartNumb );
@@ -1434,20 +1427,11 @@ Void TComDataCU::initSubCU( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth, 
 
 #if JVET_C0024_DELTA_QP_FIX
   memset( m_phQP[eCType],      qp,  sizeInChar );
-#if SHARP_LUMA_STORE_DQP
-#if QCSCALE
-  if (eCType == 1)
-  {
-      if ((pcCU->getInferDQP() != NULL) && (m_phInferDQP[CHANNEL_TYPE_LUMA] != NULL))
-      {
-          memcpy(m_phInferDQP[CHANNEL_TYPE_LUMA], pcCU->getInferDQP() + uiPartOffset, sizeInChar);
-      }
-  }
-#endif
-  memset( m_phInferDQP[eCType],         0,  sizeInChar);
-#endif 
 #else
   memset( m_phQP,              qp,  sizeInChar );
+#endif
+#if SHARP_LUMA_STORE_DQP
+  memset( m_phInferDQP[eCType], 0,  sizeInChar );
 #endif
   memset( m_pbMergeFlag,        0, iSizeInBool  );
   memset( m_puhMergeIndex,      0, iSizeInUchar );
@@ -1685,15 +1669,11 @@ Void TComDataCU::copySubCU( TComDataCU* pcCU, UInt uiAbsPartIdx )
 #endif
 #if JVET_C0024_DELTA_QP_FIX
   m_phQP[eCType] = pcCU->getQP()          + uiPart;
- #if SHARP_LUMA_STORE_DQP
-#if QCSCALE
-  m_phInferDQP[CHANNEL_TYPE_LUMA] = pcCU->getInferDQP() + uiPart;
-#else
-  m_phInferDQP[eCType] = pcCU->getInferDQP() + uiPart;
-#endif
-#endif 
 #else
   m_phQP=pcCU->getQP()                    + uiPart;
+#endif
+#if SHARP_LUMA_STORE_DQP
+  m_phInferDQP[eCType]=pcCU->getInferDQP() + uiPart;
 #endif
   m_ChromaQpAdj = pcCU->getChromaQpAdj()  + uiPart;
 #if !JVET_C0024_QTBT
@@ -1949,15 +1929,11 @@ Void TComDataCU::copySameSizeCUFrom(TComDataCU* pcCU, UInt uiPartUnitIdx, UInt u
 #endif
 #if JVET_C0024_DELTA_QP_FIX
     memcpy(m_phQP[getTextType()] + uiOffset, pcCU->getQP(), sizeInChar);
-#if SHARP_LUMA_STORE_DQP
-#if QCSCALE
-    memcpy(m_phInferDQP[CHANNEL_TYPE_LUMA] + uiOffset, pcCU->getInferDQP(), sizeInChar);
-#else
-    memcpy( m_phInferDQP[getTextType()] + uiOffset, pcCU->getInferDQP(), sizeInChar    );
-#endif
-#endif
 #else
     memcpy(m_phQP + uiOffset, pcCU->getQP(), sizeInChar);
+#endif
+#if SHARP_LUMA_STORE_DQP
+    memcpy(m_phInferDQP[getTextType()] + uiOffset, pcCU->getInferDQP(), sizeInChar);
 #endif
 #if !JVET_C0024_QTBT
     memcpy(m_pePartSize + uiOffset, pcCU->getPartitionSize(), sizeof(*m_pePartSize) * uiNumPartition);
@@ -2150,15 +2126,11 @@ Void TComDataCU::copyPartFrom( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDept
 #endif
 #if JVET_C0024_DELTA_QP_FIX
     memcpy( m_phQP[eCType] + uiZorderDst, pcCU->getQP()+uiZorderSrc, uiCurrPartNumb );
-#if SHARP_LUMA_STORE_DQP
-#if QCSCALE
-    memcpy(m_phInferDQP[CHANNEL_TYPE_LUMA] + uiZorderDst, pcCU->getInferDQP() + uiZorderSrc, uiCurrPartNumb);
-#else
-    memcpy( m_phInferDQP[eCType] + uiZorderDst, pcCU->getInferDQP()+uiZorderSrc, uiCurrPartNumb ); 
-#endif
-#endif
 #else
     memcpy( m_phQP       + uiZorderDst, pcCU->getQP()+uiZorderSrc, uiCurrPartNumb );
+#endif
+#if SHARP_LUMA_STORE_DQP
+    memcpy( m_phInferDQP[eCType] + uiZorderDst, pcCU->getInferDQP()+uiZorderSrc, uiCurrPartNumb);
 #endif
 
     memcpy( m_pePredMode + uiZorderDst, pcCU->getPredictionMode()+uiZorderSrc, uiCurrPartNumb );
@@ -2450,15 +2422,11 @@ Void TComDataCU::copyToPic( UChar uhDepth )
 #endif
 #if JVET_C0024_DELTA_QP_FIX
       memcpy( pCtu->getQP(eCType) + uiZorderDst, m_phQP[eCType] + uiZorderSrc, uiCurrPartNumb  );
-#if SHARP_LUMA_STORE_DQP
-#if QCSCALE
-      memcpy(pCtu->getInferDQP(CHANNEL_TYPE_LUMA) + uiZorderDst, m_phInferDQP[CHANNEL_TYPE_LUMA] + uiZorderSrc, uiCurrPartNumb);
-#else
-      memcpy( pCtu->getInferDQP(eCType) + uiZorderDst, m_phInferDQP[eCType] + uiZorderSrc, uiCurrPartNumb  );
-#endif
-#endif
 #else
       memcpy( pCtu->getQP() + uiZorderDst, m_phQP + uiZorderSrc, uiCurrPartNumb  );
+#endif
+#if SHARP_LUMA_STORE_DQP
+      memcpy( pCtu->getInferDQPChannel(eCType) + uiZorderDst, m_phInferDQP[eCType] + uiZorderSrc, uiCurrPartNumb );
 #endif
 
       memcpy( pCtu->getPredictionMode() + uiZorderDst, m_pePredMode + uiZorderSrc, uiCurrPartNumb );
@@ -3134,6 +3102,96 @@ Char TComDataCU::getLastCodedQP( UInt uiAbsPartIdx )
 }
 #endif
 
+#if SHARP_LUMA_STORE_DQP
+Void TComDataCU::updateCtuQP( TComDataCU* pCtu )
+{
+  if (pCtu->getSlice()->getPPS()->getUseDQP_ResScale()) 
+  {
+    Char qp = pCtu->getCtuLastCodedQP();
+    pCtu->setQuPartIdx(0); 
+    pCtu->setQuLastCodedQP( qp );
+    pCtu->setCodedQP( qp );
+
+    pCtu->getSlice()->setTextType(CHANNEL_TYPE_LUMA);
+    UInt ctuSize = pCtu->getSlice()->getSPS()->getCTUSize();
+    
+    xUpdateCUQp(pCtu, 0,   0, ctuSize, ctuSize);
+    
+    if (pCtu->getSlice()->isIntra())
+    {
+       pCtu->getSlice()->setTextType(CHANNEL_TYPE_CHROMA);
+       memcpy( pCtu->getQP(CHANNEL_TYPE_CHROMA), pCtu->getQP(CHANNEL_TYPE_LUMA), sizeof(Char)*pCtu->getPic()->getNumPartitionsInCtu());
+    }
+  }
+}
+Void TComDataCU::xUpdateCUQp( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiWidth, UInt uiHeight)
+{
+  if (!pcCU->getSlice()->getPPS()->getUseDQP_ResScale())
+    return;
+  TComPic   *const pcPic   = pcCU->getPic();
+  TComSlice *const pcSlice = pcCU->getSlice();
+  const TComSPS   &sps =*(pcSlice->getSPS());
+  Bool bBoundary = false;
+  UInt uiLPelX   = pcCU->getCUPelX() + g_auiRasterToPelX[ g_auiZscanToRaster[uiAbsPartIdx] ];
+  UInt uiRPelX   = uiLPelX + uiWidth  - 1;
+  UInt uiTPelY   = pcCU->getCUPelY() + g_auiRasterToPelY[ g_auiZscanToRaster[uiAbsPartIdx] ];
+  UInt uiBPelY   = uiTPelY + uiHeight - 1;
+  if( ( uiRPelX >= sps.getPicWidthInLumaSamples() ) ||  ( uiBPelY >= sps.getPicHeightInLumaSamples() ) )
+  {
+    bBoundary = true;
+  }
+  if( ( uiDepth < pcCU->getDepth( uiAbsPartIdx ) ) || bBoundary )
+  {
+    UInt uiQNumParts = ( pcPic->getNumPartitionsInCtu() >> (uiDepth<<1) )>>2;
+    for ( UInt uiPartUnitIdx = 0; uiPartUnitIdx < 4; uiPartUnitIdx++, uiAbsPartIdx+=uiQNumParts )
+    {
+      uiLPelX   = pcCU->getCUPelX() + g_auiRasterToPelX[ g_auiZscanToRaster[uiAbsPartIdx] ];
+      uiTPelY   = pcCU->getCUPelY() + g_auiRasterToPelY[ g_auiZscanToRaster[uiAbsPartIdx] ];
+      if( ( uiLPelX < sps.getPicWidthInLumaSamples() ) && ( uiTPelY < sps.getPicHeightInLumaSamples() ) )
+      {
+        xUpdateCUQp( pcCU, uiAbsPartIdx, uiDepth+1, uiWidth>>1, uiHeight>>1 );
+      }
+    }
+    return;
+  }
+  UInt uiBTDepth = pcCU->getBTDepth(uiAbsPartIdx, uiWidth, uiHeight);
+  UInt uiMinCUW = pcCU->getPic()->getMinCUWidth();
+  UInt uiMinCUH = pcCU->getPic()->getMinCUHeight();
+  UInt uiAbsZorderIdx = uiAbsPartIdx;
+  if (pcCU->getBTSplitModeForBTDepth(uiAbsZorderIdx, uiBTDepth)==1)
+  {
+    for ( UInt uiPartUnitIdx = 0; uiPartUnitIdx < 2; uiPartUnitIdx++ )
+    {
+      if (uiPartUnitIdx==1)
+      {
+        uiAbsZorderIdx = g_auiRasterToZscan[g_auiZscanToRaster[uiAbsZorderIdx] 
+        + (uiHeight>>1)/uiMinCUH*pcCU->getPic()->getNumPartInCtuWidth()];
+      }
+       xUpdateCUQp( pcCU, uiAbsZorderIdx, uiDepth,  uiWidth, uiHeight>>1 );
+    }
+    return;
+  }
+  else if (pcCU->getBTSplitModeForBTDepth(uiAbsZorderIdx, uiBTDepth)==2)
+  {
+    for ( UInt uiPartUnitIdx = 0; uiPartUnitIdx < 2; uiPartUnitIdx++ )
+    {
+      if (uiPartUnitIdx==1)
+      {
+        uiAbsZorderIdx = g_auiRasterToZscan[g_auiZscanToRaster[uiAbsZorderIdx] 
+        + (uiWidth>>1)/uiMinCUW];
+      }
+       xUpdateCUQp( pcCU, uiAbsZorderIdx, uiDepth, uiWidth>>1, uiHeight );
+    }
+    return;
+  }
+  Int uiAbsPartIdxInCTU = uiAbsPartIdx;
+  Int newQp= ( pcCU->getQtRootCbf( uiAbsPartIdxInCTU) == 0) ? pcCU->getRefQP(uiAbsPartIdxInCTU) : pcCU->getQP(uiAbsPartIdxInCTU) - pcCU->getAvgInferDQP(uiAbsPartIdxInCTU, 0, uiWidth, uiHeight);     
+  pcCU->setQPSubParts(newQp, uiAbsPartIdxInCTU, uiWidth, uiHeight);
+  pcCU->setCodedQP( newQp );
+  pcCU->setQuPartIdx( uiAbsPartIdx );
+  pcCU->setQuLastCodedQP( newQp );
+}
+#endif
 /** Check whether the CU is coded in lossless coding mode.
  * \param   absPartIdx
  * \returns true if the CU is coded in lossless coding mode; false if otherwise
@@ -4759,49 +4817,52 @@ Void TComDataCU::setQPSubParts( Int qp, UInt uiAbsPartIdx, UInt uiDepth )
   memset(m_phQP+uiAbsPartIdx, qp, numPart);
 #endif
 }
-
 #if SHARP_LUMA_STORE_DQP
-Void TComDataCU::setInferDQPSubParts( Char qp, UInt uiAbsPartIdx, UInt uiDepth )
+Void TComDataCU::setInferDQPSubParts( Char qp, UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight )
 {
-  assert( (qp<(SHARP_MAX_LUMA_DQP/2))  && (qp>-(SHARP_MAX_LUMA_DQP/2)) );
-
-#ifdef QCSCALE
-  setSubPart<Char>(qp, m_phInferDQP[COMPONENT_Y], uiAbsPartIdx, getWidth(uiAbsPartIdx), getHeight(uiAbsPartIdx));
-#else
-  memset(m_phInferDQP + uiAbsPartIdx, qp, sizeof(Char)*numPart); // DBUG needs to be changed
-#endif
-
+  assert( (qp<(SHARP_MAX_LUMA_DQP))  && (qp>-(SHARP_MAX_LUMA_DQP)) );
+  ChannelType channelType = getTextType();
+  setSubPart<Char>( qp, m_phInferDQP[channelType], uiAbsPartIdx, uiWidth, uiHeight );
 }
-
-Int TComDataCU::getAvgInferDQP( UInt uiAbsPartIdxInCTU, UInt uiDepth )
+Int TComDataCU::getAvgInferDQP( UInt uiAbsPartIdx, UInt uiZIdxInCtu, UInt uiWidth, UInt uiHeight )
 {
-  const Int numPart = m_pcPic->getNumPartitionsInCtu() >> (uiDepth << 1); // DBUG needs to be changed
-
-  Int sum= 0;
-  for (Int i=0; i < numPart; i++)
+  ChannelType channelType = getTextType();
+  Int sum = 0;
+  Int numPart = 0;
+  UInt uiRaster = g_auiZscanToRaster[uiZIdxInCtu+uiAbsPartIdx];
+  UInt uiZScan = uiAbsPartIdx;
+  UInt uiShort, uiLong;
+  UInt uiStride;
+  if (uiHeight > uiWidth)
   {
-      sum += m_phInferDQP[COMPONENT_Y][uiAbsPartIdxInCTU + i];
+    uiShort = uiWidth;
+    uiLong = uiHeight;
+    uiStride = m_pcPic->getNumPartInCtuWidth();
   }
-
+  else
+  {
+    uiShort = uiHeight;
+    uiLong = uiWidth;
+    uiStride = 1;
+  }
+  UInt uiDepth = g_aucConvertToBit[m_pcSlice->getSPS()->getCTUSize()] - g_aucConvertToBit[uiShort];
+  UInt uiCurrPartNumb = m_pcPic->getNumPartitionsInCtu() >> (uiDepth << 1);
+  UInt uiNumPartInShort = m_pcPic->getNumPartInCtuWidth() >> uiDepth;
+  for (UInt i=0; i<uiLong; i+=uiShort)
+  {
+    for (UInt j=0; j<uiCurrPartNumb; j++) {
+      sum += m_phInferDQP[channelType][uiZScan+j];   // get luma qp
+      numPart++;
+    }
+    uiRaster += uiNumPartInShort * uiStride;
+    uiZScan = g_auiRasterToZscan[uiRaster];
+  }
   Int rnd = (sum>=0)? numPart>>1 : -(numPart>>1);       // sum can be negative
   sum = (sum+rnd)/numPart;             // Integer division
   return sum;
 }
-
-Int TComDataCU::getAvgQP( UInt uiAbsPartIdx, UInt uiDepth )
-{
-  const Int numPart = m_pcPic->getNumPartitionsInCtu() >> (uiDepth << 1); // DBUG needs to be changed
-
-  Int sum= 0;
-  for (Int i=0; i < numPart; i++)
-  {
-      sum += m_phQP[COMPONENT_Y][uiAbsPartIdx+i];
-  }
-
-  sum = (sum+(numPart>>1))/numPart;             // Integer division
-  return sum;
-}
 #endif
+
 Void TComDataCU::setIntraDirSubParts( const ChannelType channelType, const UInt dir, const UInt absPartIdx, const UInt depth )
 {
 #if JVET_C0024_QTBT

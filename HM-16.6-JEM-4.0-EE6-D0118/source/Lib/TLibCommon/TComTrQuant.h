@@ -584,7 +584,7 @@ Void InvNsst8x8( Int* src, UInt uiMode, UChar index );
   Void transformSkipQuantOneSample(TComTU &rTu, const ComponentID compID, const TCoeff resiDiff, TCoeff* pcCoeff, const UInt uiPos, const QpParam &cQP, const Bool bUseHalfRoundingPoint);
   Void invTrSkipDeQuantOneSample(TComTU &rTu, ComponentID compID, TCoeff pcCoeff, Pel &reconSample, const QpParam &cQP, UInt uiPos );
 #if SHARP_LUMA_RES_SCALING
-  Int getAcScale(Int dQP) { return g_LumaResScaleLUT[dQP];}
+  Int getLumaResScale(Int dQP) { return g_LumaResScaleLUT[dQP];}
 #endif
 
 #if VCEG_AZ08_KLT_COMMON
@@ -726,28 +726,23 @@ private:
 #endif
 
 #if SHARP_LUMA_RES_SCALING
-#if !REMOVE_DC
-Int xConvertDCCoeffToDCVal(TComTU       &rTu, Int DCCoeff, int uiWidth, const ComponentID compID);
-#endif
-Int xResidualScale(       TComTU       &rTu,
+  Int xConvertDCCoeffToDCVal(TComTU       &rTu, Int DCCoeff, int uiWidth, const ComponentID compID);
+  Int xResidualScale(     TComTU       &rTu,
                           TCoeff      * pSrc,
                           TCoeff      * pDes,
                           Int         avgPred,
                           const ComponentID   compID,
-                          Int acScale
+                          Int resScale
                           );
-
-Int xResidualDeScale(       TComTU       &rTu,
+  Int xResidualDeScale(     TComTU       &rTu,
                             TCoeff      * pSrc,
                             TCoeff      * pDes,
                             Int         avgPred,
                             const ComponentID   compID,
                             const QpParam      &cQP,
-                            Int acScale
+                            Int resScale
                           );
-
 #endif
-
   // RDOQ functions
 
   Void           xRateDistOptQuant (       TComTU       &rTu,

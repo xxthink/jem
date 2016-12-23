@@ -238,6 +238,10 @@ Void TDecSlice::decompressSlice(TComInputBitstream** ppcSubstreams, TComPic* pcP
     g_bJustDoIt = g_bEncDecTraceDisable;
 #endif
 
+#if SHARP_LUMA_STORE_DQP
+    if (pcSlice->getPPS()->getUseDQP_ResScale())
+      pCtu->updateCtuQP(pCtu);
+#endif
     //Store probabilities of second CTU in line into buffer
     if ( ctuXPosInCtus == tileXPosInCtus+1 && wavefrontsEnabled)
     {

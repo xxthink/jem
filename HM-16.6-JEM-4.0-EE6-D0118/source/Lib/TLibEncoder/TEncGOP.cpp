@@ -262,7 +262,7 @@ Void TEncGOP::init ( TEncTop* pcTEncTop )
   }
 #endif
 #if SHARP_WEIGHT_DISTORTION || SHARP_WEIGHT_DISTORTION_OUTPUT
-  if (m_pcCfg->getUseLumaDeltaQp() > 0)
+  //if (m_pcCfg->getUseLumaDeltaQp() > 0)
     initPQWeightTable();
 #endif
 }
@@ -1124,22 +1124,31 @@ static UInt calculateCollocatedFromL1Flag(TEncCfg *pCfg, const Int GOPid, const 
     return 1;
   }
 }
-
 #endif
 #if SHARP_WEIGHT_DISTORTION || SHARP_WEIGHT_DISTORTION_OUTPUT
-static Double coeffy[3] = {0.0000095743, 0.00061068, 0.90209 };       //    weight for SAD
-static Double coeffu[3] = {0.000015157, -0.0085953, 2.4328 };
-static Double coeffv[3] = {-0.000028608,  0.031594, -6.6075};  
 Void TEncGOP::initPQWeightTable() {
   for (Int i=0; i < 1024; i++) {
     Double x = i;
-    g_weight_pqto709[0][i] = coeffy[0]*x*x + coeffy[1]*x+coeffy[2];   g_weight_pqto709[0][i]=g_weight_pqto709[0][i]*g_weight_pqto709[0][i];
-    g_weight_pqto709[1][i] = coeffu[0]*x*x + coeffu[1]*x+coeffu[2];   g_weight_pqto709[1][i]=g_weight_pqto709[1][i]*g_weight_pqto709[1][i];
-    g_weight_pqto709[2][i] = coeffv[0]*x*x + coeffv[1]*x+coeffv[2];   g_weight_pqto709[2][i]=g_weight_pqto709[2][i]*g_weight_pqto709[2][i];
+    Double y;
+
+    // todo: make the weight table more flexible
+    if (m_pcCfg->getIsSDR() == false)
+    {
+      fprintf(stderr, "set HDR weight table\n");
+      y=0.015*x-1.5;   // this is the Equation used to derive the luma qp LUT for HDR in MPEG HDR anchor3.2 (JCTCX-X1020) before -6 offset 
+      y=y<3? 3:(y>12? 12:y);   
+    }
+    else
+    {
+      fprintf(stderr, "set SDR weight table\n");
+      y = 0.03*x - 3.0;        // this is the Equation used to derive the luma qp LUT for SDR in ST-2084
+      y = y<0 ? 0 : (y>12 ? 12 : y);
+    }
+
+    g_weight_pqto709[i] = pow(2.0, y/3.0);      // or power(10, dQp/10)      they are almost equal 
   }
 }
 #endif
-
 // ====================================================================================================================
 // Public member functions
 // ====================================================================================================================
@@ -1744,14 +1753,6 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     duData.clear();
     pcSlice = pcPic->getSlice(0);
 
-#if SHARP_LUMA_STORE_DQP   
-    if (pcSlice->getPPS()->getUseDQP_ResScale())
-    {
-        Int updatedSliceQP = m_pcSliceEncoder->getLumaAdaptiveSliceQP();
-        //printf("updatedSliceQP QP for SAO %d\n", updatedSliceQP);
-        m_pcSliceEncoder->updateLambda(pcSlice, updatedSliceQP); 
-    }
-#endif
     // SAO parameter estimation using non-deblocked pixels for CTU bottom and right boundary areas
     if( pcSlice->getSPS()->getUseSAO() && m_pcCfg->getSaoCtuBoundary() )
     {
@@ -2158,10 +2159,21 @@ Void TEncGOP::printOutSummary(UInt uiNumAllPicCoded, Bool isField, const Bool pr
 
   printf( "\n\nB Slices--------------------------------------------------------\n" );
   m_gcAnalyzeB.printOut('b', chFmt, printMSEBasedSNR, printSequenceMSE, trueBitdepthPSNR, bitDepths);
+#if SHARP_WEIGHT_DISTORTION_OUTPUT
+  //if (m_pcCfg->getUseLumaDeltaQp() > 0)
+  {
+    printf( "\n\nWPSNR SUMMARY---------------------------------------------------\n" );
+    m_gcAnalyzeWPSNR.printOut('w', chFmt, printMSEBasedSNR, false, trueBitdepthPSNR, bitDepths);
+  }
+#endif
 
   if (!m_pcCfg->getSummaryOutFilename().empty())
   {
     m_gcAnalyzeAll.printSummary(chFmt, printSequenceMSE, trueBitdepthPSNR, bitDepths, m_pcCfg->getSummaryOutFilename());
+#if SHARP_WEIGHT_DISTORTION_OUTPUT
+   // if (m_pcCfg->getUseLumaDeltaQp() > 0)
+      m_gcAnalyzeWPSNR.printSummary(chFmt, printSequenceMSE, trueBitdepthPSNR, bitDepths, m_pcCfg->getSummaryOutFilename());
+#endif
   }
 
   if (!m_pcCfg->getSummaryPicFilenameBase().empty())
@@ -2200,7 +2212,7 @@ Void TEncGOP::printOutSummary(UInt uiNumAllPicCoded, Bool isField, const Bool pr
   printf( "\n\nB Slices--------------------------------------------------------\n" );
   m_gcAnalyzeB.printOut('b', chFmt, printMSEBasedSNR, printSequenceMSE, bitDepths);
 #if SHARP_WEIGHT_DISTORTION_OUTPUT
-  if (m_pcCfg->getUseLumaDeltaQp() > 0)
+  //if (m_pcCfg->getUseLumaDeltaQp() > 0)
   {
     printf( "\n\nWPSNR SUMMARY---------------------------------------------------\n" );
     m_gcAnalyzeWPSNR.printOut('w', chFmt, printMSEBasedSNR, false, bitDepths);
@@ -2211,7 +2223,7 @@ Void TEncGOP::printOutSummary(UInt uiNumAllPicCoded, Bool isField, const Bool pr
   {
     m_gcAnalyzeAll.printSummary(chFmt, printSequenceMSE, bitDepths, m_pcCfg->getSummaryOutFilename());
 #if SHARP_WEIGHT_DISTORTION_OUTPUT
-    if (m_pcCfg->getUseLumaDeltaQp() > 0)
+   // if (m_pcCfg->getUseLumaDeltaQp() > 0)
       m_gcAnalyzeWPSNR.printSummary(chFmt, printSequenceMSE, bitDepths, m_pcCfg->getSummaryOutFilename());
 #endif
   }
@@ -2469,6 +2481,12 @@ Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const Acces
     const TComPicYuv *pOrgPicYuv =(conversion!=IPCOLOURSPACE_UNCHANGED) ? pcPic ->getPicYuvTrueOrg() : pcPic ->getPicYuvOrg();
     const Pel*  pOrg       = pOrgPicYuv->getAddr(ch);
     const Int   iOrgStride = pOrgPicYuv->getStride(ch);
+#if SHARP_WEIGHT_DISTORTION_OUTPUT
+    const Pel* pOrgLuma   = pOrgPicYuv->getAddr(COMPONENT_Y);
+    Int  iOrgStrideLuma = pOrgPicYuv->getStride(COMPONENT_Y);
+    Int cShift = (ch==COMPONENT_Y) ? 0 : 1; // assume 420
+#endif
+
     Pel*  pRec             = picd.getAddr(ch);
     const Int   iRecStride = picd.getStride(ch);
     const Int   iWidth  = pcPicD->getWidth (ch) - (m_pcEncTop->getPad(0) >> pcPic->getComponentScaleX(ch));
@@ -2487,15 +2505,18 @@ Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const Acces
         Intermediate_Int iDiff = (Intermediate_Int)( pOrg[x] - pRec[x] );
         uiSSDtemp   += iDiff * iDiff;
 #if SHARP_WEIGHT_DISTORTION_OUTPUT
-        if (m_pcCfg->getUseLumaDeltaQp() > 0)
+       // if (m_pcCfg->getUseLumaDeltaQp() > 0)
         {          
-          Double weight = g_weight_pqto709[chan][pOrg[x]];
+          Double weight = g_weight_pqto709[pOrgLuma[x<<cShift]];
           dSSDtempWeighted += weight*(Double)iDiff*(Double)iDiff;
         }
 #endif
       }
       pOrg += iOrgStride;
       pRec += iRecStride;
+#if SHARP_WEIGHT_DISTORTION_OUTPUT
+      pOrgLuma += iOrgStrideLuma<<cShift;
+#endif
     }
     
 #if JVET_D0134_PSNR
@@ -2507,7 +2528,7 @@ Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const Acces
     dPSNR[ch]         = ( uiSSDtemp ? 10.0 * log10( fRefValue / (Double)uiSSDtemp ) : 999.99 );
     MSEyuvframe[ch]   = (Double)uiSSDtemp/(iSize);
 #if SHARP_WEIGHT_DISTORTION_OUTPUT
-    if (m_pcCfg->getUseLumaDeltaQp() > 0)
+    //if (m_pcCfg->getUseLumaDeltaQp() > 0)
     {
       dPSNRWeighted[ch]         = ( dSSDtempWeighted ? 10.0 * log10( fRefValue / (Double)dSSDtempWeighted ) : 999.99 );
       MSEyuvframeWeighted[ch]   = dSSDtempWeighted/(iSize);
@@ -2540,7 +2561,7 @@ Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const Acces
   //===== add PSNR =====
   m_gcAnalyzeAll.addResult (dPSNR, (Double)uibits, MSEyuvframe);
 #if SHARP_WEIGHT_DISTORTION_OUTPUT
-  if (m_pcCfg->getUseLumaDeltaQp() > 0)
+  //if (m_pcCfg->getUseLumaDeltaQp() > 0)
   {
     m_gcAnalyzeWPSNR.addResult (dPSNRWeighted, (Double)uibits, MSEyuvframeWeighted);
   }
@@ -2595,7 +2616,7 @@ Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const Acces
     printf(" [Y MSE %6.4lf  U MSE %6.4lf  V MSE %6.4lf]", MSEyuvframe[COMPONENT_Y], MSEyuvframe[COMPONENT_Cb], MSEyuvframe[COMPONENT_Cr] );
   }
 #if SHARP_WEIGHT_DISTORTION_OUTPUT
-  if (m_pcCfg->getUseLumaDeltaQp() > 0)
+  //if (m_pcCfg->getUseLumaDeltaQp() > 0)
   {
     printf(" [WY %6.4lf dB    WU %6.4lf dB    WV %6.4lf dB]", dPSNRWeighted[COMPONENT_Y], dPSNRWeighted[COMPONENT_Cb], dPSNRWeighted[COMPONENT_Cr] );
   }
