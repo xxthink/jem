@@ -229,9 +229,8 @@ extern Int g_lumaQPLUT[SHARP_QP_LUMA_LUT_MAXSIZE];               // LUT for luma
 Void initLumaDeltaQpLUT(Int totalChangePoints, Int *lumaChangePoints, Int* qps);
 #endif
 #if SHARP_LUMA_RES_SCALING
-extern Int *g_LumaResScaleLUT;
-Void initLumaAcScaleLUT();
-extern Int g_CUQP_updated_flag;
+extern Int *g_LumaResScaleLUT;         // LUT for luma dQP and correspionding scale
+Void initLumaResScaleLUT();
 #endif
 
 #if ENC_DEC_TRACE
@@ -286,7 +285,7 @@ extern const Int g_pdpc_pred_param[5][2][35][7];
 #endif
 
 #if SHARP_WEIGHT_DISTORTION || SHARP_WEIGHT_DISTORTION_OUTPUT
-extern Double g_weight_pqto709[3][1024];
+extern Double g_weight_pqto709[1024];
 #endif
 #if SHARP_DQP_BIT_STAT
 struct BITStat

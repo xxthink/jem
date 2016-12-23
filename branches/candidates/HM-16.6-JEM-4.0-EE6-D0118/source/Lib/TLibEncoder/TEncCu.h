@@ -177,7 +177,6 @@ public:
   
   Int                    CalculateLumaActivity(TComDataCU *pcCU, const UInt uiAbsPartIdx, const TComYuv * pOrgYuv);
 #endif
-
   /// create internal buffers
   Void  create              ( UChar uhTotalDepth, UInt iMaxWidth, UInt iMaxHeight, ChromaFormat chromaFormat );
 
@@ -190,9 +189,6 @@ public:
   /// CTU encoding function
   Void  encodeCtu           ( TComDataCU*  pCtu );
 
-#if SHARP_LUMA_STORE_DQP
-  Void  updateCtuQP         ( TComDataCU*  pCtu );
-#endif
   Int   updateCtuDataISlice ( TComDataCU* pCtu, Int width, Int height );
 
   Void setFastDeltaQp       ( Bool b)                 { m_bFastDeltaQP = b;         }
@@ -213,9 +209,7 @@ protected:
 #else
   Void  xEncodeCU           ( TComDataCU*  pcCU, UInt uiAbsPartIdx,           UInt uiDepth        );
 #endif
-#if SHARP_LUMA_STORE_DQP
-  Void  xUpdateCUQp           ( TComDataCU*  pcCU, UInt uiAbsPartIdx,           UInt uiDepth        );
-#endif
+
   Int   xComputeQP          ( TComDataCU* pcCU, UInt uiDepth );
 #if JVET_C0024_QTBT
   Void  xCheckBestMode      ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, UInt uiDepth, UInt uiWidth=0, UInt uiHeight=0 DEBUG_STRING_FN_DECLARE(sParent) DEBUG_STRING_FN_DECLARE(sTest) DEBUG_STRING_PASS_INTO(Bool bAddSizeInfo=true));

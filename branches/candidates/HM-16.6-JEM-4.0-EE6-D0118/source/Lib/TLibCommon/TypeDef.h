@@ -342,6 +342,10 @@
 
 #define PRINT_RPS_INFO                                    0 ///< Enable/disable the printing of bits used to send the RPS.
 
+/////////////////////////////////////////////////////////////////////////////////////
+// EE6 adaptive scaling for PQ2100 representation 
+////////////////////////////////////////////////////////////////////////////////////
+
 #define SHARP_LUMA_DELTA_QP                               1               ///< enable luma adaptive QP
 
 #if SHARP_LUMA_DELTA_QP
@@ -351,19 +355,20 @@
 // scale AC transform coefficient 
 #define SHARP_LUMA_RES_SCALING                            1            ///< enable coefficient scaling based on luma predciton and DC 
 #define SHARP_LUMA_STORE_DQP                              SHARP_LUMA_RES_SCALING  ///< same marco as above, give it different name for ease of searchingP
+#define QC_EE6_ENABLE_DC_SCALE               1             ///< 0: Original Sharp's design, 1: Exclude DC from scale derivation and enable adaptive scaling of DC component, 2: avoid scaling of DC (Impact of prediction only)
 
 #define SHARP_LUMA_RESCALE_PRECISION                      6             /// actual scale is   scale>>RESCALE_LUT_PRECISION'
-#define REMOVE_DC                                         0
-#define MOVE_SCALING                                      0
-#define REMOVE_DEC_DIV                                    0
 
 #define SHARP_WEIGHT_DISTORTION              1            ///< use weighted distortion in RD decision
 #define SHARP_WEIGHT_DISTORTION_OUTPUT       1            ///< printout weighted PSNR
-#define SHARP_DQP_BIT_STAT                  1             ///< for decoder output frame bits and deltaQP bits count
-
-#define QCSCALE                     1
-#define QCSCALE_REMOV_DC                     1
+#define SHARP_DQP_BIT_STAT                  0             ///< for decoder output frame bits and deltaQP bits count
 #endif
+
+/////////////////////////////////////////////////////////////////////////////////////
+// EE6 Chroma scaling for HDR data
+////////////////////////////////////////////////////////////////////////////////////
+#define ERICSSON_CHROMA_QPSCALE             1                ///< chroma QP scale for HDR data 
+/////////////////////////////////////////////////////////////////////////////////////
 
 // ====================================================================================================================
 // Tool Switches - transitory (these macros are likely to be removed in future revisions)

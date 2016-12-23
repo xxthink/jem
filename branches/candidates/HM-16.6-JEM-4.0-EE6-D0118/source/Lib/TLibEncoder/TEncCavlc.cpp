@@ -174,17 +174,15 @@ Void TEncCavlc::codePPS( const TComPPS* pcPPS )
   WRITE_FLAG( pcPPS->getUseDQP() ? 1 : 0, "cu_qp_delta_enabled_flag" );
 #if SHARP_LUMA_RES_SCALING // signalling, this is put in PPS to be consistent with existing cu_qp_delta_enabled_flag, but it does not have to be in PPS
   WRITE_FLAG( pcPPS->getUseDQP_ResScale() ? 1 : 0, "cu_dqp_resscale_enabled_flag" );
-
   if (pcPPS->getUseDQP_ResScale()) 
   {
       WRITE_UVLC( pcPPS->getNbrOfUsedDQPChangePoints(),         "num_luma_dqp_change_points");
-
-      WRITE_SVLC( pcPPS->getDQpChangePoint(0),        "delta_dqp_chagne_point");
-      WRITE_SVLC( pcPPS->getLumaDQpChangePoint(0), "delta_luma_dqp_chagne_point");
+      WRITE_SVLC( pcPPS->getDQpChangePoint(0),        "delta_dqp_change_point");
+      WRITE_SVLC( pcPPS->getLumaDQpChangePoint(0), "delta_luma_dqp_change_point");
       for (Int i=1; i < pcPPS->getNbrOfUsedDQPChangePoints(); i++)
       {
-          WRITE_SVLC( pcPPS->getDQpChangePoint(i)-pcPPS->getDQpChangePoint(i-1),        "delta_dqp_chagne_point");
-          WRITE_SVLC( pcPPS->getLumaDQpChangePoint(i)-pcPPS->getLumaDQpChangePoint(i-1), "delta_luma_dqp_chagne_point");
+          WRITE_SVLC( pcPPS->getDQpChangePoint(i)-pcPPS->getDQpChangePoint(i-1),        "delta_dqp_change_point");
+          WRITE_SVLC( pcPPS->getLumaDQpChangePoint(i)-pcPPS->getLumaDQpChangePoint(i-1), "delta_luma_dqp_change_point");
       }
   }
 #endif
@@ -1568,17 +1566,9 @@ Void TEncCavlc::codeDeltaQP( TComDataCU* pcCU, UInt uiAbsPartIdx )
 {
   Int iDQp  = pcCU->getQP( uiAbsPartIdx ) - pcCU->getRefQP( uiAbsPartIdx );
 
-#if SHARP_LUMA_RES_SCALING
-  if (pcCU->getSlice()->getPPS()->getUseDQP_ResScale())
-      iDQp  = pcCU->getQP( uiAbsPartIdx ) - pcCU->getSlice()->getSliceQp();
-  else
-  {
-#endif 
   Int qpBdOffsetY =  pcCU->getSlice()->getSPS()->getQpBDOffset(CHANNEL_TYPE_LUMA);
   iDQp = (iDQp + 78 + qpBdOffsetY + (qpBdOffsetY/2)) % (52 + qpBdOffsetY) - 26 - (qpBdOffsetY/2);
-#if SHARP_LUMA_RES_SCALING
-  }
-#endif
+
   xWriteSvlc( iDQp );
 
   return;

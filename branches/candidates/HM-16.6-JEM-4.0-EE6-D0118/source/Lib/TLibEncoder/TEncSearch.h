@@ -86,8 +86,8 @@ private:
   UChar*          m_puhQTTempTrIdx;
 #endif
 #if SHARP_LUMA_STORE_DQP
-  Char*             m_tmpInferDQP[MAX_NUM_COMPONENT]; 
-  Char*             m_tmpInferDQPSingle[MAX_NUM_COMPONENT];
+  Char*             m_tmpInferDQP;
+  Char*             m_tmpInferDQPSingle;
 #endif
   UChar*          m_puhQTTempCbf[MAX_NUM_COMPONENT];
 

@@ -826,9 +826,8 @@ Void TDecTop::xDecodePPS(const std::vector<UChar> &naluData)
 #if SHARP_LUMA_RES_SCALING
   if (pps->getUseDQP_ResScale())
   {
-    // assume only one PPS for now
     initLumaDeltaQpLUT(pps->getNbrOfUsedDQPChangePoints(), pps->getLumaDQpChangePoints(), pps->getDQpChangePoints());
-    initLumaAcScaleLUT();
+    initLumaResScaleLUT();
   }
 #endif
 }

@@ -102,10 +102,6 @@ private:
   TEncSbac                m_lastSliceSegmentEndContextState;    ///< context storage for state at the end of the previous slice-segment (used for dependent slices only).
   TEncSbac                m_entropyCodingSyncContextState;      ///< context storate for state of contexts at the wavefront/WPP/entropy-coding-sync second CTU of tile-row
   SliceType               m_encCABACTableIdx;
-#if SHARP_LUMA_STORE_DQP
-  Int  m_LumaAdaptSliceQP;            // slice QP to account for the luma adaptive inferred QP
-  Int  m_CTUCnt;
-#endif
 #if PARALLEL_ENCODING_RAS_CABAC_INIT_PRESENT  
   NalUnitType             m_eLastNALUType;
 #endif
@@ -131,11 +127,6 @@ public:
   Int  getGopID()             { return m_GopID;}
   Void updateLambda(TComSlice* rpcSlice, Int dQP);
 #endif
-#if SHARP_LUMA_STORE_DQP
-  Void accumulateLumaAdaptiveSliceQP(Int qp) { m_LumaAdaptSliceQP+= qp;  m_CTUCnt++; }
-  Int getLumaAdaptiveSliceQP()              { return (m_LumaAdaptSliceQP+(m_CTUCnt>>1))/m_CTUCnt; }
-#endif
-
   // compress and encode slice
   Void    precompressSlice    ( TComPic* pcPic                                     );      ///< precompress slice for multi-loop slice-level QP opt.
   Void    compressSlice       ( TComPic* pcPic, const Bool bCompressEntireSlice, const Bool bFastDeltaQP );      ///< analysis stage of slice

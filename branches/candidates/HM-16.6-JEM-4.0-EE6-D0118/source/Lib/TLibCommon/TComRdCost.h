@@ -71,6 +71,11 @@ public:
   Pel*  pCur;
   Int   iStrideOrg;
   Int   iStrideCur;
+#if SHARP_WEIGHT_DISTORTION
+  Pel*  pOrgLuma;          // use luma to get weighting
+  Int   iStrideOrgLuma; 
+#endif
+
   Int   iRows;
   Int   iCols;
   Int   iStep;
@@ -94,6 +99,10 @@ public:
     pCur = NULL;
     iStrideOrg = 0;
     iStrideCur = 0;
+#if SHARP_WEIGHT_DISTORTION
+    pOrgLuma = NULL;          // use luma to get weighting
+    iStrideOrgLuma = 0; 
+#endif
     iRows = 0;
     iCols = 0;
     iStep = 1;
@@ -308,6 +317,10 @@ private:
 public:
 
   Distortion   getDistPart(Int bitDepth, Pel* piCur, Int iCurStride,  Pel* piOrg, Int iOrgStride, UInt uiBlkWidth, UInt uiBlkHeight, const ComponentID compID, DFunc eDFunc = DF_SSE 
+#if SHARP_WEIGHT_DISTORTION
+  , Pel* piOrgLuma = NULL, 
+  Int iOrgStrideLuma = 0
+#endif
 #if VCEG_AZ06_IC
     , Bool bMRFlag = false
 #endif

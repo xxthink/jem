@@ -471,31 +471,22 @@ public:
     }
     return m_phQP[getTextType()][uiIdx];       
   }
-  //Void          setQP                 ( UInt uiIdx, Char value ){ m_phQP[getTextType()][uiIdx] =  value;     }
+  Void          setQP                 ( UInt uiIdx, Char value ){ m_phQP[getTextType()][uiIdx] =  value;     }
   Void          setQPSubParts         ( Int qp,   UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight );
-  
-#if SHARP_LUMA_STORE_DQP
-  Char          getQP(ChannelType channelType, UInt uiIdx) const { return m_phQP[COMPONENT_Y][uiIdx]; }
-#if QCSCALE
-  Char*         getInferDQP             ( const ChannelType channelType ) { return m_phInferDQP[COMPONENT_Y];  }
-  Char*         getInferDQP() { return m_phInferDQP[COMPONENT_Y]; }
-  Char          getInferDQP(ChannelType channelType, UInt uiIdx) const     { return m_phInferDQP[COMPONENT_Y][uiIdx]; }
-#else
-  Char*         getInferDQP             ( const ChannelType channelType ) { return m_phInferDQP[channelType];  }
-  Char*         getInferDQP             () { return m_phInferDQP[getTextType()];       }  
-  Char          getInferDQP             ( ChannelType channelType, UInt uiIdx) const     { return m_phInferDQP[channelType][uiIdx]; }
-#endif
-  Int           getAvgQP( UInt uiAbsPartIdx, UInt uiDepth ); // DBUG change is needed 
-  Int           getAvgInferDQP( UInt uiAbsPartIdx, UInt uiDepth ); //DBUG change is needed 
-   
-  Void          setInferDQP(ChannelType channelType, UInt uiIdx, Char value){ m_phInferDQP[channelType][uiIdx] = value; } //?
-  Void          setInferDQPSubParts         ( Char qp,   UInt uiAbsPartIdx, UInt uiDepth ); //DBUG change is needed 
-#endif  
 #else
   Char*         getQP                 ()                        { return m_phQP;              }
   Char          getQP                 ( UInt uiIdx ) const      { return m_phQP[uiIdx];       }
   Void          setQP                 ( UInt uiIdx, Char value ){ m_phQP[uiIdx] =  value;     }
   Void          setQPSubParts         ( Int qp,   UInt uiAbsPartIdx, UInt uiDepth );
+#endif
+#if SHARP_LUMA_STORE_DQP
+  Char*         getInferDQP                 ()                        { return m_phInferDQP[getTextType()];              }
+  Char          getInferDQP                 ( UInt uiIdx ) const      { return m_phInferDQP[getTextType()][uiIdx];       }  
+  Char*         getInferDQPChannel          (const ChannelType channelType)   { return m_phInferDQP[channelType];              }
+  Int           getAvgInferDQP( UInt uiAbsPartIdx, UInt uiZIdxInCtu, UInt uiWidth, UInt uiHeight );
+  Void          setInferDQPSubParts         ( Char qp,   UInt uiAbsPartIdx, UInt uiWidth, UInt uiHeight );  
+  Void          updateCtuQP         ( TComDataCU*  pCtu );
+  Void          xUpdateCUQp           ( TComDataCU*  pcCU, UInt uiAbsPartIdx,           UInt uiDepth, UInt uiWidth,  UInt uiHeight);
 #endif
 #if JVET_C0024_DELTA_QP_FIX
   Char          getCtuLastCodedQP     (  );
