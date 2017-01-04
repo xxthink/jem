@@ -317,6 +317,7 @@
 #define FIX_TICKET37                                      1  ///< Fix of ticket #37 (incorrect m_pppcPredYuvBest buffer copy)
 #define FIX_TICKET39                                      1  ///< Fix of ticket #39 (encoder bug of delta QP)
 #define FIX_TICKET40                                      1  ///< Fix of ticket #40 (ALF crash when image height is greater than image width)
+#define FIX_TICKET42                                      1  ///< Fix of ticket #42 (CTU bits/distortion calculation mistake for I slice when QTBT is enabled)
 
 ///////////////////////////////////////////////////////////
 // KTA tools section end
