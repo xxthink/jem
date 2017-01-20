@@ -880,7 +880,19 @@ Void TEncCu::compressCtu( TComDataCU* pCtu )
       }
 #endif
 
-      xCompressCU( m_pppcBestCU[uiWidthIdx][uiHeightIdx], m_pppcTempCU[uiWidthIdx][uiHeightIdx], 0, uiCTUSize, uiCTUSize, 0 DEBUG_STRING_PASS_INTO(sDebug) );
+#if FIX_TICKET42
+      Double lumaCTBTotalCost = pCtu->getTotalCost();
+      Distortion lumaCTBTotalDistortion = pCtu->getTotalDistortion();
+      UInt lumaCTBTotalBits = pCtu->getTotalBits();
+      UInt lumaCTBTotalBins = pCtu->getTotalBins();
+#endif
+      xCompressCU(m_pppcBestCU[uiWidthIdx][uiHeightIdx], m_pppcTempCU[uiWidthIdx][uiHeightIdx], 0, uiCTUSize, uiCTUSize, 0 DEBUG_STRING_PASS_INTO(sDebug));
+#if FIX_TICKET42
+      pCtu->getTotalCost() += lumaCTBTotalCost;
+      pCtu->getTotalDistortion() += lumaCTBTotalDistortion;
+      pCtu->getTotalBits() += lumaCTBTotalBits;
+      pCtu->getTotalBins() += lumaCTBTotalBins;
+#endif
     }
 #endif
 
