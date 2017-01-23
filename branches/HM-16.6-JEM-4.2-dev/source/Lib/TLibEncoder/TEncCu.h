@@ -130,6 +130,9 @@ private:
   Pel*                    m_resiBuffer[NUMBER_OF_STORED_RESIDUAL_TYPES];
 #endif
 
+#if JVET_E0076_MULTI_PEL_MVD
+  Double                 m_dBestMvDPelCost[3]; //0: 1/4, 1: Int, 2: 4-pel
+#endif
   //  Data : encoder control
   Bool                    m_bEncodeDQP;
   Bool                    m_bFastDeltaQP;
@@ -220,7 +223,11 @@ protected:
 #if AMP_MRG
   Void  xCheckRDCostInter   ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, PartSize ePartSize DEBUG_STRING_FN_DECLARE(sDebug), Bool bUseMRG = false 
 #if VCEG_AZ07_IMV
+#if JVET_E0076_MULTI_PEL_MVD
+    , UChar bIMV = 0 , TComDataCU * pcCUInfo2Reuse = NULL 
+#else
     , Bool bIMV = false , TComDataCU * pcCUInfo2Reuse = NULL 
+#endif
 #endif
     );
 #else

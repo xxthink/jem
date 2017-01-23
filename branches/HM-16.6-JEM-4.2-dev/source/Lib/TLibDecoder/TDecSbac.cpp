@@ -640,7 +640,14 @@ Void TDecSbac::parseiMVFlag( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 
   if( uiSymbol )
   {
+#if  JVET_E0076_MULTI_PEL_MVD
+    m_pcTDecBinIf->decodeBin( uiSymbol, m_cCUiMVFlagSCModel.get( 0, 0, 3 ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__IMV_FLAG) );
+    uiSymbol ++;
+    pcCU->setiMVFlagSubParts( uiSymbol,        uiAbsPartIdx, uiDepth );
+#else
     pcCU->setiMVFlagSubParts( true,        uiAbsPartIdx, uiDepth );
+#endif
+
   }
 }
 #endif

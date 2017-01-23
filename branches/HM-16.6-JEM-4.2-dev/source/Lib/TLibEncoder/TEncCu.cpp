@@ -1150,6 +1150,10 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
   const Char lastCodedQP = rpcBestCU->getCodedQP(); 
 #endif
 
+#if JVET_E0076_MULTI_PEL_MVD
+  m_dBestMvDPelCost[0] = m_dBestMvDPelCost[1] = m_dBestMvDPelCost[2] = MAX_DOUBLE/2;
+#endif
+
   const UInt numberValidComponents = rpcBestCU->getPic()->getNumberValidComponents();
 #if VCEG_AZ08_INTER_KLT
   g_bEnableCheck = false;
@@ -1425,6 +1429,32 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         if( m_pcEncCfg->getIMV() && !rpcBestCU->getSlice()->isIntra() )
 #endif
         {
+#if JVET_E0076_MULTI_PEL_MVD
+          for( UChar iMv = 1; iMv < 3; iMv ++ )
+          {
+            if (iMv == 2 && m_dBestMvDPelCost[0] * 1.06 < m_dBestMvDPelCost[1])
+            {
+              break;
+            }
+#if VCEG_AZ06_IC
+            for( UInt uiICId = 0; uiICId < ( bICEnabled ? 2 : 1 ); uiICId++ )
+            {
+              Bool bICFlag = uiICId ? true : false;
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+              if( saveLoadTag == LOAD_ENC_INFO && bICFlag != m_pcPredSearch->getSaveLoadICFlag( uiWidthIdx, uiHeightIdx ) )
+              {
+                continue;
+              }
+#endif
+              rpcTempCU->setICFlagSubParts(bICFlag, 0, uiDepth);
+#endif
+              xCheckRDCostInter( rpcBestCU, rpcTempCU, SIZE_2Nx2N , false , iMv );
+              rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
+#if VCEG_AZ06_IC
+            }
+#endif
+          }
+#else
           // always check SIZE_2Nx2N
 #if VCEG_AZ06_IC
           for( UInt uiICId = 0; uiICId < ( bICEnabled ? 2 : 1 ); uiICId++ )
@@ -1442,6 +1472,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
             rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
 #if VCEG_AZ06_IC
           }
+#endif
 #endif
         }
 #endif
@@ -1685,6 +1716,32 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #endif
         {
           // always check SIZE_2Nx2N
+#if JVET_E0076_MULTI_PEL_MVD
+          for( UChar iMv = 1; iMv < 3; iMv ++ )
+          {
+            if (iMv == 2 && m_dBestMvDPelCost[0] * 1.06 < m_dBestMvDPelCost[1])
+            {
+              break;
+            }
+#if VCEG_AZ06_IC
+          for( UInt uiICId = 0; uiICId < ( bICEnabled ? 2 : 1 ); uiICId++ )
+          {
+            Bool bICFlag = uiICId ? true : false;
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+            if( saveLoadTag == LOAD_ENC_INFO && bICFlag != m_pcPredSearch->getSaveLoadICFlag( uiWidthIdx, uiHeightIdx ) )
+            {
+              continue;
+            }
+#endif
+            rpcTempCU->setICFlagSubParts(bICFlag, 0, uiDepth);
+#endif
+            xCheckRDCostInter( rpcBestCU, rpcTempCU, SIZE_2Nx2N , false , iMv );
+            rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
+#if VCEG_AZ06_IC
+          }
+          }
+#endif
+#else
 #if VCEG_AZ06_IC
           for( UInt uiICId = 0; uiICId < ( bICEnabled ? 2 : 1 ); uiICId++ )
           {
@@ -1701,6 +1758,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
             rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
 #if VCEG_AZ06_IC
           }
+#endif
 #endif
 #if !JVET_C0024_QTBT
           // check other candidates
@@ -4126,7 +4184,11 @@ Void TEncCu::xCheckRDCostMerge2Nx2NFRUC( TComDataCU*& rpcBestCU, TComDataCU*& rp
 #if AMP_MRG
 Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, PartSize ePartSize DEBUG_STRING_FN_DECLARE(sDebug), Bool bUseMRG
 #if VCEG_AZ07_IMV
+#if JVET_E0076_MULTI_PEL_MVD
+  , UChar bIMV , TComDataCU * pcCUInfo2Reuse 
+#else
   , Bool bIMV , TComDataCU * pcCUInfo2Reuse 
+#endif
 #endif
   )
 #else
@@ -4372,6 +4434,13 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
     }
   }
 #endif
+#endif
+
+#if JVET_E0076_MULTI_PEL_MVD
+  if (rpcTempCU->getTotalCost() < m_dBestMvDPelCost[rpcTempCU->getiMVFlag(0)])
+  {
+    m_dBestMvDPelCost[rpcTempCU->getiMVFlag(0)] = rpcTempCU->getTotalCost();
+  }
 #endif
 
 #if DEBUG_STRING

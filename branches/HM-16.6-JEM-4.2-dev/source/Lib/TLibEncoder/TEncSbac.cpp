@@ -793,6 +793,15 @@ Void TEncSbac::codeiMVFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
   UInt uiSymbol = pcCU->getiMVFlag( uiAbsPartIdx ) ? 1 : 0;
   UInt uiCtxiMV = pcCU->getCtxiMVFlag( uiAbsPartIdx ) ;
   m_pcBinIf->encodeBin( uiSymbol, m_cCUiMVFlagSCModel.get( 0, 0, uiCtxiMV ) );
+
+#if  JVET_E0076_MULTI_PEL_MVD
+  if (uiSymbol)
+  {
+    uiSymbol = pcCU->getiMVFlag( uiAbsPartIdx ) > 1 ? 1 : 0;  
+    m_pcBinIf->encodeBin( uiSymbol, m_cCUiMVFlagSCModel.get( 0, 0, 3 ) );
+  }
+#endif
+
   DTRACE_CABAC_VL( g_nSymbolCounter++ );
   DTRACE_CABAC_T( "\tiMVFlag" );
   DTRACE_CABAC_T( "\tuiCtxiMV: ");
@@ -1663,6 +1672,14 @@ Void TEncSbac::codeMvd( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList
     iHor >>= 2;
     iVer >>= 2;
   }
+#if  JVET_E0076_MULTI_PEL_MVD
+    if (pcCU->getiMVFlag( uiAbsPartIdx ) == 2)
+    {
+      assert( ( iHor % MVD_PEL_NUM ) == 0 && ( iVer % MVD_PEL_NUM ) == 0 );
+      iHor /= MVD_PEL_NUM;
+      iVer /= MVD_PEL_NUM;
+    }
+#endif
 #endif
 
   m_pcBinIf->encodeBin( iHor != 0 ? 1 : 0, *pCtx );
@@ -1672,6 +1689,7 @@ Void TEncSbac::codeMvd( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList
   const Bool bVerAbsGr0 = iVer != 0;
   const UInt uiHorAbs   = 0 > iHor ? -iHor : iHor;
   const UInt uiVerAbs   = 0 > iVer ? -iVer : iVer;
+
   pCtx++;
 
   if( bHorAbsGr0 )
