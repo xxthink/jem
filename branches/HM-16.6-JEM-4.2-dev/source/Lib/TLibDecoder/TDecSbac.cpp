@@ -925,6 +925,12 @@ Void TDecSbac::parseROTIdxChroma ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiD
     {
       uiIntraMode = PLANAR_IDX;
     }
+#if JVET_E0077_ENHANCED_LM
+    else if (IsLMMode(uiIntraMode))
+    {
+        uiIntraMode = PLANAR_IDX;
+    }
+#endif
 #else
     if( uiIntraMode == DM_CHROMA_IDX )
     {
@@ -936,6 +942,14 @@ Void TDecSbac::parseROTIdxChroma ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiD
       uiIntraMode = PLANAR_IDX;
     }
 #endif
+
+#if JVET_E0077_ENHANCED_LM
+    else if (IsLMMode(uiIntraMode))
+    {
+        uiIntraMode = PLANAR_IDX;
+    }
+#endif
+
 #endif
 
     iNumberOfPassesROT = uiIntraMode <= DC_IDX ? 3 : 4;
@@ -1473,6 +1487,25 @@ Void TDecSbac::parseIntraDirChroma( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt ui
 #endif
 
 #if COM16_C806_LMCHROMA
+#if JVET_E0077_ENHANCED_LM
+  const UInt csx = getComponentScaleX(COMPONENT_Cb, pcCU->getSlice()->getSPS()->getChromaFormatIdc());
+  const UInt csy = getComponentScaleY(COMPONENT_Cb, pcCU->getSlice()->getSPS()->getChromaFormatIdc());
+
+  Int iBlockSize = (pcCU->getHeight(uiAbsPartIdx) >> csy) + (pcCU->getWidth(uiAbsPartIdx) >> csx);
+#if JVET_E0077_MMLM
+    if (iBlockSize >= g_aiMMLM_MinSize[pcCU->getSlice()->isIntra() ? 0 : 1])
+    {
+        iStartIdx += JVET_E0077_MMLM;
+    }
+#endif
+#if JVET_E0077_LM_MF
+    if (iBlockSize >= g_aiMFLM_MinSize[pcCU->getSlice()->isIntra() ? 0 : 1])
+    {
+        iStartIdx += LM_FILTER_NUM;
+    }
+#endif
+
+#endif
   if( pcCU->getSlice()->getSPS()->getUseLMChroma() )
   {
     m_pcTDecBinIf->decodeBin( uiSymbol, m_cCUChromaPredSCModel.get( 0, 0, 0 ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
@@ -1484,6 +1517,48 @@ Void TDecSbac::parseIntraDirChroma( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt ui
   if( uiSymbol == 0 )
   {
     uiSymbol = LM_CHROMA_IDX;
+#if JVET_E0077_ENHANCED_LM
+        Int iCtx = 6;
+#if JVET_E0077_MMLM
+        if (iBlockSize >= g_aiMMLM_MinSize[pcCU->getSlice()->isIntra() ? 0 : 1])
+        {
+            m_pcTDecBinIf->decodeBin(uiSymbol, m_cCUChromaPredSCModel.get(0, 0, iCtx++) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype));
+            if (uiSymbol == 0)
+            {
+                uiSymbol = LM_CHROMA_IDX;
+            }
+            else
+            {
+                uiSymbol = MMLM_CHROMA_IDX;
+            }
+        }
+#endif
+#if JVET_E0077_LM_MF
+        if (iBlockSize >= g_aiMFLM_MinSize[pcCU->getSlice()->isIntra() ? 0 : 1])
+        {
+            if (uiSymbol == LM_CHROMA_IDX)
+            {
+                uiSymbol = 0;
+
+                m_pcTDecBinIf->decodeBin(uiSymbol, m_cCUChromaPredSCModel.get(0, 0, iCtx++) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype));
+                if (uiSymbol == 1)
+                {
+                    uiSymbol = LM_CHROMA_IDX;
+                }
+                if (uiSymbol == 0)
+                {
+                    Int iLabel = 0;
+                    m_pcTDecBinIf->decodeBin(uiSymbol, m_cCUChromaPredSCModel.get(0, 0, iCtx++) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype));
+                    iLabel = uiSymbol << 1;
+                    m_pcTDecBinIf->decodeBin(uiSymbol, m_cCUChromaPredSCModel.get(0, 0, iCtx++) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype));
+                    iLabel += uiSymbol;
+                    uiSymbol = LM_CHROMA_F1_IDX + iLabel;
+                }
+            }
+        }
+#endif
+
+#endif
   } 
   else
   {
@@ -1531,6 +1606,18 @@ Void TDecSbac::parseIntraDirChroma( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt ui
   else
   {
 #if COM16_C806_LMCHROMA
+#if JVET_E0077_ENHANCED_LM
+      uiSymbol = -1;
+      if (pcCU->getSlice()->getSPS()->getUseLMChroma())
+      {
+          uiSymbol = parseLMMode(pcCU, uiAbsPartIdx, uiDepth);
+
+      }
+      if (uiSymbol != -1)
+      {
+          //Do nothing
+      }
+#else
     if( pcCU->getSlice()->getSPS()->getUseLMChroma() )
     {
       m_pcTDecBinIf->decodeBin( uiSymbol, m_cCUChromaPredSCModel.get( 0, 0, 1 ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
@@ -1544,6 +1631,7 @@ Void TDecSbac::parseIntraDirChroma( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt ui
     {
       uiSymbol = LM_CHROMA_IDX;
     } 
+#endif
     else
     {
 #endif
@@ -1717,7 +1805,11 @@ Void TDecSbac::parseCrossComponentPrediction( TComTU &rTu, ComponentID compID )
 
   const UInt uiAbsPartIdx = rTu.GetAbsPartIdxTU();
 #if JVET_E0062_MULTI_DMS
-  if (!pcCU->isIntra(uiAbsPartIdx) || (pcCU->getIntraDir( CHANNEL_TYPE_CHROMA, uiAbsPartIdx ) != LM_CHROMA_IDX))
+#if JVET_E0077_ENHANCED_LM
+  if (!pcCU->isIntra(uiAbsPartIdx) || !IsLMMode(pcCU->getIntraDir(CHANNEL_TYPE_CHROMA, uiAbsPartIdx)))
+#else
+  if (!pcCU->isIntra(uiAbsPartIdx) || (pcCU->getIntraDir(CHANNEL_TYPE_CHROMA, uiAbsPartIdx) != LM_CHROMA_IDX))
+#endif
 #else
   if (!pcCU->isIntra(uiAbsPartIdx) || (pcCU->getIntraDir( CHANNEL_TYPE_CHROMA, uiAbsPartIdx ) == DM_CHROMA_IDX))
 #endif
@@ -3622,6 +3714,27 @@ Void TDecSbac::parseAffineMvd( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiPartI
 
   pcCU->setAllAffineMvd( uiAbsPartIdx, uiPartIdx, acMvd, eRefList, uiDepth );
   return;
+}
+#endif
+
+
+#if JVET_E0077_ENHANCED_LM
+Int TDecSbac::parseLMMode(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth)
+{
+#if RExt__DECODER_DEBUG_BIT_STATISTICS
+#if JVET_C0024_QTBT
+    const TComCodingStatisticsClassType ctype(STATS__CABAC_BITS__INTRA_DIR_ANG, g_aucConvertToBit[pcCU->getSlice()->getSPS()->getCTUSize() >> uiDepth] + 2, CHANNEL_TYPE_CHROMA);
+#else
+    const TComCodingStatisticsClassType ctype(STATS__CABAC_BITS__INTRA_DIR_ANG, g_aucConvertToBit[pcCU->getSlice()->getSPS()->getMaxCUWidth() >> uiDepth] + 2, CHANNEL_TYPE_CHROMA);
+#endif
+#endif
+
+    UInt uiSymbol = -1;
+    Int aiLMModeList[10];
+    Int iSymbolNum = pcCU->getLMSymbolList(aiLMModeList, uiAbsPartIdx);
+
+    xReadUnaryMaxSymbol(uiSymbol, &m_cCUChromaPredSCModel.get(0, 0, 1), 1, iSymbolNum - 1 RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__INTRA_DIR_ANG));
+    return aiLMModeList[uiSymbol];
 }
 #endif
 

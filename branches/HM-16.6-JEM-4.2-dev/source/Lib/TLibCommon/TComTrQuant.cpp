@@ -8513,6 +8513,12 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
           {
             uiIntraMode = PLANAR_IDX;
           }
+#if JVET_E0077_ENHANCED_LM
+          if (IsLMMode(uiIntraMode))
+          {
+              uiIntraMode = PLANAR_IDX;
+          }
+#endif
 #else
           if( uiIntraMode == DM_CHROMA_IDX )
           {
@@ -8535,7 +8541,17 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
             uiIntraMode = PLANAR_IDX;
           }
 #endif
+
+
+#if JVET_E0077_ENHANCED_LM
+          if (IsLMMode(uiIntraMode))
+          {
+              uiIntraMode = PLANAR_IDX;
+          }
 #endif
+
+#endif
+
         }
 
         assert( uiIntraMode<NUM_INTRA_MODE-1 );
@@ -8908,6 +8924,12 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
         {
           uiIntraMode = PLANAR_IDX;
         }
+#if JVET_E0077_ENHANCED_LM
+        if (IsLMMode(uiIntraMode))
+        {
+            uiIntraMode = PLANAR_IDX;
+        }
+#endif
 #else
         if( uiIntraMode == DM_CHROMA_IDX )
         {
@@ -8930,7 +8952,17 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
           uiIntraMode = PLANAR_IDX;
         }
 #endif
+
+
+#if JVET_E0077_ENHANCED_LM
+        if (IsLMMode(uiIntraMode))
+        {
+            uiIntraMode = PLANAR_IDX;
+        }
 #endif
+
+#endif
+
       }
 
       assert( uiIntraMode<NUM_INTRA_MODE-1 );

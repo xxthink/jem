@@ -230,6 +230,11 @@ public:
 
   Void  parseExplicitRdpcmMode( TComTU &rTu, ComponentID compID );
 
+
+#if JVET_E0077_ENHANCED_LM
+  Int  parseLMMode(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth);
+#endif
+
 private:
   ContextModel         m_contextModels[MAX_NUM_CTX_MOD];
   Int                  m_numContextModels;

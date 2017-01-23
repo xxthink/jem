@@ -3208,12 +3208,44 @@ UInt TComDataCU::getDMMode  ( UInt uiAbsPartIdx, UInt uiDMIdx, UInt uiChDMMode[N
 *\param   [in]  uiAbsPartIdx
 *\param   [out] uiModeList pointer to chroma intra modes array
 */
-#if JVET_E0062_MULTI_DMS
+
+#if JVET_E0077_ENHANCED_LM
+Int TComDataCU::getAllowedChromaDir(UInt uiAbsPartIdx, UInt uiModeList[NUM_CHROMA_MODE])
+#else
 Void TComDataCU::getAllowedChromaDir( UInt uiAbsPartIdx, UInt uiModeList[NUM_CHROMA_MODE] )
+#endif
 {  
+#if JVET_E0062_MULTI_DMS
 #if COM16_C806_LMCHROMA
   uiModeList[0] = LM_CHROMA_IDX;
   Int iStartIdx = 1;
+  
+#if JVET_E0077_ENHANCED_LM
+  Int &iCurIdx = iStartIdx;
+
+  const UInt csx = getComponentScaleX(COMPONENT_Cb, getSlice()->getSPS()->getChromaFormatIdc());
+  const UInt csy = getComponentScaleY(COMPONENT_Cb, getSlice()->getSPS()->getChromaFormatIdc());
+
+  Int iBlockSize = (getHeight(uiAbsPartIdx) >> csy) + (getWidth(uiAbsPartIdx) >> csx);
+
+#if JVET_E0077_MMLM
+  if (iBlockSize >= g_aiMMLM_MinSize[getSlice()->isIntra() ? 0 : 1])
+  {
+      uiModeList[iCurIdx++] = MMLM_CHROMA_IDX;
+  }
+#endif
+
+#if JVET_E0077_LM_MF
+  if (iBlockSize >= g_aiMFLM_MinSize[getSlice()->isIntra() ? 0 : 1])
+  {
+      for (Int s = 0; s < LM_FILTER_NUM; s++)
+      {
+          uiModeList[iCurIdx++] = LM_CHROMA_F1_IDX + s;
+      }
+  }
+#endif
+#endif
+
 #else
   Int iStartIdx = 0;
 #endif
@@ -3225,21 +3257,52 @@ Void TComDataCU::getAllowedChromaDir( UInt uiAbsPartIdx, UInt uiModeList[NUM_CHR
   for(Int iDMIdx = 0; iDMIdx < uiTotalDMmodes; iDMIdx ++)
   {
     uiModeList[iStartIdx++] = uiAllowedDMmodes[iDMIdx];
+#if !JVET_E0077_ENHANCED_LM
     assert(uiModeList[iStartIdx-1]<=LM_CHROMA_IDX);
+#endif
   } 
   assert(iStartIdx == NUM_CHROMA_MODE);
-}
+#if JVET_E0077_ENHANCED_LM
+  return iStartIdx;
+#endif
 #else
-Void TComDataCU::getAllowedChromaDir( UInt uiAbsPartIdx, UInt uiModeList[NUM_CHROMA_MODE] )
-{
   uiModeList[0] = PLANAR_IDX;
   uiModeList[1] = VER_IDX;
   uiModeList[2] = HOR_IDX;
   uiModeList[3] = DC_IDX;
 
 #if COM16_C806_LMCHROMA
+#if JVET_E0077_ENHANCED_LM
+  Int iCurIdx = 4;
+
+  const UInt csx = getComponentScaleX(COMPONENT_Cb, getSlice()->getSPS()->getChromaFormatIdc());
+  const UInt csy = getComponentScaleY(COMPONENT_Cb, getSlice()->getSPS()->getChromaFormatIdc());
+
+  Int iBlockSize = (getHeight(uiAbsPartIdx) >> csy) + (getWidth(uiAbsPartIdx) >> csx);
+
+  uiModeList[iCurIdx++] = LM_CHROMA_IDX;
+#if JVET_E0077_MMLM
+  if (iBlockSize >= g_aiMMLM_MinSize[getSlice()->isIntra() ? 0 : 1])
+  {
+      uiModeList[iCurIdx++] = MMLM_CHROMA_IDX;
+  }
+#endif
+#if JVET_E0077_LM_MF
+
+  if (iBlockSize >= g_aiMFLM_MinSize[getSlice()->isIntra() ? 0 : 1])
+  {
+      for (Int s = 0; s < LM_FILTER_NUM; s++)
+      {
+          uiModeList[iCurIdx++] = LM_CHROMA_F1_IDX + s;
+      }
+  }
+#endif
+
+  uiModeList[iCurIdx++] = DM_CHROMA_IDX;
+#else
   uiModeList[4] = LM_CHROMA_IDX;
   uiModeList[5] = DM_CHROMA_IDX;
+#endif
   assert(5<NUM_CHROMA_MODE);
 #else
   uiModeList[4] = DM_CHROMA_IDX;
@@ -3269,7 +3332,104 @@ Void TComDataCU::getAllowedChromaDir( UInt uiAbsPartIdx, UInt uiModeList[NUM_CHR
       break;
     }
   }
+
+#if JVET_E0077_ENHANCED_LM
+  return iCurIdx;
+#endif
+#endif
 }
+
+
+
+#if JVET_E0077_ENHANCED_LM
+
+Int TComDataCU::getLMSymbolList(Int *pModeList, Int uiAbsPartIdx)
+{
+    const Int iNeibours = 5;
+    TComDataCU* apcNeiboruingCU[iNeibours];
+    UInt        auiNeiboruingPartIdx[iNeibours];
+
+    UInt uiPartIdxLT, uiPartIdxRT, uiPartIdxLB;
+
+    deriveLeftRightTopIdxGeneral(uiAbsPartIdx, 0, uiPartIdxLT, uiPartIdxRT);
+    deriveLeftBottomIdxGeneral(uiAbsPartIdx, 0, uiPartIdxLB);
+
+    apcNeiboruingCU[0] = getPULeft(auiNeiboruingPartIdx[0], uiPartIdxLB);
+    apcNeiboruingCU[1] = getPUAbove(auiNeiboruingPartIdx[1], uiPartIdxRT);
+    apcNeiboruingCU[2] = getPUAboveRight(auiNeiboruingPartIdx[2], uiPartIdxRT);
+    apcNeiboruingCU[3] = getPUBelowLeft(auiNeiboruingPartIdx[3], uiPartIdxLB);
+    apcNeiboruingCU[4] = getPUAboveLeft(auiNeiboruingPartIdx[4], m_absZIdxInCtu + uiAbsPartIdx);
+
+    Int iCount = 0;
+
+    for (Int i = 0; i < iNeibours; i++)
+    {
+        if (apcNeiboruingCU[i] && apcNeiboruingCU[i]->isIntra(auiNeiboruingPartIdx[i]))
+        {
+            Int iMode = apcNeiboruingCU[i]->getIntraDir(CHANNEL_TYPE_CHROMA, auiNeiboruingPartIdx[i]);
+            if (!IsLMMode(iMode))
+            {
+                iCount++;
+            }
+        }
+    }
+
+    Bool bNonLMInsert = false;
+    Int iIdx = 0;
+
+    pModeList[iIdx++] = LM_CHROMA_IDX;
+
+    if (iCount >= g_aiNonLMPosThrs[0] && !bNonLMInsert)
+    {
+        pModeList[iIdx++] = -1;
+        bNonLMInsert = true;
+    }
+
+    const UInt csx = getComponentScaleX(COMPONENT_Cb, getSlice()->getSPS()->getChromaFormatIdc());
+    const UInt csy = getComponentScaleY(COMPONENT_Cb, getSlice()->getSPS()->getChromaFormatIdc());
+
+    Int iBlockSize = (getHeight(uiAbsPartIdx) >> csy) + (getWidth(uiAbsPartIdx) >> csx);
+
+
+#if JVET_E0077_MMLM
+    if (iBlockSize >= g_aiMMLM_MinSize[getSlice()->isIntra() ? 0 : 1])
+    {
+        pModeList[iIdx++] = MMLM_CHROMA_IDX;
+    }
+#endif
+
+    if (iCount >= g_aiNonLMPosThrs[1] && !bNonLMInsert)
+    {
+        pModeList[iIdx++] = -1;
+        bNonLMInsert = true;
+    }
+
+#if JVET_E0077_LM_MF
+
+    if (iBlockSize >= g_aiMFLM_MinSize[getSlice()->isIntra() ? 0 : 1])
+    {
+        pModeList[iIdx++] = LM_CHROMA_F1_IDX;
+        pModeList[iIdx++] = LM_CHROMA_F2_IDX;
+        if (iCount >= g_aiNonLMPosThrs[2] && !bNonLMInsert)
+        {
+            pModeList[iIdx++] = -1;
+            bNonLMInsert = true;
+        }
+        pModeList[iIdx++] = LM_CHROMA_F3_IDX;
+        pModeList[iIdx++] = LM_CHROMA_F4_IDX;
+    }
+#endif
+
+
+    if (!bNonLMInsert)
+    {
+        pModeList[iIdx++] = -1;
+        bNonLMInsert = true;
+    }
+
+    return iIdx;
+}
+
 #endif
 
 #if VCEG_AZ07_INTRA_65ANG_MODES
@@ -3416,6 +3576,17 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
 #if COM16_C806_LMCHROMA
     includedMode[LM_CHROMA_IDX] = true;
 #endif
+
+#if JVET_E0077_MMLM
+    includedMode[MMLM_CHROMA_IDX] = true;
+#endif
+#if JVET_E0077_LM_MF
+    for (Int iF = 0; iF < LM_FILTER_NUM; iF++)
+    {
+        includedMode[LM_CHROMA_F1_IDX + iF] = true;
+    }
+#endif
+
     modeIdx = i;
   }
 #endif

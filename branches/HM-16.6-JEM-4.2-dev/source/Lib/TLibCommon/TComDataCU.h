@@ -922,11 +922,19 @@ public:
   // -------------------------------------------------------------------------------------------------------------------
 
   UInt          getIntraSizeIdx                 ( UInt uiAbsPartIdx                                       );
+
+#if JVET_E0077_ENHANCED_LM
+  Int           getLMSymbolList(Int *pModeList, Int uiAbsPartIdx);
+  Int           getAllowedChromaDir(UInt uiAbsPartIdx, UInt* uiModeList);
+#else
+  Void          getAllowedChromaDir             ( UInt uiAbsPartIdx, UInt* uiModeList );
+#endif
+
+
 #if JVET_E0062_MULTI_DMS
   UInt          getDMMode                       ( UInt uiAbsPartIdx, UInt uiDMIdx, UInt uiChMode[NUM_DM_MODES] = NULL, UInt* iTotalCnt = NULL) ;
 #endif
 
-  Void          getAllowedChromaDir             ( UInt uiAbsPartIdx, UInt* uiModeList );
 
   Void          getIntraDirPredictor            ( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM_MOST_PROBABLE_MODES], const ComponentID compID
 #if VCEG_AZ07_INTRA_65ANG_MODES && !JVET_C0055_INTRA_MPM

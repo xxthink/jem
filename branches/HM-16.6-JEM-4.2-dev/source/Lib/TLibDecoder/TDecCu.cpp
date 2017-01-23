@@ -315,6 +315,9 @@ Void TDecCu::decodeCtu( TComDataCU* pCtu, Bool& isLastCtuOfSliceSegment )
   {
     pCtu->getSlice()->setTextType(CHANNEL_TYPE_CHROMA);
     pCtu->getPic()->setCodedAreaInCTU(0);
+#if JVET_E0077_ENHANCED_LM
+    pCtu->getPic()->setCodedBlkInCTU(false, 0, 0, uiCTUSize >> MIN_CU_LOG2, uiCTUSize >> MIN_CU_LOG2);
+#endif
 #if JVET_C0024_DELTA_QP_FIX
     if ( pCtu->getSlice()->getPPS()->getUseDQP() )
     {
@@ -1351,10 +1354,19 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
   //===== get prediction signal =====
 
 #if COM16_C806_LMCHROMA
-  if( uiChFinalMode == LM_CHROMA_IDX )
+  if( uiChFinalMode == LM_CHROMA_IDX 
+#if JVET_E0077_ENHANCED_LM
+      || IsLMMode(uiChFinalMode)
+#endif
+      )
   {
     m_pcPrediction->getLumaRecPixels( rTu, uiWidth, uiHeight );
+#if JVET_E0077_ENHANCED_LM
+    Int iLMType = uiChFinalMode;
+    m_pcPrediction->predLMIntraChroma(rTu, compID, piPred, uiStride, uiWidth, uiHeight, iLMType);
+#else
     m_pcPrediction->predLMIntraChroma( rTu, compID, piPred, uiStride, uiWidth, uiHeight );
+#endif
   }
   else
   {

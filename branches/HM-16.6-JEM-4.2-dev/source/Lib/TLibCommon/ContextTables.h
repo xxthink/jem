@@ -108,10 +108,19 @@
 #define NUM_INTRA_PREDICT_CTX         1       ///< number of context models for intra prediction
 #endif
 
+
+#if JVET_E0077_ENHANCED_LM
 #if JVET_E0062_MULTI_DMS
-#define NUM_CHROMA_PRED_CTX           6       ///< number of context models for intra prediction (chroma)
+#define NUM_CHROMA_PRED_CTX           12   ///< number of context models for intra prediction (chroma)
+#else
+#define NUM_CHROMA_PRED_CTX           8     
+#endif
+#else
+#if JVET_E0062_MULTI_DMS
+#define NUM_CHROMA_PRED_CTX           6  ///< number of context models for intra prediction (chroma)
 #else
 #define NUM_CHROMA_PRED_CTX           2       ///< number of context models for intra prediction (chroma)
+#endif
 #endif
 
 #define NUM_INTER_DIR_CTX             5       ///< number of context models for inter prediction direction
@@ -464,6 +473,23 @@ INIT_INTRA_PRED_MODE[NUMBER_OF_SLICE_TYPES][NUM_INTRA_PREDICT_CTX] =
   { 184, },
 #endif
 };
+
+#if JVET_E0077_ENHANCED_LM
+static const UChar
+INIT_CHROMA_PRED_MODE[NUMBER_OF_SLICE_TYPES][NUM_CHROMA_PRED_CTX] =
+{
+#if JVET_E0062_MULTI_DMS
+    //LM, DM0,   DM1,   DM2,    DM3,    DM4,    DM5, DM6 
+    { 139, 152, 139, 154, 154, 154, 154, 154, 154, 154, 154 , 154},
+    { 139, 152, 139, 154, 154, 154, 154, 154, 154, 154, 154 , 154},
+    { 139,  63, 139, 154, 154, 154, 154, 154, 154, 154, 154 , 154},
+#else
+    { 152, 139, 154, 154, 154, 154, 154, 154},
+    { 152, 139, 154, 154, 154, 154, 154, 154},
+    {  63, 139, 154, 154, 154, 154, 154, 154},
+#endif
+};
+#else
 #if JVET_E0062_MULTI_DMS
 static const UChar
 INIT_CHROMA_PRED_MODE[NUMBER_OF_SLICE_TYPES][NUM_CHROMA_PRED_CTX] =
@@ -483,6 +509,8 @@ INIT_CHROMA_PRED_MODE[NUMBER_OF_SLICE_TYPES][NUM_CHROMA_PRED_CTX] =
   {  63,  139, },
 };
 #endif
+#endif
+
 
 static const UChar
 INIT_INTER_DIR[NUMBER_OF_SLICE_TYPES][NUM_INTER_DIR_CTX] =
