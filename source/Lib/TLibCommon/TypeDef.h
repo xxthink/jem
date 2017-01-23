@@ -148,6 +148,10 @@
 #define COM16_C806_ALF_TEMPPRED_NUM                       6  ///< 0: no temporal prediction
 #if COM16_C806_ALF_TEMPPRED_NUM
 #define FIX_TICKET12                                      1  ///< fixed ticket #12
+#define JVET_E0104_ALF_TEMP_SCALABILITY                   1  ///< ALF temporal prediction with temporal scalability as in JVET-E0104
+#if JVET_E0104_ALF_TEMP_SCALABILITY
+#define JVET_E0104_ALF_MAX_TEMPLAYERID                    5  ///< maximum number of temporal layers
+#endif
 #endif
 
 #define JVET_C0038_GALF                                   1 ///<JVET-C0038 GALF
