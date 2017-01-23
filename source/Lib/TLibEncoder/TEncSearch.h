@@ -174,7 +174,11 @@ private:
   UChar           m_SaveLoadFrucMode[MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1];
 #endif
 #if VCEG_AZ07_IMV
+#if JVET_E0076_MULTI_PEL_MVD
+  UChar           m_SaveLoadIMVFlag[MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1];
+#else
   Bool            m_SaveLoadIMVFlag[MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1];
+#endif
 #endif
 #if VCEG_AZ06_IC
   Bool            m_SaveLoadICFlag[MAX_CU_DEPTH-MIN_CU_LOG2+1][MAX_CU_DEPTH-MIN_CU_LOG2+1];
@@ -287,8 +291,13 @@ public:
   Void  setSaveLoadFrucMode( UInt uiWIdx, UInt uiHIdx, UChar c ) { m_SaveLoadFrucMode[uiWIdx][uiHIdx] = c; };
 #endif
 #if VCEG_AZ07_IMV
+#if JVET_E0076_MULTI_PEL_MVD
+  UChar  getSaveLoadIMVFlag( UInt uiWIdx, UInt uiHIdx ) {  return m_SaveLoadIMVFlag[uiWIdx][uiHIdx]; }; 
+  Void  setSaveLoadIMVFlag( UInt uiWIdx, UInt uiHIdx, UChar b ) { m_SaveLoadIMVFlag[uiWIdx][uiHIdx] = b; };
+#else
   Bool  getSaveLoadIMVFlag( UInt uiWIdx, UInt uiHIdx ) {  return m_SaveLoadIMVFlag[uiWIdx][uiHIdx]; }; 
   Void  setSaveLoadIMVFlag( UInt uiWIdx, UInt uiHIdx, Bool b ) { m_SaveLoadIMVFlag[uiWIdx][uiHIdx] = b; };
+#endif
 #endif
 #if VCEG_AZ06_IC
   Bool  getSaveLoadICFlag( UInt uiWIdx, UInt uiHIdx ) {  return m_SaveLoadICFlag[uiWIdx][uiHIdx]; }; 
@@ -572,6 +581,11 @@ protected:
 #endif
                                     );
 
+#if JVET_E0076_MULTI_PEL_MVD
+  Bool intMvRefineNeeded (TComDataCU* pcCU, Int iPartIdx) { return pcCU->getiMVFlag(iPartIdx) != 0 ? true : false; }
+  Void intMvRefine ( TComDataCU* pcCU, RefPicList eRefPicList, TComPattern* pcPatternKey, Pel* piRefY, Int iRefStride, TComMv& rcMv, TComMv& rcMvPred, Int& riMVPIdx, UInt& ruiBits, Distortion& ruiCost, Double fWeight  );
+#endif
+
   Distortion xGetTemplateCost    ( TComDataCU*  pcCU,
                                     UInt        uiPartAddr,
                                     TComYuv*    pcOrgYuv,
@@ -666,6 +680,9 @@ protected:
                                     TComMv*      pcMvPred,
                                     Int          iRefIdxPred,
                                     TComMv&      rcMv,
+#if JVET_E0076_MULTI_PEL_MVD
+                                    Int& riMVPIdx, 
+#endif
                                     UInt&        ruiBits,
                                     Distortion&  ruiCost,
                                     Bool         bBi = false  );

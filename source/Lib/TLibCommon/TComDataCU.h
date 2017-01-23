@@ -207,7 +207,11 @@ private:
   UChar*        m_puhFRUCMgrMode;
 #endif
 #if VCEG_AZ07_IMV
+#if JVET_E0076_MULTI_PEL_MVD
+  UChar*         m_iMVFlag;            ///< array of integer MV flags
+#else
   Bool*         m_iMVFlag;            ///< array of integer MV flags
+#endif
   Char*         m_piMVCandNum;        ///< encoder only array
 #endif
 #if VCEG_AZ06_IC
@@ -601,10 +605,17 @@ public:
   Void          setFRUCMgrModeSubParts  ( UChar uhFRUCMgrMode, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth );
 #endif
 #if VCEG_AZ07_IMV
+#if JVET_E0076_MULTI_PEL_MVD
+  UChar*         getiMVFlag            ()                        { return m_iMVFlag;          }
+  UChar          getiMVFlag            (UInt idx)                { return m_iMVFlag[idx];     }
+  Void          setiMVFlag            ( UInt idx, UChar iMV)     { m_iMVFlag[idx] = iMV;      }
+  Void          setiMVFlagSubParts    ( UChar iMV, UInt absPartIdx, UInt depth );
+#else
   Bool*         getiMVFlag            ()                        { return m_iMVFlag;          }
   Bool          getiMVFlag            (UInt idx)                { return m_iMVFlag[idx];     }
   Void          setiMVFlag            ( UInt idx, Bool iMV)     { m_iMVFlag[idx] = iMV;      }
   Void          setiMVFlagSubParts    ( Bool iMV, UInt absPartIdx, UInt depth );
+#endif
   Char*         getiMVCandNum         ()                        { return m_piMVCandNum;          }
   Char          getiMVCandNum         (UInt idx)                { return m_piMVCandNum[idx];     }
   Void          setiMVCandNum         ( UInt idx, Char ciMVCandNum)     { m_piMVCandNum[idx] = ciMVCandNum;   }
@@ -889,6 +900,27 @@ public:
     rMV >>= ( 2 + VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE ); 
     rMV <<= ( 2 + VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE ); 
   }
+
+#if JVET_E0076_MULTI_PEL_MVD                  
+  Void xRoundMV( TComMv & rMV , UInt uiAbsPartIdx) 
+  { 
+    if (getiMVFlag(uiAbsPartIdx) == 2)
+    {
+      Int accu = ((1 << ( 2 + VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE )) * MVD_PEL_NUM);
+      Int offset = accu/2;
+      Short mvx = ((rMV.getHor() + (rMV.getHor() > 0 ? offset : -offset)) / accu)  * accu;
+      Short mvy = ((rMV.getVer() + (rMV.getVer() > 0 ? offset : -offset)) / accu)  * accu;
+      rMV.set(mvx, mvy);
+    }
+    else
+    {
+      rMV += TComMv( 2 << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE , 2 << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE ); 
+      rMV >>= ( 2 + VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE ); 
+      rMV <<= ( 2 + VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE ); 
+    }
+  }
+#endif
+
 #else
   Void          xRoundMV( TComMv & rMV ) { rMV += TComMv( 2 , 2 ); rMV >>= 2; rMV <<= 2; }
 #endif

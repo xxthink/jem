@@ -85,7 +85,11 @@
 #endif
 
 #if VCEG_AZ07_IMV
+#if  JVET_E0076_MULTI_PEL_MVD
+#define NUM_IMV_FLAG_CTX              4       ///< number of context models for iMV flag
+#else
 #define NUM_IMV_FLAG_CTX              3       ///< number of context models for iMV flag
+#endif
 #endif
 #if VCEG_AZ07_FRUC_MERGE
 #define NUM_FRUCMGRMODE_CTX           3
@@ -402,9 +406,15 @@ static const UChar
 static const UChar 
   INIT_IMV_FLAG[NUMBER_OF_SLICE_TYPES][NUM_IMV_FLAG_CTX] =
 {
+#if  JVET_E0076_MULTI_PEL_MVD
+  { 197,  185,  201, 185,}, 
+  { 197,  185,  201, 185,}, 
+  { CNU,  CNU,  CNU, 185,}, 
+#else
   { 197,  185,  201, }, 
   { 197,  185,  201, }, 
   { CNU,  CNU,  CNU, }, 
+#endif
 };
 #endif
 
