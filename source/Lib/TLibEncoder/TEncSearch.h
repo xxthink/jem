@@ -136,6 +136,11 @@ private:
   UChar         * m_phFRUCSBlkRefineDist[2];
 #endif
 
+
+#if   JVET_E0077_LM_MF
+  Pel             **m_pLMMFPredSaved;
+#endif
+
 #if COM16_C806_LARGE_CTU
 #if JVET_C0024_QTBT
   Pel*            m_resiSingleBuffer[MAX_CU_DEPTH][MAX_CU_DEPTH][NUMBER_OF_STORED_RESIDUAL_TYPES];

@@ -125,6 +125,14 @@ protected:
   Pel*   m_pLumaRecBuffer;       ///< array for downsampled reconstructed luma sample
   Int    m_iLumaRecStride;       ///< stride of #m_pLumaRecBuffer array
 
+#if JVET_E0077_LM_MF
+  Pel*   m_pLumaRecBufferMul[LM_FILTER_NUM];
+#endif
+
+#if JVET_E0077_ENHANCED_LM
+  Int  m_iCurAngMode;
+#endif
+
 #if COM16_C806_LMCHROMA
   UInt m_uiaLMShift[ 32 ];       // Table for multiplication to substitue of division operation
 #endif
@@ -317,8 +325,32 @@ public:
   // Angular Intra
   Void predIntraAng               ( const ComponentID compID, UInt uiDirMode, Pel *piOrg /* Will be null for decoding */, UInt uiOrgStride, Pel* piPred, UInt uiStride, TComTU &rTu, const Bool bUseFilteredPredSamples, const Bool bUseLosslessDPCM = false );
 
+#if JVET_E0077_MMLM
+  struct MMLM_parameter
+  {
+      Int Inf;  // Inferio boundary
+      Int Sup;  // Superior bounday
+      Int a;
+      Int b;
+      Int shift;
+  };
+  Int xCalcLMParametersGeneralized(Int x, Int y, Int xx, Int xy, Int iCountShift, Int bitDepth, Int &a, Int &b, Int &iShift);
+  Int xLMSampleClassifiedTraining(Int count, Int LumaSamples[], Int ChrmSamples[], Int GroupNum, Int bitDepth, MMLM_parameter parameters[]);
+  Int xGetMMLMParameters(TComTU& rTu, const ComponentID compID, UInt uiWidth, UInt uiHeight, Int &numClass, MMLM_parameter parameters[]);
+#endif
+
+
+
 #if COM16_C806_LMCHROMA
-  Void predLMIntraChroma ( TComTU& rTu, ComponentID compID, Pel* pPred, UInt uiPredStride, UInt uiCWidth, UInt uiCHeight );
+#if JVET_E0077_LM_MF
+  Void xFilterGroup(Pel* pMulDst[LM_FILTER_NUM], Int i, Pel* piSrc, Int iRecStride, Bool bAboveAvaillable, Bool bLeftAvaillable);
+#endif
+
+  Void predLMIntraChroma(TComTU& rTu, ComponentID compID, Pel* pPred, UInt uiPredStride, UInt uiCWidth, UInt uiCHeight
+#if JVET_E0077_ENHANCED_LM
+      , Int LMtype = LM_CHROMA_IDX
+#endif
+      );
   Void getLumaRecPixels  ( TComTU& rTu, UInt uiCWidth, UInt uiCHeight );
   Void addCrossColorResi ( TComTU& rTu, ComponentID compID, Pel* piPred, UInt uiPredStride, UInt uiWidth, UInt uiHeight, Pel* piResi, UInt uiResiStride );
   Void xGetLMParameters  ( TComTU& rTu,  ComponentID compID, UInt uiWidth, UInt uiHeight, Int iPredType, Int &a, Int &b, Int &iShift );

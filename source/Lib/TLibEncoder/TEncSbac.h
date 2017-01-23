@@ -210,6 +210,10 @@ public:
   Void codeKLTFlags           ( TComTU &rTu, ComponentID component );
 #endif
 
+#if JVET_E0077_ENHANCED_LM
+  Void codeLMModes(TComDataCU* pcCU, UInt uiAbsPartIdx, Int iMode);
+#endif
+
   // -------------------------------------------------------------------------------------------------------------------
   // for RD-optimizatioon
   // -------------------------------------------------------------------------------------------------------------------

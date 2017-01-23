@@ -197,9 +197,27 @@ static const Int MAX_NUM_SPS =                                     16;
 static const Int MAX_NUM_PPS =                                     64;
 
 #if QTBT_NSST
-static const Int NSST_SIG_NZ_LUMA =                              1;
-static const Int NSST_SIG_NZ_CHROMA =                            1;
+static const Int NSST_SIG_NZ_LUMA =                                 1;
+static const Int NSST_SIG_NZ_CHROMA =                               1;
 #endif
+
+#if JVET_E0077_LM_MF
+static const Int LM_FILTER_NUM =                                    4;
+#else
+static const Int LM_FILTER_NUM =                                    0;
+#endif
+#if JVET_E0077_ENHANCED_LM
+static const Int NUM_INTRA_MODE_NON_ANG = (1 + JVET_E0077_MMLM + LM_FILTER_NUM);
+#endif
+
+#if JVET_E0077_MMLM
+static const Int MMLM_SAMPLE_NEIGHBOR_LINES =                       2;
+#endif
+
+#if JVET_E0077_ENHANCED_LM
+static const Int  LM_SYMBOL_NUM = (2 + JVET_E0077_MMLM + LM_FILTER_NUM);
+#endif
+
 
 #if COM16_C806_T64
 #if JVET_C0024_QTBT
@@ -239,8 +257,13 @@ static const Int FAST_UDI_MAX_RDMODE_NUM =                         35; ///< maxi
 #endif
 
 #if VCEG_AZ07_INTRA_65ANG_MODES
+#if JVET_E0077_ENHANCED_LM
+static const Int NUM_INTRA_MODE = (67 + NUM_INTRA_MODE_NON_ANG);
+static const Int NUM_DIR = ((64 >> 2) + 1);
+#else
 static const Int NUM_INTRA_MODE =                                  68;
 static const Int NUM_DIR =                (((NUM_INTRA_MODE-4)>>2)+1);
+#endif
 static const Int PLANAR_IDX =                                       0;
 static const Int DC_IDX =                                           1; ///< index for intra DC mode
 static const Int VER_IDX =                          (3*(NUM_DIR-1)+2); ///< index for intra VERTICAL   mode
@@ -249,11 +272,11 @@ static const Int DIA_IDX =                          (2*(NUM_DIR-1)+2); ///< inde
 static const Int VDIA_IDX =                         (4*(NUM_DIR-1)+2); ///< index for intra DC mode
 
 #if COM16_C806_LMCHROMA
+#if JVET_E0077_ENHANCED_LM
+static const Int NUM_CHROMA_MODE = (6 + JVET_E0077_MMLM + LM_FILTER_NUM); ///< total number of chroma modes
+#else
 static const Int NUM_CHROMA_MODE =                                  6; ///< total number of chroma modes
 static const Int LM_CHROMA_IDX =                 (NUM_INTRA_MODE - 1); ///< chroma mode index for derived from LM mode
-#if JVET_E0062_MULTI_DMS
-static const Int NUM_DM_MODES       =                                5; ///< total number of chroma DM modes
-static const Int INVALID_CHROMAMODE = NUM_INTRA_MODE + NUM_CHROMA_MODE; ///< initilized value for chroma mode candidate list
 #endif
 #else
 static const Int NUM_CHROMA_MODE =                                  5; ///< total number of chroma modes
@@ -275,6 +298,11 @@ static const Int LM_CHROMA_IDX =                                   35; ///< chro
 static const Int NUM_CHROMA_MODE =                                  5; ///< total number of chroma modes
 #endif
 static const Int DM_CHROMA_IDX =                                   36; ///< chroma mode index for derived from luma intra mode
+#endif
+
+#if JVET_E0062_MULTI_DMS
+static const Int NUM_DM_MODES =                                     5; ///< total number of chroma DM modes
+static const Int INVALID_CHROMAMODE = NUM_INTRA_MODE + NUM_CHROMA_MODE; ///< initilized value for chroma mode candidate list
 #endif
 
 #if COM16_C806_EMT

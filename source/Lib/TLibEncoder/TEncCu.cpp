@@ -946,6 +946,9 @@ Void TEncCu::encodeCtu ( TComDataCU* pCtu )
     pCtu->getSlice()->setTextType(CHANNEL_TYPE_CHROMA);
     // Encode CU data
     pCtu->getPic()->setCodedAreaInCTU(0);
+#if JVET_E0077_ENHANCED_LM
+    pCtu->getPic()->setCodedBlkInCTU(false, 0, 0, uiCTUSize >> MIN_CU_LOG2, uiCTUSize >> MIN_CU_LOG2);
+#endif
 #if JVET_C0024_DELTA_QP_FIX
     if (pCtu->getSlice()->getPPS()->getUseDQP())
     {

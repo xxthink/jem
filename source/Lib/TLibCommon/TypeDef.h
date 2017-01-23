@@ -51,6 +51,12 @@
 ///////////////////////////////////////////////////////////
 #define JVET_E0062_MULTI_DMS                              1   ///< Extended chroma multiple DM modes
 
+#define JVET_E0077_ENHANCED_LM                            1   ///< Enhanced LM mode
+#if JVET_E0077_ENHANCED_LM
+#define JVET_E0077_MMLM                                   1
+#define JVET_E0077_LM_MF                                  1
+#endif
+
 #define JVET_D0134_PSNR                                   1
 #define JVET_D0135_PARAMS                                 1
 #define JVET_D0186_PRECISEPSNR                            1
@@ -1154,6 +1160,23 @@ typedef struct _QPFLAG
 #endif
 } QPFlag;
 #endif
+
+#if JVET_E0077_ENHANCED_LM
+enum ADDITIONAL_CHROMA_MODE
+{
+  LM_CHROMA_IDX = 67,
+#if JVET_E0077_MMLM
+  MMLM_CHROMA_IDX,
+#endif
+#if JVET_E0077_LM_MF
+  LM_CHROMA_F1_IDX,
+  LM_CHROMA_F2_IDX,
+  LM_CHROMA_F3_IDX,
+  LM_CHROMA_F4_IDX,
+#endif
+};
+#endif
+
 //! \}
 
 #endif
