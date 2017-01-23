@@ -800,13 +800,13 @@ public:
                                               UInt uiCurrPartUnitIdx,
                                               Bool bEnforceSliceRestriction=true,
                                               Bool bEnforceTileRestriction=true );
+
   TComDataCU*   getPUAbove                  ( UInt&  uiAPartUnitIdx,
                                               UInt uiCurrPartUnitIdx,
                                               Bool bEnforceSliceRestriction=true,
                                               Bool planarAtCTUBoundary = false,
                                               Bool bEnforceTileRestriction=true );
   TComDataCU*   getPUAboveLeft              ( UInt&  uiALPartUnitIdx, UInt uiCurrPartUnitIdx, Bool bEnforceSliceRestriction=true );
-
   TComDataCU*   getQpMinCuLeft              ( UInt&  uiLPartUnitIdx , UInt uiCurrAbsIdxInCtu );
   TComDataCU*   getQpMinCuAbove             ( UInt&  uiAPartUnitIdx , UInt uiCurrAbsIdxInCtu );
   Char          getRefQP                    ( UInt   uiCurrAbsIdxInCtu                       );
@@ -922,8 +922,12 @@ public:
   // -------------------------------------------------------------------------------------------------------------------
 
   UInt          getIntraSizeIdx                 ( UInt uiAbsPartIdx                                       );
+#if JVET_E0062_MULTI_DMS
+  UInt          getDMMode                       ( UInt uiAbsPartIdx, UInt uiDMIdx, UInt uiChMode[NUM_DM_MODES] = NULL, UInt* iTotalCnt = NULL) ;
+#endif
 
   Void          getAllowedChromaDir             ( UInt uiAbsPartIdx, UInt* uiModeList );
+
   Void          getIntraDirPredictor            ( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM_MOST_PROBABLE_MODES], const ComponentID compID
 #if VCEG_AZ07_INTRA_65ANG_MODES && !JVET_C0055_INTRA_MPM
     , Int &iAboveLeftCase
@@ -972,6 +976,7 @@ public:
   UInt&         getTUSkipWidth(ComponentID compID, UInt uiAbsPartIdx)                { return m_puiSkipWidth[compID][uiAbsPartIdx];}
   UInt&         getTUSkipHeight(ComponentID compID, UInt uiAbsPartIdx)               { return m_puiSkipHeight[compID][uiAbsPartIdx];}
 #endif
+
   UInt          getCoefScanIdx(const UInt uiAbsPartIdx, const UInt uiWidth, const UInt uiHeight, const ComponentID compID) const ;
 
 #if VCEG_AZ08_INTER_KLT

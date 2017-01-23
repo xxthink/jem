@@ -968,6 +968,12 @@ Void TEncSbac::codeROTIdxChroma ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDep
   if( iNumberOfPassesROT==4 )
   {
     UInt uiIntraMode = pcCU->getIntraDir( CHANNEL_TYPE_CHROMA, uiAbsPartIdx );
+#if JVET_E0062_MULTI_DMS && COM16_C806_LMCHROMA
+    if( uiIntraMode == LM_CHROMA_IDX )
+    {
+      uiIntraMode = PLANAR_IDX;
+    }
+#else
     if( uiIntraMode == DM_CHROMA_IDX )
     {
       uiIntraMode = pcCU->getPic()->getCtu(pcCU->getCtuRsAddr())->getIntraDir(CHANNEL_TYPE_LUMA, pcCU->getZorderIdxInCtu()+uiAbsPartIdx);
@@ -977,6 +983,7 @@ Void TEncSbac::codeROTIdxChroma ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDep
     {
       uiIntraMode = PLANAR_IDX;
     }
+#endif
 #endif
     iNumberOfPassesROT = uiIntraMode <= DC_IDX ? 3 : 4;
   }
@@ -1353,7 +1360,60 @@ Void TEncSbac::codeIntraDirLumaAng( TComDataCU* pcCU, UInt absPartIdx, Bool isMu
 Void TEncSbac::codeIntraDirChroma( TComDataCU* pcCU, UInt uiAbsPartIdx )
 {
   UInt uiIntraDirChroma = pcCU->getIntraDir( CHANNEL_TYPE_CHROMA, uiAbsPartIdx );
+#if JVET_E0062_MULTI_DMS
+  Int i = 0;
+#if COM16_C806_LMCHROMA
+  Int iStartIdx = 1;
+#else
+  Int iStartIdx = 0;
+#endif
+#if COM16_C806_LMCHROMA
+  if( uiIntraDirChroma == LM_CHROMA_IDX && pcCU->getSlice()->getSPS()->getUseLMChroma() )
+  {
+    m_pcBinIf->encodeBin( 0, m_cCUChromaPredSCModel.get( 0, 0, 0 ) );   
+  }
+  else
+#endif
+  {
+    UInt iDMIdx = 0, uiAllowedChromaDir[NUM_CHROMA_MODE];
+    pcCU->getAllowedChromaDir( uiAbsPartIdx, uiAllowedChromaDir );
 
+    for(i = iStartIdx; i < (NUM_DM_MODES + iStartIdx); i++)
+    {
+      if(uiIntraDirChroma == uiAllowedChromaDir[i])
+      {
+        iDMIdx = i - iStartIdx;
+        break;
+      }
+    }
+
+#if COM16_C806_LMCHROMA
+    if( pcCU->getSlice()->getSPS()->getUseLMChroma() )
+    {
+      m_pcBinIf->encodeBin( 1, m_cCUChromaPredSCModel.get( 0, 0, 0 ) );
+    }
+#endif
+            
+    UInt ictxIdx = 1;
+    m_pcBinIf->encodeBin(iDMIdx ? 1 : 0, m_cCUChromaPredSCModel.get(0, 0, ictxIdx));
+    UInt uiMaxSymbol = NUM_DM_MODES;
+    if (iDMIdx)
+    {
+      Bool bCodeLast = (uiMaxSymbol > iDMIdx);
+      while (--iDMIdx)
+      {
+        ictxIdx++;
+        m_pcBinIf->encodeBin(1, m_cCUChromaPredSCModel.get(0, 0, ictxIdx));
+      }
+      if (bCodeLast)
+      {
+        ictxIdx++;
+        m_pcBinIf->encodeBin(0, m_cCUChromaPredSCModel.get(0, 0, ictxIdx));
+      }
+    }
+      
+  }
+#else
   if( uiIntraDirChroma == DM_CHROMA_IDX )
   {
     m_pcBinIf->encodeBin( 0, m_cCUChromaPredSCModel.get( 0, 0, 0 ) );
@@ -1366,6 +1426,7 @@ Void TEncSbac::codeIntraDirChroma( TComDataCU* pcCU, UInt uiAbsPartIdx )
     m_pcBinIf->encodeBin( 0, m_cCUChromaPredSCModel.get( 0, 0, 1 ) );
   }
 #endif
+
   else
   {
     m_pcBinIf->encodeBin( 1, m_cCUChromaPredSCModel.get( 0, 0, 0 ) );
@@ -1393,7 +1454,7 @@ Void TEncSbac::codeIntraDirChroma( TComDataCU* pcCU, UInt uiAbsPartIdx )
 
     m_pcBinIf->encodeBinsEP( uiIntraDirChroma, 2 );
   }
-
+#endif
   return;
 }
 
@@ -1548,8 +1609,11 @@ Void TEncSbac::codeCrossComponentPrediction( TComTU &rTu, ComponentID compID )
   }
 
   const UInt uiAbsPartIdx = rTu.GetAbsPartIdxTU();
-
+#if JVET_E0062_MULTI_DMS
+  if (!pcCU->isIntra(uiAbsPartIdx) || (pcCU->getIntraDir( CHANNEL_TYPE_CHROMA, uiAbsPartIdx ) != LM_CHROMA_IDX))
+#else
   if (!pcCU->isIntra(uiAbsPartIdx) || (pcCU->getIntraDir( CHANNEL_TYPE_CHROMA, uiAbsPartIdx ) == DM_CHROMA_IDX))
+#endif
   {
     DTRACE_CABAC_VL( g_nSymbolCounter++ )
     DTRACE_CABAC_T("\tparseCrossComponentPrediction()")
@@ -2101,9 +2165,13 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
       uiIntraMode = pcCU->getIntraDir( toChannelType(compID), uiAbsPartIdx );
 
 #if JVET_C0024_QTBT
+#if JVET_E0062_MULTI_DMS
+      uiIntraMode = uiIntraMode;
+#else
       uiIntraMode = (uiIntraMode==DM_CHROMA_IDX && !bIsLuma) 
         ? (pcCU->getSlice()->isIntra()? pcCU->getPic()->getCtu(pcCU->getCtuRsAddr())->getIntraDir(CHANNEL_TYPE_LUMA, pcCU->getZorderIdxInCtu()+uiAbsPartIdx)
         :pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx)) : uiIntraMode;
+#endif
 #else
       const UInt partsPerMinCU = 1<<(2*(sps.getMaxTotalCUDepth() - sps.getLog2DiffMaxMinCodingBlockSize()));
       uiIntraMode = (uiIntraMode==DM_CHROMA_IDX && !bIsLuma) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, getChromasCorrespondingPULumaIdx(uiAbsPartIdx, rTu.GetChromaFormat(), partsPerMinCU)) : uiIntraMode;

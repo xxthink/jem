@@ -327,6 +327,10 @@ Void TDecCu::decodeCtu( TComDataCU* pCtu, Bool& isLastCtuOfSliceSegment )
 #endif
     }
 #endif
+#if JVET_E0062_MULTI_DMS
+    pCtu->getPic()->setCodedBlkInCTU(false, 0, 0, uiCTUSize>>MIN_CU_LOG2, uiCTUSize>>MIN_CU_LOG2); 
+#endif
+
     // start from the top level CU
     xDecodeCU( pCtu, 0, 0, uiCTUSize, uiCTUSize, isLastCtuOfSliceSegment);
   }
@@ -1288,13 +1292,17 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
 
   const UInt uiChPredMode  = pcCU->getIntraDir( toChannelType(compID), uiAbsPartIdx );
 #if JVET_C0024_QTBT
+#if JVET_E0062_MULTI_DMS
+  const UInt uiChCodedMode = uiChPredMode; 
+#else
   const UInt uiChCodedMode = (uiChPredMode==DM_CHROMA_IDX && !bIsLuma) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx) : uiChPredMode;
+#endif
 #else
   const UInt partsPerMinCU = 1<<(2*(sps.getMaxTotalCUDepth() - sps.getLog2DiffMaxMinCodingBlockSize()));
   const UInt uiChCodedMode = (uiChPredMode==DM_CHROMA_IDX && !bIsLuma) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, getChromasCorrespondingPULumaIdx(uiAbsPartIdx, chFmt, partsPerMinCU)) : uiChPredMode;
 #endif
-  const UInt uiChFinalMode = ((chFmt == CHROMA_422)       && !bIsLuma) ? g_chroma422IntraAngleMappingTable[uiChCodedMode] : uiChCodedMode;
 
+  const UInt uiChFinalMode = ((chFmt == CHROMA_422)       && !bIsLuma) ? g_chroma422IntraAngleMappingTable[uiChCodedMode] : uiChCodedMode;
   //===== init availability pattern =====
 #if !COM16_C983_RSAF
   const 

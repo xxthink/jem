@@ -54,7 +54,6 @@
 #include "../TLibCommon/Debug.h"
 #endif
 
-
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
@@ -921,6 +920,12 @@ Void TDecSbac::parseROTIdxChroma ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiD
   if( iNumberOfPassesROT==4)
   {
     UInt uiIntraMode = pcCU->getIntraDir( CHANNEL_TYPE_CHROMA, uiAbsPartIdx );
+#if JVET_E0062_MULTI_DMS && COM16_C806_LMCHROMA
+    if( uiIntraMode == LM_CHROMA_IDX )
+    {
+      uiIntraMode = PLANAR_IDX;
+    }
+#else
     if( uiIntraMode == DM_CHROMA_IDX )
     {
       uiIntraMode = pcCU->getPic()->getCtu(pcCU->getCtuRsAddr())->getIntraDir(CHANNEL_TYPE_LUMA, pcCU->getZorderIdxInCtu()+uiAbsPartIdx);
@@ -931,6 +936,8 @@ Void TDecSbac::parseROTIdxChroma ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiD
       uiIntraMode = PLANAR_IDX;
     }
 #endif
+#endif
+
     iNumberOfPassesROT = uiIntraMode <= DC_IDX ? 3 : 4;
   }
 
@@ -1448,7 +1455,7 @@ Void TDecSbac::parseIntraDirLumaAng  ( TComDataCU* pcCU, UInt absPartIdx, UInt d
   }
 }
 
-
+#if JVET_E0062_MULTI_DMS
 Void TDecSbac::parseIntraDirChroma( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 {
   UInt uiSymbol;
@@ -1459,7 +1466,63 @@ Void TDecSbac::parseIntraDirChroma( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt ui
   const TComCodingStatisticsClassType ctype(STATS__CABAC_BITS__INTRA_DIR_ANG, g_aucConvertToBit[pcCU->getSlice()->getSPS()->getMaxCUWidth()>>uiDepth]+2, CHANNEL_TYPE_CHROMA);
 #endif
 #endif
+#if COM16_C806_LMCHROMA
+  Int iStartIdx = 1;
+#else
+  Int iStartIdx = 0;
+#endif
 
+#if COM16_C806_LMCHROMA
+  if( pcCU->getSlice()->getSPS()->getUseLMChroma() )
+  {
+    m_pcTDecBinIf->decodeBin( uiSymbol, m_cCUChromaPredSCModel.get( 0, 0, 0 ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
+  }
+  else
+  {
+    uiSymbol = 1;
+  }
+  if( uiSymbol == 0 )
+  {
+    uiSymbol = LM_CHROMA_IDX;
+  } 
+  else
+  {
+#endif
+    UInt uiAllowedChromaDir[ NUM_CHROMA_MODE ];
+    pcCU->getAllowedChromaDir( uiAbsPartIdx, uiAllowedChromaDir );
+    {   
+      UInt ictxIdx = 1;
+      m_pcTDecBinIf->decodeBin( uiSymbol, m_cCUChromaPredSCModel.get( 0, 0, ictxIdx ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype));
+      UInt uiMaxSymbol = NUM_DM_MODES;
+      if( uiSymbol == 1 && uiMaxSymbol!= 1)
+      {
+        uiSymbol = 0;
+        UInt uiCont;
+        do
+        {
+          ictxIdx ++;
+          m_pcTDecBinIf->decodeBin( uiCont, m_cCUChromaPredSCModel.get( 0, 0, ictxIdx ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
+          uiSymbol++;
+        } while( uiCont && ( uiSymbol < (uiMaxSymbol-1) ) );       
+      }      
+      uiSymbol = uiAllowedChromaDir[iStartIdx + uiSymbol];
+    }
+#if COM16_C806_LMCHROMA
+  }
+#endif
+  pcCU->setIntraDirSubParts( CHANNEL_TYPE_CHROMA, uiSymbol, uiAbsPartIdx, uiDepth );
+}
+#else
+Void TDecSbac::parseIntraDirChroma( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
+{
+  UInt uiSymbol;
+#if RExt__DECODER_DEBUG_BIT_STATISTICS
+#if JVET_C0024_QTBT
+  const TComCodingStatisticsClassType ctype(STATS__CABAC_BITS__INTRA_DIR_ANG, g_aucConvertToBit[pcCU->getSlice()->getSPS()->getCTUSize()>>uiDepth]+2, CHANNEL_TYPE_CHROMA);
+#else
+  const TComCodingStatisticsClassType ctype(STATS__CABAC_BITS__INTRA_DIR_ANG, g_aucConvertToBit[pcCU->getSlice()->getSPS()->getMaxCUWidth()>>uiDepth]+2, CHANNEL_TYPE_CHROMA);
+#endif
+#endif
   m_pcTDecBinIf->decodeBin( uiSymbol, m_cCUChromaPredSCModel.get( 0, 0, 0 ) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
   if( uiSymbol == 0 )
   {
@@ -1493,10 +1556,9 @@ Void TDecSbac::parseIntraDirChroma( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt ui
     }
 #endif
   }
-
   pcCU->setIntraDirSubParts( CHANNEL_TYPE_CHROMA, uiSymbol, uiAbsPartIdx, uiDepth );
 }
-
+#endif
 
 Void TDecSbac::parseInterDir( TComDataCU* pcCU, UInt& ruiInterDir, UInt uiAbsPartIdx )
 {
@@ -1654,8 +1716,11 @@ Void TDecSbac::parseCrossComponentPrediction( TComTU &rTu, ComponentID compID )
   }
 
   const UInt uiAbsPartIdx = rTu.GetAbsPartIdxTU();
-
+#if JVET_E0062_MULTI_DMS
+  if (!pcCU->isIntra(uiAbsPartIdx) || (pcCU->getIntraDir( CHANNEL_TYPE_CHROMA, uiAbsPartIdx ) != LM_CHROMA_IDX))
+#else
   if (!pcCU->isIntra(uiAbsPartIdx) || (pcCU->getIntraDir( CHANNEL_TYPE_CHROMA, uiAbsPartIdx ) == DM_CHROMA_IDX))
+#endif
   {
     Char alpha  = 0;
     UInt symbol = 0;
@@ -2309,12 +2374,15 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
 #endif
     uiIntraMode = pcCU->getIntraDir( toChannelType(compID), uiAbsPartIdx );
 #if JVET_C0024_QTBT
+#if JVET_E0062_MULTI_DMS
+    uiIntraMode = uiIntraMode; 
+#else
     uiIntraMode = (uiIntraMode==DM_CHROMA_IDX && !bIsLuma) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx) : uiIntraMode;
+#endif
 #else
     uiIntraMode = (uiIntraMode==DM_CHROMA_IDX && !bIsLuma) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, getChromasCorrespondingPULumaIdx(uiAbsPartIdx, rTu.GetChromaFormat(), partsPerMinCU)) : uiIntraMode;
 #endif
     uiIntraMode = ((rTu.GetChromaFormat() == CHROMA_422) && !bIsLuma) ? g_chroma422IntraAngleMappingTable[uiIntraMode] : uiIntraMode;
-
     Bool transformSkip = pcCU->getTransformSkip( uiAbsPartIdx,compID);
     Bool rdpcm_lossy = ( transformSkip /*&& isIntra*/ && ( (uiIntraMode == HOR_IDX) || (uiIntraMode == VER_IDX) ) );
     if ( rdpcm_lossy )

@@ -958,9 +958,15 @@ Void TEncCu::encodeCtu ( TComDataCU* pCtu )
 #endif
     }
 #endif
+#if JVET_E0062_MULTI_DMS
+    pCtu->getPic()->setCodedBlkInCTU(false, 0, 0, uiCTUSize>>MIN_CU_LOG2, uiCTUSize>>MIN_CU_LOG2); 
+#endif
 
     xEncodeCU( pCtu, 0, 0, uiCTUSize, uiCTUSize );  
   }
+#if JVET_E0062_MULTI_DMS
+  pCtu->getPic()->setCodedBlkInCTU(false, 0, 0, uiCTUSize>>MIN_CU_LOG2, uiCTUSize>>MIN_CU_LOG2); 
+#endif
   // --- write terminating bit ---
   finishCU(pCtu,0);
 #endif

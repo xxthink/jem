@@ -108,7 +108,12 @@
 #define NUM_INTRA_PREDICT_CTX         1       ///< number of context models for intra prediction
 #endif
 
+#if JVET_E0062_MULTI_DMS
+#define NUM_CHROMA_PRED_CTX           6       ///< number of context models for intra prediction (chroma)
+#else
 #define NUM_CHROMA_PRED_CTX           2       ///< number of context models for intra prediction (chroma)
+#endif
+
 #define NUM_INTER_DIR_CTX             5       ///< number of context models for inter prediction direction
 #define NUM_MV_RES_CTX                2       ///< number of context models for motion vector difference
 #define NUM_CHROMA_QP_ADJ_FLAG_CTX    1       ///< number of context models for chroma_qp_adjustment_flag
@@ -459,7 +464,17 @@ INIT_INTRA_PRED_MODE[NUMBER_OF_SLICE_TYPES][NUM_INTRA_PREDICT_CTX] =
   { 184, },
 #endif
 };
+#if JVET_E0062_MULTI_DMS
+static const UChar
+INIT_CHROMA_PRED_MODE[NUMBER_OF_SLICE_TYPES][NUM_CHROMA_PRED_CTX] =
+{
+  //LM,      DMIdx0, DMIdx1, DMIdx2, DMIdx3, DMIdx4
+  { 139,      152,   139,    154,    154,    154 },
+  { 139,      152,   139,    154,    154,    154 },
+  { 139,       63,   139,    154,    154,    154 },
+};
 
+#else
 static const UChar
 INIT_CHROMA_PRED_MODE[NUMBER_OF_SLICE_TYPES][NUM_CHROMA_PRED_CTX] =
 {
@@ -467,6 +482,7 @@ INIT_CHROMA_PRED_MODE[NUMBER_OF_SLICE_TYPES][NUM_CHROMA_PRED_CTX] =
   { 152,  139, },
   {  63,  139, },
 };
+#endif
 
 static const UChar
 INIT_INTER_DIR[NUMBER_OF_SLICE_TYPES][NUM_INTER_DIR_CTX] =

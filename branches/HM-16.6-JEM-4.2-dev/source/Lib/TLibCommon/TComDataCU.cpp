@@ -3077,13 +3077,159 @@ Bool TComDataCU::isLosslessCoded(UInt absPartIdx)
   return (getSlice()->getPPS()->getTransquantBypassEnableFlag() && getCUTransquantBypass (absPartIdx));
 }
 
+#if JVET_E0062_MULTI_DMS
+UInt TComDataCU::getDMMode  ( UInt uiAbsPartIdx, UInt uiDMIdx, UInt uiChDMMode[NUM_DM_MODES], UInt* iTotalCnt ) 
+{
+  UInt uiChFinalMode;
+  Int  uiChMode[NUM_MOST_PROBABLE_MODES], i = 0;
+  Bool bIntraSlice = getSlice()->isIntra();
+  for (i = 0; i< NUM_MOST_PROBABLE_MODES; i++)
+  {
+    uiChMode[i] = INVALID_CHROMAMODE;  
+  }
 
+  if(bIntraSlice)
+  {
+    if(uiChDMMode)
+    {
+      for(i = 0; i< NUM_DM_MODES; i++)
+      {
+        uiChDMMode[i] = INVALID_CHROMAMODE;
+      }
+    }
+    const TComDataCU* pcCtu = getPic()->getCtu(getCtuRsAddr());
+    UInt uiAbsZeroIdx = getZorderIdxInCtu();
+    UInt uiRasterZeroOrder =  g_auiZscanToRaster[uiAbsPartIdx + uiAbsZeroIdx]; 
+    UInt uiRasterOrder, uiSubBlkIdx;
+    
+    //get all candidates from luma block before pruning
+    Int iDMNumFromLuma = 5;
+    {
+      //get TL
+      uiChMode[1] = pcCtu->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsZeroIdx + uiAbsPartIdx);
+      //get TR
+      uiRasterOrder = uiRasterZeroOrder + (getWidth(uiAbsPartIdx) >>2 ) - 1;
+      uiSubBlkIdx = g_auiRasterToZscan[uiRasterOrder] - uiAbsZeroIdx;
+      uiChMode[2] = pcCtu->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsZeroIdx + uiSubBlkIdx);
+
+      //get BL
+      uiRasterOrder = uiRasterZeroOrder + getPic()->getNumPartInCtuWidth() *((getHeight(uiAbsPartIdx)>>2)-1);
+      uiSubBlkIdx = g_auiRasterToZscan[uiRasterOrder] - uiAbsZeroIdx;
+      uiChMode[3] = pcCtu->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsZeroIdx + uiSubBlkIdx);
+
+      //get BR
+      uiRasterOrder = uiRasterZeroOrder + getPic()->getNumPartInCtuWidth() *((getHeight(uiAbsPartIdx)>>2)-1) + (getWidth(uiAbsPartIdx)>>2)-1;
+
+      uiSubBlkIdx = g_auiRasterToZscan[uiRasterOrder] - uiAbsZeroIdx;
+      uiChMode[4] = pcCtu->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsZeroIdx + uiSubBlkIdx);
+
+      UInt uiWidth = getWidth(uiAbsPartIdx);
+      UInt uiHeight = getHeight(uiAbsPartIdx);
+      //get CR
+      if(uiWidth==4 && uiHeight==4)
+      {
+        uiRasterOrder = uiRasterZeroOrder;
+      }
+      else if(uiHeight==4)
+      {
+        uiRasterOrder = uiRasterZeroOrder + (uiWidth>>2)/2 -1;
+      }
+      else if(uiWidth==4)
+      {
+        uiRasterOrder = uiRasterZeroOrder + pcCtu->getPic()->getNumPartInCtuWidth() *((uiHeight>>2)/2 - 1);
+      }
+      else
+      {
+        uiRasterOrder = uiRasterZeroOrder + pcCtu->getPic()->getNumPartInCtuWidth() *((uiHeight>>2)/2 - 1) + (uiWidth>>2)/2 -1;
+      }
+      uiSubBlkIdx = g_auiRasterToZscan[uiRasterOrder] - uiAbsZeroIdx;
+      uiChMode[0] = pcCtu->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsZeroIdx + uiSubBlkIdx);
+    }
+    //perform pruning process
+    Bool bRedundent[NUM_DM_MODES] = {false, false, false, false, false};
+    for(i = 1; i < iDMNumFromLuma; i ++)
+    {
+      for(Int j = 0; j < i; j ++)
+      {
+        if(uiChMode[i] == uiChMode[j])
+        {
+          bRedundent[i] = true;
+          break;
+        }
+      }
+    }
+    Int iAvailableCnt = 1;
+    for(i = 1; i < iDMNumFromLuma; i ++)
+    {
+      if(bRedundent[i] == false)
+      {
+        uiChMode[iAvailableCnt++] = uiChMode[i];
+      }
+    } 
+    if (iAvailableCnt < NUM_DM_MODES)
+    {
+      for (i = iAvailableCnt; i < iDMNumFromLuma; i++)
+      {
+        uiChMode[i] = INVALID_CHROMAMODE;
+      }
+      getIntraDirPredictor(uiAbsPartIdx, uiChMode, ComponentID(1));
+    }
+    if(uiChDMMode)
+    {
+      for(i = 0; i < NUM_DM_MODES; i ++)
+      {
+        uiChDMMode[i] = uiChMode[i];
+      }
+      (*iTotalCnt) = NUM_DM_MODES;
+    } 
+    uiChFinalMode = uiChMode[uiDMIdx];
+  }
+  else
+  {
+    uiChFinalMode = getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx);
+    uiChMode[0] = uiChFinalMode;
+    getIntraDirPredictor(uiAbsPartIdx, uiChMode, ComponentID(1));
+    if(uiChDMMode)
+    {
+      (*iTotalCnt) = NUM_DM_MODES;
+      for(i = 0; i < NUM_DM_MODES; i ++)
+      {
+        uiChDMMode[i] = uiChMode[i];
+      }
+    }
+    uiChFinalMode = uiChMode[uiDMIdx];
+  }
+  return uiChFinalMode;
+}
+#endif
 /** Get allowed chroma intra modes
 *   - fills uiModeList with chroma intra modes
 *
 *\param   [in]  uiAbsPartIdx
 *\param   [out] uiModeList pointer to chroma intra modes array
 */
+#if JVET_E0062_MULTI_DMS
+Void TComDataCU::getAllowedChromaDir( UInt uiAbsPartIdx, UInt uiModeList[NUM_CHROMA_MODE] )
+{  
+#if COM16_C806_LMCHROMA
+  uiModeList[0] = LM_CHROMA_IDX;
+  Int iStartIdx = 1;
+#else
+  Int iStartIdx = 0;
+#endif
+
+  UInt uiAllowedDMmodes[ NUM_DM_MODES ];  
+  UInt uiTotalDMmodes = 1;
+  getDMMode(uiAbsPartIdx , 0, uiAllowedDMmodes, &uiTotalDMmodes); 
+
+  for(Int iDMIdx = 0; iDMIdx < uiTotalDMmodes; iDMIdx ++)
+  {
+    uiModeList[iStartIdx++] = uiAllowedDMmodes[iDMIdx];
+    assert(uiModeList[iStartIdx-1]<=LM_CHROMA_IDX);
+  } 
+  assert(iStartIdx == NUM_CHROMA_MODE);
+}
+#else
 Void TComDataCU::getAllowedChromaDir( UInt uiAbsPartIdx, UInt uiModeList[NUM_CHROMA_MODE] )
 {
   uiModeList[0] = PLANAR_IDX;
@@ -3124,6 +3270,7 @@ Void TComDataCU::getAllowedChromaDir( UInt uiAbsPartIdx, UInt uiModeList[NUM_CHR
     }
   }
 }
+#endif
 
 #if VCEG_AZ07_INTRA_65ANG_MODES
 TComDataCU* TComDataCU::getPULeftOffset( UInt& uiPartUnitIdx, 
@@ -3219,7 +3366,9 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
 #if JVET_C0055_INTRA_MPM
   // This function is not used for chroma texture type.
   // If it is used for chroma, DM mode should be converted to real mode during MPM list derivation.
+#if !JVET_E0062_MULTI_DMS
   assert( isLuma(compID) );
+#endif
 
   const ChannelType chType = toChannelType(compID);
   Bool includedMode[NUM_INTRA_MODE];
@@ -3246,9 +3395,30 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
 #endif
 
   UInt partIdxLT = m_absZIdxInCtu + uiAbsPartIdx;
-  UInt partIdxRT = g_auiRasterToZscan[ g_auiZscanToRaster[ partIdxLT ] + width / m_pcPic->getMinCUWidth() - 1 ];
-  UInt partIdxLB = g_auiRasterToZscan[ g_auiZscanToRaster[ partIdxLT ] + ( (height / m_pcPic->getMinCUHeight()) - 1 ) * m_pcPic->getNumPartInCtuWidth() ];
-
+  UInt partIdxRT = g_auiRasterToZscan [g_auiZscanToRaster[ partIdxLT ] + width / m_pcPic->getMinCUWidth() - 1 ];
+  UInt partIdxLB = g_auiRasterToZscan [g_auiZscanToRaster[ partIdxLT ] + ( (height / m_pcPic->getMinCUHeight()) - 1 ) * m_pcPic->getNumPartInCtuWidth()];
+#if JVET_E0062_MULTI_DMS
+  Int iMaxModeNum = (compID == COMPONENT_Cb ? NUM_DM_MODES : NUM_MOST_PROBABLE_MODES);
+  if(compID == COMPONENT_Cb)
+  {
+    Int i = 0;
+    for(; i< NUM_DM_MODES; i++)
+    {
+      if (uiIntraDirPred[i] == INVALID_CHROMAMODE)
+      {
+        break;
+      }
+      else
+      {
+        includedMode[uiIntraDirPred[i]] = true;
+      }
+    }
+#if COM16_C806_LMCHROMA
+    includedMode[LM_CHROMA_IDX] = true;
+#endif
+    modeIdx = i;
+  }
+#endif
   // left
   TComDataCU *cu = getPULeft( partIdx, partIdxLB );
   if( cu && cu->isIntra(partIdx) )
@@ -3260,6 +3430,12 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
       modeIdx++;
     }   
   }
+#if JVET_E0062_MULTI_DMS
+  if(compID == COMPONENT_Cb && modeIdx == NUM_DM_MODES )
+  {
+    return;
+  }
+#endif
 
   // above
   cu = getPUAbove( partIdx, partIdxRT );
@@ -3272,12 +3448,21 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
       modeIdx++;
     }   
   }
+#if JVET_E0062_MULTI_DMS
+  if( compID == COMPONENT_Cb && modeIdx == NUM_DM_MODES )
+  {
+    return;
+  }
+#endif
 
   if( piMode )
   {
     *piMode = Int(modeIdx > 1) + 1;
   }
-
+#if JVET_E0062_MULTI_DMS  
+  if(compID != COMPONENT_Cb)
+  {
+#endif  
   // PLANAR mode
   uiIntraDirPred[modeIdx] = PLANAR_IDX;
   if( !includedMode[uiIntraDirPred[modeIdx]] )
@@ -3285,7 +3470,7 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
     includedMode[uiIntraDirPred[modeIdx]] = true;
     modeIdx++;
   }
-            
+
   // DC mode
 #if !VCEG_AZ07_INTRA_65ANG_MODES
   if( modeIdx < NUM_MOST_PROBABLE_MODES )
@@ -3298,7 +3483,9 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
       modeIdx++;
     }
   }
-
+#if JVET_E0062_MULTI_DMS  
+  }
+#endif 
   // below left
 #if !VCEG_AZ07_INTRA_65ANG_MODES
   if( modeIdx < NUM_MOST_PROBABLE_MODES )
@@ -3315,6 +3502,12 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
       }
     }
   }
+#if JVET_E0062_MULTI_DMS
+  if( compID == COMPONENT_Cb && modeIdx == NUM_DM_MODES )
+  {
+    return;
+  }
+#endif
 
   // above right
 #if !VCEG_AZ07_INTRA_65ANG_MODES
@@ -3332,9 +3525,19 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
       }
     }
   }
+#if JVET_E0062_MULTI_DMS
+  if( compID == COMPONENT_Cb && modeIdx == NUM_DM_MODES )
+  {
+    return;
+  }
+#endif
 
   //above left
+#if JVET_E0062_MULTI_DMS  
+  if( modeIdx < iMaxModeNum )
+#else
   if( modeIdx < NUM_MOST_PROBABLE_MODES )
+#endif
   {
     cu = getPUAboveLeft( partIdx, partIdxLT );
     if( cu && cu->isIntra(partIdx) )
@@ -3347,11 +3550,54 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
       }
     }
   }
+#if JVET_E0062_MULTI_DMS
+  if( compID == COMPONENT_Cb && modeIdx == NUM_DM_MODES )
+  {
+    return;
+  }
+ 
+  if(compID == COMPONENT_Cb)
+  {
+    // PLANAR mode
+    uiIntraDirPred[modeIdx] = PLANAR_IDX;
+    if( !includedMode[uiIntraDirPred[modeIdx]] )
+    {
+      includedMode[uiIntraDirPred[modeIdx]] = true;
+      modeIdx++;
+    }
 
+    if( compID == COMPONENT_Cb && modeIdx == NUM_DM_MODES )
+    {
+      return;
+    }
+
+    // DC mode
+#if !VCEG_AZ07_INTRA_65ANG_MODES
+    if( modeIdx < NUM_MOST_PROBABLE_MODES )
+#endif
+    {
+      uiIntraDirPred[modeIdx] = DC_IDX;
+      if( !includedMode[uiIntraDirPred[modeIdx]] )
+      {
+        includedMode[uiIntraDirPred[modeIdx]] = true;
+        modeIdx++;
+      }
+    }
+
+    if( compID == COMPONENT_Cb && modeIdx == NUM_DM_MODES )
+    {
+      return;
+    }
+  }
+#endif 
   UInt numAddedModes = modeIdx;
 
   // -+1 derived modes
+#if JVET_E0062_MULTI_DMS  
+  for( UInt idx = 0; idx < numAddedModes && modeIdx < iMaxModeNum; idx++ )
+#else
   for( UInt idx = 0; idx < numAddedModes && modeIdx < NUM_MOST_PROBABLE_MODES; idx++ )
+#endif
   {   
     UInt mode = uiIntraDirPred[idx];
     
@@ -3370,7 +3616,11 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
       modeIdx++;
     }    
 
+#if JVET_E0062_MULTI_DMS
+    if( modeIdx == iMaxModeNum )
+#else
     if( modeIdx == NUM_MOST_PROBABLE_MODES )
+#endif
     {
       break;
     }
@@ -3388,8 +3638,11 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
   // default modes
   UInt defaultIntraModes[] = {PLANAR_IDX, DC_IDX, VER_IDX, HOR_IDX, 2, DIA_IDX};
   assert( modeIdx > 1 );
-
+#if JVET_E0062_MULTI_DMS  
+  for( UInt idx = 2; idx < iMaxModeNum && modeIdx < iMaxModeNum; idx++)
+#else
   for( UInt idx = 2; idx < NUM_MOST_PROBABLE_MODES && modeIdx < NUM_MOST_PROBABLE_MODES; idx++ )
+#endif
   {
     uiIntraDirPred[modeIdx] = defaultIntraModes[idx];
     if( !includedMode[uiIntraDirPred[modeIdx]] )
@@ -3398,8 +3651,11 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
       modeIdx++;
     }
   }
-
+#if JVET_E0062_MULTI_DMS  
+  assert( modeIdx == iMaxModeNum );
+#else
   assert( modeIdx == NUM_MOST_PROBABLE_MODES );
+#endif
 #else
   TComDataCU* pcCULeft = NULL, *pcCUAbove = NULL;
   UInt        LeftPartIdx  = MAX_UINT;
@@ -3644,7 +3900,12 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
   }
 #endif
 #endif
+
+#if JVET_E0062_MULTI_DMS
+  for (UInt i=0; i<iMaxModeNum; i++)
+#else
   for (UInt i=0; i<NUM_MOST_PROBABLE_MODES; i++)
+#endif
   {
 #if VCEG_AZ07_INTRA_65ANG_MODES
     assert(uiIntraDirPred[i] < (NUM_INTRA_MODE-1));
@@ -8028,7 +8289,7 @@ UInt TComDataCU::getCoefScanIdx(const UInt uiAbsPartIdx, const UInt uiWidth, con
   //otherwise, select the appropriate mode
 
   UInt uiDirMode  = getIntraDir(toChannelType(compID), uiAbsPartIdx);
-
+#if !JVET_E0062_MULTI_DMS
   if (uiDirMode==DM_CHROMA_IDX)
   {
 #if JVET_C0024_QTBT
@@ -8040,6 +8301,7 @@ UInt TComDataCU::getCoefScanIdx(const UInt uiAbsPartIdx, const UInt uiWidth, con
     uiDirMode = getIntraDir(CHANNEL_TYPE_LUMA, getChromasCorrespondingPULumaIdx(uiAbsPartIdx, getPic()->getChromaFormat(), partsPerMinCU));
 #endif
   }
+#endif
 
   if (isChroma(compID) && (format == CHROMA_422))
   {
