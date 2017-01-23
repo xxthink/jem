@@ -46,10 +46,11 @@
 
 //! \ingroup TLibCommon
 //! \{
-
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////
+#define JVET_E0062_MULTI_DMS                              1   ///< Extended chroma multiple DM modes
+
 #define JVET_D0134_PSNR                                   1
 #define JVET_D0135_PARAMS                                 1
 #define JVET_D0186_PRECISEPSNR                            1
