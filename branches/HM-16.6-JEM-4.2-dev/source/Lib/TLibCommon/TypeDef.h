@@ -107,6 +107,14 @@
 #define JVET_D0077_TRANSFORM_OPT                          1  ///< software optimization to take full advantages of zero rows/columns in transform coefficients
 #define JVET_D0077_SAVE_LOAD_ENC_INFO                     1  ///< save and load encoder decision for speedup
 
+#define JVET_E0023_FAST_ENCODING_SETTING                  1
+#if JVET_E0023_FAST_ENCODING_SETTING
+#define PICTURE_DISTANCE_TH                               1  // If a distance between current picture and reference picture is smaller than or equal to PICTURE_DISTANCE_TH,
+                                                             // FAST_SKIP_DEPTH_VALUE is used as a threshold of early CU determination. Otherwise a higher value (SKIP_DEPTH_VALUE) is used.
+#define SKIP_DEPTH_VALUE                                  3
+#define FAST_SKIP_DEPTH_VALUE                             2
+#endif
+
 #endif // end of JVET_C0024_QTBT
 
 #define JVET_C0046_OMIT_ASSERT_ERDPCM                     1  ///< for RExt, omit assertion related to Explict Residual DPCM

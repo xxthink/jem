@@ -452,7 +452,12 @@ static const Double AMAXBT_TH32 =                                   15.0;
 static const Double AMAXBT_TH64 =                                   30.0;
 #endif
  
+#if JVET_E0023_FAST_ENCODING_SETTING
+static const Int    SKIP_DEPTH =                                    SKIP_DEPTH_VALUE;
+static const Int    FAST_SKIP_DEPTH =                               FAST_SKIP_DEPTH_VALUE;
+#else
 static const Int    SKIP_DEPTH =                                    3;
+#endif
 static const Int    SKIPHORNOVERQT_DEPTH_TH =                       2;
 
 #if JVET_C0024_FAST_MRG

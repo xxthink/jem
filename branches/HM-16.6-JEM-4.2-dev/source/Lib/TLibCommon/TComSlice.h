@@ -1560,6 +1560,10 @@ private:
   static Bool                m_bScaleFactorValid;
 #endif
 
+#if JVET_E0023_FAST_ENCODING_SETTING
+  UInt                       m_iPictureDistance;
+#endif
+
   // referenced slice?
   Bool                       m_bRefenced;
 
@@ -1870,6 +1874,11 @@ public:
 
   Void                        setEncCABACTableIdx( SliceType idx )                   { m_encCABACTableIdx = idx;                                     }
   SliceType                   getEncCABACTableIdx() const                            { return m_encCABACTableIdx;                                    }
+
+#if JVET_E0023_FAST_ENCODING_SETTING
+  Void                        setPictureDistance( UInt dist )                        { m_iPictureDistance = dist; }
+  UInt                        getPictureDistance()                                   { return m_iPictureDistance; }
+#endif
 
 #if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
   Void setStatsHandle ( TComStats*  pcStats)                                         { m_pcStats=pcStats; }
