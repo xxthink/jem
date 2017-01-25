@@ -1514,6 +1514,34 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
       pcSlice->setCheckLDC(true);
     }
 
+#if JVET_E0023_FAST_ENCODING_SETTING
+    UInt dist = MAX_UINT;
+    if ( !pcSlice->isIntra() )
+    {
+      Int currPOC  = pcSlice->getPOC();
+      for (Int refIdx = 0; refIdx < pcSlice->getNumRefIdx(REF_PIC_LIST_0); refIdx++)
+      {
+        UInt tmp = abs(currPOC - pcSlice->getRefPic(REF_PIC_LIST_0, refIdx)->getPOC());
+        if ( tmp < dist )
+        {
+          dist = tmp;
+        }
+      }
+      if ( pcSlice->getSliceType() == B_SLICE )
+      {
+        for (Int refIdx = 0; refIdx < pcSlice->getNumRefIdx(REF_PIC_LIST_1); refIdx++)
+        {
+          UInt tmp = abs(currPOC - pcSlice->getRefPic(REF_PIC_LIST_1, refIdx)->getPOC());
+          if ( tmp < dist )
+          {
+            dist = tmp;
+          }
+        }
+      }
+    }
+    pcSlice->setPictureDistance(dist);
+#endif
+
 #if !JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
     uiColDir = 1-uiColDir;
 #endif

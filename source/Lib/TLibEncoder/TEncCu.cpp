@@ -2432,7 +2432,11 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
     );
 
   //for encoder speedup
+#if JVET_E0023_FAST_ENCODING_SETTING
+  if (rpcBestCU->getSkipFlag(0) && (bTestHorSplit || bTestVerSplit) && uiBTDepth >= ((pcSlice->getPictureDistance() <= PICTURE_DISTANCE_TH) ? FAST_SKIP_DEPTH : SKIP_DEPTH))
+#else
   if (rpcBestCU->getSkipFlag(0) && (bTestHorSplit || bTestVerSplit) && uiBTDepth>=SKIP_DEPTH)
+#endif
   { 
     bTestHorSplit = bTestVerSplit = bQTSplit = false;
   }
