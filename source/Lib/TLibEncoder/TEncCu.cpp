@@ -1861,9 +1861,16 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #if JVET_C0024_PBINTRA_FAST_FIX
 #if FIX_TICKET34            
             // redundant MC process to make sure that m_pppcPredYuvBest has the correct moiton compensation prediction data
+#if JVET_E0052_DMVR
+            m_pcPredSearch->motionCompensation ( rpcBestCU, m_pppcPredYuvBest[uiWidthIdx][uiHeightIdx], false );
+#if COM16_C806_OBMC
+            m_pcPredSearch->subBlockOBMC( rpcBestCU, 0, m_pppcPredYuvBest[uiWidthIdx][uiHeightIdx], m_pppcTmpYuv1[uiWidthIdx][uiHeightIdx], m_pppcTmpYuv2[uiWidthIdx][uiHeightIdx], false );
+#endif
+#else
             m_pcPredSearch->motionCompensation ( rpcBestCU, m_pppcPredYuvBest[uiWidthIdx][uiHeightIdx] ); 
 #if COM16_C806_OBMC
             m_pcPredSearch->subBlockOBMC( rpcBestCU, 0, m_pppcPredYuvBest[uiWidthIdx][uiHeightIdx], m_pppcTmpYuv1[uiWidthIdx][uiHeightIdx], m_pppcTmpYuv2[uiWidthIdx][uiHeightIdx] );
+#endif
 #endif
 #endif
             DistParam distParam;
@@ -3861,6 +3868,38 @@ Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTem
       m_pcPredSearch->motionCompensation ( rpcTempCU, m_pcMrgPredTempYuv[uiMergeCand] );
 #if COM16_C806_OBMC
       m_pcPredSearch->subBlockOBMC( rpcTempCU, 0, m_pcMrgPredTempYuv[uiMergeCand], m_pppcTmpYuv1[uiWIdx][uiHIdx], m_pppcTmpYuv2[uiWIdx][uiHIdx] );
+#endif
+#if JVET_E0052_DMVR
+// the mv may be changed in the mv refinement during the MC
+  if (uhInterDirNeighbours[uiMergeCand]==3 && eMergeCandTypeNieghors[uiMergeCand]== MGR_TYPE_DEFAULT_N)
+  {
+      cMvFieldNeighbours[0 + 2*uiMergeCand].getMv() = rpcTempCU->getCUMvField(REF_PIC_LIST_0)->getMv(0);
+      cMvFieldNeighbours[1 + 2*uiMergeCand].getMv() = rpcTempCU->getCUMvField(REF_PIC_LIST_1)->getMv(0);
+  }
+  else if (eMergeCandTypeNieghors[uiMergeCand] != MGR_TYPE_DEFAULT_N)
+  {
+      UInt uiSPAddr;
+      Int iWidth = rpcTempCU->getWidth(0);
+      Int iHeight = rpcTempCU->getHeight(0);
+
+      Int iNumSPInOneLine, iNumSP, iSPWidth, iSPHeight;
+#if JVET_C0035_ATMVP_SIMPLIFICATION
+      UInt uiSPListIndex = eMergeCandTypeNieghors[uiMergeCand];
+#else
+      UInt uiSPListIndex = eMergeCandTypeNieghors[uiMergeCand] == MGR_TYPE_SUBPU_TMVP ? 0 : 1;
+#endif
+      rpcTempCU->getSPPara(iWidth, iHeight, iNumSP, iNumSPInOneLine, iSPWidth, iSPHeight);
+
+    for (Int iPartitionIdx = 0; iPartitionIdx < iNumSP; iPartitionIdx++)
+    {
+      if (m_phInterDirSP[uiSPListIndex][iPartitionIdx] == 3)
+      {
+        rpcTempCU->getSPAbsPartIdx(0, iSPWidth, iSPHeight, iPartitionIdx, iNumSPInOneLine, uiSPAddr);
+        m_pMvFieldSP[uiSPListIndex][2 * iPartitionIdx].getMv() = rpcTempCU->getCUMvField(REF_PIC_LIST_0)->getMv(uiSPAddr);
+        m_pMvFieldSP[uiSPListIndex][2 * iPartitionIdx + 1].getMv() = rpcTempCU->getCUMvField(REF_PIC_LIST_1)->getMv(uiSPAddr);
+      }
+    }
+  }   
 #endif
       // use hadamard transform here
       DistParam distParam;

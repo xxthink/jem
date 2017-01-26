@@ -463,36 +463,39 @@ Void TAppEncTop::xInitLibCfg()
 #endif
 
 #if VCEG_AZ07_INTRA_4TAP_FILTER
-  m_cTEncTop.setUseIntra4TapFilter                                ( m_useIntra4TapFilter );
+  m_cTEncTop.setUseIntra4TapFilter(m_useIntra4TapFilter);
 #endif
 #if VCEG_AZ07_INTRA_BOUNDARY_FILTER
-  m_cTEncTop.setUseIntraBoundaryFilter                            ( m_useIntraBoundaryFilter );
+  m_cTEncTop.setUseIntraBoundaryFilter(m_useIntraBoundaryFilter);
 #endif
 #if COM16_C806_LMCHROMA
-  m_cTEncTop.setUseLMChroma                                       ( m_useLMChroma );
+  m_cTEncTop.setUseLMChroma(m_useLMChroma);
 #endif
 #if VCEG_AZ05_BIO
- m_cTEncTop.setUseBIO                            ( m_useBIO );
+  m_cTEncTop.setUseBIO(m_useBIO);
+#endif
+#if JVET_E0052_DMVR
+  m_cTEncTop.setUseDMVR(m_useDMVR);
 #endif
 #if VCEG_AZ05_INTRA_MPI
- m_cTEncTop.setUseMPI                            ( m_useMPI );
+  m_cTEncTop.setUseMPI(m_useMPI);
 #endif
 #if COM16_C1046_PDPC_INTRA
- m_cTEncTop.setUsePDPC                           ( m_usePDPC );
+  m_cTEncTop.setUsePDPC(m_usePDPC);
 #endif
 #if VCEG_AZ05_ROT_TR
- m_cTEncTop.setUseROT                            ( m_useROT );
+  m_cTEncTop.setUseROT(m_useROT);
 #elif COM16_C1044_NSST
- m_cTEncTop.setUseNSST                           ( m_useNSST );
+  m_cTEncTop.setUseNSST(m_useNSST);
 #endif
 #if COM16_C1016_AFFINE
- m_cTEncTop.setUseAffine                         ( m_useAffine );
+  m_cTEncTop.setUseAffine(m_useAffine);
 #endif
 #if COM16_C983_RSAF
-  m_cTEncTop.setUseRSAF                         ( m_useRSAF );
+  m_cTEncTop.setUseRSAF(m_useRSAF);
 #endif
 #if JVET_D0033_ADAPTIVE_CLIPPING
-    m_cTEncTop.setTchClipParam(m_ClipParam);
+  m_cTEncTop.setTchClipParam(m_ClipParam);
 #endif
   m_cTEncTop.setSummaryOutFilename                                ( m_summaryOutFilename );
   m_cTEncTop.setSummaryPicFilenameBase                            ( m_summaryPicFilenameBase );

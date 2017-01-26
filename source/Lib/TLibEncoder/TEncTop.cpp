@@ -207,6 +207,9 @@ Void TEncTop::create ()
 #if VCEG_AZ05_BIO
   m_cSPS.setUseBIO( m_useBIO );
 #endif
+#if JVET_E0052_DMVR
+  m_cSPS.setUseDMVR( m_useDMVR );
+#endif
 #if VCEG_AZ05_INTRA_MPI
   m_cSPS.setUseMPI( m_useMPI );
 #endif
@@ -875,6 +878,9 @@ Void TEncTop::xInitSPS()
 #endif
 #if VCEG_AZ05_BIO
   m_cSPS.setUseBIO  ( m_useBIO      );  
+#endif
+#if JVET_E0052_DMVR
+  m_cSPS.setUseDMVR( m_useDMVR );
 #endif
 #if VCEG_AZ05_INTRA_MPI
   m_cSPS.setUseMPI( m_useMPI );

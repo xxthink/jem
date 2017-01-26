@@ -57,6 +57,11 @@
 #define JVET_E0077_LM_MF                                  1
 #endif
 
+#define JVET_E0052_DMVR                                   1 //Decoder-side motion vector refinement based on bilateral template matching
+#if JVET_E0052_DMVR
+#define DMVR_HALF_ME                                      0
+#endif
+
 #define JVET_D0134_PSNR                                   1
 #define JVET_D0135_PARAMS                                 1
 #define JVET_D0186_PRECISEPSNR                            1
