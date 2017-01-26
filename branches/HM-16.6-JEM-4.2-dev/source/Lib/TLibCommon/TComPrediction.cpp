@@ -4447,7 +4447,11 @@ UInt TComPrediction::xFrucRefineMvSearch( TComMvField * pBestMvField , RefPicLis
  * \param eTargetRefPicList The reference list for the Mv predictor
  * \param nTargetRefIdx   The reference index for the Mv predictor
  */
-Bool TComPrediction::xFrucFindBlkMv4Pred( TComDataCU * pCU , UInt uiPUIdx , RefPicList eTargetRefPicList , Int nTargetRefIdx )
+Bool TComPrediction::xFrucFindBlkMv4Pred( TComDataCU * pCU , UInt uiPUIdx , RefPicList eTargetRefPicList , Int nTargetRefIdx
+#if JVET_E0060_FRUC_CAND
+                                        , AMVPInfo* pInfo
+#endif
+                                        )
 {
   Bool bAvailable = false;
   if( pCU->getSlice()->getSPS()->getUseFRUCMgrMode() )
@@ -4458,7 +4462,11 @@ Bool TComPrediction::xFrucFindBlkMv4Pred( TComDataCU * pCU , UInt uiPUIdx , RefP
     if( xFrucGetCurBlkTemplate( pCU , uiAbsPartIdx , nWidth , nHeight ) )
     {
       // find best start
+#if JVET_E0060_FRUC_CAND
+      xFrucCollectBlkStartMv( pCU , uiPUIdx , eTargetRefPicList , nTargetRefIdx , pInfo );
+#else
       xFrucCollectBlkStartMv( pCU , uiPUIdx , eTargetRefPicList , nTargetRefIdx );
+#endif
       TComMvField mvStart[2] , mvFinal[2];
       UInt uiMinCost = xFrucFindBestMvFromList( mvStart , eTargetRefPicList , pCU , uiAbsPartIdx , mvStart[eTargetRefPicList] , nWidth , nHeight , true , false );
       if( mvStart[eTargetRefPicList].getRefIdx() >= 0 )
@@ -4508,6 +4516,10 @@ Bool TComPrediction::xFrucFindBlkMv( TComDataCU * pCU , UInt uiPUIdx )
       mvFinal[0] = mvStart[0];
       mvFinal[1] = mvStart[1];
       uiMinCost = xFrucRefineMv( mvFinal , eBestRefPicList , uiMinCost , nSearchMethod , pCU , uiAbsPartIdx , mvStart[eBestRefPicList] , nWidth , nHeight , false );
+#if JVET_E0060_FRUC_CAND
+      //Save best list for sub-blocks
+      m_bilatBestRefPicList = eBestRefPicList;
+#endif
       bAvailable = true;
     }
   }
@@ -4600,7 +4612,12 @@ Bool TComPrediction::xFrucRefineSubBlkMv( TComDataCU * pCU , UInt uiDepth , UInt
       if( bTM )
       {
         if( !xFrucGetCurBlkTemplate( pCU , uiSubBlkIdx , nRefineBlockSize , nRefineBlockSize ) )
+        {
+#if JVET_E0060_FRUC_CAND && COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+          uiSubBlkRasterIdx += uiSubBlkRasterStep;
+#endif
           continue;
+        }
         for( Int nRefPicList = 0 ; nRefPicList < 2 ; nRefPicList++ )
         {
           if( mvStart[nRefPicList].getRefIdx() >= 0 )
@@ -4618,12 +4635,22 @@ Bool TComPrediction::xFrucRefineSubBlkMv( TComDataCU * pCU , UInt uiDepth , UInt
       }
       else
       {
+#if JVET_E0060_FRUC_CAND
+        //Use same reference frame as for entire block, i.e. same refidx and same list
+        RefPicList eBestRefPicList = m_bilatBestRefPicList;
+        xFrucCollectSubBlkStartMv( pCU , uiSubBlkIdx , eBestRefPicList , mvStart[eBestRefPicList] , nRefineBlockSize , nRefineBlockSize
+#if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
+          , uiSubBlkRasterIdx , uiSubBlkRasterStep
+#endif
+          );
+#else
         xFrucCollectSubBlkStartMv( pCU , uiSubBlkIdx , REF_PIC_LIST_0 , mvStart[REF_PIC_LIST_0] , nRefineBlockSize , nRefineBlockSize 
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
           , uiSubBlkRasterIdx , uiSubBlkRasterStep
 #endif
           );
         RefPicList eBestRefPicList = REF_PIC_LIST_0;
+#endif
         UInt uiMinCost = xFrucFindBestMvFromList( mvFinal , eBestRefPicList , pCU , uiSubBlkIdx , mvStart[eBestRefPicList] , nRefineBlockSize , nRefineBlockSize , bTM , true );
         uiMinCost = xFrucRefineMv( mvFinal , eBestRefPicList , uiMinCost , nSearchMethod , pCU , uiSubBlkIdx , mvStart[eBestRefPicList] , nRefineBlockSize , nRefineBlockSize , bTM );
       }
@@ -4690,18 +4717,46 @@ Void TComPrediction::xFrucInsertMv2StartList( const TComMvField & rMvField , std
  * \param eTargetRefPicList The reference list for the Mv predictor
  * \param nTargetRefIdx   The reference index for the Mv predictor
  */
-Void TComPrediction::xFrucCollectBlkStartMv( TComDataCU * pCU , UInt uiPUIdx , RefPicList eTargetRefList , Int nTargetRefIdx )
+Void TComPrediction::xFrucCollectBlkStartMv( TComDataCU * pCU , UInt uiPUIdx , RefPicList eTargetRefList , Int nTargetRefIdx
+#if JVET_E0060_FRUC_CAND
+                                           , AMVPInfo* pInfo
+#endif
+                                           )
 {
+#if JVET_E0060_FRUC_CAND
+  UInt uiAddrOffset = 0;
+  Int nWidth = 0, nHeight = 0;
+  pCU->getPartIndexAndSize( uiPUIdx , uiAddrOffset , nWidth , nHeight );
+
+  m_listMVFieldCand[0].clear();
+  m_listMVFieldCand[1].clear();
+
+  if ((nTargetRefIdx >= 0) && pInfo)   //Here we are in AMVP mode
+  {
+    // add AMVP candidates to the list
+    for (Int nAMVPIndex=0; nAMVPIndex<pInfo->iN; nAMVPIndex++)
+    {
+      TComMvField mvCand;
+      mvCand.setMvField(pInfo->m_acMvCand[nAMVPIndex], nTargetRefIdx);
+      xFrucInsertMv2StartList(mvCand, m_listMVFieldCand[eTargetRefList]);
+    }
+  }
+#endif
+
   // get merge candidates
   TComMvField  cMvFieldNeighbours[ 2 * MRG_MAX_NUM_CANDS ]; // double length for mv of both lists
   UChar uhInterDirNeighbours[MRG_MAX_NUM_CANDS];
   Int numValidMergeCand = 0;
+#if !JVET_E0060_FRUC_CAND
   UInt uiAddrOffset = 0;
   Int nWidth = 0 , nHeight = 0;
+#endif
 #if VCEG_AZ06_IC
   Bool abICFlag[MRG_MAX_NUM_CANDS];
 #endif
+#if !JVET_E0060_FRUC_CAND
   pCU->getPartIndexAndSize( uiPUIdx , uiAddrOffset , nWidth , nHeight );
+#endif
   pCU->getInterMergeCandidates( uiAddrOffset, uiPUIdx, cMvFieldNeighbours, uhInterDirNeighbours, numValidMergeCand 
 #if VCEG_AZ06_IC
     , abICFlag
@@ -4712,8 +4767,10 @@ Void TComPrediction::xFrucCollectBlkStartMv( TComDataCU * pCU , UInt uiPUIdx , R
     );
 
   // add merge candidates to the list
+#if !JVET_E0060_FRUC_CAND
   m_listMVFieldCand[0].clear();
   m_listMVFieldCand[1].clear();
+#endif
   for( Int nMergeIndex = 0; nMergeIndex < numValidMergeCand + numValidMergeCand ; nMergeIndex++ )
   {
     if( cMvFieldNeighbours[nMergeIndex].getRefIdx() >= 0 
@@ -4760,6 +4817,55 @@ Void TComPrediction::xFrucCollectBlkStartMv( TComDataCU * pCU , UInt uiPUIdx , R
       }
     }
   }
+
+#if JVET_E0060_FRUC_CAND
+  // add some neighbors if not already present
+  UInt uiAbsPartIdxNeighbor = 0;
+  TComDataCU *pNeighbor = NULL;
+  Int nbSpatialCandTested = NB_FRUC_CAND_ADDED;
+  for (Int neighbor=0; neighbor<nbSpatialCandTested; neighbor++)
+  {
+    pNeighbor = NULL;
+    if (neighbor == 0)       // top neighbor
+      pNeighbor = pCU->getPUAbove(uiAbsPartIdxNeighbor, uiAddrOffset + pCU->getZorderIdxInCtu());
+    else if (neighbor == 1)  // left neighbor
+      pNeighbor = pCU->getPULeft(uiAbsPartIdxNeighbor, uiAddrOffset + pCU->getZorderIdxInCtu());
+    else if (neighbor == 2)  // top-left neighbor
+      pNeighbor = pCU->getPUAboveLeft(uiAbsPartIdxNeighbor, uiAddrOffset + pCU->getZorderIdxInCtu());
+    else if (neighbor == 3)  // top-right neighbor
+    {
+      UInt uiPartIdxLT, uiPartIdxRT;
+      pCU->deriveLeftRightTopIdxGeneral(uiAddrOffset, uiPUIdx, uiPartIdxLT, uiPartIdxRT);
+      pNeighbor = pCU->getPUAboveRight(uiAbsPartIdxNeighbor, uiPartIdxRT);
+    }
+    else if (neighbor == 4)  // below-left neighbor
+    {
+      UInt uiPartIdxLB;
+      pCU->deriveLeftBottomIdxGeneral(uiAddrOffset, uiPUIdx, uiPartIdxLB);
+      pNeighbor = pCU->getPUBelowLeft(uiAbsPartIdxNeighbor, uiPartIdxLB);
+    }
+    else
+      assert(0);
+
+    if (pNeighbor)
+    {
+      for (Int nList=0; nList<2; nList++)
+      {
+        RefPicList eCurList = (RefPicList)nList;
+        if (pNeighbor->getCUMvField(eCurList)->getRefIdx(uiAbsPartIdxNeighbor) >= 0)
+        {
+          if ((nTargetRefIdx >= 0) &&
+              ((pNeighbor->getCUMvField(eCurList)->getRefIdx(uiAbsPartIdxNeighbor) != nTargetRefIdx) ||
+               (eCurList != eTargetRefList)))
+            continue;
+          TComMvField mvCand;
+          mvCand.setMvField(pNeighbor->getCUMvField(eCurList)->getMv(uiAbsPartIdxNeighbor), pNeighbor->getCUMvField(eCurList)->getRefIdx(uiAbsPartIdxNeighbor));
+          xFrucInsertMv2StartList(mvCand, m_listMVFieldCand[nList&0x01]);
+        }
+      }
+    }
+  }
+#endif
 }
 
 /**
@@ -4786,11 +4892,50 @@ Void TComPrediction::xFrucCollectSubBlkStartMv( TComDataCU * pCU , UInt uiAbsPar
   // start Mv
   xFrucInsertMv2StartList( rMvStart , rStartMvList );
 
+#if JVET_E0060_FRUC_CAND
+  // add some neighbors in addition to top and left ones
+  UInt uiAbsPartIdxNeighbor = 0;
+  TComDataCU *pNeighbor = NULL;
+  for (Int neighbor=0; neighbor<max(2,NB_FRUC_CAND_ADDED_SUB); neighbor++)
+  {
+    pNeighbor = NULL;
+    if (neighbor == 0)       // top neighbor
+      pNeighbor = pCU->getPUAbove(uiAbsPartIdxNeighbor, uiAbsPartIdx + pCU->getZorderIdxInCtu());
+    else if (neighbor == 1)  // left neighbor
+      pNeighbor = pCU->getPULeft(uiAbsPartIdxNeighbor, uiAbsPartIdx + pCU->getZorderIdxInCtu());
+    else if (neighbor == 2)  // top-left neighbor
+      pNeighbor = pCU->getPUAboveLeft(uiAbsPartIdxNeighbor, uiAbsPartIdx + pCU->getZorderIdxInCtu());
+    else if (neighbor == 3)  // top-right neighbor
+    {
+      UInt uiPartIdxLT, uiPartIdxRT;
+      pCU->deriveLeftRightTopIdx(uiAbsPartIdx, uiPartIdxLT, uiPartIdxRT);
+      pNeighbor = pCU->getPUAboveRight(uiAbsPartIdxNeighbor, uiPartIdxRT);
+    }
+    else if (neighbor == 4)  // below-left neighbor
+    {
+      UInt uiPartIdxLB;
+      pCU->deriveLeftBottomIdx(uiAbsPartIdx, uiPartIdxLB);
+      pNeighbor = pCU->getPUBelowLeft(uiAbsPartIdxNeighbor, uiPartIdxLB);
+    }
+    else
+      assert(0);
+
+    if (pNeighbor && (pNeighbor->getCUMvField(eRefPicList)->getRefIdx(uiAbsPartIdxNeighbor) == rMvStart.getRefIdx()))
+    {
+      TComMvField mvCand;
+      mvCand.setMvField(pNeighbor->getCUMvField(eRefPicList)->getMv(uiAbsPartIdxNeighbor), rMvStart.getRefIdx());
+      xFrucInsertMv2StartList(mvCand, rStartMvList);
+    }
+  }
+#endif
+
+#if !JVET_E0060_FRUC_CAND
   // zero Mv
   TComMvField mvZero;
   mvZero.setRefIdx( rMvStart.getRefIdx() );
   mvZero.getMv().setZero();
   xFrucInsertMv2StartList( mvZero , rStartMvList );
+#endif
 
   Int nCurPOC = pCU->getSlice()->getPOC();
   Int nCurRefPOC = pCU->getSlice()->getRefPOC( eRefPicList , rMvStart.getRefIdx() );
@@ -4798,7 +4943,11 @@ Void TComPrediction::xFrucCollectSubBlkStartMv( TComDataCU * pCU , UInt uiAbsPar
   // scaled TMVP, collocated positions and bottom right positions
   UInt uiCUAddr[2] = { pCU->getCtuRsAddr() , 0 };
   UInt uiColBlockIdx[2] = { uiAbsPartIdx + pCU->getZorderIdxInCtu() , 0 };
+#if JVET_E0060_FRUC_CAND
+  Int nMaxPositions = 1;
+#else
   Int nMaxPositions = 1 + pCU->getBlockBelowRight( uiAbsPartIdx , nSubBlkWidth , nSubBlkHeight , uiCUAddr[1] , uiColBlockIdx[1] );
+#endif
   for( Int n = 0 ; n < nMaxPositions ; n++ )
   {
     for( Int nRefIdx = pCU->getSlice()->getNumRefIdx( eRefPicList ) - 1 ; nRefIdx >= 0 ; nRefIdx-- )
@@ -4824,7 +4973,11 @@ Void TComPrediction::xFrucCollectSubBlkStartMv( TComDataCU * pCU , UInt uiAbsPar
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
   if( pCU->getSlice()->getSPS()->getAtmvpEnableFlag() )
   {
+#if JVET_E0060_FRUC_CAND
+    for( UInt n = 0 ; n < min(NB_FRUC_CAND_ATMVP, uiSubBlkRasterStep) ; n++ )
+#else
     for( UInt n = 0 ; n < uiSubBlkRasterStep ; n++ )
+#endif
     {
       UInt uiIdx = ( ( n + uiSubBlkRasterIdx ) << 1 ) + eRefPicList;
 #if JVET_C0035_ATMVP_SIMPLIFICATION
@@ -4850,8 +5003,9 @@ Void TComPrediction::xFrucCollectSubBlkStartMv( TComDataCU * pCU , UInt uiAbsPar
   }
 #endif
 
-  // scaled interpolated MV 
-  if( pCU->getSlice()->getSPS()->getUseFRUCMgrMode() ) 
+#if !JVET_E0060_FRUC_CAND
+  // scaled interpolated MV
+  if( pCU->getSlice()->getSPS()->getUseFRUCMgrMode() )
   {
     TComCUMvField * pFRUCUniLateralMVField = pCU->getPic()->getCtu( pCU->getCtuRsAddr() )->getFRUCUniLateralMVField( eRefPicList );
     Int nRefIdx = pFRUCUniLateralMVField->getRefIdx( uiAbsPartIdx );
@@ -4864,7 +5018,9 @@ Void TComPrediction::xFrucCollectSubBlkStartMv( TComDataCU * pCU , UInt uiAbsPar
       xFrucInsertMv2StartList( mvCand , rStartMvList );
     }
   }
+#endif
 
+#if !JVET_E0060_FRUC_CAND
   // top neighbor
   UInt uiAbsPartIdxTop = 0;
   TComDataCU * pTop = pCU->getPUAbove( uiAbsPartIdxTop , uiAbsPartIdx + pCU->getZorderIdxInCtu() );
@@ -4884,6 +5040,7 @@ Void TComPrediction::xFrucCollectSubBlkStartMv( TComDataCU * pCU , UInt uiAbsPar
     mvCand.setMvField( pLeft->getCUMvField( eRefPicList )->getMv( uiAbsPartIdxLeft ) , pLeft->getCUMvField( eRefPicList )->getRefIdx( uiAbsPartIdxLeft ) );
     xFrucInsertMv2StartList( mvCand , rStartMvList );
   }
+#endif
 }
 
 /**
@@ -4905,7 +5062,11 @@ UInt TComPrediction::xFrucFindBestMvFromList( TComMvField * pBestMvField , RefPi
 
   Int nRefPicListStart = 0;
   Int nRefPicListEnd = 1;
+#if JVET_E0060_FRUC_CAND
+  if( bTM || bMvCost)  // Limit search to bestList in Template mode and for all sub-blocks (Template and Bilateral modes)
+#else
   if( bTM )
+#endif
   {
     nRefPicListStart = nRefPicListEnd = rBestRefPicList;
   }
@@ -4967,7 +5128,11 @@ UInt TComPrediction::xFrucFindBestMvFromList( TComMvField * pBestMvField , RefPi
  * \param nTargetRefIdx   The target reference index for Mv predictor
  * \param eTargetRefPicList The target reference list for Mv predictor
  */
-Bool TComPrediction::deriveFRUCMV( TComDataCU * pCU , UInt uiDepth , UInt uiAbsPartIdx , UInt uiPUIdx , Int nTargetRefIdx , RefPicList eTargetRefList )
+Bool TComPrediction::deriveFRUCMV( TComDataCU * pCU , UInt uiDepth , UInt uiAbsPartIdx , UInt uiPUIdx , Int nTargetRefIdx , RefPicList eTargetRefList
+#if JVET_E0060_FRUC_CAND
+                                 , AMVPInfo* pInfo
+#endif
+                                 )
 {
   Bool bAvailable = false;
 
@@ -4980,7 +5145,11 @@ Bool TComPrediction::deriveFRUCMV( TComDataCU * pCU , UInt uiDepth , UInt uiAbsP
   else
   {
     // for AMVP
+#if JVET_E0060_FRUC_CAND
+    bAvailable = xFrucFindBlkMv4Pred( pCU , uiPUIdx , eTargetRefList , nTargetRefIdx , pInfo );
+#else
     bAvailable = xFrucFindBlkMv4Pred( pCU , uiPUIdx , eTargetRefList , nTargetRefIdx );
+#endif
   }
 
   return( bAvailable );

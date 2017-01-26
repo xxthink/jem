@@ -224,6 +224,9 @@
 #endif
 
 #define VCEG_AZ07_FRUC_MERGE                              1  ///< Pattern matched motion vector derivation
+#if VCEG_AZ07_FRUC_MERGE
+#define JVET_E0060_FRUC_CAND                              1  ///< E0060: Add candidates to FRUC lists, and adjust the number of these candidates
+#endif
 
 #define JVET_B058_HIGH_PRECISION_MOTION_VECTOR_MC         1
 

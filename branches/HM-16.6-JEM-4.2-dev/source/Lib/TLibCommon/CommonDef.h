@@ -423,6 +423,11 @@ static const Int FRUC_MERGE_TEMPLATE_SIZE =                        4 ;
 static const Int FRUC_MERGE_REFINE_MVWEIGHT =                      4 ;
 static const Int FRUC_MERGE_REFINE_MINBLKSIZE =                    4 ;
 #endif
+#if JVET_E0060_FRUC_CAND
+static const Int NB_FRUC_CAND_ADDED =                              2 ; ///< for entire (AMVP and merge) CU, number of added spatial candidates in top, left, top-left, top-right, below-left <0-5>
+static const Int NB_FRUC_CAND_ADDED_SUB =                          4 ; ///< for sub-blocks of merge CU, number of added spatial candidates in top, left, top-left, top-right, below-left <0-5>
+static const UInt NB_FRUC_CAND_ATMVP =                             4 ; ///< for sub-blocks of merge CU, number of ATMVP candidates
+#endif
 #if VCEG_AZ07_CTX_RESIDUALCODING
 static const Int MAX_GR_ORDER_RESIDUAL =                          10 ;
 #endif
