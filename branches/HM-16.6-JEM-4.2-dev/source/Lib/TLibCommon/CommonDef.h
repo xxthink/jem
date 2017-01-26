@@ -498,6 +498,9 @@ static const Double JVET_D0077_SPLIT_DECISION_COST_SCALE =       1.05;
 static const Int    EPBIT =                                   (1<<15);
 #endif
 
+#if JVET_E0052_DMVR
+static const Int DMVR_INTME_RANGE =                                 1;
+#endif
 
 // ====================================================================================================================
 // Macro functions

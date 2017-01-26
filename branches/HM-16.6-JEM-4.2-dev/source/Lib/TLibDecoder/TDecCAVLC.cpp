@@ -892,6 +892,9 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
 #if VCEG_AZ05_BIO
   READ_FLAG( uiCode, "bio_enabled_flag" );      pcSPS->setUseBIO( uiCode );
 #endif
+#if JVET_E0052_DMVR
+  READ_FLAG( uiCode, "dmvr_enabled_flag" );      pcSPS->setUseDMVR( uiCode );
+#endif
 #if VCEG_AZ05_INTRA_MPI
   READ_FLAG( uiCode, "mpi_enabled_flag" );      pcSPS->setUseMPI( uiCode );
 #endif

@@ -1195,6 +1195,9 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 #if VCEG_AZ05_BIO
   ("BIO",                                        m_useBIO,            true, "Enable bi-directional optical flow")
 #endif
+#if JVET_E0052_DMVR
+  ("DMVR",                                        m_useDMVR,            true, "Enable decoder-side motion vector refinement")
+#endif
 #if VCEG_AZ05_INTRA_MPI
   ("MPI",                                        m_useMPI,            true, "Enable multi-parameter Intra prediction")
 #endif
@@ -2864,6 +2867,9 @@ Void TAppEncCfg::xPrintParameter()
 #endif
 #if VCEG_AZ05_BIO
   printf("BIO:%d ", m_useBIO        );
+#endif
+#if JVET_E0052_DMVR
+  printf("DMVR:%d ", m_useDMVR        );
 #endif
 #if VCEG_AZ05_INTRA_MPI
   printf("MPI:%d ", m_useMPI        );
