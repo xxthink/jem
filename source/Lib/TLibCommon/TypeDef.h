@@ -218,9 +218,6 @@
 
 #if VCEG_AZ07_IMV
 #define JVET_E0076_MULTI_PEL_MVD                          1
-#if JVET_E0076_MULTI_PEL_MVD                  
-#define MVD_PEL_NUM                                       4
-#endif
 #endif
 
 #define VCEG_AZ07_FRUC_MERGE                              1  ///< Pattern matched motion vector derivation

@@ -519,8 +519,8 @@ Void TDecEntropy::decodePUWise( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDept
 #if  JVET_E0076_MULTI_PEL_MVD
           if( pcCU->getiMVFlag( uiSubPartIdx ) == 2)
           {
-            iMvdHor *= MVD_PEL_NUM;
-            iMvdVer *= MVD_PEL_NUM;
+            iMvdHor <<= MULTI_PEL_MVD_BITS;
+            iMvdVer <<= MULTI_PEL_MVD_BITS;
           }
 #endif
           TComMv cMv( iMvdHor, iMvdVer );

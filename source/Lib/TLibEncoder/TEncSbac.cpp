@@ -1675,9 +1675,9 @@ Void TEncSbac::codeMvd( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList
 #if  JVET_E0076_MULTI_PEL_MVD
     if (pcCU->getiMVFlag( uiAbsPartIdx ) == 2)
     {
-      assert( ( iHor % MVD_PEL_NUM ) == 0 && ( iVer % MVD_PEL_NUM ) == 0 );
-      iHor /= MVD_PEL_NUM;
-      iVer /= MVD_PEL_NUM;
+      assert( ( iHor % (1 << MULTI_PEL_MVD_BITS)) == 0 && ( iVer % (1 << MULTI_PEL_MVD_BITS) ) == 0 );
+      iHor >>= MULTI_PEL_MVD_BITS;
+      iVer >>= MULTI_PEL_MVD_BITS;
     }
 #endif
 #endif

@@ -904,20 +904,14 @@ public:
 #if JVET_E0076_MULTI_PEL_MVD                  
   Void xRoundMV( TComMv & rMV , UInt uiAbsPartIdx) 
   { 
+    Int shift = 2 + VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE;
     if (getiMVFlag(uiAbsPartIdx) == 2)
     {
-      Int accu = ((1 << ( 2 + VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE )) * MVD_PEL_NUM);
-      Int offset = accu/2;
-      Short mvx = ((rMV.getHor() + (rMV.getHor() > 0 ? offset : -offset)) / accu)  * accu;
-      Short mvy = ((rMV.getVer() + (rMV.getVer() > 0 ? offset : -offset)) / accu)  * accu;
-      rMV.set(mvx, mvy);
+      shift+=MULTI_PEL_MVD_BITS;
     }
-    else
-    {
-      rMV += TComMv( 2 << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE , 2 << VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE ); 
-      rMV >>= ( 2 + VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE ); 
-      rMV <<= ( 2 + VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE ); 
-    }
+    rMV += TComMv( 1<<( shift-1), 1<<( shift-1) ); 
+    rMV >>= shift; 
+    rMV <<= shift; 
   }
 #endif
 

@@ -992,7 +992,7 @@ __inline UInt TEncSearch::xGetMvdBitsLut (TComDataCU* pcCU, UInt uiAbsPartIdx, I
 #if JVET_E0076_MULTI_PEL_MVD
     if( pcCU->getiMVFlag( uiAbsPartIdx ) == 2)
     {
-      iCurVal /= MVD_PEL_NUM;
+      iCurVal >>= MULTI_PEL_MVD_BITS;
     }
 #endif
   }
@@ -8363,7 +8363,7 @@ Void TEncSearch::intMvRefine( TComDataCU* pcCU, RefPicList eRefPicList, TComPatt
 
   if( pcCU->getiMVFlag(0) == 2)
   {
-    mvOffset *= MVD_PEL_NUM;
+    mvOffset <<= MULTI_PEL_MVD_BITS;
   }
 #endif
 
@@ -8406,7 +8406,7 @@ Void TEncSearch::intMvRefine( TComDataCU* pcCU, RefPicList eRefPicList, TComPatt
         , pcCU->getiMVFlag( 0 )
 #endif
         );
-    uiDist += m_pcRdCost->getCost( cTestMv.getHor(), cTestMv.getVer() 
+    uiDist += m_pcRdCost->getCost( cTestMv[iMVPIdx].getHor(), cTestMv[iMVPIdx].getVer()
 #if VCEG_AZ07_IMV
       , pcPatternKey->getImvFlag()
 #endif
