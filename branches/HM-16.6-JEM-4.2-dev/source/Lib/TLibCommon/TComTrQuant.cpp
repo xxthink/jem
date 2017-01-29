@@ -97,11 +97,21 @@ UInt g_uiDepth2IntraTempSize[5] = { 3, 3, 3, 3, 3 };
 #pragma GCC diagnostic push
 #endif
 #pragma GCC diagnostic ignored "-Wshadow"
+#if __GNUC__>=6
+#pragma GCC diagnostic ignored "-Wignored-attributes"
+#pragma GCC diagnostic ignored "-Wmisleading-indentation"
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
 #include "../../extlib/Eigen/Dense"
 #if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6)
 #pragma GCC diagnostic pop
 #else
 #pragma GCC diagnostic warning "-Wshadow"
+#endif
+#if __GNUC__>=6
+#pragma GCC diagnostic warning "-Wignored-attributes"
+#pragma GCC diagnostic warning "-Wmisleading-indentation"
+#pragma GCC diagnostic warning "-Wdeprecated-declarations"
 #endif
 #else
 #include "../../extlib/Eigen/Dense"
