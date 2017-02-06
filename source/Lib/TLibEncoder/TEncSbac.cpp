@@ -793,6 +793,15 @@ Void TEncSbac::codeiMVFlag( TComDataCU* pcCU, UInt uiAbsPartIdx )
   UInt uiSymbol = pcCU->getiMVFlag( uiAbsPartIdx ) ? 1 : 0;
   UInt uiCtxiMV = pcCU->getCtxiMVFlag( uiAbsPartIdx ) ;
   m_pcBinIf->encodeBin( uiSymbol, m_cCUiMVFlagSCModel.get( 0, 0, uiCtxiMV ) );
+
+#if  JVET_E0076_MULTI_PEL_MVD
+  if (uiSymbol)
+  {
+    uiSymbol = pcCU->getiMVFlag( uiAbsPartIdx ) > 1 ? 1 : 0;  
+    m_pcBinIf->encodeBin( uiSymbol, m_cCUiMVFlagSCModel.get( 0, 0, 3 ) );
+  }
+#endif
+
   DTRACE_CABAC_VL( g_nSymbolCounter++ );
   DTRACE_CABAC_T( "\tiMVFlag" );
   DTRACE_CABAC_T( "\tuiCtxiMV: ");
@@ -968,6 +977,18 @@ Void TEncSbac::codeROTIdxChroma ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDep
   if( iNumberOfPassesROT==4 )
   {
     UInt uiIntraMode = pcCU->getIntraDir( CHANNEL_TYPE_CHROMA, uiAbsPartIdx );
+#if JVET_E0062_MULTI_DMS && COM16_C806_LMCHROMA
+    if( uiIntraMode == LM_CHROMA_IDX )
+    {
+      uiIntraMode = PLANAR_IDX;
+    }
+#if JVET_E0077_ENHANCED_LM
+    else if (IsLMMode(uiIntraMode))
+    {
+        uiIntraMode = PLANAR_IDX;
+    }
+#endif
+#else
     if( uiIntraMode == DM_CHROMA_IDX )
     {
       uiIntraMode = pcCU->getPic()->getCtu(pcCU->getCtuRsAddr())->getIntraDir(CHANNEL_TYPE_LUMA, pcCU->getZorderIdxInCtu()+uiAbsPartIdx);
@@ -978,6 +999,16 @@ Void TEncSbac::codeROTIdxChroma ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDep
       uiIntraMode = PLANAR_IDX;
     }
 #endif
+
+#if JVET_E0077_ENHANCED_LM
+    else if (IsLMMode(uiIntraMode))
+    {
+        uiIntraMode = PLANAR_IDX;
+    }
+#endif
+
+#endif
+
     iNumberOfPassesROT = uiIntraMode <= DC_IDX ? 3 : 4;
   }
 
@@ -1314,7 +1345,11 @@ Void TEncSbac::codeIntraDirLumaAng( TComDataCU* pcCU, UInt absPartIdx, Bool isMu
         dir[j] = dir[j] > preds[j][i] ? dir[j] - 1 : dir[j];
       }
 #if VCEG_AZ07_INTRA_65ANG_MODES
+#if JVET_E0077_ENHANCED_LM
+      assert(dir[j]<(NUM_INTRA_MODE - NUM_INTRA_MODE_NON_ANG - 5));
+#else
       assert( dir[j]<(NUM_INTRA_MODE-7) );
+#endif
 
 #if JVET_B0051_NON_MPM_MODE
 #if JVET_C0024_QTBT
@@ -1350,30 +1385,173 @@ Void TEncSbac::codeIntraDirLumaAng( TComDataCU* pcCU, UInt absPartIdx, Bool isMu
   return;
 }
 
+#if JVET_E0077_ENHANCED_LM
+Void TEncSbac::codeLMModes(TComDataCU* pcCU, UInt uiAbsPartIdx, Int iMode)
+{
+    Int symbol = -1;
+    Int k = 0;
+    Int aiLMModeList[10];
+    Int iSymbolNum = pcCU->getLMSymbolList(aiLMModeList, uiAbsPartIdx);
+    for (k = 0; k < LM_SYMBOL_NUM; k++)
+    {
+        if (aiLMModeList[k] == iMode || (aiLMModeList[k] == -1 && iMode < LM_CHROMA_IDX))
+        {
+            symbol = k;
+            break;
+        }
+    }
+    assert(symbol >= 0);
+
+
+    xWriteUnaryMaxSymbol(symbol, &m_cCUChromaPredSCModel.get(0, 0, 1), 1, iSymbolNum - 1);
+    return;
+}
+#endif
+
 Void TEncSbac::codeIntraDirChroma( TComDataCU* pcCU, UInt uiAbsPartIdx )
 {
   UInt uiIntraDirChroma = pcCU->getIntraDir( CHANNEL_TYPE_CHROMA, uiAbsPartIdx );
+#if JVET_E0062_MULTI_DMS
+  Int i = 0;
+#if COM16_C806_LMCHROMA
+  Int iStartIdx = 1;
+#else
+  Int iStartIdx = 0;
+#endif
+#if COM16_C806_LMCHROMA
+#if JVET_E0077_ENHANCED_LM
+  const UInt csx = getComponentScaleX(COMPONENT_Cb, pcCU->getSlice()->getSPS()->getChromaFormatIdc());
+  const UInt csy = getComponentScaleY(COMPONENT_Cb, pcCU->getSlice()->getSPS()->getChromaFormatIdc());
 
+  Int iBlockSize = (pcCU->getHeight(uiAbsPartIdx) >> csy) + (pcCU->getWidth(uiAbsPartIdx) >> csx);
+#if JVET_E0077_MMLM
+  if (iBlockSize >= g_aiMMLM_MinSize[pcCU->getSlice()->isIntra() ? 0 : 1])
+    {
+        iStartIdx += JVET_E0077_MMLM;
+    }
+#endif
+#if JVET_E0077_LM_MF
+  if (iBlockSize >= g_aiMFLM_MinSize[pcCU->getSlice()->isIntra() ? 0 : 1])
+    {
+        iStartIdx += LM_FILTER_NUM;
+    }
+#endif
+  if (IsLMMode(uiIntraDirChroma) && pcCU->getSlice()->getSPS()->getUseLMChroma())
+#else
+  if( uiIntraDirChroma == LM_CHROMA_IDX && pcCU->getSlice()->getSPS()->getUseLMChroma() )
+#endif
+  {
+    m_pcBinIf->encodeBin( 0, m_cCUChromaPredSCModel.get( 0, 0, 0 ) );   
+#if JVET_E0077_ENHANCED_LM
+        Int iCtx = 6;
+#if JVET_E0077_MMLM
+        if (iBlockSize >= g_aiMMLM_MinSize[pcCU->getSlice()->isIntra() ? 0 : 1])
+        {
+            UInt uiFlag = uiIntraDirChroma == MMLM_CHROMA_IDX;
+            m_pcBinIf->encodeBin(uiFlag, m_cCUChromaPredSCModel.get(0, 0, iCtx++));
+        }
+#endif
+
+#if JVET_E0077_LM_MF
+        if (iBlockSize >= g_aiMFLM_MinSize[pcCU->getSlice()->isIntra() ? 0 : 1])
+        {
+            if (((uiIntraDirChroma == LM_CHROMA_IDX)
+                || (uiIntraDirChroma >= LM_CHROMA_F1_IDX && uiIntraDirChroma < LM_CHROMA_F1_IDX + LM_FILTER_NUM)))
+            {
+                m_pcBinIf->encodeBin(uiIntraDirChroma == LM_CHROMA_IDX, m_cCUChromaPredSCModel.get(0, 0, iCtx++));
+
+                if (uiIntraDirChroma >= LM_CHROMA_F1_IDX && uiIntraDirChroma < LM_CHROMA_F1_IDX + LM_FILTER_NUM)
+                {
+                    Int iLable = uiIntraDirChroma - LM_CHROMA_F1_IDX;
+                    m_pcBinIf->encodeBin((iLable >> 1) & 1, m_cCUChromaPredSCModel.get(0, 0, iCtx++));
+                    m_pcBinIf->encodeBin(iLable & 1, m_cCUChromaPredSCModel.get(0, 0, iCtx++));
+                }
+            }
+        }
+
+#endif
+#endif
+  }
+  else
+#endif
+  {
+    UInt iDMIdx = 0, uiAllowedChromaDir[NUM_CHROMA_MODE];
+    pcCU->getAllowedChromaDir( uiAbsPartIdx, uiAllowedChromaDir );
+
+    for(i = iStartIdx; i < (NUM_DM_MODES + iStartIdx); i++)
+    {
+      if(uiIntraDirChroma == uiAllowedChromaDir[i])
+      {
+        iDMIdx = i - iStartIdx;
+        break;
+      }
+    }
+
+#if COM16_C806_LMCHROMA
+    if( pcCU->getSlice()->getSPS()->getUseLMChroma() )
+    {
+      m_pcBinIf->encodeBin( 1, m_cCUChromaPredSCModel.get( 0, 0, 0 ) );
+    }
+#endif
+            
+    UInt ictxIdx = 1;
+    m_pcBinIf->encodeBin(iDMIdx ? 1 : 0, m_cCUChromaPredSCModel.get(0, 0, ictxIdx));
+    UInt uiMaxSymbol = NUM_DM_MODES;
+    if (iDMIdx)
+    {
+      Bool bCodeLast = (uiMaxSymbol > iDMIdx);
+      while (--iDMIdx)
+      {
+        ictxIdx++;
+        m_pcBinIf->encodeBin(1, m_cCUChromaPredSCModel.get(0, 0, ictxIdx));
+      }
+      if (bCodeLast)
+      {
+        ictxIdx++;
+        m_pcBinIf->encodeBin(0, m_cCUChromaPredSCModel.get(0, 0, ictxIdx));
+      }
+    }
+      
+  }
+#else
   if( uiIntraDirChroma == DM_CHROMA_IDX )
   {
     m_pcBinIf->encodeBin( 0, m_cCUChromaPredSCModel.get( 0, 0, 0 ) );
   }
 
 #if COM16_C806_LMCHROMA
+#if JVET_E0077_ENHANCED_LM
+  else
+  {
+      m_pcBinIf->encodeBin(1, m_cCUChromaPredSCModel.get(0, 0, 0));
+      if (pcCU->getSlice()->getSPS()->getUseLMChroma())
+      {
+          codeLMModes(pcCU, uiAbsPartIdx, uiIntraDirChroma);
+      }
+  }
+  if (uiIntraDirChroma == DM_CHROMA_IDX || IsLMMode(uiIntraDirChroma))
+  {
+      //Do nothing
+  }
+#else
   else if( uiIntraDirChroma == LM_CHROMA_IDX && pcCU->getSlice()->getSPS()->getUseLMChroma() )
   {
     m_pcBinIf->encodeBin( 1, m_cCUChromaPredSCModel.get( 0, 0, 0 ) );
     m_pcBinIf->encodeBin( 0, m_cCUChromaPredSCModel.get( 0, 0, 1 ) );
   }
 #endif
+
+#endif
   else
   {
+#if !JVET_E0077_ENHANCED_LM
     m_pcBinIf->encodeBin( 1, m_cCUChromaPredSCModel.get( 0, 0, 0 ) );
 #if COM16_C806_LMCHROMA
     if (pcCU->getSlice()->getSPS()->getUseLMChroma())
     {
       m_pcBinIf->encodeBin( 1, m_cCUChromaPredSCModel.get( 0, 0, 1 ));
     }
+#endif
 #endif
     UInt uiAllowedChromaDir[ NUM_CHROMA_MODE ];
     pcCU->getAllowedChromaDir( uiAbsPartIdx, uiAllowedChromaDir );
@@ -1393,7 +1571,7 @@ Void TEncSbac::codeIntraDirChroma( TComDataCU* pcCU, UInt uiAbsPartIdx )
 
     m_pcBinIf->encodeBinsEP( uiIntraDirChroma, 2 );
   }
-
+#endif
   return;
 }
 
@@ -1494,6 +1672,14 @@ Void TEncSbac::codeMvd( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList
     iHor >>= 2;
     iVer >>= 2;
   }
+#if  JVET_E0076_MULTI_PEL_MVD
+    if (pcCU->getiMVFlag( uiAbsPartIdx ) == 2)
+    {
+      assert( ( iHor % (1 << MULTI_PEL_MVD_BITS)) == 0 && ( iVer % (1 << MULTI_PEL_MVD_BITS) ) == 0 );
+      iHor >>= MULTI_PEL_MVD_BITS;
+      iVer >>= MULTI_PEL_MVD_BITS;
+    }
+#endif
 #endif
 
   m_pcBinIf->encodeBin( iHor != 0 ? 1 : 0, *pCtx );
@@ -1503,6 +1689,7 @@ Void TEncSbac::codeMvd( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefList
   const Bool bVerAbsGr0 = iVer != 0;
   const UInt uiHorAbs   = 0 > iHor ? -iHor : iHor;
   const UInt uiVerAbs   = 0 > iVer ? -iVer : iVer;
+
   pCtx++;
 
   if( bHorAbsGr0 )
@@ -1548,8 +1735,15 @@ Void TEncSbac::codeCrossComponentPrediction( TComTU &rTu, ComponentID compID )
   }
 
   const UInt uiAbsPartIdx = rTu.GetAbsPartIdxTU();
-
+#if JVET_E0062_MULTI_DMS
+#if JVET_E0077_ENHANCED_LM
+  if (!pcCU->isIntra(uiAbsPartIdx) || !IsLMMode(pcCU->getIntraDir(CHANNEL_TYPE_CHROMA, uiAbsPartIdx)))
+#else
+  if (!pcCU->isIntra(uiAbsPartIdx) || (pcCU->getIntraDir(CHANNEL_TYPE_CHROMA, uiAbsPartIdx) != LM_CHROMA_IDX))
+#endif
+#else
   if (!pcCU->isIntra(uiAbsPartIdx) || (pcCU->getIntraDir( CHANNEL_TYPE_CHROMA, uiAbsPartIdx ) == DM_CHROMA_IDX))
+#endif
   {
     DTRACE_CABAC_VL( g_nSymbolCounter++ )
     DTRACE_CABAC_T("\tparseCrossComponentPrediction()")
@@ -2101,9 +2295,13 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
       uiIntraMode = pcCU->getIntraDir( toChannelType(compID), uiAbsPartIdx );
 
 #if JVET_C0024_QTBT
+#if JVET_E0062_MULTI_DMS
+      uiIntraMode = uiIntraMode;
+#else
       uiIntraMode = (uiIntraMode==DM_CHROMA_IDX && !bIsLuma) 
         ? (pcCU->getSlice()->isIntra()? pcCU->getPic()->getCtu(pcCU->getCtuRsAddr())->getIntraDir(CHANNEL_TYPE_LUMA, pcCU->getZorderIdxInCtu()+uiAbsPartIdx)
         :pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx)) : uiIntraMode;
+#endif
 #else
       const UInt partsPerMinCU = 1<<(2*(sps.getMaxTotalCUDepth() - sps.getLog2DiffMaxMinCodingBlockSize()));
       uiIntraMode = (uiIntraMode==DM_CHROMA_IDX && !bIsLuma) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, getChromasCorrespondingPULumaIdx(uiAbsPartIdx, rTu.GetChromaFormat(), partsPerMinCU)) : uiIntraMode;

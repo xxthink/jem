@@ -193,7 +193,11 @@ TEncGOP::~TEncGOP()
 }
 
 #if COM16_C806_ALF_TEMPPRED_NUM
+#if JVET_E0104_ALF_TEMP_SCALABILITY
+Int TEncGOP::m_iStoredAlfParaNum[JVET_E0104_ALF_MAX_TEMPLAYERID] = { 0, 0, 0, 0, 0 };
+#else
 Int TEncGOP::m_iStoredAlfParaNum = 0;
+#endif
 #endif
 
 /** Create list to contain pointers to CTU start addresses of slice.
@@ -211,7 +215,14 @@ Void  TEncGOP::destroy()
   {
     for( Int i = 0; i < COM16_C806_ALF_TEMPPRED_NUM; i++ )
     {
+#if JVET_E0104_ALF_TEMP_SCALABILITY
+      for (Int j = 0; j < JVET_E0104_ALF_MAX_TEMPLAYERID; j++)
+      {
+        m_pcAdaptiveLoopFilter->freeALFParam(&m_acStoredAlfPara[j][i]);
+      }
+#else
       m_pcAdaptiveLoopFilter->freeALFParam( &m_acStoredAlfPara[i] );
+#endif
     }
   }
 #endif
@@ -256,7 +267,14 @@ Void TEncGOP::init ( TEncTop* pcTEncTop )
     m_pcAdaptiveLoopFilter->setNumCUsInFrame( uiNumCUsInFrame );
     for( Int i = 0; i < COM16_C806_ALF_TEMPPRED_NUM; i++ )
     {
+#if JVET_E0104_ALF_TEMP_SCALABILITY
+      for (Int j = 0; j < JVET_E0104_ALF_MAX_TEMPLAYERID; j++)
+      {
+        m_pcAdaptiveLoopFilter->allocALFParam(&m_acStoredAlfPara[j][i]);
+      }
+#else
       m_pcAdaptiveLoopFilter->allocALFParam( &m_acStoredAlfPara[i] );
+#endif
     }
 #endif
   }
@@ -1285,7 +1303,11 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     {
       if( m_pcAdaptiveLoopFilter->refreshAlfTempPred( pcSlice->getNalUnitType() , pcSlice->getPOC() ) )
       {
+#if JVET_E0104_ALF_TEMP_SCALABILITY
+        memset(m_iStoredAlfParaNum, 0, sizeof(Int)*JVET_E0104_ALF_MAX_TEMPLAYERID);
+#else
         m_iStoredAlfParaNum = 0;
+#endif
       }
     }
 #endif
@@ -1491,6 +1513,34 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     {
       pcSlice->setCheckLDC(true);
     }
+
+#if JVET_E0023_FAST_ENCODING_SETTING
+    UInt dist = MAX_UINT;
+    if ( !pcSlice->isIntra() )
+    {
+      Int currPOC  = pcSlice->getPOC();
+      for (Int refIdx = 0; refIdx < pcSlice->getNumRefIdx(REF_PIC_LIST_0); refIdx++)
+      {
+        UInt tmp = abs(currPOC - pcSlice->getRefPic(REF_PIC_LIST_0, refIdx)->getPOC());
+        if ( tmp < dist )
+        {
+          dist = tmp;
+        }
+      }
+      if ( pcSlice->getSliceType() == B_SLICE )
+      {
+        for (Int refIdx = 0; refIdx < pcSlice->getNumRefIdx(REF_PIC_LIST_1); refIdx++)
+        {
+          UInt tmp = abs(currPOC - pcSlice->getRefPic(REF_PIC_LIST_1, refIdx)->getPOC());
+          if ( tmp < dist )
+          {
+            dist = tmp;
+          }
+        }
+      }
+    }
+    pcSlice->setPictureDistance(dist);
+#endif
 
 #if !JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
     uiColDir = 1-uiColDir;
@@ -1815,7 +1865,11 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
       m_pcAdaptiveLoopFilter->ALFProcess( &cAlfParam, pcPic->getSlice(0)->getLambdas()[0], pcPic->getSlice(0)->getLambdas()[1], uiDist, uiBits, cAlfParam.alf_max_depth
 #if COM16_C806_ALF_TEMPPRED_NUM
 #if FIX_TICKET12
+#if JVET_E0104_ALF_TEMP_SCALABILITY
+        , (pcSlice->getSliceType()== I_SLICE ? NULL: m_acStoredAlfPara[pcSlice->getTLayer()]), m_iStoredAlfParaNum[pcSlice->getTLayer()]
+#else
         , (pcSlice->getSliceType()== I_SLICE ? NULL: m_acStoredAlfPara), m_iStoredAlfParaNum
+#endif
 #else
         , m_acStoredAlfPara, m_iStoredAlfParaNum
 #endif
@@ -1824,12 +1878,27 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
 #if COM16_C806_ALF_TEMPPRED_NUM
       if( cAlfParam.alf_flag && !cAlfParam.temproalPredFlag && cAlfParam.filtNo >= 0 )
       {
+#if JVET_E0104_ALF_TEMP_SCALABILITY
+        Int iCurrTempIdx = pcSlice->getTLayer();
+        assert(iCurrTempIdx < JVET_E0104_ALF_MAX_TEMPLAYERID);
+        for (Int iLoopedTempIdx = iCurrTempIdx; iLoopedTempIdx < JVET_E0104_ALF_MAX_TEMPLAYERID; iLoopedTempIdx++)
+        {
+          Int iIdx = m_iStoredAlfParaNum[iLoopedTempIdx] % COM16_C806_ALF_TEMPPRED_NUM;
+          m_iStoredAlfParaNum[iLoopedTempIdx] ++;
+          m_acStoredAlfPara[iLoopedTempIdx][iIdx].temproalPredFlag = false;
+          m_pcAdaptiveLoopFilter->copyALFParam(&m_acStoredAlfPara[iLoopedTempIdx][iIdx], &cAlfParam);
+#if JVET_C0038_GALF
+          m_pcAdaptiveLoopFilter->resetALFPredParam(&m_acStoredAlfPara[iLoopedTempIdx][iIdx], (pcSlice->getSliceType() == I_SLICE ? true : false));
+#endif
+        }
+#else
         Int iIdx = m_iStoredAlfParaNum % COM16_C806_ALF_TEMPPRED_NUM;
         m_iStoredAlfParaNum++;
         m_acStoredAlfPara[iIdx].temproalPredFlag = false;
         m_pcAdaptiveLoopFilter->copyALFParam( &m_acStoredAlfPara[iIdx], &cAlfParam );
 #if JVET_C0038_GALF
         m_pcAdaptiveLoopFilter->resetALFPredParam(&m_acStoredAlfPara[iIdx], (pcSlice->getSliceType()== I_SLICE? true: false));
+#endif
 #endif
       }
 #endif     
@@ -2457,7 +2526,6 @@ Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const Acces
 
 
   /* calculate the size of the access unit, excluding:
-   *  - any AnnexB contributions (start_code_prefix, zero_byte, etc.,)
    *  - SEI NAL units
    */
   UInt numRBSPBytes = 0;
@@ -2471,6 +2539,15 @@ Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const Acces
     if ((*it)->m_nalUnitType != NAL_UNIT_PREFIX_SEI && (*it)->m_nalUnitType != NAL_UNIT_SUFFIX_SEI)
     {
       numRBSPBytes += numRBSPBytes_nal;
+    }
+    // add start code bytes (Annex B)
+    if (it == accessUnit.begin() || (*it)->m_nalUnitType == NAL_UNIT_VPS || (*it)->m_nalUnitType == NAL_UNIT_SPS || (*it)->m_nalUnitType == NAL_UNIT_PPS)
+    {
+      numRBSPBytes += 4;
+    }
+    else
+    {
+      numRBSPBytes += 3;
     }
   }
 

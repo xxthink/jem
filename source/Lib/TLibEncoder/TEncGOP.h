@@ -143,8 +143,13 @@ private:
   // Adaptive Loop filter
   TEncAdaptiveLoopFilter* m_pcAdaptiveLoopFilter;
 #if COM16_C806_ALF_TEMPPRED_NUM
+#if JVET_E0104_ALF_TEMP_SCALABILITY
+  static Int           m_iStoredAlfParaNum[JVET_E0104_ALF_MAX_TEMPLAYERID];
+  ALFParam             m_acStoredAlfPara[JVET_E0104_ALF_MAX_TEMPLAYERID][COM16_C806_ALF_TEMPPRED_NUM];
+#else
   static Int           m_iStoredAlfParaNum;
   ALFParam             m_acStoredAlfPara[COM16_C806_ALF_TEMPPRED_NUM];
+#endif
 #endif
 #endif
 

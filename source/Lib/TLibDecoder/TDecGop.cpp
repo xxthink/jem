@@ -74,13 +74,24 @@ Void TDecGop::destroy()
 #if COM16_C806_ALF_TEMPPRED_NUM
   for( Int i = 0; i < COM16_C806_ALF_TEMPPRED_NUM; i++ )
   {
+#if JVET_E0104_ALF_TEMP_SCALABILITY
+    for (Int j = 0; j < JVET_E0104_ALF_MAX_TEMPLAYERID; j++)
+    {
+      m_pcAdaptiveLoopFilter->freeALFParam(&m_acStoredAlfPara[j][i]);
+    }    
+#else
     m_pcAdaptiveLoopFilter->freeALFParam( &m_acStoredAlfPara[i] );
+#endif
   }
 #endif
 }
 
 #if COM16_C806_ALF_TEMPPRED_NUM
+#if JVET_E0104_ALF_TEMP_SCALABILITY
+Int TDecGop::m_iStoredAlfParaNum[JVET_E0104_ALF_MAX_TEMPLAYERID] = { 0, 0, 0, 0, 0 };
+#else
 Int TDecGop::m_iStoredAlfParaNum = 0;
+#endif
 #endif
 
 Void TDecGop::init( TDecEntropy*            pcEntropyDecoder,
@@ -158,7 +169,14 @@ Void TDecGop::decompressSlice(TComInputBitstream* pcBitstream, TComPic* pcPic
     static int iFirstLoop = 0;
     for( Int i = 0; i < COM16_C806_ALF_TEMPPRED_NUM && !iFirstLoop; i++ )
     {
+#if JVET_E0104_ALF_TEMP_SCALABILITY
+      for (Int j = 0; j < JVET_E0104_ALF_MAX_TEMPLAYERID; j++)
+      {
+        m_pcAdaptiveLoopFilter->allocALFParam(&m_acStoredAlfPara[j][i]);
+      }
+#else
       m_pcAdaptiveLoopFilter->allocALFParam( &m_acStoredAlfPara[i] );
+#endif
     }
     iFirstLoop++;
 #endif
@@ -169,6 +187,19 @@ Void TDecGop::decompressSlice(TComInputBitstream* pcBitstream, TComPic* pcPic
   {
     for( Int i = 0; i < COM16_C806_ALF_TEMPPRED_NUM; i++ )
     {
+#if JVET_E0104_ALF_TEMP_SCALABILITY
+      for (Int j = 0; j < JVET_E0104_ALF_MAX_TEMPLAYERID; j++)
+      {
+#if !JVET_C0038_GALF
+        m_acStoredAlfPara[j][i].coeff = NULL;
+#endif
+        m_acStoredAlfPara[j][i].coeff_chroma = NULL;
+        m_acStoredAlfPara[j][i].coeffmulti = NULL;
+        m_acStoredAlfPara[j][i].alf_cu_flag = NULL;
+        m_acStoredAlfPara[j][i].alfCoeffLuma = NULL;
+        m_acStoredAlfPara[j][i].alfCoeffChroma = NULL;
+      }
+#else
 #if !JVET_C0038_GALF
       m_acStoredAlfPara[i].coeff        = NULL;
 #endif
@@ -177,6 +208,7 @@ Void TDecGop::decompressSlice(TComInputBitstream* pcBitstream, TComPic* pcPic
       m_acStoredAlfPara[i].alf_cu_flag = NULL;
       m_acStoredAlfPara[i].alfCoeffLuma   = NULL;
       m_acStoredAlfPara[i].alfCoeffChroma = NULL;
+#endif
     }
   }
 #endif
@@ -236,25 +268,48 @@ Void TDecGop::filterPicture(TComPic* pcPic)
 #if FIX_TICKET12
     if( m_pcAdaptiveLoopFilter->refreshAlfTempPred( pcSlice->getNalUnitType() , pcSlice->getPOC() ) )
     {
+#if JVET_E0104_ALF_TEMP_SCALABILITY
+      memset(m_iStoredAlfParaNum, 0, sizeof(Int)*JVET_E0104_ALF_MAX_TEMPLAYERID);
+#else
       m_iStoredAlfParaNum = 0;
+#endif
       assert( m_cAlfParam.temproalPredFlag == false );
     }
 #endif
     if( m_cAlfParam.temproalPredFlag )
     {
+#if JVET_E0104_ALF_TEMP_SCALABILITY
+      m_pcAdaptiveLoopFilter->copyALFParam(&m_cAlfParam, &m_acStoredAlfPara[pcSlice->getTLayer()][m_cAlfParam.prevIdx]);
+#else
       m_pcAdaptiveLoopFilter->copyALFParam( &m_cAlfParam, &m_acStoredAlfPara[m_cAlfParam.prevIdx] );
+#endif
     }
 #endif
     m_pcAdaptiveLoopFilter->ALFProcess(pcPic, &m_cAlfParam);
 #if COM16_C806_ALF_TEMPPRED_NUM
     if( m_cAlfParam.alf_flag && !m_cAlfParam.temproalPredFlag && m_cAlfParam.filtNo >= 0 )
     {
+#if JVET_E0104_ALF_TEMP_SCALABILITY
+      Int iCurrTempIdx = pcSlice->getTLayer();
+      assert(iCurrTempIdx < JVET_E0104_ALF_MAX_TEMPLAYERID);
+      for (Int iLoopedTempIdx = iCurrTempIdx; iLoopedTempIdx < JVET_E0104_ALF_MAX_TEMPLAYERID; iLoopedTempIdx++)
+      {
+        Int iIdx = m_iStoredAlfParaNum[iLoopedTempIdx] % COM16_C806_ALF_TEMPPRED_NUM;
+        m_iStoredAlfParaNum[iLoopedTempIdx] ++;
+        m_acStoredAlfPara[iLoopedTempIdx][iIdx].temproalPredFlag = false;
+        m_pcAdaptiveLoopFilter->copyALFParam(&m_acStoredAlfPara[iLoopedTempIdx][iIdx], &m_cAlfParam);
+#if JVET_C0038_GALF
+        m_pcAdaptiveLoopFilter->resetALFPredParam(&m_acStoredAlfPara[iLoopedTempIdx][iIdx], (pcSlice->getSliceType() == I_SLICE ? true : false));
+#endif
+      }
+#else
       Int iIdx = m_iStoredAlfParaNum % COM16_C806_ALF_TEMPPRED_NUM;
       m_iStoredAlfParaNum++;
       m_acStoredAlfPara[iIdx].temproalPredFlag = false;
       m_pcAdaptiveLoopFilter->copyALFParam( &m_acStoredAlfPara[iIdx], &m_cAlfParam );
 #if JVET_C0038_GALF
       m_pcAdaptiveLoopFilter->resetALFPredParam(&m_acStoredAlfPara[iIdx], (pcSlice->getSliceType()== I_SLICE? true: false));
+#endif
 #endif
     }
 #endif

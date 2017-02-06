@@ -197,9 +197,27 @@ static const Int MAX_NUM_SPS =                                     16;
 static const Int MAX_NUM_PPS =                                     64;
 
 #if QTBT_NSST
-static const Int NSST_SIG_NZ_LUMA =                              1;
-static const Int NSST_SIG_NZ_CHROMA =                            1;
+static const Int NSST_SIG_NZ_LUMA =                                 1;
+static const Int NSST_SIG_NZ_CHROMA =                               1;
 #endif
+
+#if JVET_E0077_LM_MF
+static const Int LM_FILTER_NUM =                                    4;
+#else
+static const Int LM_FILTER_NUM =                                    0;
+#endif
+#if JVET_E0077_ENHANCED_LM
+static const Int NUM_INTRA_MODE_NON_ANG = (1 + JVET_E0077_MMLM + LM_FILTER_NUM);
+#endif
+
+#if JVET_E0077_MMLM
+static const Int MMLM_SAMPLE_NEIGHBOR_LINES =                       2;
+#endif
+
+#if JVET_E0077_ENHANCED_LM
+static const Int  LM_SYMBOL_NUM = (2 + JVET_E0077_MMLM + LM_FILTER_NUM);
+#endif
+
 
 #if COM16_C806_T64
 #if JVET_C0024_QTBT
@@ -239,17 +257,27 @@ static const Int FAST_UDI_MAX_RDMODE_NUM =                         35; ///< maxi
 #endif
 
 #if VCEG_AZ07_INTRA_65ANG_MODES
+#if JVET_E0077_ENHANCED_LM
+static const Int NUM_INTRA_MODE = (67 + NUM_INTRA_MODE_NON_ANG);
+static const Int NUM_DIR = ((64 >> 2) + 1);
+#else
 static const Int NUM_INTRA_MODE =                                  68;
 static const Int NUM_DIR =                (((NUM_INTRA_MODE-4)>>2)+1);
+#endif
 static const Int PLANAR_IDX =                                       0;
 static const Int DC_IDX =                                           1; ///< index for intra DC mode
 static const Int VER_IDX =                          (3*(NUM_DIR-1)+2); ///< index for intra VERTICAL   mode
 static const Int HOR_IDX =                          (1*(NUM_DIR-1)+2); ///< index for intra HORIZONTAL mode
 static const Int DIA_IDX =                          (2*(NUM_DIR-1)+2); ///< index for intra Diagonal mode
 static const Int VDIA_IDX =                         (4*(NUM_DIR-1)+2); ///< index for intra DC mode
+
 #if COM16_C806_LMCHROMA
+#if JVET_E0077_ENHANCED_LM
+static const Int NUM_CHROMA_MODE = (6 + JVET_E0077_MMLM + LM_FILTER_NUM); ///< total number of chroma modes
+#else
 static const Int NUM_CHROMA_MODE =                                  6; ///< total number of chroma modes
 static const Int LM_CHROMA_IDX =                 (NUM_INTRA_MODE - 1); ///< chroma mode index for derived from LM mode
+#endif
 #else
 static const Int NUM_CHROMA_MODE =                                  5; ///< total number of chroma modes
 #endif
@@ -270,6 +298,11 @@ static const Int LM_CHROMA_IDX =                                   35; ///< chro
 static const Int NUM_CHROMA_MODE =                                  5; ///< total number of chroma modes
 #endif
 static const Int DM_CHROMA_IDX =                                   36; ///< chroma mode index for derived from luma intra mode
+#endif
+
+#if JVET_E0062_MULTI_DMS
+static const Int NUM_DM_MODES =                                     5; ///< total number of chroma DM modes
+static const Int INVALID_CHROMAMODE = NUM_INTRA_MODE + NUM_CHROMA_MODE; ///< initilized value for chroma mode candidate list
 #endif
 
 #if COM16_C806_EMT
@@ -390,6 +423,11 @@ static const Int FRUC_MERGE_TEMPLATE_SIZE =                        4 ;
 static const Int FRUC_MERGE_REFINE_MVWEIGHT =                      4 ;
 static const Int FRUC_MERGE_REFINE_MINBLKSIZE =                    4 ;
 #endif
+#if JVET_E0060_FRUC_CAND
+static const Int NB_FRUC_CAND_ADDED =                              2 ; ///< for entire (AMVP and merge) CU, number of added spatial candidates in top, left, top-left, top-right, below-left <0-5>
+static const Int NB_FRUC_CAND_ADDED_SUB =                          4 ; ///< for sub-blocks of merge CU, number of added spatial candidates in top, left, top-left, top-right, below-left <0-5>
+static const UInt NB_FRUC_CAND_ATMVP =                             4 ; ///< for sub-blocks of merge CU, number of ATMVP candidates
+#endif
 #if VCEG_AZ07_CTX_RESIDUALCODING
 static const Int MAX_GR_ORDER_RESIDUAL =                          10 ;
 #endif
@@ -419,7 +457,12 @@ static const Double AMAXBT_TH32 =                                   15.0;
 static const Double AMAXBT_TH64 =                                   30.0;
 #endif
  
+#if JVET_E0023_FAST_ENCODING_SETTING
+static const Int    SKIP_DEPTH =                                    SKIP_DEPTH_VALUE;
+static const Int    FAST_SKIP_DEPTH =                               FAST_SKIP_DEPTH_VALUE;
+#else
 static const Int    SKIP_DEPTH =                                    3;
+#endif
 static const Int    SKIPHORNOVERQT_DEPTH_TH =                       2;
 
 #if JVET_C0024_FAST_MRG
@@ -460,6 +503,13 @@ static const Double JVET_D0077_SPLIT_DECISION_COST_SCALE =       1.05;
 static const Int    EPBIT =                                   (1<<15);
 #endif
 
+#if JVET_E0052_DMVR
+static const Int DMVR_INTME_RANGE =                                 1;
+#endif
+
+#if JVET_E0076_MULTI_PEL_MVD                  
+static const Int MULTI_PEL_MVD_BITS =                               2;
+#endif
 
 // ====================================================================================================================
 // Macro functions

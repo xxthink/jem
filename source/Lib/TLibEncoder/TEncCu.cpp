@@ -946,6 +946,9 @@ Void TEncCu::encodeCtu ( TComDataCU* pCtu )
     pCtu->getSlice()->setTextType(CHANNEL_TYPE_CHROMA);
     // Encode CU data
     pCtu->getPic()->setCodedAreaInCTU(0);
+#if JVET_E0077_ENHANCED_LM
+    pCtu->getPic()->setCodedBlkInCTU(false, 0, 0, uiCTUSize >> MIN_CU_LOG2, uiCTUSize >> MIN_CU_LOG2);
+#endif
 #if JVET_C0024_DELTA_QP_FIX
     if (pCtu->getSlice()->getPPS()->getUseDQP())
     {
@@ -958,9 +961,15 @@ Void TEncCu::encodeCtu ( TComDataCU* pCtu )
 #endif
     }
 #endif
+#if JVET_E0062_MULTI_DMS
+    pCtu->getPic()->setCodedBlkInCTU(false, 0, 0, uiCTUSize>>MIN_CU_LOG2, uiCTUSize>>MIN_CU_LOG2); 
+#endif
 
     xEncodeCU( pCtu, 0, 0, uiCTUSize, uiCTUSize );  
   }
+#if JVET_E0062_MULTI_DMS
+  pCtu->getPic()->setCodedBlkInCTU(false, 0, 0, uiCTUSize>>MIN_CU_LOG2, uiCTUSize>>MIN_CU_LOG2); 
+#endif
   // --- write terminating bit ---
   finishCU(pCtu,0);
 #endif
@@ -1139,6 +1148,10 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 
 #if JVET_C0024_DELTA_QP_FIX
   const Char lastCodedQP = rpcBestCU->getCodedQP(); 
+#endif
+
+#if JVET_E0076_MULTI_PEL_MVD
+  m_dBestMvDPelCost[0] = m_dBestMvDPelCost[1] = m_dBestMvDPelCost[2] = MAX_DOUBLE/2;
 #endif
 
   const UInt numberValidComponents = rpcBestCU->getPic()->getNumberValidComponents();
@@ -1416,6 +1429,32 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         if( m_pcEncCfg->getIMV() && !rpcBestCU->getSlice()->isIntra() )
 #endif
         {
+#if JVET_E0076_MULTI_PEL_MVD
+          for( UChar iMv = 1; iMv < 3; iMv ++ )
+          {
+            if (iMv == 2 && m_dBestMvDPelCost[0] * 1.06 < m_dBestMvDPelCost[1])
+            {
+              break;
+            }
+#if VCEG_AZ06_IC
+            for( UInt uiICId = 0; uiICId < ( bICEnabled ? 2 : 1 ); uiICId++ )
+            {
+              Bool bICFlag = uiICId ? true : false;
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+              if( saveLoadTag == LOAD_ENC_INFO && bICFlag != m_pcPredSearch->getSaveLoadICFlag( uiWidthIdx, uiHeightIdx ) )
+              {
+                continue;
+              }
+#endif
+              rpcTempCU->setICFlagSubParts(bICFlag, 0, uiDepth);
+#endif
+              xCheckRDCostInter( rpcBestCU, rpcTempCU, SIZE_2Nx2N , false , iMv );
+              rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
+#if VCEG_AZ06_IC
+            }
+#endif
+          }
+#else
           // always check SIZE_2Nx2N
 #if VCEG_AZ06_IC
           for( UInt uiICId = 0; uiICId < ( bICEnabled ? 2 : 1 ); uiICId++ )
@@ -1433,6 +1472,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
             rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
 #if VCEG_AZ06_IC
           }
+#endif
 #endif
         }
 #endif
@@ -1676,6 +1716,32 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #endif
         {
           // always check SIZE_2Nx2N
+#if JVET_E0076_MULTI_PEL_MVD
+          for( UChar iMv = 1; iMv < 3; iMv ++ )
+          {
+            if (iMv == 2 && m_dBestMvDPelCost[0] * 1.06 < m_dBestMvDPelCost[1])
+            {
+              break;
+            }
+#if VCEG_AZ06_IC
+          for( UInt uiICId = 0; uiICId < ( bICEnabled ? 2 : 1 ); uiICId++ )
+          {
+            Bool bICFlag = uiICId ? true : false;
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+            if( saveLoadTag == LOAD_ENC_INFO && bICFlag != m_pcPredSearch->getSaveLoadICFlag( uiWidthIdx, uiHeightIdx ) )
+            {
+              continue;
+            }
+#endif
+            rpcTempCU->setICFlagSubParts(bICFlag, 0, uiDepth);
+#endif
+            xCheckRDCostInter( rpcBestCU, rpcTempCU, SIZE_2Nx2N , false , iMv );
+            rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
+#if VCEG_AZ06_IC
+          }
+          }
+#endif
+#else
 #if VCEG_AZ06_IC
           for( UInt uiICId = 0; uiICId < ( bICEnabled ? 2 : 1 ); uiICId++ )
           {
@@ -1692,6 +1758,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
             rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
 #if VCEG_AZ06_IC
           }
+#endif
 #endif
 #if !JVET_C0024_QTBT
           // check other candidates
@@ -1794,9 +1861,16 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #if JVET_C0024_PBINTRA_FAST_FIX
 #if FIX_TICKET34            
             // redundant MC process to make sure that m_pppcPredYuvBest has the correct moiton compensation prediction data
+#if JVET_E0052_DMVR
+            m_pcPredSearch->motionCompensation ( rpcBestCU, m_pppcPredYuvBest[uiWidthIdx][uiHeightIdx], false );
+#if COM16_C806_OBMC
+            m_pcPredSearch->subBlockOBMC( rpcBestCU, 0, m_pppcPredYuvBest[uiWidthIdx][uiHeightIdx], m_pppcTmpYuv1[uiWidthIdx][uiHeightIdx], m_pppcTmpYuv2[uiWidthIdx][uiHeightIdx], false );
+#endif
+#else
             m_pcPredSearch->motionCompensation ( rpcBestCU, m_pppcPredYuvBest[uiWidthIdx][uiHeightIdx] ); 
 #if COM16_C806_OBMC
             m_pcPredSearch->subBlockOBMC( rpcBestCU, 0, m_pppcPredYuvBest[uiWidthIdx][uiHeightIdx], m_pppcTmpYuv1[uiWidthIdx][uiHeightIdx], m_pppcTmpYuv2[uiWidthIdx][uiHeightIdx] );
+#endif
 #endif
 #endif
             DistParam distParam;
@@ -2365,7 +2439,11 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
     );
 
   //for encoder speedup
+#if JVET_E0023_FAST_ENCODING_SETTING
+  if (rpcBestCU->getSkipFlag(0) && (bTestHorSplit || bTestVerSplit) && uiBTDepth >= ((pcSlice->getPictureDistance() <= PICTURE_DISTANCE_TH) ? FAST_SKIP_DEPTH : SKIP_DEPTH))
+#else
   if (rpcBestCU->getSkipFlag(0) && (bTestHorSplit || bTestVerSplit) && uiBTDepth>=SKIP_DEPTH)
+#endif
   { 
     bTestHorSplit = bTestVerSplit = bQTSplit = false;
   }
@@ -3791,6 +3869,38 @@ Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTem
 #if COM16_C806_OBMC
       m_pcPredSearch->subBlockOBMC( rpcTempCU, 0, m_pcMrgPredTempYuv[uiMergeCand], m_pppcTmpYuv1[uiWIdx][uiHIdx], m_pppcTmpYuv2[uiWIdx][uiHIdx] );
 #endif
+#if JVET_E0052_DMVR
+// the mv may be changed in the mv refinement during the MC
+  if (uhInterDirNeighbours[uiMergeCand]==3 && eMergeCandTypeNieghors[uiMergeCand]== MGR_TYPE_DEFAULT_N)
+  {
+      cMvFieldNeighbours[0 + 2*uiMergeCand].getMv() = rpcTempCU->getCUMvField(REF_PIC_LIST_0)->getMv(0);
+      cMvFieldNeighbours[1 + 2*uiMergeCand].getMv() = rpcTempCU->getCUMvField(REF_PIC_LIST_1)->getMv(0);
+  }
+  else if (eMergeCandTypeNieghors[uiMergeCand] != MGR_TYPE_DEFAULT_N)
+  {
+      UInt uiSPAddr;
+      Int iWidth = rpcTempCU->getWidth(0);
+      Int iHeight = rpcTempCU->getHeight(0);
+
+      Int iNumSPInOneLine, iNumSP, iSPWidth, iSPHeight;
+#if JVET_C0035_ATMVP_SIMPLIFICATION
+      UInt uiSPListIndex = eMergeCandTypeNieghors[uiMergeCand];
+#else
+      UInt uiSPListIndex = eMergeCandTypeNieghors[uiMergeCand] == MGR_TYPE_SUBPU_TMVP ? 0 : 1;
+#endif
+      rpcTempCU->getSPPara(iWidth, iHeight, iNumSP, iNumSPInOneLine, iSPWidth, iSPHeight);
+
+    for (Int iPartitionIdx = 0; iPartitionIdx < iNumSP; iPartitionIdx++)
+    {
+      if (m_phInterDirSP[uiSPListIndex][iPartitionIdx] == 3)
+      {
+        rpcTempCU->getSPAbsPartIdx(0, iSPWidth, iSPHeight, iPartitionIdx, iNumSPInOneLine, uiSPAddr);
+        m_pMvFieldSP[uiSPListIndex][2 * iPartitionIdx].getMv() = rpcTempCU->getCUMvField(REF_PIC_LIST_0)->getMv(uiSPAddr);
+        m_pMvFieldSP[uiSPListIndex][2 * iPartitionIdx + 1].getMv() = rpcTempCU->getCUMvField(REF_PIC_LIST_1)->getMv(uiSPAddr);
+      }
+    }
+  }   
+#endif
       // use hadamard transform here
       DistParam distParam;
       const Bool bUseHadamard=rpcTempCU->getCUTransquantBypass(0) == 0;
@@ -4117,7 +4227,11 @@ Void TEncCu::xCheckRDCostMerge2Nx2NFRUC( TComDataCU*& rpcBestCU, TComDataCU*& rp
 #if AMP_MRG
 Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, PartSize ePartSize DEBUG_STRING_FN_DECLARE(sDebug), Bool bUseMRG
 #if VCEG_AZ07_IMV
+#if JVET_E0076_MULTI_PEL_MVD
+  , UChar bIMV , TComDataCU * pcCUInfo2Reuse 
+#else
   , Bool bIMV , TComDataCU * pcCUInfo2Reuse 
+#endif
 #endif
   )
 #else
@@ -4363,6 +4477,13 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
     }
   }
 #endif
+#endif
+
+#if JVET_E0076_MULTI_PEL_MVD
+  if (rpcTempCU->getTotalCost() < m_dBestMvDPelCost[rpcTempCU->getiMVFlag(0)])
+  {
+    m_dBestMvDPelCost[rpcTempCU->getiMVFlag(0)] = rpcTempCU->getTotalCost();
+  }
 #endif
 
 #if DEBUG_STRING

@@ -125,6 +125,14 @@ protected:
   Pel*   m_pLumaRecBuffer;       ///< array for downsampled reconstructed luma sample
   Int    m_iLumaRecStride;       ///< stride of #m_pLumaRecBuffer array
 
+#if JVET_E0077_LM_MF
+  Pel*   m_pLumaRecBufferMul[LM_FILTER_NUM];
+#endif
+
+#if JVET_E0077_ENHANCED_LM
+  Int  m_iCurAngMode;
+#endif
+
 #if COM16_C806_LMCHROMA
   UInt m_uiaLMShift[ 32 ];       // Table for multiplication to substitue of division operation
 #endif
@@ -159,6 +167,9 @@ protected:
 #if VCEG_AZ07_FRUC_MERGE
   TComRdCost              m_cFRUCRDCost;
   std::list <TComMvField> m_listMVFieldCand[2];
+#if JVET_E0060_FRUC_CAND
+  RefPicList              m_bilatBestRefPicList;
+#endif
   TComYuv                 m_cYuvPredFrucTemplate[2];      // 0: top, 1: left
   Bool                    m_bFrucTemplateAvailabe[2];
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
@@ -189,6 +200,9 @@ protected:
   __inline Void gradFilter1DVer (Pel* piSrc, Int iSrcStride,  Int iWidth, Int iHeight, Int iDstStride,  Pel*& rpiDst, Int iMV, const Int iShift);
 #endif
   Void xPredInterUni            ( TComDataCU* pcCU,                          UInt uiPartAddr,               Int iWidth, Int iHeight, RefPicList eRefPicList, TComYuv* pcYuvPred
+#if JVET_E0052_DMVR
+    , Bool bRefineflag
+#endif
 #if VCEG_AZ05_BIO
     , Bool bBIOApplied =false
 #endif
@@ -198,6 +212,9 @@ protected:
 #endif
     );
   Void xPredInterBi             ( TComDataCU* pcCU,                          UInt uiPartAddr,               Int iWidth, Int iHeight,                         TComYuv* pcYuvPred          
+#if JVET_E0052_DMVR    
+    , Bool bRefineflag
+#endif
 #if VCEG_AZ07_FRUC_MERGE
     , Bool bOBMC = false
 #endif
@@ -213,12 +230,25 @@ protected:
     , Bool bICFlag      = false
 #endif
     );
+#if JVET_E0052_DMVR
+  Void xBIPMVRefine(TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefPicList, Int iWidth, Int iHeight, TComYuv* pOrgYuv, TComYuv* pDstYuv, UInt uiMaxSearchRounds, UInt nSearchStepShift, UInt& uiMinCost);
+  UInt xDirectMCCost(Int iBitDepth, Pel* pRef, UInt uiRefStride, Pel* pOrg, UInt uiOrgStride, Int iWidth, Int iHeight);
+  Void xPredInterLines(TComDataCU *cu, TComPicYuv *refPic, UInt partAddr, TComMv *mv, Int width, Int height, Pel* dstPix, Int dstStride, Bool bi, const Int bitDepth);
+  Void xFillPredBorder(TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefPicList, Int iWidth, Int iHeight, TComYuv* pDstYuv);
+#if DMVR_HALF_ME
+  Void xGenerateFracPixel(TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefPicList, Int iWidth, Int iHeight, UInt nSearchStepShift);
+#endif
+#endif
   Void xWeightedAverage         ( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, Int iRefIdx0, Int iRefIdx1, UInt uiPartAddr, Int iWidth, Int iHeight, TComYuv* pcYuvDst, const BitDepths &clipBitDepths  
 #if VCEG_AZ05_BIO                  
     , Bool bBIOapplied 
 #endif
 #if COM16_C1045_BIO_HARMO_IMPROV || JVET_C0027_BIO
     , TComDataCU * pCu
+#endif
+#if JVET_E0052_DMVR
+    , Bool bRefineflag
+    , Bool bOBMC
 #endif
     );
 
@@ -247,14 +277,26 @@ protected:
 #if COM16_C806_OBMC
   Void xSubblockOBMC ( const ComponentID eComp, TComDataCU* pcCU, Int uiAbsPartIdx, TComYuv* pcYuvPredDst, TComYuv* pcYuvPredSrc, Int iWidth, Int iHeight, Int iDir, Bool bOBMCSimp );
   Void xSubtractOBMC ( TComDataCU* pcCU, Int uiAbsPartIdx, TComYuv* pcYuvPredDst, TComYuv* pcYuvPredSrc, Int iWidth, Int iHeight, Int iDir, Bool bOBMCSimp );
-  Void xSubBlockMotionCompensation ( TComDataCU* pcCU, TComYuv* pcYuvPred, Int uiPartAddr, Int iWidth, Int iHeight  );
+  Void xSubBlockMotionCompensation ( TComDataCU* pcCU, TComYuv* pcYuvPred, Int uiPartAddr, Int iWidth, Int iHeight  
+#if JVET_E0052_DMVR
+    , Bool bRefineflag
+#endif
+    );
 #endif
 #if VCEG_AZ07_FRUC_MERGE
   Bool xFrucFindBlkMv( TComDataCU * pCU , UInt uiPUIdx );
-  Bool xFrucFindBlkMv4Pred( TComDataCU * pCU , UInt uiPUIdx , RefPicList eTargetRefPicList , Int nTargetRefIdx );
+  Bool xFrucFindBlkMv4Pred( TComDataCU * pCU , UInt uiPUIdx , RefPicList eTargetRefPicList , Int nTargetRefIdx
+#if JVET_E0060_FRUC_CAND
+                          , AMVPInfo* pInfo = NULL
+#endif
+                          );
   Bool xFrucRefineSubBlkMv( TComDataCU * pCU , UInt uiDepth , UInt uiPUIdx , Bool bTM );
 
-  Void xFrucCollectBlkStartMv( TComDataCU * pCU , UInt uiPUIdx , RefPicList eTargetRefList = REF_PIC_LIST_0 , Int nTargetRefIdx = -1 );
+  Void xFrucCollectBlkStartMv( TComDataCU * pCU , UInt uiPUIdx , RefPicList eTargetRefList = REF_PIC_LIST_0 , Int nTargetRefIdx = -1
+#if JVET_E0060_FRUC_CAND
+                             , AMVPInfo* pInfo = NULL
+#endif
+                             );
   Void xFrucCollectSubBlkStartMv( TComDataCU * pCU , UInt uiAbsPartIdx , RefPicList eRefPicList , const TComMvField & rMvStart , Int nSubBlkWidth , Int nSubBlkHeight 
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
     , UInt uiSubBlkRasterIdx , UInt uiSubBlkRasterStep
@@ -286,7 +328,11 @@ public:
   TComPrediction();
   virtual ~TComPrediction();
 #if COM16_C806_OBMC
-  Void subBlockOBMC ( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv *pcYuvPred, TComYuv *pcYuvTmpPred1, TComYuv *pcYuvTmpPred2, Bool bOBMC4ME = false );
+  Void subBlockOBMC ( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv *pcYuvPred, TComYuv *pcYuvTmpPred1, TComYuv *pcYuvTmpPred2
+#if JVET_E0052_DMVR
+    , Bool bRefineflag = true
+#endif
+    , Bool bOBMC4ME = false );
 #endif
 #if COM16_C806_LMCHROMA
   Void    initTempBuff(ChromaFormat chromaFormatIDC, Int bitDepthY
@@ -305,10 +351,18 @@ public:
   ChromaFormat getChromaFormat() const { return m_cYuvPredTemp.getChromaFormat(); }
 
   // inter
-  Void motionCompensation         ( TComDataCU*  pcCU, TComYuv* pcYuvPred, RefPicList eRefPicList = REF_PIC_LIST_X, Int iPartIdx = -1 );
+  Void motionCompensation         ( TComDataCU*  pcCU, TComYuv* pcYuvPred
+#if JVET_E0052_DMVR
+    , Bool bRefineflag = true
+#endif
+    , RefPicList eRefPicList = REF_PIC_LIST_X, Int iPartIdx = -1 );
 
 #if VCEG_AZ07_FRUC_MERGE
-  Bool deriveFRUCMV( TComDataCU * pCU , UInt uiDepth , UInt uiAbsPartIdx , UInt uiPUIdx , Int nTargetRefIdx = -1 , RefPicList eTargetRefList = REF_PIC_LIST_0 );
+  Bool deriveFRUCMV( TComDataCU * pCU , UInt uiDepth , UInt uiAbsPartIdx , UInt uiPUIdx , Int nTargetRefIdx = -1 , RefPicList eTargetRefList = REF_PIC_LIST_0
+#if JVET_E0060_FRUC_CAND
+                   , AMVPInfo* pInfo = NULL
+#endif
+                   );
 #endif
 
   // motion vector prediction
@@ -317,8 +371,32 @@ public:
   // Angular Intra
   Void predIntraAng               ( const ComponentID compID, UInt uiDirMode, Pel *piOrg /* Will be null for decoding */, UInt uiOrgStride, Pel* piPred, UInt uiStride, TComTU &rTu, const Bool bUseFilteredPredSamples, const Bool bUseLosslessDPCM = false );
 
+#if JVET_E0077_MMLM
+  struct MMLM_parameter
+  {
+      Int Inf;  // Inferio boundary
+      Int Sup;  // Superior bounday
+      Int a;
+      Int b;
+      Int shift;
+  };
+  Int xCalcLMParametersGeneralized(Int x, Int y, Int xx, Int xy, Int iCountShift, Int bitDepth, Int &a, Int &b, Int &iShift);
+  Int xLMSampleClassifiedTraining(Int count, Int LumaSamples[], Int ChrmSamples[], Int GroupNum, Int bitDepth, MMLM_parameter parameters[]);
+  Int xGetMMLMParameters(TComTU& rTu, const ComponentID compID, UInt uiWidth, UInt uiHeight, Int &numClass, MMLM_parameter parameters[]);
+#endif
+
+
+
 #if COM16_C806_LMCHROMA
-  Void predLMIntraChroma ( TComTU& rTu, ComponentID compID, Pel* pPred, UInt uiPredStride, UInt uiCWidth, UInt uiCHeight );
+#if JVET_E0077_LM_MF
+  Void xFilterGroup(Pel* pMulDst[LM_FILTER_NUM], Int i, Pel* piSrc, Int iRecStride, Bool bAboveAvaillable, Bool bLeftAvaillable);
+#endif
+
+  Void predLMIntraChroma(TComTU& rTu, ComponentID compID, Pel* pPred, UInt uiPredStride, UInt uiCWidth, UInt uiCHeight
+#if JVET_E0077_ENHANCED_LM
+      , Int LMtype = LM_CHROMA_IDX
+#endif
+      );
   Void getLumaRecPixels  ( TComTU& rTu, UInt uiCWidth, UInt uiCHeight );
   Void addCrossColorResi ( TComTU& rTu, ComponentID compID, Pel* piPred, UInt uiPredStride, UInt uiWidth, UInt uiHeight, Pel* piResi, UInt uiResiStride );
   Void xGetLMParameters  ( TComTU& rTu,  ComponentID compID, UInt uiWidth, UInt uiHeight, Int iPredType, Int &a, Int &b, Int &iShift );
@@ -364,3 +442,4 @@ public:
 //! \}
 
 #endif // __TCOMPREDICTION__
+
