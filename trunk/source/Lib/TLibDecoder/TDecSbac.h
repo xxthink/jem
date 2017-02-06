@@ -168,7 +168,6 @@ public:
   Void parseInterDir      ( TComDataCU* pcCU, UInt& ruiInterDir, UInt uiAbsPartIdx );
   Void parseRefFrmIdx     ( TComDataCU* pcCU, Int& riRefFrmIdx, RefPicList eRefList );
   Void parseMvd           ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList );
-
   Void parseCrossComponentPrediction ( class TComTU &rTu, ComponentID compID );
 
   Void parseTransformSubdivFlag( UInt& ruiSubdivFlag, UInt uiLog2TransformBlockSize );
@@ -225,10 +224,15 @@ public:
 
 #if COM16_C1016_AFFINE
   Void  parseAffineFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPuIdx );
-  Void  parseAffineMvd        ( TComDataCU* pcCU, UInt uiAbsPartAddr, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList );
+  Void  parseAffineMvd      ( TComDataCU* pcCU, UInt uiAbsPartAddr, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList );
 #endif
 
   Void  parseExplicitRdpcmMode( TComTU &rTu, ComponentID compID );
+
+
+#if JVET_E0077_ENHANCED_LM
+  Int  parseLMMode(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth);
+#endif
 
 private:
   ContextModel         m_contextModels[MAX_NUM_CTX_MOD];

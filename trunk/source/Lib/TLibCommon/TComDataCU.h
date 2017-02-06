@@ -207,7 +207,11 @@ private:
   UChar*        m_puhFRUCMgrMode;
 #endif
 #if VCEG_AZ07_IMV
+#if JVET_E0076_MULTI_PEL_MVD
+  UChar*         m_iMVFlag;            ///< array of integer MV flags
+#else
   Bool*         m_iMVFlag;            ///< array of integer MV flags
+#endif
   Char*         m_piMVCandNum;        ///< encoder only array
 #endif
 #if VCEG_AZ06_IC
@@ -601,10 +605,17 @@ public:
   Void          setFRUCMgrModeSubParts  ( UChar uhFRUCMgrMode, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth );
 #endif
 #if VCEG_AZ07_IMV
+#if JVET_E0076_MULTI_PEL_MVD
+  UChar*         getiMVFlag            ()                        { return m_iMVFlag;          }
+  UChar          getiMVFlag            (UInt idx)                { return m_iMVFlag[idx];     }
+  Void          setiMVFlag            ( UInt idx, UChar iMV)     { m_iMVFlag[idx] = iMV;      }
+  Void          setiMVFlagSubParts    ( UChar iMV, UInt absPartIdx, UInt depth );
+#else
   Bool*         getiMVFlag            ()                        { return m_iMVFlag;          }
   Bool          getiMVFlag            (UInt idx)                { return m_iMVFlag[idx];     }
   Void          setiMVFlag            ( UInt idx, Bool iMV)     { m_iMVFlag[idx] = iMV;      }
   Void          setiMVFlagSubParts    ( Bool iMV, UInt absPartIdx, UInt depth );
+#endif
   Char*         getiMVCandNum         ()                        { return m_piMVCandNum;          }
   Char          getiMVCandNum         (UInt idx)                { return m_piMVCandNum[idx];     }
   Void          setiMVCandNum         ( UInt idx, Char ciMVCandNum)     { m_piMVCandNum[idx] = ciMVCandNum;   }
@@ -800,13 +811,13 @@ public:
                                               UInt uiCurrPartUnitIdx,
                                               Bool bEnforceSliceRestriction=true,
                                               Bool bEnforceTileRestriction=true );
+
   TComDataCU*   getPUAbove                  ( UInt&  uiAPartUnitIdx,
                                               UInt uiCurrPartUnitIdx,
                                               Bool bEnforceSliceRestriction=true,
                                               Bool planarAtCTUBoundary = false,
                                               Bool bEnforceTileRestriction=true );
   TComDataCU*   getPUAboveLeft              ( UInt&  uiALPartUnitIdx, UInt uiCurrPartUnitIdx, Bool bEnforceSliceRestriction=true );
-
   TComDataCU*   getQpMinCuLeft              ( UInt&  uiLPartUnitIdx , UInt uiCurrAbsIdxInCtu );
   TComDataCU*   getQpMinCuAbove             ( UInt&  uiAPartUnitIdx , UInt uiCurrAbsIdxInCtu );
   Char          getRefQP                    ( UInt   uiCurrAbsIdxInCtu                       );
@@ -889,6 +900,21 @@ public:
     rMV >>= ( 2 + VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE ); 
     rMV <<= ( 2 + VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE ); 
   }
+
+#if JVET_E0076_MULTI_PEL_MVD                  
+  Void xRoundMV( TComMv & rMV , UInt uiAbsPartIdx) 
+  { 
+    Int shift = 2 + VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE;
+    if (getiMVFlag(uiAbsPartIdx) == 2)
+    {
+      shift+=MULTI_PEL_MVD_BITS;
+    }
+    rMV += TComMv( 1<<( shift-1), 1<<( shift-1) ); 
+    rMV >>= shift; 
+    rMV <<= shift; 
+  }
+#endif
+
 #else
   Void          xRoundMV( TComMv & rMV ) { rMV += TComMv( 2 , 2 ); rMV >>= 2; rMV <<= 2; }
 #endif
@@ -923,7 +949,19 @@ public:
 
   UInt          getIntraSizeIdx                 ( UInt uiAbsPartIdx                                       );
 
+#if JVET_E0077_ENHANCED_LM
+  Int           getLMSymbolList(Int *pModeList, Int uiAbsPartIdx);
+  Int           getAllowedChromaDir(UInt uiAbsPartIdx, UInt* uiModeList);
+#else
   Void          getAllowedChromaDir             ( UInt uiAbsPartIdx, UInt* uiModeList );
+#endif
+
+
+#if JVET_E0062_MULTI_DMS
+  UInt          getDMMode                       ( UInt uiAbsPartIdx, UInt uiDMIdx, UInt uiChMode[NUM_DM_MODES] = NULL, UInt* iTotalCnt = NULL) ;
+#endif
+
+
   Void          getIntraDirPredictor            ( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM_MOST_PROBABLE_MODES], const ComponentID compID
 #if VCEG_AZ07_INTRA_65ANG_MODES && !JVET_C0055_INTRA_MPM
     , Int &iAboveLeftCase
@@ -972,6 +1010,7 @@ public:
   UInt&         getTUSkipWidth(ComponentID compID, UInt uiAbsPartIdx)                { return m_puiSkipWidth[compID][uiAbsPartIdx];}
   UInt&         getTUSkipHeight(ComponentID compID, UInt uiAbsPartIdx)               { return m_puiSkipHeight[compID][uiAbsPartIdx];}
 #endif
+
   UInt          getCoefScanIdx(const UInt uiAbsPartIdx, const UInt uiWidth, const UInt uiHeight, const ComponentID compID) const ;
 
 #if VCEG_AZ08_INTER_KLT

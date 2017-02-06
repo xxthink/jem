@@ -281,8 +281,23 @@ Void TComYuv::copyToPartComponent( const ComponentID compID, TComYuv* pcYuvDst, 
   }
 }
 
+#if JVET_E0052_DMVR
+Void TComYuv::copyToPartXYComponent( const ComponentID compID, const UInt uiAbsZorderIdx, TComYuv* pcYuvDst, const UInt uiPelX, const UInt uiPelY, const Int iWidth, const Int iHeight ) const
+{
+  const Pel* pSrc     = getAddr(compID, uiAbsZorderIdx);
+  Pel* pDst     = pcYuvDst->getAddrPix( compID, uiPelX, uiPelY );
 
+  const UInt iSrcStride  = getStride(compID);
+  const UInt iDstStride  = pcYuvDst->getStride(compID);
 
+  for (Int y = iHeight; y != 0; y-- )
+  {
+    ::memcpy( pDst, pSrc, sizeof(Pel)*iWidth);
+    pDst += iDstStride;
+    pSrc += iSrcStride;
+  }
+}
+#endif
 
 Void TComYuv::copyPartToYuv( TComYuv* pcYuvDst, const UInt uiSrcPartIdx ) const
 {
@@ -489,16 +504,85 @@ UInt TComYuv::sadLuma( TComYuv* pcYuvSrc0 )
 }
 #endif
 
+#if JVET_E0052_DMVR
+Void TComYuv::toLast( const UInt iPartUnitIdx, const UInt uiWidth, const UInt uiHeight, const BitDepths &clipBitDepths )
+{
+  Pel* p  = getAddr( COMPONENT_Y, iPartUnitIdx );
+  const UInt  iSrcStride = getStride(COMPONENT_Y);
+  const Int   clipbd      = clipBitDepths.recon[toChannelType(COMPONENT_Y)];
+  const Int   shiftNum    = std::max<Int>(2, (IF_INTERNAL_PREC - clipbd));
+  const Int   offset      = ( 1 << ( shiftNum - 1 ) ) + IF_INTERNAL_OFFS;
+
+  const Int   iWidth      = uiWidth  >> getComponentScaleX(COMPONENT_Y);
+  const Int   iHeight     = uiHeight >> getComponentScaleY(COMPONENT_Y);
+
+  if (iWidth&1)
+  {
+    assert(0);
+    exit(-1);
+  }
+  else if (iWidth&2)
+  {
+    for ( Int y = 0; y < iHeight; y++ )
+    {
+      for (Int x=0 ; x < iWidth; x+=2 )
+      {
+#if JVET_D0033_ADAPTIVE_CLIPPING
+         p[ x + 0 ] = ClipA( rightShift(( p[ x + 0 ] + offset ), shiftNum),  COMPONENT_Y );
+         p[ x + 1 ] = ClipA( rightShift(( p[ x + 1 ] + offset ), shiftNum) , COMPONENT_Y);
+#else
+         p[ x + 0 ] = ClipBD( rightShift(( p[ x + 0 ] + offset ), shiftNum), clipbd );
+         p[ x + 1 ] = ClipBD( rightShift(( p[ x + 1 ] + offset ), shiftNum), clipbd );
+#endif
+      }
+       p += iSrcStride;
+    }
+  }
+  else
+  {
+    for ( Int y = 0; y < iHeight; y++ )
+    {
+      for (Int x=0 ; x < iWidth; x+=4 )
+      {
+#if JVET_D0033_ADAPTIVE_CLIPPING
+         p[ x + 0 ] = ClipA( rightShift(( p[ x + 0 ] + offset ), shiftNum),  COMPONENT_Y );
+         p[ x + 1 ] = ClipA( rightShift(( p[ x + 1 ] + offset ), shiftNum) , COMPONENT_Y);
+         p[ x + 2 ] = ClipA( rightShift(( p[ x + 2 ] + offset ), shiftNum),  COMPONENT_Y );
+         p[ x + 3 ] = ClipA( rightShift(( p[ x + 3 ] + offset ), shiftNum) , COMPONENT_Y);
+#else
+         p[ x + 0 ] = ClipBD( rightShift(( p[ x + 0 ] + offset ), shiftNum), clipbd );
+         p[ x + 1 ] = ClipBD( rightShift(( p[ x + 1 ] + offset ), shiftNum), clipbd );
+         p[ x + 2 ] = ClipBD( rightShift(( p[ x + 2 ] + offset ), shiftNum), clipbd );
+         p[ x + 3 ] = ClipBD( rightShift(( p[ x + 3 ] + offset ), shiftNum), clipbd );
+#endif
+       }
+       p += iSrcStride;
+     }
+  }
+}
+#endif
 
 Void TComYuv::addAvg( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const UInt iPartUnitIdx, const UInt uiWidth, const UInt uiHeight, const BitDepths &clipBitDepths 
 #if VCEG_AZ05_BIO                  
   ,bool bBIOapplied
+#endif
+#if JVET_E0052_DMVR
+  ,Bool bOnlyLuma
 #endif
 )
 {
   for(Int comp=0; comp<getNumberValidComponents(); comp++)
   {
     const ComponentID compID=ComponentID(comp);
+#if JVET_E0052_DMVR
+    if (bOnlyLuma)
+    {
+      if (compID!=COMPONENT_Y)
+      {
+        continue;
+      }
+    }
+#endif
 #if VCEG_AZ05_BIO
     if(!bBIOapplied || compID!=COMPONENT_Y)
     {

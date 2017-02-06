@@ -501,6 +501,7 @@ Void TDecEntropy::decodePUWise( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDept
   {
     decodeiMVFlag( pcCU , uiAbsPartIdx , uiDepth );
   }
+
 #if !VCEG_AZ07_FRUC_MERGE && !JVET_C0024_QTBT
   for ( UInt uiPartIdx = 0, uiSubPartIdx = uiAbsPartIdx; uiPartIdx < uiNumPU; uiPartIdx++, uiSubPartIdx += uiPUOffset )
   {
@@ -515,6 +516,13 @@ Void TDecEntropy::decodePUWise( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDept
           Short iMvdVer = pcCU->getCUMvField( eRefList )->getMvd( uiSubPartIdx ).getVer();
           iMvdHor <<= 2;
           iMvdVer <<= 2;
+#if  JVET_E0076_MULTI_PEL_MVD
+          if( pcCU->getiMVFlag( uiSubPartIdx ) == 2)
+          {
+            iMvdHor <<= MULTI_PEL_MVD_BITS;
+            iMvdVer <<= MULTI_PEL_MVD_BITS;
+          }
+#endif
           TComMv cMv( iMvdHor, iMvdVer );
 
           pcCU->getCUMvField( RefPicList( uiRefListIdx ) )->setAllMvd( cMv, ePartSize, uiSubPartIdx, uiDepth, uiPartIdx );

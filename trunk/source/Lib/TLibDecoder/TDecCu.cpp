@@ -315,6 +315,9 @@ Void TDecCu::decodeCtu( TComDataCU* pCtu, Bool& isLastCtuOfSliceSegment )
   {
     pCtu->getSlice()->setTextType(CHANNEL_TYPE_CHROMA);
     pCtu->getPic()->setCodedAreaInCTU(0);
+#if JVET_E0077_ENHANCED_LM
+    pCtu->getPic()->setCodedBlkInCTU(false, 0, 0, uiCTUSize >> MIN_CU_LOG2, uiCTUSize >> MIN_CU_LOG2);
+#endif
 #if JVET_C0024_DELTA_QP_FIX
     if ( pCtu->getSlice()->getPPS()->getUseDQP() )
     {
@@ -327,6 +330,10 @@ Void TDecCu::decodeCtu( TComDataCU* pCtu, Bool& isLastCtuOfSliceSegment )
 #endif
     }
 #endif
+#if JVET_E0062_MULTI_DMS
+    pCtu->getPic()->setCodedBlkInCTU(false, 0, 0, uiCTUSize>>MIN_CU_LOG2, uiCTUSize>>MIN_CU_LOG2); 
+#endif
+
     // start from the top level CU
     xDecodeCU( pCtu, 0, 0, uiCTUSize, uiCTUSize, isLastCtuOfSliceSegment);
   }
@@ -1288,13 +1295,17 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
 
   const UInt uiChPredMode  = pcCU->getIntraDir( toChannelType(compID), uiAbsPartIdx );
 #if JVET_C0024_QTBT
+#if JVET_E0062_MULTI_DMS
+  const UInt uiChCodedMode = uiChPredMode; 
+#else
   const UInt uiChCodedMode = (uiChPredMode==DM_CHROMA_IDX && !bIsLuma) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx) : uiChPredMode;
+#endif
 #else
   const UInt partsPerMinCU = 1<<(2*(sps.getMaxTotalCUDepth() - sps.getLog2DiffMaxMinCodingBlockSize()));
   const UInt uiChCodedMode = (uiChPredMode==DM_CHROMA_IDX && !bIsLuma) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, getChromasCorrespondingPULumaIdx(uiAbsPartIdx, chFmt, partsPerMinCU)) : uiChPredMode;
 #endif
-  const UInt uiChFinalMode = ((chFmt == CHROMA_422)       && !bIsLuma) ? g_chroma422IntraAngleMappingTable[uiChCodedMode] : uiChCodedMode;
 
+  const UInt uiChFinalMode = ((chFmt == CHROMA_422)       && !bIsLuma) ? g_chroma422IntraAngleMappingTable[uiChCodedMode] : uiChCodedMode;
   //===== init availability pattern =====
 #if !COM16_C983_RSAF
   const 
@@ -1343,10 +1354,19 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
   //===== get prediction signal =====
 
 #if COM16_C806_LMCHROMA
-  if( uiChFinalMode == LM_CHROMA_IDX )
+  if( uiChFinalMode == LM_CHROMA_IDX 
+#if JVET_E0077_ENHANCED_LM
+      || IsLMMode(uiChFinalMode)
+#endif
+      )
   {
     m_pcPrediction->getLumaRecPixels( rTu, uiWidth, uiHeight );
+#if JVET_E0077_ENHANCED_LM
+    Int iLMType = uiChFinalMode;
+    m_pcPrediction->predLMIntraChroma(rTu, compID, piPred, uiStride, uiWidth, uiHeight, iLMType);
+#else
     m_pcPrediction->predLMIntraChroma( rTu, compID, piPred, uiStride, uiWidth, uiHeight );
+#endif
   }
   else
   {
@@ -2182,6 +2202,14 @@ Void TDecCu::xDeriveCUMV( TComDataCU * pcCU , UInt uiAbsPartIdx , UInt uiDepth )
           {
             iMvdHor <<= 2;
             iMvdVer <<= 2;
+
+#if  JVET_E0076_MULTI_PEL_MVD
+            if( pcCU->getiMVFlag( uiSubPartIdx ) == 2)
+            {
+              iMvdHor <<= MULTI_PEL_MVD_BITS;
+              iMvdVer <<= MULTI_PEL_MVD_BITS;
+            }
+#endif
           }
 #endif
           TComMv cMv( iMvdHor, iMvdVer );
@@ -2196,6 +2224,7 @@ Void TDecCu::xDeriveCUMV( TComDataCU * pcCU , UInt uiAbsPartIdx , UInt uiDepth )
 #endif
           m_pcPrediction->getMvPredAMVP( pcSubCU, uiPartIdx, uiSubPartIdx - uiAbsPartIdx, RefPicList( uiRefListIdx ), cMv );
           cMv += TComMv( iMvdHor, iMvdVer );
+         
           pcSubCU->getCUMvField( RefPicList( uiRefListIdx ) )->setAllMv( cMv, ePartSize, uiSubPartIdx - uiAbsPartIdx, 0, uiPartIdx);
 #if COM16_C1016_AFFINE
           }

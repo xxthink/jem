@@ -475,6 +475,9 @@ protected:
 #if VCEG_AZ05_BIO
   Bool      m_useBIO;
 #endif
+#if JVET_E0052_DMVR
+  Bool      m_useDMVR;
+#endif
 #if VCEG_AZ05_INTRA_MPI
   Bool      m_useMPI;
 #endif
@@ -1198,6 +1201,10 @@ public:
 #if VCEG_AZ05_BIO
   Bool getUseBIO ()                                             { return m_useBIO;        }
   Void setUseBIO ( Bool b )                                     { m_useBIO  = b;       }
+#endif
+#if JVET_E0052_DMVR
+  Bool getUseDMVR ()                                             { return m_useDMVR;        }
+  Void setUseDMVR ( Bool b )                                     { m_useDMVR  = b;       }
 #endif
 #if VCEG_AZ05_INTRA_MPI
   Bool getUseMPI ()                                             { return m_useMPI;        }

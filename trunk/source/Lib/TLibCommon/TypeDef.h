@@ -46,10 +46,22 @@
 
 //! \ingroup TLibCommon
 //! \{
-
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////
+#define JVET_E0062_MULTI_DMS                              1   ///< Extended chroma multiple DM modes
+
+#define JVET_E0077_ENHANCED_LM                            1   ///< Enhanced LM mode
+#if JVET_E0077_ENHANCED_LM
+#define JVET_E0077_MMLM                                   1
+#define JVET_E0077_LM_MF                                  1
+#endif
+
+#define JVET_E0052_DMVR                                   1 //Decoder-side motion vector refinement based on bilateral template matching
+#if JVET_E0052_DMVR
+#define DMVR_HALF_ME                                      0
+#endif
+
 #define JVET_D0134_PSNR                                   1
 #define JVET_D0135_PARAMS                                 1
 #define JVET_D0186_PRECISEPSNR                            1
@@ -100,6 +112,14 @@
 #define JVET_D0077_TRANSFORM_OPT                          1  ///< software optimization to take full advantages of zero rows/columns in transform coefficients
 #define JVET_D0077_SAVE_LOAD_ENC_INFO                     1  ///< save and load encoder decision for speedup
 
+#define JVET_E0023_FAST_ENCODING_SETTING                  1
+#if JVET_E0023_FAST_ENCODING_SETTING
+#define PICTURE_DISTANCE_TH                               1  // If a distance between current picture and reference picture is smaller than or equal to PICTURE_DISTANCE_TH,
+                                                             // FAST_SKIP_DEPTH_VALUE is used as a threshold of early CU determination. Otherwise a higher value (SKIP_DEPTH_VALUE) is used.
+#define SKIP_DEPTH_VALUE                                  3
+#define FAST_SKIP_DEPTH_VALUE                             2
+#endif
+
 #endif // end of JVET_C0024_QTBT
 
 #define JVET_C0046_OMIT_ASSERT_ERDPCM                     1  ///< for RExt, omit assertion related to Explict Residual DPCM
@@ -141,6 +161,10 @@
 #define COM16_C806_ALF_TEMPPRED_NUM                       6  ///< 0: no temporal prediction
 #if COM16_C806_ALF_TEMPPRED_NUM
 #define FIX_TICKET12                                      1  ///< fixed ticket #12
+#define JVET_E0104_ALF_TEMP_SCALABILITY                   1  ///< ALF temporal prediction with temporal scalability as in JVET-E0104
+#if JVET_E0104_ALF_TEMP_SCALABILITY
+#define JVET_E0104_ALF_MAX_TEMPLAYERID                    5  ///< maximum number of temporal layers
+#endif
 #endif
 
 #define JVET_C0038_GALF                                   1 ///<JVET-C0038 GALF
@@ -192,7 +216,14 @@
 
 #define VCEG_AZ07_IMV                                     1  ///< Locally adaptive motion vector resolution (AMVR)
 
+#if VCEG_AZ07_IMV
+#define JVET_E0076_MULTI_PEL_MVD                          1
+#endif
+
 #define VCEG_AZ07_FRUC_MERGE                              1  ///< Pattern matched motion vector derivation
+#if VCEG_AZ07_FRUC_MERGE
+#define JVET_E0060_FRUC_CAND                              1  ///< E0060: Add candidates to FRUC lists, and adjust the number of these candidates
+#endif
 
 #define JVET_B058_HIGH_PRECISION_MOTION_VECTOR_MC         1
 
@@ -1153,6 +1184,23 @@ typedef struct _QPFLAG
 #endif
 } QPFlag;
 #endif
+
+#if JVET_E0077_ENHANCED_LM
+enum ADDITIONAL_CHROMA_MODE
+{
+  LM_CHROMA_IDX = 67,
+#if JVET_E0077_MMLM
+  MMLM_CHROMA_IDX,
+#endif
+#if JVET_E0077_LM_MF
+  LM_CHROMA_F1_IDX,
+  LM_CHROMA_F2_IDX,
+  LM_CHROMA_F3_IDX,
+  LM_CHROMA_F4_IDX,
+#endif
+};
+#endif
+
 //! \}
 
 #endif

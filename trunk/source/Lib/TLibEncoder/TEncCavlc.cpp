@@ -650,6 +650,9 @@ Void TEncCavlc::codeSPS( const TComSPS* pcSPS )
 #if VCEG_AZ05_BIO
   WRITE_FLAG( pcSPS->getUseBIO () ? 1 : 0,                "bio_enabled_flag" ); 
 #endif
+#if JVET_E0052_DMVR
+  WRITE_FLAG( pcSPS->getUseDMVR () ? 1 : 0,                "dmvr_enabled_flag" ); 
+#endif
 #if VCEG_AZ05_INTRA_MPI
   WRITE_FLAG( pcSPS->getUseMPI () ? 1 : 0,                "mpi_enabled_flag" ); 
 #endif

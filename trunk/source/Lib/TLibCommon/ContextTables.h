@@ -85,7 +85,11 @@
 #endif
 
 #if VCEG_AZ07_IMV
+#if  JVET_E0076_MULTI_PEL_MVD
+#define NUM_IMV_FLAG_CTX              4       ///< number of context models for iMV flag
+#else
 #define NUM_IMV_FLAG_CTX              3       ///< number of context models for iMV flag
+#endif
 #endif
 #if VCEG_AZ07_FRUC_MERGE
 #define NUM_FRUCMGRMODE_CTX           3
@@ -108,7 +112,21 @@
 #define NUM_INTRA_PREDICT_CTX         1       ///< number of context models for intra prediction
 #endif
 
+
+#if JVET_E0077_ENHANCED_LM
+#if JVET_E0062_MULTI_DMS
+#define NUM_CHROMA_PRED_CTX           12   ///< number of context models for intra prediction (chroma)
+#else
+#define NUM_CHROMA_PRED_CTX           8     
+#endif
+#else
+#if JVET_E0062_MULTI_DMS
+#define NUM_CHROMA_PRED_CTX           6  ///< number of context models for intra prediction (chroma)
+#else
 #define NUM_CHROMA_PRED_CTX           2       ///< number of context models for intra prediction (chroma)
+#endif
+#endif
+
 #define NUM_INTER_DIR_CTX             5       ///< number of context models for inter prediction direction
 #define NUM_MV_RES_CTX                2       ///< number of context models for motion vector difference
 #define NUM_CHROMA_QP_ADJ_FLAG_CTX    1       ///< number of context models for chroma_qp_adjustment_flag
@@ -388,9 +406,15 @@ static const UChar
 static const UChar 
   INIT_IMV_FLAG[NUMBER_OF_SLICE_TYPES][NUM_IMV_FLAG_CTX] =
 {
+#if  JVET_E0076_MULTI_PEL_MVD
+  { 197,  185,  201, 185,}, 
+  { 197,  185,  201, 185,}, 
+  { CNU,  CNU,  CNU, 185,}, 
+#else
   { 197,  185,  201, }, 
   { 197,  185,  201, }, 
   { CNU,  CNU,  CNU, }, 
+#endif
 };
 #endif
 
@@ -460,6 +484,33 @@ INIT_INTRA_PRED_MODE[NUMBER_OF_SLICE_TYPES][NUM_INTRA_PREDICT_CTX] =
 #endif
 };
 
+#if JVET_E0077_ENHANCED_LM
+static const UChar
+INIT_CHROMA_PRED_MODE[NUMBER_OF_SLICE_TYPES][NUM_CHROMA_PRED_CTX] =
+{
+#if JVET_E0062_MULTI_DMS
+    //LM, DM0,   DM1,   DM2,    DM3,    DM4,    DM5, DM6 
+    { 139, 152, 139, 154, 154, 154, 154, 154, 154, 154, 154 , 154},
+    { 139, 152, 139, 154, 154, 154, 154, 154, 154, 154, 154 , 154},
+    { 139,  63, 139, 154, 154, 154, 154, 154, 154, 154, 154 , 154},
+#else
+    { 152, 139, 154, 154, 154, 154, 154, 154},
+    { 152, 139, 154, 154, 154, 154, 154, 154},
+    {  63, 139, 154, 154, 154, 154, 154, 154},
+#endif
+};
+#else
+#if JVET_E0062_MULTI_DMS
+static const UChar
+INIT_CHROMA_PRED_MODE[NUMBER_OF_SLICE_TYPES][NUM_CHROMA_PRED_CTX] =
+{
+  //LM,      DMIdx0, DMIdx1, DMIdx2, DMIdx3, DMIdx4
+  { 139,      152,   139,    154,    154,    154 },
+  { 139,      152,   139,    154,    154,    154 },
+  { 139,       63,   139,    154,    154,    154 },
+};
+
+#else
 static const UChar
 INIT_CHROMA_PRED_MODE[NUMBER_OF_SLICE_TYPES][NUM_CHROMA_PRED_CTX] =
 {
@@ -467,6 +518,9 @@ INIT_CHROMA_PRED_MODE[NUMBER_OF_SLICE_TYPES][NUM_CHROMA_PRED_CTX] =
   { 152,  139, },
   {  63,  139, },
 };
+#endif
+#endif
+
 
 static const UChar
 INIT_INTER_DIR[NUMBER_OF_SLICE_TYPES][NUM_INTER_DIR_CTX] =
