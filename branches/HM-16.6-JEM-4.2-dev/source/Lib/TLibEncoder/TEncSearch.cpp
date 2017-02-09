@@ -8338,7 +8338,7 @@ Void TEncSearch::intMvRefine( TComDataCU* pcCU, RefPicList eRefPicList, TComPatt
   iCostScale = 0;
 #endif
 
-  Distortion  uiDist, uiSATD;
+  Distortion  uiDist, uiSATD = 0;
   Distortion  uiBestDist  = std::numeric_limits<Distortion>::max();
 
   TComMv cBestMv = rcMv;
