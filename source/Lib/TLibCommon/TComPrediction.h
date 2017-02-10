@@ -243,7 +243,7 @@ protected:
 #if VCEG_AZ05_BIO                  
     , Bool bBIOapplied 
 #endif
-#if COM16_C1045_BIO_HARMO_IMPROV || JVET_C0027_BIO
+#if COM16_C1045_BIO_HARMO_IMPROV || JVET_C0027_BIO || JVET_E0052_DMVR
     , TComDataCU * pCu
 #endif
 #if JVET_E0052_DMVR

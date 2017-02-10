@@ -1834,7 +1834,7 @@ Void TComPrediction::xPredInterBi ( TComDataCU* pcCU, UInt uiPartAddr, Int iWidt
 #if VCEG_AZ05_BIO                  
       ,bBIOapplied
 #endif
-#if COM16_C1045_BIO_HARMO_IMPROV || JVET_C0027_BIO
+#if COM16_C1045_BIO_HARMO_IMPROV || JVET_C0027_BIO || JVET_E0052_DMVR
       , pcCU 
 #endif
 #if JVET_E0052_DMVR
@@ -2561,7 +2561,7 @@ Void TComPrediction::xWeightedAverage( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, I
 #if VCEG_AZ05_BIO                  
   ,bool bBIOapplied
 #endif
-#if COM16_C1045_BIO_HARMO_IMPROV || JVET_C0027_BIO
+#if COM16_C1045_BIO_HARMO_IMPROV || JVET_C0027_BIO || JVET_E0052_DMVR
   , TComDataCU * pCu
 #endif
 #if JVET_E0052_DMVR
@@ -2582,7 +2582,11 @@ Void TComPrediction::xWeightedAverage( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, I
   bBIPMVRefine &= pCu->getSlice()->getSPS()->getUseDMVR();
   if (bBIPMVRefine )
   {
-    pcYuvDst->addAvg( pcYuvSrc0, pcYuvSrc1, uiPartIdx, iWidth, iHeight, clipBitDepths, false, true );
+    pcYuvDst->addAvg( pcYuvSrc0, pcYuvSrc1, uiPartIdx, iWidth, iHeight, clipBitDepths
+#if VCEG_AZ05_BIO
+    , false
+#endif
+    , true );
 
     //list 0
     //get init cost
@@ -2603,8 +2607,14 @@ Void TComPrediction::xWeightedAverage( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, I
     //get new prediction
     TComMv cMv = pCu->getCUMvField(REF_PIC_LIST_0)->getMv(uiPartIdx);
     TComPicYuv* pRefPic = pCu->getSlice()->getRefPic(REF_PIC_LIST_0, pCu->getCUMvField(REF_PIC_LIST_0)->getRefIdx(uiPartIdx))->getPicYuvRec();
+#if VCEG_AZ05_BIO 
     iRefListIdx = 0;
-    xPredInterBlk( COMPONENT_Y  , pCu , pRefPic , uiPartIdx , &cMv , iWidth , iHeight , pcYuvSrc0 , true , pCu->getSlice()->getSPS()->getBitDepth( CHANNEL_TYPE_LUMA ), bBIOapplied);
+#endif
+    xPredInterBlk( COMPONENT_Y  , pCu , pRefPic , uiPartIdx , &cMv , iWidth , iHeight , pcYuvSrc0 , true , pCu->getSlice()->getSPS()->getBitDepth( CHANNEL_TYPE_LUMA ) 
+#if VCEG_AZ05_BIO 
+    , bBIOapplied
+#endif
+    );
     xPredInterBlk( COMPONENT_Cb , pCu , pRefPic , uiPartIdx , &cMv , iWidth , iHeight , pcYuvSrc0 , true , pCu->getSlice()->getSPS()->getBitDepth( CHANNEL_TYPE_CHROMA ));
     xPredInterBlk( COMPONENT_Cr , pCu , pRefPic , uiPartIdx , &cMv , iWidth , iHeight , pcYuvSrc0 , true , pCu->getSlice()->getSPS()->getBitDepth( CHANNEL_TYPE_CHROMA ));
 
@@ -2626,8 +2636,14 @@ Void TComPrediction::xWeightedAverage( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, I
     //get new prediction
     cMv = pCu->getCUMvField(REF_PIC_LIST_1)->getMv(uiPartIdx);
     pRefPic = pCu->getSlice()->getRefPic(REF_PIC_LIST_1, pCu->getCUMvField(REF_PIC_LIST_1)->getRefIdx(uiPartIdx))->getPicYuvRec();
+#if VCEG_AZ05_BIO 
     iRefListIdx = 1;
-    xPredInterBlk( COMPONENT_Y  , pCu , pRefPic , uiPartIdx , &cMv , iWidth , iHeight , pcYuvSrc1 , true , pCu->getSlice()->getSPS()->getBitDepth( CHANNEL_TYPE_LUMA ), bBIOapplied);  
+#endif
+    xPredInterBlk( COMPONENT_Y  , pCu , pRefPic , uiPartIdx , &cMv , iWidth , iHeight , pcYuvSrc1 , true , pCu->getSlice()->getSPS()->getBitDepth( CHANNEL_TYPE_LUMA )
+#if VCEG_AZ05_BIO 
+    , bBIOapplied
+#endif
+    );  
     xPredInterBlk( COMPONENT_Cb , pCu , pRefPic , uiPartIdx , &cMv , iWidth , iHeight , pcYuvSrc1 , true , pCu->getSlice()->getSPS()->getBitDepth( CHANNEL_TYPE_CHROMA ));
     xPredInterBlk( COMPONENT_Cr , pCu , pRefPic , uiPartIdx , &cMv , iWidth , iHeight , pcYuvSrc1 , true , pCu->getSlice()->getSPS()->getBitDepth( CHANNEL_TYPE_CHROMA ));
 }
