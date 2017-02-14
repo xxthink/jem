@@ -4392,7 +4392,8 @@ Void TEncAdaptiveLoopFilter::gnsTransposeBacksubstitution(double U[m_MAX_SQR_FIL
   sum;              /* Holds backsubstitution from already handled rows */
   
   /* Backsubstitution starts */
-  x[0] = rhs[0]/U[0][0];               /* First row of U'                   */
+
+  x[0] = U[0][0] != 0 ? rhs[0]/U[0][0] : 0;      /* First row of U'                   */
   for (i = 1; i < order; i++)
   {         /* For the rows 1..order-1           */
     
