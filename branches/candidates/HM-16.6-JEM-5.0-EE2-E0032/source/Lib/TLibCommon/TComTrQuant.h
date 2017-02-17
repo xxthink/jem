@@ -43,7 +43,9 @@
 #include "TComDataCU.h"
 #include "TComChromaFormat.h"
 #include "ContextTables.h"
-
+#if BILATERAL_FILTER
+#include "TLibCommon/TComBilateralFilter.h"
+#endif
 //! \ingroup TLibCommon
 //! \{
 

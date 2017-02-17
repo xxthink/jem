@@ -49,6 +49,28 @@
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////
+#define BILATERAL_FILTER 1
+#if BILATERAL_FILTER
+#define BILATERAL_FILTER_ONLY_REF_NZFILTERCOEFF 1 // reduce stored table and not compute the table for positions that will be 0
+
+#define BILATERAL_FILTER_TEST 1 //1: Bilateral filter after transform as proposed E0032
+                                //2: LUT memory reduction (not bitexact with E0032)
+                                
+
+#if BILATERAL_FILTER_TEST==1
+#define BILATERAL_FILTER_REUSE_INTRA_PART 1   // re-use intra table for size 4 also for inter size 8 
+#endif
+
+#if BILATERAL_FILTER_TEST==2
+#define BILATERAL_FILTER_REDUCE_RANGE 536 // reduce coeff range
+#define BILATERAL_FILTER_MULTIPLY_CENTER_VALUE 1 // Use this to store only one table instead of six
+#if BILATERAL_FILTER_REDUCE_RANGE == 0
+#define BILATERAL_FILTER_FIX_OVERFLOW_FOR_16BITS 1 // Use this to avoid overflow in 32-bit unsigned int for 16x16 inter filtering. This is only needed if we store 16 bit values.
+#endif
+#endif
+
+#endif
+
 #define JVET_E0062_MULTI_DMS                              1   ///< Extended chroma multiple DM modes
 
 #define JVET_E0077_ENHANCED_LM                            1   ///< Enhanced LM mode

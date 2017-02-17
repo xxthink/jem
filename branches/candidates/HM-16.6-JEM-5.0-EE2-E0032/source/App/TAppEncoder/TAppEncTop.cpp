@@ -612,6 +612,14 @@ Void TAppEncTop::encode()
   }
 #endif
 
+#if BILATERAL_FILTER
+      // only need to do this once before decoding first slice in first picture
+      for(Int qp=18; qp<MAX_QP+1; qp++ )
+      {
+          TComBilateralFilter::instance()->createBilateralFilterTable(qp);
+      }
+#endif
+
   while ( !bEos )
   {
     // get buffers
