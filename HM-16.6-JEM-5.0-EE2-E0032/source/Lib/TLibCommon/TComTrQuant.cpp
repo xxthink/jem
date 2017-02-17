@@ -9344,6 +9344,28 @@ Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,
         std::cout << (*psDebug);
       }
 #endif
+#if BILATERAL_FILTER
+      if (isLuma(compID))
+      {
+        if ((pcCU->getCbf(absPartIdxTU, compID, uiTrMode) != 0) && (pcCU->getQP(absPartIdxTU)>17))
+        {
+          Pel* piPred = pcPred->getAddr(compID, absPartIdxTU);
+          UInt uiPredStride = pcPred->getStride(compID);
+          Pel* piResi = pResidual->getAddr(compID, absPartIdxTU);
+          UInt uiStrideRes = pResidual->getStride(compID);
+          UInt uiZOrder = pcCU->getZorderIdxInCtu() + absPartIdxTU;
+          TComPicYuv *picRec = pcCU->getPic()->getPicYuvRec();
+          Pel* piReco = picRec->getAddr(compID, pcCU->getCtuRsAddr(), uiZOrder);
+          UInt uiRecStride = picRec->getStride(compID);
+          const Int clipbd = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
+          //printf("pcCUX=%d pcCUY=%d abspartIdxTU=%d pred=%d %d %d %d\n", pcCU->getCUPelX(), pcCU->getCUPelY(), absPartIdxTU, piPred[0], piPred[1],piPred[2],piPred[3]);
+          TComBilateralFilter::instance()->bilateralFilterInter(pcCU, tuRect.width, tuRect.height, piResi, uiStrideRes, piPred, uiPredStride,  piReco, uiRecStride, clipbd, pcCU->getQP(absPartIdxTU));
+          //printf("rec=%d %d %d %d\n",  piReco[0], piReco[1],piReco[2],piReco[3]);
+          //printf("fpred=%d %d %d %d\n",  piPred[0], piPred[1],piPred[2],piPred[3]);
+        }
+      }
+#endif
+
     }
 
     if (isChroma(compID) && (pcCU->getCrossComponentPredictionAlpha(absPartIdxTU, compID) != 0))

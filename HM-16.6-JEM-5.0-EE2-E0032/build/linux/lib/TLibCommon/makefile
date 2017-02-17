@@ -66,6 +66,8 @@ OBJS          	= \
 			$(OBJ_DIR)/TComWeightPrediction.o \
 			$(OBJ_DIR)/TComRdCostWeightPrediction.o \
 			$(OBJ_DIR)/TComAdaptiveLoopFilter.o \
+                $(OBJ_DIR)/TComBilateralFilter.o  \
+
 
 LIBS				= -lpthread
 

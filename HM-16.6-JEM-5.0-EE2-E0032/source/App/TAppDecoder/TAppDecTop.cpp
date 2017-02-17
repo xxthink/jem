@@ -123,6 +123,14 @@ Void TAppDecTop::decode()
   Bool openedReconFile = false; // reconstruction file not yet opened. (must be performed after SPS is seen)
   Bool loopFiltered = false;
 
+#if BILATERAL_FILTER
+  // only need to do this once before encoding/decoding first slice in first picture
+  for(Int qp=18; qp<MAX_QP+1; qp++ )
+  {
+    TComBilateralFilter::instance()->createBilateralFilterTable(qp);
+  }
+#endif
+
   while (!!bitstreamFile)
   {
     /* location serves to work around a design fault in the decoder, whereby
