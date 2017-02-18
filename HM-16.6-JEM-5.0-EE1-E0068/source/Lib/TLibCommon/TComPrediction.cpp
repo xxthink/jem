@@ -111,6 +111,68 @@ const UChar TComPrediction::m_aucIntraFilter[MAX_NUM_CHANNEL_TYPE][MAX_INTRA_FIL
   }
 };
 
+
+#if E0068_UW_PLANAR
+const UInt TComPrediction::uiFinalShiftDenom = 10;
+const UInt TComPrediction::uiFinalDenomHalf = 512;
+#if JVET_C0024_CTU_256
+const UInt TComPrediction::uiFinalShift[513] = { 
+0, 1024, 512, 341, 256, 205, 171, 146, 128, 114, 103, 93, 85, 79, 73, 68,
+64, 60, 57, 54, 51, 49, 47, 45, 43, 41, 39, 38, 37, 35, 34, 33, 
+32, 31, 30, 29, 28, 28, 27, 26, 26, 25, 24, 24, 23, 23, 22, 22, 
+21, 21, 20, 20, 20, 19, 19, 19, 18, 18, 18, 17, 17, 17, 16, 16, 
+16, 16, 16, 15, 15, 15, 15, 14, 14, 14, 14, 14, 14, 13, 13, 13, 
+13, 13, 13, 12, 12, 12, 12, 12, 12, 11, 11, 11, 11, 11, 11, 11, 
+11, 11, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,  9,  9, 9, 
+9,  9,  9,  9,  9,  9,  9,  9,  9,  8,  8,  8,  8,  8,  8, 8, 
+8,  8,  8,  8,  8,  8,  8,  8,  8,  7,  7,  7,  7,  7,  7, 7, 
+7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  6, 6, 
+6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6, 6, 
+6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  5,  5,  5,  5,  5, 5, 
+5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5, 5, 
+5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5, 5, 
+5,  5,  5,  5,  5,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4, 4, 
+4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4, 4, 
+4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4, 4, 
+4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4, 4, 
+4,  4,  4,  4,  4,  4,  3,  3,  3,  3,  3,  3,  3,  3,  3, 3, 
+3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3, 3, 
+3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3, 3, 
+3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3, 3, 
+3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3, 3, 
+3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3, 3, 
+3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3, 3, 
+3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  2,  2,  2,  2, 2, 
+2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2, 2, 
+2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2, 2, 
+2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2, 2, 
+2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2, 2, 
+2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2, 2, 
+2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2, 2, 
+2 
+}; // MAX_CU_WIDTH+MAX_CU_HEIGHT+1
+#else
+const UInt TComPrediction::uiFinalShift[257] = { 
+0, 1024, 512, 341, 256, 205, 171, 146, 128, 114, 103, 93, 85, 79, 73, 68,
+64, 60, 57, 54, 51, 49, 47, 45, 43, 41, 39, 38, 37, 35, 34, 33, 
+32, 31, 30, 29, 28, 28, 27, 26, 26, 25, 24, 24, 23, 23, 22, 22, 
+21, 21, 20, 20, 20, 19, 19, 19, 18, 18, 18, 17, 17, 17, 16, 16, 
+16, 16, 16, 15, 15, 15, 15, 14, 14, 14, 14, 14, 14, 13, 13, 13, 
+13, 13, 13, 12, 12, 12, 12, 12, 12, 11, 11, 11, 11, 11, 11, 11, 
+11, 11, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,  9,  9, 9, 
+9,  9,  9,  9,  9,  9,  9,  9,  9,  8,  8,  8,  8,  8,  8, 8, 
+8,  8,  8,  8,  8,  8,  8,  8,  8,  7,  7,  7,  7,  7,  7, 7, 
+7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  6, 6, 
+6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6, 6, 
+6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  5,  5,  5,  5,  5, 5, 
+5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5, 5, 
+5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5, 5, 
+5,  5,  5,  5,  5,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4, 4, 
+4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4, 4, 
+4 }; // MAX_CU_WIDTH+MAX_CU_HEIGHT+1
+#endif
+#endif
+
 // ====================================================================================================================
 // Constructor / destructor / initialize
 // ====================================================================================================================
@@ -889,6 +951,13 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
     }
 #endif
 
+#if E0068_CONSTRAINED_PDPC_BITS
+    if ( (channelType == CHANNEL_TYPE_CHROMA) && (uiDirMode != VER_IDX) && (uiDirMode != HOR_IDX) && (uiDirMode != DIA_IDX) && (uiDirMode != 2) )
+    {
+      iPdpcIdx = 0;  // enabling PDPC only when 4 main angular modes are used, for chroma CU
+    }
+#endif
+
     //pdpc applied
     if (iPdpcIdx != 0) 
     {
@@ -964,7 +1033,16 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 
 
       if (uiDirMode == PLANAR_IDX)
+#if E0068_UW_PLANAR
+      {
+        if ( pcCU->getSlice()->getSliceType() == I_SLICE )
+          xPredIntraPlanar(ptrSrc + sw + 1, sw, pDst, uiStride, iWidth, iHeight);
+        else
+          xPredIntraEqualWeightPlanar(ptrSrc + sw + 1, sw, pDst, uiStride, iWidth, iHeight);
+      }
+#else
         xPredIntraPlanar(ptrSrc + sw + 1, sw, pDst, uiStride, iWidth, iHeight);
+#endif
       else
       {
         const Bool            enableEdgeFilters = !(pcCU->isRDPCMEnabled(uiAbsPartIdx) && pcCU->getCUTransquantBypass(uiAbsPartIdx));
@@ -1077,7 +1155,14 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 #endif
     if ( uiDirMode == PLANAR_IDX )
     {
+#if E0068_UW_PLANAR
+      if ( pcCU->getSlice()->getSliceType() == I_SLICE )
+        xPredIntraPlanar(ptrSrc + sw + 1, sw, pDst, uiStride, iWidth, iHeight);
+      else
+        xPredIntraEqualWeightPlanar(ptrSrc + sw + 1, sw, pDst, uiStride, iWidth, iHeight);
+#else
       xPredIntraPlanar( ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight );
+#endif
     }
     else
     {
@@ -3211,6 +3296,140 @@ Void TComPrediction::xPredIntraPlanar( const Pel* pSrc, Int srcStride, Pel* rpDs
 #if JVET_C0024_QTBT
   UInt shift1Dhor = g_aucConvertToBit[ width ] + MIN_CU_LOG2;
   UInt shift1Dver = g_aucConvertToBit[ height ] + MIN_CU_LOG2;
+#if E0068_UW_PLANAR
+  UInt delt1 = width*height*uiFinalDenomHalf;
+#else
+  UInt delt = width*height;
+#endif
+#else
+  UInt shift1Dhor = g_aucConvertToBit[ width ] + 2;
+  UInt shift1Dver = g_aucConvertToBit[ height ] + 2;
+#endif
+  // Get left and above reference column and row
+  for(Int k=0;k<width+1;k++)
+  {
+    topRow[k] = pSrc[k-srcStride];
+  }
+
+  for (Int k=0; k < height+1; k++)
+  {
+    leftColumn[k] = pSrc[k*srcStride-1];
+  }
+
+  // Prepare intermediate variables used in interpolation
+  Int bottomLeft = leftColumn[height];
+  Int topRight   = topRow[width];
+
+#if E0068_UW_PLANAR  // bottom-right position adjustment
+  Int bottomRight = (((height*bottomLeft)+(width*topRight))*uiFinalShift[width+height]+uiFinalDenomHalf-1)>>(uiFinalShiftDenom);
+  for(Int k=0;k<width;k++)
+  {
+    bottomRow[k] = ((((width-k-1)*bottomLeft + (k+1)*bottomRight)*uiFinalShift[width] + uiFinalDenomHalf - 1) >> (uiFinalShiftDenom)) - topRow[k];
+    topRow[k]     <<= shift1Dver;
+  }
+
+  for(Int k=0;k<height;k++)
+  {
+    rightColumn[k] = ((((height-k-1)*topRight + (k+1)*bottomRight)*uiFinalShift[height] + uiFinalDenomHalf - 1) >> (uiFinalShiftDenom)) - leftColumn[k];
+    leftColumn[k]   <<= shift1Dhor;
+  }
+#else
+  for(Int k=0;k<width;k++)
+  {
+    bottomRow[k]  = bottomLeft - topRow[k];
+    topRow[k]     <<= shift1Dver;
+  }
+
+  for(Int k=0;k<height;k++)
+  {
+    rightColumn[k]  = topRight - leftColumn[k];
+    leftColumn[k]   <<= shift1Dhor;
+  }
+#endif
+
+  const UInt topRowShift = 0;
+
+  // Generate prediction signal
+  for (Int y=0;y<height;y++)
+  {
+#if JVET_C0024_QTBT
+    Int horPred = leftColumn[y];
+#else
+    Int horPred = leftColumn[y] + width;
+#endif
+    for (Int x=0;x<width;x++)
+    {
+      horPred += rightColumn[y];
+      topRow[x] += bottomRow[x];
+
+      Int vertPred = ((topRow[x] + topRowShift)>>topRowShift);
+#if E0068_UW_PLANAR  // Unequal Weight assignment for final predictor calculation
+      Int  verWeight;
+      Int  horWeight;
+      UInt uiFinalShiftSize = (1<<uiFinalShiftDenom);
+
+      if (x<y)
+      {
+        verWeight = (x+1)*uiFinalShift[x+y+2];
+
+        if ( verWeight>uiFinalShiftSize )
+        {
+          verWeight = uiFinalShiftSize;
+        }
+        horWeight = uiFinalShiftSize-verWeight;
+      }
+      else
+      {
+        horWeight = (y+1)*uiFinalShift[x+y+2];
+
+        if ( horWeight>uiFinalShiftSize )
+        {
+          horWeight = uiFinalShiftSize;
+        }
+        verWeight = uiFinalShiftSize-horWeight;
+      }
+#endif
+#if JVET_C0024_QTBT
+#if E0068_UW_PLANAR  // Unequal Weight assignment for final predictor calculation
+      rpDst[y*dstStride+x] = (((horPred<<shift1Dver)*horWeight + (vertPred<<shift1Dhor)*verWeight) + delt1 - 1) >> (shift1Dhor+shift1Dver+uiFinalShiftDenom);
+#else
+      rpDst[y*dstStride+x] = ((horPred<<shift1Dver) + (vertPred<<shift1Dhor) + delt) >> (shift1Dhor+shift1Dver+1);
+#endif
+#else
+#if E0068_UW_PLANAR  // Unequal Weight assignment for final predictor calculation
+      rpDst[y*dstStride+x] = ((horPred*horWeight + vertPred*verWeight) + uiFinalDenomHalf) >> (shift1Dhor+uiFinalShiftDenom);
+#else
+      rpDst[y*dstStride+x] = ( horPred + vertPred ) >> (shift1Dhor+1);
+#endif
+#endif
+    }
+  }
+}
+
+#if E0068_UW_PLANAR
+/** Function for deriving equal weight planar intra prediction. 
+ * \param pSrc        pointer to reconstructed sample array
+ * \param srcStride   the stride of the reconstructed sample array
+ * \param rpDst       reference to pointer for the prediction sample array
+ * \param dstStride   the stride of the prediction sample array
+ * \param width       the width of the block
+ * \param height      the height of the block
+ * \param channelType type of pel array (luma, chroma)
+ * \param format      chroma format
+ *
+ * This function derives the prediction samples for planar mode (intra coding).
+ */
+//NOTE: Bit-Limit - 24-bit source
+Void TComPrediction::xPredIntraEqualWeightPlanar( const Pel* pSrc, Int srcStride, Pel* rpDst, Int dstStride, UInt width, UInt height )
+{
+#if !JVET_C0024_QTBT
+  assert(width <= height);
+#endif
+
+  Int leftColumn[MAX_CU_SIZE+1], topRow[MAX_CU_SIZE+1], bottomRow[MAX_CU_SIZE], rightColumn[MAX_CU_SIZE];
+#if JVET_C0024_QTBT
+  UInt shift1Dhor = g_aucConvertToBit[ width ] + MIN_CU_LOG2;
+  UInt shift1Dver = g_aucConvertToBit[ height ] + MIN_CU_LOG2;
   UInt delt = width*height;
 #else
   UInt shift1Dhor = g_aucConvertToBit[ width ] + 2;
@@ -3267,6 +3486,7 @@ Void TComPrediction::xPredIntraPlanar( const Pel* pSrc, Int srcStride, Pel* rpDs
     }
   }
 }
+#endif
 
 /** Function for filtering intra DC predictor.
  * \param pSrc pointer to reconstructed sample array

@@ -49,6 +49,29 @@
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////
+
+
+#define E0068_TEST1                                       0   //< Set to 1 for EE1 test1, should only be set with E0068_TEST2 and E0068_TEST3 set to 0
+#if E0068_TEST1
+#define E0068_UW_PLANAR                                   1   //< Replace HEVC Planar with Unequal Weight Planar as in E0068
+#define E0068_CONSTRAINED_PDPC                            0   //< limit PDPC to 4 angular modes during mode decision
+#define E0068_CONSTRAINED_PDPC_BITS                       0   //< not sending overhead for constrained PDPC modes (63 out out 67)
+#endif
+
+#define E0068_TEST2                                       0   //< Set to 1 for EE1 test2, should only be set with E0068_TEST1 and E0068_TEST3 set to 0
+#if E0068_TEST2
+#define E0068_UW_PLANAR                                   1   //< Replace HEVC Planar with Unequal Weight Planar as in E0068
+#define E0068_CONSTRAINED_PDPC                            1
+#define E0068_CONSTRAINED_PDPC_BITS                       1
+#endif
+
+#define E0068_TEST3                                       0   //< Set to 1 for EE1 test3, should only be set with E0068_TEST1 and E0068_TEST2 set to 0
+#if E0068_TEST3
+#define E0068_UW_PLANAR                                   1   //< Replace HEVC Planar with Unequal Weight Planar as in E0068
+#define E0068_CONSTRAINED_PDPC                            1
+#define E0068_CONSTRAINED_PDPC_BITS                       0
+#endif
+
 #define JVET_E0062_MULTI_DMS                              1   ///< Extended chroma multiple DM modes
 
 #define JVET_E0077_ENHANCED_LM                            1   ///< Enhanced LM mode

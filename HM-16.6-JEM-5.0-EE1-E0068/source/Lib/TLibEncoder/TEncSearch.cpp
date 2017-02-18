@@ -1816,11 +1816,15 @@ TEncSearch::xEncIntraHeader( TComDataCU*  pcCU,
         m_pcEntropyCoder->encodeMPIIdx(pcCU, 0, true);
 #endif
 #if COM16_C1046_PDPC_INTRA && !FIX_TICKET20
+#if !E0068_CONSTRAINED_PDPC_BITS
         m_pcEntropyCoder->encodePDPCIdx( pcCU, 0, true);
+#endif
 #endif
       }
 #if COM16_C1046_PDPC_INTRA && FIX_TICKET20
+#if !E0068_CONSTRAINED_PDPC_BITS
       m_pcEntropyCoder->encodePDPCIdx( pcCU, 0, true );
+#endif
 #endif
 #if JVET_C0024_QTBT
       if (pcCU->isIntra(0) )
@@ -1883,6 +1887,15 @@ TEncSearch::xEncIntraHeader( TComDataCU*  pcCU,
     }
 #endif
   }
+#if E0068_CONSTRAINED_PDPC_BITS && COM16_C1046_PDPC_INTRA
+  if ( bLuma && ( uiAbsPartIdx == 0 ))
+  {
+    if (( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, 0 ) == VER_IDX ) || ( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, 0 ) == HOR_IDX ) || ( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, 0 ) == DIA_IDX ) || ( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, 0 ) == 2 ))
+    {
+      m_pcEntropyCoder->encodePDPCIdx( pcCU, 0, true);
+    }
+  }
+#endif
 }
 
 
@@ -5171,6 +5184,10 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #endif
 #endif
 
+#if E0068_CONSTRAINED_PDPC
+  Int  PDPCIdx = pcCU->getPDPCIdx(0);
+#endif
+
   //===== loop over partitions =====
   TComTURecurse tuRecurseCU(pcCU, 0);
   TComTURecurse tuRecurseWithPU(tuRecurseCU, false, (uiInitTrDepth==0)?TComTU::DONT_SPLIT : TComTU::QUAD_SPLIT);
@@ -5301,6 +5318,15 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         }
         bSatdChecked[uiMode] = true;
 #endif        
+
+#if E0068_CONSTRAINED_PDPC
+        if ( uiMode!=2 && uiMode!=HOR_IDX && uiMode!=VER_IDX && uiMode!=DIA_IDX && PDPCIdx )
+        {
+          // Skip checking intra modes that are not 4 main angular modes and PDPC combination
+          continue;
+        }
+#endif
+
         const Bool bUseFilter=TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, uiMode, puRect.width, puRect.height, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag()
 #if COM16_C983_RSAF_PREVENT_OVERSMOOTHING 
           , sps.getUseRSAF()
@@ -5457,7 +5483,13 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
               }
             }
 #endif
-
+#if E0068_CONSTRAINED_PDPC
+            if ( uiMode!=2 && uiMode!=HOR_IDX && uiMode!=VER_IDX && uiMode!=DIA_IDX && PDPCIdx )
+            {
+              // Skip checking intra modes that are not 4 main angular modes and PDPC combination
+continue;
+            }
+#endif
             if( !bSatdChecked[uiMode] )
             {
               const Bool bUseFilter=TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, uiMode, puRect.width, puRect.height, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag()
@@ -5521,7 +5553,12 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         {
           Bool mostProbableModeIncluded = false;
           Int mostProbableMode = uiPreds[j];
-        
+#if E0068_CONSTRAINED_PDPC
+          if ( mostProbableMode != 2 && mostProbableMode != HOR_IDX && mostProbableMode != VER_IDX && mostProbableMode != DIA_IDX && PDPCIdx )
+          {
+            continue;
+          }
+#endif        
 #if COM16_C1044_NSST
 #if !JVET_C0024_QTBT
           if( pcCU->getPartitionSize(0)==SIZE_2Nx2N )
