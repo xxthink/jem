@@ -885,7 +885,9 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
   m_pcEntropyDecoder->decodeMPIIdx(pcCU, uiAbsPartIdx, uiDepth);
 #endif
 #if COM16_C1046_PDPC_INTRA
+#if !E0068_CONSTRAINED_PDPC_BITS
   m_pcEntropyDecoder->decodePDPCIdx(pcCU, uiAbsPartIdx, uiDepth);
+#endif
 #endif
 #if JVET_C0024_QTBT
   }
@@ -932,6 +934,17 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
   m_pcEntropyDecoder->decodePredInfo( pcCU, uiAbsPartIdx, uiDepth, m_pppcCU[uiWidthIdx][uiHeightIdx]);
 #else
   m_pcEntropyDecoder->decodePredInfo( pcCU, uiAbsPartIdx, uiDepth, m_ppcCU[uiDepth]);
+#endif
+#if E0068_CONSTRAINED_PDPC_BITS
+#if COM16_C1046_PDPC_INTRA
+  if (isLuma(pcCU->getTextType()))
+  {
+    if (( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) == VER_IDX ) || ( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) == HOR_IDX ) || ( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) == DIA_IDX )  || ( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) == 2 ))
+    {
+      m_pcEntropyDecoder->decodePDPCIdx(pcCU, uiAbsPartIdx, uiDepth);
+    }
+  }
+#endif
 #endif
 #if COM16_C806_OBMC
   m_pcEntropyDecoder->decodeOBMCFlag( pcCU, uiAbsPartIdx, uiDepth );

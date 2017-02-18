@@ -90,6 +90,13 @@ class TComPrediction : public TComWeightPrediction
 {
 private:
   static const UChar m_aucIntraFilter[MAX_NUM_CHANNEL_TYPE][MAX_INTRA_FILTER_DEPTHS];
+
+#if E0068_UW_PLANAR
+  static const UInt uiFinalShiftDenom;
+  static const UInt uiFinalDenomHalf;
+  static const UInt uiFinalShift[2*MAX_CU_SIZE+1];
+#endif
+
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
   UInt*  m_puiW;
   UInt*  m_puiH;
@@ -163,6 +170,9 @@ protected:
 #endif
     );
   Void xPredIntraPlanar         ( const Pel* pSrc, Int srcStride, Pel* rpDst, Int dstStride, UInt width, UInt height );
+#if E0068_UW_PLANAR
+  Void xPredIntraEqualWeightPlanar         ( const Pel* pSrc, Int srcStride, Pel* rpDst, Int dstStride, UInt width, UInt height );
+#endif
 
 #if VCEG_AZ07_FRUC_MERGE
   TComRdCost              m_cFRUCRDCost;

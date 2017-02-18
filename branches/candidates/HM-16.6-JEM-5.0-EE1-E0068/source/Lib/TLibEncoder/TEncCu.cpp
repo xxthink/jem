@@ -3520,9 +3520,9 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 #if VCEG_AZ05_INTRA_MPI
   m_pcEntropyCoder->encodeMPIIdx(pcCU, uiAbsPartIdx);
 #endif   
-#if COM16_C1046_PDPC_INTRA
+#if (!E0068_CONSTRAINED_PDPC_BITS) && COM16_C1046_PDPC_INTRA
   m_pcEntropyCoder->encodePDPCIdx(pcCU, uiAbsPartIdx);
-#endif  
+#endif
 #if JVET_C0024_QTBT
   }
 #else
@@ -3555,6 +3555,15 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 
   // prediction Info ( Intra : direction mode, Inter : Mv, reference idx )
   m_pcEntropyCoder->encodePredInfo( pcCU, uiAbsPartIdx );
+#if E0068_CONSTRAINED_PDPC_BITS && COM16_C1046_PDPC_INTRA
+  if (isLuma(pcCU->getTextType()))
+  {
+    if (( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) == VER_IDX ) || ( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) == HOR_IDX ) || ( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) == DIA_IDX ) || ( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) == 2 ))
+    {
+      m_pcEntropyCoder->encodePDPCIdx( pcCU, uiAbsPartIdx );
+    }
+  }
+#endif
 #if COM16_C806_OBMC
   m_pcEntropyCoder->encodeOBMCFlag( pcCU, uiAbsPartIdx );
 #endif
@@ -4751,7 +4760,9 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
 #endif 
 
 #if COM16_C1046_PDPC_INTRA
+#if !E0068_CONSTRAINED_PDPC_BITS
   m_pcEntropyCoder->encodePDPCIdx(rpcTempCU, 0, true);
+#endif
 #endif
 #if JVET_C0024_QTBT
     }
@@ -4759,6 +4770,15 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
   m_pcEntropyCoder->encodePartSize( rpcTempCU, 0, uiDepth, true );
 #endif
   m_pcEntropyCoder->encodePredInfo( rpcTempCU, 0 );
+#if E0068_CONSTRAINED_PDPC_BITS && COM16_C1046_PDPC_INTRA
+  if (isLuma(rpcBestCU->getTextType()))
+  {
+    if (( rpcTempCU->getIntraDir( CHANNEL_TYPE_LUMA, 0 ) == VER_IDX ) || ( rpcTempCU->getIntraDir( CHANNEL_TYPE_LUMA, 0 ) == HOR_IDX ) || ( rpcTempCU->getIntraDir( CHANNEL_TYPE_LUMA, 0 ) == DIA_IDX ) || ( rpcTempCU->getIntraDir( CHANNEL_TYPE_LUMA, 0 ) == 2 ))
+    {
+      m_pcEntropyCoder->encodePDPCIdx( rpcTempCU, 0, true);
+    }
+  }
+#endif
   m_pcEntropyCoder->encodeIPCMInfo(rpcTempCU, 0, true );
 
   // Encode Coefficients
