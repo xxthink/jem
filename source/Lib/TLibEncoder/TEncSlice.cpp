@@ -570,7 +570,7 @@ Void TEncSlice::setSearchRange( TComSlice* pcSlice )
   Int iMaxSR = m_pcCfg->getSearchRange();
   Int iNumPredDir = pcSlice->isInterP() ? 1 : 2;
 
-  for (Int iDir = 0; iDir <= iNumPredDir; iDir++)
+  for (Int iDir = 0; iDir < iNumPredDir; iDir++)
   {
     //RefPicList e = (RefPicList)iDir;
     RefPicList  e = ( iDir ? REF_PIC_LIST_1 : REF_PIC_LIST_0 );
