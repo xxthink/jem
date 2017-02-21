@@ -2580,6 +2580,7 @@ Void TComPrediction::xWeightedAverage( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, I
   bBIPMVRefine &= pCu->getMergeType(uiPartIdx) == MGR_TYPE_DEFAULT_N;
   bBIPMVRefine &= !pCu->getFRUCMgrMode(uiPartIdx);
   bBIPMVRefine &= pCu->getSlice()->getSPS()->getUseDMVR();
+
   if (bBIPMVRefine )
   {
     pcYuvDst->addAvg( pcYuvSrc0, pcYuvSrc1, uiPartIdx, iWidth, iHeight, clipBitDepths
@@ -4191,6 +4192,57 @@ UInt TComPrediction::xFrucGetTempMatchCost( TComDataCU * pcCU , UInt uiAbsPartId
   return( uiCost );
 }
 
+
+#if JOINT_TEMPLATE_MATCHING
+Void TComPrediction::xFrucUpdateTemplate(TComDataCU * pcCU, UInt uiAbsPartIdx, Int nWidth, Int nHeight, RefPicList eCurRefPicList, TComMvField rCurMvField)
+{
+#if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
+    const Int nMVUnit = 2 + VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE;
+#else
+    const Int nMVUnit = 2;
+#endif
+
+    TComMvField *pMvFieldOther = &rCurMvField;
+    TComYuv * pYuvPredRefTop = &m_acYuvPred[0], *pYuvPredRefLeft = &m_acYuvPred[1];
+    TComYuv * pYuvPredCurTop = &m_cYuvPredFrucTemplate[0], *pYuvPredCurLeft = &m_cYuvPredFrucTemplate[1];
+    if (m_bFrucTemplateAvailabe[0])
+    {
+        TComMv mvOther(0, -(FRUC_MERGE_TEMPLATE_SIZE << nMVUnit));
+        mvOther += pMvFieldOther->getMv();
+        TComPicYuv * pRefPicYuvOther = pcCU->getSlice()->getRefPic(eCurRefPicList, pMvFieldOther->getRefIdx())->getPicYuvRec();
+        xPredInterBlk(COMPONENT_Y, pcCU, pRefPicYuvOther, uiAbsPartIdx, &mvOther, nWidth, FRUC_MERGE_TEMPLATE_SIZE, pYuvPredRefTop
+            , false
+            , pcCU->getSlice()->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA),
+#if VCEG_AZ05_BIO
+            false,
+#endif
+            FRUC_MERGE_TEMPLATE
+        );
+        TComYuv*  pcYuvOther = pYuvPredRefTop;
+        TComYuv*  pcYuvOrg = pYuvPredCurTop;
+        pcYuvOrg->removeHighFreq(pcYuvOther, uiAbsPartIdx, nWidth, FRUC_MERGE_TEMPLATE_SIZE, pcCU->getSlice()->getSPS()->getBitDepths().recon, false);
+    }
+
+    if (m_bFrucTemplateAvailabe[1])
+    {
+        TComMv mvOther(-(FRUC_MERGE_TEMPLATE_SIZE << nMVUnit), 0);
+        mvOther += pMvFieldOther->getMv();
+        TComPicYuv * pRefPicYuvOther = pcCU->getSlice()->getRefPic(eCurRefPicList, pMvFieldOther->getRefIdx())->getPicYuvRec();
+        xPredInterBlk(COMPONENT_Y, pcCU, pRefPicYuvOther, uiAbsPartIdx, &mvOther, FRUC_MERGE_TEMPLATE_SIZE, nHeight, pYuvPredRefLeft
+            , false
+            , pcCU->getSlice()->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA),
+#if VCEG_AZ05_BIO
+            false,
+#endif
+            FRUC_MERGE_TEMPLATE
+        );
+        TComYuv*  pcYuvOther = pYuvPredRefLeft;
+        TComYuv*  pcYuvOrg = pYuvPredCurLeft;
+        pcYuvOrg->removeHighFreq(pcYuvOther, uiAbsPartIdx, FRUC_MERGE_TEMPLATE_SIZE, nHeight, pcCU->getSlice()->getSPS()->getBitDepths().recon, false);
+    }
+}
+#endif
+
 /**
  * \brief calculate the cost of bilateral matching in FRUC
  *
@@ -4253,7 +4305,11 @@ UInt TComPrediction::xFrucGetBilaMatchCost( TComDataCU * pcCU , UInt uiAbsPartId
  * \param nBlkHeight      Height of the block
  * \param bTM             Whether is template matching
  */
-UInt TComPrediction::xFrucRefineMv( TComMvField * pBestMvField , RefPicList eCurRefPicList , UInt uiMinCost , Int nSearchMethod , TComDataCU * pCU , UInt uiAbsPartIdx , const TComMvField & rMvStart , Int nBlkWidth , Int nBlkHeight , Bool bTM )
+UInt TComPrediction::xFrucRefineMv( TComMvField * pBestMvField , RefPicList eCurRefPicList , UInt uiMinCost , Int nSearchMethod , TComDataCU * pCU , UInt uiAbsPartIdx , const TComMvField & rMvStart , Int nBlkWidth , Int nBlkHeight , Bool bTM 
+#if JOINT_TEMPLATE_MATCHING
+    , Bool bMvCostEnabled
+#endif
+)
 {
 #if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
   Int nSearchStepShift = VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE;
@@ -4289,16 +4345,29 @@ UInt TComPrediction::xFrucRefineMv( TComMvField * pBestMvField , RefPicList eCur
     break;
   case 2:
     // diamond
-    uiMinCost = xFrucRefineMvSearch<FRUC_MERGE_MV_SEARCHPATTERN_DIAMOND>( pBestMvField , eCurRefPicList , pCU , uiAbsPartIdx , rMvStart , nBlkWidth , nBlkHeight , uiMinCost , bTM , nSearchStepShift );
-    uiMinCost = xFrucRefineMvSearch<FRUC_MERGE_MV_SEARCHPATTERN_CROSS>( pBestMvField , eCurRefPicList , pCU , uiAbsPartIdx , rMvStart , nBlkWidth , nBlkHeight , uiMinCost , bTM , nSearchStepShift , 1 );
-    if( nSearchStepShift > 0 )
-    {
-#if JVET_B058_HIGH_PRECISION_MOTION_VECTOR_MC
-      uiMinCost = xFrucRefineMvSearch<FRUC_MERGE_MV_SEARCHPATTERN_CROSS>( pBestMvField , eCurRefPicList , pCU , uiAbsPartIdx , rMvStart , nBlkWidth , nBlkHeight , uiMinCost , bTM , nSearchStepShift-1  , 1 );
-#else
-      uiMinCost = xFrucRefineMvSearch<FRUC_MERGE_MV_SEARCHPATTERN_CROSS>( pBestMvField , eCurRefPicList , pCU , uiAbsPartIdx , rMvStart , nBlkWidth , nBlkHeight , uiMinCost , bTM , 0 , 1 );
+      uiMinCost = xFrucRefineMvSearch<FRUC_MERGE_MV_SEARCHPATTERN_DIAMOND>(pBestMvField, eCurRefPicList, pCU, uiAbsPartIdx, rMvStart, nBlkWidth, nBlkHeight, uiMinCost, bTM, nSearchStepShift
+#if JOINT_TEMPLATE_MATCHING
+          , MAX_UINT
+          , bMvCostEnabled
 #endif
-    }
+          );
+      uiMinCost = xFrucRefineMvSearch<FRUC_MERGE_MV_SEARCHPATTERN_CROSS>(pBestMvField, eCurRefPicList, pCU, uiAbsPartIdx, rMvStart, nBlkWidth, nBlkHeight, uiMinCost, bTM, nSearchStepShift, 1
+#if JOINT_TEMPLATE_MATCHING
+          , bMvCostEnabled
+#endif
+          );
+      if (nSearchStepShift > 0)
+      {
+#if JVET_B058_HIGH_PRECISION_MOTION_VECTOR_MC
+          uiMinCost = xFrucRefineMvSearch<FRUC_MERGE_MV_SEARCHPATTERN_CROSS>(pBestMvField, eCurRefPicList, pCU, uiAbsPartIdx, rMvStart, nBlkWidth, nBlkHeight, uiMinCost, bTM, nSearchStepShift - 1, 1
+#if JOINT_TEMPLATE_MATCHING
+              , bMvCostEnabled
+#endif
+              );
+#else
+          uiMinCost = xFrucRefineMvSearch<FRUC_MERGE_MV_SEARCHPATTERN_CROSS>(pBestMvField, eCurRefPicList, pCU, uiAbsPartIdx, rMvStart, nBlkWidth, nBlkHeight, uiMinCost, bTM, 0, 1);
+#endif
+      }
     break;
   case 3:
     // no refinement
@@ -4354,7 +4423,11 @@ UInt TComPrediction::xFrucRefineMv( TComMvField * pBestMvField , RefPicList eCur
  * \param uiMaxSearchRounds Max rounds of pattern searching
  */
 template<Int SearchPattern>
-UInt TComPrediction::xFrucRefineMvSearch( TComMvField * pBestMvField , RefPicList eCurRefPicList , TComDataCU * pCU , UInt uiAbsPartIdx , TComMvField const & rMvStart , Int nBlkWidth , Int nBlkHeight , UInt uiMinDist , Bool bTM , Int nSearchStepShift , UInt uiMaxSearchRounds )
+UInt TComPrediction::xFrucRefineMvSearch( TComMvField * pBestMvField , RefPicList eCurRefPicList , TComDataCU * pCU , UInt uiAbsPartIdx , TComMvField const & rMvStart , Int nBlkWidth , Int nBlkHeight , UInt uiMinDist , Bool bTM , Int nSearchStepShift , UInt uiMaxSearchRounds 
+#if JOINT_TEMPLATE_MATCHING
+    , Bool bMvCostEnabled
+#endif
+)
 {
   const TComMv mvSearchOffsetCross[4] = { TComMv( 0 , 1 ) , TComMv( 1 , 0 ) , TComMv( 0 , -1 ) , TComMv( -1 , 0 ) };
   const TComMv mvSearchOffsetSquare[8] = { TComMv( -1 , 1 ) , TComMv( 0 , 1 ) , TComMv( 1 , 1 ) , TComMv( 1 , 0 ) , TComMv( 1 , -1 ) , TComMv( 0 , -1 ) , TComMv( -1 , -1 ) , TComMv( -1 , 0 )  };
@@ -4417,6 +4490,12 @@ UInt TComPrediction::xFrucRefineMvSearch( TComMvField * pBestMvField , RefPicLis
       TComMvField mvCand = mvCurCenter;
       mvCand.getMv() += mvOffset;
       UInt uiCost = xFrucGetMvCost( rMvStart.getMv() , mvCand.getMv() , rSearchRange , FRUC_MERGE_REFINE_MVWEIGHT );
+#if JOINT_TEMPLATE_MATCHING
+      if (!bMvCostEnabled)
+      {
+          uiCost = 0;
+      }
+#endif
       if( uiCost > uiMinDist )
         continue;
       TComMvField mvPair;
@@ -4556,14 +4635,61 @@ Bool TComPrediction::xFrucFindBlkMv( TComDataCU * pCU , UInt uiPUIdx )
     }
     mvFinal[0] = mvStart[0];
     mvFinal[1] = mvStart[1];
+#if JOINT_TEMPLATE_MATCHING
+    UInt uiMinCostBi = MAX_UINT;
+    TComMvField mvFinalUni[2];
+    RefPicList eCurRefPicList = uiMinCost[0] <= uiMinCost[1] ? REF_PIC_LIST_1 : REF_PIC_LIST_0;
+#endif
     for( Int nRefPicList = 0 ; nRefPicList < 2 ; nRefPicList++ )
     {
+#if BI_REFINE
+        if ( nRefPicList == (Int)eCurRefPicList )
+        {
+            continue;
+        }
+#endif
       if( mvStart[nRefPicList].getRefIdx() >= 0 )
       {
-        uiMinCost[nRefPicList] = xFrucRefineMv( mvFinal , ( RefPicList )nRefPicList , uiMinCost[nRefPicList] , nSearchMethod , pCU , uiAbsPartIdx , mvStart[nRefPicList] , nWidth , nHeight , true );
+        uiMinCost[nRefPicList] = xFrucRefineMv( mvFinal , ( RefPicList )nRefPicList , uiMinCost[nRefPicList] , nSearchMethod , pCU , uiAbsPartIdx , mvStart[nRefPicList] , nWidth , nHeight , true 
+#if JOINT_TEMPLATE_MATCHING
+            , false
+#endif
+        );
         bAvailable = true;
       }
     }
+#if JOINT_TEMPLATE_MATCHING
+    if ( mvFinal[0].getRefIdx() >= 0 && mvFinal[1].getRefIdx() >= 0 )
+    {
+        //save results of uni-refinement
+        mvFinalUni[0] = mvFinal[0];
+        mvFinalUni[1] = mvFinal[1];
+
+        //Initial cost for bi-refinement
+        xFrucUpdateTemplate(pCU, uiAbsPartIdx, nWidth, nHeight, (RefPicList)(!eCurRefPicList), mvFinal[!eCurRefPicList]);
+        uiMinCostBi = xFrucGetTempMatchCost(pCU, uiAbsPartIdx, nWidth, nHeight, eCurRefPicList, mvFinal[eCurRefPicList], 0);
+#if BI_REFINE
+        assert(eCurRefPicList == (uiMinCost[0] <= uiMinCost[1] ? REF_PIC_LIST_1 : REF_PIC_LIST_0));
+        uiMinCostBi = xFrucRefineMv(mvFinal, eCurRefPicList, uiMinCostBi, nSearchMethod, pCU, uiAbsPartIdx, mvFinal[eCurRefPicList], nWidth, nHeight, true, false );
+#endif
+#if UNI_BI_SELECTION
+        if (uiMinCostBi <= 2 * min(uiMinCost[0], uiMinCost[1]))
+        {
+            assert(mvFinal[0].getRefIdx() >= 0 && mvFinal[1].getRefIdx() >= 0);
+        }
+        else if (uiMinCost[0] <= uiMinCost[1])
+        {
+            mvFinal[1].setRefIdx(-1);
+            mvFinal[0] = mvFinalUni[0];
+        }
+        else
+        {
+            mvFinal[0].setRefIdx(-1);
+            mvFinal[1] = mvFinalUni[1];
+        }
+#endif
+    }
+#endif
   }
   else
   {
