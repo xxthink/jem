@@ -305,13 +305,24 @@ protected:
 
   UInt xFrucFindBestMvFromList( TComMvField * pBestMvField , RefPicList & rBestRefPicList , TComDataCU * pCU , UInt uiAbsPartIdx , const TComMvField & rMvStart , Int nBlkWidth , Int nBlkHeight , Bool bTM , Bool bMvCost );
 
-  UInt xFrucRefineMv( TComMvField * pBestMvField , RefPicList eCurRefPicList , UInt uiMinCost , Int nSearchMethod , TComDataCU * pCU , UInt uiAbsPartIdx , const TComMvField & rMvStart , Int nBlkWidth , Int nBlkHeight , Bool bTM );
+  UInt xFrucRefineMv( TComMvField * pBestMvField , RefPicList eCurRefPicList , UInt uiMinCost , Int nSearchMethod , TComDataCU * pCU , UInt uiAbsPartIdx , const TComMvField & rMvStart , Int nBlkWidth , Int nBlkHeight , Bool bTM 
+#if JOINT_TEMPLATE_MATCHING
+    , Bool bMvCostEnabled = true
+#endif
+  );
   template<Int SearchPattern>
-  UInt xFrucRefineMvSearch( TComMvField * pBestMvField , RefPicList eCurRefPicList , TComDataCU * pCU , UInt uiAbsPartIdx , TComMvField const & rMvStart , Int nBlkWidth , Int nBlkHeight , UInt uiMinDist , Bool bTM , Int nSearchStepShift , UInt uiMaxSearchRounds = MAX_UINT );
+  UInt xFrucRefineMvSearch( TComMvField * pBestMvField , RefPicList eCurRefPicList , TComDataCU * pCU , UInt uiAbsPartIdx , TComMvField const & rMvStart , Int nBlkWidth , Int nBlkHeight , UInt uiMinDist , Bool bTM , Int nSearchStepShift , UInt uiMaxSearchRounds = MAX_UINT 
+#if JOINT_TEMPLATE_MATCHING
+    , Bool bMvCostEnabled = true
+#endif
+  );
 
   UInt xFrucGetMvCost( const TComMv & rMvStart , const TComMv & rMvCur , Int nSearchRange , Int nWeighting );
   UInt xFrucGetBilaMatchCost( TComDataCU * pcCU , UInt uiAbsPartIdx , Int nWidth , Int nHeight , RefPicList eCurRefPicList , const TComMvField & rCurMvField , TComMvField & rPairMVField , UInt uiMVCost );
   UInt xFrucGetTempMatchCost( TComDataCU * pcCU , UInt uiAbsPartIdx , Int nWidth , Int nHeight , RefPicList eCurRefPicList , const TComMvField & rCurMvField , UInt uiMVCost );
+#if JOINT_TEMPLATE_MATCHING
+  Void xFrucUpdateTemplate(TComDataCU * pcCU, UInt uiAbsPartIdx, Int nWidth, Int nHeight, RefPicList eCurRefPicList, TComMvField rCurMvField);
+#endif
 
   Void xFrucInsertMv2StartList( const TComMvField & rMvField , std::list<TComMvField> & rList );
   Bool xFrucIsInList( const TComMvField & rMvField , std::list<TComMvField> & rList );
