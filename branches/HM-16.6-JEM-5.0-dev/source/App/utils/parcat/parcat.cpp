@@ -270,7 +270,7 @@ std::vector<uint8_t> filter_segment(const std::vector<uint8_t> & v, int idx, int
   {
     if(verbose)
     {
-       printf( "!! Found NAL at offset %lld (0x%04llX), size %lld (0x%04llX) ",
+       printf( "!! Found NAL at offset %lld (0x%04llX), size %lld (0x%04llX) \n",
           (long long int)(off + (p - buf)),
           (long long int)(off + (p - buf)),
           (long long int)(nal_end - nal_start),
@@ -333,7 +333,7 @@ std::vector<uint8_t> filter_segment(const std::vector<uint8_t> & v, int idx, int
       skip_next_sei = true;
     }
 
-    if((idx > 1 && (nalu_type == IDR_W_RADL || nalu_type == IDR_N_LP || nalu_type == VPS || nalu_type == SPS || nalu_type == PPS))
+    if((idx > 1 && (nalu_type == IDR_W_RADL || nalu_type == IDR_N_LP )) || ((idx>1 && cnt < 4) && ( nalu_type == VPS || nalu_type == SPS || nalu_type == PPS))
       || (nalu_type == SUFFIX_SEI && skip_next_sei))
     {
 #if PRINT_NALUS
