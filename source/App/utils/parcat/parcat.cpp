@@ -259,6 +259,7 @@ std::vector<uint8_t> filter_segment(const std::vector<uint8_t> & v, int idx, int
   int nal_start, nal_end;
   int off = 0;
   int cnt = 0;
+  bool idr_found = false;
 
   std::vector<uint8_t> out;
   out.reserve(v.size());
@@ -331,9 +332,10 @@ std::vector<uint8_t> filter_segment(const std::vector<uint8_t> & v, int idx, int
     if(idx > 1 && (nalu_type == IDR_W_RADL || nalu_type == IDR_N_LP))
     {
       skip_next_sei = true;
+      idr_found = true;
     }
 
-    if((idx > 1 && (nalu_type == IDR_W_RADL || nalu_type == IDR_N_LP )) || ((idx>1 && cnt < 4) && ( nalu_type == VPS || nalu_type == SPS || nalu_type == PPS))
+    if((idx > 1 && (nalu_type == IDR_W_RADL || nalu_type == IDR_N_LP )) || ((idx>1 && !idr_found) && ( nalu_type == VPS || nalu_type == SPS || nalu_type == PPS))
       || (nalu_type == SUFFIX_SEI && skip_next_sei))
     {
 #if PRINT_NALUS
