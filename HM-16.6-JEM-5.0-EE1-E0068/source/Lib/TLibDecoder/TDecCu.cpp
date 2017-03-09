@@ -939,10 +939,17 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
 #if COM16_C1046_PDPC_INTRA
   if (isLuma(pcCU->getTextType()))
   {
+#if E0068_CONSTRAINED_PDPC_3MODES
+    if (( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) == VER_IDX ) || ( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) == HOR_IDX ) || ( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) == 2 ))
+    {
+      m_pcEntropyDecoder->decodePDPCIdx(pcCU, uiAbsPartIdx, uiDepth);
+    }
+#else
     if (( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) == VER_IDX ) || ( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) == HOR_IDX ) || ( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) == DIA_IDX )  || ( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) == 2 ))
     {
       m_pcEntropyDecoder->decodePDPCIdx(pcCU, uiAbsPartIdx, uiDepth);
     }
+#endif
   }
 #endif
 #endif
@@ -1275,7 +1282,9 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
 
 
   TComDataCU *pcCU = rTu.getCU();
+#if COM16_C983_RSAF && ARRIS_FIX
   const TComSPS &sps=*(pcCU->getSlice()->getSPS());
+#endif
   const UInt uiAbsPartIdx=rTu.GetAbsPartIdxTU();
 
   const TComRectangle &tuRect  =rTu.getRect(compID);
@@ -1355,6 +1364,10 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
   }
 #endif
 
+#if E0068_CONSTRAINED_ARSS_TEST6
+  if(bUseFilteredPredictions==false)      
+    bFilter = false;
+#endif
 
   DEBUG_STRING_NEW(sTemp)
   m_pcPrediction->initIntraPatternChType( rTu, compID, bUseFilteredPredictions  
