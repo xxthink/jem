@@ -1124,7 +1124,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #if JVET_D0077_SAVE_LOAD_ENC_INFO
   Bool bUseSaveLoad = m_pcEncCfg->getUseSaveLoadEncInfo() && uiWidthIdx > 0 && uiHeightIdx > 0;
   Bool bUseSaveLoadSplitDecision = bUseSaveLoad && m_pcEncCfg->getUseSaveLoadSplitDecision();
+#if COM16_C1046_PDPC_INTRA && ARRIS_FIX
   ChannelType eChannelType = rpcBestCU->getTextType();
+#endif
   UInt uiZorderIdx = rpcBestCU->getZorderIdxInCtu();
 #endif
 
@@ -3522,7 +3524,7 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 #endif   
 #if (!E0068_CONSTRAINED_PDPC_BITS) && COM16_C1046_PDPC_INTRA
   m_pcEntropyCoder->encodePDPCIdx(pcCU, uiAbsPartIdx);
-#endif
+#endif  
 #if JVET_C0024_QTBT
   }
 #else
@@ -3558,8 +3560,13 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 #if E0068_CONSTRAINED_PDPC_BITS && COM16_C1046_PDPC_INTRA
   if (isLuma(pcCU->getTextType()))
   {
+#if E0068_CONSTRAINED_PDPC_3MODES
+    if (( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) == VER_IDX ) || ( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) == HOR_IDX ) || ( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) == 2 ))
+    {
+#else
     if (( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) == VER_IDX ) || ( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) == HOR_IDX ) || ( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) == DIA_IDX ) || ( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) == 2 ))
     {
+#endif
       m_pcEntropyCoder->encodePDPCIdx( pcCU, uiAbsPartIdx );
     }
   }
@@ -4773,8 +4780,13 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
 #if E0068_CONSTRAINED_PDPC_BITS && COM16_C1046_PDPC_INTRA
   if (isLuma(rpcBestCU->getTextType()))
   {
+#if E0068_CONSTRAINED_PDPC_3MODES
+    if (( rpcTempCU->getIntraDir( CHANNEL_TYPE_LUMA, 0 ) == VER_IDX ) || ( rpcTempCU->getIntraDir( CHANNEL_TYPE_LUMA, 0 ) == HOR_IDX ) || ( rpcTempCU->getIntraDir( CHANNEL_TYPE_LUMA, 0 ) == 2 ))
+    {
+#else
     if (( rpcTempCU->getIntraDir( CHANNEL_TYPE_LUMA, 0 ) == VER_IDX ) || ( rpcTempCU->getIntraDir( CHANNEL_TYPE_LUMA, 0 ) == HOR_IDX ) || ( rpcTempCU->getIntraDir( CHANNEL_TYPE_LUMA, 0 ) == DIA_IDX ) || ( rpcTempCU->getIntraDir( CHANNEL_TYPE_LUMA, 0 ) == 2 ))
     {
+#endif
       m_pcEntropyCoder->encodePDPCIdx( rpcTempCU, 0, true);
     }
   }

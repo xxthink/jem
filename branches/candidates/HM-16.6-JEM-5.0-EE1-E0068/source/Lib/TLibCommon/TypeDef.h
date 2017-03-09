@@ -50,26 +50,99 @@
 // KTA tools section start
 ///////////////////////////////////////////////////////////
 
+#define ARRIS_FIX                                         1   //< Bugs fixed to avoid compilation error with COM16_C1046_PDPC_INTRA, COM16_C983_RSAF set to 0
 
-#define E0068_TEST1                                       0   //< Set to 1 for EE1 test1, should only be set with E0068_TEST2 and E0068_TEST3 set to 0
-#if E0068_TEST1
+#define EE1_TEST1                                         0   //< Set to 1 for EE1 test1, UW Planar, full PDPC and full ARSS
+#define EE1_TEST2                                         0   //< Set to 1 for EE1 test2, UW Planar, constrained PDPC (with decoder changes) and full ARSS
+#define EE1_TEST3                                         0   //< Set to 1 for EE1 test3, UW Planar, constrained PDPC (no decoder changes) and full ARSS
+#define EE1_TEST4                                         0   //< Set to 1 for EE1 test4, UW Planar, constrained PDPC (with decoder changes) and full ARSS
+#define EE1_TEST5                                         0   //< Set to 1 for EE1 test5, UW Planar, constrained PDPC (no decoder changes) and full ARSS
+#define EE1_TEST6                                         0   //< Set to 1 for EE1 test6, UW Planar, full PDPC and constrained ARSS (with decoder changes)
+#define EE1_TEST7                                         0   //< Set to 1 for EE1 test7, UW Planar, full PDPC and constrained ARSS (no decoder changes)
+
+#if EE1_TEST1
+#if (EE1_TEST2 || EE1_TEST3 || EE1_TEST4 || EE1_TEST5 || EE1_TEST6 || EE1_TEST7)
+#error Other than EE1_TEST1 is ON
+#endif
+
 #define E0068_UW_PLANAR                                   1   //< Replace HEVC Planar with Unequal Weight Planar as in E0068
 #define E0068_CONSTRAINED_PDPC                            0   //< limit PDPC to 4 angular modes during mode decision
+#define E0068_CONSTRAINED_PDPC_3MODES                     0   //< bypass pseudo RD for CPDPC and only allow 3 modes to use PDPC, should only be set with E0068_CONSTRAINED_PDPC enabled
 #define E0068_CONSTRAINED_PDPC_BITS                       0   //< not sending overhead for constrained PDPC modes (63 out out 67)
+#define E0068_CONSTRAINED_ARSS_TEST6                      0   //< limit ARSS to modes outside constrained list, not hide RSAF filter flag for constrained modes, only work when TEST7 is disabled
+#define E0068_CONSTRAINED_ARSS_TEST7                      0   //< limit ARSS to modes outside constrained list, hide RSAF filter flag for all modes, only work when TEST6 is disabled
 #endif
 
-#define E0068_TEST2                                       0   //< Set to 1 for EE1 test2, should only be set with E0068_TEST1 and E0068_TEST3 set to 0
-#if E0068_TEST2
-#define E0068_UW_PLANAR                                   1   //< Replace HEVC Planar with Unequal Weight Planar as in E0068
+#if EE1_TEST2
+#if (EE1_TEST1 || EE1_TEST3 || EE1_TEST4 || EE1_TEST5 || EE1_TEST6 || EE1_TEST7)
+#error Other than EE1_TEST2 is ON
+#endif
+#define E0068_UW_PLANAR                                   1   
 #define E0068_CONSTRAINED_PDPC                            1
+#define E0068_CONSTRAINED_PDPC_3MODES                     0
 #define E0068_CONSTRAINED_PDPC_BITS                       1
+#define E0068_CONSTRAINED_ARSS_TEST6                      0   
+#define E0068_CONSTRAINED_ARSS_TEST7                      0   
 #endif
 
-#define E0068_TEST3                                       0   //< Set to 1 for EE1 test3, should only be set with E0068_TEST1 and E0068_TEST2 set to 0
-#if E0068_TEST3
-#define E0068_UW_PLANAR                                   1   //< Replace HEVC Planar with Unequal Weight Planar as in E0068
+#if EE1_TEST3
+#if (EE1_TEST1 || EE1_TEST2 || EE1_TEST4 || EE1_TEST5 || EE1_TEST6 || EE1_TEST7)
+#error Other than EE1_TEST3 is ON
+#endif
+#define E0068_UW_PLANAR                                   1   
 #define E0068_CONSTRAINED_PDPC                            1
+#define E0068_CONSTRAINED_PDPC_3MODES                     0
 #define E0068_CONSTRAINED_PDPC_BITS                       0
+#define E0068_CONSTRAINED_ARSS_TEST6                      0   
+#define E0068_CONSTRAINED_ARSS_TEST7                      0   
+#endif
+
+#if EE1_TEST4
+#if (EE1_TEST1 || EE1_TEST2 || EE1_TEST3 || EE1_TEST5 || EE1_TEST6 || EE1_TEST7)
+#error Other than EE1_TEST4 is ON
+#endif
+#define E0068_UW_PLANAR                                   1   
+#define E0068_CONSTRAINED_PDPC                            1
+#define E0068_CONSTRAINED_PDPC_3MODES                     1
+#define E0068_CONSTRAINED_PDPC_BITS                       1
+#define E0068_CONSTRAINED_ARSS_TEST6                      0   
+#define E0068_CONSTRAINED_ARSS_TEST7                      0   
+#endif
+
+#if EE1_TEST5
+#if (EE1_TEST1 || EE1_TEST2 || EE1_TEST3 || EE1_TEST4 || EE1_TEST6 || EE1_TEST7)
+#error Other than EE1_TEST5 is ON
+#endif
+#define E0068_UW_PLANAR                                   1   
+#define E0068_CONSTRAINED_PDPC                            1
+#define E0068_CONSTRAINED_PDPC_3MODES                     1
+#define E0068_CONSTRAINED_PDPC_BITS                       0
+#define E0068_CONSTRAINED_ARSS_TEST6                      0   
+#define E0068_CONSTRAINED_ARSS_TEST7                      0   
+#endif
+
+#if EE1_TEST6
+#if (EE1_TEST1 || EE1_TEST2 || EE1_TEST3 || EE1_TEST4 || EE1_TEST5 || EE1_TEST7)
+#error Other than EE1_TEST6 is ON
+#endif
+#define E0068_UW_PLANAR                                   1   
+#define E0068_CONSTRAINED_PDPC                            0   
+#define E0068_CONSTRAINED_PDPC_3MODES                     0   
+#define E0068_CONSTRAINED_PDPC_BITS                       0   
+#define E0068_CONSTRAINED_ARSS_TEST6                      1      
+#define E0068_CONSTRAINED_ARSS_TEST7                      0   
+#endif
+
+#if EE1_TEST7
+#if (EE1_TEST1 || EE1_TEST2 || EE1_TEST3 || EE1_TEST4 || EE1_TEST5 || EE1_TEST6)
+#error Other than EE1_TEST7 is ON
+#endif
+#define E0068_UW_PLANAR                                   1   
+#define E0068_CONSTRAINED_PDPC                            0   
+#define E0068_CONSTRAINED_PDPC_3MODES                     0   
+#define E0068_CONSTRAINED_PDPC_BITS                       0   
+#define E0068_CONSTRAINED_ARSS_TEST6                      0   
+#define E0068_CONSTRAINED_ARSS_TEST7                      1   
 #endif
 
 #define JVET_E0062_MULTI_DMS                              1   ///< Extended chroma multiple DM modes

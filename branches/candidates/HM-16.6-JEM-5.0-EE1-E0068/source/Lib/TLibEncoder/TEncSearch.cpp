@@ -1890,8 +1890,13 @@ TEncSearch::xEncIntraHeader( TComDataCU*  pcCU,
 #if E0068_CONSTRAINED_PDPC_BITS && COM16_C1046_PDPC_INTRA
   if ( bLuma && ( uiAbsPartIdx == 0 ))
   {
+#if E0068_CONSTRAINED_PDPC_3MODES
+    if (( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, 0 ) == VER_IDX ) || ( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, 0 ) == HOR_IDX ) || ( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, 0 ) == 2 ))
+    {
+#else
     if (( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, 0 ) == VER_IDX ) || ( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, 0 ) == HOR_IDX ) || ( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, 0 ) == DIA_IDX ) || ( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, 0 ) == 2 ))
     {
+#endif
       m_pcEntropyCoder->encodePDPCIdx( pcCU, 0, true);
     }
   }
@@ -2092,6 +2097,10 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
     if (compID == COMPONENT_Y)
     {
 #endif
+#if E0068_CONSTRAINED_ARSS_TEST6
+      if(bUseFilteredPredictions==false)
+        bFilter = false;
+#endif
       initIntraPatternChType( rTu, compID, bUseFilteredPredictions, (compID==COMPONENT_Y) ? bFilter : false  DEBUG_STRING_PASS_INTO(sDebug) );
       
       //tell predIntraAng to select the correct prediction buffer in getPredictorPtr()
@@ -2109,8 +2118,10 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
 
     initIntraPatternChType( rTu, compID, bUseFilteredPredictions DEBUG_STRING_PASS_INTO(sDebug) );
 #endif
+#if COM16_C983_RSAF && ARRIS_FIX
 #if JVET_E0077_ENHANCED_LM
   }
+#endif
 #endif
     //===== get prediction signal =====
 #if COM16_C806_LMCHROMA
@@ -2974,6 +2985,15 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
       }
 
       Bool bExceptionalCase = (pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx) == DC_IDX);
+#if E0068_CONSTRAINED_ARSS_TEST6 || E0068_CONSTRAINED_ARSS_TEST7
+      Bool bCARSS=TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx), uiWidth, uiHeight, CHROMA_420, false
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+                                                                                , true
+#endif
+         
+                                                                                );
+      bExceptionalCase = !bCARSS;
+#endif
 
 #if COM16_C1046_PDPC_RSAF_HARMONIZATION  //when PDPC is on, do not hide anything
 #if JVET_C0024_QTBT
@@ -3043,6 +3063,12 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
         Int default0Save1Load2 = numTrIdxCands>1 ? ( bSaveEmtResults ? 1 : 2 ) : 0;
 #endif
 
+#if E0068_CONSTRAINED_ARSS_TEST7
+        if ( !bCARSS )
+        {
+          iDefaultMode = 0;
+        }
+#endif
         bSingleHidden = iDefaultMode;
 
         //----- code luma/chroma block with given intra prediction mode and store Cbf-----
@@ -5187,7 +5213,6 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #if E0068_CONSTRAINED_PDPC
   Int  PDPCIdx = pcCU->getPDPCIdx(0);
 #endif
-
   //===== loop over partitions =====
   TComTURecurse tuRecurseCU(pcCU, 0);
   TComTURecurse tuRecurseWithPU(tuRecurseCU, false, (uiInitTrDepth==0)?TComTU::DONT_SPLIT : TComTU::QUAD_SPLIT);
@@ -5236,7 +5261,12 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #endif
 #endif
 #endif
-
+#if E0068_CONSTRAINED_PDPC_3MODES
+    if ( PDPCIdx )
+    {
+      numModesForFullRD = (numModesForFullRD > 3) ? 3 : numModesForFullRD;
+    }
+#endif
     // this should always be true
     assert (tuRecurseWithPU.ProcessComponentSection(COMPONENT_Y));
     initIntraPatternChType( tuRecurseWithPU, COMPONENT_Y, true DEBUG_STRING_PASS_INTO(sTemp2) );
@@ -5288,8 +5318,13 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #if JVET_D0127_REDUNDANCY_REMOVAL
       if (NSSTFlag){
 #endif
+#if E0068_CONSTRAINED_PDPC_3MODES
+      for( Int modeIdx = 0; modeIdx < (PDPCIdx ? 0 : numModesAvailable); modeIdx++ )
+      {
+#else
       for( Int modeIdx = 0; modeIdx < numModesAvailable; modeIdx++ )
       {
+#endif
         UInt       uiMode = modeIdx;
         Distortion uiSad  = 0;
 
@@ -5318,7 +5353,6 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         }
         bSatdChecked[uiMode] = true;
 #endif        
-
 #if E0068_CONSTRAINED_PDPC
         if ( uiMode!=2 && uiMode!=HOR_IDX && uiMode!=VER_IDX && uiMode!=DIA_IDX && PDPCIdx )
         {
@@ -5326,7 +5360,6 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
           continue;
         }
 #endif
-
         const Bool bUseFilter=TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, uiMode, puRect.width, puRect.height, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag()
 #if COM16_C983_RSAF_PREVENT_OVERSMOOTHING 
           , sps.getUseRSAF()
@@ -5454,8 +5487,13 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
       memcpy( uiParentCandList, uiRdModeList, sizeof(UInt)*numModesForFullRD );
 
       // Second round of SATD for extended Angular modes
+#if E0068_CONSTRAINED_PDPC_3MODES
+      for( Int modeIdx = 0; modeIdx < (PDPCIdx ? 0 : numModesForFullRD); modeIdx++ )
+      {
+#else
       for( Int modeIdx = 0; modeIdx < numModesForFullRD; modeIdx++ )
       {
+#endif
         UInt uiParentMode = uiParentCandList[modeIdx];
 #if JVET_E0077_ENHANCED_LM
         if (uiParentMode>2 && uiParentMode<(NUM_INTRA_MODE - NUM_INTRA_MODE_NON_ANG - 1))
@@ -5487,7 +5525,7 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
             if ( uiMode!=2 && uiMode!=HOR_IDX && uiMode!=VER_IDX && uiMode!=DIA_IDX && PDPCIdx )
             {
               // Skip checking intra modes that are not 4 main angular modes and PDPC combination
-continue;
+              continue;
             }
 #endif
             if( !bSatdChecked[uiMode] )
@@ -5546,7 +5584,16 @@ continue;
         Int iMode = -1;
         pcCU->getIntraDirPredictor( uiPartOffset, uiPreds, COMPONENT_Y, &iMode );
 #endif
-
+#if E0068_CONSTRAINED_PDPC_3MODES
+        if ( PDPCIdx )
+        {
+          uiRdModeList[0] = 2;
+          uiRdModeList[1] = HOR_IDX;
+          uiRdModeList[2] = VER_IDX;
+        }
+        else
+        {
+#endif
         const Int numCand = ( iMode >= 0 ) ? iMode : Int(NUM_MOST_PROBABLE_MODES);
 
         for( Int j=0; j < numCand; j++)
@@ -5585,6 +5632,9 @@ continue;
             uiRdModeList[numModesForFullRD++] = mostProbableMode;
           }
         }
+#if E0068_CONSTRAINED_PDPC_3MODES
+        }
+#endif
       }
     }
     else
@@ -5679,7 +5729,15 @@ continue;
       && ucEmtUsageFlag!=2
 #endif
       ) 
-    {                            
+    {                     
+#if E0068_CONSTRAINED_PDPC_3MODES
+      if ( PDPCIdx )
+      {
+        numModesForFullRD = 2;
+      }
+      else
+      {
+#endif
       if(CandHadList[2] > (Double)pcCU->getInterHAD()*PBINTRA_RATIO) 
       {
         numModesForFullRD = 2;
@@ -5694,6 +5752,9 @@ continue;
         pcCU->getInterHAD() = 0;
         return ;
       }
+#if E0068_CONSTRAINED_PDPC_3MODES
+      }
+#endif
     }           
 #endif
 
@@ -6311,9 +6372,13 @@ TEncSearch::estIntraPredChromaQT(TComDataCU* pcCU,
 #if JVET_E0077_ENHANCED_LM
         const TComRectangle &puRect = tuRecurseWithPU.getRect(COMPONENT_Cb);
         getLumaRecPixels(tuRecurseWithPU, puRect.width, puRect.height);
+#if !COM16_C983_RSAF && ARRIS_FIX
+        initIntraPatternChType(tuRecurseWithPU, COMPONENT_Cb, false  DEBUG_STRING_PASS_INTO(sDebug));
+        initIntraPatternChType(tuRecurseWithPU, COMPONENT_Cr, false  DEBUG_STRING_PASS_INTO(sDebug)); 
+#else
         initIntraPatternChType(tuRecurseWithPU, COMPONENT_Cb, false, false  DEBUG_STRING_PASS_INTO(sDebug));
         initIntraPatternChType(tuRecurseWithPU, COMPONENT_Cr, false, false  DEBUG_STRING_PASS_INTO(sDebug)); 
- 
+#endif
 #endif
 
 #if JVET_E0077_LM_MF

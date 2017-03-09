@@ -1033,16 +1033,7 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 
 
       if (uiDirMode == PLANAR_IDX)
-#if E0068_UW_PLANAR
-      {
-        if ( pcCU->getSlice()->getSliceType() == I_SLICE )
-          xPredIntraPlanar(ptrSrc + sw + 1, sw, pDst, uiStride, iWidth, iHeight);
-        else
-          xPredIntraEqualWeightPlanar(ptrSrc + sw + 1, sw, pDst, uiStride, iWidth, iHeight);
-      }
-#else
         xPredIntraPlanar(ptrSrc + sw + 1, sw, pDst, uiStride, iWidth, iHeight);
-#endif
       else
       {
         const Bool            enableEdgeFilters = !(pcCU->isRDPCMEnabled(uiAbsPartIdx) && pcCU->getCUTransquantBypass(uiAbsPartIdx));
@@ -1155,14 +1146,7 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 #endif
     if ( uiDirMode == PLANAR_IDX )
     {
-#if E0068_UW_PLANAR
-      if ( pcCU->getSlice()->getSliceType() == I_SLICE )
-        xPredIntraPlanar(ptrSrc + sw + 1, sw, pDst, uiStride, iWidth, iHeight);
-      else
-        xPredIntraEqualWeightPlanar(ptrSrc + sw + 1, sw, pDst, uiStride, iWidth, iHeight);
-#else
       xPredIntraPlanar( ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight );
-#endif
     }
     else
     {
@@ -3297,13 +3281,16 @@ Void TComPrediction::xPredIntraPlanar( const Pel* pSrc, Int srcStride, Pel* rpDs
   UInt shift1Dhor = g_aucConvertToBit[ width ] + MIN_CU_LOG2;
   UInt shift1Dver = g_aucConvertToBit[ height ] + MIN_CU_LOG2;
 #if E0068_UW_PLANAR
-  UInt delt1 = width*height*uiFinalDenomHalf;
+  UInt delt1 = (width*height*uiFinalDenomHalf)-1;
 #else
   UInt delt = width*height;
 #endif
 #else
   UInt shift1Dhor = g_aucConvertToBit[ width ] + 2;
   UInt shift1Dver = g_aucConvertToBit[ height ] + 2;
+#endif
+#if E0068_UW_PLANAR
+  UInt uiFinalDenomHalfm1 = uiFinalDenomHalf-1;
 #endif
   // Get left and above reference column and row
   for(Int k=0;k<width+1;k++)
@@ -3321,16 +3308,16 @@ Void TComPrediction::xPredIntraPlanar( const Pel* pSrc, Int srcStride, Pel* rpDs
   Int topRight   = topRow[width];
 
 #if E0068_UW_PLANAR  // bottom-right position adjustment
-  Int bottomRight = (((height*bottomLeft)+(width*topRight))*uiFinalShift[width+height]+uiFinalDenomHalf-1)>>(uiFinalShiftDenom);
+  Int bottomRight = (((width*bottomLeft)+(height*topRight))*uiFinalShift[width+height]+uiFinalDenomHalfm1)>>(uiFinalShiftDenom);
   for(Int k=0;k<width;k++)
   {
-    bottomRow[k] = ((((width-k-1)*bottomLeft + (k+1)*bottomRight)*uiFinalShift[width] + uiFinalDenomHalf - 1) >> (uiFinalShiftDenom)) - topRow[k];
+    bottomRow[k] = ((((width-k-1)*bottomLeft + (k+1)*bottomRight)*uiFinalShift[width] + uiFinalDenomHalfm1) >> (uiFinalShiftDenom)) - topRow[k];
     topRow[k]     <<= shift1Dver;
   }
 
   for(Int k=0;k<height;k++)
   {
-    rightColumn[k] = ((((height-k-1)*topRight + (k+1)*bottomRight)*uiFinalShift[height] + uiFinalDenomHalf - 1) >> (uiFinalShiftDenom)) - leftColumn[k];
+    rightColumn[k] = ((((height-k-1)*topRight + (k+1)*bottomRight)*uiFinalShift[height] + uiFinalDenomHalfm1) >> (uiFinalShiftDenom)) - leftColumn[k];
     leftColumn[k]   <<= shift1Dhor;
   }
 #else
@@ -3391,7 +3378,7 @@ Void TComPrediction::xPredIntraPlanar( const Pel* pSrc, Int srcStride, Pel* rpDs
 #endif
 #if JVET_C0024_QTBT
 #if E0068_UW_PLANAR  // Unequal Weight assignment for final predictor calculation
-      rpDst[y*dstStride+x] = (((horPred<<shift1Dver)*horWeight + (vertPred<<shift1Dhor)*verWeight) + delt1 - 1) >> (shift1Dhor+shift1Dver+uiFinalShiftDenom);
+      rpDst[y*dstStride+x] = (((horPred<<shift1Dver)*horWeight + (vertPred<<shift1Dhor)*verWeight) + delt1) >> (shift1Dhor+shift1Dver+uiFinalShiftDenom);
 #else
       rpDst[y*dstStride+x] = ((horPred<<shift1Dver) + (vertPred<<shift1Dhor) + delt) >> (shift1Dhor+shift1Dver+1);
 #endif
@@ -3405,88 +3392,6 @@ Void TComPrediction::xPredIntraPlanar( const Pel* pSrc, Int srcStride, Pel* rpDs
     }
   }
 }
-
-#if E0068_UW_PLANAR
-/** Function for deriving equal weight planar intra prediction. 
- * \param pSrc        pointer to reconstructed sample array
- * \param srcStride   the stride of the reconstructed sample array
- * \param rpDst       reference to pointer for the prediction sample array
- * \param dstStride   the stride of the prediction sample array
- * \param width       the width of the block
- * \param height      the height of the block
- * \param channelType type of pel array (luma, chroma)
- * \param format      chroma format
- *
- * This function derives the prediction samples for planar mode (intra coding).
- */
-//NOTE: Bit-Limit - 24-bit source
-Void TComPrediction::xPredIntraEqualWeightPlanar( const Pel* pSrc, Int srcStride, Pel* rpDst, Int dstStride, UInt width, UInt height )
-{
-#if !JVET_C0024_QTBT
-  assert(width <= height);
-#endif
-
-  Int leftColumn[MAX_CU_SIZE+1], topRow[MAX_CU_SIZE+1], bottomRow[MAX_CU_SIZE], rightColumn[MAX_CU_SIZE];
-#if JVET_C0024_QTBT
-  UInt shift1Dhor = g_aucConvertToBit[ width ] + MIN_CU_LOG2;
-  UInt shift1Dver = g_aucConvertToBit[ height ] + MIN_CU_LOG2;
-  UInt delt = width*height;
-#else
-  UInt shift1Dhor = g_aucConvertToBit[ width ] + 2;
-  UInt shift1Dver = g_aucConvertToBit[ height ] + 2;
-#endif
-  // Get left and above reference column and row
-  for(Int k=0;k<width+1;k++)
-  {
-    topRow[k] = pSrc[k-srcStride];
-  }
-
-  for (Int k=0; k < height+1; k++)
-  {
-    leftColumn[k] = pSrc[k*srcStride-1];
-  }
-
-  // Prepare intermediate variables used in interpolation
-  Int bottomLeft = leftColumn[height];
-  Int topRight   = topRow[width];
-
-  for(Int k=0;k<width;k++)
-  {
-    bottomRow[k]  = bottomLeft - topRow[k];
-    topRow[k]     <<= shift1Dver;
-  }
-
-  for(Int k=0;k<height;k++)
-  {
-    rightColumn[k]  = topRight - leftColumn[k];
-    leftColumn[k]   <<= shift1Dhor;
-  }
-
-  const UInt topRowShift = 0;
-
-  // Generate prediction signal
-  for (Int y=0;y<height;y++)
-  {
-#if JVET_C0024_QTBT
-    Int horPred = leftColumn[y];
-#else
-    Int horPred = leftColumn[y] + width;
-#endif
-    for (Int x=0;x<width;x++)
-    {
-      horPred += rightColumn[y];
-      topRow[x] += bottomRow[x];
-
-      Int vertPred = ((topRow[x] + topRowShift)>>topRowShift);
-#if JVET_C0024_QTBT
-      rpDst[y*dstStride+x] = ((horPred<<shift1Dver) + (vertPred<<shift1Dhor) + delt) >> (shift1Dhor+shift1Dver+1);
-#else
-      rpDst[y*dstStride+x] = ( horPred + vertPred ) >> (shift1Dhor+1);
-#endif
-    }
-  }
-}
-#endif
 
 /** Function for filtering intra DC predictor.
  * \param pSrc pointer to reconstructed sample array
