@@ -50,7 +50,7 @@
 #define JOINT_TEMPLATE_MATCHING                           1  ///< joint template matching, JVET_E0035
 #if JOINT_TEMPLATE_MATCHING
 #define UNI_BI_SELECTION                                  1  ///< selection between uni-prediction and bi-prediction
-#define BI_REFINE                                         0  ///< bi-directional template matching
+#define BI_REFINE                                         1  ///< bi-directional template matching
 #endif
 
 ///////////////////////////////////////////////////////////
