@@ -4673,7 +4673,7 @@ Bool TComPrediction::xFrucFindBlkMv( TComDataCU * pCU , UInt uiPUIdx )
         uiMinCostBi = xFrucRefineMv(mvFinal, eCurRefPicList, uiMinCostBi, nSearchMethod, pCU, uiAbsPartIdx, mvFinal[eCurRefPicList], nWidth, nHeight, true, false );
 #endif
 #if UNI_BI_SELECTION
-        if (uiMinCostBi <= 2 * min(uiMinCost[0], uiMinCost[1]))
+        if (uiMinCostBi <= 1.1 * 2 * min(uiMinCost[0], uiMinCost[1]))
         {
             assert(mvFinal[0].getRefIdx() >= 0 && mvFinal[1].getRefIdx() >= 0);
         }
