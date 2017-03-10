@@ -62,7 +62,7 @@
 #endif
 
 #if BILATERAL_FILTER_TEST==2
-#define BILATERAL_FILTER_REDUCE_RANGE 536 // reduce coeff range
+#define BILATERAL_FILTER_REDUCE_RANGE 65 // reduce coeff range
 #define BILATERAL_FILTER_MULTIPLY_CENTER_VALUE 1 // Use this to store only one table instead of six
 #if BILATERAL_FILTER_REDUCE_RANGE == 0
 #define BILATERAL_FILTER_FIX_OVERFLOW_FOR_16BITS 1 // Use this to avoid overflow in 32-bit unsigned int for 16x16 inter filtering. This is only needed if we store 16 bit values.
