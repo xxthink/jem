@@ -350,6 +350,7 @@
 #define FIX_TICKET40                                      1  ///< Fix of ticket #40 (ALF crash when image height is greater than image width)
 #define FIX_TICKET42                                      1  ///< Fix of ticket #42 (CTU bits/distortion calculation mistake for I slice when QTBT is enabled)
 #define FIX_TICKET43                                      1  ///< Fix of ticekt #43 (Different coding performance when D0127 is on/off)
+#define FIX_TICKET45                                      1  ///< Fix of ticket #45 (Console output error of nQP when LCU level rate control is enabled)
 
 ///////////////////////////////////////////////////////////
 // KTA tools section end
