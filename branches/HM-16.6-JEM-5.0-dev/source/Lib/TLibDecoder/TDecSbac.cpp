@@ -2473,9 +2473,7 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
 #endif
     uiIntraMode = pcCU->getIntraDir( toChannelType(compID), uiAbsPartIdx );
 #if JVET_C0024_QTBT
-#if JVET_E0062_MULTI_DMS
-    uiIntraMode = uiIntraMode; 
-#else
+#if !JVET_E0062_MULTI_DMS
     uiIntraMode = (uiIntraMode==DM_CHROMA_IDX && !bIsLuma) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx) : uiIntraMode;
 #endif
 #else
