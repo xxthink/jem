@@ -218,10 +218,11 @@ static const Int MMLM_SAMPLE_NEIGHBOR_LINES =                       2;
 static const Int  LM_SYMBOL_NUM = (2 + JVET_E0077_MMLM + LM_FILTER_NUM);
 #endif
 
+static const Int ZERO_OUT_TH =                                    32;  ///< threshold of zeor-out transform
 
 #if COM16_C806_T64
 #if JVET_C0024_QTBT
-static const Int MLS_GRP_NUM =                                    1024; ///< Max number of coefficient groups, max(16, 256)
+static const Int MLS_GRP_NUM =                                   1024; ///< Max number of coefficient groups, max(16, 256)
 #else
 static const Int MLS_GRP_NUM =                                    256; ///< Max number of coefficient groups, max(16, 256)
 #endif
@@ -238,9 +239,6 @@ static const Int SCAN_SET_SIZE =                                   (1 << MLS_CG_
 
 #if JVET_C0046_ZO_ASSERT
 static const Int TH_LOG2TBAREASIZE =                               10; ///< Threshold for zeroing out
-#if JVET_C0046_ZO_ASSERT_FIX_TICKET24
-static const Int JVET_C0046_ZERO_OUT_TH =                          32;
-#endif
 #endif
 
 #if ADAPTIVE_QP_SELECTION
@@ -472,10 +470,6 @@ static const Double MRG_FAST_RATIO    =                             1.25;
 
 #if JVET_C0024_PBINTRA_FAST
 static const Double PBINTRA_RATIO     =                             1.1;
-#endif
-
-#if JVET_C0024_ZERO_OUT_FIX
-static const Int    JVET_C0024_ZERO_OUT_TH =                        32;
 #endif
 
 //QTBT high level parameters
