@@ -218,6 +218,7 @@ protected:
   Int       m_bipredSearchRange;
   Bool      m_bClipForBiPredMeEnabled;
   Bool      m_bFastMEAssumingSmootherMVEnabled;
+  Int       m_minSearchWindow;
 
   //====== Quality control ========
   Int       m_iMaxDeltaQP;                      //  Max. absolute delta QP (1:default)
@@ -621,6 +622,7 @@ public:
   Void      setBipredSearchRange            ( Int   i )      { m_bipredSearchRange = i; }
   Void      setClipForBiPredMeEnabled       ( Bool  b )      { m_bClipForBiPredMeEnabled = b; }
   Void      setFastMEAssumingSmootherMVEnabled ( Bool b )    { m_bFastMEAssumingSmootherMVEnabled = b; }
+  Void      setMinSearchWindow                (Int   i)      { m_minSearchWindow = i; }
 
   //====== Quality control ========
   Void      setMaxDeltaQP                   ( Int   i )      { m_iMaxDeltaQP = i; }
@@ -702,6 +704,7 @@ public:
   Int       getSearchRange                  () const { return m_iSearchRange; }
   Bool      getClipForBiPredMeEnabled       () const { return m_bClipForBiPredMeEnabled; }
   Bool      getFastMEAssumingSmootherMVEnabled ( ) const { return m_bFastMEAssumingSmootherMVEnabled; }
+  Int       getMinSearchWindow              () const { return m_minSearchWindow; }
 
   //==== Quality control ========
   Int       getMaxDeltaQP                   ()      { return  m_iMaxDeltaQP; }
