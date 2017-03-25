@@ -3783,9 +3783,9 @@ Void TComPrediction::subBlockOBMC( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv
           //motion compensation and OBMC
           xSubBlockMotionCompensation( pcCU, pcYuvTmpPred1, uiSubPartIdx, uiOBMCBlkSize, uiOBMCBlkSize 
 #if JVET_E0052_DMVR
-    , bRefineflag 
+            , bRefineflag 
 #endif
-);
+          );
 
           if( bOBMC4ME )
           {
@@ -3830,7 +3830,11 @@ Void TComPrediction::subBlockOBMC( TComDataCU*  pcCU, UInt uiAbsPartIdx, TComYuv
           //motion compensation and OBMC
           if( !bCurSubBkFetched )
           {
-            xSubBlockMotionCompensation( pcCU, bFeAllSubBkIn1Line ? pcYuvTmpPred2 : pcYuvTmpPred1, uiSubPartIdx, uiSubBlockWidth, uiSubBlockHeight );
+            xSubBlockMotionCompensation( pcCU, bFeAllSubBkIn1Line ? pcYuvTmpPred2 : pcYuvTmpPred1, uiSubPartIdx, uiSubBlockWidth, uiSubBlockHeight
+#if JVET_E0052_DMVR
+    , bRefineflag 
+#endif
+);
           }
 
           if( bOBMC4ME )
