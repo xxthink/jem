@@ -1,0 +1,64 @@
+*** AHG7 anchor code is used for JVET common test conditions and evaluation procedures for HDR/WCG video as defined in JVET-E1020 *******
+it contains luma adaptive QP technology by Sharp and chroma QP scaling by Ericsson used in MPEG-HDR anchor3.2. Refer JCTVC-W0054 for details.  
+
+///////////////////////////////////////////////////////////////////////
+//           Chroma QP scaling                                     ////
+//////////////////////////////////////////////////////////////////////
+
+Changes related to chroma QP scaling are under ERICSSON_CHROMA_QPSCALE
+
+## example config parameters. They are already included in the per-sequence config files
+
+WCGPPSChromaQpScale                 : -0.46       # Linear chroma QP offset mapping (scale) based on QP
+WCGPPSChromaQpOffset                : 9.26        # Linear chroma QP offset mapping (offset) based on QP
+WCGPPSCbQpScale                     : 1.14        # Scale factor depending on capture and representation color space
+WCGPPSCrQpScale                     : 1.79        # Scale factor depending on capture and representation color space 
+
+
+/////////////////////////////////////////////////////////////////////
+/// Luma adaptive QP control  with explicit delta QP signalling  ////
+/////////////////////////////////////////////////////////////////////
+
+Changes related to luma adaptive QP with explicit delta QP signalling are under macros starting with   SHARP_
+
+### example config parameters 1: enable luma adaptive delta QP at CTU level
+###
+LumaLevelToDeltaQPMode        : 1           # Luma activity based deltaQP control  -- 0: disabled;  1: send dQP
+MaxCuDQPDepth                 : 0           # Max depth of delta QP, should be less than MaxPartitionDepth
+
+### example config parameters 2: enable luma adaptive delta QP at CU level of depth 3
+LumaLevelToDeltaQPMode        : 1           # Luma activity based deltaQP control  -- 0: disabled;  1: send dQP;
+MaxCuDQPDepth                 : 0           # Max depth of delta QP, should be less than MaxPartitionDepth
+isSDR                         : 1           # 1 (default): SDR in PQ2100 container,   0: HDR
+
+Note: the per-sequence config files have been modifed to use the converted SDR files, ChromaQpScale etc. parameters. Default MaxCuDQPDepth=0
+
+Related Macros:
+(1) #define SHARP_LUMA_DELTA_QP                1            ///< enable luma adaptive QP, only intended for HDR or SDR data in ST-2084 
+
+There are two default LUT table defined in the code,  parameter isSDR specified in sequence config file is used to select which LUT is used. 
+This is also used to get the correct weight to compute the WPSNR inside the code. The LUT table can also be input from a file through command line or config file parameter LumaDQPFile
+
+(3) 
+#define SHARP_WEIGHT_DISTORTION              1            ///< use weighted distortion in RD decision
+#define SHARP_WEIGHT_DISTORTION_OUTPUT       1            ///< printout weighted PSNR
+
+To make RD decision align with the luma adaptive QP adjustment, JVET-C0095 proposed a weighted PSNR metric.
+They are incorporated into encoder RD decision, and are enabled by the above macros.
+The weighted PSNR is printed out in the encoder log file as:
+
+WPSNR SUMMARY---------------------------------------------------
+	Total Frames |   Bitrate     Y-PSNR    U-PSNR    V-PSNR    YUV-PSNR
+        7    w     210.9357   36.6616   40.2324   40.4726   37.5797
+
+
+(4) #define SHARP_DQP_BIT_STAT                  1             ///< for decoder output frame bits and deltaQP bits count
+For deltaQP overhead esimate, enable macro #SHARP_DQP_BIT_STAT  and run TAppDecoderAnalyserStatic 
+this makes decoder to output total bit usage and deltaQP bits per frame, and average % used by deltaQP bits.
+
+
+
+
+  
+  
+  

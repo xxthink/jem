@@ -111,6 +111,28 @@
 
 #define JVET_D0077_TRANSFORM_OPT                          1  ///< software optimization to take full advantages of zero rows/columns in transform coefficients
 #define JVET_D0077_SAVE_LOAD_ENC_INFO                     1  ///< save and load encoder decision for speedup
+////////////////////////////////////////////////////////////////////////////////////
+// Luma adaptive QP control related macros, are only implemented when QTBT on
+/////////////////////////////////////////////////////////////////////////////////////
+
+#define SHARP_LUMA_DELTA_QP                1               ///< enable luma adaptive QP, intended for data in ST-2084 container
+
+#if SHARP_LUMA_DELTA_QP
+#define SHARP_MAX_LUMA_DQP                 20              ///< max allowed positions for delta QP change based on luma
+#define SHARP_QP_LUMA_LUT_MAXSIZE          1024            ///< max LUT size for QP offset based on luma
+#define SHARP_WEIGHT_DISTORTION              1            ///< use weighted distortion in RD decision
+#define SHARP_WEIGHT_DISTORTION_OUTPUT       1            ///< printout weighted PSNR
+
+#define SHARP_DQP_BIT_STAT                   0             ///< for decoder output frame bits and deltaQP bits count
+#endif  // end of Luma adaptive QP control related macros
+
+#endif // end of JVET_C0024_QTBT
+
+/////////////////////////////////////////////////////////////////////////////////////
+// Chroma scaling for HDR data
+////////////////////////////////////////////////////////////////////////////////////
+#define ERICSSON_CHROMA_QPSCALE             1                ///< chroma QP scale for HDR data
+/////////////////////////////////////////////////////////////////////////////////////
 
 #define JVET_E0023_FAST_ENCODING_SETTING                  1
 #if JVET_E0023_FAST_ENCODING_SETTING
@@ -120,7 +142,6 @@
 #define FAST_SKIP_DEPTH_VALUE                             2
 #endif
 
-#endif // end of JVET_C0024_QTBT
 
 #define JVET_C0046_OMIT_ASSERT_ERDPCM                     1  ///< for RExt, omit assertion related to Explict Residual DPCM
 
@@ -718,6 +739,16 @@ enum DFunc
   DF_SADS48          = 48,
 
   DF_SSE_FRAME       = 50,     ///< Frame-based SSE
+#if SHARP_WEIGHT_DISTORTION         ///< Weighted SSE
+  DF_SSE_WTD             = 51,      ///< general size SSE
+  DF_SSE4_WTD            = 52,      ///<   4xM SSE
+  DF_SSE8_WTD            = 53,      ///<   8xM SSE
+  DF_SSE16_WTD           = 54,      ///<  16xM SSE
+  DF_SSE32_WTD           = 55,      ///<  32xM SSE
+  DF_SSE64_WTD           = 56,      ///<  64xM SSE
+  DF_SSE16N_WTD          = 57,      ///< 16NxM SSE
+  DF_DEFAULT_ORI         = 58,
+#endif
   DF_TOTAL_FUNCTIONS = 64
 };
 

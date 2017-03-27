@@ -349,6 +349,16 @@ strToScalingListMode[] =
   {"default", SCALING_LIST_DEFAULT},
   {"file",    SCALING_LIST_FILE_READ}
 };
+#if SHARP_LUMA_DELTA_QP
+
+#define SHARP_DEFAULT_LUMA_DQP_HDR                             10     // default number of positions for delta QP change based on luma
+static Int defaultdQpChangePointsHDR[SHARP_DEFAULT_LUMA_DQP_HDR] = { -3, -2, -1, 0, 1, 2, 3, 4, 5, 6 };
+static Int defaultLumaChangePointsHDR[SHARP_DEFAULT_LUMA_DQP_HDR] = { 0, 301, 367, 434, 501, 567, 634, 701, 767, 834 };
+
+#define SHARP_DEFAULT_LUMA_DQP_SDR                             13     // default number of positions for delta QP change based on luma
+static Int defaultdQpChangePointsSDR[SHARP_DEFAULT_LUMA_DQP_SDR] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+static Int defaultLumaChangePointsSDR[SHARP_DEFAULT_LUMA_DQP_SDR] = { 0, 117, 150, 184, 217, 250, 284, 317, 350, 384, 417, 450, 484 };
+#endif
 
 template<typename T, typename P>
 static std::string enumToString(P map[], UInt mapLen, const T val)
@@ -868,6 +878,11 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   ("LambdaModifier6,-LM6",                            m_adLambdaModifier[ 6 ],                  ( Double )1.0, "Lambda modifier for temporal layer 6")
 
   /* Quantization parameters */
+#if SHARP_LUMA_DELTA_QP
+  ("LumaLevelToDeltaQPMode",                          m_useLumaDeltaQP,                           0u, "Luma based quant control (0: not used. 1: send dQP, 2: coefficient scaling")
+  ("isSDR",                                           m_bIsSDR,                                   true, "true: SDR in PQ container; false: HDR ")
+  ("LumaDQPFile",                                     m_lumaQpLUTFileName,                               string(""), "luma dQP file name")
+#endif
   ("QP,q",                                            m_fQP,                                             30.0, "Qp value, if value is float, QP is switched once during encoding")
 #if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
   ("IQPFactor,-IQF",                                  m_dIntraQpFactor,                                  -1.0, "Intra QP Factor for Lambda Computation. If negative, the default will scale lambda based on GOP size (unless LambdaFromQpEnable then IntraQPOffset is used instead)")
@@ -882,6 +897,13 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 
   ("CbQpOffset,-cbqpofs",                             m_cbQpOffset,                                         0, "Chroma Cb QP Offset")
   ("CrQpOffset,-crqpofs",                             m_crQpOffset,                                         0, "Chroma Cr QP Offset")
+
+#if ERICSSON_CHROMA_QPSCALE
+  ("WCGPPSCbQpScale",                                 m_fCbQpScale,                                       1.0, "WCG Chroma Cb QP Scale")
+  ("WCGPPSCrQpScale",                                 m_fCrQpScale,                                       1.0, "WCG Chroma Cr QP Scale")
+  ("WCGPPSChromaQpScale",                             m_fChromaQpScale,                                   0.0, "WCG Chroma QP Scale")
+  ("WCGPPSChromaQpOffset",                            m_fChromaQpOffset,                                  0.0, "WCG Chroma QP Offset")
+#endif
 
 #if ADAPTIVE_QP_SELECTION
   ("AdaptiveQpSelection,-aqps",                       m_bUseAdaptQpSelect,                              false, "AdaptiveQpSelection")
@@ -1571,7 +1593,56 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
       m_log2SaoOffsetScale[ch]=UInt(saoOffsetBitShift[ch]);
     }
   }
+#if SHARP_LUMA_DELTA_QP
+  Bool lumaQpLUTSet = false;
+  if (m_useLumaDeltaQP) {
+    if ( !m_lumaQpLUTFileName.empty() )
+    {
+      FILE* fpt=fopen( m_lumaQpLUTFileName.c_str(), "r" );
+      if ( fpt )
+      {
+        Int iValue, qp;
+        Int index = 0;
+        static const int LINE_SIZE=256;
+        Char line[LINE_SIZE];   
 
+        while (!feof(fpt) && (index < SHARP_MAX_LUMA_DQP))
+        {
+          Char *ret = fgets(line, LINE_SIZE, fpt);
+          if (ret!=NULL && line[0] != '#')
+          {
+            sscanf(line, "%d %d", &qp, &iValue );
+            m_dQPChangePoints[ index ] = qp;
+            m_dQPLumaChangePoints[ index ] = iValue;
+            fprintf(stderr, "qp %d  luma %d \n", qp, iValue);
+            index++;
+          }
+        }
+        lumaQpLUTSet = true;
+        m_uiNbrOfUsedDQPChangePoints = index;
+        fclose(fpt);
+      }
+      else
+        fprintf(stderr, "luamDQP file not found : %s\n", m_lumaQpLUTFileName.c_str());
+    }
+    if (!lumaQpLUTSet ) // set default values
+    { 
+      if (m_bIsSDR) {
+        fprintf(stderr, "set default defaultLumaChangePoints SDR\n");
+        m_uiNbrOfUsedDQPChangePoints = SHARP_DEFAULT_LUMA_DQP_SDR;
+        memcpy(m_dQPLumaChangePoints, defaultLumaChangePointsSDR, sizeof(Int)*SHARP_DEFAULT_LUMA_DQP_SDR);
+        memcpy(m_dQPChangePoints, defaultdQpChangePointsSDR, sizeof(Int)*SHARP_DEFAULT_LUMA_DQP_SDR);
+      }
+      else
+      {
+        fprintf(stderr, "set default defaultLumaChangePoints HDR\n");
+        m_uiNbrOfUsedDQPChangePoints = SHARP_DEFAULT_LUMA_DQP_HDR;
+        memcpy(m_dQPLumaChangePoints, defaultLumaChangePointsHDR, sizeof(Int)*SHARP_DEFAULT_LUMA_DQP_HDR);
+        memcpy(m_dQPChangePoints, defaultdQpChangePointsHDR, sizeof(Int)*SHARP_DEFAULT_LUMA_DQP_HDR);
+      }
+    }
+  }
+#endif
   // reading external dQP description from file
   if ( m_pchdQPFile )
   {
@@ -1908,6 +1979,15 @@ Void TAppEncCfg::xCheckParameter()
   xConfirmPara( m_iSearchRange < 0 ,                                                        "Search Range must be more than 0" );
   xConfirmPara( m_bipredSearchRange < 0 ,                                                   "Search Range must be more than 0" );
   xConfirmPara( m_iMaxDeltaQP > 7,                                                          "Absolute Delta QP exceeds supported range (0 to 7)" );
+#if SHARP_LUMA_DELTA_QP  
+  if (m_useLumaDeltaQP) 
+  {
+   xConfirmPara( m_uiDeltaQpRD > 0, "Luma-based Delta QP cannot be used together with slice level multiple-QP optimization!\n" );
+#if SHARP_WEIGHT_DISTORTION
+   xConfirmPara( m_chromaFormatIDC != CHROMA_420, "Weighted distortion currently is only implemented for CHROMA_420 format!\n");
+#endif
+  }
+#endif
 #if !JVET_C0024_QTBT
   xConfirmPara( m_iMaxCuDQPDepth > m_uiMaxCUDepth - 1,                                          "Absolute depth for a minimum CuDQP exceeds maximum coding unit depth" );
 #endif
@@ -2756,6 +2836,10 @@ Void TAppEncCfg::xPrintParameter()
   printf("RDQ:%d ", m_useRDOQ            );
   printf("RDQTS:%d ", m_useRDOQTS        );
   printf("RDpenalty:%d ", m_rdPenalty  );
+#if SHARP_LUMA_DELTA_QP 
+  printf("LQP:%d ", m_useLumaDeltaQP                  );
+  printf("SdrLQPLUT %d ", m_bIsSDR);
+#endif
   printf("SQP:%d ", m_uiDeltaQpRD         );
   printf("ASR:%d ", m_bUseASR             );
   printf("FEN:%d ", m_bUseFastEnc         );

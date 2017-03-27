@@ -166,6 +166,12 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setDiffCuChromaQpOffsetDepth                         ( m_diffCuChromaQpOffsetDepth );
   m_cTEncTop.setChromaCbQpOffset                                  ( m_cbQpOffset     );
   m_cTEncTop.setChromaCrQpOffset                                  ( m_crQpOffset  );
+#if ERICSSON_CHROMA_QPSCALE
+  m_cTEncTop.setChromaCbQpScale                                   ( m_fCbQpScale );
+  m_cTEncTop.setChromaCrQpScale                                   ( m_fCrQpScale );
+  m_cTEncTop.setChromaQpScale                                     ( m_fChromaQpScale );
+  m_cTEncTop.setChromaQpOffset                                    ( m_fChromaQpOffset );
+#endif
 
   m_cTEncTop.setChromaFormatIdc                                   ( m_chromaFormatIDC  );
 
@@ -178,6 +184,13 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setExtendedPrecisionProcessingFlag                   ( m_extendedPrecisionProcessingFlag );
   m_cTEncTop.setHighPrecisionOffsetsEnabledFlag                   ( m_highPrecisionOffsetsEnabledFlag );
   //====== Tool list ========
+#if SHARP_LUMA_DELTA_QP
+  m_cTEncTop.setUseLumaDeltaQp                                    (m_useLumaDeltaQP);
+  m_cTEncTop.setIsSDR                                             (m_bIsSDR);
+  m_cTEncTop.setNbrOfUsedDQPChangePoints                          (m_uiNbrOfUsedDQPChangePoints);
+  m_cTEncTop.setDQpChangePoints                                   (m_dQPChangePoints);
+  m_cTEncTop.setLumaDQpChangePoints                               (m_dQPLumaChangePoints);
+#endif
 #if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
   m_cTEncTop.setDeltaQpRD( (m_costMode==COST_LOSSLESS_CODING) ? 0 : m_uiDeltaQpRD );
 #else

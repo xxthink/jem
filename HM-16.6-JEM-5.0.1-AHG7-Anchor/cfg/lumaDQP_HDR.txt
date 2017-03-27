@@ -1,0 +1,11 @@
+# Qp and Luma value pair (1 501) means from luma value 501, qp offset changes to 1) 
+-3 0 
+-2 301
+-1 367 
+0 434 
+1 501 
+2 567 
+3 634 
+4 701 
+5 767  
+6 834

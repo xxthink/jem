@@ -143,6 +143,100 @@ Void TEncSlice::init( TEncTop* pcEncTop )
   m_pcRateCtrl        = pcEncTop->getRateCtrl();
 }
 
+#if SHARP_LUMA_DELTA_QP//  copied from initEncSlice
+Void TEncSlice::updateLambda(TComSlice* rpcSlice, Int dQP) {
+    Int    NumberBFrames = ( m_pcCfg->getGOPSize() - 1 );
+    Int    SHIFT_QP = 12;    
+    Double dLambda_scale = 1.0 - Clip3( 0.0, 0.5, 0.05*(Double)(rpcSlice->getPic()->isField() ? NumberBFrames/2 : NumberBFrames) );
+#if FULL_NBIT
+    Int    bitdepth_luma_qp_scale = 6 * (rpcSlice->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA) - 8);
+#else
+    Int    bitdepth_luma_qp_scale = 0;
+#endif
+#if JVET_B0039_QP_FIX  // dQP may have been adjusted by lambda, get the QP without the lambda offset adjustment
+  Int lambdaQPOffset = rpcSlice->getSliceQpLambdaOffset();
+  dQP -= lambdaQPOffset;
+#endif
+    Double qp_temp = (Double) dQP + bitdepth_luma_qp_scale - SHIFT_QP;
+#if FULL_NBIT
+    Double qp_temp_orig = (Double) dQP - SHIFT_QP;
+#endif
+ enum SliceType eSliceType = rpcSlice->getSliceType();
+    Double dQPFactor = m_pcCfg->getGOPEntry(m_GopID).m_QPFactor;
+   if ( eSliceType==I_SLICE )
+   {
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+     if (m_pcCfg->getIntraQpFactor() >= 0.0 && m_pcCfg->getGOPEntry(m_GopID).m_sliceType != I_SLICE)
+     {
+       dQPFactor = m_pcCfg->getIntraQpFactor();
+     }
+     else
+     {
+       if (m_pcCfg->getLambdaFromQPEnable())
+       {
+         dQPFactor = 0.57;
+       }
+       else
+       {
+         dQPFactor = 0.57*dLambda_scale;
+       }
+     }
+#else
+     dQPFactor=0.57*dLambda_scale;
+#endif
+   }
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+   else if (m_pcCfg->getLambdaFromQPEnable())
+   {
+     dQPFactor = 0.57*dQPFactor;
+   }
+#endif
+    Double dLambda = dQPFactor*pow( 2.0, qp_temp/3.0 );
+    Int depth = rpcSlice->getDepth();
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+    if (!m_pcCfg->getLambdaFromQPEnable() && depth>0)
+#else
+    if ( depth>0 )
+#endif
+    {  
+#if FULL_NBIT
+      qp_temp_orig = rpcSlice->getSliceQp() - SHIFT_QP; // avoid lambda  over adjustment,  use slice_qp here
+      dLambda *= Clip3( 2.00, 4.00, (qp_temp_orig / 6.0) ); // (j == B_SLICE && p_cur_frm->layer != 0 )
+#else
+      Int qp_temp_slice = rpcSlice->getSliceQp() + bitdepth_luma_qp_scale - SHIFT_QP; // avoid lambda  over adjustment,  use slice_qp here
+      dLambda *= Clip3( 2.00, 4.00, (qp_temp_slice / 6.0) ); // (j == B_SLICE && p_cur_frm->layer != 0 )
+#endif
+    }
+    if ( !m_pcCfg->getUseHADME() && rpcSlice->getSliceType( ) != I_SLICE )
+    {
+      dLambda *= 0.95;
+    }
+
+#if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
+    const Int temporalId = m_pcCfg->getGOPEntry(m_GopID).m_temporalId;
+    const std::vector<Double> &intraLambdaModifiers = m_pcCfg->getIntraLambdaModifier();
+    Double lambdaModifier;
+    if( rpcSlice->getSliceType( ) != I_SLICE || intraLambdaModifiers.empty())
+    {
+      lambdaModifier = m_pcCfg->getLambdaModifier(temporalId);
+    }
+    else
+    {
+      lambdaModifier = intraLambdaModifiers[(temporalId < intraLambdaModifiers.size()) ? temporalId : (intraLambdaModifiers.size() - 1)];
+    }
+    dLambda *= lambdaModifier;
+#endif
+
+#if JVET_B0039_QP_FIX
+    Double lambdaRef = 0.57*pow(2.0, qp_temp/3.0);
+    Double qpOffset = floor((3.0*log(dLambda/lambdaRef)/log(2.0)) +0.5);
+    dQP += qpOffset;
+#endif
+    Int qpBDoffset = rpcSlice->getSPS()->getQpBDOffset(CHANNEL_TYPE_LUMA);
+    Int iQP = max( -qpBDoffset, min( MAX_QP, (Int) floor( dQP + 0.5 ) ) ); 
+    setUpLambda(rpcSlice, dLambda, iQP);
+}
+#endif
 
 
 Void
@@ -205,6 +299,9 @@ Void TEncSlice::initEncSlice( TComPic* pcPic, Int pocLast, Int pocCurr, Int iGOP
   rpcSlice->setPOC( pocCurr );
 #if VCEG_AZ06_IC
   rpcSlice->setApplyIC( false );
+#endif  
+#if SHARP_LUMA_DELTA_QP
+  m_GopID = iGOPid;
 #endif  
   // depth computation based on GOP size
   Int depth;
@@ -293,7 +390,11 @@ Void TEncSlice::initEncSlice( TComPic* pcPic, Int pocLast, Int pocCurr, Int iGOP
   dQP = m_pcCfg->getQP();
   if(eSliceType!=I_SLICE)
   {
+#if SHARP_LUMA_DELTA_QP
+ if (!(( m_pcCfg->getMaxDeltaQP() == 0) && (m_pcCfg->getUseLumaDeltaQp() == 0) && (dQP == -rpcSlice->getSPS()->getQpBDOffset(CHANNEL_TYPE_LUMA) ) && (rpcSlice->getPPS()->getTransquantBypassEnableFlag())))
+#else
     if (!(( m_pcCfg->getMaxDeltaQP() == 0 ) && (dQP == -rpcSlice->getSPS()->getQpBDOffset(CHANNEL_TYPE_LUMA) ) && (rpcSlice->getPPS()->getTransquantBypassEnableFlag())))
+#endif
     {
       dQP += m_pcCfg->getGOPEntry(iGOPid).m_QPOffset;
     }
@@ -413,6 +514,10 @@ Void TEncSlice::initEncSlice( TComPic* pcPic, Int pocLast, Int pocCurr, Int iGOP
     // qp correction to get HM lambda
     Double qpOffset = floor((3.0*log(dLambda/lambdaRef)/log(2.0)) +0.5);
     dQP += qpOffset;
+#if SHARP_LUMA_DELTA_QP
+    if (iDQpIdx==0)
+      rpcSlice->setSliceQpLambdaOffset( qpOffset );        // save the qpOffset for updateLambda to get original slice qp
+#endif
 #endif
 
     iQP = max( -rpcSlice->getSPS()->getQpBDOffset(CHANNEL_TYPE_LUMA), min( MAX_QP, (Int) floor( dQP + 0.5 ) ) );
@@ -447,6 +552,14 @@ Void TEncSlice::initEncSlice( TComPic* pcPic, Int pocLast, Int pocCurr, Int iGOP
 #endif
 
   setUpLambda(rpcSlice, dLambda, iQP);
+#if SHARP_WEIGHT_DISTORTION
+  // cost = Distortion + Lambda*R, 
+  // when QP is adjusted by luma, distortion is changed, so we have to adjust lambda to match the distortion, then the cost function becomes
+  // costA = Distortion + AdjustedLambda * R          -- currently, costA is still used when calculating intermediate cost of using SAD, HAD, resisual etc. 
+  // an alternative way is to weight the distortion to before the luma QP adjustment, then the cost function becomes
+  // costB = weightedDistortion + Lambda * R          -- currently, costB is used to calculat final cost, and when DF_FUNC is DF_DEFAULT 
+  m_pcRdCost->saveUnadjustedLambda();
+#endif
 
   if (m_pcCfg->getFastMEForGenBLowDelayEnabled())
   {
