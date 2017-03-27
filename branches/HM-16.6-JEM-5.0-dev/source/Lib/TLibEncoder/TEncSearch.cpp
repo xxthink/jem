@@ -2075,7 +2075,7 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
 #endif
          
                                                                                 );
-#if JVET_E0077_ENHANCED_LM
+#if JVET_E0077_ENHANCED_LM && JVET_C0024_QTBT
     if (compID == COMPONENT_Y)
     {
 #endif
@@ -2096,7 +2096,7 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
 
     initIntraPatternChType( rTu, compID, bUseFilteredPredictions DEBUG_STRING_PASS_INTO(sDebug) );
 #endif
-#if JVET_E0077_ENHANCED_LM
+#if JVET_E0077_ENHANCED_LM && JVET_C0024_QTBT
   }
 #endif
     //===== get prediction signal =====
@@ -2107,7 +2107,7 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
 #endif
         )
     {
-#if !JVET_E0077_ENHANCED_LM
+#if !JVET_E0077_ENHANCED_LM || !JVET_C0024_QTBT
             getLumaRecPixels(rTu, uiWidth, uiHeight);
 #endif
 
