@@ -93,7 +93,9 @@ private:
   TEncAnalyze             m_gcAnalyzeI;
   TEncAnalyze             m_gcAnalyzeP;
   TEncAnalyze             m_gcAnalyzeB;
-
+#if SHARP_WEIGHT_DISTORTION_OUTPUT
+  TEncAnalyze             m_gcAnalyzeWPSNR;
+#endif
   TEncAnalyze             m_gcAnalyzeAll_in;
   //  Data
   Bool                    m_bLongtermTestPictureHasBeenCoded;
@@ -191,6 +193,9 @@ public:
   Void arrangeLongtermPicturesInRPS(TComSlice *, TComList<TComPic*>& );
 #if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
   Int xUpdateTStates ( UInt uiSliceType, UInt uiSliceQP,  TComStats* apcStats );  
+#endif
+#if SHARP_WEIGHT_DISTORTION || SHARP_WEIGHT_DISTORTION_OUTPUT
+  Void initPQWeightTable(); 
 #endif
 
 protected:

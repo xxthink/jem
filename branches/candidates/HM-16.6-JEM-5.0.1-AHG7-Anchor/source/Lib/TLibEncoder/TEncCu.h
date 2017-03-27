@@ -172,6 +172,14 @@ public:
   /// copy parameters from encoder class
   Void  init                ( TEncTop* pcEncTop );
 
+#if SHARP_LUMA_DELTA_QP
+  Int  m_LumaQPOffset;
+  TEncSlice*             m_pcSliceEncoder;
+  Void                   setSliceEncoder( TEncSlice* pSliceEncoder) {m_pcSliceEncoder=pSliceEncoder;}
+  TEncSlice*             getSliceEncoder() { return m_pcSliceEncoder;}
+  
+  Int                    CalculateLumaActivity(TComDataCU *pcCU, const UInt uiAbsPartIdx, const TComYuv * pOrgYuv);
+#endif
   /// create internal buffers
   Void  create              ( UChar uhTotalDepth, UInt iMaxWidth, UInt iMaxHeight, ChromaFormat chromaFormat );
 
