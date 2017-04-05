@@ -2096,8 +2096,10 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
 
     initIntraPatternChType( rTu, compID, bUseFilteredPredictions DEBUG_STRING_PASS_INTO(sDebug) );
 #endif
+#if COM16_C983_RSAF
 #if JVET_E0077_ENHANCED_LM && JVET_C0024_QTBT
   }
+#endif
 #endif
     //===== get prediction signal =====
 #if COM16_C806_LMCHROMA
@@ -6278,8 +6280,13 @@ TEncSearch::estIntraPredChromaQT(TComDataCU* pcCU,
 #if JVET_E0077_ENHANCED_LM
         const TComRectangle &puRect = tuRecurseWithPU.getRect(COMPONENT_Cb);
         getLumaRecPixels(tuRecurseWithPU, puRect.width, puRect.height);
+#if !COM16_C983_RSAF 
+        initIntraPatternChType(tuRecurseWithPU, COMPONENT_Cb, false  DEBUG_STRING_PASS_INTO(sDebug));
+        initIntraPatternChType(tuRecurseWithPU, COMPONENT_Cr, false  DEBUG_STRING_PASS_INTO(sDebug));
+#else
         initIntraPatternChType(tuRecurseWithPU, COMPONENT_Cb, false, false  DEBUG_STRING_PASS_INTO(sDebug));
         initIntraPatternChType(tuRecurseWithPU, COMPONENT_Cr, false, false  DEBUG_STRING_PASS_INTO(sDebug)); 
+#endif
  
 #endif
 
