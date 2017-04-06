@@ -2075,7 +2075,7 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
 #endif
          
                                                                                 );
-#if JVET_E0077_ENHANCED_LM
+#if JVET_E0077_ENHANCED_LM && JVET_C0024_QTBT
     if (compID == COMPONENT_Y)
     {
 #endif
@@ -2096,8 +2096,10 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
 
     initIntraPatternChType( rTu, compID, bUseFilteredPredictions DEBUG_STRING_PASS_INTO(sDebug) );
 #endif
-#if JVET_E0077_ENHANCED_LM
+#if COM16_C983_RSAF
+#if JVET_E0077_ENHANCED_LM && JVET_C0024_QTBT
   }
+#endif
 #endif
     //===== get prediction signal =====
 #if COM16_C806_LMCHROMA
@@ -2107,7 +2109,7 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
 #endif
         )
     {
-#if !JVET_E0077_ENHANCED_LM
+#if !JVET_E0077_ENHANCED_LM || !JVET_C0024_QTBT
             getLumaRecPixels(rTu, uiWidth, uiHeight);
 #endif
 
@@ -5101,12 +5103,16 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 
 #if JVET_D0127_REDUNDANCY_REMOVAL
 #if JVET_C0024_QTBT
-  Bool NSSTFlag = (pcCU->getROTIdx(CHANNEL_TYPE_LUMA, 0) == 0);
+  Bool NSSTFlag = (pcCU->getROTIdx(CHANNEL_TYPE_LUMA, 0) == 0)
+#if FIX_TICKET43
+    || (uiWidth > 64 || uiHeight > 64)
+#endif
+    ;
   Bool NSSTSaveFlag = (pcCU->getROTIdx(CHANNEL_TYPE_LUMA, 0) == 0)
 #if COM16_C1046_PDPC_INTRA
       && (pcCU->getPDPCIdx(0) == 0)
 #endif
-#if COM16_C806_EMT
+#if COM16_C806_EMT && !FIX_TICKET43
       && (pcCU->getEmtCuFlag(0) == 0)
 #endif
       ;
@@ -6274,8 +6280,13 @@ TEncSearch::estIntraPredChromaQT(TComDataCU* pcCU,
 #if JVET_E0077_ENHANCED_LM
         const TComRectangle &puRect = tuRecurseWithPU.getRect(COMPONENT_Cb);
         getLumaRecPixels(tuRecurseWithPU, puRect.width, puRect.height);
+#if !COM16_C983_RSAF 
+        initIntraPatternChType(tuRecurseWithPU, COMPONENT_Cb, false  DEBUG_STRING_PASS_INTO(sDebug));
+        initIntraPatternChType(tuRecurseWithPU, COMPONENT_Cr, false  DEBUG_STRING_PASS_INTO(sDebug));
+#else
         initIntraPatternChType(tuRecurseWithPU, COMPONENT_Cb, false, false  DEBUG_STRING_PASS_INTO(sDebug));
         initIntraPatternChType(tuRecurseWithPU, COMPONENT_Cr, false, false  DEBUG_STRING_PASS_INTO(sDebug)); 
+#endif
  
 #endif
 

@@ -94,7 +94,6 @@
 #define JVET_C0024_CTU_256                                0  ///< support CTU 256 for QTBT, force QT split for CU 256x256 
 #define JVET_C0024_ENCODER_OVERFLOW_FIX                   1  ///< fix the encoder overflow in the case of very high QP
 #define JVET_C0024_DELTA_QP_FIX                           1  ///< support delta QP signaling in QTBT
-#define JVET_C0024_ZERO_OUT_FIX                           1
 
 // for fast algorithms
 #define JVET_C0024_AMAX_BT                                1  ///< slice level adaptive maximum BT size (encoder only)
@@ -197,9 +196,6 @@
 #if JVET_C0046_ZO_ASSERT
 #define JVET_C0046_ZO_ASSERT_CODED_SBK_FLAG               1  ///< if (iCGX > TH1 || iCGY > TH1) and (no TS && no TQBypass), then coded_sbk_flag(iCGX, iCGY) shall be 0.
 #define JVET_C0046_ZO_ASSERT_LAST_COEF                    1  ///< if (posLastX>TH2 || posLastY>TH2) and (no TS && no TQBypass), then last coef (x,y) shall be in the low frequency domain.
-#if !JVET_C0024_QTBT
-#define JVET_C0046_ZO_ASSERT_FIX_TICKET24                 1  ///< fixed ticket#24
-#endif
 #endif
 #endif
 
@@ -349,6 +345,8 @@
 #define FIX_TICKET39                                      1  ///< Fix of ticket #39 (encoder bug of delta QP)
 #define FIX_TICKET40                                      1  ///< Fix of ticket #40 (ALF crash when image height is greater than image width)
 #define FIX_TICKET42                                      1  ///< Fix of ticket #42 (CTU bits/distortion calculation mistake for I slice when QTBT is enabled)
+#define FIX_TICKET43                                      1  ///< Fix of ticekt #43 (Different coding performance when D0127 is on/off)
+#define FIX_TICKET45                                      1  ///< Fix of ticket #45 (Console output error of nQP when LCU level rate control is enabled)
 
 ///////////////////////////////////////////////////////////
 // KTA tools section end
@@ -393,6 +391,8 @@
 // ====================================================================================================================
 
 #define ADAPTIVE_QP_SELECTION                             1 ///< G382: Adaptive reconstruction levels, non-normative part for adaptive QP selection
+
+#define JVET_E0059_FLOATING_POINT_QP_FIX                  1 ///< Replace floating point QP with a source-file frame number.
 
 #define AMP_ENC_SPEEDUP                                   1 ///< encoder only speed-up by AMP mode skipping
 #if AMP_ENC_SPEEDUP

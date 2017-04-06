@@ -2284,6 +2284,8 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
   const Bool         alignCABACBeforeBypass = sps.getSpsRangeExtension().getCabacBypassAlignmentEnabledFlag();
   const Int          maxLog2TrDynamicRange  = sps.getMaxLog2TrDynamicRange(channelType);
 
+  const Int          log2CoeffGroupSize = 2 - ((uiWidth & 0x03) != 0 || (uiHeight & 0x03) != 0);
+
   Bool beValid;
 
   {
@@ -2295,9 +2297,7 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
       uiIntraMode = pcCU->getIntraDir( toChannelType(compID), uiAbsPartIdx );
 
 #if JVET_C0024_QTBT
-#if JVET_E0062_MULTI_DMS
-      uiIntraMode = uiIntraMode;
-#else
+#if !JVET_E0062_MULTI_DMS
       uiIntraMode = (uiIntraMode==DM_CHROMA_IDX && !bIsLuma) 
         ? (pcCU->getSlice()->isIntra()? pcCU->getPic()->getCtu(pcCU->getCtuRsAddr())->getIntraDir(CHANNEL_TYPE_LUMA, pcCU->getZorderIdxInCtu()+uiAbsPartIdx)
         :pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx)) : uiIntraMode;
@@ -2456,19 +2456,11 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
 
  
 #if JVET_C0046_ZO_ASSERT && JVET_C0046_ZO_ASSERT_LAST_COEF
-#if JVET_C0046_ZO_ASSERT_FIX_TICKET24
-  if ( ((uiWidth > JVET_C0046_ZERO_OUT_TH) || (uiHeight > JVET_C0046_ZERO_OUT_TH)) &&
-#else
-  if ( ((uiWidth > JVET_C0024_ZERO_OUT_TH) || (uiHeight > JVET_C0024_ZERO_OUT_TH)) &&
-#endif
-      (!pcCU->getTransformSkip(compID) && !pcCU->getCUTransquantBypass(uiAbsPartIdx)))
+  if ( ((uiWidth > ZERO_OUT_TH) || (uiHeight > ZERO_OUT_TH)) 
+    && (!pcCU->getTransformSkip(compID) && !pcCU->getCUTransquantBypass(uiAbsPartIdx)))
   {
      // last coeff shall be in the low freqecy domain
-#if JVET_C0046_ZO_ASSERT_FIX_TICKET24
-     assert((posLastX < JVET_C0046_ZERO_OUT_TH) && (posLastY < JVET_C0046_ZERO_OUT_TH));
-#else
-     assert((posLastX < JVET_C0024_ZERO_OUT_TH) && (posLastY < JVET_C0024_ZERO_OUT_TH));
-#endif
+     assert((posLastX < ZERO_OUT_TH) && (posLastY < ZERO_OUT_TH));
   }
 #endif
 
@@ -2564,25 +2556,18 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
     {
       uiSigCoeffGroupFlag[ iCGBlkPos ] = 1;
     }
-#if COM16_C806_T64  && (!JVET_C0024_QTBT || JVET_C0024_ZERO_OUT_FIX ) && !JVET_C0046_ZO_ASSERT
-#if JVET_C0024_ZERO_OUT_FIX
-    else if( iCGPosY>=(JVET_C0024_ZERO_OUT_TH>>2) || iCGPosX>=(JVET_C0024_ZERO_OUT_TH>>2) )
-#else
-    else if( uiWidth>=64 && ( iCGPosY>=(codingParameters.heightInGroups/2) || iCGPosX>=(codingParameters.widthInGroups/2) ) )
-#endif
+#if COM16_C806_T64  && !JVET_C0024_QTBT && !JVET_C0046_ZO_ASSERT
+    else if( iCGPosY>=(ZERO_OUT_TH>>log2CoeffGroupSize) || iCGPosX>=(ZERO_OUT_TH>> log2CoeffGroupSize) )
     {
       assert( 0 == uiSigCoeffGroupFlag[ iCGBlkPos ] );
     }
 #endif
 #if JVET_C0046_ZO_ASSERT && JVET_C0046_ZO_ASSERT_CODED_SBK_FLAG
-    else if ( (uiLog2BlockWidth + uiLog2BlockHeight) > TH_LOG2TBAREASIZE && 
-              (!pcCU->getTransformSkip(compID) && !pcCU->getCUTransquantBypass(uiAbsPartIdx) ))
+    else if ((iCGPosY >= (ZERO_OUT_TH >> log2CoeffGroupSize) || iCGPosX >= (ZERO_OUT_TH >> log2CoeffGroupSize))
+      && (!pcCU->getTransformSkip(compID) && !pcCU->getCUTransquantBypass(uiAbsPartIdx)))
     {
-        if ( iCGPosY >= (codingParameters.heightInGroups / 2) || iCGPosX >= (codingParameters.widthInGroups / 2) )
-        {
-            // coded_sbk_flag(iCGX,iCGY) shall be equal to 0
-            assert(0 == uiSigCoeffGroupFlag[iCGBlkPos]);
-        }
+      // coded_sbk_flag(iCGX,iCGY) shall be equal to 0
+      assert(0 == uiSigCoeffGroupFlag[iCGBlkPos]);
     }
 #endif
     else

@@ -587,6 +587,24 @@ static inline istream& operator >> (istream &in, SMultiValueInput<Bool> &values)
   return in;
 }
 
+#if JVET_E0059_FLOATING_POINT_QP_FIX
+template <class T>
+static inline istream& operator >> (std::istream &in, TAppEncCfg::OptionalValue<T> &value)
+{
+  in >> std::ws;
+  if (in.eof())
+  {
+    value.bPresent = false;
+  }
+  else
+  {
+    in >> value.value;
+    value.bPresent = true;
+  }
+  return in;
+}
+#endif
+
 static Void
 automaticallySelectRExtProfile(const Bool bUsingGeneralRExtTools,
                                const Bool bUsingChromaQPAdjustment,
@@ -852,6 +870,7 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   ("FastSearch",                                      m_iFastSearch,                                        1, "0:Full search  1:Diamond  2:PMVFAST")
   ("SearchRange,-sr",                                 m_iSearchRange,                                      96, "Motion search range")
   ("BipredSearchRange",                               m_bipredSearchRange,                                  4, "Motion search range for bipred refinement")
+  ("MinSearchWindow",                                 m_minSearchWindow,                                    8, "Minimum motion search window size for the adaptive window ME")
   ("ClipForBiPredMEEnabled",                          m_bClipForBiPredMeEnabled,                        false, "Enables clipping in the Bi-Pred ME. It is disabled to reduce encoder run-time")
   ("FastMEAssumingSmootherMVEnabled",                 m_bFastMEAssumingSmootherMVEnabled,                true, "Enables fast ME assuming a smoother MV.")
 
@@ -868,7 +887,12 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   ("LambdaModifier6,-LM6",                            m_adLambdaModifier[ 6 ],                  ( Double )1.0, "Lambda modifier for temporal layer 6")
 
   /* Quantization parameters */
+#if JVET_E0059_FLOATING_POINT_QP_FIX
+  ("QP,q",                                            m_iQP,                                               30, "Qp value")
+  ("QPIncrementFrame,-qpif",                          m_qpIncrementAtSourceFrame,       OptionalValue<UInt>(), "If a source file frame number is specified, the internal QP will be incremented for all POCs associated with source frames >= frame number. If empty, do not increment.")
+#else
   ("QP,q",                                            m_fQP,                                             30.0, "Qp value, if value is float, QP is switched once during encoding")
+#endif
 #if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
   ("IQPFactor,-IQF",                                  m_dIntraQpFactor,                                  -1.0, "Intra QP Factor for Lambda Computation. If negative, the default will scale lambda based on GOP size (unless LambdaFromQpEnable then IntraQPOffset is used instead)")
   ("IntraQPOffset",                                   m_intraQPOffset,                                      0, "Qp offset value for intra slice, typically determined based on GOP size")
@@ -1539,6 +1563,23 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   m_aidQP = new Int[ m_framesToBeEncoded + m_iGOPSize + 1 ];
   ::memset( m_aidQP, 0, sizeof(Int)*( m_framesToBeEncoded + m_iGOPSize + 1 ) );
 
+#if JVET_E0059_FLOATING_POINT_QP_FIX
+  if (m_qpIncrementAtSourceFrame.bPresent)
+  {
+    UInt switchingPOC = 0;
+    if (m_qpIncrementAtSourceFrame.value > m_FrameSkip)
+    {
+      // if switch source frame (ssf) = 10, and frame skip (fs)=2 and temporal subsample ratio (tsr) =1, then
+      //    for this simulation switch at POC 8 (=10-2).
+      // if ssf=10, fs=2, tsr=2, then for this simulation, switch at POC 4 (=(10-2)/2): POC0=Src2, POC1=Src4, POC2=Src6, POC3=Src8, POC4=Src10
+      switchingPOC = (m_qpIncrementAtSourceFrame.value - m_FrameSkip) / m_temporalSubsampleRatio;
+    }
+    for (UInt i = switchingPOC; i<(m_framesToBeEncoded + m_iGOPSize + 1); i++)
+    {
+      m_aidQP[i] = 1;
+    }
+  }
+#else
   // handling of floating-point QP values
   // if QP is not integer, sequence is split into two sections having QP and QP+1
   m_iQP = (Int)( m_fQP );
@@ -1552,6 +1593,7 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
       m_aidQP[i] = 1;
     }
   }
+#endif
 
   for(UInt ch=0; ch<MAX_NUM_CHANNEL_TYPE; ch++)
   {
@@ -1907,6 +1949,7 @@ Void TAppEncCfg::xCheckParameter()
   xConfirmPara( m_iFastSearch < 0 || m_iFastSearch > 2,                                     "Fast Search Mode is not supported value (0:Full search  1:Diamond  2:PMVFAST)" );
   xConfirmPara( m_iSearchRange < 0 ,                                                        "Search Range must be more than 0" );
   xConfirmPara( m_bipredSearchRange < 0 ,                                                   "Search Range must be more than 0" );
+  xConfirmPara( m_minSearchWindow < 0,                                                      "Minimum motion search window size for the adaptive window ME must be greater than or equal to 0" );
   xConfirmPara( m_iMaxDeltaQP > 7,                                                          "Absolute Delta QP exceeds supported range (0 to 7)" );
 #if !JVET_C0024_QTBT
   xConfirmPara( m_iMaxCuDQPDepth > m_uiMaxCUDepth - 1,                                          "Absolute depth for a minimum CuDQP exceeds maximum coding unit depth" );
@@ -2694,7 +2737,18 @@ Void TAppEncCfg::xPrintParameter()
   printf("Rewriting parameter sets flag (RAP)    : %s\n", (m_bReWriteParamSetsFlag                   ? "Enabled" : "Disabled") );
 #endif
 
+#if JVET_E0059_FLOATING_POINT_QP_FIX
+  if (m_qpIncrementAtSourceFrame.bPresent)
+  {
+    printf("QP                                     : %d (incrementing internal QP at source frame %d)\n", m_iQP, m_qpIncrementAtSourceFrame.value);
+  }
+  else
+  {
+    printf("QP                                     : %d\n", m_iQP);
+  }
+#else
   printf("QP                                     : %5.2f\n", m_fQP );
+#endif
   printf("Max dQP signaling depth                : %d\n", m_iMaxCuDQPDepth);
 
   printf("Cb QP Offset                           : %d\n", m_cbQpOffset   );
@@ -2758,6 +2812,7 @@ Void TAppEncCfg::xPrintParameter()
   printf("RDpenalty:%d ", m_rdPenalty  );
   printf("SQP:%d ", m_uiDeltaQpRD         );
   printf("ASR:%d ", m_bUseASR             );
+  printf("MinSearchWindow:%d ", m_minSearchWindow);
   printf("FEN:%d ", m_bUseFastEnc         );
   printf("ECU:%d ", m_bUseEarlyCU         );
   printf("FDM:%d ", m_useFastDecisionForMerge );

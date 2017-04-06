@@ -53,6 +53,17 @@
 /// encoder configuration class
 class TAppEncCfg
 {
+#if JVET_E0059_FLOATING_POINT_QP_FIX
+public:
+  template <class T>
+  struct OptionalValue
+  {
+    Bool bPresent;
+    T    value;
+    OptionalValue() : bPresent(false), value() { }
+  };
+#endif
+
 protected:
   // file I/O
   Char*     m_pchInputFile;                                   ///< source file name
@@ -137,7 +148,11 @@ protected:
   Bool      m_cabacBypassAlignmentEnabledFlag;
 
   // coding quality
+#if JVET_E0059_FLOATING_POINT_QP_FIX
+  OptionalValue<UInt> m_qpIncrementAtSourceFrame;             ///< Optional source frame number at which all subsequent frames are to use an increased internal QP.
+#else
   Double    m_fQP;                                            ///< QP value of key-picture (floating point)
+#endif
   Int       m_iQP;                                            ///< QP value of key-picture (integer)
 #if JCTVC_X0038_LAMBDA_FROM_QP_CAPABILITY
   Double    m_dIntraQpFactor;                                 ///< Intra Q Factor. If negative, use a default equation: 0.57*(1.0 - Clip3( 0.0, 0.5, 0.05*(Double)(isField ? (GopSize-1)/2 : GopSize-1) ))
@@ -249,6 +264,7 @@ protected:
   Int       m_iFastSearch;                                    ///< ME mode, 0 = full, 1 = diamond, 2 = PMVFAST
   Int       m_iSearchRange;                                   ///< ME search range
   Int       m_bipredSearchRange;                              ///< ME search range for bipred refinement
+  Int       m_minSearchWindow;                                ///< ME minimum search window size for the Adaptive Window ME
   Bool      m_bClipForBiPredMeEnabled;                        ///< Enables clipping for Bi-Pred ME.
   Bool      m_bFastMEAssumingSmootherMVEnabled;               ///< Enables fast ME assuming a smoother MV.
   Bool      m_bUseFastEnc;                                    ///< flag for using fast encoder setting

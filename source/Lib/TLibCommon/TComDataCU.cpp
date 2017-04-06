@@ -3095,7 +3095,7 @@ UInt TComDataCU::getDMMode  ( UInt uiAbsPartIdx, UInt uiDMIdx, UInt uiChDMMode[N
   {
     uiChMode[i] = INVALID_CHROMAMODE;  
   }
-
+#if JVET_C0024_QTBT
   if(bIntraSlice)
   {
     if(uiChDMMode)
@@ -3193,6 +3193,7 @@ UInt TComDataCU::getDMMode  ( UInt uiAbsPartIdx, UInt uiDMIdx, UInt uiChDMMode[N
     uiChFinalMode = uiChMode[uiDMIdx];
   }
   else
+#endif
   {
     uiChFinalMode = getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx);
     uiChMode[0] = uiChFinalMode;

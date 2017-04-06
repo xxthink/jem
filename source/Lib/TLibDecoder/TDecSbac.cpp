@@ -2367,6 +2367,7 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
 #endif
   const UInt         uiMaxNumCoeff     = uiWidth * uiHeight;
   const UInt         uiMaxNumCoeffM1   = uiMaxNumCoeff - 1;
+  const Int          log2CoeffGroupSize = 2 - ((uiWidth & 0x03) != 0 || (uiHeight & 0x03) != 0);
 
 
   const ChannelType  channelType       = toChannelType(compID);
@@ -2473,9 +2474,7 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
 #endif
     uiIntraMode = pcCU->getIntraDir( toChannelType(compID), uiAbsPartIdx );
 #if JVET_C0024_QTBT
-#if JVET_E0062_MULTI_DMS
-    uiIntraMode = uiIntraMode; 
-#else
+#if !JVET_E0062_MULTI_DMS
     uiIntraMode = (uiIntraMode==DM_CHROMA_IDX && !bIsLuma) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx) : uiIntraMode;
 #endif
 #else
@@ -2505,19 +2504,11 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
   pcCoef[ uiBlkPosLast ] = 1;
 
 #if JVET_C0046_ZO_ASSERT && JVET_C0046_ZO_ASSERT_LAST_COEF
-#if JVET_C0046_ZO_ASSERT_FIX_TICKET24
-  if ( ((uiWidth > JVET_C0046_ZERO_OUT_TH) || (uiHeight > JVET_C0046_ZERO_OUT_TH)) &&
-#else
-  if ( ((uiWidth > JVET_C0024_ZERO_OUT_TH) || (uiHeight > JVET_C0024_ZERO_OUT_TH)) && 
-#endif
+  if ( ((uiWidth > ZERO_OUT_TH) || (uiHeight > ZERO_OUT_TH)) &&
        (!pcCU->getTransformSkip(compID) && !pcCU->getCUTransquantBypass(uiAbsPartIdx)))
   {
      // last coeff shall be in the low freqecy domain
-#if JVET_C0046_ZO_ASSERT_FIX_TICKET24
-     assert((uiPosLastX < JVET_C0046_ZERO_OUT_TH) && (uiPosLastY < JVET_C0046_ZERO_OUT_TH));
-#else
-     assert((uiPosLastX < JVET_C0024_ZERO_OUT_TH) && (uiPosLastY < JVET_C0024_ZERO_OUT_TH));
-#endif
+     assert((uiPosLastX < ZERO_OUT_TH) && (uiPosLastY < ZERO_OUT_TH));
   }
 #endif
 
@@ -2626,12 +2617,8 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
     {
       uiSigCoeffGroupFlag[ iCGBlkPos ] = 1;
     }
-#if COM16_C806_T64 && (!JVET_C0024_QTBT || JVET_C0024_ZERO_OUT_FIX ) && !JVET_C0046_ZO_ASSERT
-#if JVET_C0024_ZERO_OUT_FIX
-    else if( iCGPosY>=(JVET_C0024_ZERO_OUT_TH>>2) || iCGPosX>=(JVET_C0024_ZERO_OUT_TH>>2) )
-#else
-    else if( uiWidth>=64 && ( iCGPosY>=(codingParameters.heightInGroups/2) || iCGPosX>=(codingParameters.widthInGroups/2) ) )
-#endif
+#if COM16_C806_T64 && !JVET_C0024_QTBT && !JVET_C0046_ZO_ASSERT
+    else if (iCGPosY >= (ZERO_OUT_TH >> log2CoeffGroupSize) || iCGPosX >= (ZERO_OUT_TH >> log2CoeffGroupSize))
     {
       uiSigCoeffGroupFlag[ iCGBlkPos ] = 0;
     }
@@ -2649,18 +2636,10 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
     }
 
 #if JVET_C0046_ZO_ASSERT && JVET_C0046_ZO_ASSERT_CODED_SBK_FLAG
-#if JVET_C0046_ZO_ASSERT_FIX_TICKET24
-   if ( ((uiWidth > JVET_C0046_ZERO_OUT_TH) || (uiHeight > JVET_C0046_ZERO_OUT_TH)) &&
-#else
-   if ( ((uiWidth > JVET_C0024_ZERO_OUT_TH) || (uiHeight > JVET_C0024_ZERO_OUT_TH)) &&
-#endif
-       (!pcCU->getTransformSkip(compID) && !pcCU->getCUTransquantBypass(uiAbsPartIdx)) )
+   if ( ((uiWidth > ZERO_OUT_TH) || (uiHeight > ZERO_OUT_TH)) 
+     && (!pcCU->getTransformSkip(compID) && !pcCU->getCUTransquantBypass(uiAbsPartIdx)) )
    {
-#if JVET_C0046_ZO_ASSERT_FIX_TICKET24
-      if (iCGPosY >= (JVET_C0046_ZERO_OUT_TH>>2) || iCGPosX >= (JVET_C0046_ZERO_OUT_TH>>2))
-#else
-      if (iCGPosY >= (JVET_C0024_ZERO_OUT_TH>>2) || iCGPosX >= (JVET_C0024_ZERO_OUT_TH>>2))
-#endif
+     if (iCGPosY >= (ZERO_OUT_TH >> log2CoeffGroupSize) || iCGPosX >= (ZERO_OUT_TH >> log2CoeffGroupSize))
       {
          //coded_sbk_flag(iCGX,iCGY) shall be equal to 0
          assert(0 == uiSigCoeffGroupFlag[iCGBlkPos]);
