@@ -1124,7 +1124,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #if JVET_D0077_SAVE_LOAD_ENC_INFO
   Bool bUseSaveLoad = m_pcEncCfg->getUseSaveLoadEncInfo() && uiWidthIdx > 0 && uiHeightIdx > 0;
   Bool bUseSaveLoadSplitDecision = bUseSaveLoad && m_pcEncCfg->getUseSaveLoadSplitDecision();
+#if COM16_C1046_PDPC_INTRA
   ChannelType eChannelType = rpcBestCU->getTextType();
+#endif
   UInt uiZorderIdx = rpcBestCU->getZorderIdxInCtu();
 #endif
 

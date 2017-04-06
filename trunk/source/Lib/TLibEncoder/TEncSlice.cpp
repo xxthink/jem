@@ -570,15 +570,15 @@ Void TEncSlice::setSearchRange( TComSlice* pcSlice )
   Int iMaxSR = m_pcCfg->getSearchRange();
   Int iNumPredDir = pcSlice->isInterP() ? 1 : 2;
 
-  for (Int iDir = 0; iDir <= iNumPredDir; iDir++)
+  for (Int iDir = 0; iDir < iNumPredDir; iDir++)
   {
     //RefPicList e = (RefPicList)iDir;
     RefPicList  e = ( iDir ? REF_PIC_LIST_1 : REF_PIC_LIST_0 );
     for (Int iRefIdx = 0; iRefIdx < pcSlice->getNumRefIdx(e); iRefIdx++)
     {
       iRefPOC = pcSlice->getRefPic(e, iRefIdx)->getPOC();
-      Int iNewSR = Clip3(8, iMaxSR, (iMaxSR*ADAPT_SR_SCALE*abs(iCurrPOC - iRefPOC)+iOffset)/iGOPSize);
-      m_pcPredSearch->setAdaptiveSearchRange(iDir, iRefIdx, iNewSR);
+      Int newSearchRange = Clip3(m_pcCfg->getMinSearchWindow(), iMaxSR, (iMaxSR*ADAPT_SR_SCALE*abs(iCurrPOC - iRefPOC) + iOffset) / iGOPSize);
+      m_pcPredSearch->setAdaptiveSearchRange(iDir, iRefIdx, newSearchRange);
     }
   }
 }
@@ -957,7 +957,7 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
       }
 
       m_pcRateCtrl->setRCQP( estQP );
-#if ADAPTIVE_QP_SELECTION
+#if ADAPTIVE_QP_SELECTION && !FIX_TICKET45
       pCtu->getSlice()->setSliceQpBase( estQP );
 #endif
     }

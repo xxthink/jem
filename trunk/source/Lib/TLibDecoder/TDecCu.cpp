@@ -1262,7 +1262,9 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
 
 
   TComDataCU *pcCU = rTu.getCU();
+#if COM16_C983_RSAF
   const TComSPS &sps=*(pcCU->getSlice()->getSPS());
+#endif
   const UInt uiAbsPartIdx=rTu.GetAbsPartIdxTU();
 
   const TComRectangle &tuRect  =rTu.getRect(compID);
