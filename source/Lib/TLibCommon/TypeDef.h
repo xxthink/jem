@@ -386,6 +386,10 @@
 #define DECODER_CHECK_SUBSTREAM_AND_SLICE_TRAILING_BYTES  1 ///< TODO: integrate this macro into a broader conformance checking system.
 #define T0196_SELECTIVE_RDOQ                              1 ///< selective RDOQ
 
+#ifndef EXTENSION_360_VIDEO
+#define EXTENSION_360_VIDEO                               0   ///< extension for 360/spherical video coding support; this macro should be controlled by makefile, as it would be used to control whether the library is built and linked
+#endif
+
 // ====================================================================================================================
 // Tool Switches
 // ====================================================================================================================
@@ -481,6 +485,9 @@ typedef       bool                Bool;
 typedef       signed char         Char;
 #else
 typedef       char                Char;
+#endif
+#if EXTENSION_360_VIDEO
+typedef       char                TChar; // Used for text/characters
 #endif
 typedef       unsigned char       UChar;
 typedef       short               Short;

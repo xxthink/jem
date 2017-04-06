@@ -116,6 +116,9 @@ TAppEncCfg::TAppEncCfg()
 , m_outputInternalColourSpace(false)
 , m_pchdQPFile()
 , m_scalingListFile()
+#if EXTENSION_360_VIDEO
+, m_ext360(*this)
+#endif
 {
   m_aidQP = NULL;
   m_startOfCodedInterval = NULL;
@@ -1244,6 +1247,11 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 #endif
   ;
 
+#if EXTENSION_360_VIDEO
+  TExt360AppEncCfg::TExt360AppEncCfgContext ext360CfgContext;
+  m_ext360.addOptions(opts, ext360CfgContext);
+#endif
+
   for(Int i=1; i<MAX_GOP+1; i++)
   {
     std::ostringstream cOSS;
@@ -1278,6 +1286,14 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   /*
    * Set any derived parameters
    */
+#if EXTENSION_360_VIDEO
+  m_inputFileWidth  = m_iSourceWidth;
+  m_inputFileHeight = m_iSourceHeight;
+  m_inputFileName = cfg_InputFile;
+#if JVET_C0024_QTBT
+  m_ext360.setMaxCUInfo(m_uiCTUSize, 1<<MIN_CU_LOG2);
+#endif
+#endif
   /* convert std::string to c string for compatability */
   m_pchInputFile = cfg_InputFile.empty() ? NULL : strdup(cfg_InputFile.c_str());
   m_pchBitstreamFile = cfg_BitstreamFile.empty() ? NULL : strdup(cfg_BitstreamFile.c_str());
@@ -1385,6 +1401,9 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 
   m_InputChromaFormatIDC = numberToChromaFormat(tmpInputChromaFormat);
   m_chromaFormatIDC      = ((tmpChromaFormat == 0) ? (m_InputChromaFormatIDC) : (numberToChromaFormat(tmpChromaFormat)));
+#if EXTENSION_360_VIDEO
+  m_ext360.processOptions(ext360CfgContext);
+#endif
 #if JVET_D0033_ADAPTIVE_CLIPPING
   {
       // DEFAULT VALUES
@@ -2630,6 +2649,10 @@ Void TAppEncCfg::xCheckParameter()
     xConfirmPara(m_timeCodeSEINumTs > MAX_TIMECODE_SEI_SETS, "Number of time sets cannot exceed 3");
   }
 
+#if EXTENSION_360_VIDEO
+  check_failed |= m_ext360.verifyParameters();
+#endif
+
 #undef xConfirmPara
   if (check_failed)
   {
@@ -2946,6 +2969,11 @@ Void TAppEncCfg::xPrintParameter()
 #if JVET_D0033_ADAPTIVE_CLIPPING
   printf("ACLIP:%d ",m_ClipParam.isActive?1:0);
 #endif
+
+#if EXTENSION_360_VIDEO
+  m_ext360.outputConfigurationSummary();
+#endif
+
     printf("\n\n");
 
   fflush(stdout);
