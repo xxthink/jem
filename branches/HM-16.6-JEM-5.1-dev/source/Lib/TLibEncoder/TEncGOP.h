@@ -54,6 +54,9 @@
 #include "TEncSbac.h"
 #include "SEIwrite.h"
 #include "SEIEncoder.h"
+#if EXTENSION_360_VIDEO
+#include "TAppEncHelper360/TExt360EncGop.h"
+#endif
 
 #include "TEncAnalyze.h"
 #include "TEncRateCtrl.h"
@@ -95,6 +98,14 @@ private:
   TEncAnalyze             m_gcAnalyzeB;
 
   TEncAnalyze             m_gcAnalyzeAll_in;
+
+#if EXTENSION_360_VIDEO
+  TExt360EncGop           m_ext360;
+public:
+  TExt360EncGop &getExt360Data() { return m_ext360; }
+private:
+#endif
+
   //  Data
   Bool                    m_bLongtermTestPictureHasBeenCoded;
   Bool                    m_bLongtermTestPictureHasBeenCoded2;
@@ -191,6 +202,13 @@ public:
   Void arrangeLongtermPicturesInRPS(TComSlice *, TComList<TComPic*>& );
 #if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
   Int xUpdateTStates ( UInt uiSliceType, UInt uiSliceQP,  TComStats* apcStats );  
+#endif
+
+#if EXTENSION_360_VIDEO
+  TEncAnalyze& getAnalyzeAllData() { return m_gcAnalyzeAll; }
+  TEncAnalyze& getAnalyzeIData()   { return m_gcAnalyzeI; }
+  TEncAnalyze& getAnalyzePData()   { return m_gcAnalyzeP; }
+  TEncAnalyze& getAnalyzeBData()   { return m_gcAnalyzeB; }
 #endif
 
 protected:

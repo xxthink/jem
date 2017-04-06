@@ -46,6 +46,10 @@
 #include "TAppEncTop.h"
 #include "TLibEncoder/AnnexBwrite.h"
 
+#if EXTENSION_360_VIDEO
+#include "TAppEncHelper360/TExt360AppEncTop.h"
+#endif
+
 using namespace std;
 
 //! \ingroup TAppEncoder
@@ -507,7 +511,11 @@ Void TAppEncTop::xCreateLib()
 {
   // Video I/O
   m_cTVideoIOYuvInputFile.open( m_pchInputFile,     false, m_inputBitDepth, m_MSBExtendedBitDepth, m_internalBitDepth );  // read  mode
+#if EXTENSION_360_VIDEO
+  m_cTVideoIOYuvInputFile.skipFrames(m_FrameSkip, m_inputFileWidth, m_inputFileHeight, m_InputChromaFormatIDC);
+#else
   m_cTVideoIOYuvInputFile.skipFrames(m_FrameSkip, m_iSourceWidth - m_aiPad[0], m_iSourceHeight - m_aiPad[1], m_InputChromaFormatIDC);
+#endif
 
   if (m_pchReconFile)
   {
@@ -613,13 +621,28 @@ Void TAppEncTop::encode()
   }
 #endif
 
+#if EXTENSION_360_VIDEO
+  TExt360AppEncTop           ext360(*this, m_cTEncTop.getGOPEncoder()->getExt360Data(), *(m_cTEncTop.getGOPEncoder()), *pcPicYuvOrg);
+#endif
+
   while ( !bEos )
   {
     // get buffers
     xGetBuffer(pcPicYuvRec);
 
     // read input YUV file
+#if EXTENSION_360_VIDEO
+    if (ext360.isEnabled())
+    {
+      ext360.read(m_cTVideoIOYuvInputFile, *pcPicYuvOrg, cPicYuvTrueOrg, ipCSC);
+    }
+    else
+    {
+      m_cTVideoIOYuvInputFile.read( pcPicYuvOrg, &cPicYuvTrueOrg, ipCSC, m_aiPad, m_InputChromaFormatIDC, m_bClipInputVideoToRec709Range );
+    }
+#else
     m_cTVideoIOYuvInputFile.read( pcPicYuvOrg, &cPicYuvTrueOrg, ipCSC, m_aiPad, m_InputChromaFormatIDC, m_bClipInputVideoToRec709Range );
+#endif
 
     // increase number of received frames
     m_iFrameRcvd++;
@@ -664,7 +687,11 @@ Void TAppEncTop::encode()
     // temporally skip frames
     if( m_temporalSubsampleRatio > 1 )
     {
+#if EXTENSION_360_VIDEO
+      m_cTVideoIOYuvInputFile.skipFrames(m_temporalSubsampleRatio-1, m_inputFileWidth, m_inputFileHeight, m_InputChromaFormatIDC);
+#else
       m_cTVideoIOYuvInputFile.skipFrames(m_temporalSubsampleRatio-1, m_iSourceWidth - m_aiPad[0], m_iSourceHeight - m_aiPad[1], m_InputChromaFormatIDC);
+#endif
     }
   }
 
