@@ -102,8 +102,10 @@ protected:
   Pel*   m_pGradY0;
   Pel*   m_pGradX1;
   Pel*   m_pGradY1;
+#if !JVET_F0028_BIO_NO_BLOCK_EXTENTION
   Pel*   m_pPred0 ;
   Pel*   m_pPred1 ;
+#endif
   Int    iRefListIdx;
 #endif
 
@@ -189,7 +191,9 @@ protected:
 #define BIO_FILTER_LENGTH                 6
 #define BIO_FILTER_LENGTH_MINUS_1         (BIO_FILTER_LENGTH-1)
 #define BIO_FILTER_HALF_LENGTH_MINUS_1    ((BIO_FILTER_LENGTH>>1)-1)
+#if !JVET_F0028_BIO_NO_BLOCK_EXTENTION
   Void  xPredInterFrac(Pel* ref,Pel* dst,Int dstStride,Int refStride,Int xFrac,Int yFrac,Int width, Int height,Bool bi,ChromaFormat chFmt, const Int bitDepth);
+#endif
   Void  xGradFilterX(Pel*  piRefY, Int iRefStride,Pel*  piDstY,Int iDstStride, Int iWidth, Int iHeight,Int iMVyFrac,Int iMVxFrac, const Int bitDepth);
   Void  xGradFilterY(Pel*  piRefY, Int iRefStride,Pel*  piDstY,Int iDstStride, Int iWidth, Int iHeight,Int iMVyFrac,Int iMVxFrac, const Int bitDepth);
   __inline Void gradFilter2DVer (Pel* piSrc, Int iSrcStride,  Int iWidth, Int iHeight, Int iDstStride,  Pel*& rpiDst, Int iMv, const Int iShift);
