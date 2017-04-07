@@ -120,13 +120,19 @@ TComPrediction::TComPrediction()
 , m_iLumaRecStride(0)
 {
 #if VCEG_AZ05_BIO 
+#if JVET_F0028_BIO_NO_BLOCK_EXTENTION // no block extension is needed
+#define BIO_TEMP_BUFFER_SIZE      (MAX_CU_SIZE)*(MAX_CU_SIZE)
+#else
 #define BIO_TEMP_BUFFER_SIZE      (MAX_CU_SIZE+4)*(MAX_CU_SIZE+4) 
+#endif
   m_pGradX0 = new Pel [BIO_TEMP_BUFFER_SIZE];
   m_pGradY0 = new Pel [BIO_TEMP_BUFFER_SIZE];
   m_pGradX1 = new Pel [BIO_TEMP_BUFFER_SIZE];
   m_pGradY1 = new Pel [BIO_TEMP_BUFFER_SIZE];
+#if !JVET_F0028_BIO_NO_BLOCK_EXTENTION
   m_pPred0  = new Pel [BIO_TEMP_BUFFER_SIZE];
   m_pPred1  = new Pel [BIO_TEMP_BUFFER_SIZE];
+#endif
   iRefListIdx = -1;  
 #endif
 #if COM16_C1046_PDPC_INTRA
@@ -182,8 +188,10 @@ Void TComPrediction::destroy()
   if( m_pGradY0 != NULL )     {delete [] m_pGradY0 ; m_pGradY0= NULL;}
   if( m_pGradX1 != NULL )     {delete [] m_pGradX1 ; m_pGradX1= NULL;}
   if( m_pGradY1 != NULL )     {delete [] m_pGradY1 ; m_pGradY1= NULL;}
+#if !JVET_F0028_BIO_NO_BLOCK_EXTENTION
   if( m_pPred0  != NULL )     {delete [] m_pPred0  ; m_pPred0 = NULL;}
   if( m_pPred1  != NULL )     {delete [] m_pPred1  ; m_pPred1 = NULL;}
+#endif
 #endif
 
 #if COM16_C1046_PDPC_INTRA
@@ -1993,23 +2001,34 @@ Void TComPrediction::xPredInterBlk(const ComponentID compID, TComDataCU *cu, TCo
 #if VCEG_AZ05_BIO 
   if ( bBIOapplied)
   { 
+#if JVET_F0028_BIO_NO_BLOCK_EXTENTION // no block extension is needed
+    Pel* pGradY = m_pGradY0;  Pel* pGradX = m_pGradX0;
+    Int iWidthG = width;
+    Int iHeightG = height;
+#else
     Pel* pGradY= m_pGradY0;  Pel* pGradX= m_pGradX0;  Pel *pPred= m_pPred0;
     Int iWidthG   = width + 4;
     Int iHeightG = height + 4;
+#endif
     if (iRefListIdx == 0)
     {    
       pGradY = m_pGradY0;
       pGradX = m_pGradX0;
+#if !JVET_F0028_BIO_NO_BLOCK_EXTENTION
       pPred = m_pPred0;
+#endif
     }
     else
     {
       pGradY = m_pGradY1;
       pGradX = m_pGradX1;
+#if !JVET_F0028_BIO_NO_BLOCK_EXTENTION
       pPred  = m_pPred1 ;
+#endif
     }
-
+#if !JVET_F0028_BIO_NO_BLOCK_EXTENTION
     ref -=(2+2*refStride);
+#endif
 #if JVET_B058_HIGH_PRECISION_MOTION_VECTOR_MC && !JVET_C0027_BIO
     xGradFilterY(ref , refStride,pGradY,iWidthG,iWidthG,iHeightG, yFrac>>VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE,  xFrac>>VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE,  bitDepth);
     xGradFilterX(ref , refStride,pGradX,iWidthG,iWidthG,iHeightG, yFrac>>VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE,  xFrac>>VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE,  bitDepth);
@@ -2022,12 +2041,15 @@ Void TComPrediction::xPredInterBlk(const ComponentID compID, TComDataCU *cu, TCo
     xGradFilterX(ref , refStride,pGradX,iWidthG,iWidthG,iHeightG, yFrac,  xFrac,  bitDepth);
 #endif
 #endif
+#if !JVET_F0028_BIO_NO_BLOCK_EXTENTION // no separate function is needed, BIO uses the MC predicion function and same buffers
     xPredInterFrac( ref , pPred, iWidthG, refStride, xFrac, yFrac, iWidthG, iHeightG,bi, chFmt,  bitDepth);
     ref +=(2+2*refStride);
-
+#endif
   }
+#if !JVET_F0028_BIO_NO_BLOCK_EXTENTION
   else
   {   
+#endif
 #endif
   if ( yFrac == 0 )
   {
@@ -2089,7 +2111,7 @@ Void TComPrediction::xPredInterBlk(const ComponentID compID, TComDataCU *cu, TCo
 #endif
       );
   }
-#if VCEG_AZ05_BIO 
+#if VCEG_AZ05_BIO && !JVET_F0028_BIO_NO_BLOCK_EXTENTION
   }
 #endif
 #if VCEG_AZ06_IC
@@ -2131,7 +2153,7 @@ Void TComPrediction::xPredInterBlk(const ComponentID compID, TComDataCU *cu, TCo
   }
 #endif
 }
-#if VCEG_AZ05_BIO 
+#if VCEG_AZ05_BIO && !JVET_F0028_BIO_NO_BLOCK_EXTENTION // no separate function is needed, BIO uses the MC predicion function and same buffers
 Void TComPrediction::xPredInterFrac(Pel* ref,Pel* dst,Int dstStride,Int refStride,Int xFrac,Int yFrac,Int width, Int height,Bool bi ,ChromaFormat chFmt, const Int bitDepth )
 {
   if ( yFrac == 0 )
@@ -2651,6 +2673,14 @@ Void TComPrediction::xWeightedAverage( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, I
 #if VCEG_AZ05_BIO 
     if (bBIOapplied)
     {
+#if JVET_F0028_BIO_NO_BLOCK_EXTENTION 
+      //for weighted averaging implementation few temporal buffers are used
+      static Int64 m_piDotProduct1[BIO_TEMP_BUFFER_SIZE]; static Int64 m_piDotProduct1t[BIO_TEMP_BUFFER_SIZE];
+      static Int64 m_piDotProduct2[BIO_TEMP_BUFFER_SIZE]; static Int64 m_piDotProduct2t[BIO_TEMP_BUFFER_SIZE];
+      static Int64 m_piDotProduct3[BIO_TEMP_BUFFER_SIZE]; static Int64 m_piDotProduct3t[BIO_TEMP_BUFFER_SIZE];
+      static Int64 m_piDotProduct5[BIO_TEMP_BUFFER_SIZE]; static Int64 m_piDotProduct5t[BIO_TEMP_BUFFER_SIZE];
+      static Int64 m_piDotProduct6[BIO_TEMP_BUFFER_SIZE]; static Int64 m_piDotProduct6t[BIO_TEMP_BUFFER_SIZE];
+#else
       static Int64 m_piDotProduct1[BIO_TEMP_BUFFER_SIZE];
       static Int64 m_piDotProduct2[BIO_TEMP_BUFFER_SIZE];
       static Int64 m_piDotProduct3[BIO_TEMP_BUFFER_SIZE];
@@ -2666,17 +2696,29 @@ Void TComPrediction::xWeightedAverage( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, I
       static Int64 m_piS3[BIO_TEMP_BUFFER_SIZE];
       static Int64 m_piS5[BIO_TEMP_BUFFER_SIZE];
       static Int64 m_piS6[BIO_TEMP_BUFFER_SIZE];
+#endif
       Int x=0, y=0;
-
+#if JVET_F0028_BIO_NO_BLOCK_EXTENTION
+      Int iHeightG = iHeight;
+      Int iWidthG  = iWidth;
+#else
       Int iHeightG = iHeight + 4;
       Int iWidthG  = iWidth  + 4;
       Int iStrideTemp = 2+2*iWidthG;
+#endif
       Pel* pGradX0 = m_pGradX0; Pel* pGradX1 = m_pGradX1; 
       Pel* pGradY0 = m_pGradY0; Pel* pGradY1 = m_pGradY1;    
+#if JVET_F0028_BIO_NO_BLOCK_EXTENTION
+      Pel* pSrcY0 = pcYuvSrc0->getAddr(COMPONENT_Y, uiPartIdx);
+      Pel* pSrcY1 = pcYuvSrc1->getAddr(COMPONENT_Y, uiPartIdx);
+      Int iSrc0Stride = pcYuvSrc0->getStride(COMPONENT_Y);
+      Int iSrc1Stride = pcYuvSrc1->getStride(COMPONENT_Y);
+#else
       Pel* pSrcY0 = m_pPred0; 
       Pel* pSrcY1 = m_pPred1;
       Int iSrc0Stride = iWidthG;
-      Int iSrc1Stride = iWidthG;   
+      Int iSrc1Stride = iWidthG;  
+#endif
       Pel* pDstY = pcYuvDst->getAddr(COMPONENT_Y,uiPartIdx); 
       Int iDstStride = pcYuvDst->getStride(COMPONENT_Y); 
       Pel* pSrcY0Temp = pSrcY0; Pel* pSrcY1Temp = pSrcY1;
@@ -2724,7 +2766,13 @@ Void TComPrediction::xWeightedAverage( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, I
       static const Int64 regularizator_2 =regularizator_1<<1;
       static const Int64 denom_min_1 = 700* (1<< (bitDepth-8))* (1<< (bitDepth-8));
       static const Int64 denom_min_2 = denom_min_1<<1;
-
+#if JVET_F0028_BIO_NO_BLOCK_EXTENTION
+      Int64* m_piDotProductTemp1 = m_piDotProduct1; Int64* m_piDotProductTemp1t = m_piDotProduct1t;
+      Int64* m_piDotProductTemp2 = m_piDotProduct2; Int64* m_piDotProductTemp2t = m_piDotProduct2t;
+      Int64* m_piDotProductTemp3 = m_piDotProduct3; Int64* m_piDotProductTemp3t = m_piDotProduct3t;
+      Int64* m_piDotProductTemp5 = m_piDotProduct5; Int64* m_piDotProductTemp5t = m_piDotProduct5t;
+      Int64* m_piDotProductTemp6 = m_piDotProduct6; Int64* m_piDotProductTemp6t = m_piDotProduct6t;
+#else
       Int64* m_piDotProductTemp1 = m_piDotProduct1;Int64* m_piDotProductTemp2 = m_piDotProduct2;Int64* m_piDotProductTemp3 = m_piDotProduct3;Int64* m_piDotProductTemp5 = m_piDotProduct5;Int64* m_piDotProductTemp6 = m_piDotProduct6;
       Int64* m_pS1loc=m_piS1temp;Int64* m_pS2loc=m_piS2temp;Int64* m_pS3loc=m_piS3temp;Int64* m_pS5loc=m_piS5temp;Int64* m_pS6loc=m_piS6temp;
       Int64* m_pS1loc_1=m_piS1temp;Int64* m_pS2loc_1=m_piS2temp;Int64* m_pS3loc_1=m_piS3temp;Int64* m_pS5loc_1=m_piS5temp;Int64* m_pS6loc_1=m_piS6temp;
@@ -2735,7 +2783,7 @@ Void TComPrediction::xWeightedAverage( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, I
       Int64* m_pS1loc2=m_piS1temp;Int64* m_pS2loc2=m_piS2temp;Int64* m_pS3loc2=m_piS3temp;Int64* m_pS5loc2=m_piS5temp;Int64* m_pS6loc2=m_piS6temp;
       Int64* m_piSS1loc=m_piS1;Int64* m_piSS2loc=m_piS2;Int64* m_piSS3loc=m_piS3;Int64* m_piSS5loc=m_piS5;Int64* m_piSS6loc=m_piS6;
       Int64* m_piSS1loc_1=m_piS1;Int64* m_piSS2loc_1=m_piS2;Int64* m_piSS3loc_1=m_piS3;Int64* m_piSS5loc_1=m_piS5;Int64* m_piSS6loc_1=m_piS6;
-
+#endif
       Int64 temp=0, tempX=0, tempY=0;
       for (y = 0; y < iHeightG; y ++)    
       {
@@ -2762,7 +2810,136 @@ Void TComPrediction::xWeightedAverage( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, I
         m_piDotProductTemp5+=iWidthG;
         m_piDotProductTemp6+=iWidthG;
       }
+#if JVET_F0028_BIO_NO_BLOCK_EXTENTION
+      //major change is here
+      //samples out-side of predicted blocks are not used 
+      m_piDotProductTemp1 = m_piDotProduct1; m_piDotProductTemp2 = m_piDotProduct2; m_piDotProductTemp3 = m_piDotProduct3; m_piDotProductTemp5 = m_piDotProduct5; m_piDotProductTemp6 = m_piDotProduct6;
+      for (int j = 0; j<iHeight; j++)
+      {
+        int i = 0, i1 = 1, i2 = 2, im1 = 0, im2 = 0;
+        m_piDotProductTemp1t[i] = m_piDotProductTemp1[im2] + m_piDotProductTemp1[im1] + (m_piDotProductTemp1[i]) + m_piDotProductTemp1[i1] + m_piDotProductTemp1[i2];
+        m_piDotProductTemp2t[i] = m_piDotProductTemp2[im2] + m_piDotProductTemp2[im1] + (m_piDotProductTemp2[i]) + m_piDotProductTemp2[i1] + m_piDotProductTemp2[i2];
+        m_piDotProductTemp3t[i] = m_piDotProductTemp3[im2] + m_piDotProductTemp3[im1] + (m_piDotProductTemp3[i]) + m_piDotProductTemp3[i1] + m_piDotProductTemp3[i2];
+        m_piDotProductTemp5t[i] = m_piDotProductTemp5[im2] + m_piDotProductTemp5[im1] + (m_piDotProductTemp5[i]) + m_piDotProductTemp5[i1] + m_piDotProductTemp5[i2];
+        m_piDotProductTemp6t[i] = m_piDotProductTemp6[im2] + m_piDotProductTemp6[im1] + (m_piDotProductTemp6[i]) + m_piDotProductTemp6[i1] + m_piDotProductTemp6[i2];
+        i = 1; i1 = 2; i2 = 3; im1 = 0; im2 = 0;
+        m_piDotProductTemp1t[i] = m_piDotProductTemp1[im2] + m_piDotProductTemp1[im1] + (m_piDotProductTemp1[i]) + m_piDotProductTemp1[i1] + m_piDotProductTemp1[i2];
+        m_piDotProductTemp2t[i] = m_piDotProductTemp2[im2] + m_piDotProductTemp2[im1] + (m_piDotProductTemp2[i]) + m_piDotProductTemp2[i1] + m_piDotProductTemp2[i2];
+        m_piDotProductTemp3t[i] = m_piDotProductTemp3[im2] + m_piDotProductTemp3[im1] + (m_piDotProductTemp3[i]) + m_piDotProductTemp3[i1] + m_piDotProductTemp3[i2];
+        m_piDotProductTemp5t[i] = m_piDotProductTemp5[im2] + m_piDotProductTemp5[im1] + (m_piDotProductTemp5[i]) + m_piDotProductTemp5[i1] + m_piDotProductTemp5[i2];
+        m_piDotProductTemp6t[i] = m_piDotProductTemp6[im2] + m_piDotProductTemp6[im1] + (m_piDotProductTemp6[i]) + m_piDotProductTemp6[i1] + m_piDotProductTemp6[i2];
+        for (i = 2, i1 = 3, i2 = 4, im1 = 1, im2 = 0; i<iWidth - 2; i++, i1++, i2++, im1++, im2++)
+        {
+          m_piDotProductTemp1t[i] = m_piDotProductTemp1[im2] + m_piDotProductTemp1[im1] + (m_piDotProductTemp1[i]) + m_piDotProductTemp1[i1] + m_piDotProductTemp1[i2];
+          m_piDotProductTemp2t[i] = m_piDotProductTemp2[im2] + m_piDotProductTemp2[im1] + (m_piDotProductTemp2[i]) + m_piDotProductTemp2[i1] + m_piDotProductTemp2[i2];
+          m_piDotProductTemp3t[i] = m_piDotProductTemp3[im2] + m_piDotProductTemp3[im1] + (m_piDotProductTemp3[i]) + m_piDotProductTemp3[i1] + m_piDotProductTemp3[i2];
+          m_piDotProductTemp5t[i] = m_piDotProductTemp5[im2] + m_piDotProductTemp5[im1] + (m_piDotProductTemp5[i]) + m_piDotProductTemp5[i1] + m_piDotProductTemp5[i2];
+          m_piDotProductTemp6t[i] = m_piDotProductTemp6[im2] + m_piDotProductTemp6[im1] + (m_piDotProductTemp6[i]) + m_piDotProductTemp6[i1] + m_piDotProductTemp6[i2];
+        }
+        i = iWidth - 2; i1 = iWidth - 1; i2 = i1; im1 = i - 1; im2 = i - 2;
+        m_piDotProductTemp1t[i] = m_piDotProductTemp1[im2] + m_piDotProductTemp1[im1] + (m_piDotProductTemp1[i]) + m_piDotProductTemp1[i1] + m_piDotProductTemp1[i2];
+        m_piDotProductTemp2t[i] = m_piDotProductTemp2[im2] + m_piDotProductTemp2[im1] + (m_piDotProductTemp2[i]) + m_piDotProductTemp2[i1] + m_piDotProductTemp2[i2];
+        m_piDotProductTemp3t[i] = m_piDotProductTemp3[im2] + m_piDotProductTemp3[im1] + (m_piDotProductTemp3[i]) + m_piDotProductTemp3[i1] + m_piDotProductTemp3[i2];
+        m_piDotProductTemp5t[i] = m_piDotProductTemp5[im2] + m_piDotProductTemp5[im1] + (m_piDotProductTemp5[i]) + m_piDotProductTemp5[i1] + m_piDotProductTemp5[i2];
+        m_piDotProductTemp6t[i] = m_piDotProductTemp6[im2] + m_piDotProductTemp6[im1] + (m_piDotProductTemp6[i]) + m_piDotProductTemp6[i1] + m_piDotProductTemp6[i2];
+        i = iWidth - 1; i1 = i; i2 = i; im1 = i - 1; im2 = i - 2;
+        m_piDotProductTemp1t[i] = m_piDotProductTemp1[im2] + m_piDotProductTemp1[im1] + (m_piDotProductTemp1[i]) + m_piDotProductTemp1[i1] + m_piDotProductTemp1[i2];
+        m_piDotProductTemp2t[i] = m_piDotProductTemp2[im2] + m_piDotProductTemp2[im1] + (m_piDotProductTemp2[i]) + m_piDotProductTemp2[i1] + m_piDotProductTemp2[i2];
+        m_piDotProductTemp3t[i] = m_piDotProductTemp3[im2] + m_piDotProductTemp3[im1] + (m_piDotProductTemp3[i]) + m_piDotProductTemp3[i1] + m_piDotProductTemp3[i2];
+        m_piDotProductTemp5t[i] = m_piDotProductTemp5[im2] + m_piDotProductTemp5[im1] + (m_piDotProductTemp5[i]) + m_piDotProductTemp5[i1] + m_piDotProductTemp5[i2];
+        m_piDotProductTemp6t[i] = m_piDotProductTemp6[im2] + m_piDotProductTemp6[im1] + (m_piDotProductTemp6[i]) + m_piDotProductTemp6[i1] + m_piDotProductTemp6[i2];
 
+        m_piDotProductTemp1 += iWidth; m_piDotProductTemp1t += iWidth;
+        m_piDotProductTemp2 += iWidth; m_piDotProductTemp2t += iWidth;
+        m_piDotProductTemp3 += iWidth; m_piDotProductTemp3t += iWidth;
+        m_piDotProductTemp5 += iWidth; m_piDotProductTemp5t += iWidth;
+        m_piDotProductTemp6 += iWidth; m_piDotProductTemp6t += iWidth;
+      }
+      m_piDotProductTemp1 = m_piDotProduct1; m_piDotProductTemp2 = m_piDotProduct2; m_piDotProductTemp3 = m_piDotProduct3; m_piDotProductTemp5 = m_piDotProduct5; m_piDotProductTemp6 = m_piDotProduct6;
+      m_piDotProductTemp1t = m_piDotProduct1t; m_piDotProductTemp2t = m_piDotProduct2t; m_piDotProductTemp3t = m_piDotProduct3t; m_piDotProductTemp5t = m_piDotProduct5t; m_piDotProductTemp6t = m_piDotProduct6t;
+
+      pGradX0 = m_pGradX0;  pGradX1 = m_pGradX1;
+      pGradY0 = m_pGradY0; pGradY1 = m_pGradY1;
+      pSrcY0Temp = pSrcY0;
+      pSrcY1Temp = pSrcY1;
+
+      Int iWidth2 = iWidth << 1;
+      for (int j = 0; j<iWidth; j++)
+      {
+        int i = 0, i1 = iWidth, i2 = iWidth2, im1 = 0, im2 = 0; int id = 0; int ir0 = 0; int ir1 = 0;
+        m_piDotProductTemp1[i] = m_piDotProductTemp1t[im2] + m_piDotProductTemp1t[im1] + (m_piDotProductTemp1t[i]) + m_piDotProductTemp1t[i1] + m_piDotProductTemp1t[i2];
+        m_piDotProductTemp2[i] = m_piDotProductTemp2t[im2] + m_piDotProductTemp2t[im1] + (m_piDotProductTemp2t[i]) + m_piDotProductTemp2t[i1] + m_piDotProductTemp2t[i2];
+        m_piDotProductTemp3[i] = m_piDotProductTemp3t[im2] + m_piDotProductTemp3t[im1] + (m_piDotProductTemp3t[i]) + m_piDotProductTemp3t[i1] + m_piDotProductTemp3t[i2];
+        m_piDotProductTemp5[i] = m_piDotProductTemp5t[im2] + m_piDotProductTemp5t[im1] + (m_piDotProductTemp5t[i]) + m_piDotProductTemp5t[i1] + m_piDotProductTemp5t[i2];
+        m_piDotProductTemp6[i] = m_piDotProductTemp6t[im2] + m_piDotProductTemp6t[im1] + (m_piDotProductTemp6t[i]) + m_piDotProductTemp6t[i1] + m_piDotProductTemp6t[i2];
+
+        pDstY[id] = optical_flow_averaging(m_piDotProductTemp1[i] + regularizator_1, m_piDotProductTemp2[i], m_piDotProductTemp3[i], m_piDotProductTemp5[i] + regularizator_2, m_piDotProductTemp6[i],
+          pGradX0[i], pGradX1[i], pGradY0[i], pGradY1[i], pSrcY0Temp[ir0], pSrcY1Temp[ir1]
+          , shiftNum, offset, limit, denom_min_1, denom_min_2, bitDepth);
+
+        i += iWidth; id += iDstStride; ir0 += iSrc0Stride; ir1 += iSrc1Stride; i1 += iWidth; i2 += iWidth; im1 = 0;
+        m_piDotProductTemp1[i] = m_piDotProductTemp1t[im2] + m_piDotProductTemp1t[im1] + (m_piDotProductTemp1t[i]) + m_piDotProductTemp1t[i1] + m_piDotProductTemp1t[i2];
+        m_piDotProductTemp2[i] = m_piDotProductTemp2t[im2] + m_piDotProductTemp2t[im1] + (m_piDotProductTemp2t[i]) + m_piDotProductTemp2t[i1] + m_piDotProductTemp2t[i2];
+        m_piDotProductTemp3[i] = m_piDotProductTemp3t[im2] + m_piDotProductTemp3t[im1] + (m_piDotProductTemp3t[i]) + m_piDotProductTemp3t[i1] + m_piDotProductTemp3t[i2];
+        m_piDotProductTemp5[i] = m_piDotProductTemp5t[im2] + m_piDotProductTemp5t[im1] + (m_piDotProductTemp5t[i]) + m_piDotProductTemp5t[i1] + m_piDotProductTemp5t[i2];
+        m_piDotProductTemp6[i] = m_piDotProductTemp6t[im2] + m_piDotProductTemp6t[im1] + (m_piDotProductTemp6t[i]) + m_piDotProductTemp6t[i1] + m_piDotProductTemp6t[i2];
+
+        pDstY[id] = optical_flow_averaging(m_piDotProductTemp1[i] + regularizator_1, m_piDotProductTemp2[i], m_piDotProductTemp3[i], m_piDotProductTemp5[i] + regularizator_2, m_piDotProductTemp6[i],
+          pGradX0[i], pGradX1[i], pGradY0[i], pGradY1[i], pSrcY0Temp[ir0], pSrcY1Temp[ir1]
+          , shiftNum, offset, limit, denom_min_1, denom_min_2, bitDepth);
+
+
+
+        for (i = iWidth2, id = 2 * iDstStride, ir0 = 2 * iSrc0Stride, ir1 = 2 * iSrc1Stride, i1 = i + iWidth, i2 = i1 + iWidth; i<iWidth*(iHeight - 2); i += iWidth, id += iDstStride, ir0 += iSrc0Stride, ir1 += iSrc1Stride, i1 += iWidth, i2 += iWidth, im1 += iWidth, im2 += iWidth)
+        {
+          m_piDotProductTemp1[i] = m_piDotProductTemp1t[im2] + m_piDotProductTemp1t[im1] + (m_piDotProductTemp1t[i]) + m_piDotProductTemp1t[i1] + m_piDotProductTemp1t[i2];
+          m_piDotProductTemp2[i] = m_piDotProductTemp2t[im2] + m_piDotProductTemp2t[im1] + (m_piDotProductTemp2t[i]) + m_piDotProductTemp2t[i1] + m_piDotProductTemp2t[i2];
+          m_piDotProductTemp3[i] = m_piDotProductTemp3t[im2] + m_piDotProductTemp3t[im1] + (m_piDotProductTemp3t[i]) + m_piDotProductTemp3t[i1] + m_piDotProductTemp3t[i2];
+          m_piDotProductTemp5[i] = m_piDotProductTemp5t[im2] + m_piDotProductTemp5t[im1] + (m_piDotProductTemp5t[i]) + m_piDotProductTemp5t[i1] + m_piDotProductTemp5t[i2];
+          m_piDotProductTemp6[i] = m_piDotProductTemp6t[im2] + m_piDotProductTemp6t[im1] + (m_piDotProductTemp6t[i]) + m_piDotProductTemp6t[i1] + m_piDotProductTemp6t[i2];
+
+          pDstY[id] = optical_flow_averaging(m_piDotProductTemp1[i] + regularizator_1, m_piDotProductTemp2[i], m_piDotProductTemp3[i], m_piDotProductTemp5[i] + regularizator_2, m_piDotProductTemp6[i],
+            pGradX0[i], pGradX1[i], pGradY0[i], pGradY1[i], pSrcY0Temp[ir0], pSrcY1Temp[ir1]
+            , shiftNum, offset, limit, denom_min_1, denom_min_2, bitDepth);
+        }
+
+        i = iWidth*(iHeight - 2); id = iDstStride*(iHeight - 2);  ir0 = iSrc0Stride*(iHeight - 2);  ir1 = iSrc1Stride*(iHeight - 2); im2 = i - iWidth2; im1 = i - iWidth; i1 = i + iWidth; i2 = i1;
+        m_piDotProductTemp1[i] = m_piDotProductTemp1t[im2] + m_piDotProductTemp1t[im1] + (m_piDotProductTemp1t[i]) + m_piDotProductTemp1t[i1] + m_piDotProductTemp1t[i2];
+        m_piDotProductTemp2[i] = m_piDotProductTemp2t[im2] + m_piDotProductTemp2t[im1] + (m_piDotProductTemp2t[i]) + m_piDotProductTemp2t[i1] + m_piDotProductTemp2t[i2];
+        m_piDotProductTemp3[i] = m_piDotProductTemp3t[im2] + m_piDotProductTemp3t[im1] + (m_piDotProductTemp3t[i]) + m_piDotProductTemp3t[i1] + m_piDotProductTemp3t[i2];
+        m_piDotProductTemp5[i] = m_piDotProductTemp5t[im2] + m_piDotProductTemp5t[im1] + (m_piDotProductTemp5t[i]) + m_piDotProductTemp5t[i1] + m_piDotProductTemp5t[i2];
+        m_piDotProductTemp6[i] = m_piDotProductTemp6t[im2] + m_piDotProductTemp6t[im1] + (m_piDotProductTemp6t[i]) + m_piDotProductTemp6t[i1] + m_piDotProductTemp6t[i2];
+
+        pDstY[id] = optical_flow_averaging(m_piDotProductTemp1[i] + regularizator_1, m_piDotProductTemp2[i], m_piDotProductTemp3[i], m_piDotProductTemp5[i] + regularizator_2, m_piDotProductTemp6[i],
+          pGradX0[i], pGradX1[i], pGradY0[i], pGradY1[i], pSrcY0Temp[ir0], pSrcY1Temp[ir1]
+          , shiftNum, offset, limit, denom_min_1, denom_min_2, bitDepth);
+
+        i = iWidth*(iHeight - 1); id = iDstStride*(iHeight - 1);  ir0 = iSrc0Stride*(iHeight - 1);  ir1 = iSrc1Stride*(iHeight - 1); im2 = i - iWidth2; im1 = i - iWidth; i1 = i; i2 = i;
+        m_piDotProductTemp1[i] = m_piDotProductTemp1t[im2] + m_piDotProductTemp1t[im1] + (m_piDotProductTemp1t[i]) + m_piDotProductTemp1t[i1] + m_piDotProductTemp1t[i2];
+        m_piDotProductTemp2[i] = m_piDotProductTemp2t[im2] + m_piDotProductTemp2t[im1] + (m_piDotProductTemp2t[i]) + m_piDotProductTemp2t[i1] + m_piDotProductTemp2t[i2];
+        m_piDotProductTemp3[i] = m_piDotProductTemp3t[im2] + m_piDotProductTemp3t[im1] + (m_piDotProductTemp3t[i]) + m_piDotProductTemp3t[i1] + m_piDotProductTemp3t[i2];
+        m_piDotProductTemp5[i] = m_piDotProductTemp5t[im2] + m_piDotProductTemp5t[im1] + (m_piDotProductTemp5t[i]) + m_piDotProductTemp5t[i1] + m_piDotProductTemp5t[i2];
+        m_piDotProductTemp6[i] = m_piDotProductTemp6t[im2] + m_piDotProductTemp6t[im1] + (m_piDotProductTemp6t[i]) + m_piDotProductTemp6t[i1] + m_piDotProductTemp6t[i2];
+        pDstY[id] = optical_flow_averaging(m_piDotProductTemp1[i] + regularizator_1, m_piDotProductTemp2[i], m_piDotProductTemp3[i], m_piDotProductTemp5[i] + regularizator_2, m_piDotProductTemp6[i],
+          pGradX0[i], pGradX1[i], pGradY0[i], pGradY1[i], pSrcY0Temp[ir0], pSrcY1Temp[ir1]
+          , shiftNum, offset, limit, denom_min_1, denom_min_2, bitDepth);
+
+        m_piDotProductTemp1++; m_piDotProductTemp1t++;
+        m_piDotProductTemp2++; m_piDotProductTemp2t++;
+        m_piDotProductTemp3++; m_piDotProductTemp3t++;
+        m_piDotProductTemp5++; m_piDotProductTemp5t++;
+        m_piDotProductTemp6++; m_piDotProductTemp6t++;
+
+        pDstY++;
+        pGradX0++;  pGradX1++;
+        pGradY0++; pGradY1++;
+        pSrcY0Temp++;
+        pSrcY1Temp++;
+
+      }
+
+
+#else
       m_piDotProductTemp1 = m_piDotProduct1+2;m_piDotProductTemp2 = m_piDotProduct2+2;m_piDotProductTemp3 = m_piDotProduct3+2;m_piDotProductTemp5 = m_piDotProduct5+2;m_piDotProductTemp6 = m_piDotProduct6+2;
       m_pS1loc=m_piS1temp+2;m_pS2loc=m_piS2temp+2;m_pS3loc=m_piS3temp+2;m_pS5loc=m_piS5temp+2;m_pS6loc=m_piS6temp+2;      
 
@@ -2838,6 +3015,7 @@ Void TComPrediction::xWeightedAverage( TComYuv* pcYuvSrc0, TComYuv* pcYuvSrc1, I
         pDstY += iDstStride;pSrcY0Temp+=iSrc0Stride;pSrcY1Temp+=iSrc1Stride;
         pGradX0+=iWidthG;pGradX1+=iWidthG;pGradY0+=iWidthG;pGradY1+=iWidthG;
       }
+#endif
     } //bBIOapplied
     pcYuvDst->addAvg( pcYuvSrc0, pcYuvSrc1, uiPartIdx, iWidth, iHeight, clipBitDepths, bBIOapplied);    
 #else

@@ -49,6 +49,8 @@
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////
+#define JVET_F0028_BIO_NO_BLOCK_EXTENTION                 1
+
 #define JVET_E0062_MULTI_DMS                              1   ///< Extended chroma multiple DM modes
 
 #define JVET_E0077_ENHANCED_LM                            1   ///< Enhanced LM mode
