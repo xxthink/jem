@@ -49,6 +49,7 @@
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////
+#define JVET_F0031_RMV_REDUNDANT_TRSKIP                   1
 #define JVET_F0028_BIO_NO_BLOCK_EXTENTION                 1
 
 #define JVET_E0062_MULTI_DMS                              1   ///< Extended chroma multiple DM modes
