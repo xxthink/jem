@@ -221,6 +221,7 @@
 #define VCEG_AZ07_FRUC_MERGE                              1  ///< Pattern matched motion vector derivation
 #if VCEG_AZ07_FRUC_MERGE
 #define JVET_E0060_FRUC_CAND                              1  ///< E0060: Add candidates to FRUC lists, and adjust the number of these candidates
+#define JVET_F0032_UNI_BI_SELECTION                       1  ///< JVET_F0032: selection between uni-prediction and bi-prediction for FRUC template matching mode
 #endif
 
 #define JVET_B058_HIGH_PRECISION_MOTION_VECTOR_MC         1
