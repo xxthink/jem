@@ -2096,6 +2096,12 @@ Void TDecSbac::parseTransformSkipFlags (TComTU &rTu, ComponentID component)
   {
     return;
   }
+#if JVET_F0031_RMV_REDUNDANT_TRSKIP
+  if (isLuma(component) && pcCU->getEmtCuFlag(uiAbsPartIdx))
+  {
+    return;
+  }
+#endif
 
   UInt useTransformSkip;
 

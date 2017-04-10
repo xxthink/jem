@@ -2898,6 +2898,9 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
   checkTransformSkip           &= TUCompRectHasAssociatedTransformSkipFlag(rTu.getRect(COMPONENT_Y), pcCU->getSlice()->getPPS()->getPpsRangeExtension().getLog2MaxTransformSkipBlockSize());
 #endif
   checkTransformSkip           &= (!pcCU->getCUTransquantBypass(0));
+#if JVET_F0031_RMV_REDUNDANT_TRSKIP
+  checkTransformSkip  &= (!pcCU->getEmtCuFlag(0));
+#endif
 
   assert (rTu.ProcessComponentSection(COMPONENT_Y));
 #if !JVET_C0024_QTBT
@@ -3632,6 +3635,9 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
   checkTransformSkip           &= TUCompRectHasAssociatedTransformSkipFlag(rTu.getRect(COMPONENT_Y), pcCU->getSlice()->getPPS()->getPpsRangeExtension().getLog2MaxTransformSkipBlockSize());
 #endif
   checkTransformSkip           &= (!pcCU->getCUTransquantBypass(0));
+#if JVET_F0031_RMV_REDUNDANT_TRSKIP
+  checkTransformSkip  &= (!pcCU->getEmtCuFlag(uiAbsPartIdx));
+#endif
 
   assert (rTu.ProcessComponentSection(COMPONENT_Y));
 #if !JVET_C0024_QTBT
@@ -9982,6 +9988,12 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
                                      TUCompRectHasAssociatedTransformSkipFlag(rTu.getRect(compID), pcCU->getSlice()->getPPS()->getPpsRangeExtension().getLog2MaxTransformSkipBlockSize()) &&
 #endif
                                      (!pcCU->isLosslessCoded(0));
+#if JVET_F0031_RMV_REDUNDANT_TRSKIP
+        if(isLuma(compID))
+        {
+          checkTransformSkip[compID]  &= (!pcCU->getEmtCuFlag(uiAbsPartIdx));
+        }
+#endif
 #if VCEG_AZ08_INTER_KLT
         UInt uiMaxTrWidth = g_uiDepth2Width[USE_MORE_BLOCKSIZE_DEPTH_MAX - 1];
         UInt uiMinTrWidth = g_uiDepth2Width[USE_MORE_BLOCKSIZE_DEPTH_MIN - 1];
