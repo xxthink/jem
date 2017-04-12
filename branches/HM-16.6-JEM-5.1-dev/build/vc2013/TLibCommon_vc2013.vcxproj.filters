@@ -35,6 +35,9 @@
     <ClCompile Include="..\..\source\Lib\TLibCommon\TComInterpolationFilter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\source\Lib\TLibCommon\TComBilateralFilter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\source\Lib\TLibCommon\TComLoopFilter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -137,6 +140,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\source\Lib\TLibCommon\TComInterpolationFilter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\Lib\TLibCommon\TComBilateralFilter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\source\Lib\TLibCommon\TComList.h">

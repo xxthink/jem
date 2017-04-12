@@ -123,6 +123,13 @@ Void TAppDecTop::decode()
   Bool openedReconFile = false; // reconstruction file not yet opened. (must be performed after SPS is seen)
   Bool loopFiltered = false;
 
+#if JVET_F0096_BILATERAL_FILTER
+  TComBilateralFilter::instance()->createdivToMulLUTs();
+  for(Int qp=18; qp<MAX_QP+1; qp++ )
+  {
+    TComBilateralFilter::instance()->createBilateralFilterTable(qp);
+  }
+#endif
   while (!!bitstreamFile)
   {
     /* location serves to work around a design fault in the decoder, whereby

@@ -625,6 +625,13 @@ Void TAppEncTop::encode()
   TExt360AppEncTop           ext360(*this, m_cTEncTop.getGOPEncoder()->getExt360Data(), *(m_cTEncTop.getGOPEncoder()), *pcPicYuvOrg);
 #endif
 
+#if JVET_F0096_BILATERAL_FILTER
+  TComBilateralFilter::instance()->createdivToMulLUTs();
+  for(Int qp=18; qp<MAX_QP+1; qp++ )
+  {
+    TComBilateralFilter::instance()->createBilateralFilterTable(qp);
+  }
+#endif
   while ( !bEos )
   {
     // get buffers

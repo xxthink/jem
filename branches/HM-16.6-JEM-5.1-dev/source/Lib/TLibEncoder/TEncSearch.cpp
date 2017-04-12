@@ -2410,6 +2410,23 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
     }
   }
 
+#if JVET_F0096_BILATERAL_FILTER
+  if (isLuma(compID))
+  {
+    if( uiAbsSum && (pcCU->getQP(COMPONENT_Y) > 17))
+    {
+      TComBilateralFilter::instance()->bilateralFilterIntra(pcCU, uiWidth, uiHeight, piReco, uiStride, pcCU->getQP(COMPONENT_Y));
+      for( UInt uiY = 0; uiY < uiHeight; uiY++ )
+      {
+        memcpy(piRecQt + uiY * uiRecQtStride, piReco + uiY * uiStride, uiWidth * sizeof(Short));
+        memcpy(piRecIPred + uiY * uiRecIPredStride, piReco + uiY * uiStride , uiWidth * sizeof(Short));
+        uiY++;
+        memcpy(piRecQt + uiY * uiRecQtStride, piReco + uiY * uiStride, uiWidth * sizeof(Short));
+        memcpy(piRecIPred + uiY * uiRecIPredStride, piReco + uiY * uiStride , uiWidth * sizeof(Short));
+      }
+    }
+  }
+#endif
   //===== update distortion =====
   ruiDist += m_pcRdCost->getDistPart( bitDepth, piReco, uiStride, piOrg, uiStride, uiWidth, uiHeight, compID );
 }
@@ -2729,7 +2746,20 @@ Bool TEncSearch::xIntraCodingTUBlockTM(TComYuv*    pcOrgYuv,
             }
         }
     }
-
+#if JVET_F0096_BILATERAL_FILTER
+    if (isLuma(compID))
+    {
+      if( uiAbsSum && (pcCU->getQP(COMPONENT_Y) > 17))
+      {
+        TComBilateralFilter::instance()->bilateralFilterIntra(pcCU, uiWidth, uiHeight, piReco, uiStride, pcCU->getQP(COMPONENT_Y));
+        for( UInt uiY = 0; uiY < uiHeight; uiY++ )
+        {
+          memcpy(piRecQt + uiY * uiRecQtStride, piReco + uiY * uiStride, uiWidth * sizeof(Short));
+          memcpy(piRecIPred + uiY * uiRecIPredStride, piReco + uiY * uiStride , uiWidth * sizeof(Short));
+        }
+      }
+    }
+#endif
     //===== update distortion =====
     ruiDist += m_pcRdCost->getDistPart(bitDepth, piReco, uiStride, piOrg, uiStride, uiWidth, uiHeight, compID);
 
@@ -10354,6 +10384,31 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
                                   DEBUG_STRING_PASS_INTO_OPTIONAL(&sSingleStringTest, (DebugOptionList::DebugString_InvTran.getInt()&debugPredModeMask))
                                   );
 #endif
+#if JVET_F0096_BILATERAL_FILTER
+                              if (isLuma(compID))
+                              {
+                                UInt minSize = std::min(tuWidth, tuHeight);
+                                if( (currAbsSum > 0) && (pcCU->getQP(uiAbsPartIdx) > 17) && (minSize < 16))
+                                {
+                                  Pel *pcPtrPred = pcPred->getAddr(compID, uiAbsPartIdx);
+                                  UInt uiStridePred = pcPred->getStride(compID);
+#if JVET_C0024_QTBT
+                                  Pel *pcPtrRes = m_ppcQTTempTComYuv[uiWIdx][uiHIdx].getAddr(compID, uiAbsPartIdx);
+                                  UInt uiStrideRes = m_ppcQTTempTComYuv[uiWIdx][uiHIdx].getStride(compID);
+                                  Pel *pcPtrRec = m_ppcQTTempTComYuv[uiWIdx][uiHIdx].getAddr(compID, uiAbsPartIdx);
+                                  UInt uiStrideRec = m_ppcQTTempTComYuv[uiWIdx][uiHIdx].getStride(compID);
+#else
+                                  Pel *pcPtrRes = m_pcQTTempTComYuv[uiQTTempAccessLayer].getAddr(compID, uiAbsPartIdx);
+                                  UInt uiStrideRes = m_pcQTTempTComYuv[uiQTTempAccessLayer].getStride(compID);
+                                  Pel *pcPtrRec = m_pcQTTempTComYuv[uiQTTempAccessLayer].getAddr(compID, uiAbsPartIdx);
+                                  UInt uiStrideRec = m_pcQTTempTComYuv[uiQTTempAccessLayer].getStride(compID);
+#endif
+                                  const Int clipbd = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
+                                  TComBilateralFilter::instance()->bilateralFilterInter(pcCU, tuWidth, tuHeight, pcPtrRes, uiStrideRes, pcPtrPred, uiStridePred, pcPtrRec, uiStrideRec, clipbd, pcCU->getQP(uiAbsPartIdx));
+                                }
+                              }
+#endif
+
 #if VCEG_AZ08_INTER_KLT
                               if (useKLT)
                               {
