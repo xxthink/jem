@@ -43,7 +43,9 @@
 #include "TComDataCU.h"
 #include "TComChromaFormat.h"
 #include "ContextTables.h"
-
+#if JVET_F0096_BILATERAL_FILTER
+#include "TLibCommon/TComBilateralFilter.h"
+#endif
 //! \ingroup TLibCommon
 //! \{
 

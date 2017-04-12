@@ -1529,6 +1529,24 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
     pReco     += uiStride;
     pRecIPred += uiRecIPredStride;
   }
+  #if JVET_F0096_BILATERAL_FILTER
+  Pel* piReco = pcRecoYuv->getAddr( compID, uiAbsPartIdx );
+  Pel* piRecIPred = pcCU->getPic()->getPicYuvRec()->getAddr( compID, pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu() + uiAbsPartIdx );
+
+  if (isLuma(compID))
+  {
+    if ((pcCU->getCbf(uiAbsPartIdx, compID, rTu.GetTransformDepthRel()) != 0) && (pcCU->getQP(COMPONENT_Y) > 17))
+    {
+      TComBilateralFilter::instance()->bilateralFilterIntra(pcCU, uiWidth, uiHeight, piReco, uiStride, pcCU->getQP(COMPONENT_Y));
+      for( UInt uiY = 0; uiY < uiHeight; uiY++ )
+      {
+        memcpy(piRecIPred + uiY * uiRecIPredStride, piReco + uiY * uiStride , uiWidth * sizeof(Short));
+        uiY++;
+        memcpy(piRecIPred + uiY * uiRecIPredStride, piReco + uiY * uiStride , uiWidth * sizeof(Short));
+      }
+    }
+  }
+#endif
 }
 
 #if VCEG_AZ08_INTRA_KLT
@@ -1707,6 +1725,23 @@ TDecCu::xIntraRecBlkTM( TComYuv*    pcRecoYuv,
         pReco += uiStride;
         pRecIPred += uiRecIPredStride;
     }
+#if JVET_F0096_BILATERAL_FILTER
+  Pel* piReco = pcRecoYuv->getAddr( compID, uiAbsPartIdx );
+  Pel* piRecIPred = pcCU->getPic()->getPicYuvRec()->getAddr( compID, pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu() + uiAbsPartIdx );
+  if (isLuma(compID))
+  {
+    if ((pcCU->getCbf(uiAbsPartIdx, compID, rTu.GetTransformDepthRel()) != 0) && (pcCU->getQP(COMPONENT_Y) > 17))
+    {
+      TComBilateralFilter::instance()->bilateralFilterIntra(pcCU, uiWidth, uiHeight, piReco, uiStride, pcCU->getQP(COMPONENT_Y));
+      for( UInt uiY = 0; uiY < uiHeight; uiY++ )
+      {
+        memcpy(piRecIPred + uiY * uiRecIPredStride, piReco + uiY * uiStride , uiWidth * sizeof(Short));
+        uiY++;
+        memcpy(piRecIPred + uiY * uiRecIPredStride, piReco + uiY * uiStride , uiWidth * sizeof(Short));
+      }
+    }
+  }
+#endif
 }
 #endif
 

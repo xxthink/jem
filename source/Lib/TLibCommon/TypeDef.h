@@ -49,6 +49,7 @@
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////
+#define JVET_F0096_BILATERAL_FILTER                       1   // for bitexact implementation with division see JVET-F0096
 #define JVET_F0031_RMV_REDUNDANT_TRSKIP                   1
 #define JVET_F0028_BIO_NO_BLOCK_EXTENTION                 1
 

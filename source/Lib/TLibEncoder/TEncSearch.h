@@ -49,7 +49,9 @@
 #include "TEncEntropy.h"
 #include "TEncSbac.h"
 #include "TEncCfg.h"
-
+#if JVET_F0096_BILATERAL_FILTER
+#include "TLibCommon/TComBilateralFilter.h"
+#endif
 
 //! \ingroup TLibEncoder
 //! \{
