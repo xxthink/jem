@@ -1146,6 +1146,9 @@ static UInt calculateCollocatedFromL1Flag(TEncCfg *pCfg, const Int GOPid, const 
 Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rcListPic,
                            TComList<TComPicYuv*>& rcListPicYuvRecOut, std::list<AccessUnit>& accessUnitsInGOP,
                            Bool isField, Bool isTff, const InputColourSpaceConversion snr_conversion, const Bool printFrameMSE
+#if JVET_F0064_MSSSIM
+                           , const Bool printMSSSIM
+#endif
 #if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
                          , TComStats* m_apcStats
 #endif
@@ -2057,7 +2060,11 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
 
     m_pcCfg->setEncodedFlag(iGOPid, true);
 
+#if JVET_F0064_MSSSIM
+    xCalculateAddPSNRs( isField, isTff, iGOPid, pcPic, accessUnit, rcListPic, dEncTime, snr_conversion, printFrameMSE, printMSSSIM );
+#else
     xCalculateAddPSNRs( isField, isTff, iGOPid, pcPic, accessUnit, rcListPic, dEncTime, snr_conversion, printFrameMSE );
+#endif
 
     if (!digestStr.empty())
     {
@@ -2170,9 +2177,17 @@ Void TEncGOP::printOutPreciseSummary(const Char * filename, Bool isField, const 
 #endif
 
 #if JVET_D0134_PSNR
+#if JVET_F0064_MSSSIM
+Void TEncGOP::printOutSummary(UInt uiNumAllPicCoded, Bool isField, const Bool printMSEBasedSNR, const Bool printSequenceMSE, const Bool printMSSSIM, const Bool trueBitdepthPSNR, const BitDepths &bitDepths)
+#else
 Void TEncGOP::printOutSummary(UInt uiNumAllPicCoded, Bool isField, const Bool printMSEBasedSNR, const Bool printSequenceMSE, const Bool trueBitdepthPSNR, const BitDepths &bitDepths)
+#endif
+#else
+#if JVET_F0064_MSSSIM
+Void TEncGOP::printOutSummary(UInt uiNumAllPicCoded, Bool isField, const Bool printMSEBasedSNR, const Bool printSequenceMSE, const Bool printMSSSIM, const BitDepths &bitDepths)
 #else
 Void TEncGOP::printOutSummary(UInt uiNumAllPicCoded, Bool isField, const Bool printMSEBasedSNR, const Bool printSequenceMSE, const BitDepths &bitDepths)
+#endif
 #endif
 {
   assert (uiNumAllPicCoded == m_gcAnalyzeAll.getNumPic());
@@ -2187,6 +2202,19 @@ Void TEncGOP::printOutSummary(UInt uiNumAllPicCoded, Bool isField, const Bool pr
 
 #if JVET_D0134_PSNR
   //-- all
+#if JVET_F0064_MSSSIM
+  printf( "\n\nSUMMARY --------------------------------------------------------\n" );
+  m_gcAnalyzeAll.printOut('a', chFmt, printMSEBasedSNR, printSequenceMSE, printMSSSIM, trueBitdepthPSNR, bitDepths);
+
+  printf( "\n\nI Slices--------------------------------------------------------\n" );
+  m_gcAnalyzeI.printOut('i', chFmt, printMSEBasedSNR, printSequenceMSE, printMSSSIM, trueBitdepthPSNR, bitDepths);
+
+  printf( "\n\nP Slices--------------------------------------------------------\n" );
+  m_gcAnalyzeP.printOut('p', chFmt, printMSEBasedSNR, printSequenceMSE, printMSSSIM, trueBitdepthPSNR, bitDepths);
+
+  printf( "\n\nB Slices--------------------------------------------------------\n" );
+  m_gcAnalyzeB.printOut('b', chFmt, printMSEBasedSNR, printSequenceMSE, printMSSSIM, trueBitdepthPSNR, bitDepths);
+#else
   printf( "\n\nSUMMARY --------------------------------------------------------\n" );
   m_gcAnalyzeAll.printOut('a', chFmt, printMSEBasedSNR, printSequenceMSE, trueBitdepthPSNR, bitDepths);
 
@@ -2198,6 +2226,7 @@ Void TEncGOP::printOutSummary(UInt uiNumAllPicCoded, Bool isField, const Bool pr
 
   printf( "\n\nB Slices--------------------------------------------------------\n" );
   m_gcAnalyzeB.printOut('b', chFmt, printMSEBasedSNR, printSequenceMSE, trueBitdepthPSNR, bitDepths);
+#endif
 
   if (!m_pcCfg->getSummaryOutFilename().empty())
   {
@@ -2219,7 +2248,11 @@ Void TEncGOP::printOutSummary(UInt uiNumAllPicCoded, Bool isField, const Bool pr
     // prior to the above statement, the interlace analyser does not contain the correct total number of bits.
 
     printf( "\n\nSUMMARY INTERLACED ---------------------------------------------\n" );
+#if JVET_F0064_MSSSIM
+    m_gcAnalyzeAll_in.printOut('a', chFmt, printMSEBasedSNR, printSequenceMSE, trueBitdepthPSNR, printMSSSIM, bitDepths);
+#else
     m_gcAnalyzeAll_in.printOut('a', chFmt, printMSEBasedSNR, printSequenceMSE, trueBitdepthPSNR, bitDepths);
+#endif
 
     if (!m_pcCfg->getSummaryOutFilename().empty())
     {
@@ -2228,6 +2261,19 @@ Void TEncGOP::printOutSummary(UInt uiNumAllPicCoded, Bool isField, const Bool pr
   }
 #else
   //-- all
+#if JVET_F0064_MSSSIM
+  printf( "\n\nSUMMARY --------------------------------------------------------\n" );
+  m_gcAnalyzeAll.printOut('a', chFmt, printMSEBasedSNR, printSequenceMSE, printMSSSIM, bitDepths);
+
+  printf( "\n\nI Slices--------------------------------------------------------\n" );
+  m_gcAnalyzeI.printOut('i', chFmt, printMSEBasedSNR, printSequenceMSE, printMSSSIM, bitDepths);
+
+  printf( "\n\nP Slices--------------------------------------------------------\n" );
+  m_gcAnalyzeP.printOut('p', chFmt, printMSEBasedSNR, printSequenceMSE, printMSSSIM, bitDepths);
+
+  printf( "\n\nB Slices--------------------------------------------------------\n" );
+  m_gcAnalyzeB.printOut('b', chFmt, printMSEBasedSNR, printSequenceMSE, printMSSSIM, bitDepths);
+#else
   printf( "\n\nSUMMARY --------------------------------------------------------\n" );
   m_gcAnalyzeAll.printOut('a', chFmt, printMSEBasedSNR, printSequenceMSE, bitDepths);
 
@@ -2239,6 +2285,7 @@ Void TEncGOP::printOutSummary(UInt uiNumAllPicCoded, Bool isField, const Bool pr
 
   printf( "\n\nB Slices--------------------------------------------------------\n" );
   m_gcAnalyzeB.printOut('b', chFmt, printMSEBasedSNR, printSequenceMSE, bitDepths);
+#endif
 
   if (!m_pcCfg->getSummaryOutFilename().empty())
   {
@@ -2402,9 +2449,15 @@ UInt64 TEncGOP::xFindDistortionFrame (TComPicYuv* pcPic0, TComPicYuv* pcPic1, co
   return uiTotalDiff;
 }
 
+#if JVET_F0064_MSSSIM
+Void TEncGOP::xCalculateAddPSNRs( const Bool isField, const Bool isFieldTopFieldFirst, const Int iGOPid, TComPic* pcPic, const AccessUnit&accessUnit, TComList<TComPic*> &rcListPic, const Double dEncTime, const InputColourSpaceConversion snr_conversion, const Bool printFrameMSE, const Bool printMSSSIM )
+{
+  xCalculateAddPSNR( pcPic, pcPic->getPicYuvRec(), accessUnit, dEncTime, snr_conversion, printFrameMSE, printMSSSIM );
+#else
 Void TEncGOP::xCalculateAddPSNRs( const Bool isField, const Bool isFieldTopFieldFirst, const Int iGOPid, TComPic* pcPic, const AccessUnit&accessUnit, TComList<TComPic*> &rcListPic, const Double dEncTime, const InputColourSpaceConversion snr_conversion, const Bool printFrameMSE )
 {
   xCalculateAddPSNR( pcPic, pcPic->getPicYuvRec(), accessUnit, dEncTime, snr_conversion, printFrameMSE );
+#endif
 
   //In case of field coding, compute the interlaced PSNR for both fields
   if(isField)
@@ -2459,17 +2512,29 @@ Void TEncGOP::xCalculateAddPSNRs( const Bool isField, const Bool isFieldTopField
 
       if( (pcPic->isTopField() && isFieldTopFieldFirst) || (!pcPic->isTopField() && !isFieldTopFieldFirst))
       {
+#if JVET_F0064_MSSSIM
+        xCalculateInterlacedAddPSNR(pcPic, correspondingFieldPic, pcPic->getPicYuvRec(), correspondingFieldPic->getPicYuvRec(), snr_conversion, printFrameMSE, printMSSSIM );
+#else
         xCalculateInterlacedAddPSNR(pcPic, correspondingFieldPic, pcPic->getPicYuvRec(), correspondingFieldPic->getPicYuvRec(), snr_conversion, printFrameMSE );
+#endif
       }
       else
       {
+#if JVET_F0064_MSSSIM
+        xCalculateInterlacedAddPSNR(correspondingFieldPic, pcPic, correspondingFieldPic->getPicYuvRec(), pcPic->getPicYuvRec(), snr_conversion, printFrameMSE, printMSSSIM );
+#else
         xCalculateInterlacedAddPSNR(correspondingFieldPic, pcPic, correspondingFieldPic->getPicYuvRec(), pcPic->getPicYuvRec(), snr_conversion, printFrameMSE );
+#endif
       }
     }
   }
 }
 
+#if JVET_F0064_MSSSIM
+Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const AccessUnit& accessUnit, Double dEncTime, const InputColourSpaceConversion conversion, const Bool printFrameMSE, const Bool printMSSSIM )
+#else
 Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const AccessUnit& accessUnit, Double dEncTime, const InputColourSpaceConversion conversion, const Bool printFrameMSE )
+#endif
 {
   Double  dPSNR[MAX_NUM_COMPONENT];
 
@@ -2527,6 +2592,27 @@ Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const Acces
   m_ext360.calculatePSNRs(pcPic);
 #endif
 
+#if JVET_F0064_MSSSIM
+  //===== calculate MS-SSIM =====
+  Double  MSSSIM[MAX_NUM_COMPONENT] = {0,0,0};
+  if (printMSSSIM) 
+  {
+    for(Int chan=0; chan<pcPicD->getNumberValidComponents(); chan++)
+    {
+      const ComponentID ch=ComponentID(chan);
+      const TComPicYuv *pOrgPicYuv =(conversion!=IPCOLOURSPACE_UNCHANGED) ? pcPic ->getPicYuvTrueOrg() : pcPic ->getPicYuvOrg();
+      const Pel*  pOrg       = pOrgPicYuv->getAddr(ch);
+      const Int   iOrgStride = pOrgPicYuv->getStride(ch);
+      Pel*  pRec             = picd.getAddr(ch);
+      const Int   iRecStride = picd.getStride(ch);
+      const Int   iWidth  = pcPicD->getWidth (ch) - (m_pcEncTop->getPad(0) >> pcPic->getComponentScaleX(ch));
+      const Int   iHeight = pcPicD->getHeight(ch) - ((m_pcEncTop->getPad(1) >> (pcPic->isField()?1:0)) >> pcPic->getComponentScaleY(ch));
+      const UInt uiBitDepth = m_pcCfg->getBitDepth((const ChannelType)(chan > 0?1:0));
+
+      MSSSIM[ch] = xCalculateMSSSIM (pOrg, iOrgStride, pRec, iRecStride, iWidth, iHeight, uiBitDepth);
+    }
+  }
+#endif
 
   /* calculate the size of the access unit, excluding:
    *  - SEI NAL units
@@ -2558,7 +2644,11 @@ Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const Acces
   m_vRVM_RP.push_back( uibits );
 
   //===== add PSNR =====
+#if JVET_F0064_MSSSIM
+  m_gcAnalyzeAll.addResult (dPSNR, (Double)uibits, MSEyuvframe, MSSSIM);
+#else
   m_gcAnalyzeAll.addResult (dPSNR, (Double)uibits, MSEyuvframe);
+#endif
 #if EXTENSION_360_VIDEO
   m_ext360.addResult(m_gcAnalyzeAll);
 #endif
@@ -2566,21 +2656,33 @@ Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const Acces
   TComSlice*  pcSlice = pcPic->getSlice(0);
   if (pcSlice->isIntra())
   {
+#if JVET_F0064_MSSSIM
+    m_gcAnalyzeI.addResult (dPSNR, (Double)uibits, MSEyuvframe, MSSSIM);
+#else
     m_gcAnalyzeI.addResult (dPSNR, (Double)uibits, MSEyuvframe);
+#endif
 #if EXTENSION_360_VIDEO
     m_ext360.addResult(m_gcAnalyzeI);
 #endif
   }
   if (pcSlice->isInterP())
   {
+#if JVET_F0064_MSSSIM
+    m_gcAnalyzeP.addResult (dPSNR, (Double)uibits, MSEyuvframe, MSSSIM);
+#else
     m_gcAnalyzeP.addResult (dPSNR, (Double)uibits, MSEyuvframe);
+#endif
 #if EXTENSION_360_VIDEO
     m_ext360.addResult(m_gcAnalyzeP);
 #endif
   }
   if (pcSlice->isInterB())
   {
+#if JVET_F0064_MSSSIM
+    m_gcAnalyzeB.addResult (dPSNR, (Double)uibits, MSEyuvframe, MSSSIM);
+#else
     m_gcAnalyzeB.addResult (dPSNR, (Double)uibits, MSEyuvframe);
+#endif
 #if EXTENSION_360_VIDEO
     m_ext360.addResult(m_gcAnalyzeB);
 #endif
@@ -2589,7 +2691,11 @@ Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const Acces
 #if JVET_D0186_PRECISEPSNR
   if (pcSlice->getPOC() > 0)
   {
+#if JVET_F0064_MSSSIM
+    m_gcAnalyzeNoFirst.addResult(dPSNR, (Double)uibits, MSEyuvframe, MSSSIM);
+#else
     m_gcAnalyzeNoFirst.addResult(dPSNR, (Double)uibits, MSEyuvframe);
+#endif
   }
 #endif
 
@@ -2617,6 +2723,12 @@ Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const Acces
 #endif
 
   printf(" [Y %6.4lf dB    U %6.4lf dB    V %6.4lf dB]", dPSNR[COMPONENT_Y], dPSNR[COMPONENT_Cb], dPSNR[COMPONENT_Cr] );
+#if JVET_F0064_MSSSIM
+  if (printMSSSIM)
+  {
+    printf(" [MS-SSIM Y %1.6lf    U %1.6lf    V %1.6lf]", MSSSIM[COMPONENT_Y], MSSSIM[COMPONENT_Cb], MSSSIM[COMPONENT_Cr] );
+  }
+#endif
   if (printFrameMSE)
   {
     printf(" [Y MSE %6.4lf  U MSE %6.4lf  V MSE %6.4lf]", MSEyuvframe[COMPONENT_Y], MSEyuvframe[COMPONENT_Cb], MSEyuvframe[COMPONENT_Cr] );
@@ -2639,9 +2751,203 @@ Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const Acces
   cscd.destroy();
 }
 
+#if JVET_F0064_MSSSIM
+Double TEncGOP::xCalculateMSSSIM (const Pel *pOrg, const Int iOrgStride, const Pel* pRec, const Int iRecStride, const Int iWidth, const Int iHeight, const UInt uiBitDepth)
+{
+  Int maxScale = 5; 
+
+  // For low resolution videos determine number of scales 
+  if (iWidth < 22 || iHeight < 22)
+  {
+    maxScale = 1; 
+  }
+  else if (iWidth < 44 || iHeight < 44)
+  {
+    maxScale = 2; 
+  }
+  else if (iWidth < 88 || iHeight < 88) 
+  {
+    maxScale = 3; 
+  }
+  else if (iWidth < 176 || iHeight < 176)
+  {
+    maxScale = 4; 
+  } 
+
+  //Normalized gaussian mask design, 11*11, s.d. 1.5
+  Double weights[11][11];
+  Double coeffSum=0.0;
+  for(Int y=0;y<11;y++)
+  {
+    for(Int x=0;x<11;x++)
+    {
+      weights[y][x]=exp(-((y-5.0)*(y-5.0)+(x-5.0)*(x-5.0))/4.5);
+      coeffSum +=weights[y][x];
+    }
+  }
+
+  for(Int y=0;y<11;y++)
+  {
+    for(Int x=0;x<11;x++)
+    {
+      weights[y][x] /=coeffSum;
+    }
+  }
+
+  //Resolution based weights
+  const Double exponentWeights[5][5] = {{1.0, 0, 0, 0, 0},
+                                        {0.1356, 0.8644, 0, 0, 0},
+                                        {0.0711, 0.4530, 0.4760, 0, 0},
+                                        {0.0517, 0.3295, 0.3462, 0.2726, 0},
+                                        {0.0448, 0.2856, 0.3001, 0.2363, 0.1333}};
+
+  //Downsampling luma
+  Double* original[5];
+  Double* recon[5];
+
+  Int tmpHeight = iHeight;
+  Int tmpWidth = iWidth;
+
+  for(Int i=0;i<maxScale;i++)
+  {
+    original[i] =new Double[tmpHeight*tmpWidth];
+    recon[i] = new Double[tmpHeight*tmpWidth];
+    memset(original[i],0,tmpHeight*tmpWidth*sizeof(Double));
+    memset(recon[i],0,tmpHeight*tmpWidth*sizeof(Double));
+    tmpHeight >>=1;
+    tmpWidth >>=1;
+  }
+
+  for(Int y=0;y<iHeight;y++)
+  {
+    for(Int x=0;x<iWidth;x++)
+    {
+      original[0][y*iWidth+x] = pOrg[y*iOrgStride+x];
+      recon[0][y*iWidth+x] = pRec[y*iRecStride+x];
+    }
+  }
+
+  tmpHeight=iHeight>>1;
+  tmpWidth=iWidth>>1;
+
+  for(Int i=1;i<maxScale;i++)
+  {
+    for(Int y=0;y<tmpHeight;y++)
+    {
+      for(Int x=0;x<tmpWidth;x++)
+      {
+        original[i][y*tmpWidth+x]= (original[i-1][2*y*(2*tmpWidth)+2*x]+original[i-1][2*y*(2*tmpWidth)+2*x+1]+original[i-1][(2*y+1)*(2*tmpWidth)+2*x]+original[i-1][(2*y+1)*(2*tmpWidth)+2*x+1])/4.0;
+        recon[i][y*tmpWidth+x]= (recon[i-1][2*y*(2*tmpWidth)+2*x]+recon[i-1][2*y*(2*tmpWidth)+2*x+1]+recon[i-1][(2*y+1)*(2*tmpWidth)+2*x]+recon[i-1][(2*y+1)*(2*tmpWidth)+2*x+1])/4.0;
+      }
+    }
+    tmpHeight >>=1;
+    tmpWidth >>=1;
+  }
+
+  tmpHeight = iHeight;
+  tmpWidth = iWidth;
+  
+  // Calculate MS-SSIM
+  UInt maxValue  = (1<<uiBitDepth)-1;
+  const Double c1 = (0.01*maxValue)*(0.01*maxValue);
+  const Double c2 = (0.03*maxValue)*(0.03*maxValue);
+  
+  Double orgPel;
+  Double recPel;
+  Double muOrg          =0.0;
+  Double muRec          =0.0;
+  Double muOrigSqr      =0.0;
+  Double muRecSqr       =0.0;
+  Double muOrigMultRec  =0.0;
+  Double sigmaSqrOrig   =0.0;
+  Double sigmaSqrRec    =0.0;
+  Double sigmaOrigRec   =0.0;
+
+  Double** blockSSIMluma = new Double*[maxScale];
+  Double* meanSSIM = new Double[maxScale];
+  tmpWidth = iWidth;
+  tmpHeight = iHeight;
+ 
+  for(Int i=0;i<maxScale;i++)
+  {
+    Int blocks_per_row = tmpWidth-10;
+    Int blocks_per_column = tmpHeight-10;
+    Int totalblocks= blocks_per_row*blocks_per_column;
+    blockSSIMluma[i] =new Double[blocks_per_row*blocks_per_column];
+
+    for(Int blockindex_Y=0; blockindex_Y<blocks_per_column; blockindex_Y++)
+    {
+      for(Int blockindex_X=0; blockindex_X<blocks_per_row; blockindex_X++)
+      {
+        for(Int y=0; y<11; y++)
+        {
+          for(Int x=0;x<11; x++)
+          {
+            orgPel =original[i][(blockindex_Y+y)*tmpWidth+(blockindex_X+x)];
+            recPel=recon[i][(blockindex_Y+y)*tmpWidth+(blockindex_X+x)];
+
+            muOrg+= orgPel*weights[y][x];
+            muRec+= recPel*weights[y][x];
+            muOrigSqr+=orgPel*orgPel*weights[y][x];
+            muRecSqr+=recPel*recPel*weights[y][x];
+            muOrigMultRec+=orgPel*recPel*weights[y][x];
+          }
+        }
+      
+        sigmaSqrOrig = muOrigSqr-(muOrg*muOrg);
+        sigmaSqrRec  = muRecSqr-(muRec*muRec);
+        sigmaOrigRec = muOrigMultRec-(muOrg*muRec);
+        
+        blockSSIMluma[i][blockindex_Y*blocks_per_row+blockindex_X]=((2.0*sigmaOrigRec + c2)/(sigmaSqrOrig+sigmaSqrRec + c2));
+
+        if(i==(maxScale-1))
+        {
+          blockSSIMluma[i][blockindex_Y*blocks_per_row+blockindex_X]*=(2.0*muOrg*muRec + c1)/(muOrg*muOrg+muRec*muRec + c1);
+        }
+
+        muOrg         =0.0;
+        muRec         =0.0;
+        muOrigSqr     =0.0;
+        muRecSqr      =0.0;
+        muOrigMultRec =0.0;
+      }
+    }
+    meanSSIM[i]= 0.0;
+
+    for(Int index=0; index<totalblocks; index++)
+    {
+      meanSSIM[i] += blockSSIMluma[i][index];
+    }
+
+    meanSSIM[i] /=totalblocks;
+    tmpHeight >>=1;
+    tmpWidth >>=1;
+  }
+
+  Double finalMSSSIM = 1.0;
+
+  for(Int i=0;i<maxScale;i++)
+  {
+    finalMSSSIM *= pow(meanSSIM[i], exponentWeights[maxScale-1][i]);
+  }
+
+  for(Int i=0;i<maxScale;i++)
+  {
+    delete blockSSIMluma[i];
+    delete original[i];
+    delete recon[i];
+  }
+  return finalMSSSIM;
+}
+#endif
+
 Void TEncGOP::xCalculateInterlacedAddPSNR( TComPic* pcPicOrgFirstField, TComPic* pcPicOrgSecondField,
                                            TComPicYuv* pcPicRecFirstField, TComPicYuv* pcPicRecSecondField,
-                                           const InputColourSpaceConversion conversion, const Bool printFrameMSE )
+#if JVET_F0064_MSSSIM
+                                           const InputColourSpaceConversion conversion, const Bool printFrameMSE, const Bool printMSSSIM )
+#else                      
+                                           const InputColourSpaceConversion conversion, const Bool printFrameMSE )                                           
+#endif
 {
   const TComSPS &sps=pcPicOrgFirstField->getPicSym()->getSPS();
   Double  dPSNR[MAX_NUM_COMPONENT];
@@ -2715,12 +3021,55 @@ Void TEncGOP::xCalculateInterlacedAddPSNR( TComPic* pcPicOrgFirstField, TComPic*
     MSEyuvframe[ch]   = (Double)uiSSDtemp/(iSize*2);
   }
 
+#if JVET_F0064_MSSSIM
+  //===== calculate MS-SSIM =====
+  Double  MSSSIM[MAX_NUM_COMPONENT] = {0,0,0};
+  if (printMSSSIM)
+  {
+    for(Int chan=0; chan<numValidComponents; chan++)
+    {
+         const ComponentID ch=ComponentID(chan);
+      assert(apcPicRecFields[0]->getWidth(ch)==apcPicRecFields[1]->getWidth(ch));
+      assert(apcPicRecFields[0]->getHeight(ch)==apcPicRecFields[1]->getHeight(ch));
+
+      Double uiMSSSIMtemp = 0.0;
+      const Int   iWidth  = apcPicRecFields[0]->getWidth (ch) - (m_pcEncTop->getPad(0) >> apcPicRecFields[0]->getComponentScaleX(ch));
+      const Int   iHeight = apcPicRecFields[0]->getHeight(ch) - ((m_pcEncTop->getPad(1) >> 1) >> apcPicRecFields[0]->getComponentScaleY(ch));
+
+      for(UInt fieldNum=0; fieldNum<2; fieldNum++)
+      {
+        TComPic *pcPic=apcPicOrgFields[fieldNum];
+        TComPicYuv *pcPicD=apcPicRecFields[fieldNum];
+
+        const Pel*  pOrg    = (conversion!=IPCOLOURSPACE_UNCHANGED) ? pcPic ->getPicYuvTrueOrg()->getAddr(ch) : pcPic ->getPicYuvOrg()->getAddr(ch);
+        Pel*  pRec    = pcPicD->getAddr(ch);
+        const Int   iStride = pcPicD->getStride(ch);
+        const UInt uiBitDepth = m_pcCfg->getBitDepth((const ChannelType)(chan > 0?1:0));
+
+        uiMSSSIMtemp += xCalculateMSSSIM (pOrg, iStride, pRec, iStride, iWidth, iHeight, uiBitDepth);
+      }
+
+      MSSSIM[ch] = uiMSSSIMtemp/2;
+    }
+  }
+#endif
+
   UInt uibits = 0; // the number of bits for the pair is not calculated here - instead the overall total is used elsewhere.
 
   //===== add PSNR =====
+#if JVET_F0064_MSSSIM
+  m_gcAnalyzeAll_in.addResult (dPSNR, (Double)uibits, MSEyuvframe, MSSSIM);
+#else
   m_gcAnalyzeAll_in.addResult (dPSNR, (Double)uibits, MSEyuvframe);
+#endif
 
   printf("\n                                      Interlaced frame %d: [Y %6.4lf dB    U %6.4lf dB    V %6.4lf dB]", pcPicOrgSecondField->getPOC()/2 , dPSNR[COMPONENT_Y], dPSNR[COMPONENT_Cb], dPSNR[COMPONENT_Cr] );
+#if JVET_F0064_MSSSIM
+  if (printMSSSIM)
+  {
+    printf(" [MS-SSIM Y %1.6lf    U %1.6lf    V %1.6lf]", MSSSIM[COMPONENT_Y], MSSSIM[COMPONENT_Cb], MSSSIM[COMPONENT_Cr] );
+  }
+#endif
   if (printFrameMSE)
   {
     printf(" [Y MSE %6.4lf  U MSE %6.4lf  V MSE %6.4lf]", MSEyuvframe[COMPONENT_Y], MSEyuvframe[COMPONENT_Cb], MSEyuvframe[COMPONENT_Cr] );

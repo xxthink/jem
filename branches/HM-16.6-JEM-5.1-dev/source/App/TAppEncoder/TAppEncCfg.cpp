@@ -783,6 +783,9 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 #if JVET_D0134_PSNR
   ("TrueBitdepthPSNR",                                m_trueBidepthPSNR,                                false, "0 (default) compute PSNR using maxval = (1<<(bitdepth) - 1) instead of maxval = 255<<(bitdepth - 8)")
 #endif
+#if JVET_F0064_MSSSIM
+  ("PrintMSSSIM",                                     m_printMSSSIM,                                    false, "0 (default) do not print MS-SSIM scores, 1 = print MS-SSIM scores for each frame and for the whole sequence")
+#endif
   ("CabacZeroWordPaddingEnabled",                     m_cabacZeroWordPaddingEnabled,                     true, "0 do not add conforming cabac-zero-words to bit streams, 1 (default) = add cabac-zero-words as required")
   ("ChromaFormatIDC,-cf",                             tmpChromaFormat,                                      0, "ChromaFormatIDC (400|420|422|444 or set 0 (default) for same as InputChromaFormat)")
   ("ConformanceMode",                                 m_conformanceWindowMode,                              0, "Deprecated alias of ConformanceWindowMode")
@@ -2693,6 +2696,9 @@ Void TAppEncCfg::xPrintParameter()
   printf("True Bitdepth PSNR                     : %s\n", (m_trueBidepthPSNR ? "Enabled" : "Disabled") );
 #endif
   printf("Frame MSE output                       : %s\n", (m_printFrameMSE    ? "Enabled" : "Disabled") );
+#if JVET_F0064_MSSSIM
+  printf("MS-SSIM output                         : %s\n", (m_printMSSSIM      ? "Enabled" : "Disabled") );
+#endif
   printf("Cabac-zero-word-padding                : %s\n", (m_cabacZeroWordPaddingEnabled? "Enabled" : "Disabled") );
   if (m_isField)
   {

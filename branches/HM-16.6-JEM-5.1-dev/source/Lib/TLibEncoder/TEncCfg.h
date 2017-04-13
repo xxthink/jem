@@ -125,6 +125,9 @@ protected:
 #if JVET_D0134_PSNR
   Bool      m_trueBidepthPSNR;
 #endif
+#if JVET_F0064_MSSSIM
+  Bool      m_printMSSSIM;
+#endif
   Bool      m_cabacZeroWordPaddingEnabled;
 
   /* profile & level */
@@ -541,6 +544,11 @@ public:
 #if JVET_D0134_PSNR
   Bool      getTrueBitdepthPSNR             ()         const { return m_trueBidepthPSNR;           }
   Void      setTrueBitdepthPSNR             (Bool value)     { m_trueBidepthPSNR = value;          }
+#endif
+
+#if JVET_F0064_MSSSIM
+  Bool      getPrintMSSSIM                  ()         const { return m_printMSSSIM;               }
+  Void      setPrintMSSSIM                  (Bool value)     { m_printMSSSIM = value;              }
 #endif
 
   Bool      getCabacZeroWordPaddingEnabled()           const { return m_cabacZeroWordPaddingEnabled;  }
