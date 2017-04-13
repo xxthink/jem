@@ -112,6 +112,9 @@ protected:
 #if JVET_D0134_PSNR
   Bool      m_trueBidepthPSNR;
 #endif
+#if JVET_F0064_MSSSIM
+  Bool      m_printMSSSIM;
+#endif
   Bool      m_cabacZeroWordPaddingEnabled;
   Bool      m_bClipInputVideoToRec709Range;
   Bool      m_bClipOutputVideoToRec709Range;

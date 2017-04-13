@@ -105,6 +105,9 @@ Void TAppEncTop::xInitLibCfg()
 #if JVET_D0134_PSNR
   m_cTEncTop.setTrueBitdepthPSNR                                  ( m_trueBidepthPSNR );
 #endif
+#if JVET_F0064_MSSSIM
+  m_cTEncTop.setPrintMSSSIM                                       ( m_printMSSSIM );
+#endif
   m_cTEncTop.setCabacZeroWordPaddingEnabled                       ( m_cabacZeroWordPaddingEnabled );
 
   m_cTEncTop.setFrameRate                                         ( m_iFrameRate );
