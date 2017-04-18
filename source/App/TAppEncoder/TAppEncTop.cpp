@@ -174,6 +174,10 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setDiffCuChromaQpOffsetDepth                         ( m_diffCuChromaQpOffsetDepth );
   m_cTEncTop.setChromaCbQpOffset                                  ( m_cbQpOffset     );
   m_cTEncTop.setChromaCrQpOffset                                  ( m_crQpOffset  );
+#if WCG_LUMA_DQP_CM_SCALE
+  m_cTEncTop.setWCGChromaQpControl                                (m_wcgChromaQpControl);
+  m_cTEncTop.setLumaLevelToDeltaQPControls                        (m_lumaLevelToDeltaQPMapping);
+#endif
 
   m_cTEncTop.setChromaFormatIdc                                   ( m_chromaFormatIDC  );
 

@@ -777,6 +777,13 @@ Void TEncCu::init( TEncTop* pcEncTop )
   m_pcRDGoOnSbacCoder  = pcEncTop->getRDGoOnSbacCoder();
 
   m_pcRateCtrl         = pcEncTop->getRateCtrl();
+#if WCG_LUMA_DQP_CM_SCALE
+  m_LumaQPOffset=0;
+  if (m_pcEncCfg->getUseLumaDeltaQp())
+  {
+    initLumaDeltaQpLUT();
+  }
+#endif
 }
 
 // ====================================================================================================================
@@ -811,6 +818,8 @@ Void TEncCu::compressCtu( TComDataCU* pCtu )
 #if JVET_C0024_DELTA_QP_FIX
   if (pCtu->getSlice()->getPPS()->getUseDQP())
   {
+    setdQPFlag(true);   // JVET_C0024_DELTA_QP_FIX2 additional bug fix
+
     Char qp = pCtu->getCtuLastCodedQP();
     m_pppcBestCU[uiWidthIdx][uiHeightIdx]->setCodedQP( qp );
     m_pppcTempCU[uiWidthIdx][uiHeightIdx]->setCodedQP( qp );
@@ -1054,6 +1063,67 @@ Void TEncCu::deriveTestModeAMP (TComDataCU *pcBestCU, PartSize eParentPartSize, 
 // ====================================================================================================================
 // Protected member functions
 // ====================================================================================================================
+#if WCG_LUMA_DQP_CM_SCALE
+Void TEncCu::initLumaDeltaQpLUT() {
+  const LumaLevelToDeltaQPMapping &mapping = m_pcEncCfg->getLumaLevelToDeltaQPMapping();
+
+  if (!mapping.isEnabled())
+  {
+    return;
+  }
+
+  // map the sparse LumaLevelToDeltaQPMapping.mapping to a fully populated linear table.
+  Int         lastDeltaQPValue = 0;
+  std::size_t nextSparseIndex = 0;
+  for (Int index = 0; index<LUMA_LEVEL_TO_DQP_LUT_MAXSIZE; index++)
+  {
+    while (nextSparseIndex < mapping.mapping.size() && index >= mapping.mapping[nextSparseIndex].first)
+    {
+      lastDeltaQPValue = mapping.mapping[nextSparseIndex].second;
+      nextSparseIndex++;
+    }
+    m_lumaLevelToDeltaQPLUT[index] = lastDeltaQPValue;
+  }
+}
+
+// Get QP offset derived from Luma activity
+Int TEncCu::calculateLumaDQP(TComDataCU *pcCU, const UInt uiAbsPartIdx, const TComYuv * pOrgYuv)
+{
+  const Int      stride  = pOrgYuv->getStride(COMPONENT_Y);  
+  Int      width   = pcCU->getWidth(uiAbsPartIdx);
+  Int      height  = pcCU->getHeight(uiAbsPartIdx);
+
+  // limit the block by picture size
+  const TComSPS* pSPS = pcCU->getSlice()->getSPS();
+  if ( pcCU->getCUPelX() + width > pSPS->getPicWidthInLumaSamples())
+    width = pSPS->getPicWidthInLumaSamples() - pcCU->getCUPelX();
+
+  if ( pcCU->getCUPelY() + height > pSPS->getPicHeightInLumaSamples())
+    height = pSPS->getPicHeightInLumaSamples() - pcCU->getCUPelY();
+
+  // Get Luma
+  Int Sum = 0;
+  Double avg=0;
+
+  const Pel *pY = pOrgYuv->getAddr(COMPONENT_Y, uiAbsPartIdx);
+
+  for (Int y = 0; y < height; y++)
+  {
+    for (Int x = 0; x < width; x++)
+    {
+      Sum += pY[x];
+    }
+    pY += stride;
+  }
+  avg = (double)Sum/(width*height); 
+
+  Int lumaIdx = min(Int(avg+0.5), LUMA_LEVEL_TO_DQP_LUT_MAXSIZE-1);
+  Int QP = m_lumaLevelToDeltaQPLUT[lumaIdx];
+
+  return QP;
+}
+#endif
+
 /** Compress a CU block recursively with enabling sub-CTU-level delta QP
  *  - for loop of QP value to compress the current CU with all possible QP
 */
@@ -1185,7 +1255,21 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
     iMinQP = rpcTempCU->getQP(0);
     iMaxQP = rpcTempCU->getQP(0);
   }
+#if WCG_LUMA_DQP_CM_SCALE
+  Int targetQP = iBaseQP;
+  if (m_pcEncCfg->getUseLumaDeltaQp() )
+  {
+    if( uiQTBTDepth <= uiMaxDQPDepthQTBT ) 
 
+    m_LumaQPOffset= calculateLumaDQP(rpcTempCU, 0, m_pppcOrigYuv[uiWidthIdx][uiHeightIdx]);  // keep using the same m_QP_LUMA_OFFSET in the same LCU
+    targetQP = iBaseQP-m_LumaQPOffset;        // targetQP is used for control lambda
+    {
+      iMinQP = iBaseQP-m_LumaQPOffset;
+      iMaxQP = iMinQP;   // make it same as MinQP to force encode choose the modified QP
+    }
+  }  
+
+#endif
   if ( m_pcEncCfg->getUseRateCtrl() )
   {
     iMinQP = m_pcRateCtrl->getRCQP();
@@ -1278,6 +1362,12 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
       {
         iQP = lowestQP;
       }
+#if WCG_LUMA_DQP_CM_SCALE
+      if (m_pcEncCfg->getUseLumaDeltaQp() && (uiQTBTDepth <= uiMaxDQPDepthQTBT))
+      {
+        getSliceEncoder()->updateLambda(pcSlice, targetQP);
+      }
+#endif
 
       m_cuChromaQpOffsetIdxPlus1 = 0;
       if (pcSlice->getUseChromaQpAdj())

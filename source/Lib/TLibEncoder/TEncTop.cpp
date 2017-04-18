@@ -305,6 +305,9 @@ Void TEncTop::init(Bool isFieldCoding)
   m_cGOPEncoder.  init( this );
   m_cSliceEncoder.init( this );
   m_cCuEncoder.   init( this );
+#if WCG_LUMA_DQP_CM_SCALE
+  m_cCuEncoder.setSliceEncoder(&m_cSliceEncoder);
+#endif
 
   // initialize transform & quantization class
   m_pcCavlcCoder = getCavlcCoder();
@@ -1043,6 +1046,11 @@ Void TEncTop::xInitPPS()
   {
     bUseDQP = true;
   }
+#if WCG_LUMA_DQP_CM_SCALE
+  if (getUseLumaDeltaQp()) {
+    bUseDQP = true;
+  }
+#endif
 
   if (m_costMode==COST_SEQUENCE_LEVEL_LOSSLESS || m_costMode==COST_LOSSLESS_CODING)
   {
@@ -1082,8 +1090,23 @@ Void TEncTop::xInitPPS()
   m_cPPS.getPpsRangeExtension().setLog2SaoOffsetScale(CHANNEL_TYPE_LUMA,   m_log2SaoOffsetScale[CHANNEL_TYPE_LUMA  ]);
   m_cPPS.getPpsRangeExtension().setLog2SaoOffsetScale(CHANNEL_TYPE_CHROMA, m_log2SaoOffsetScale[CHANNEL_TYPE_CHROMA]);
 
-  m_cPPS.setQpOffset(COMPONENT_Cb, m_chromaCbQpOffset );
-  m_cPPS.setQpOffset(COMPONENT_Cr, m_chromaCrQpOffset );
+#if WCG_LUMA_DQP_CM_SCALE
+  if (getWCGChromaQPControl().isEnabled())
+  {
+    const Double chromaQp = m_wcgChromaQpControl.chromaQpScale * m_iQP + m_wcgChromaQpControl.chromaQpOffset;
+    const Double dcbQP = m_wcgChromaQpControl.chromaCbQpScale * chromaQp;
+    const Double dcrQP = m_wcgChromaQpControl.chromaCrQpScale * chromaQp;
+    const Int cbQP = (Int)(dcbQP + (dcbQP < 0 ? -0.5 : 0.5));
+    const Int crQP = (Int)(dcrQP + (dcrQP < 0 ? -0.5 : 0.5));
+    m_cPPS.setQpOffset(COMPONENT_Cb, Clip3(-12, 12, min(0, cbQP) + m_chromaCbQpOffset));
+    m_cPPS.setQpOffset(COMPONENT_Cr, Clip3(-12, 12, min(0, crQP) + m_chromaCrQpOffset));
+  }
+  else
+#endif
+  {
+    m_cPPS.setQpOffset(COMPONENT_Cb, m_chromaCbQpOffset);
+    m_cPPS.setQpOffset(COMPONENT_Cr, m_chromaCrQpOffset);
+  }
 
   m_cPPS.setEntropyCodingSyncEnabledFlag( m_iWaveFrontSynchro > 0 );
   m_cPPS.setTilesEnabledFlag( (m_iNumColumnsMinus1 > 0 || m_iNumRowsMinus1 > 0) );

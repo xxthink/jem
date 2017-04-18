@@ -96,7 +96,9 @@ private:
   TEncAnalyze             m_gcAnalyzeI;
   TEncAnalyze             m_gcAnalyzeP;
   TEncAnalyze             m_gcAnalyzeB;
-
+#if WCG_LUMA_DQP_CM_SCALE
+  TEncAnalyze             m_gcAnalyzeWPSNR;
+#endif
   TEncAnalyze             m_gcAnalyzeAll_in;
 
 #if EXTENSION_360_VIDEO
