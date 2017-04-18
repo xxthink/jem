@@ -116,6 +116,8 @@
 #define JVET_D0077_TRANSFORM_OPT                          1  ///< software optimization to take full advantages of zero rows/columns in transform coefficients
 #define JVET_D0077_SAVE_LOAD_ENC_INFO                     1  ///< save and load encoder decision for speedup
 
+#define WCG_LUMA_DQP_CM_SCALE                             1  ///< enable luma adaptive QP and chroma QP scale, intended for data in ST-2084 container
+
 #define JVET_E0023_FAST_ENCODING_SETTING                  1
 #if JVET_E0023_FAST_ENCODING_SETTING
 #define PICTURE_DISTANCE_TH                               1  // If a distance between current picture and reference picture is smaller than or equal to PICTURE_DISTANCE_TH,
@@ -731,6 +733,16 @@ enum DFunc
   DF_SADS48          = 48,
 
   DF_SSE_FRAME       = 50,     ///< Frame-based SSE
+#if WCG_LUMA_DQP_CM_SCALE         ///< Weighted SSE
+  DF_SSE_WTD             = 51,      ///< general size SSE
+  DF_SSE4_WTD            = 52,      ///<   4xM SSE
+  DF_SSE8_WTD            = 53,      ///<   8xM SSE
+  DF_SSE16_WTD           = 54,      ///<  16xM SSE
+  DF_SSE32_WTD           = 55,      ///<  32xM SSE
+  DF_SSE64_WTD           = 56,      ///<  64xM SSE
+  DF_SSE16N_WTD          = 57,      ///< 16NxM SSE
+  DF_DEFAULT_ORI         = 58,
+#endif
   DF_TOTAL_FUNCTIONS = 64
 };
 
@@ -1214,6 +1226,33 @@ enum ADDITIONAL_CHROMA_MODE
 };
 #endif
 
+#if WCG_LUMA_DQP_CM_SCALE
+enum LumaLevelToDQPMode
+{
+  LUMALVL_TO_DQP_DISABLED = 0,
+  LUMALVL_TO_DQP_AVG_METHOD = 1, // use average of CTU to determine luma level
+  LUMALVL_TO_DQP_NUM_MODES = 2
+};
+
+struct LumaLevelToDeltaQPMapping
+{
+  LumaLevelToDQPMode                 mode;             ///< use deltaQP determined by block luma level
+  Bool                               isSDR;            ///< wheter inputis SDR converted to BT2100 contrainer or true HDR content 
+  Double                             maxMethodWeight;  ///< weight of max luma value when mode = 2
+  std::vector< std::pair<Int, Int> > mapping;          ///< first=luma level, second=delta QP.
+  Bool isEnabled() const { return mode != LUMALVL_TO_DQP_DISABLED; }
+};
+
+struct WCGChromaQPControl
+{
+  Bool isEnabled() const { return enabled; }
+  Bool   enabled;         ///< Enabled flag (0:default)
+  Double chromaCbQpScale; ///< Chroma Cb QP Scale (1.0:default)
+  Double chromaCrQpScale; ///< Chroma Cr QP Scale (1.0:default)
+  Double chromaQpScale;   ///< Chroma QP Scale (0.0:default)
+  Double chromaQpOffset;  ///< Chroma QP Offset (0.0:default)
+};
+#endif
 //! \}
 
 #endif

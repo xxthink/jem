@@ -179,7 +179,10 @@ protected:
 
   Int       m_cbQpOffset;                                     ///< Chroma Cb QP Offset (0:default)
   Int       m_crQpOffset;                                     ///< Chroma Cr QP Offset (0:default)
-
+#if WCG_LUMA_DQP_CM_SCALE
+  WCGChromaQPControl m_wcgChromaQpControl;                    ///< Wide-colour-gamut chroma QP control.
+  LumaLevelToDeltaQPMapping m_lumaLevelToDeltaQPMapping;      ///< mapping from luma level to Delta QP.
+#endif
 #if ADAPTIVE_QP_SELECTION
   Bool      m_bUseAdaptQpSelect;
 #endif

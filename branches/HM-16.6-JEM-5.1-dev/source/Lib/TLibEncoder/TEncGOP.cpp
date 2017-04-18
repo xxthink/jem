@@ -279,6 +279,12 @@ Void TEncGOP::init ( TEncTop* pcTEncTop )
 #endif
   }
 #endif
+#if WCG_LUMA_DQP_CM_SCALE
+  if (m_pcCfg->getUseLumaDeltaQp() > 0)
+  {
+    m_pcEncTop->getRdCost()->initLumaLevelToWeightTable(m_pcCfg->getIsSDR());
+  }
+#endif
 }
 
 Int TEncGOP::xWriteVPS (AccessUnit &accessUnit, const TComVPS *vps)
@@ -2198,6 +2204,12 @@ Void TEncGOP::printOutSummary(UInt uiNumAllPicCoded, Bool isField, const Bool pr
   m_gcAnalyzeI.setFrmRate( m_pcCfg->getFrameRate()*rateMultiplier / (Double)m_pcCfg->getTemporalSubsampleRatio());
   m_gcAnalyzeP.setFrmRate( m_pcCfg->getFrameRate()*rateMultiplier / (Double)m_pcCfg->getTemporalSubsampleRatio());
   m_gcAnalyzeB.setFrmRate( m_pcCfg->getFrameRate()*rateMultiplier / (Double)m_pcCfg->getTemporalSubsampleRatio());
+#if WCG_LUMA_DQP_CM_SCALE
+  if (m_pcCfg->getUseLumaDeltaQp() > 0)
+  {
+    m_gcAnalyzeWPSNR.setFrmRate(m_pcCfg->getFrameRate()*rateMultiplier / (Double)m_pcCfg->getTemporalSubsampleRatio());
+  }
+#endif
   const ChromaFormat chFmt = m_pcCfg->getChromaFormatIdc();
 
 #if JVET_D0134_PSNR
@@ -2214,6 +2226,13 @@ Void TEncGOP::printOutSummary(UInt uiNumAllPicCoded, Bool isField, const Bool pr
 
   printf( "\n\nB Slices--------------------------------------------------------\n" );
   m_gcAnalyzeB.printOut('b', chFmt, printMSEBasedSNR, printSequenceMSE, printMSSSIM, trueBitdepthPSNR, bitDepths);
+#if WCG_LUMA_DQP_CM_SCALE
+  if (m_pcCfg->getUseLumaDeltaQp() > 0)
+  {
+    printf("\n\nWPSNR SUMMARY---------------------------------------------------\n");
+    m_gcAnalyzeWPSNR.printOut('w', chFmt, printMSEBasedSNR, false, false, trueBitdepthPSNR, bitDepths);
+  }
+#endif
 #else
   printf( "\n\nSUMMARY --------------------------------------------------------\n" );
   m_gcAnalyzeAll.printOut('a', chFmt, printMSEBasedSNR, printSequenceMSE, trueBitdepthPSNR, bitDepths);
@@ -2226,7 +2245,15 @@ Void TEncGOP::printOutSummary(UInt uiNumAllPicCoded, Bool isField, const Bool pr
 
   printf( "\n\nB Slices--------------------------------------------------------\n" );
   m_gcAnalyzeB.printOut('b', chFmt, printMSEBasedSNR, printSequenceMSE, trueBitdepthPSNR, bitDepths);
+#if WCG_LUMA_DQP_CM_SCALE
+  if (m_pcCfg->getUseLumaDeltaQp() > 0)
+  {
+    printf("\n\nWPSNR SUMMARY---------------------------------------------------\n");
+    m_gcAnalyzeWPSNR.printOut('w', chFmt, printMSEBasedSNR, false, trueBitdepthPSNR, bitDepths);
+  }
 #endif
+#endif
+
 
   if (!m_pcCfg->getSummaryOutFilename().empty())
   {
@@ -2285,6 +2312,13 @@ Void TEncGOP::printOutSummary(UInt uiNumAllPicCoded, Bool isField, const Bool pr
 
   printf( "\n\nB Slices--------------------------------------------------------\n" );
   m_gcAnalyzeB.printOut('b', chFmt, printMSEBasedSNR, printSequenceMSE, bitDepths);
+#endif
+#if WCG_LUMA_DQP_CM_SCALE
+  if (m_pcCfg->getUseLumaDeltaQp() > 0)
+  {
+    printf( "\n\nWPSNR SUMMARY---------------------------------------------------\n" );
+    m_gcAnalyzeWPSNR.printOut('w', chFmt, printMSEBasedSNR, false, bitDepths);
+  }
 #endif
 
   if (!m_pcCfg->getSummaryOutFilename().empty())
@@ -2553,13 +2587,21 @@ Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const Acces
 
   //===== calculate PSNR =====
   Double MSEyuvframe[MAX_NUM_COMPONENT] = {0, 0, 0};
-
+#if WCG_LUMA_DQP_CM_SCALE
+  Double dPSNRWeighted[MAX_NUM_COMPONENT];
+  Double MSEyuvframeWeighted[MAX_NUM_COMPONENT] = {0, 0, 0};
+#endif
   for(Int chan=0; chan<pcPicD->getNumberValidComponents(); chan++)
   {
     const ComponentID ch=ComponentID(chan);
     const TComPicYuv *pOrgPicYuv =(conversion!=IPCOLOURSPACE_UNCHANGED) ? pcPic ->getPicYuvTrueOrg() : pcPic ->getPicYuvOrg();
     const Pel*  pOrg       = pOrgPicYuv->getAddr(ch);
     const Int   iOrgStride = pOrgPicYuv->getStride(ch);
+#if WCG_LUMA_DQP_CM_SCALE
+    const Pel* pOrgLuma = pOrgPicYuv->getAddr(COMPONENT_Y);
+    Int  iOrgStrideLuma = pOrgPicYuv->getStride(COMPONENT_Y);
+    Double dSSDtempWeighted = 0;
+#endif
     Pel*  pRec             = picd.getAddr(ch);
     const Int   iRecStride = picd.getStride(ch);
     const Int   iWidth  = pcPicD->getWidth (ch) - (m_pcEncTop->getPad(0) >> pcPic->getComponentScaleX(ch));
@@ -2574,9 +2616,22 @@ Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const Acces
       {
         Intermediate_Int iDiff = (Intermediate_Int)( pOrg[x] - pRec[x] );
         uiSSDtemp   += iDiff * iDiff;
+#if WCG_LUMA_DQP_CM_SCALE
+        if (m_pcCfg->getUseLumaDeltaQp() > 0)
+        {
+          Double weight = m_pcEncTop->getRdCost()->getWPSNRLumaLevelWeight(pOrgLuma[x << pcPic->getComponentScaleX(ch)]);
+          dSSDtempWeighted += weight*(Double)iDiff*(Double)iDiff;
+        }
+#endif
       }
       pOrg += iOrgStride;
       pRec += iRecStride;
+#if WCG_LUMA_DQP_CM_SCALE
+      if (m_pcCfg->getUseLumaDeltaQp() > 0)
+      {
+        pOrgLuma += iOrgStrideLuma << pcPic->getComponentScaleY(ch);
+      }
+#endif
     }
     
 #if JVET_D0134_PSNR
@@ -2587,6 +2642,13 @@ Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const Acces
     const Double fRefValue = (Double) maxval * maxval * iSize;
     dPSNR[ch]         = ( uiSSDtemp ? 10.0 * log10( fRefValue / (Double)uiSSDtemp ) : 999.99 );
     MSEyuvframe[ch]   = (Double)uiSSDtemp/(iSize);
+#if WCG_LUMA_DQP_CM_SCALE
+    if (m_pcCfg->getUseLumaDeltaQp() > 0)
+    {
+      dPSNRWeighted[ch]         = ( dSSDtempWeighted ? 10.0 * log10( fRefValue / (Double)dSSDtempWeighted ) : 999.99 );
+      MSEyuvframeWeighted[ch] = dSSDtempWeighted / (iSize);
+    }
+#endif
   }
 #if EXTENSION_360_VIDEO
   m_ext360.calculatePSNRs(pcPic);
@@ -2646,9 +2708,22 @@ Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const Acces
   //===== add PSNR =====
 #if JVET_F0064_MSSSIM
   m_gcAnalyzeAll.addResult (dPSNR, (Double)uibits, MSEyuvframe, MSSSIM);
+#if WCG_LUMA_DQP_CM_SCALE
+  if (m_pcCfg->getUseLumaDeltaQp() > 0)
+  {
+    m_gcAnalyzeWPSNR.addResult(dPSNRWeighted, (Double)uibits, MSEyuvframeWeighted, MSSSIM);
+  }
+#endif
 #else
   m_gcAnalyzeAll.addResult (dPSNR, (Double)uibits, MSEyuvframe);
+#if WCG_LUMA_DQP_CM_SCALE
+  if (m_pcCfg->getUseLumaDeltaQp() > 0)
+  {
+    m_gcAnalyzeWPSNR.addResult (dPSNRWeighted, (Double)uibits, MSEyuvframeWeighted);
+  }
 #endif
+#endif
+
 #if EXTENSION_360_VIDEO
   m_ext360.addResult(m_gcAnalyzeAll);
 #endif
@@ -2733,6 +2808,12 @@ Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const Acces
   {
     printf(" [Y MSE %6.4lf  U MSE %6.4lf  V MSE %6.4lf]", MSEyuvframe[COMPONENT_Y], MSEyuvframe[COMPONENT_Cb], MSEyuvframe[COMPONENT_Cr] );
   }
+#if WCG_LUMA_DQP_CM_SCALE
+  if (m_pcCfg->getUseLumaDeltaQp() > 0)
+  {
+    printf(" [WY %6.4lf dB    WU %6.4lf dB    WV %6.4lf dB]", dPSNRWeighted[COMPONENT_Y], dPSNRWeighted[COMPONENT_Cb], dPSNRWeighted[COMPONENT_Cr]);
+  }
+#endif
 #if EXTENSION_360_VIDEO
   m_ext360.printPerPOCInfo();
 #endif

@@ -718,6 +718,19 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   SMultiValueInput<Int>  cfg_codedPivotValue                 (std::numeric_limits<Int>::min(), std::numeric_limits<Int>::max(), 0, 1<<16);
   SMultiValueInput<Int>  cfg_targetPivotValue                (std::numeric_limits<Int>::min(), std::numeric_limits<Int>::max(), 0, 1<<16);
 
+#if WCG_LUMA_DQP_CM_SCALE
+  const Int defaultLumaLevelTodQp_QpChangePointsHDR[] = { -3, -2, -1, 0, 1, 2, 3, 4, 5, 6 };
+  const Int defaultLumaLevelTodQp_LumaChangePointsHDR[] = { 0, 301, 367, 434, 501, 567, 634, 701, 767, 834 };
+  const Int defaultLumaLevelTodQp_QpChangePointsSDR[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+  const Int defaultLumaLevelTodQp_LumaChangePointsSDR[] = { 0, 117, 150, 184, 217, 250, 284, 317, 350, 384, 417, 450, 484 };
+
+  // Multi-value input fields:                      // minval, maxval (incl), min_entries, max_entries (incl) [, default values, number of default values]
+  SMultiValueInput<Int>  cfg_lumaLeveltoDQPMappingLuma(0, 0, 0, 0);
+  SMultiValueInput<Int>  cfg_lumaLeveltoDQPMappingQP(0, 0, 0, 0);
+  
+  UInt lumaLevelToDeltaQPMode;
+#endif
+
   const UInt defaultInputKneeCodes[3]  = { 600, 800, 900 };
   const UInt defaultOutputKneeCodes[3] = { 100, 250, 450 };
   SMultiValueInput<UInt> cfg_kneeSEIInputKneePointValue      (1,  999, 0, 999, defaultInputKneeCodes,  sizeof(defaultInputKneeCodes )/sizeof(UInt));
@@ -893,6 +906,12 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   ("LambdaModifier6,-LM6",                            m_adLambdaModifier[ 6 ],                  ( Double )1.0, "Lambda modifier for temporal layer 6")
 
   /* Quantization parameters */
+#if WCG_LUMA_DQP_CM_SCALE
+  ("LumaLevelToDeltaQPMode",                            lumaLevelToDeltaQPMode,                      0u, "Luma based Delta QP 0(default): not used. 1: Based on CU average")
+  ("isSDR",                                             m_lumaLevelToDeltaQPMapping.isSDR,        false, "true: SDR in PQ container; false: HDR ")
+  ("LumaLevelToDeltaQPMappingLuma",                     cfg_lumaLeveltoDQPMappingLuma, cfg_lumaLeveltoDQPMappingLuma, "Luma to Delta QP Mapping - luma thresholds")
+  ("LumaLevelToDeltaQPMappingDQP",                      cfg_lumaLeveltoDQPMappingQP,   cfg_lumaLeveltoDQPMappingQP,   "Luma to Delta QP Mapping - DQP values")
+#endif
 #if JVET_E0059_FLOATING_POINT_QP_FIX
   ("QP,q",                                            m_iQP,                                               30, "Qp value")
   ("QPIncrementFrame,-qpif",                          m_qpIncrementAtSourceFrame,       OptionalValue<UInt>(), "If a source file frame number is specified, the internal QP will be incremented for all POCs associated with source frames >= frame number. If empty, do not increment.")
@@ -912,6 +931,14 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 
   ("CbQpOffset,-cbqpofs",                             m_cbQpOffset,                                         0, "Chroma Cb QP Offset")
   ("CrQpOffset,-crqpofs",                             m_crQpOffset,                                         0, "Chroma Cr QP Offset")
+
+#if WCG_LUMA_DQP_CM_SCALE
+  ("WCGPPSEnable",                                    m_wcgChromaQpControl.enabled,                       false, "1: Enable the WCG PPS chroma modulation scheme. 0 (default) disabled")
+  ("WCGPPSCbQpScale",                                 m_wcgChromaQpControl.chromaCbQpScale,               1.0, "WCG PPS Chroma Cb QP Scale")
+  ("WCGPPSCrQpScale",                                 m_wcgChromaQpControl.chromaCrQpScale,               1.0, "WCG PPS Chroma Cr QP Scale")
+  ("WCGPPSChromaQpScale",                             m_wcgChromaQpControl.chromaQpScale,                 0.0, "WCG PPS Chroma QP Scale")
+  ("WCGPPSChromaQpOffset",                            m_wcgChromaQpControl.chromaQpOffset,                0.0, "WCG PPS Chroma QP Offset")
+#endif
 
 #if ADAPTIVE_QP_SELECTION
   ("AdaptiveQpSelection,-aqps",                       m_bUseAdaptQpSelect,                              false, "AdaptiveQpSelection")
@@ -1635,7 +1662,42 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
       m_log2SaoOffsetScale[ch]=UInt(saoOffsetBitShift[ch]);
     }
   }
+#if WCG_LUMA_DQP_CM_SCALE
+  assert(lumaLevelToDeltaQPMode<LUMALVL_TO_DQP_NUM_MODES);
+  if (lumaLevelToDeltaQPMode >= LUMALVL_TO_DQP_NUM_MODES)
+  {
+    exit(EXIT_FAILURE);
+  }
+  m_lumaLevelToDeltaQPMapping.mode = LumaLevelToDQPMode(lumaLevelToDeltaQPMode);
 
+  if (m_lumaLevelToDeltaQPMapping.mode) 
+  {
+    if (cfg_lumaLeveltoDQPMappingLuma.maxNumValuesIncl == 0)  // if mapping is not read from cfg files, use default values
+    {
+      if (m_lumaLevelToDeltaQPMapping.isSDR)
+      {
+        SMultiValueInput<Int>  cfg_lumaLeveltoDQPMappingQP_SDR(-MAX_QP, MAX_QP, 0, LUMA_LEVEL_TO_DQP_LUT_MAXSIZE, defaultLumaLevelTodQp_QpChangePointsSDR, sizeof(defaultLumaLevelTodQp_QpChangePointsSDR) / sizeof(Int));
+        SMultiValueInput<Int>  cfg_lumaLeveltoDQPMappingLuma_SDR(0, std::numeric_limits<Int>::max(), 0, LUMA_LEVEL_TO_DQP_LUT_MAXSIZE, defaultLumaLevelTodQp_LumaChangePointsSDR, sizeof(defaultLumaLevelTodQp_LumaChangePointsSDR) / sizeof(Int));
+        cfg_lumaLeveltoDQPMappingLuma = cfg_lumaLeveltoDQPMappingLuma_SDR;
+        cfg_lumaLeveltoDQPMappingQP = cfg_lumaLeveltoDQPMappingQP_SDR;
+      }
+      else
+      {
+        SMultiValueInput<Int>  cfg_lumaLeveltoDQPMappingQP_HDR(-MAX_QP, MAX_QP, 0, LUMA_LEVEL_TO_DQP_LUT_MAXSIZE, defaultLumaLevelTodQp_QpChangePointsHDR, sizeof(defaultLumaLevelTodQp_QpChangePointsHDR) / sizeof(Int));
+        SMultiValueInput<Int>  cfg_lumaLeveltoDQPMappingLuma_HDR(0, std::numeric_limits<Int>::max(), 0, LUMA_LEVEL_TO_DQP_LUT_MAXSIZE, defaultLumaLevelTodQp_LumaChangePointsHDR, sizeof(defaultLumaLevelTodQp_LumaChangePointsHDR) / sizeof(Int));
+        cfg_lumaLeveltoDQPMappingLuma = cfg_lumaLeveltoDQPMappingLuma_HDR;
+        cfg_lumaLeveltoDQPMappingQP = cfg_lumaLeveltoDQPMappingQP_HDR;
+      }
+    }
+
+    assert(cfg_lumaLeveltoDQPMappingLuma.values.size() == cfg_lumaLeveltoDQPMappingQP.values.size());
+    m_lumaLevelToDeltaQPMapping.mapping.resize(cfg_lumaLeveltoDQPMappingLuma.values.size());
+    for (UInt i = 0; i<cfg_lumaLeveltoDQPMappingLuma.values.size(); i++)
+    {
+      m_lumaLevelToDeltaQPMapping.mapping[i] = std::pair<Int, Int>(cfg_lumaLeveltoDQPMappingLuma.values[i], cfg_lumaLeveltoDQPMappingQP.values[i]);
+    }
+  }
+#endif
   // reading external dQP description from file
   if ( m_pchdQPFile )
   {
@@ -1973,6 +2035,13 @@ Void TAppEncCfg::xCheckParameter()
   xConfirmPara( m_bipredSearchRange < 0 ,                                                   "Search Range must be more than 0" );
   xConfirmPara( m_minSearchWindow < 0,                                                      "Minimum motion search window size for the adaptive window ME must be greater than or equal to 0" );
   xConfirmPara( m_iMaxDeltaQP > 7,                                                          "Absolute Delta QP exceeds supported range (0 to 7)" );
+#if WCG_LUMA_DQP_CM_SCALE  
+  if (m_lumaLevelToDeltaQPMapping.isEnabled())
+  {
+   xConfirmPara( m_uiDeltaQpRD > 0, "Luma-based Delta QP cannot be used together with slice level multiple-QP optimization!\n" );
+   xConfirmPara( m_chromaFormatIDC != CHROMA_420, "Weighted distortion currently is only implemented for CHROMA_420 format!\n");
+  }
+#endif
 #if !JVET_C0024_QTBT
   xConfirmPara( m_iMaxCuDQPDepth > m_uiMaxCUDepth - 1,                                          "Absolute depth for a minimum CuDQP exceeds maximum coding unit depth" );
 #endif
@@ -2839,6 +2908,13 @@ Void TAppEncCfg::xPrintParameter()
   printf("RDQ:%d ", m_useRDOQ            );
   printf("RDQTS:%d ", m_useRDOQTS        );
   printf("RDpenalty:%d ", m_rdPenalty  );
+#if WCG_LUMA_DQP_CM_SCALE 
+  printf("LQP:%d ", m_lumaLevelToDeltaQPMapping.mode);
+  if (m_lumaLevelToDeltaQPMapping.isEnabled())
+  {
+    printf("SdrLQPLUT %d ", m_lumaLevelToDeltaQPMapping.isSDR);
+  }
+#endif
   printf("SQP:%d ", m_uiDeltaQpRD         );
   printf("ASR:%d ", m_bUseASR             );
   printf("MinSearchWindow:%d ", m_minSearchWindow);

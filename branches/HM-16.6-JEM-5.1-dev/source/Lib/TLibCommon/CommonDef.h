@@ -505,6 +505,10 @@ static const Int DMVR_INTME_RANGE =                                 1;
 static const Int MULTI_PEL_MVD_BITS =                               2;
 #endif
 
+#if WCG_LUMA_DQP_CM_SCALE
+static const Int LUMA_LEVEL_TO_DQP_LUT_MAXSIZE =                 1024;      ///< max LUT size for QP offset based on luma
+#endif
+
 // ====================================================================================================================
 // Macro functions
 // ====================================================================================================================
