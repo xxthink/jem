@@ -51,7 +51,6 @@
 ///////////////////////////////////////////////////////////
 #define JVET_F0096_BILATERAL_FILTER                       1   // for bitexact implementation with division see JVET-F0096
 #define JVET_F0031_RMV_REDUNDANT_TRSKIP                   1
-#define JVET_F0028_BIO_NO_BLOCK_EXTENTION                 1
 
 #define JVET_E0062_MULTI_DMS                              1   ///< Extended chroma multiple DM modes
 
@@ -72,7 +71,9 @@
 #define JVET_F0064_MSSSIM                                 1 // Calculate MS-SSIM scores
 
 #define JVET_D0033_ADAPTIVE_CLIPPING                      1
+#if JVET_D0033_ADAPTIVE_CLIPPING
 #define JVET_D0033_ADAPTIVE_CLIPPING_ENC_METHOD           1
+#endif
 
 #define JVET_D0123_ME_CTX_LUT_BITS                        1
 
@@ -277,6 +278,7 @@
 #if VCEG_AZ05_BIO                                            
 #define COM16_C1045_BIO_HARMO_IMPROV                      1  ///< Improvement of BIO
 #define JVET_C0027_BIO                                    1   /// MV refinement max value up, BIO_LDB check optimization,  BIO  for 1/16 pel MV support
+#define JVET_F0028_BIO_NO_BLOCK_EXTENTION                 1
 #endif                                                       
 
 #define COM16_C1016_AFFINE                                1  ///< Affine motion prediction

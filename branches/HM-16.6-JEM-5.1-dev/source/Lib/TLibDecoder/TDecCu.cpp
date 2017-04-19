@@ -1262,7 +1262,7 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
 
 
   TComDataCU *pcCU = rTu.getCU();
-#if COM16_C983_RSAF
+#if COM16_C983_RSAF || !JVET_D0033_ADAPTIVE_CLIPPING
   const TComSPS &sps=*(pcCU->getSlice()->getSPS());
 #endif
   const UInt uiAbsPartIdx=rTu.GetAbsPartIdxTU();
@@ -1883,7 +1883,7 @@ Void TDecCu::xDecodeInterTexture ( TComDataCU* pcCU, UInt uiDepth )
 #endif
   TComTURecurse tuRecur(pcCU, 0, uiDepth);
 
-#if VCEG_AZ08_INTER_KLT
+#if VCEG_AZ08_INTER_KLT || JVET_F0096_BILATERAL_FILTER
 #if JVET_C0024_QTBT
   TComYuv* pcPred = m_pppcYuvReco[uiWidthIdx][uiHeightIdx];
 #else
@@ -1894,7 +1894,7 @@ Void TDecCu::xDecodeInterTexture ( TComDataCU* pcCU, UInt uiDepth )
   {
     const ComponentID compID=ComponentID(ch);
     DEBUG_STRING_OUTPUT(std::cout, debug_reorder_data_inter_token[compID])
-#if VCEG_AZ08_INTER_KLT
+#if VCEG_AZ08_INTER_KLT || JVET_F0096_BILATERAL_FILTER
 #if JVET_C0024_QTBT
     m_pcTrQuant->invRecurTransformNxN ( compID, m_pppcYuvResi[uiWidthIdx][uiHeightIdx], tuRecur, pcPred);
 #else

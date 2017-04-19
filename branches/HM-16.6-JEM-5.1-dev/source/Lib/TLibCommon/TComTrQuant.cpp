@@ -8453,7 +8453,7 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
 Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,
                                         TComYuv *pResidual,
                                         TComTU &rTu
-#if VCEG_AZ08_INTER_KLT
+#if VCEG_AZ08_INTER_KLT || JVET_F0096_BILATERAL_FILTER
                                         , TComYuv* pcPred
 #endif
     )
@@ -8674,7 +8674,7 @@ Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,
     do
     {
         invRecurTransformNxN(compID, pResidual, tuRecurseChild 
-#if VCEG_AZ08_INTER_KLT
+#if VCEG_AZ08_INTER_KLT || JVET_F0096_BILATERAL_FILTER
             , pcPred
 #endif
             );

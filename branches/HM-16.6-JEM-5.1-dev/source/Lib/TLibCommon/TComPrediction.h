@@ -50,9 +50,7 @@
 #if COM16_C1046_PDPC_INTRA
 #include "TComRom.h"
 #endif
-#if VCEG_AZ08_INTER_KLT
 #include "TComPic.h"
-#endif
 
 // forward declaration
 class TComMv;
