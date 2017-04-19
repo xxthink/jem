@@ -9668,7 +9668,7 @@ Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg,
   m_pcRDGoOnSbacCoder->load( m_pppcRDSbacCoder[ pcCU->getDepth( 0 ) ][ CI_CURR_BEST ] );
 #endif
 
-#if VCEG_AZ08_INTER_KLT
+#if VCEG_AZ08_INTER_KLT || JVET_F0096_BILATERAL_FILTER
   xEstimateInterResidualQT(pcYuvResi, nonZeroCost, nonZeroBits, nonZeroDistortion, &zeroDistortion, tuLevel0, pcYuvPred DEBUG_STRING_PASS_INTO(sDebug));
 #else
   xEstimateInterResidualQT( pcYuvResi,  nonZeroCost, nonZeroBits, nonZeroDistortion, &zeroDistortion, tuLevel0 DEBUG_STRING_PASS_INTO(sDebug) );
@@ -9939,7 +9939,7 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
                                            Distortion &ruiDist,
                                            Distortion *puiZeroDist,
                                            TComTU     &rTu
-#if VCEG_AZ08_INTER_KLT
+#if VCEG_AZ08_INTER_KLT || JVET_F0096_BILATERAL_FILTER
                                            ,TComYuv* pcPred
 #endif
                                            DEBUG_STRING_FN_DECLARE(sDebug) 
@@ -10078,11 +10078,13 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
           checkTransformSkip[compID]  &= (!pcCU->getEmtCuFlag(uiAbsPartIdx));
         }
 #endif
+#if VCEG_AZ08_INTER_KLT || JVET_F0096_BILATERAL_FILTER
+        UInt tuWidth = rTu.getRect(compID).width;
+        UInt tuHeight = rTu.getRect(compID).height;
+#endif
 #if VCEG_AZ08_INTER_KLT
         UInt uiMaxTrWidth = g_uiDepth2Width[USE_MORE_BLOCKSIZE_DEPTH_MAX - 1];
         UInt uiMinTrWidth = g_uiDepth2Width[USE_MORE_BLOCKSIZE_DEPTH_MIN - 1];
-        UInt tuWidth = rTu.getRect(compID).width;
-        UInt tuHeight = rTu.getRect(compID).height;
         checkKLT[compID] = g_bEnableCheck && isLuma(compID) && ((tuWidth == tuHeight) && (tuWidth <= uiMaxTrWidth) && (tuWidth >= uiMinTrWidth));
 #endif
 #if JVET_C0024_QTBT
@@ -10851,7 +10853,7 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
     do
     {
       DEBUG_STRING_NEW(childString)
-#if VCEG_AZ08_INTER_KLT
+#if VCEG_AZ08_INTER_KLT || JVET_F0096_BILATERAL_FILTER
       xEstimateInterResidualQT(pcResi, dSubdivCost, uiSubdivBits, uiSubdivDist, bCheckFull ? NULL : puiZeroDist, tuRecurseChild, pcPred DEBUG_STRING_PASS_INTO(childString));
 #else
       xEstimateInterResidualQT( pcResi, dSubdivCost, uiSubdivBits, uiSubdivDist, bCheckFull ? NULL : puiZeroDist,  tuRecurseChild DEBUG_STRING_PASS_INTO(childString));

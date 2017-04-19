@@ -308,9 +308,7 @@ Void initROM()
   c = 4;
 #endif
 
-#if COM16_C806_EMT || COM16_C806_T64 || JVET_D0120_NSST_IMPROV
   const Double PI = 3.14159265358979323846;
-#endif
 
 #if JVET_C0024_QTBT
   for ( i=0; i<7; i++ ) 
@@ -320,9 +318,6 @@ Void initROM()
   {
     TMatrixCoeff *iT = NULL;
     const Double s = sqrt((Double)c) * ( 64 << COM16_C806_TRANS_PREC );
-#if !JVET_D0120_NSST_IMPROV
-    const Double PI = 3.14159265358979323846;
-#endif
 
     switch(i)
     {

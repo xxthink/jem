@@ -813,7 +813,7 @@ protected:
   Void xEncodeInterResidualQT( const ComponentID compID, TComTU &rTu );
 #endif  
   Void xEstimateInterResidualQT( TComYuv* pcResi, Double &rdCost, UInt &ruiBits, Distortion &ruiDist, Distortion *puiZeroDist, TComTU &rTu 
-#if VCEG_AZ08_INTER_KLT
+#if VCEG_AZ08_INTER_KLT || JVET_F0096_BILATERAL_FILTER
       , TComYuv* pcPred
 #endif
       DEBUG_STRING_FN_DECLARE(sDebug) );

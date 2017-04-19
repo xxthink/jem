@@ -406,7 +406,7 @@ Void InvNsst8x8( Int* src, UInt uiMode, UChar index );
                              );
 
   Void invRecurTransformNxN ( const ComponentID compID, TComYuv *pResidual, TComTU &rTu 
-#if VCEG_AZ08_INTER_KLT
+#if VCEG_AZ08_INTER_KLT || JVET_F0096_BILATERAL_FILTER
       , TComYuv *pcPred
 #endif
       );

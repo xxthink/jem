@@ -736,7 +736,7 @@ public:
 
   //==== Tool list ========
   Void      setBitDepth( const ChannelType chType, Int internalBitDepthForChannel ) { m_bitDepth[chType] = internalBitDepthForChannel; }
-#if COM16_C806_LMCHROMA
+#if COM16_C806_LMCHROMA || JVET_F0064_MSSSIM
   Int       getBitDepth( const ChannelType chType)  { return m_bitDepth[chType]; }
 #endif
   Void      setUseASR                       ( Bool  b )     { m_bUseASR     = b; }
