@@ -68,6 +68,9 @@ TComSlice::TComSlice()
 #if ADAPTIVE_QP_SELECTION
 , m_iSliceQpBase                  ( 0 )
 #endif
+#if WCG_LUMA_DQP_CM_SCALE && JVET_B0039_QP_FIX
+, m_iSliceQpLambdaOffset           ( 0 )
+#endif
 , m_ChromaQpAdjEnabled            ( false )
 , m_deblockingFilterDisable       ( false )
 , m_deblockingFilterOverrideFlag  ( false )
@@ -719,6 +722,9 @@ Void TComSlice::copySliceInfo(TComSlice *pSrc)
   m_iSliceQp             = pSrc->m_iSliceQp;
 #if ADAPTIVE_QP_SELECTION
   m_iSliceQpBase         = pSrc->m_iSliceQpBase;
+#endif
+#if WCG_LUMA_DQP_CM_SCALE && JVET_B0039_QP_FIX
+  m_iSliceQpLambdaOffset  = pSrc->m_iSliceQpLambdaOffset;
 #endif
   m_ChromaQpAdjEnabled = pSrc->m_ChromaQpAdjEnabled;
   m_deblockingFilterDisable   = pSrc->m_deblockingFilterDisable;

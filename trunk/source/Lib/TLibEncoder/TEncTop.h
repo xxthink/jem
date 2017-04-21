@@ -197,9 +197,17 @@ public:
                );
 
 #if JVET_D0134_PSNR
+#if JVET_F0064_MSSSIM
+  Void printSummary(Bool isField) { m_cGOPEncoder.printOutSummary (m_uiNumAllPicCoded, isField, m_printMSEBasedSequencePSNR, m_printSequenceMSE, m_printMSSSIM, m_trueBidepthPSNR, m_cSPS.getBitDepths()); }
+#else
   Void printSummary(Bool isField) { m_cGOPEncoder.printOutSummary (m_uiNumAllPicCoded, isField, m_printMSEBasedSequencePSNR, m_printSequenceMSE, m_trueBidepthPSNR, m_cSPS.getBitDepths()); }
+#endif
+#else
+#if JVET_F0064_MSSSIM
+  Void printSummary(Bool isField) { m_cGOPEncoder.printOutSummary (m_uiNumAllPicCoded, isField, m_printMSEBasedSequencePSNR, m_printSequenceMSE, m_printMSSSIM, m_cSPS.getBitDepths()); }
 #else
   Void printSummary(Bool isField) { m_cGOPEncoder.printOutSummary (m_uiNumAllPicCoded, isField, m_printMSEBasedSequencePSNR, m_printSequenceMSE, m_cSPS.getBitDepths()); }
+#endif
 #endif
 
 #if JVET_D0186_PRECISEPSNR

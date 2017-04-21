@@ -8453,7 +8453,7 @@ Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
 Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,
                                         TComYuv *pResidual,
                                         TComTU &rTu
-#if VCEG_AZ08_INTER_KLT
+#if VCEG_AZ08_INTER_KLT || JVET_F0096_BILATERAL_FILTER
                                         , TComYuv* pcPred
 #endif
     )
@@ -8630,6 +8630,25 @@ Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,
         std::cout << (*psDebug);
       }
 #endif
+#if JVET_F0096_BILATERAL_FILTER
+      if (isLuma(compID))
+      {
+        UInt minSize = std::min(tuRect.width,tuRect.height);
+        if ((pcCU->getCbf(absPartIdxTU, compID, uiTrMode) != 0) && (pcCU->getQP(absPartIdxTU)>17) && (minSize < 16))
+        {
+          Pel* piPred = pcPred->getAddr(compID, absPartIdxTU);
+          UInt uiPredStride = pcPred->getStride(compID);
+          Pel* piResi = pResidual->getAddr(compID, absPartIdxTU);
+          UInt uiStrideRes = pResidual->getStride(compID);
+          UInt uiZOrder = pcCU->getZorderIdxInCtu() + absPartIdxTU;
+          TComPicYuv *picRec = pcCU->getPic()->getPicYuvRec();
+          Pel* piReco = picRec->getAddr(compID, pcCU->getCtuRsAddr(), uiZOrder);
+          UInt uiRecStride = picRec->getStride(compID);
+          const Int clipbd = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
+          TComBilateralFilter::instance()->bilateralFilterInter(pcCU, tuRect.width, tuRect.height, piResi, uiStrideRes, piPred, uiPredStride,  piReco, uiRecStride, clipbd, pcCU->getQP(absPartIdxTU));
+        }
+      }
+#endif
     }
 
     if (isChroma(compID) && (pcCU->getCrossComponentPredictionAlpha(absPartIdxTU, compID) != 0))
@@ -8655,7 +8674,7 @@ Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,
     do
     {
         invRecurTransformNxN(compID, pResidual, tuRecurseChild 
-#if VCEG_AZ08_INTER_KLT
+#if VCEG_AZ08_INTER_KLT || JVET_F0096_BILATERAL_FILTER
             , pcPred
 #endif
             );

@@ -115,7 +115,11 @@ static Void scalePlane(Pel* img, const UInt stride, const UInt width, const UInt
  * \param MSBExtendedBitDepth
  * \param internalBitDepth bit-depth array to scale image data to/from when reading/writing.
  */
+#if EXTENSION_360_VIDEO
+Void TVideoIOYuv::open( const std::string &fileName, Bool bWriteMode, const Int fileBitDepth[MAX_NUM_CHANNEL_TYPE], const Int MSBExtendedBitDepth[MAX_NUM_CHANNEL_TYPE], const Int internalBitDepth[MAX_NUM_CHANNEL_TYPE] )
+#else
 Void TVideoIOYuv::open( Char* pchFile, Bool bWriteMode, const Int fileBitDepth[MAX_NUM_CHANNEL_TYPE], const Int MSBExtendedBitDepth[MAX_NUM_CHANNEL_TYPE], const Int internalBitDepth[MAX_NUM_CHANNEL_TYPE] )
+#endif
 {
   //NOTE: files cannot have bit depth greater than 16
   for(UInt ch=0; ch<MAX_NUM_CHANNEL_TYPE; ch++)
@@ -140,7 +144,11 @@ Void TVideoIOYuv::open( Char* pchFile, Bool bWriteMode, const Int fileBitDepth[M
 
   if ( bWriteMode )
   {
+#if EXTENSION_360_VIDEO
+    m_cHandle.open( fileName.c_str(), ios::binary | ios::out );
+#else
     m_cHandle.open( pchFile, ios::binary | ios::out );
+#endif
 
     if( m_cHandle.fail() )
     {
@@ -150,7 +158,11 @@ Void TVideoIOYuv::open( Char* pchFile, Bool bWriteMode, const Int fileBitDepth[M
   }
   else
   {
+#if EXTENSION_360_VIDEO
+    m_cHandle.open( fileName.c_str(), ios::binary | ios::in );
+#else
     m_cHandle.open( pchFile, ios::binary | ios::in );
+#endif
 
     if( m_cHandle.fail() )
     {
@@ -183,7 +195,11 @@ Bool TVideoIOYuv::isFail()
  * This function correctly handles cases where the input file is not
  * seekable, by consuming bytes.
  */
+#if EXTENSION_360_VIDEO
+Void TVideoIOYuv::skipFrames(Int numFrames, UInt width, UInt height, ChromaFormat format)
+#else
 Void TVideoIOYuv::skipFrames(UInt numFrames, UInt width, UInt height, ChromaFormat format)
+#endif
 {
   if (!numFrames)
   {
@@ -735,9 +751,12 @@ Bool TVideoIOYuv::read ( TComPicYuv*  pPicYuvUser, TComPicYuv* pPicYuvTrueOrg, c
       scalePlane(pPicYuv->getAddr(compID), stride444>>csx, width_full444>>csx, height_full444>>csy, m_bitdepthShift[chType], minval, maxval);
     }
   }
-
+#if EXTENSION_360_VIDEO
+  if(pPicYuvUser)
+    ColourSpaceConvert(*pPicYuvTrueOrg, *pPicYuvUser, ipcsc, true);
+#else
   ColourSpaceConvert(*pPicYuvTrueOrg, *pPicYuvUser, ipcsc, true);
-
+#endif
   return true;
 }
 

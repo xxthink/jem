@@ -50,9 +50,7 @@
 #if COM16_C1046_PDPC_INTRA
 #include "TComRom.h"
 #endif
-#if VCEG_AZ08_INTER_KLT
 #include "TComPic.h"
-#endif
 
 // forward declaration
 class TComMv;
@@ -102,8 +100,10 @@ protected:
   Pel*   m_pGradY0;
   Pel*   m_pGradX1;
   Pel*   m_pGradY1;
+#if !JVET_F0028_BIO_NO_BLOCK_EXTENTION
   Pel*   m_pPred0 ;
   Pel*   m_pPred1 ;
+#endif
   Int    iRefListIdx;
 #endif
 
@@ -189,7 +189,9 @@ protected:
 #define BIO_FILTER_LENGTH                 6
 #define BIO_FILTER_LENGTH_MINUS_1         (BIO_FILTER_LENGTH-1)
 #define BIO_FILTER_HALF_LENGTH_MINUS_1    ((BIO_FILTER_LENGTH>>1)-1)
+#if !JVET_F0028_BIO_NO_BLOCK_EXTENTION
   Void  xPredInterFrac(Pel* ref,Pel* dst,Int dstStride,Int refStride,Int xFrac,Int yFrac,Int width, Int height,Bool bi,ChromaFormat chFmt, const Int bitDepth);
+#endif
   Void  xGradFilterX(Pel*  piRefY, Int iRefStride,Pel*  piDstY,Int iDstStride, Int iWidth, Int iHeight,Int iMVyFrac,Int iMVxFrac, const Int bitDepth);
   Void  xGradFilterY(Pel*  piRefY, Int iRefStride,Pel*  piDstY,Int iDstStride, Int iWidth, Int iHeight,Int iMVyFrac,Int iMVxFrac, const Int bitDepth);
   __inline Void gradFilter2DVer (Pel* piSrc, Int iSrcStride,  Int iWidth, Int iHeight, Int iDstStride,  Pel*& rpiDst, Int iMv, const Int iShift);
@@ -305,13 +307,24 @@ protected:
 
   UInt xFrucFindBestMvFromList( TComMvField * pBestMvField , RefPicList & rBestRefPicList , TComDataCU * pCU , UInt uiAbsPartIdx , const TComMvField & rMvStart , Int nBlkWidth , Int nBlkHeight , Bool bTM , Bool bMvCost );
 
-  UInt xFrucRefineMv( TComMvField * pBestMvField , RefPicList eCurRefPicList , UInt uiMinCost , Int nSearchMethod , TComDataCU * pCU , UInt uiAbsPartIdx , const TComMvField & rMvStart , Int nBlkWidth , Int nBlkHeight , Bool bTM );
+  UInt xFrucRefineMv( TComMvField * pBestMvField , RefPicList eCurRefPicList , UInt uiMinCost , Int nSearchMethod , TComDataCU * pCU , UInt uiAbsPartIdx , const TComMvField & rMvStart , Int nBlkWidth , Int nBlkHeight , Bool bTM
+#if JVET_F0032_UNI_BI_SELECTION
+      , Bool bMvCostZero = false
+#endif
+  );
   template<Int SearchPattern>
-  UInt xFrucRefineMvSearch( TComMvField * pBestMvField , RefPicList eCurRefPicList , TComDataCU * pCU , UInt uiAbsPartIdx , TComMvField const & rMvStart , Int nBlkWidth , Int nBlkHeight , UInt uiMinDist , Bool bTM , Int nSearchStepShift , UInt uiMaxSearchRounds = MAX_UINT );
+  UInt xFrucRefineMvSearch( TComMvField * pBestMvField , RefPicList eCurRefPicList , TComDataCU * pCU , UInt uiAbsPartIdx , TComMvField const & rMvStart , Int nBlkWidth , Int nBlkHeight , UInt uiMinDist , Bool bTM , Int nSearchStepShift , UInt uiMaxSearchRounds = MAX_UINT 
+#if JVET_F0032_UNI_BI_SELECTION
+      , Bool bMvCostZero = false
+#endif
+  );
 
   UInt xFrucGetMvCost( const TComMv & rMvStart , const TComMv & rMvCur , Int nSearchRange , Int nWeighting );
   UInt xFrucGetBilaMatchCost( TComDataCU * pcCU , UInt uiAbsPartIdx , Int nWidth , Int nHeight , RefPicList eCurRefPicList , const TComMvField & rCurMvField , TComMvField & rPairMVField , UInt uiMVCost );
   UInt xFrucGetTempMatchCost( TComDataCU * pcCU , UInt uiAbsPartIdx , Int nWidth , Int nHeight , RefPicList eCurRefPicList , const TComMvField & rCurMvField , UInt uiMVCost );
+#if JVET_F0032_UNI_BI_SELECTION
+  Void xFrucUpdateTemplate(TComDataCU * pcCU, UInt uiAbsPartIdx, Int nWidth, Int nHeight, RefPicList eCurRefPicList, TComMvField rCurMvField);
+#endif
 
   Void xFrucInsertMv2StartList( const TComMvField & rMvField , std::list<TComMvField> & rList );
   Bool xFrucIsInList( const TComMvField & rMvField , std::list<TComMvField> & rList );

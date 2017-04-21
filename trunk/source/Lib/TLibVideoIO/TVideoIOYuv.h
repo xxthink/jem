@@ -63,11 +63,18 @@ public:
   TVideoIOYuv()           {}
   virtual ~TVideoIOYuv()  {}
 
+#if EXTENSION_360_VIDEO
+  Void  open  ( const std::string &fileName, Bool bWriteMode, const Int fileBitDepth[MAX_NUM_CHANNEL_TYPE], const Int MSBExtendedBitDepth[MAX_NUM_CHANNEL_TYPE], const Int internalBitDepth[MAX_NUM_CHANNEL_TYPE] ); ///< open or create file
+#else
   Void  open  ( Char* pchFile, Bool bWriteMode, const Int fileBitDepth[MAX_NUM_CHANNEL_TYPE], const Int MSBExtendedBitDepth[MAX_NUM_CHANNEL_TYPE], const Int internalBitDepth[MAX_NUM_CHANNEL_TYPE] ); ///< open or create file
+#endif
   Void  close ();                                           ///< close file
 
+#if EXTENSION_360_VIDEO
+  Void skipFrames(Int numFrames, UInt width, UInt height, ChromaFormat format);
+#else
   Void skipFrames(UInt numFrames, UInt width, UInt height, ChromaFormat format);
-
+#endif
   // if fileFormat<NUM_CHROMA_FORMAT, the format of the file is that format specified, else it is the format of the TComPicYuv.
 
 

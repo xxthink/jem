@@ -125,6 +125,9 @@ protected:
 #if JVET_D0134_PSNR
   Bool      m_trueBidepthPSNR;
 #endif
+#if JVET_F0064_MSSSIM
+  Bool      m_printMSSSIM;
+#endif
   Bool      m_cabacZeroWordPaddingEnabled;
 
   /* profile & level */
@@ -227,6 +230,10 @@ protected:
 
   Int       m_chromaCbQpOffset;                 //  Chroma Cb QP Offset (0:default)
   Int       m_chromaCrQpOffset;                 //  Chroma Cr Qp Offset (0:default)
+#if WCG_LUMA_DQP_CM_SCALE
+  WCGChromaQPControl m_wcgChromaQpControl;                    ///< Wide-colour-gamut chroma QP control.
+  LumaLevelToDeltaQPMapping m_lumaLevelToDeltaQPMapping; ///< mapping from luma level to delta QP.
+#endif
   ChromaFormat m_chromaFormatIDC;
 
 #if ADAPTIVE_QP_SELECTION
@@ -543,6 +550,11 @@ public:
   Void      setTrueBitdepthPSNR             (Bool value)     { m_trueBidepthPSNR = value;          }
 #endif
 
+#if JVET_F0064_MSSSIM
+  Bool      getPrintMSSSIM                  ()         const { return m_printMSSSIM;               }
+  Void      setPrintMSSSIM                  (Bool value)     { m_printMSSSIM = value;              }
+#endif
+
   Bool      getCabacZeroWordPaddingEnabled()           const { return m_cabacZeroWordPaddingEnabled;  }
   Void      setCabacZeroWordPaddingEnabled(Bool value)       { m_cabacZeroWordPaddingEnabled = value; }
 
@@ -633,6 +645,16 @@ public:
 
   Void      setChromaCbQpOffset             ( Int   i )      { m_chromaCbQpOffset = i; }
   Void      setChromaCrQpOffset             ( Int   i )      { m_chromaCrQpOffset = i; }
+#if WCG_LUMA_DQP_CM_SCALE
+  Void      setWCGChromaQpControl(const WCGChromaQPControl &ctrl)     { m_wcgChromaQpControl = ctrl; }
+  const WCGChromaQPControl &getWCGChromaQPControl() const { return m_wcgChromaQpControl; }
+  
+  Void    setLumaLevelToDeltaQPControls(const LumaLevelToDeltaQPMapping &lumaLevelToDeltaQPMapping) { m_lumaLevelToDeltaQPMapping = lumaLevelToDeltaQPMapping; }
+  const LumaLevelToDeltaQPMapping& getLumaLevelToDeltaQPMapping() const { return m_lumaLevelToDeltaQPMapping; }
+  UInt    getUseLumaDeltaQp()               { return   m_lumaLevelToDeltaQPMapping.mode > 0; }
+  
+  Bool    getIsSDR()                        { return m_lumaLevelToDeltaQPMapping.isSDR; }
+#endif
 
   Void      setChromaFormatIdc              ( ChromaFormat cf ) { m_chromaFormatIDC = cf; }
   ChromaFormat  getChromaFormatIdc          ( )              { return m_chromaFormatIDC; }
@@ -714,7 +736,7 @@ public:
 
   //==== Tool list ========
   Void      setBitDepth( const ChannelType chType, Int internalBitDepthForChannel ) { m_bitDepth[chType] = internalBitDepthForChannel; }
-#if COM16_C806_LMCHROMA
+#if COM16_C806_LMCHROMA || JVET_F0064_MSSSIM
   Int       getBitDepth( const ChannelType chType)  { return m_bitDepth[chType]; }
 #endif
   Void      setUseASR                       ( Bool  b )     { m_bUseASR     = b; }

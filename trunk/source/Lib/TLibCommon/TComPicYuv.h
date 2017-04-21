@@ -166,6 +166,15 @@ public:
 
   // Set border extension flag
   Void          setBorderExtension(Bool b) { m_bIsBorderExtended = b; }
+
+#if EXTENSION_360_VIDEO
+  Void          createWithoutCUInfo(const Int picWidth,
+                                    const Int picHeight,
+                                    const ChromaFormat chromaFormatIDC,
+                                    const Bool bUseMargin=false, ///< if true, then a margin of uiMaxCUWidth+16 and uiMaxCUHeight+16 is created around the image.
+                                    const UInt maxCUWidth=0,   ///< used for margin only
+                                    const UInt maxCUHeight=0); ///< used for margin only
+#endif
 };// END CLASS DEFINITION TComPicYuv
 
 

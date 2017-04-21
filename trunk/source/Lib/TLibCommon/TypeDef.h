@@ -49,6 +49,9 @@
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////
+#define JVET_F0096_BILATERAL_FILTER                       1   // for bitexact implementation with division see JVET-F0096
+#define JVET_F0031_RMV_REDUNDANT_TRSKIP                   1
+
 #define JVET_E0062_MULTI_DMS                              1   ///< Extended chroma multiple DM modes
 
 #define JVET_E0077_ENHANCED_LM                            1   ///< Enhanced LM mode
@@ -65,9 +68,12 @@
 #define JVET_D0134_PSNR                                   1
 #define JVET_D0135_PARAMS                                 1
 #define JVET_D0186_PRECISEPSNR                            1
+#define JVET_F0064_MSSSIM                                 1 // Calculate MS-SSIM scores
 
 #define JVET_D0033_ADAPTIVE_CLIPPING                      1
+#if JVET_D0033_ADAPTIVE_CLIPPING
 #define JVET_D0033_ADAPTIVE_CLIPPING_ENC_METHOD           1
+#endif
 
 #define JVET_D0123_ME_CTX_LUT_BITS                        1
 
@@ -110,6 +116,8 @@
 
 #define JVET_D0077_TRANSFORM_OPT                          1  ///< software optimization to take full advantages of zero rows/columns in transform coefficients
 #define JVET_D0077_SAVE_LOAD_ENC_INFO                     1  ///< save and load encoder decision for speedup
+
+#define WCG_LUMA_DQP_CM_SCALE                             1  ///< enable luma adaptive QP and chroma QP scale, intended for data in ST-2084 container
 
 #define JVET_E0023_FAST_ENCODING_SETTING                  1
 #if JVET_E0023_FAST_ENCODING_SETTING
@@ -219,6 +227,7 @@
 #define VCEG_AZ07_FRUC_MERGE                              1  ///< Pattern matched motion vector derivation
 #if VCEG_AZ07_FRUC_MERGE
 #define JVET_E0060_FRUC_CAND                              1  ///< E0060: Add candidates to FRUC lists, and adjust the number of these candidates
+#define JVET_F0032_UNI_BI_SELECTION                       1  ///< JVET_F0032: selection between uni-prediction and bi-prediction for FRUC template matching mode
 #endif
 
 #define JVET_B058_HIGH_PRECISION_MOTION_VECTOR_MC         1
@@ -269,6 +278,7 @@
 #if VCEG_AZ05_BIO                                            
 #define COM16_C1045_BIO_HARMO_IMPROV                      1  ///< Improvement of BIO
 #define JVET_C0027_BIO                                    1   /// MV refinement max value up, BIO_LDB check optimization,  BIO  for 1/16 pel MV support
+#define JVET_F0028_BIO_NO_BLOCK_EXTENTION                 1
 #endif                                                       
 
 #define COM16_C1016_AFFINE                                1  ///< Affine motion prediction
@@ -386,6 +396,10 @@
 #define DECODER_CHECK_SUBSTREAM_AND_SLICE_TRAILING_BYTES  1 ///< TODO: integrate this macro into a broader conformance checking system.
 #define T0196_SELECTIVE_RDOQ                              1 ///< selective RDOQ
 
+#ifndef EXTENSION_360_VIDEO
+#define EXTENSION_360_VIDEO                               0   ///< extension for 360/spherical video coding support; this macro should be controlled by makefile, as it would be used to control whether the library is built and linked
+#endif
+
 // ====================================================================================================================
 // Tool Switches
 // ====================================================================================================================
@@ -481,6 +495,9 @@ typedef       bool                Bool;
 typedef       signed char         Char;
 #else
 typedef       char                Char;
+#endif
+#if EXTENSION_360_VIDEO
+typedef       char                TChar; // Used for text/characters
 #endif
 typedef       unsigned char       UChar;
 typedef       short               Short;
@@ -718,6 +735,16 @@ enum DFunc
   DF_SADS48          = 48,
 
   DF_SSE_FRAME       = 50,     ///< Frame-based SSE
+#if WCG_LUMA_DQP_CM_SCALE         ///< Weighted SSE
+  DF_SSE_WTD             = 51,      ///< general size SSE
+  DF_SSE4_WTD            = 52,      ///<   4xM SSE
+  DF_SSE8_WTD            = 53,      ///<   8xM SSE
+  DF_SSE16_WTD           = 54,      ///<  16xM SSE
+  DF_SSE32_WTD           = 55,      ///<  32xM SSE
+  DF_SSE64_WTD           = 56,      ///<  64xM SSE
+  DF_SSE16N_WTD          = 57,      ///< 16NxM SSE
+  DF_DEFAULT_ORI         = 58,
+#endif
   DF_TOTAL_FUNCTIONS = 64
 };
 
@@ -1201,6 +1228,33 @@ enum ADDITIONAL_CHROMA_MODE
 };
 #endif
 
+#if WCG_LUMA_DQP_CM_SCALE
+enum LumaLevelToDQPMode
+{
+  LUMALVL_TO_DQP_DISABLED = 0,
+  LUMALVL_TO_DQP_AVG_METHOD = 1, // use average of CTU to determine luma level
+  LUMALVL_TO_DQP_NUM_MODES = 2
+};
+
+struct LumaLevelToDeltaQPMapping
+{
+  LumaLevelToDQPMode                 mode;             ///< use deltaQP determined by block luma level
+  Bool                               isSDR;            ///< wheter inputis SDR converted to BT2100 contrainer or true HDR content 
+  Double                             maxMethodWeight;  ///< weight of max luma value when mode = 2
+  std::vector< std::pair<Int, Int> > mapping;          ///< first=luma level, second=delta QP.
+  Bool isEnabled() const { return mode != LUMALVL_TO_DQP_DISABLED; }
+};
+
+struct WCGChromaQPControl
+{
+  Bool isEnabled() const { return enabled; }
+  Bool   enabled;         ///< Enabled flag (0:default)
+  Double chromaCbQpScale; ///< Chroma Cb QP Scale (1.0:default)
+  Double chromaCrQpScale; ///< Chroma Cr QP Scale (1.0:default)
+  Double chromaQpScale;   ///< Chroma QP Scale (0.0:default)
+  Double chromaQpOffset;  ///< Chroma QP Offset (0.0:default)
+};
+#endif
 //! \}
 
 #endif

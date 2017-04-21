@@ -54,6 +54,9 @@
 #include "TEncSbac.h"
 #include "SEIwrite.h"
 #include "SEIEncoder.h"
+#if EXTENSION_360_VIDEO
+#include "TAppEncHelper360/TExt360EncGop.h"
+#endif
 
 #include "TEncAnalyze.h"
 #include "TEncRateCtrl.h"
@@ -93,8 +96,18 @@ private:
   TEncAnalyze             m_gcAnalyzeI;
   TEncAnalyze             m_gcAnalyzeP;
   TEncAnalyze             m_gcAnalyzeB;
-
+#if WCG_LUMA_DQP_CM_SCALE
+  TEncAnalyze             m_gcAnalyzeWPSNR;
+#endif
   TEncAnalyze             m_gcAnalyzeAll_in;
+
+#if EXTENSION_360_VIDEO
+  TExt360EncGop           m_ext360;
+public:
+  TExt360EncGop &getExt360Data() { return m_ext360; }
+private:
+#endif
+
   //  Data
   Bool                    m_bLongtermTestPictureHasBeenCoded;
   Bool                    m_bLongtermTestPictureHasBeenCoded2;
@@ -163,6 +176,9 @@ public:
   Void  init        ( TEncTop* pcTEncTop );
   Void  compressGOP ( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rcListPic, TComList<TComPicYuv*>& rcListPicYuvRec,
                       std::list<AccessUnit>& accessUnitsInGOP, Bool isField, Bool isTff, const InputColourSpaceConversion snr_conversion, const Bool printFrameMSE 
+#if JVET_F0064_MSSSIM
+                      , const Bool printMSSSIM 
+#endif
 #if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
                       ,TComStats* m_apcStats
 #endif
@@ -175,9 +191,17 @@ public:
   TComList<TComPic*>*   getListPic()      { return m_pcListPic; }
 
 #if JVET_D0134_PSNR
+#if JVET_F0064_MSSSIM
+  Void  printOutSummary      ( UInt uiNumAllPicCoded, Bool isField, const Bool printMSEBasedSNR, const Bool printSequenceMSE, const Bool printMSSSIM, const Bool trueBitdepthPSNR, const BitDepths &bitDepths );
+#else
   Void  printOutSummary      ( UInt uiNumAllPicCoded, Bool isField, const Bool printMSEBasedSNR, const Bool printSequenceMSE, const Bool trueBitdepthPSNR, const BitDepths &bitDepths );
+#endif
+#else
+#if JVET_F0064_MSSSIM
+  Void  printOutSummary      ( UInt uiNumAllPicCoded, Bool isField, const Bool printMSEBasedSNR, const Bool printSequenceMSE, const Bool printMSSSIM, const BitDepths &bitDepths );
 #else
   Void  printOutSummary      ( UInt uiNumAllPicCoded, Bool isField, const Bool printMSEBasedSNR, const Bool printSequenceMSE, const BitDepths &bitDepths );
+#endif
 #endif
 #if JVET_D0186_PRECISEPSNR
   Void  printOutPreciseSummary(const Char * filename, Bool isField, const Bool trueBitdepthPSNR, const BitDepths &bitDepths);
@@ -193,6 +217,13 @@ public:
   Int xUpdateTStates ( UInt uiSliceType, UInt uiSliceQP,  TComStats* apcStats );  
 #endif
 
+#if EXTENSION_360_VIDEO
+  TEncAnalyze& getAnalyzeAllData() { return m_gcAnalyzeAll; }
+  TEncAnalyze& getAnalyzeIData()   { return m_gcAnalyzeI; }
+  TEncAnalyze& getAnalyzePData()   { return m_gcAnalyzeP; }
+  TEncAnalyze& getAnalyzeBData()   { return m_gcAnalyzeB; }
+#endif
+
 protected:
   TEncRateCtrl* getRateCtrl()       { return m_pcRateCtrl;  }
 
@@ -201,11 +232,21 @@ protected:
   Void  xInitGOP          ( Int iPOCLast, Int iNumPicRcvd, Bool isField );
   Void  xGetBuffer        ( TComList<TComPic*>& rcListPic, TComList<TComPicYuv*>& rcListPicYuvRecOut, Int iNumPicRcvd, Int iTimeOffset, TComPic*& rpcPic, TComPicYuv*& rpcPicYuvRecOut, Int pocCurr, Bool isField );
 
+#if JVET_F0064_MSSSIM
+  Void  xCalculateAddPSNRs         ( const Bool isField, const Bool isFieldTopFieldFirst, const Int iGOPid, TComPic* pcPic, const AccessUnit&accessUnit, TComList<TComPic*> &rcListPic, Double dEncTime, const InputColourSpaceConversion snr_conversion, const Bool printFrameMSE, const Bool printMSSSIM );
+  Void  xCalculateAddPSNR          ( TComPic* pcPic, TComPicYuv* pcPicD, const AccessUnit&, Double dEncTime, const InputColourSpaceConversion snr_conversion, const Bool printFrameMSE, const Bool printMSSSIM );
+  Void  xCalculateInterlacedAddPSNR( TComPic* pcPicOrgFirstField, TComPic* pcPicOrgSecondField,
+                                     TComPicYuv* pcPicRecFirstField, TComPicYuv* pcPicRecSecondField,
+                                     const InputColourSpaceConversion snr_conversion, const Bool printFrameMSE, const Bool printMSSSIM );
+
+  Double xCalculateMSSSIM (const Pel *pOrg, const Int iOrgStride, const Pel* pRec, const Int iRecStride, const Int iWidth, const Int iHeight, const UInt uiBitDepth);
+#else
   Void  xCalculateAddPSNRs         ( const Bool isField, const Bool isFieldTopFieldFirst, const Int iGOPid, TComPic* pcPic, const AccessUnit&accessUnit, TComList<TComPic*> &rcListPic, Double dEncTime, const InputColourSpaceConversion snr_conversion, const Bool printFrameMSE );
   Void  xCalculateAddPSNR          ( TComPic* pcPic, TComPicYuv* pcPicD, const AccessUnit&, Double dEncTime, const InputColourSpaceConversion snr_conversion, const Bool printFrameMSE );
   Void  xCalculateInterlacedAddPSNR( TComPic* pcPicOrgFirstField, TComPic* pcPicOrgSecondField,
                                      TComPicYuv* pcPicRecFirstField, TComPicYuv* pcPicRecSecondField,
                                      const InputColourSpaceConversion snr_conversion, const Bool printFrameMSE );
+#endif
 
   UInt64 xFindDistortionFrame (TComPicYuv* pcPic0, TComPicYuv* pcPic1, const BitDepths &bitDepths);
 
