@@ -322,4 +322,43 @@ Void TComPicYuv::dump (const Char* pFileName, const BitDepths &bitDepths, Bool b
   fclose(pFile);
 }
 
+#if EXTENSION_360_VIDEO
+Void TComPicYuv::createWithoutCUInfo ( const Int picWidth,                 ///< picture width
+                                       const Int picHeight,                ///< picture height
+                                       const ChromaFormat chromaFormatIDC, ///< chroma format
+                                       const Bool bUseMargin,              ///< if true, then a margin of uiMaxCUWidth+16 and uiMaxCUHeight+16 is created around the image.
+                                       const UInt maxCUWidth,              ///< used for margin only
+                                       const UInt maxCUHeight)             ///< used for margin only
+{
+  destroy();
+
+  m_iPicWidth          = picWidth;
+  m_iPicHeight         = picHeight;
+  m_chromaFormatIDC   = chromaFormatIDC;
+  m_iMarginX          = (bUseMargin?maxCUWidth:0) + 16;   // for 16-byte alignment
+  m_iMarginY          = (bUseMargin?maxCUHeight:0) + 16;  // margin for 8-tap filter and infinite padding
+  m_bIsBorderExtended = false;
+
+  // assign the picture arrays and set up the ptr to the top left of the original picture
+  for(UInt comp=0; comp<getNumberValidComponents(); comp++)
+  {
+    const ComponentID ch=ComponentID(comp);
+    m_apiPicBuf[comp] = (Pel*)xMalloc( Pel, getStride(ch) * getTotalHeight(ch));
+    m_piPicOrg[comp]  = m_apiPicBuf[comp] + (m_iMarginY >> getComponentScaleY(ch)) * getStride(ch) + (m_iMarginX >> getComponentScaleX(ch));
+  }
+  // initialize pointers for unused components to NULL
+  for(UInt comp=getNumberValidComponents();comp<MAX_NUM_COMPONENT; comp++)
+  {
+    m_apiPicBuf[comp] = NULL;
+    m_piPicOrg[comp]  = NULL;
+  }
+
+  for(Int chan=0; chan<MAX_NUM_CHANNEL_TYPE; chan++)
+  {
+    m_ctuOffsetInBuffer[chan]   = NULL;
+    m_subCuOffsetInBuffer[chan] = NULL;
+  }
+}
+#endif
+
 //! \}

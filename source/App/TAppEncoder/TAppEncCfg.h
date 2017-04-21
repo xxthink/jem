@@ -41,6 +41,9 @@
 #include "TLibCommon/CommonDef.h"
 
 #include "TLibEncoder/TEncCfg.h"
+#if EXTENSION_360_VIDEO
+#include "TAppEncHelper360/TExt360AppEncCfg.h"
+#endif
 #include <sstream>
 #include <vector>
 //! \ingroup TAppEncoder
@@ -79,7 +82,11 @@ protected:
   UInt      m_temporalSubsampleRatio;                         ///< temporal subsample ratio, 2 means code every two frames
   Int       m_iSourceWidth;                                   ///< source width in pixel
   Int       m_iSourceHeight;                                  ///< source height in pixel (when interlaced = field height)
-
+#if EXTENSION_360_VIDEO
+  Int       m_inputFileWidth;                                 ///< width of image in input file  (this is equivalent to sourceWidth,  if sourceWidth  is not subsequently altered due to padding)
+  Int       m_inputFileHeight;                                ///< height of image in input file (this is equivalent to sourceHeight, if sourceHeight is not subsequently altered due to padding)
+  std::string m_inputFileName;
+#endif
   Int       m_iSourceHeightOrg;                               ///< original source height in pixel (when interlaced = frame height)
 
   Bool      m_isField;                                        ///< enable field coding
@@ -104,6 +111,9 @@ protected:
   Bool      m_printSequenceMSE;
 #if JVET_D0134_PSNR
   Bool      m_trueBidepthPSNR;
+#endif
+#if JVET_F0064_MSSSIM
+  Bool      m_printMSSSIM;
 #endif
   Bool      m_cabacZeroWordPaddingEnabled;
   Bool      m_bClipInputVideoToRec709Range;
@@ -169,7 +179,10 @@ protected:
 
   Int       m_cbQpOffset;                                     ///< Chroma Cb QP Offset (0:default)
   Int       m_crQpOffset;                                     ///< Chroma Cr QP Offset (0:default)
-
+#if WCG_LUMA_DQP_CM_SCALE
+  WCGChromaQPControl m_wcgChromaQpControl;                    ///< Wide-colour-gamut chroma QP control.
+  LumaLevelToDeltaQPMapping m_lumaLevelToDeltaQPMapping;      ///< mapping from luma level to Delta QP.
+#endif
 #if ADAPTIVE_QP_SELECTION
   Bool      m_bUseAdaptQpSelect;
 #endif
@@ -194,6 +207,11 @@ protected:
   UInt      m_uiMaxBTSize;
   UInt      m_uiMaxBTSizeISliceL;
   UInt      m_uiMaxBTSizeISliceC;
+#endif
+#if EXTENSION_360_VIDEO
+  UInt      m_uiMaxCUWidth;                                   ///< max. CU width in pixel
+  UInt      m_uiMaxCUHeight;                                  ///< max. CU height in pixel
+  UInt      m_uiMaxCUDepth;                                   ///< max. CU depth (as specified by command line)
 #endif
 #else
   UInt      m_uiMaxCUWidth;                                   ///< max. CU width in pixel
@@ -495,6 +513,12 @@ protected:
   std::string m_summaryOutFilename;                           ///< filename to use for producing summary output file.
   std::string m_summaryPicFilenameBase;                       ///< Base filename to use for producing summary picture output files. The actual filenames used will have I.txt, P.txt and B.txt appended.
   UInt        m_summaryVerboseness;                           ///< Specifies the level of the verboseness of the text output.
+
+#if EXTENSION_360_VIDEO
+  TExt360AppEncCfg m_ext360;
+  friend class TExt360AppEncCfg;
+  friend class TExt360AppEncTop;
+#endif
 
   // internal member functions
   Void  xCheckParameter ();                                   ///< check validity of configuration values

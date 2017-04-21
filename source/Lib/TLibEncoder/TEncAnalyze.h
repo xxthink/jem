@@ -48,6 +48,9 @@
 #include "TLibCommon/CommonDef.h"
 #include "TLibCommon/TComChromaFormat.h"
 #include "math.h"
+#if EXTENSION_360_VIDEO
+#include "TAppEncHelper360/TExt360EncAnalyze.h"
+#endif
 
 //! \ingroup TLibEncoder
 //! \{
@@ -65,27 +68,47 @@ private:
   UInt      m_uiNumPic;
   Double    m_dFrmRate; //--CFG_KDY
   Double    m_MSEyuvframe[MAX_NUM_COMPONENT]; // sum of MSEs
+#if JVET_F0064_MSSSIM
+  Double    m_msssim[MAX_NUM_COMPONENT];
+#endif
+
+#if EXTENSION_360_VIDEO
+  TExt360EncAnalyze m_ext360;
+#endif
 
 public:
   virtual ~TEncAnalyze()  {}
   TEncAnalyze() { clear(); }
 
+#if JVET_F0064_MSSSIM
+  Void  addResult( Double psnr[MAX_NUM_COMPONENT], Double bits, const Double MSEyuvframe[MAX_NUM_COMPONENT], const Double msssim[MAX_NUM_COMPONENT])
+#else
   Void  addResult( Double psnr[MAX_NUM_COMPONENT], Double bits, const Double MSEyuvframe[MAX_NUM_COMPONENT])
+#endif
   {
     m_dAddBits  += bits;
     for(UInt i=0; i<MAX_NUM_COMPONENT; i++)
     {
       m_dPSNRSum[i] += psnr[i];
       m_MSEyuvframe[i] += MSEyuvframe[i];
+#if JVET_F0064_MSSSIM
+      m_msssim[i] += msssim[i];
+#endif
     }
 
     m_uiNumPic++;
   }
 
   Double  getPsnr(ComponentID compID) const { return  m_dPSNRSum[compID];  }
+#if JVET_F0064_MSSSIM
+  Double  getMsssim(ComponentID compID) const { return  m_msssim[compID];  }
+#endif
   Double  getBits()                   const { return  m_dAddBits;   }
   Void    setBits(Double numBits)     { m_dAddBits=numBits; }
   UInt    getNumPic()                 const { return  m_uiNumPic;   }
+#if EXTENSION_360_VIDEO
+  TExt360EncAnalyze& getExt360Info() { return m_ext360; }
+#endif
 
   Void    setFrmRate  (Double dFrameRate) { m_dFrmRate = dFrameRate; } //--CFG_KDY
   Void    clear()
@@ -95,8 +118,14 @@ public:
     {
       m_dPSNRSum[i] = 0;
       m_MSEyuvframe[i] = 0;
+#if JVET_F0064_MSSSIM
+      m_msssim[i] = 0;
+#endif
     }
     m_uiNumPic = 0;
+#if EXTENSION_360_VIDEO
+    m_ext360.clear();
+#endif
   }
 
 #if JVET_D0134_PSNR
@@ -198,9 +227,17 @@ public:
 #endif
 
 #if JVET_D0134_PSNR
+#if JVET_F0064_MSSSIM
+  Void    printOut ( Char cDelim, const ChromaFormat chFmt, const Bool printMSEBasedSNR, const Bool printSequenceMSE, const Bool printMSSSIM, const Bool trueBitdepthPSNR, const BitDepths &bitDepths )
+#else
   Void    printOut ( Char cDelim, const ChromaFormat chFmt, const Bool printMSEBasedSNR, const Bool printSequenceMSE, const Bool trueBitdepthPSNR, const BitDepths &bitDepths )
+#endif
+#else
+#if JVET_F0064_MSSSIM
+  Void    printOut ( Char cDelim, const ChromaFormat chFmt, const Bool printMSEBasedSNR, const Bool printSequenceMSE, const Bool printMSSSIM, const BitDepths &bitDepths )
 #else
   Void    printOut ( Char cDelim, const ChromaFormat chFmt, const Bool printMSEBasedSNR, const Bool printSequenceMSE, const BitDepths &bitDepths )
+#endif
 #endif
   {
     Double dFps     =   m_dFrmRate; //--CFG_KDY
@@ -239,6 +276,13 @@ public:
         {
           printf( "         \tTotal Frames |   "   "Bitrate     "  "Y-PSNR" );
 
+#if JVET_F0064_MSSSIM
+          if (printMSSSIM)
+          {
+            printf( "    Y-MS-SSIM");
+          }
+#endif
+
           if (printSequenceMSE)
           {
             printf( "    Y-MSE\n" );
@@ -253,7 +297,13 @@ public:
                  getNumPic(), cDelim,
                  getBits() * dScale,
                  getPsnr(COMPONENT_Y) / (Double)getNumPic() );
-
+                 
+#if JVET_F0064_MSSSIM
+          if (printMSSSIM)
+          {
+            printf("    %1.6lf", getMsssim(COMPONENT_Y) / (Double)getNumPic()); 
+          }
+#endif
           if (printSequenceMSE)
           {
             printf( "  %8.4lf\n", m_MSEyuvframe[COMPONENT_Y ] / (Double)getNumPic() );
@@ -272,6 +322,12 @@ public:
         {
           printf( "\tTotal Frames |   "   "Bitrate     "  "Y-PSNR" );
 
+#if JVET_F0064_MSSSIM
+          if (printMSSSIM)
+          {
+            printf( "Y-MS-SSIM");
+          }
+#endif
           if (printSequenceMSE)
           {
             printf( "    Y-MSE\n" );
@@ -287,6 +343,12 @@ public:
                  getBits() * dScale,
                  getPsnr(COMPONENT_Y) / (Double)getNumPic() );
 
+#if JVET_F0064_MSSSIM
+          if (printMSSSIM)
+          {
+            printf("%1.6lf", getMsssim(COMPONENT_Y) / (Double)getNumPic()); 
+          }
+#endif
           if (printSequenceMSE)
           {
             printf( "  %8.4lf\n", m_MSEyuvframe[COMPONENT_Y ] / (Double)getNumPic() );
@@ -314,6 +376,12 @@ public:
           {
             printf( "         \tTotal Frames |   "   "Bitrate     "  "Y-PSNR    "  "U-PSNR    "  "V-PSNR    "  "YUV-PSNR " );
 
+#if JVET_F0064_MSSSIM
+            if (printMSSSIM)
+            {
+              printf("   Y-MS-SSIM    " "U-MS-SSIM    " "V-MS-SSIM ");
+            }
+#endif      
             if (printSequenceMSE)
             {
               printf( " Y-MSE     "  "U-MSE     "  "V-MSE    "  "YUV-MSE \n" );
@@ -331,7 +399,15 @@ public:
                    getPsnr(COMPONENT_Cb) / (Double)getNumPic(),
                    getPsnr(COMPONENT_Cr) / (Double)getNumPic(),
                    PSNRyuv );
-
+#if JVET_F0064_MSSSIM               
+            if (printMSSSIM)
+            {
+              printf("    %1.6lf     " "%1.6lf     " "%1.6lf ",
+                     getMsssim(COMPONENT_Y) / (Double)getNumPic(),
+                     getMsssim(COMPONENT_Cb) / (Double)getNumPic(),
+                     getMsssim(COMPONENT_Cr) / (Double)getNumPic());
+            }
+#endif
             if (printSequenceMSE)
             {
               printf( "  %8.4lf  "   "%8.4lf  "    "%8.4lf  "   "%8.4lf\n",
@@ -356,6 +432,15 @@ public:
           else
           {
             printf( "\tTotal Frames |   "   "Bitrate     "  "Y-PSNR    "  "U-PSNR    "  "V-PSNR    "  "YUV-PSNR " );
+#if JVET_F0064_MSSSIM            
+            if (printMSSSIM)
+            {
+              printf("   Y-MS-SSIM    " "U-MS-SSIM    " "V-MS-SSIM ");
+            }
+#endif
+#if EXTENSION_360_VIDEO
+            m_ext360.printHeader();
+#endif
             
             if (printSequenceMSE)
             {
@@ -374,6 +459,19 @@ public:
                    getPsnr(COMPONENT_Cb) / (Double)getNumPic(),
                    getPsnr(COMPONENT_Cr) / (Double)getNumPic(),
                    PSNRyuv );
+#if JVET_F0064_MSSSIM
+            if (printMSSSIM)
+            {
+              printf("    %1.6lf     " "%1.6lf     " "%1.6lf ",
+                     getMsssim(COMPONENT_Y) / (Double)getNumPic(),
+                     getMsssim(COMPONENT_Cb) / (Double)getNumPic(),
+                     getMsssim(COMPONENT_Cr) / (Double)getNumPic());
+            }
+#endif
+
+#if EXTENSION_360_VIDEO
+            m_ext360.printPSNRs(getNumPic());
+#endif
 
             if (printSequenceMSE)
             {

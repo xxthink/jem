@@ -2410,7 +2410,32 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
     }
   }
 
+#if JVET_F0096_BILATERAL_FILTER
+  if (isLuma(compID))
+  {
+    if( uiAbsSum && (pcCU->getQP(COMPONENT_Y) > 17))
+    {
+      TComBilateralFilter::instance()->bilateralFilterIntra(pcCU, uiWidth, uiHeight, piReco, uiStride, pcCU->getQP(COMPONENT_Y));
+      for( UInt uiY = 0; uiY < uiHeight; uiY++ )
+      {
+        memcpy(piRecQt + uiY * uiRecQtStride, piReco + uiY * uiStride, uiWidth * sizeof(Short));
+        memcpy(piRecIPred + uiY * uiRecIPredStride, piReco + uiY * uiStride , uiWidth * sizeof(Short));
+        uiY++;
+        memcpy(piRecQt + uiY * uiRecQtStride, piReco + uiY * uiStride, uiWidth * sizeof(Short));
+        memcpy(piRecIPred + uiY * uiRecIPredStride, piReco + uiY * uiStride , uiWidth * sizeof(Short));
+      }
+    }
+  }
+#endif
   //===== update distortion =====
+#if WCG_LUMA_DQP_CM_SCALE
+  if (m_pcEncCfg->getUseLumaDeltaQp() > 0) {
+    UInt           iOrgStrideLuma         = pcOrgYuv ->getStride (COMPONENT_Y);
+    Pel           *piOrgLuma            = pcOrgYuv ->getAddr( COMPONENT_Y, uiAbsPartIdx );
+    ruiDist += m_pcRdCost->getDistPart( bitDepth, piReco, uiStride, piOrg, uiStride, uiWidth, uiHeight, compID, DF_SSE_WTD, piOrgLuma, iOrgStrideLuma);  // use weighted SSE
+  }
+  else
+#endif
   ruiDist += m_pcRdCost->getDistPart( bitDepth, piReco, uiStride, piOrg, uiStride, uiWidth, uiHeight, compID );
 }
 
@@ -2729,8 +2754,29 @@ Bool TEncSearch::xIntraCodingTUBlockTM(TComYuv*    pcOrgYuv,
             }
         }
     }
-
+#if JVET_F0096_BILATERAL_FILTER
+    if (isLuma(compID))
+    {
+      if( uiAbsSum && (pcCU->getQP(COMPONENT_Y) > 17))
+      {
+        TComBilateralFilter::instance()->bilateralFilterIntra(pcCU, uiWidth, uiHeight, piReco, uiStride, pcCU->getQP(COMPONENT_Y));
+        for( UInt uiY = 0; uiY < uiHeight; uiY++ )
+        {
+          memcpy(piRecQt + uiY * uiRecQtStride, piReco + uiY * uiStride, uiWidth * sizeof(Short));
+          memcpy(piRecIPred + uiY * uiRecIPredStride, piReco + uiY * uiStride , uiWidth * sizeof(Short));
+        }
+      }
+    }
+#endif
     //===== update distortion =====
+#if WCG_LUMA_DQP_CM_SCALE
+    if (m_pcEncCfg->getUseLumaDeltaQp() > 0) {
+      UInt           iOrgStrideLuma         = pcOrgYuv ->getStride (COMPONENT_Y);
+      Pel           *piOrgLuma            = pcOrgYuv ->getAddr( COMPONENT_Y, uiAbsPartIdx );
+      ruiDist += m_pcRdCost->getDistPart( bitDepth, piReco, uiStride, piOrg, uiStride, uiWidth, uiHeight, compID, DF_SSE_WTD, piOrgLuma, iOrgStrideLuma);  // use weighted SSE
+    }
+    else
+#endif
     ruiDist += m_pcRdCost->getDistPart(bitDepth, piReco, uiStride, piOrg, uiStride, uiWidth, uiHeight, compID);
 
     return true;
@@ -2898,6 +2944,9 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
   checkTransformSkip           &= TUCompRectHasAssociatedTransformSkipFlag(rTu.getRect(COMPONENT_Y), pcCU->getSlice()->getPPS()->getPpsRangeExtension().getLog2MaxTransformSkipBlockSize());
 #endif
   checkTransformSkip           &= (!pcCU->getCUTransquantBypass(0));
+#if JVET_F0031_RMV_REDUNDANT_TRSKIP
+  checkTransformSkip  &= (!pcCU->getEmtCuFlag(0));
+#endif
 
   assert (rTu.ProcessComponentSection(COMPONENT_Y));
 #if !JVET_C0024_QTBT
@@ -3632,6 +3681,9 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
   checkTransformSkip           &= TUCompRectHasAssociatedTransformSkipFlag(rTu.getRect(COMPONENT_Y), pcCU->getSlice()->getPPS()->getPpsRangeExtension().getLog2MaxTransformSkipBlockSize());
 #endif
   checkTransformSkip           &= (!pcCU->getCUTransquantBypass(0));
+#if JVET_F0031_RMV_REDUNDANT_TRSKIP
+  checkTransformSkip  &= (!pcCU->getEmtCuFlag(uiAbsPartIdx));
+#endif
 
   assert (rTu.ProcessComponentSection(COMPONENT_Y));
 #if !JVET_C0024_QTBT
@@ -9487,6 +9539,15 @@ Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg,
       const ComponentID compID=ComponentID(comp);
       const UInt csx=pcYuvOrg->getComponentScaleX(compID);
       const UInt csy=pcYuvOrg->getComponentScaleY(compID);
+#if WCG_LUMA_DQP_CM_SCALE
+      if (m_pcEncCfg->getUseLumaDeltaQp() > 0) {
+        UInt           iOrgStrideLuma         = pcYuvOrg ->getStride (COMPONENT_Y);
+        Pel           *piOrgLuma            = pcYuvOrg ->getAddr( COMPONENT_Y);
+        distortion += m_pcRdCost->getDistPart( sps.getBitDepth(toChannelType(compID)), pcYuvRec->getAddr(compID), pcYuvRec->getStride(compID), pcYuvOrg->getAddr(compID),
+        pcYuvOrg->getStride(compID), cuWidthPixels >> csx, cuHeightPixels >> csy, compID, DF_SSE_WTD, piOrgLuma, iOrgStrideLuma);  // use weighted SSE
+      }
+      else
+#endif
       distortion += m_pcRdCost->getDistPart( sps.getBitDepth(toChannelType(compID)), pcYuvRec->getAddr(compID), pcYuvRec->getStride(compID), pcYuvOrg->getAddr(compID),
                                                pcYuvOrg->getStride(compID), cuWidthPixels >> csx, cuHeightPixels >> csy, compID);
     }
@@ -9607,7 +9668,7 @@ Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg,
   m_pcRDGoOnSbacCoder->load( m_pppcRDSbacCoder[ pcCU->getDepth( 0 ) ][ CI_CURR_BEST ] );
 #endif
 
-#if VCEG_AZ08_INTER_KLT
+#if VCEG_AZ08_INTER_KLT || JVET_F0096_BILATERAL_FILTER
   xEstimateInterResidualQT(pcYuvResi, nonZeroCost, nonZeroBits, nonZeroDistortion, &zeroDistortion, tuLevel0, pcYuvPred DEBUG_STRING_PASS_INTO(sDebug));
 #else
   xEstimateInterResidualQT( pcYuvResi,  nonZeroCost, nonZeroBits, nonZeroDistortion, &zeroDistortion, tuLevel0 DEBUG_STRING_PASS_INTO(sDebug) );
@@ -9620,7 +9681,18 @@ Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg,
   m_pcEntropyCoder->resetBits();
   m_pcEntropyCoder->encodeQtRootCbfZero( );
   const UInt   zeroResiBits = m_pcEntropyCoder->getNumberOfWrittenBits();
+#if WCG_LUMA_DQP_CM_SCALE
+  Double zeroCost;
+  if (m_pcEncCfg->getUseLumaDeltaQp() > 0)
+  {
+    zeroCost = (pcCU->isLosslessCoded(0)) ? (nonZeroCost + 1) : (m_pcRdCost->calcRdCost(zeroResiBits, zeroDistortion, false, DF_DEFAULT_ORI));
+  }
+  else {
+    zeroCost = (pcCU->isLosslessCoded(0)) ? (nonZeroCost + 1) : (m_pcRdCost->calcRdCost(zeroResiBits, zeroDistortion));
+  }
+#else
   const Double zeroCost     = (pcCU->isLosslessCoded( 0 )) ? (nonZeroCost+1) : (m_pcRdCost->calcRdCost( zeroResiBits, zeroDistortion ));
+#endif
 
   if ( zeroCost < nonZeroCost || !pcCU->getQtRootCbf(0) )
   {
@@ -9674,6 +9746,13 @@ Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg,
   }
 
   Distortion uiDist = ( zeroCost < nonZeroCost || !pcCU->getQtRootCbf(0) ) ? zeroDistortion : nonZeroDistortion;
+#if WCG_LUMA_DQP_CM_SCALE
+  if (m_pcEncCfg->getUseLumaDeltaQp() > 0)
+  {
+    dCost = m_pcRdCost->calcRdCost( finalBits, uiDist, false, DF_DEFAULT_ORI);
+  }
+  else
+#endif
   dCost = m_pcRdCost->calcRdCost( finalBits, uiDist );
   if( dCost < bestCost )
   {
@@ -9827,6 +9906,17 @@ Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg,
   for(Int comp=0; comp<numValidComponents; comp++)
   {
     const ComponentID compID=ComponentID(comp);
+#if WCG_LUMA_DQP_CM_SCALE
+      if (m_pcEncCfg->getUseLumaDeltaQp() > 0) {
+        UInt           iOrgStrideLuma         = pcYuvOrg ->getStride (COMPONENT_Y);
+        Pel           *piOrgLuma            = pcYuvOrg ->getAddr( COMPONENT_Y);
+        finalDistortion += m_pcRdCost->getDistPart( sps.getBitDepth(toChannelType(compID)), pcYuvRec->getAddr(compID ), pcYuvRec->getStride(compID ), pcYuvOrg->getAddr(compID ), 
+          pcYuvOrg->getStride(compID), cuWidthPixels >> pcYuvOrg->getComponentScaleX(compID), cuHeightPixels >> pcYuvOrg->getComponentScaleY(compID), compID, DF_SSE_WTD 
+          , piOrgLuma, iOrgStrideLuma
+          );  // use weighted SSE
+      }
+      else
+#endif
     finalDistortion += m_pcRdCost->getDistPart( sps.getBitDepth(toChannelType(compID)), pcYuvRec->getAddr(compID ), pcYuvRec->getStride(compID ), pcYuvOrg->getAddr(compID ), pcYuvOrg->getStride(compID), cuWidthPixels >> pcYuvOrg->getComponentScaleX(compID), cuHeightPixels >> pcYuvOrg->getComponentScaleY(compID), compID);
   }
 
@@ -9849,7 +9939,7 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
                                            Distortion &ruiDist,
                                            Distortion *puiZeroDist,
                                            TComTU     &rTu
-#if VCEG_AZ08_INTER_KLT
+#if VCEG_AZ08_INTER_KLT || JVET_F0096_BILATERAL_FILTER
                                            ,TComYuv* pcPred
 #endif
                                            DEBUG_STRING_FN_DECLARE(sDebug) 
@@ -9982,11 +10072,19 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
                                      TUCompRectHasAssociatedTransformSkipFlag(rTu.getRect(compID), pcCU->getSlice()->getPPS()->getPpsRangeExtension().getLog2MaxTransformSkipBlockSize()) &&
 #endif
                                      (!pcCU->isLosslessCoded(0));
+#if JVET_F0031_RMV_REDUNDANT_TRSKIP
+        if(isLuma(compID))
+        {
+          checkTransformSkip[compID]  &= (!pcCU->getEmtCuFlag(uiAbsPartIdx));
+        }
+#endif
+#if VCEG_AZ08_INTER_KLT || JVET_F0096_BILATERAL_FILTER
+        UInt tuWidth = rTu.getRect(compID).width;
+        UInt tuHeight = rTu.getRect(compID).height;
+#endif
 #if VCEG_AZ08_INTER_KLT
         UInt uiMaxTrWidth = g_uiDepth2Width[USE_MORE_BLOCKSIZE_DEPTH_MAX - 1];
         UInt uiMinTrWidth = g_uiDepth2Width[USE_MORE_BLOCKSIZE_DEPTH_MIN - 1];
-        UInt tuWidth = rTu.getRect(compID).width;
-        UInt tuHeight = rTu.getRect(compID).height;
         checkKLT[compID] = g_bEnableCheck && isLuma(compID) && ((tuWidth == tuHeight) && (tuWidth <= uiMaxTrWidth) && (tuWidth >= uiMinTrWidth));
 #endif
 #if JVET_C0024_QTBT
@@ -10278,6 +10376,13 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
                               }
 
                               nonCoeffBits = m_pcEntropyCoder->getNumberOfWrittenBits();
+#if WCG_LUMA_DQP_CM_SCALE
+                              if (m_pcEncCfg->getUseLumaDeltaQp() > 0)
+                              {
+                                nonCoeffCost = m_pcRdCost->calcRdCost(nonCoeffBits, nonCoeffDist, false, DF_DEFAULT_ORI);
+                              }
+                              else
+#endif
                               nonCoeffCost = m_pcRdCost->calcRdCost(nonCoeffBits, nonCoeffDist);
                           }
 
@@ -10342,6 +10447,31 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
                                   DEBUG_STRING_PASS_INTO_OPTIONAL(&sSingleStringTest, (DebugOptionList::DebugString_InvTran.getInt()&debugPredModeMask))
                                   );
 #endif
+#if JVET_F0096_BILATERAL_FILTER
+                              if (isLuma(compID))
+                              {
+                                UInt minSize = std::min(tuWidth, tuHeight);
+                                if( (currAbsSum > 0) && (pcCU->getQP(uiAbsPartIdx) > 17) && (minSize < 16))
+                                {
+                                  Pel *pcPtrPred = pcPred->getAddr(compID, uiAbsPartIdx);
+                                  UInt uiStridePred = pcPred->getStride(compID);
+#if JVET_C0024_QTBT
+                                  Pel *pcPtrRes = m_ppcQTTempTComYuv[uiWIdx][uiHIdx].getAddr(compID, uiAbsPartIdx);
+                                  UInt uiStrideRes = m_ppcQTTempTComYuv[uiWIdx][uiHIdx].getStride(compID);
+                                  Pel *pcPtrRec = m_ppcQTTempTComYuv[uiWIdx][uiHIdx].getAddr(compID, uiAbsPartIdx);
+                                  UInt uiStrideRec = m_ppcQTTempTComYuv[uiWIdx][uiHIdx].getStride(compID);
+#else
+                                  Pel *pcPtrRes = m_pcQTTempTComYuv[uiQTTempAccessLayer].getAddr(compID, uiAbsPartIdx);
+                                  UInt uiStrideRes = m_pcQTTempTComYuv[uiQTTempAccessLayer].getStride(compID);
+                                  Pel *pcPtrRec = m_pcQTTempTComYuv[uiQTTempAccessLayer].getAddr(compID, uiAbsPartIdx);
+                                  UInt uiStrideRec = m_pcQTTempTComYuv[uiQTTempAccessLayer].getStride(compID);
+#endif
+                                  const Int clipbd = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
+                                  TComBilateralFilter::instance()->bilateralFilterInter(pcCU, tuWidth, tuHeight, pcPtrRes, uiStrideRes, pcPtrPred, uiStridePred, pcPtrRec, uiStrideRec, clipbd, pcCU->getQP(uiAbsPartIdx));
+                                }
+                              }
+#endif
+
 #if VCEG_AZ08_INTER_KLT
                               if (useKLT)
                               {
@@ -10388,8 +10518,11 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
                                   pcResi->getStride(compID),
                                   tuCompRect.width, tuCompRect.height, compID);
 
+#if WCG_LUMA_DQP_CM_SCALE
+                              currCompCost = m_pcRdCost->calcRdCost(currCompBits, currCompDist, false, DF_DEFAULT_ORI);
+#else
                               currCompCost = m_pcRdCost->calcRdCost(currCompBits, currCompDist);
-
+#endif
                               if (pcCU->isLosslessCoded(0))
                               {
                                   nonCoeffCost = MAX_DOUBLE;
@@ -10595,6 +10728,13 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
 
     uiSingleBits = m_pcEntropyCoder->getNumberOfWrittenBits();
 
+#if WCG_LUMA_DQP_CM_SCALE
+    if (m_pcEncCfg->getUseLumaDeltaQp() > 0)
+    {
+      dSingleCost = m_pcRdCost->calcRdCost( uiSingleBits, uiSingleDist, false, DF_DEFAULT_ORI);
+    }
+    else
+#endif
     dSingleCost = m_pcRdCost->calcRdCost( uiSingleBits, uiSingleDist );
 
 #if VCEG_AZ08_INTER_KLT
@@ -10713,7 +10853,7 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
     do
     {
       DEBUG_STRING_NEW(childString)
-#if VCEG_AZ08_INTER_KLT
+#if VCEG_AZ08_INTER_KLT || JVET_F0096_BILATERAL_FILTER
       xEstimateInterResidualQT(pcResi, dSubdivCost, uiSubdivBits, uiSubdivDist, bCheckFull ? NULL : puiZeroDist, tuRecurseChild, pcPred DEBUG_STRING_PASS_INTO(childString));
 #else
       xEstimateInterResidualQT( pcResi, dSubdivCost, uiSubdivBits, uiSubdivDist, bCheckFull ? NULL : puiZeroDist,  tuRecurseChild DEBUG_STRING_PASS_INTO(childString));

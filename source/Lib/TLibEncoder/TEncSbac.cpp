@@ -1961,6 +1961,12 @@ Void TEncSbac::codeTransformSkipFlags (TComTU &rTu, ComponentID component )
     return;
   }
 
+#if JVET_F0031_RMV_REDUNDANT_TRSKIP
+  if (isLuma(component) && pcCU->getEmtCuFlag(uiAbsPartIdx))
+  {
+    return;
+  }
+#endif
   UInt useTransformSkip = pcCU->getTransformSkip( uiAbsPartIdx,component);
   m_pcBinIf->encodeBin( useTransformSkip, m_cTransformSkipSCModel.get( 0, toChannelType(component), 0 ) );
 

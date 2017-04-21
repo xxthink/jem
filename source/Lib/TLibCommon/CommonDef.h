@@ -505,6 +505,10 @@ static const Int DMVR_INTME_RANGE =                                 1;
 static const Int MULTI_PEL_MVD_BITS =                               2;
 #endif
 
+#if WCG_LUMA_DQP_CM_SCALE
+static const Int LUMA_LEVEL_TO_DQP_LUT_MAXSIZE =                 1024;      ///< max LUT size for QP offset based on luma
+#endif
+
 // ====================================================================================================================
 // Macro functions
 // ====================================================================================================================
@@ -605,6 +609,9 @@ template <typename T> T ClipA(const T x, const ComponentID compID)
     default: std::cerr << "ClipA: Invalid compID value " << compID << " . Exiting." << std::endl; assert(false); exit(0);  return 0;
     }
 }
+#if EXTENSION_360_VIDEO
+template <typename T> inline T ClipBD(const T x, const Int bitDepth)             { return Clip3(T(0), T((1 << bitDepth)-1), x);           }
+#endif
 #else
 template <typename T> inline T Clip3 (const T minVal, const T maxVal, const T a) { return std::min<T> (std::max<T> (minVal, a) , maxVal); }  ///< general min/max clip
 template <typename T> inline T ClipBD(const T x, const Int bitDepth)             { return Clip3(T(0), T((1 << bitDepth)-1), x);           }

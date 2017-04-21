@@ -71,6 +71,11 @@ public:
   Pel*  pCur;
   Int   iStrideOrg;
   Int   iStrideCur;
+#if WCG_LUMA_DQP_CM_SCALE
+  Pel*  pOrgLuma;          // use luma to get weighting
+  Int   iStrideOrgLuma; 
+#endif
+
   Int   iRows;
   Int   iCols;
   Int   iStep;
@@ -94,6 +99,11 @@ public:
     pCur = NULL;
     iStrideOrg = 0;
     iStrideCur = 0;
+#if WCG_LUMA_DQP_CM_SCALE
+    pOrgLuma = NULL;          // use luma to get weighting
+    iStrideOrgLuma = 0; 
+    compIdx = COMPONENT_Y;
+#endif
     iRows = 0;
     iCols = 0;
     iStep = 1;
@@ -116,6 +126,10 @@ private:
   CostMode                m_costMode;
   Double                  m_distortionWeight[MAX_NUM_COMPONENT]; // only chroma values are used.
   Double                  m_dLambda;
+#if WCG_LUMA_DQP_CM_SCALE
+  Double                  m_dLambda_unadjusted;
+  static Double           m_lumaLevelToWeightPLUT[LUMA_LEVEL_TO_DQP_LUT_MAXSIZE];
+#endif
   Double                  m_sqrtLambda;
 #if RExt__HIGH_BIT_DEPTH_SUPPORT
   Double                  m_dLambdaMotionSAD[2 /* 0=standard, 1=for transquant bypass when mixed-lossless cost evaluation enabled*/];
@@ -145,7 +159,12 @@ public:
   Void    setDistortionWeight  ( const ComponentID compID, const Double distortionWeight ) { m_distortionWeight[compID] = distortionWeight; }
   Void    setLambda      ( Double dLambda, const BitDepths &bitDepths );
   Void    setFrameLambda ( Double dLambda ) { m_dFrameLambda = dLambda; }
-
+#if WCG_LUMA_DQP_CM_SCALE
+  Void    saveUnadjustedLambda() {m_dLambda_unadjusted = m_dLambda;}
+  Void    initLumaLevelToWeightTable(Bool isSDR);
+  static  Distortion getWeightedMSE(Int compIdx, Pel org, Pel cur, UInt uiShift, Pel orgLuma);
+  inline  Double     getWPSNRLumaLevelWeight(Int val) { return m_lumaLevelToWeightPLUT[val]; }
+#endif
   Double  getSqrtLambda ()   { return m_sqrtLambda; }
 
   Double  getLambda() { return m_dLambda; }
@@ -247,7 +266,15 @@ private:
   static Distortion xGetSSE32         ( DistParam* pcDtParam );
   static Distortion xGetSSE64         ( DistParam* pcDtParam );
   static Distortion xGetSSE16N        ( DistParam* pcDtParam );
-
+#if WCG_LUMA_DQP_CM_SCALE
+  static Distortion xGetSSE_WTD           ( DistParam* pcDtParam );
+  static Distortion xGetSSE4_WTD          ( DistParam* pcDtParam );
+  static Distortion xGetSSE8_WTD          ( DistParam* pcDtParam );
+  static Distortion xGetSSE16_WTD         ( DistParam* pcDtParam );
+  static Distortion xGetSSE32_WTD         ( DistParam* pcDtParam );
+  static Distortion xGetSSE64_WTD         ( DistParam* pcDtParam );
+  static Distortion xGetSSE16N_WTD        ( DistParam* pcDtParam );
+#endif
   static Distortion xGetSAD           ( DistParam* pcDtParam );
   static Distortion xGetSAD4          ( DistParam* pcDtParam );
   static Distortion xGetSAD8          ( DistParam* pcDtParam );
@@ -292,6 +319,10 @@ private:
 public:
 
   Distortion   getDistPart(Int bitDepth, Pel* piCur, Int iCurStride,  Pel* piOrg, Int iOrgStride, UInt uiBlkWidth, UInt uiBlkHeight, const ComponentID compID, DFunc eDFunc = DF_SSE 
+#if WCG_LUMA_DQP_CM_SCALE
+  , Pel* piOrgLuma = NULL, 
+  Int iOrgStrideLuma = 0
+#endif
 #if VCEG_AZ06_IC
     , Bool bMRFlag = false
 #endif

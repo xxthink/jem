@@ -1542,6 +1542,9 @@ private:
 #if ADAPTIVE_QP_SELECTION
   Int                        m_iSliceQpBase;
 #endif
+#if WCG_LUMA_DQP_CM_SCALE && JVET_B0039_QP_FIX
+  Int                        m_iSliceQpLambdaOffset;
+#endif
   Bool                       m_ChromaQpAdjEnabled;
   Bool                       m_deblockingFilterDisable;
   Bool                       m_deblockingFilterOverrideFlag;      //< offsets for deblocking filter inherit from PPS
@@ -1700,6 +1703,10 @@ public:
   Void                        setDependentSliceSegmentFlag(Bool val)                 { m_dependentSliceSegmentFlag = val;                            }
 #if ADAPTIVE_QP_SELECTION
   Int                         getSliceQpBase() const                                 { return m_iSliceQpBase;                                        }
+#endif
+#if WCG_LUMA_DQP_CM_SCALE && JVET_B0039_QP_FIX
+  Void                        setSliceQpLambdaOffset(Int val)                       { m_iSliceQpLambdaOffset = val;                                 }
+  Int                         getSliceQpLambdaOffset() const                         { return m_iSliceQpLambdaOffset;                                }
 #endif
   Int                         getSliceQpDelta() const                                { return m_iSliceQpDelta;                                       }
   Int                         getSliceChromaQpDelta(ComponentID compID) const        { return isLuma(compID) ? 0 : m_iSliceChromaQpDelta[compID];    }

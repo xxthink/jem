@@ -1262,7 +1262,7 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
 
 
   TComDataCU *pcCU = rTu.getCU();
-#if COM16_C983_RSAF
+#if COM16_C983_RSAF || !JVET_D0033_ADAPTIVE_CLIPPING
   const TComSPS &sps=*(pcCU->getSlice()->getSPS());
 #endif
   const UInt uiAbsPartIdx=rTu.GetAbsPartIdxTU();
@@ -1529,6 +1529,24 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
     pReco     += uiStride;
     pRecIPred += uiRecIPredStride;
   }
+  #if JVET_F0096_BILATERAL_FILTER
+  Pel* piReco = pcRecoYuv->getAddr( compID, uiAbsPartIdx );
+  Pel* piRecIPred = pcCU->getPic()->getPicYuvRec()->getAddr( compID, pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu() + uiAbsPartIdx );
+
+  if (isLuma(compID))
+  {
+    if ((pcCU->getCbf(uiAbsPartIdx, compID, rTu.GetTransformDepthRel()) != 0) && (pcCU->getQP(COMPONENT_Y) > 17))
+    {
+      TComBilateralFilter::instance()->bilateralFilterIntra(pcCU, uiWidth, uiHeight, piReco, uiStride, pcCU->getQP(COMPONENT_Y));
+      for( UInt uiY = 0; uiY < uiHeight; uiY++ )
+      {
+        memcpy(piRecIPred + uiY * uiRecIPredStride, piReco + uiY * uiStride , uiWidth * sizeof(Short));
+        uiY++;
+        memcpy(piRecIPred + uiY * uiRecIPredStride, piReco + uiY * uiStride , uiWidth * sizeof(Short));
+      }
+    }
+  }
+#endif
 }
 
 #if VCEG_AZ08_INTRA_KLT
@@ -1707,6 +1725,23 @@ TDecCu::xIntraRecBlkTM( TComYuv*    pcRecoYuv,
         pReco += uiStride;
         pRecIPred += uiRecIPredStride;
     }
+#if JVET_F0096_BILATERAL_FILTER
+  Pel* piReco = pcRecoYuv->getAddr( compID, uiAbsPartIdx );
+  Pel* piRecIPred = pcCU->getPic()->getPicYuvRec()->getAddr( compID, pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu() + uiAbsPartIdx );
+  if (isLuma(compID))
+  {
+    if ((pcCU->getCbf(uiAbsPartIdx, compID, rTu.GetTransformDepthRel()) != 0) && (pcCU->getQP(COMPONENT_Y) > 17))
+    {
+      TComBilateralFilter::instance()->bilateralFilterIntra(pcCU, uiWidth, uiHeight, piReco, uiStride, pcCU->getQP(COMPONENT_Y));
+      for( UInt uiY = 0; uiY < uiHeight; uiY++ )
+      {
+        memcpy(piRecIPred + uiY * uiRecIPredStride, piReco + uiY * uiStride , uiWidth * sizeof(Short));
+        uiY++;
+        memcpy(piRecIPred + uiY * uiRecIPredStride, piReco + uiY * uiStride , uiWidth * sizeof(Short));
+      }
+    }
+  }
+#endif
 }
 #endif
 
@@ -1848,7 +1883,7 @@ Void TDecCu::xDecodeInterTexture ( TComDataCU* pcCU, UInt uiDepth )
 #endif
   TComTURecurse tuRecur(pcCU, 0, uiDepth);
 
-#if VCEG_AZ08_INTER_KLT
+#if VCEG_AZ08_INTER_KLT || JVET_F0096_BILATERAL_FILTER
 #if JVET_C0024_QTBT
   TComYuv* pcPred = m_pppcYuvReco[uiWidthIdx][uiHeightIdx];
 #else
@@ -1859,7 +1894,7 @@ Void TDecCu::xDecodeInterTexture ( TComDataCU* pcCU, UInt uiDepth )
   {
     const ComponentID compID=ComponentID(ch);
     DEBUG_STRING_OUTPUT(std::cout, debug_reorder_data_inter_token[compID])
-#if VCEG_AZ08_INTER_KLT
+#if VCEG_AZ08_INTER_KLT || JVET_F0096_BILATERAL_FILTER
 #if JVET_C0024_QTBT
     m_pcTrQuant->invRecurTransformNxN ( compID, m_pppcYuvResi[uiWidthIdx][uiHeightIdx], tuRecur, pcPred);
 #else
