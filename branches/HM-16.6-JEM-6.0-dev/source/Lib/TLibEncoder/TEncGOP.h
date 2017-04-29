@@ -271,8 +271,12 @@ protected:
   Int xWriteVPS (AccessUnit &accessUnit, const TComVPS *vps);
   Int xWriteSPS (AccessUnit &accessUnit, const TComSPS *sps);
   Int xWritePPS (AccessUnit &accessUnit, const TComPPS *pps);
-  Int xWriteParameterSets (AccessUnit &accessUnit, TComSlice *slice);
 
+#if WCG_LUMA_DQP_CM_SCALE_FIX_PPS
+  Int xWriteParameterSets (AccessUnit &accessUnit, TComSlice *slice, const Bool bSeqFirst);
+#else
+  Int xWriteParameterSets (AccessUnit &accessUnit, TComSlice *slice);
+#endif
   Void applyDeblockingFilterMetric( TComPic* pcPic, UInt uiNumSlices );
 };// END CLASS DEFINITION TEncGOP
 

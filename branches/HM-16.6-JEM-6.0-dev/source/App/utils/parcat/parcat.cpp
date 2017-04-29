@@ -301,7 +301,16 @@ std::vector<uint8_t> filter_segment(const std::vector<uint8_t> & v, int idx, int
       {
         offset += 1; //no_output_of_prior_pics_flag
       }
-      offset += 1; // slice_pic_parameter_set_id TODO: ue(v)
+
+      // determine offset for slice_pic_parameter_set_id TODO: ue(v)
+      int byte_offset2 = offset / 8;
+      int hi_bits2 = offset % 8;
+      uint16_t data2 = (nalu[byte_offset2] << 8) | nalu[byte_offset2 + 1];
+      int low_bits2 = 16 - hi_bits2 - 1;      
+      if(((data2 >> low_bits2) % 2))
+        offset += 1; // PPSId=0 
+      else
+        offset += 3; // PPSId=1 
       offset += 1; // slice_type TODO: ue(v)
       // separate_colour_plane_flag is not supported in JEM1.0
       if (nalu_type == CRA)

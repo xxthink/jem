@@ -2310,6 +2310,20 @@ Bool ParameterSetManager::activatePPS(Int ppsId, Bool isIRAP)
   return false;
 }
 
+#if WCG_LUMA_DQP_CM_SCALE_FIX_PPS
+template <>
+Void ParameterSetMap<TComPPS>::setID(TComPPS* parameterSet, const Int psId)
+{
+  parameterSet->setPPSId(psId);
+}
+
+template <>
+Void ParameterSetMap<TComSPS>::setID(TComSPS* parameterSet, const Int psId)
+{
+  parameterSet->setSPSId(psId);
+}
+#endif
+
 ProfileTierLevel::ProfileTierLevel()
   : m_profileSpace    (0)
   , m_tierFlag        (Level::MAIN)
@@ -2329,6 +2343,35 @@ TComPTL::TComPTL()
   ::memset(m_subLayerLevelPresentFlag,   0, sizeof(m_subLayerLevelPresentFlag  ));
 }
 
+#if WCG_LUMA_DQP_CM_SCALE_FIX_PPS
+Void calculateParameterSetChangedFlag(Bool &bChanged, const std::vector<UChar> *pOldData, const std::vector<UChar> *pNewData)
+{
+  if (!bChanged)
+  {
+    if ((pOldData==0 && pNewData!=0) || (pOldData!=0 && pNewData==0))
+    {
+      bChanged=true;
+    }
+    else if (pOldData!=0 && pNewData!=0)
+    {
+      // compare the two
+      if (pOldData->size() != pNewData->size())
+      {
+        bChanged=true;
+      }
+      else
+      {
+        const UChar *pNewDataArray=&(*pNewData)[0];
+        const UChar *pOldDataArray=&(*pOldData)[0];
+        if (memcmp(pOldDataArray, pNewDataArray, pOldData->size()))
+        {
+          bChanged=true;
+        }
+      }
+    }
+  }
+}
+#else
 Void calculateParameterSetChangedFlag(Bool &bChanged, const std::vector<UChar> *pOldData, const std::vector<UChar> &newData)
 {
   if (!bChanged)
@@ -2356,6 +2399,7 @@ Void calculateParameterSetChangedFlag(Bool &bChanged, const std::vector<UChar> *
     }
   }
 }
+#endif
 
 #if VCEG_AZ06_IC_SPEEDUP || (JVET_C0024_QTBT && VCEG_AZ06_IC)
 Void TComSlice::xSetApplyIC()

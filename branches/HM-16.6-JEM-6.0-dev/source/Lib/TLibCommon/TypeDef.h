@@ -118,6 +118,7 @@
 #define JVET_D0077_SAVE_LOAD_ENC_INFO                     1  ///< save and load encoder decision for speedup
 
 #define WCG_LUMA_DQP_CM_SCALE                             1  ///< enable luma adaptive QP and chroma QP scale, intended for data in ST-2084 container
+#define WCG_LUMA_DQP_CM_SCALE_FIX_PPS                     1  // to enable two PPS with chroma QP offset in PPS according to QP and QP+1
 
 #define JVET_E0023_FAST_ENCODING_SETTING                  1
 #if JVET_E0023_FAST_ENCODING_SETTING
