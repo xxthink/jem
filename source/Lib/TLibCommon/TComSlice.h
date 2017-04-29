@@ -1927,8 +1927,11 @@ protected:
 };// END CLASS DEFINITION TComSlice
 
 
+#if WCG_LUMA_DQP_CM_SCALE_FIX_PPS
+Void calculateParameterSetChangedFlag(Bool &bChanged, const std::vector<UChar> *pOldData, const std::vector<UChar> *pNewData);
+#else
 Void calculateParameterSetChangedFlag(Bool &bChanged, const std::vector<UChar> *pOldData, const std::vector<UChar> &newData);
-
+#endif
 template <class T> class ParameterSetMap
 {
 public:
@@ -1953,6 +1956,57 @@ public:
     }
   }
 
+#if WCG_LUMA_DQP_CM_SCALE_FIX_PPS
+  T *allocatePS(const Int psId)
+  {
+    assert ( psId < m_maxId );
+    if ( m_paramsetMap.find(psId) == m_paramsetMap.end() )
+    {
+      m_paramsetMap[psId].bChanged = true;
+      m_paramsetMap[psId].pNaluData=0;
+      m_paramsetMap[psId].parameterSet = new T;
+      setID(m_paramsetMap[psId].parameterSet, psId);
+    }
+    return m_paramsetMap[psId].parameterSet;
+  }
+
+  Void storePS(Int psId, T *ps, const std::vector<UChar> *pNaluData)
+  {
+    assert ( psId < m_maxId );
+    if ( m_paramsetMap.find(psId) != m_paramsetMap.end() )
+    {
+      MapData<T> &mapData=m_paramsetMap[psId];
+
+      // work out changed flag
+      calculateParameterSetChangedFlag(mapData.bChanged, mapData.pNaluData, pNaluData);
+      delete m_paramsetMap[psId].pNaluData;
+      delete m_paramsetMap[psId].parameterSet;
+
+      m_paramsetMap[psId].parameterSet = ps;
+    }
+    else
+    {
+      m_paramsetMap[psId].parameterSet = ps;
+      m_paramsetMap[psId].bChanged = false;
+    }
+    if (pNaluData != 0)
+    {
+      m_paramsetMap[psId].pNaluData=new std::vector<UChar>;
+      *(m_paramsetMap[psId].pNaluData) = *pNaluData;
+    }
+    else
+    {
+      m_paramsetMap[psId].pNaluData=0;
+    }
+  }
+  Void setChangedFlag(Int psId, Bool bChanged=true)
+  {
+    if ( m_paramsetMap.find(psId) != m_paramsetMap.end() )
+    {
+      m_paramsetMap[psId].bChanged=bChanged;
+    }
+  }
+#else
   Void storePS(Int psId, T *ps, const std::vector<UChar> &naluData)
   {
     assert ( psId < m_maxId );
@@ -1975,7 +2029,7 @@ public:
     m_paramsetMap[psId].pNaluData=new std::vector<UChar>;
     *(m_paramsetMap[psId].pNaluData) = naluData;
   }
-
+#endif
   Void clearChangedFlag(Int psId)
   {
     if ( m_paramsetMap.find(psId) != m_paramsetMap.end() )
@@ -2014,6 +2068,10 @@ public:
 private:
   std::map<Int,MapData<T> > m_paramsetMap;
   Int                       m_maxId;
+
+#if WCG_LUMA_DQP_CM_SCALE_FIX_PPS
+  static Void setID(T* parameterSet, const Int psId);
+#endif
 };
 
 class ParameterSetManager
@@ -2023,7 +2081,11 @@ public:
   virtual        ~ParameterSetManager();
 
   //! store sequence parameter set and take ownership of it
+#if WCG_LUMA_DQP_CM_SCALE_FIX_PPS
+  Void           storeVPS(TComVPS *vps, const std::vector<UChar> &naluData) { m_vpsMap.storePS( vps->getVPSId(), vps, &naluData); };
+#else
   Void           storeVPS(TComVPS *vps, const std::vector<UChar> &naluData) { m_vpsMap.storePS( vps->getVPSId(), vps, naluData); };
+#endif
   //! get pointer to existing video parameter set
   TComVPS*       getVPS(Int vpsId)                                           { return m_vpsMap.getPS(vpsId); };
   Bool           getVPSChangedFlag(Int vpsId) const                          { return m_vpsMap.getChangedFlag(vpsId); }
@@ -2031,7 +2093,11 @@ public:
   TComVPS*       getFirstVPS()                                               { return m_vpsMap.getFirstPS(); };
 
   //! store sequence parameter set and take ownership of it
+#if WCG_LUMA_DQP_CM_SCALE_FIX_PPS
+  Void           storeSPS(TComSPS *sps, const std::vector<UChar> &naluData) { m_spsMap.storePS( sps->getSPSId(), sps, &naluData); };
+#else
   Void           storeSPS(TComSPS *sps, const std::vector<UChar> &naluData) { m_spsMap.storePS( sps->getSPSId(), sps, naluData); };
+#endif
   //! get pointer to existing sequence parameter set
   TComSPS*       getSPS(Int spsId)                                           { return m_spsMap.getPS(spsId); };
   Bool           getSPSChangedFlag(Int spsId) const                          { return m_spsMap.getChangedFlag(spsId); }
@@ -2039,7 +2105,11 @@ public:
   TComSPS*       getFirstSPS()                                               { return m_spsMap.getFirstPS(); };
 
   //! store picture parameter set and take ownership of it
+#if WCG_LUMA_DQP_CM_SCALE_FIX_PPS
+  Void           storePPS(TComPPS *pps, const std::vector<UChar> &naluData) { m_ppsMap.storePS( pps->getPPSId(), pps, &naluData); };
+#else
   Void           storePPS(TComPPS *pps, const std::vector<UChar> &naluData) { m_ppsMap.storePS( pps->getPPSId(), pps, naluData); };
+#endif
   //! get pointer to existing picture parameter set
   TComPPS*       getPPS(Int ppsId)                                           { return m_ppsMap.getPS(ppsId); };
   Bool           getPPSChangedFlag(Int ppsId) const                          { return m_ppsMap.getChangedFlag(ppsId); }

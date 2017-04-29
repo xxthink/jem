@@ -315,7 +315,28 @@ Int TEncGOP::xWritePPS (AccessUnit &accessUnit, const TComPPS *pps)
   return (Int)(accessUnit.back()->m_nalUnitData.str().size()) * 8;
 }
 
+#if WCG_LUMA_DQP_CM_SCALE_FIX_PPS
+Int TEncGOP::xWriteParameterSets (AccessUnit &accessUnit, TComSlice *slice, const Bool bSeqFirst)
+{
+  Int actualTotalBits = 0;
 
+  if (bSeqFirst)
+  {
+    actualTotalBits += xWriteVPS(accessUnit, m_pcEncTop->getVPS());
+  }
+  if (m_pcEncTop->SPSNeedsWriting(slice->getSPS()->getSPSId())) // Note this assumes that all changes to the SPS are made at the TEncTop level prior to picture creation (TEncTop::xGetNewPicBuffer).
+  {
+    assert(bSeqFirst); // Implementations that use more than 1 SPS need to be aware of activation issues.
+    actualTotalBits += xWriteSPS(accessUnit, slice->getSPS());
+  }
+  if (m_pcEncTop->PPSNeedsWriting(slice->getPPS()->getPPSId())) // Note this assumes that all changes to the PPS are made at the TEncTop level prior to picture creation (TEncTop::xGetNewPicBuffer).
+  {
+    actualTotalBits += xWritePPS(accessUnit, slice->getPPS());
+  }
+
+  return actualTotalBits;
+}
+#else
 Int TEncGOP::xWriteParameterSets (AccessUnit &accessUnit, TComSlice *slice)
 {
   Int actualTotalBits = 0;
@@ -326,7 +347,7 @@ Int TEncGOP::xWriteParameterSets (AccessUnit &accessUnit, TComSlice *slice)
 
   return actualTotalBits;
 }
-
+#endif
 // write SEI list into one NAL unit and add it to the Access unit at auPos
 Void TEncGOP::xWriteSEI (NalUnitType naluType, SEIMessages& seiMessages, AccessUnit &accessUnit, AccessUnit::iterator &auPos, Int temporalId, const TComSPS *sps)
 {
@@ -1806,14 +1827,27 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
 
 #if JVET_D0135_PARAMS
     //if ( m_bSeqFirst || (m_pcCfg->getWriteParamSetsIDRFlag() && pcSlice->getIdrPicFlag()) )
+#if WCG_LUMA_DQP_CM_SCALE_FIX_PPS
+    bool writePS = m_bSeqFirst || (m_pcCfg->getReWriteParamSetsFlag() && (pcSlice->isIRAP()));
+    if (writePS)
+    {
+      m_pcEncTop->setParamSetChanged(pcSlice->getSPS()->getSPSId(), pcSlice->getPPS()->getPPSId());
+    }
+
+    // write various parameter sets
+    actualTotalBits += xWriteParameterSets(accessUnit, pcSlice, writePS);
+    if (writePS)
+#else
     if ( m_bSeqFirst || (m_pcCfg->getReWriteParamSetsFlag() && ( pcPic->getSlice(0)->getSliceType() == I_SLICE )))
+#endif
 #else
       if ( m_bSeqFirst )
 #endif
     {
+#if WCG_LUMA_DQP_CM_SCALE_FIX_PPS == 0
       // write various parameter sets
       actualTotalBits += xWriteParameterSets(accessUnit, pcSlice);
-
+#endif
       // create prefix SEI messages at the beginning of the sequence
       assert(leadingSeiMessages.empty());
       xCreateIRAPLeadingSEIMessages(leadingSeiMessages, pcSlice->getSPS(), pcSlice->getPPS());
