@@ -5169,8 +5169,8 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #endif
       ;
 #else
-  Bool NSSTFlag = (pcCU->getROTIdx(0) == 0);
-  Bool NSSTSaveFlag = (pcCU->getROTIdx(0) == 0)
+  Bool NSSTFlag = (pcCU->getROTIdx(0) == 0) || pcCU->getPartitionSize(0) == SIZE_NxN;
+  Bool NSSTSaveFlag = (pcCU->getROTIdx(0) == 0) && pcCU->getPartitionSize(0) == SIZE_2Nx2N
 #if COM16_C1046_PDPC_INTRA
       && (pcCU->getPDPCIdx(0) == 0)
 #endif
@@ -5179,8 +5179,13 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #endif
       ;
 #endif
+#if JVET_C0024_QTBT
   static UInt   uiSavedRdModeListNSST[35], uiSavedNumRdModesNSST, uiSavedHadModeListNSST[35];
   static Double dSavedModeCostNSST[35], dSavedHadListNSST[FAST_UDI_MAX_RDMODE_NUM];
+#else
+  static UInt   uiSavedRdModeListNSST[4][35], uiSavedNumRdModesNSST[4];
+  static Double dSavedModeCostNSST[4][35];
+#endif
 #if JVET_C0024_PBINTRA_FAST
   UInt uiHadModeList[67];
 #endif
@@ -5392,7 +5397,11 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         CandNum += updateCandList( uiMode, cost, numModesForFullRD, uiRdModeList, CandCostList );
 #endif
 #else
+#if JVET_D0127_REDUNDANCY_REMOVAL
+        CandNum += xUpdateCandList( uiMode, cost, numModesForFullRD + 2, uiRdModeList, CandCostList );
+#else
         CandNum += xUpdateCandList( uiMode, cost, numModesForFullRD, uiRdModeList, CandCostList );
+#endif
 #endif
 #if JVET_C0024_PBINTRA_FAST
 #if JVET_D0127_REDUNDANCY_REMOVAL
@@ -5419,9 +5428,15 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
       }
 #if JVET_D0127_REDUNDANCY_REMOVAL
       if (NSSTSaveFlag){
+#if JVET_C0024_QTBT
           uiSavedNumRdModesNSST = numModesForFullRD;
           ::memcpy(uiSavedRdModeListNSST, uiRdModeList, (numModesForFullRD + 2)*sizeof(UInt));
           ::memcpy(dSavedModeCostNSST, CandCostList, (numModesForFullRD + 2)*sizeof(Double));
+#else
+          uiSavedNumRdModesNSST[uiPU] = numModesForFullRD;
+          ::memcpy(uiSavedRdModeListNSST[uiPU], uiRdModeList, (numModesForFullRD + 2)*sizeof(UInt));
+          ::memcpy(dSavedModeCostNSST[uiPU], CandCostList, (numModesForFullRD + 2)*sizeof(Double));
+#endif
 #if JVET_C0024_PBINTRA_FAST
           ::memcpy(uiSavedHadModeListNSST, uiHadModeList, (numModesForFullRD + 2)*sizeof(UInt));
           ::memcpy(dSavedHadListNSST, CandHadList, (numModesForFullRD + 2)*sizeof(Double));
@@ -5432,11 +5447,17 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #if JVET_C0024_QTBT
           if (pcCU->getROTIdx(CHANNEL_TYPE_LUMA, 0) == 3){
 #else
-          if (pcCU->getROTIdx(0) == 3){
+          if (pcCU->getROTIdx(0) == 3 && pcCU->getPartitionSize(0) == SIZE_2Nx2N){
 #endif
+#if JVET_C0024_QTBT
               numModesForFullRD = uiSavedNumRdModesNSST;
               ::memcpy(uiRdModeList, uiSavedRdModeListNSST, (numModesForFullRD + 2)*sizeof(UInt));
               ::memcpy(CandCostList, dSavedModeCostNSST, (numModesForFullRD + 2)*sizeof(Double));
+#else
+              numModesForFullRD = uiSavedNumRdModesNSST[uiPU];
+              ::memcpy(uiRdModeList, uiSavedRdModeListNSST[uiPU], (numModesForFullRD + 2)*sizeof(UInt));
+              ::memcpy(CandCostList, dSavedModeCostNSST[uiPU], (numModesForFullRD + 2)*sizeof(Double));
+#endif
 #if JVET_C0024_PBINTRA_FAST
               ::memcpy(uiHadModeList, uiSavedHadModeListNSST, (numModesForFullRD + 2)*sizeof(UInt));
               ::memcpy(CandHadList, dSavedHadListNSST, (numModesForFullRD + 2)*sizeof(Double));
@@ -5470,9 +5491,15 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #endif
           }
           else{
+#if JVET_C0024_QTBT
               numModesForFullRD = uiSavedNumRdModesNSST;
               ::memcpy(uiRdModeList, uiSavedRdModeListNSST, numModesForFullRD*sizeof(UInt));
               ::memcpy(CandCostList, dSavedModeCostNSST, numModesForFullRD*sizeof(Double));
+#else
+              numModesForFullRD = uiSavedNumRdModesNSST[uiPU];
+              ::memcpy(uiRdModeList, uiSavedRdModeListNSST[uiPU], numModesForFullRD*sizeof(UInt));
+              ::memcpy(CandCostList, dSavedModeCostNSST[uiPU], numModesForFullRD*sizeof(Double));
+#endif
 #if JVET_C0024_PBINTRA_FAST
               ::memcpy(CandHadList, dSavedHadListNSST, numModesForFullRD*sizeof(Double));
 #endif
