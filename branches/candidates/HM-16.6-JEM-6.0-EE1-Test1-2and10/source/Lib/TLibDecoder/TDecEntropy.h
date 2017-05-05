@@ -186,6 +186,10 @@ public:
   virtual Void parseAffineFlag    ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPuIdx ) = 0;
   virtual Void parseAffineMvd     ( TComDataCU* pcCU, UInt uiAbsPartAddr, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList ) = 0;
 #endif
+
+#if RSAF_FLAG
+  virtual Void parseRsafFlag      ( TComDataCU* pcCU, UInt absPartIdx, Int numNonZeroCoeff ) = 0;
+#endif
 };
 
 /// entropy decoder class
@@ -318,8 +322,11 @@ private:
 
 public:
 
+#if RSAF_FLAG
+  Void decodeCoeff             ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool& bCodeDQP, Bool& isChromaQpAdjCoded, Int& numNonZeroCoeff );
+#else
   Void decodeCoeff             ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool& bCodeDQP, Bool& isChromaQpAdjCoded );
-
+#endif
 #if QTBT_NSST
   Int countNonZeroCoeffs       ( TCoeff* pcCoef, UInt uiSize );
 #endif
@@ -348,6 +355,10 @@ public:
 
 #if COM16_C1016_AFFINE
   Void decodeAffineFlag        ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, UInt uiPuIdx );
+#endif
+
+#if RSAF_FLAG
+  Void decodeRsafFlag( TComDataCU* pcCU, UInt absPartIdx, Int numNonZeroCoeff ) { m_pcEntropyDecoderIf->parseRsafFlag( pcCU, absPartIdx, numNonZeroCoeff ); }
 #endif
 
 

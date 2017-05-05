@@ -227,6 +227,10 @@ public:
   Void  parseAffineMvd      ( TComDataCU* pcCU, UInt uiAbsPartAddr, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList );
 #endif
 
+#if RSAF_FLAG
+  Void parseRsafFlag          ( TComDataCU* pcCU, UInt absPartIdx, Int numNonZeroCoeff );
+#endif
+
   Void  parseExplicitRdpcmMode( TComTU &rTu, ComponentID compID );
 
 
@@ -320,6 +324,10 @@ private:
 
 #if COM16_C1016_AFFINE
   ContextModel3DBuffer m_cCUAffineFlagSCModel;
+#endif
+
+#if RSAF_FLAG
+  ContextModel3DBuffer m_cRsafFlagSCModel;
 #endif
 
   UInt m_golombRiceAdaptationStatistics[RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS];

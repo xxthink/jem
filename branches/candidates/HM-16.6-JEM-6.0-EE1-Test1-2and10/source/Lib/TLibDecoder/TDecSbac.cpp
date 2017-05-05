@@ -54,6 +54,10 @@
 #include "../TLibCommon/Debug.h"
 #endif
 
+#if RSAF_FLAG
+#include "TLibCommon/TComPrediction.h"
+#endif
+
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
@@ -140,6 +144,9 @@ TDecSbac::TDecSbac()
 #endif
 #if COM16_C1016_AFFINE
 , m_cCUAffineFlagSCModel                     ( 1,             1,               NUM_AFFINE_FLAG_CTX                  , m_contextModels + m_numContextModels,          m_numContextModels)
+#endif
+#if RSAF_FLAG
+, m_cRsafFlagSCModel                         ( 1,             1,                      NUM_RSAF_FLAG_CTX                   , m_contextModels + m_numContextModels,          m_numContextModels)
 #endif
 {
   assert( m_numContextModels <= MAX_NUM_CTX_MOD );
@@ -265,6 +272,9 @@ Void TDecSbac::resetEntropy(TComSlice* pSlice)
 #endif
 #if COM16_C1016_AFFINE
   m_cCUAffineFlagSCModel.initBuffer               ( sliceType, qp, (UChar*)INIT_AFFINE_FLAG );
+#endif
+#if RSAF_FLAG
+  m_cRsafFlagSCModel.initBuffer                   ( sliceType, qp, (UChar*)INIT_RSAF_FLAG );
 #endif
 
   for (UInt statisticIndex = 0; statisticIndex < RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS ; statisticIndex++)
@@ -2946,13 +2956,15 @@ Void TDecSbac::parseCoeffNxN(  TComTU &rTu, ComponentID compID
     }
   }
 #endif
-#if COM16_C983_RSAF
+#if COM16_C983_RSAF && !RSAF_FLAG
   if (compID==COMPONENT_Y)
   {
     pcCU->setLumaIntraFilter(uiAbsPartIdx, false);
   }
     
-#if JVET_C0024_QTBT
+#if RESTRICTED_RSAF
+  if (compID==COMPONENT_Y && pcCU->isModeAvailableForRsaf(pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx), uiWidth, uiHeight) && uiWidth*uiHeight<=1024 && uiWidth*uiHeight >=64 )
+#elif JVET_C0024_QTBT
   if (compID==COMPONENT_Y && pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx)!=DC_IDX && uiWidth*uiHeight<=1024 && uiWidth*uiHeight >=64 )
 #else
   if (compID==COMPONENT_Y && pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx)!=DC_IDX && pcCU->getWidth(uiAbsPartIdx)<=32 && uiWidth > 4 && pcCU->getPartitionSize(uiAbsPartIdx)==SIZE_2Nx2N)
@@ -3727,6 +3739,42 @@ Int TDecSbac::parseLMMode(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth)
 
     xReadUnaryMaxSymbol(uiSymbol, &m_cCUChromaPredSCModel.get(0, 0, 1), 1, iSymbolNum - 1 RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__INTRA_DIR_ANG));
     return aiLMModeList[uiSymbol];
+}
+#endif
+
+#if RSAF_FLAG
+Void TDecSbac::parseRsafFlag( TComDataCU* pcCU, UInt absPartIdx, Int numNonZeroCoeff )
+{
+  if( isChroma(pcCU->getTextType()) )
+  {
+    return;
+  }
+
+  pcCU->setRsafFlagSubParts( 0, absPartIdx );
+
+  if( numNonZeroCoeff < RSAF_COEFF_TH )
+  {
+    return;
+  }
+
+  const UInt width = pcCU->getWidth(absPartIdx);
+  const UInt height = pcCU->getHeight(absPartIdx);
+  const UInt blkSize = width * height;
+
+  Int intraMode = pcCU->getIntraDir(CHANNEL_TYPE_LUMA, absPartIdx);
+
+#if COM16_C1046_PDPC_INTRA
+  if( pcCU->isIntra(absPartIdx) && pcCU->isModeAvailableForRsaf(intraMode, width, height) && !pcCU->getPDPCIdx(absPartIdx) && blkSize <= 1024 && blkSize >= 64 )
+#else
+  if( pcCU->isIntra(absPartIdx) && pcCU->isModeAvailableForRsaf(intraMode, width, height) && blkSize <= 1024 && blkSize >= 64 )
+#endif
+  {
+    Int ctx = Int(TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, intraMode, width, height, pcCU->getSlice()->getSPS()->getChromaFormatIdc(), pcCU->getSlice()->getSPS()->getSpsRangeExtension().getIntraSmoothingDisabledFlag(), true));
+
+    UInt rsafFlag;
+    m_pcTDecBinIf->decodeBin( rsafFlag, m_cRsafFlagSCModel.get(0, 0, ctx) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__EMT_TU_INDX) );
+    pcCU->setRsafFlagSubParts( rsafFlag, absPartIdx );
+  }
 }
 #endif
 

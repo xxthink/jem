@@ -885,7 +885,9 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
   m_pcEntropyDecoder->decodeMPIIdx(pcCU, uiAbsPartIdx, uiDepth);
 #endif
 #if COM16_C1046_PDPC_INTRA
+#if !EE1_PDPC_INTRA_FOR_OTHER_MODE
   m_pcEntropyDecoder->decodePDPCIdx(pcCU, uiAbsPartIdx, uiDepth);
+#endif
 #endif
 #if JVET_C0024_QTBT
   }
@@ -933,6 +935,15 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
 #else
   m_pcEntropyDecoder->decodePredInfo( pcCU, uiAbsPartIdx, uiDepth, m_ppcCU[uiDepth]);
 #endif
+#if EE1_PDPC_INTRA_FOR_OTHER_MODE
+  if (isLuma(pcCU->getTextType()))
+  {
+    if (((pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx) != PLANAR_IDX) && (pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx) != VDIA_IDX)))
+    {
+      m_pcEntropyDecoder->decodePDPCIdx(pcCU, uiAbsPartIdx, uiDepth);
+    }
+  }
+#endif
 #if COM16_C806_OBMC
   m_pcEntropyDecoder->decodeOBMCFlag( pcCU, uiAbsPartIdx, uiDepth );
 #endif
@@ -942,7 +953,14 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
   // Coefficient decoding
   Bool bCodeDQP = getdQPFlag();
   Bool isChromaQpAdjCoded = getIsChromaQpAdjCoded();
+
+#if RSAF_FLAG
+  Int numNonZeroCoeff = 0;
+  m_pcEntropyDecoder->decodeCoeff( pcCU, uiAbsPartIdx, uiDepth, bCodeDQP, isChromaQpAdjCoded, numNonZeroCoeff );
+  m_pcEntropyDecoder->decodeRsafFlag( pcCU, uiAbsPartIdx, numNonZeroCoeff );
+#else
   m_pcEntropyDecoder->decodeCoeff( pcCU, uiAbsPartIdx, uiDepth, bCodeDQP, isChromaQpAdjCoded );
+#endif
   setIsChromaQpAdjCoded( isChromaQpAdjCoded );
   setdQPFlag( bCodeDQP );
 
@@ -1328,6 +1346,9 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
 #endif
 
 #if COM16_C983_RSAF
+#if RSAF_FLAG
+  UInt bFilter = pcCU->getLumaIntraFilter( uiAbsPartIdx );
+#else
   Bool bFilter = false;
 #if COM16_C1046_PDPC_RSAF_HARMONIZATION
   if (compID == COMPONENT_Y && sps.getUseRSAF() && pcCU->getPDPCIdx(uiAbsPartIdx) == 0)
@@ -1342,6 +1363,7 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
     bFilter &= !(pcCU->getWidth(0)>32);
 #endif
   }
+#endif    // RSAF_FLAG
 #endif
 
 

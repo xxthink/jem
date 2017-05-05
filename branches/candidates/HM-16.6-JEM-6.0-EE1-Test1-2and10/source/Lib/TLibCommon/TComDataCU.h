@@ -200,7 +200,9 @@ private:
 
 #if COM16_C983_RSAF
   UChar*        m_puhIntraFiltFlag;
+#if !RSAF_FLAG
   Bool*        m_pbFiltFlagHidden;
+#endif
 #endif
 
 #if VCEG_AZ07_FRUC_MERGE
@@ -668,11 +670,15 @@ public:
 #if COM16_C983_RSAF
   UChar*        getLumaIntraFilter    ()                        const { return m_puhIntraFiltFlag;         }
   UChar         getLumaIntraFilter    (UInt uiIdx)              const { return m_puhIntraFiltFlag[uiIdx];  }
+#if RSAF_FLAG
+  Void          setRsafFlagSubParts  ( UChar rsafFlag, UInt absPartIdx );
+#else
   Void          setLumaIntraFilter    (UInt uiIdx, Bool value)  const { m_puhIntraFiltFlag[uiIdx] = value; }
 
   Bool*         isLumaIntraFilterHidden  ()                       const { return m_pbFiltFlagHidden;         }
   Bool          isLumaIntraFilterHidden  (UInt uiIdx)             const { return m_pbFiltFlagHidden[uiIdx];  }
   Void          setLumaIntraFilterHidden (UInt uiIdx, Bool value) const { m_pbFiltFlagHidden[uiIdx] = value; }
+#endif
 #endif
 
 #if COM16_C1045_BIO_HARMO_IMPROV
@@ -1015,6 +1021,9 @@ public:
 
 #if VCEG_AZ08_INTER_KLT
   Void          interpolatePic                 ( TComPic* pcPic );
+#endif
+#if RESTRICTED_RSAF || RSAF_FLAG
+  Bool         isModeAvailableForRsaf(const Int intraMode, const UInt uiWidth, const UInt uiHeight);
 #endif
 };
 
