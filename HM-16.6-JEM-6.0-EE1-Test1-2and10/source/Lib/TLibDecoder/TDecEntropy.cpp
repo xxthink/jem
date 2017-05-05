@@ -815,6 +815,10 @@ Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjC
 
   UChar cbf = pcCU->getCbf( uiAbsPartIdx, compID , 0 );
 
+#if RSAF_FLAG
+  Int dummyNzTs = 0;
+#endif
+
   if (cbf)
   {
 #if COM16_C806_EMT
@@ -825,7 +829,7 @@ Void TDecEntropy::xDecodeTransform        ( Bool& bCodeDQP, Bool& isChromaQpAdjC
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
     Bool dummyCbf;
-#if JVET_C0045_C0053_NO_NSST_FOR_TS
+#if JVET_C0045_C0053_NO_NSST_FOR_TS && !RSAF_FLAG
     Int  dummyNzTs;
 #endif
     m_pcEntropyDecoderIf->parseCoeffNxN( rTu, compID, dummyCbf
@@ -1129,7 +1133,11 @@ Void TDecEntropy::decodeChromaQpAdjustment( TComDataCU* pcCU, UInt uiAbsPartIdx 
 
 
 //! decode coefficients
+#if RSAF_FLAG
+Void TDecEntropy::decodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool& bCodeDQP, Bool& isChromaQpAdjCoded, Int& numNonZeroCoeff )
+#else
 Void TDecEntropy::decodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool& bCodeDQP, Bool& isChromaQpAdjCoded )
+#endif
 {
   if( pcCU->isIntra(uiAbsPartIdx) )
   {
@@ -1220,6 +1228,9 @@ Void TDecEntropy::decodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
   Int bCbfCU = pcCU->getSlice()->isIntra() ? (isLuma(pcCU->getTextType()) ? pcCU->getCbf(uiAbsPartIdx, COMPONENT_Y)
     : (pcCU->getCbf(uiAbsPartIdx, COMPONENT_Cb) || pcCU->getCbf(uiAbsPartIdx, COMPONENT_Cr) )): pcCU->getQtRootCbf(uiAbsPartIdx);
 #else
+#if RSAF_FLAG
+  numNonZeroCoeff = 0;
+#endif
   Int iNonZeroCoeff = 0;
   const UInt uiFirstComp = isLuma(pcCU->getTextType()) ? COMPONENT_Y : COMPONENT_Cb;
   const UInt uiLastComp  = isLuma(pcCU->getTextType()) && pcCU->getSlice()->isIntra() ? COMPONENT_Y : pcCU->getPic()->getNumberValidComponents()-1;
@@ -1234,7 +1245,17 @@ Void TDecEntropy::decodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
     if( !pcCU->getTransformSkip( uiAbsPartIdx, compID) )
 #endif
-    iNonZeroCoeff += countNonZeroCoeffs(pcCoef, uiWidth * uiHeight);
+#if RSAF_FLAG
+    {
+      iNonZeroCoeff += countNonZeroCoeffs(pcCoef, uiWidth * uiHeight);
+      if( isLuma(compID) )
+      {
+        numNonZeroCoeff = iNonZeroCoeff;
+      }
+    }
+#else
+      iNonZeroCoeff += countNonZeroCoeffs(pcCoef, uiWidth * uiHeight);
+#endif
   }
 #endif
 #endif

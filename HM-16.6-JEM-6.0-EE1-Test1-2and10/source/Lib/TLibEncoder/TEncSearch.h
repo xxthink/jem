@@ -496,7 +496,7 @@ protected:
                                     TComTU      &rTu
                                     DEBUG_STRING_FN_DECLARE(sDebug));
 
-#if COM16_C983_RSAF
+#if COM16_C983_RSAF && !RSAF_FLAG
   Void  xRecurIntraCodingLumaQT_RSAF (TComYuv*    pcOrgYuv,
                                       TComYuv*    pcPredYuv,
                                       TComYuv*    pcResiYuv,

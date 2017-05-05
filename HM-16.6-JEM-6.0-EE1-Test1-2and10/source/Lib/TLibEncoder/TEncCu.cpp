@@ -3613,7 +3613,9 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
   m_pcEntropyCoder->encodeMPIIdx(pcCU, uiAbsPartIdx);
 #endif   
 #if COM16_C1046_PDPC_INTRA
+#if !EE1_PDPC_INTRA_FOR_OTHER_MODE
   m_pcEntropyCoder->encodePDPCIdx(pcCU, uiAbsPartIdx);
+#endif
 #endif  
 #if JVET_C0024_QTBT
   }
@@ -3647,6 +3649,15 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 
   // prediction Info ( Intra : direction mode, Inter : Mv, reference idx )
   m_pcEntropyCoder->encodePredInfo( pcCU, uiAbsPartIdx );
+#if EE1_PDPC_INTRA_FOR_OTHER_MODE
+  if (isLuma(pcCU->getTextType()))
+  {
+    if ((pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx) != PLANAR_IDX) && (pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx) != VDIA_IDX))
+    {
+      m_pcEntropyCoder->encodePDPCIdx(pcCU, uiAbsPartIdx);
+    }
+  }
+#endif
 #if COM16_C806_OBMC
   m_pcEntropyCoder->encodeOBMCFlag( pcCU, uiAbsPartIdx );
 #endif
@@ -3662,6 +3673,9 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
   Int iNonZeroCoeffNonTs;
 #endif
+#if RSAF_FLAG
+  Int numNonZeroCoeff = 0;
+#endif
   m_pcEntropyCoder->encodeCoeff( pcCU, uiAbsPartIdx, uiDepth, bCodeDQP, codeChromaQpAdj
 #if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
     , bNonZeroCoeff
@@ -3669,7 +3683,15 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
     , iNonZeroCoeffNonTs
 #endif
+#if RSAF_FLAG
+  , numNonZeroCoeff
+#endif
     );
+
+#if RSAF_FLAG
+  m_pcEntropyCoder->encodeRsafFlag( pcCU, uiAbsPartIdx, numNonZeroCoeff );
+#endif
+
   setCodeChromaQpAdjFlag( codeChromaQpAdj );
   setdQPFlag( bCodeDQP );
 #if JVET_C0024_DELTA_QP_FIX
@@ -4843,7 +4865,9 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
 #endif 
 
 #if COM16_C1046_PDPC_INTRA
+#if !EE1_PDPC_INTRA_FOR_OTHER_MODE
   m_pcEntropyCoder->encodePDPCIdx(rpcTempCU, 0, true);
+#endif
 #endif
 #if JVET_C0024_QTBT
     }
@@ -4851,6 +4875,15 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
   m_pcEntropyCoder->encodePartSize( rpcTempCU, 0, uiDepth, true );
 #endif
   m_pcEntropyCoder->encodePredInfo( rpcTempCU, 0 );
+#if EE1_PDPC_INTRA_FOR_OTHER_MODE && COM16_C1046_PDPC_INTRA
+  if (isLuma(rpcBestCU->getTextType()))
+  {
+    if ((rpcTempCU->getIntraDir(CHANNEL_TYPE_LUMA, 0) != PLANAR_IDX) && (rpcTempCU->getIntraDir(CHANNEL_TYPE_LUMA, 0) != VDIA_IDX))
+    {
+      m_pcEntropyCoder->encodePDPCIdx(rpcTempCU, 0, true);
+    }
+  }
+#endif
   m_pcEntropyCoder->encodeIPCMInfo(rpcTempCU, 0, true );
 
   // Encode Coefficients
@@ -4868,7 +4901,9 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
   Int   iNonZeroCoeffNonTs;
 #endif
-
+#if RSAF_FLAG
+  Int numNonZeroCoeff = 0;
+#endif
   Bool bCodeDQP = getdQPFlag();
   Bool codeChromaQpAdjFlag = getCodeChromaQpAdjFlag();
   m_pcEntropyCoder->encodeCoeff( rpcTempCU, 0, uiDepth, bCodeDQP, codeChromaQpAdjFlag
@@ -4878,7 +4913,20 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
     , iNonZeroCoeffNonTs
 #endif
+#if RSAF_FLAG
+    , numNonZeroCoeff
+#endif
     );
+
+#if RSAF_FLAG
+  m_pcEntropyCoder->encodeRsafFlag( rpcTempCU, 0, numNonZeroCoeff );
+
+  if( isLuma( rpcTempCU->getTextType() ) && rpcTempCU->getLumaIntraFilter(0) && numNonZeroCoeff < RSAF_COEFF_TH )
+  {
+    rpcTempCU->getTotalCost() = MAX_DOUBLE;
+  }
+#endif
+
   setCodeChromaQpAdjFlag( codeChromaQpAdjFlag );
   setdQPFlag( bCodeDQP );
 

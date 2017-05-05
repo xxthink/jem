@@ -49,6 +49,59 @@
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////
+
+#define EE1_TEST1                                         0   //< Set to 1 for EE1 test1, UW Planar, PDPC off and full ARSS
+#define EE1_TEST2                                         0   //< Set to 1 for EE1 test2, UW Planar, full PDPC and ARSS off
+#define EE1_TEST10                                        0   //< Set to 1 for EE1 test10, UW Planar, full PDPC and constrained ARSS with explicit ARSS filter flag
+
+#if EE1_TEST1
+#if (EE1_TEST2 || EE1_TEST10)
+#error Other than EE1_TEST1 is ON
+#endif
+#define COM16_C1046_PDPC_INTRA                            0  ///< Position dependent intra prediction combination
+#define COM16_C983_RSAF                                   1  ///< Adaptive reference sample smoothing
+#define E0068_UW_PLANAR                                   1   //< Replace HEVC Planar with Unequal Weight Planar as in E0068
+#define F0104_W66                                         1   //< Set to 1 to test weighted angular prediction for mode 66
+#define RESTRICTED_RSAF                                   0  //< Set to 1 to test constrained ARSS 
+#define RSAF_FLAG                                         0   // set to 1 for F0055
+#define RSAF_COEFF_TH                                     0   // set to 3 for F0055
+#endif //EE1_TEST1
+
+#if EE1_TEST2
+#if (EE1_TEST1 || EE1_TEST10)
+#error Other than EE1_TEST2 is ON
+#endif
+#define COM16_C1046_PDPC_INTRA                            1  ///< Position dependent intra prediction combination
+#define EE1_PDPC_INTRA_FOR_OTHER_MODE                     1  ///< PDPC for intra mode except UW and 66
+#define COM16_C983_RSAF                                   0  ///< Adaptive reference sample smoothing
+#define E0068_UW_PLANAR                                   1   //< Replace HEVC Planar with Unequal Weight Planar as in E0068
+#define F0104_W66                                         1   //< Set to 1 to test weighted angular prediction for mode 66
+#define RESTRICTED_RSAF                                   0   //< Set to 1 to test constrained ARSS 
+#define RSAF_FLAG                                         0   // set to 1 for F0055
+#define RSAF_COEFF_TH                                     0   // set to 3 for F0055
+#endif //EE1_TEST2
+
+#if EE1_TEST10
+#if (EE1_TEST1 || EE1_TEST2)
+#error Other than EE1_TEST10 is ON
+#endif
+#define COM16_C1046_PDPC_INTRA                            1  ///< Position dependent intra prediction combination
+#define EE1_PDPC_INTRA_FOR_OTHER_MODE                     1  ///< PDPC for intra mode except UW and 66
+#define COM16_C983_RSAF                                   1  ///< Adaptive reference sample smoothing
+#define E0068_UW_PLANAR                                   1   //< Replace HEVC Planar with Unequal Weight Planar as in E0068
+#define F0104_W66                                         1   //< Set to 1 to test weighted angular prediction for mode 66
+#define RESTRICTED_RSAF                                   1   //< Set to 1 to test constrained ARSS 
+#define RSAF_FLAG                                         1   // set to 1 for F0055
+#define RSAF_COEFF_TH                                     3   // set to 3 for F0055
+#endif //EE1_TEST10
+
+#if !(EE1_TEST1 || EE1_TEST2 || EE1_TEST10)
+#define COM16_C1046_PDPC_INTRA                            1  ///< Position dependent intra prediction combination
+#define COM16_C983_RSAF                                   1  ///< Adaptive reference sample smoothing
+#define RSAF_FLAG                                         0     // set to 1 for F0055
+#define RSAF_COEFF_TH                                     0     // set to 3 for F0055
+#endif
+
 #define JVET_F0096_BILATERAL_FILTER                       1   // for bitexact implementation with division see JVET-F0096
 #define JVET_F0031_RMV_REDUNDANT_TRSKIP                   1
 
@@ -290,7 +343,7 @@
 #endif
 #endif
 
-#define COM16_C983_RSAF                                   1  ///< Adaptive reference sample smoothing
+// #define COM16_C983_RSAF                                   1  ///< Adaptive reference sample smoothing
 #if COM16_C983_RSAF                                          
 #define COM16_C983_RSAF_PREVENT_OVERSMOOTHING             1  ///< Harmonization with intra-prediction tools   
 #define COM16_C983_RSAF_ESTIMATION_MODE_FULL              1  ///< Full/fast estimation of the possiblity to hide the RSAF flag
@@ -317,7 +370,7 @@
 #define JVET_D0127_REDUNDANCY_REMOVAL                     1
 #endif
 
-#define COM16_C1046_PDPC_INTRA                            1  ///< Position dependent intra prediction combination
+// #define COM16_C1046_PDPC_INTRA                            1  ///< Position dependent intra prediction combination
 #if COM16_C1046_PDPC_INTRA
 #define FIX_TICKET20                                      1  ///< fixed ticket #20 (PDPC rate calculation in RDO)
 #endif

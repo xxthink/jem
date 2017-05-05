@@ -9219,7 +9219,7 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
   const Int              maxLog2TrDynamicRange = pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID));
   const Int              channelBitDepth = rTu.getCU()->getSlice()->getSPS()->getBitDepth(channelType);
 
-#if COM16_C983_RSAF
+#if COM16_C983_RSAF && !RSAF_FLAG
   const Bool             bRSAFflagToHide = pcCU->getLumaIntraFilter(uiAbsPartIdx);
         Bool             bHidden         = pcCU->isLumaIntraFilterHidden(uiAbsPartIdx);
 #endif
@@ -9753,7 +9753,7 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
     Int lastCG = -1;
     Int absSum = 0 ;
 
-#if COM16_C983_RSAF
+#if COM16_C983_RSAF && !RSAF_FLAG
 #if COM16_C1046_PDPC_RSAF_HARMONIZATION
 #if JVET_C0024_QTBT
     if (uiWidth * uiHeight <= 1024 && uiWidth * uiHeight>= 64 && pcCU->getSlice()->getSPS()->getUseRSAF() && pcCU->getPDPCIdx(uiAbsPartIdx) == 0)
