@@ -88,6 +88,11 @@ class TComPrediction : public TComWeightPrediction
 {
 private:
   static const UChar m_aucIntraFilter[MAX_NUM_CHANNEL_TYPE][MAX_INTRA_FILTER_DEPTHS];
+#if E0068_UW_PLANAR || F0104_W66
+  static const UInt uiFinalShiftDenom;
+  static const UInt uiFinalDenomHalf;
+  static const UInt uiFinalShift[2*MAX_CU_SIZE+1];
+#endif
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
   UInt*  m_puiW;
   UInt*  m_puiH;
@@ -336,6 +341,9 @@ protected:
 #endif
 #if VCEG_AZ06_IC
   Void xGetLLSICPrediction( TComDataCU* pcCU, TComMv *pMv, TComPicYuv *pRefPic, Int &a, Int &b, const ComponentID eComp, Int nBitDepth );
+#endif
+#if F0104_W66
+Void xWeightedIntraMode66(const Pel* pSrc, Int srcStride, Pel* rpDst, Int dstStride, UInt width, UInt height);
 #endif
 public:
   TComPrediction();

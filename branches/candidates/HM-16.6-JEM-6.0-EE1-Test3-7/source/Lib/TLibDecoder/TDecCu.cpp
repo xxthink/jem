@@ -884,7 +884,7 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
 #if VCEG_AZ05_INTRA_MPI
   m_pcEntropyDecoder->decodeMPIIdx(pcCU, uiAbsPartIdx, uiDepth);
 #endif
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !MOD_PDPC
   m_pcEntropyDecoder->decodePDPCIdx(pcCU, uiAbsPartIdx, uiDepth);
 #endif
 #if JVET_C0024_QTBT
@@ -940,9 +940,19 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
   m_pcEntropyDecoder->decodeICFlag( pcCU, uiAbsPartIdx, uiDepth );
 #endif
   // Coefficient decoding
+#if MOD_PDPC || RSAF_FLAG
+  Int numNonZeroCoeffLuma = 0;   
+#endif
   Bool bCodeDQP = getdQPFlag();
   Bool isChromaQpAdjCoded = getIsChromaQpAdjCoded();
-  m_pcEntropyDecoder->decodeCoeff( pcCU, uiAbsPartIdx, uiDepth, bCodeDQP, isChromaQpAdjCoded );
+  m_pcEntropyDecoder->decodeCoeff( pcCU, uiAbsPartIdx, uiDepth, bCodeDQP, isChromaQpAdjCoded 
+#if MOD_PDPC || RSAF_FLAG
+  , numNonZeroCoeffLuma  
+#endif
+  );
+#if RSAF_FLAG
+  m_pcEntropyDecoder->decodeRsafFlag( pcCU, uiAbsPartIdx, numNonZeroCoeffLuma );
+#endif
   setIsChromaQpAdjCoded( isChromaQpAdjCoded );
   setdQPFlag( bCodeDQP );
 
@@ -1309,7 +1319,7 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
 
   const UInt uiChFinalMode = ((chFmt == CHROMA_422)       && !bIsLuma) ? g_chroma422IntraAngleMappingTable[uiChCodedMode] : uiChCodedMode;
   //===== init availability pattern =====
-#if !COM16_C983_RSAF
+#if !COM16_C983_RSAF && !MOD_PDPC
   const 
 #endif
         Bool bUseFilteredPredictions=TComPrediction::filteringIntraReferenceSamples(compID, 
@@ -1328,6 +1338,9 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
 #endif
 
 #if COM16_C983_RSAF
+#if RSAF_FLAG
+  UInt bFilter = pcCU->getLumaIntraFilter( uiAbsPartIdx );
+#else
   Bool bFilter = false;
 #if COM16_C1046_PDPC_RSAF_HARMONIZATION
   if (compID == COMPONENT_Y && sps.getUseRSAF() && pcCU->getPDPCIdx(uiAbsPartIdx) == 0)
@@ -1341,6 +1354,14 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
 #else
     bFilter &= !(pcCU->getWidth(0)>32);
 #endif
+  }
+#endif
+#endif
+
+#if MOD_PDPC
+  if( isLuma(compID) && !pcCU->getROTIdx(CHANNEL_TYPE_LUMA, uiAbsPartIdx) )
+  {
+    bUseFilteredPredictions = false;
   }
 #endif
 

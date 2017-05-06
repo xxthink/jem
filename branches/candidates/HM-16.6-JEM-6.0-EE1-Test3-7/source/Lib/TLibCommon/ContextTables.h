@@ -148,6 +148,11 @@
 #if VCEG_AZ08_KLT_COMMON
 #define NUM_KLT_FLAG_CTX              1       ///< number of context models for KLT 
 #endif
+
+#if RSAF_FLAG
+#define NUM_RSAF_FLAG_CTX             2
+#endif
+
 //--------------------------------------------------------------------------------------------------
 
 // context size definitions for significance map
@@ -932,6 +937,16 @@ INIT_KLT_FLAG[3][2 * NUM_KLT_FLAG_CTX] =
   { 139, 139 },
   { 139, 139 },
   { 139, 139 },
+};
+#endif
+
+#if RSAF_FLAG
+static const UChar
+INIT_RSAF_FLAG[3][NUM_RSAF_FLAG_CTX] =
+{
+  { 154, 154 },
+  { 154, 154 },
+  { 154, 154 },
 };
 #endif
 //! \}

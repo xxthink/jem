@@ -44,6 +44,52 @@
 
 #include <vector>
 
+#define EE1_TEST3                                         0 // P-PDPC, PDPC-L, ARSS off, NSST+PDPC
+#define EE1_TEST4                                         0 // P-PDPC, PDPC-L, ARSS off
+#define EE1_TEST5                                         0 // P-PDPC, PDPC for J66 is off and no PDPC flag, PDPC-L, ARSS off
+#define EE1_TEST6                                         0 // PDPC on, ARSS is explicitly signaled as in F0055
+#define EE1_TEST7                                         0 // P-PDPC, ARSS off
+
+#if EE1_TEST3
+#define MOD_PDPC                                          1  // replace ARSS encoder RDs with PDPC, F0054
+#define ENABLE_PDPC_FOR_NSST                              1  // enable PDPC with NSST
+#define PDPC_FORCE_MODE66                                 0  // no PDPC flag is signaled for Mode 66, and PDPC index is inferred eqaul to 0
+#endif
+
+#if EE1_TEST4
+#define MOD_PDPC                                          1  // replace ARSS encoder RDs with PDPC, F0054
+#define ENABLE_PDPC_FOR_NSST                              0  // enable PDPC with NSST
+#define PDPC_FORCE_MODE66                                 0  // no PDPC flag is signaled for Mode 66, and PDPC index is inferred eqaul to 0
+#endif
+
+#if EE1_TEST5
+#define MOD_PDPC                                          1  // replace ARSS encoder RDs with PDPC, F0054
+#define ENABLE_PDPC_FOR_NSST                              0  // enable PDPC with NSST
+#define PDPC_FORCE_MODE66                                 1  // no PDPC flag is signaled for Mode 66, and PDPC index is inferred eqaul to 0
+#endif
+
+#if EE1_TEST6
+#define RSAF_FLAG                                         1  // ARSS is signaled explicitly, no hiding
+#define RSAF_COEFF_TH                                     5  // coeff threshold to signal ARSS flag
+#endif
+
+#if EE1_TEST7
+#define MOD_PDPC                                          0  // replace ARSS encoder RDs with PDPC, F0054
+#define DISABLE_RSAF                                      1  // disable ARSS
+#define PDPC_FORCE_PLANAR                                 1  // no PDPC flag is signaled for Planar, and PDPC index is inferred eqaul to 1
+#endif
+
+#if MOD_PDPC
+#define E0068_UW_PLANAR                                   0
+#define F0104_W66                                         0
+
+#define DISABLE_RSAF                                      1  // disable ARSS
+#define PDPC_FORCE_PLANAR                                 1  // no PDPC flag is signaled for Planar, and PDPC index is inferred eqaul to 1
+#define MIN_PDPC_COEFF_THRESHOLD                          1  // coeff threshold to signal PDPC flag
+#define MIN_PDPC_BLOCK_THRESHOLD                          64 // min PDPC block area
+#define RD_COMPLEXITY                                     0  // different complexity setting
+#endif
+
 //! \ingroup TLibCommon
 //! \{
 ///////////////////////////////////////////////////////////
@@ -290,6 +336,7 @@
 #endif
 #endif
 
+#if !DISABLE_RSAF
 #define COM16_C983_RSAF                                   1  ///< Adaptive reference sample smoothing
 #if COM16_C983_RSAF                                          
 #define COM16_C983_RSAF_PREVENT_OVERSMOOTHING             1  ///< Harmonization with intra-prediction tools   
@@ -297,7 +344,8 @@
 #define JVET_B0041_SIMPLIFICATION_1A                      1  ///< Simplidication by avoiding RSAF-enabled TU pass if RSAF-disabled pass evaluate to CBF==0 
 #define JVET_B0041_SIMPLIFICATION_2                       1  ///< Simplidication by cancelling TU split check using cbf value and result of hiding procedure for non-split TU.
 #define COM16_C983_RSAF_S_TICKET14                        1
-#endif                                                       
+#endif
+#endif
 
 #define COM16_C1044_NSST                                  1  ///< Mode dependent non-separable secondary transforms
 #if COM16_C1044_NSST || VCEG_AZ05_ROT_TR

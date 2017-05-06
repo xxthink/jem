@@ -1819,7 +1819,7 @@ TEncSearch::xEncIntraHeader( TComDataCU*  pcCU,
         m_pcEntropyCoder->encodePDPCIdx( pcCU, 0, true);
 #endif
       }
-#if COM16_C1046_PDPC_INTRA && FIX_TICKET20
+#if COM16_C1046_PDPC_INTRA && FIX_TICKET20 && !MOD_PDPC
       m_pcEntropyCoder->encodePDPCIdx( pcCU, 0, true );
 #endif
 #if JVET_C0024_QTBT
@@ -1904,6 +1904,29 @@ TEncSearch::xGetIntraBitsQT(TComTU &rTu,
   if( bLuma )
   {
     xEncCoeffQT   ( rTu, COMPONENT_Y,      bRealCoeff );
+
+#if RSAF_FLAG
+    if( pcCU->isIntra(uiAbsPartIdx) )
+    {
+      m_pcEntropyCoder->encodeRsafFlag(pcCU, uiAbsPartIdx, pcCU->getTransformSkip( uiAbsPartIdx, COMPONENT_Y) ? 0 : TEncEntropy::countNonZeroCoeffs( (bRealCoeff ? pcCU->getCoeff(COMPONENT_Y) : m_pppcQTTempCoeff[COMPONENT_Y][Int(g_aucConvertToBit[Int(pcCU->getWidth(0))])][Int(g_aucConvertToBit[Int(pcCU->getHeight(0))])]) + rTu.getCoefficientOffset(COMPONENT_Y), rTu.getRect(COMPONENT_Y).width * rTu.getRect(COMPONENT_Y).height));
+    }
+#endif    
+
+#if MOD_PDPC
+    if( pcCU->isIntra(uiAbsPartIdx)  )
+    {
+      const UInt numNonZeroCoeff = TEncEntropy::countNonZeroCoeffs( (bRealCoeff ? pcCU->getCoeff(COMPONENT_Y) : m_pppcQTTempCoeff[COMPONENT_Y][Int(g_aucConvertToBit[Int(pcCU->getWidth(0))])][Int(g_aucConvertToBit[Int(pcCU->getHeight(0))])]) + rTu.getCoefficientOffset(COMPONENT_Y), rTu.getRect(COMPONENT_Y).width * rTu.getRect(COMPONENT_Y).height);;
+
+      if( numNonZeroCoeff > MIN_PDPC_COEFF_THRESHOLD )
+      {
+        m_pcEntropyCoder->encodePDPCIdx(pcCU, uiAbsPartIdx);
+      }
+      else
+      {
+        assert( !pcCU->getPDPCIdx(uiAbsPartIdx) );
+      }
+    }
+#endif
   }
   if( bChroma )
   {
@@ -2067,7 +2090,18 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
   if( default0Save1Load2 != 2 )
 #endif
   {
-#if COM16_C983_RSAF
+#if MOD_PDPC
+    Bool bUseFilteredPredictions = false;
+
+    if( compID == COMPONENT_Y )
+    {
+      if( pcCU->getROTIdx(CHANNEL_TYPE_LUMA, uiAbsPartIdx) )
+      {
+        bUseFilteredPredictions = TComPrediction::filteringIntraReferenceSamples(compID, uiChFinalMode, uiWidth, uiHeight, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag());
+      }
+      initIntraPatternChType( rTu, compID, bUseFilteredPredictions DEBUG_STRING_PASS_INTO(sDebug) );
+    }
+#elif COM16_C983_RSAF
     Bool bFilter = pcCU->getLumaIntraFilter(uiAbsPartIdx);
     Bool bUseFilteredPredictions=TComPrediction::filteringIntraReferenceSamples(compID, uiChFinalMode, uiWidth, uiHeight, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag()
 #if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
@@ -2266,7 +2300,44 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
     );
 
 #if COM16_C806_EMT
+#if MOD_PDPC
+    if (compID==COMPONENT_Y)
+    {
+      *puiSigNum = 0;
+      for( UInt uiX = 0; uiX < uiHeight*uiWidth; uiX++ )
+      {
+        if( pcCoeff[uiX] )
+        {
+          (*puiSigNum) ++;
+
+          if( *puiSigNum > max<UInt>(g_iEmtSigNumThr, MIN_PDPC_COEFF_THRESHOLD) )
+          {
+            break;
+          }
+        }
+      }
+
+      if( ucTrIdx!=DCT2_EMT && ucTrIdx!=DCT2_HEVC )
+      {
+        if( ucTrIdx!=0 && *puiSigNum <= g_iEmtSigNumThr && !useTransformSkip )
+        {
+          return;
+        }
+      }
+
+      if( pcCU->getPDPCIdx(uiAbsPartIdx) && *puiSigNum <= MIN_PDPC_COEFF_THRESHOLD )
+      {
+        return;
+      }
+    }
+#else
+#if RSAF_FLAG
+  *puiSigNum = uiAbsSum;
+
+  if( ( ucTrIdx!=DCT2_EMT && ucTrIdx!=DCT2_HEVC ) || (pcCU->getLumaIntraFilter(uiAbsPartIdx) && compID == COMPONENT_Y) )
+#else
   if( ucTrIdx!=DCT2_EMT && ucTrIdx!=DCT2_HEVC )
+#endif
   {
     *puiSigNum = 0;
     for( UInt uiX = 0; uiX < uiHeight*uiWidth; uiX++ )
@@ -2274,18 +2345,27 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
       if( pcCoeff[uiX] )
       {
         (*puiSigNum) ++;
+#if RSAF_FLAG
+        if( *puiSigNum > max<Int>(g_iEmtSigNumThr, RSAF_COEFF_TH) )
+#else
         if( *puiSigNum>g_iEmtSigNumThr )
+#endif
         {
           break;
         }
       }
     }
 
+#if RSAF_FLAG
+    if( ( ucTrIdx!=DCT2_EMT && ucTrIdx!=DCT2_HEVC && ucTrIdx!=0 && *puiSigNum<=g_iEmtSigNumThr && !useTransformSkip ) || ( pcCU->getLumaIntraFilter(uiAbsPartIdx) && compID == COMPONENT_Y && *puiSigNum < RSAF_COEFF_TH ) )
+#else
     if( ucTrIdx!=0 && *puiSigNum<=g_iEmtSigNumThr && !useTransformSkip )
+#endif
     {
       return;
     }
   }
+#endif
 #endif
 
   //--- inverse transform ---
@@ -2783,7 +2863,7 @@ Bool TEncSearch::xIntraCodingTUBlockTM(TComYuv*    pcOrgYuv,
 }
 #endif
 
-#if COM16_C983_RSAF
+#if COM16_C983_RSAF && !RSAF_FLAG
 Void
 TEncSearch::xRecurIntraCodingLumaQT_RSAF(TComYuv*    pcOrgYuv,
                                     TComYuv*    pcPredYuv,
@@ -3801,7 +3881,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
 #endif
 #endif
 
-#if COM16_C983_RSAF
+#if COM16_C983_RSAF && !RSAF_FLAG
         pcCU->setLumaIntraFilter(uiAbsPartIdx, false);
         pcCU->setLumaIntraFilterHidden(uiAbsPartIdx, true);
 #endif
@@ -3830,6 +3910,18 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
         singleCbfTmpLuma = pcCU->getCbf( uiAbsPartIdx, COMPONENT_Y, uiTrDepth );
 
         //----- determine rate and r-d cost -----
+#if RSAF_FLAG
+        if( !uiSigNum )
+        {
+          assert( !singleCbfTmpLuma );
+        }
+
+        if( pcCU->getLumaIntraFilter(uiAbsPartIdx) && uiSigNum < RSAF_COEFF_TH )
+        {
+          singleCostTmp = MAX_DOUBLE;
+        }
+        else
+#endif
 #if COM16_C806_EMT
         if( (modeId == 1 && singleCbfTmpLuma == 0) || (modeId==0 && ucTrIdx && ucTrIdx!=DCT2_EMT && uiSigNum<=g_iEmtSigNumThr) )
 #else
@@ -3841,8 +3933,20 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
         }
         else
         {
+#if MOD_PDPC
+          if( pcCU->getPDPCIdx(uiAbsPartIdx) && uiSigNum <= MIN_PDPC_COEFF_THRESHOLD )
+          {
+            singleCostTmp = MAX_DOUBLE;
+          }
+          else
+          {
+            UInt uiSingleBits = xGetIntraBitsQT( rTu, true, false, false );
+            singleCostTmp     = m_pcRdCost->calcRdCost( uiSingleBits, singleDistTmpLuma );
+          }
+#else
           UInt uiSingleBits = xGetIntraBitsQT( rTu, true, false, false );
           singleCostTmp     = m_pcRdCost->calcRdCost( uiSingleBits, singleDistTmpLuma );
+#endif
         }
         if(singleCostTmp < dSingleCost)
         {
@@ -3977,7 +4081,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
 
       //----- code luma/chroma block with given intra prediction mode and store Cbf-----
 
-#if COM16_C983_RSAF
+#if COM16_C983_RSAF && !RSAF_FLAG
       pcCU->setLumaIntraFilter(uiAbsPartIdx, false);
       pcCU->setLumaIntraFilterHidden(uiAbsPartIdx, true);
 #endif
@@ -4047,6 +4151,18 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
 #endif
       }
       //----- determine rate and r-d cost -----
+#if RSAF_FLAG
+      if( !uiSigNum )
+      {
+        assert( !pcCU->getCbf( uiAbsPartIdx, COMPONENT_Y, uiTrDepth ) );
+      }
+
+      if( pcCU->getLumaIntraFilter(uiAbsPartIdx) && uiSigNum < RSAF_COEFF_TH )
+      {
+        singleCostTmp = MAX_DOUBLE;
+      }
+      else
+#endif
 #if COM16_C806_EMT
       if( ucTrIdx && ucTrIdx!=DCT2_EMT && uiSigNum<=g_iEmtSigNumThr )
       {
@@ -4055,6 +4171,22 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
       else
       {
 #endif
+#if MOD_PDPC
+        if( pcCU->getPDPCIdx(uiAbsPartIdx) && uiSigNum <= MIN_PDPC_COEFF_THRESHOLD )
+        {
+          singleCostTmp = MAX_DOUBLE;
+        }
+        else
+        {
+          UInt uiSingleBits = xGetIntraBitsQT( rTu, true, false, false );
+          if(m_pcEncCfg->getRDpenalty() && (uiWIdx+uiHIdx+(1<<MIN_CU_LOG2)>=10) && !isIntraSlice)
+          {
+            uiSingleBits *= 4;
+          }
+          singleCostTmp     = m_pcRdCost->calcRdCost( uiSingleBits, singleDistYTmp );
+        }
+      }
+#else
       UInt uiSingleBits = xGetIntraBitsQT( rTu, true, false, false );
 #if JVET_C0024_QTBT
       if(m_pcEncCfg->getRDpenalty() && (uiWIdx+uiHIdx+(1<<MIN_CU_LOG2)>=10) && !isIntraSlice)
@@ -4070,6 +4202,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
       }
 #else
       dSingleCost       = m_pcRdCost->calcRdCost( uiSingleBits, uiSingleDistLuma );
+#endif
 #endif
 
 #if COM16_C806_EMT
@@ -4166,7 +4299,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
         //----- code luma block with given intra prediction mode and store Cbf-----
         Bool bSuccessful;
 
-#if COM16_C983_RSAF
+#if COM16_C983_RSAF && !RSAF_FLAG
         pcCU->setLumaIntraFilter(uiAbsPartIdx, false);
         pcCU->setLumaIntraFilterHidden(uiAbsPartIdx, true);
 #endif
@@ -4856,6 +4989,10 @@ TEncSearch::xRecurIntraChromaCodingQT(TComYuv*    pcOrgYuv,
 
             singleDistCTmp = 0;
 
+#if RSAF_FLAG
+            UInt numSig;
+            xIntraCodingTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv, resiLuma, (crossCPredictionModeId != 0), singleDistCTmp, compID, TUIterator DEBUG_STRING_PASS_INTO(sDebugMode), default0Save1Load2, &numSig);
+#else
 #if COM16_C983_RSAF
 #if JVET_C0024_QTBT
             pcCU->setLumaIntraFilter(0, false);
@@ -4866,6 +5003,7 @@ TEncSearch::xRecurIntraChromaCodingQT(TComYuv*    pcOrgYuv,
 #endif
 #endif
             xIntraCodingTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv, resiLuma, (crossCPredictionModeId != 0), singleDistCTmp, compID, TUIterator DEBUG_STRING_PASS_INTO(sDebugMode), default0Save1Load2);
+#endif
 
             singleCbfCTmp = pcCU->getCbf( subTUAbsPartIdx, compID, uiTrDepth);
 
@@ -5064,10 +5202,11 @@ TEncSearch::xSetIntraResultChromaQT(TComYuv*    pcRecoYuv, TComTU &rTu)
   }
 #endif
 }
-
-
-
+#if MOD_PDPC
+Bool
+#else
 Void
+#endif
 TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
                                TComYuv*    pcOrgYuv,
                                TComYuv*    pcPredYuv,
@@ -5135,6 +5274,10 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
               : m_pcRdCost->getSqrtLambda();
 #endif
 
+#if MOD_PDPC
+  Bool modeSelected = false;
+#endif
+
   //===== set QP and clear Cbf =====
   if ( pps.getUseDQP() == true)
   {
@@ -5155,19 +5298,28 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 
 #if JVET_D0127_REDUNDANCY_REMOVAL
 #if JVET_C0024_QTBT
+#if MOD_PDPC && !ENABLE_PDPC_FOR_NSST
+   Bool NSSTFlag = pcCU->getROTIdx(CHANNEL_TYPE_LUMA, 0) < 2
+#if FIX_TICKET43
+    || (uiWidth > 64 || uiHeight > 64)
+#endif
+    ;
+  Bool NSSTSaveFlag = pcCU->getROTIdx(CHANNEL_TYPE_LUMA, 0) < 2;
+#else
   Bool NSSTFlag = (pcCU->getROTIdx(CHANNEL_TYPE_LUMA, 0) == 0)
 #if FIX_TICKET43
     || (uiWidth > 64 || uiHeight > 64)
 #endif
     ;
   Bool NSSTSaveFlag = (pcCU->getROTIdx(CHANNEL_TYPE_LUMA, 0) == 0)
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !MOD_PDPC
       && (pcCU->getPDPCIdx(0) == 0)
 #endif
 #if COM16_C806_EMT && !FIX_TICKET43
       && (pcCU->getEmtCuFlag(0) == 0)
 #endif
       ;
+#endif
 #else
   Bool NSSTFlag = (pcCU->getROTIdx(0) == 0);
   Bool NSSTSaveFlag = (pcCU->getROTIdx(0) == 0)
@@ -5180,6 +5332,9 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
       ;
 #endif
   static UInt   uiSavedRdModeListNSST[35], uiSavedNumRdModesNSST, uiSavedHadModeListNSST[35];
+#if MOD_PDPC
+  static UInt  uiSavedRdPDPCListNSST[35], uiSavedRdPDPCList[35]; 
+#endif
   static Double dSavedModeCostNSST[35], dSavedHadListNSST[FAST_UDI_MAX_RDMODE_NUM];
 #if JVET_C0024_PBINTRA_FAST
   UInt uiHadModeList[67];
@@ -5229,6 +5384,29 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #endif
 #endif
 
+#if MOD_PDPC
+  UInt iPDPCidx = 0;  UInt numOfPassesPDPC = 2;
+
+  if( !pcCU->getSlice()->getSPS()->getUsePDPC() ||
+    isChroma(pcCU->getTextType()) || uiWidth * uiHeight < MIN_PDPC_BLOCK_THRESHOLD
+#if !ENABLE_PDPC_FOR_NSST
+    || pcCU->getROTIdx(CHANNEL_TYPE_LUMA, 0)
+#endif
+    )
+  {
+    numOfPassesPDPC = 1;
+  }
+
+  static Char skipModeList[NUM_INTRA_MODE];
+  if (NSSTSaveFlag
+#if JVET_D0077_SAVE_LOAD_ENC_INFO
+  || saveLoadTag == LOAD_ENC_INFO
+#endif
+  )
+  {
+    memset(skipModeList, 0, NUM_INTRA_MODE*sizeof(Char) );
+  }
+#endif
   //===== loop over partitions =====
   TComTURecurse tuRecurseCU(pcCU, 0);
   TComTURecurse tuRecurseWithPU(tuRecurseCU, false, (uiInitTrDepth==0)?TComTU::DONT_SPLIT : TComTU::QUAD_SPLIT);
@@ -5244,9 +5422,38 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 
 #if COM16_C806_EMT
     UInt uiRdModeList[FAST_UDI_MAX_RDMODE_NUM];
+#if MOD_PDPC
+    UInt uiRdPDPCList[FAST_UDI_MAX_RDMODE_NUM];
+#endif
 #if JVET_C0024_QTBT
     assert(uiPartOffset==0);
+#if MOD_PDPC
+    Int numModesForFullRD;
+#if RD_COMPLEXITY
+    if( !pcCU->getROTIdx(CHANNEL_TYPE_LUMA, 0) )
+    {
+      numModesForFullRD = 2 * g_aucIntraModeNumFast_UseMPM[uiWIdx][uiHIdx];
+    }
+    else
+    {
+      numModesForFullRD = g_aucIntraModeNumFast_UseMPM[uiWIdx][uiHIdx];
+    }
+#else
+    numModesForFullRD = 2 * g_aucIntraModeNumFast_UseMPM[uiWIdx][uiHIdx] - 1;
+#endif
+
+    Int savedPdpcIdx = pcCU->getPDPCIdx(0);
+
+    if(saveLoadTag == LOAD_ENC_INFO)
+    {
+      numOfPassesPDPC = 1;
+      numModesForFullRD = g_aucIntraModeNumFast_UseMPM[uiWIdx][uiHIdx];
+    }
+
+    Int initNumModesForFullRD = numModesForFullRD;
+#else
     Int numModesForFullRD = g_aucIntraModeNumFast_UseMPM[uiWIdx][uiHIdx];
+#endif
 #else
     Int numModesForFullRD = m_pcEncCfg->getFastUDIUseMPMEnabled()?g_aucIntraModeNumFast_UseMPM[ uiWidthBit ] : g_aucIntraModeNumFast_NotUseMPM[ uiWidthBit ];
 #if VCEG_AZ07_INTRA_65ANG_MODES
@@ -5280,7 +5487,11 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 
     // this should always be true
     assert (tuRecurseWithPU.ProcessComponentSection(COMPONENT_Y));
+#if MOD_PDPC
+    initIntraPatternChType( tuRecurseWithPU, COMPONENT_Y, pcCU->getROTIdx(CHANNEL_TYPE_LUMA, 0) > 0 DEBUG_STRING_PASS_INTO(sTemp2) );
+#else
     initIntraPatternChType( tuRecurseWithPU, COMPONENT_Y, true DEBUG_STRING_PASS_INTO(sTemp2) );
+#endif
 
     Bool doFastSearch = (numModesForFullRD != numModesAvailable);
     if (doFastSearch)
@@ -5288,7 +5499,11 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
       assert(numModesForFullRD < numModesAvailable);
 
 #if JVET_D0127_REDUNDANCY_REMOVAL
+#if MOD_PDPC
+      for (Int i = 0; i < FAST_UDI_MAX_RDMODE_NUM; i++)
+#else
       for (Int i = 0; i < numModesForFullRD + 2; i++)
+#endif
 #else
       for( Int i=0; i < numModesForFullRD; i++ )
 #endif
@@ -5359,12 +5574,30 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         }
         bSatdChecked[uiMode] = true;
 #endif        
+#if MOD_PDPC
+        // no PDPC
+        iPDPCidx = 0;
+        if( saveLoadTag == LOAD_ENC_INFO )
+        {
+          iPDPCidx = uiMode == PLANAR_IDX ? 0 : savedPdpcIdx;
+#if PDPC_FORCE_MODE66
+          iPDPCidx = uiMode == 66 ? 0 : iPDPCidx;
+#endif
+        }
+        pcCU->setPDPCIdxSubParts(iPDPCidx, uiPartOffset, uiDepth + uiInitTrDepth);
+        Bool bUseFilter = false;
+
+        if( pcCU->getROTIdx(CHANNEL_TYPE_LUMA, uiAbsPartIdx) )
+        {
+          bUseFilter = TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, uiMode, puRect.width, puRect.height, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag());
+        }
+#else
         const Bool bUseFilter=TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, uiMode, puRect.width, puRect.height, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag()
 #if COM16_C983_RSAF_PREVENT_OVERSMOOTHING 
           , sps.getUseRSAF()
 #endif
                                                                             );
-
+#endif
         predIntraAng( COMPONENT_Y, uiMode, piOrg, uiStride, piPred, uiStride, tuRecurseWithPU, bUseFilter, TComPrediction::UseDPCMForFirstPassIntraEstimation(tuRecurseWithPU, uiMode) );
 
         // use hadamard transform here
@@ -5387,7 +5620,11 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 
 #if JVET_C0024_FAST_MRG
 #if JVET_D0127_REDUNDANCY_REMOVAL
+#if MOD_PDPC
+        CandNum += updateCandListExt(uiMode, iPDPCidx, cost, numModesForFullRD + 4, uiRdModeList, uiRdPDPCList, CandCostList);
+#else
         CandNum += updateCandList(uiMode, cost, numModesForFullRD + 2, uiRdModeList, CandCostList);
+#endif
 #else
         CandNum += updateCandList( uiMode, cost, numModesForFullRD, uiRdModeList, CandCostList );
 #endif
@@ -5396,8 +5633,33 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #endif
 #if JVET_C0024_PBINTRA_FAST
 #if JVET_D0127_REDUNDANCY_REMOVAL
+#if MOD_PDPC
+        updateCandList(uiMode, uiSad, numModesForFullRD+4, uiHadModeList, CandHadList);
 
+#if PDPC_FORCE_MODE66
+        if( numOfPassesPDPC > 1 && uiMode != PLANAR_IDX && uiMode != 66 )
+#else
+        if( numOfPassesPDPC > 1 && uiMode != PLANAR_IDX )
+#endif
+        {
+          // PDPC
+          iPDPCidx = 1;
+          pcCU->setPDPCIdxSubParts(iPDPCidx, uiPartOffset, uiDepth + uiInitTrDepth);
+          predIntraAng( COMPONENT_Y, uiMode, piOrg, uiStride, piPred, uiStride, tuRecurseWithPU, bUseFilter, TComPrediction::UseDPCMForFirstPassIntraEstimation(tuRecurseWithPU, uiMode) );
+
+          // use hadamard transform here
+          uiSad=distParam.DistFunc(&distParam);
+          // NB xModeBitsIntra will not affect the mode for chroma that may have already been pre-estimated.
+          iModeBits=xModeBitsIntra( pcCU, uiMode, uiPartOffset, uiDepth, CHANNEL_TYPE_LUMA, uiPreds, iAboveLeftCase);
+          cost      = (Double)uiSad + (Double)iModeBits * sqrtLambdaForFirstPass;
+
+          CandNum += updateCandListExt(uiMode, iPDPCidx, cost, numModesForFullRD + 4, uiRdModeList, uiRdPDPCList, CandCostList);
+
+          updateCandList(uiMode, uiSad, numModesForFullRD+4, uiHadModeList, CandHadList);
+        }
+#else
         updateCandList(uiMode, uiSad, numModesForFullRD+2, uiHadModeList, CandHadList);
+#endif
 #else
         if (uiSad < CandHadList[0])
         {
@@ -5420,11 +5682,22 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #if JVET_D0127_REDUNDANCY_REMOVAL
       if (NSSTSaveFlag){
           uiSavedNumRdModesNSST = numModesForFullRD;
+#if MOD_PDPC
+          ::memcpy(uiSavedRdModeListNSST, uiRdModeList, (numModesForFullRD + 4)*sizeof(UInt));
+          ::memcpy(uiSavedRdPDPCListNSST, uiRdPDPCList, (numModesForFullRD + 4)*sizeof(UInt));
+          ::memcpy(dSavedModeCostNSST, CandCostList, (numModesForFullRD + 4)*sizeof(Double));
+#else
           ::memcpy(uiSavedRdModeListNSST, uiRdModeList, (numModesForFullRD + 2)*sizeof(UInt));
           ::memcpy(dSavedModeCostNSST, CandCostList, (numModesForFullRD + 2)*sizeof(Double));
+#endif
 #if JVET_C0024_PBINTRA_FAST
+#if MOD_PDPC
+          ::memcpy(uiSavedHadModeListNSST, uiHadModeList, (numModesForFullRD + 4)*sizeof(UInt));
+          ::memcpy(dSavedHadListNSST, CandHadList, (numModesForFullRD + 4)*sizeof(Double));
+#else
           ::memcpy(uiSavedHadModeListNSST, uiHadModeList, (numModesForFullRD + 2)*sizeof(UInt));
           ::memcpy(dSavedHadListNSST, CandHadList, (numModesForFullRD + 2)*sizeof(Double));
+#endif
 #endif
       }
       }
@@ -5435,15 +5708,41 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
           if (pcCU->getROTIdx(0) == 3){
 #endif
               numModesForFullRD = uiSavedNumRdModesNSST;
+#if MOD_PDPC
+              ::memcpy(uiRdModeList, uiSavedRdModeListNSST, (numModesForFullRD + 4)*sizeof(UInt));
+              ::memcpy(uiRdPDPCList, uiSavedRdPDPCListNSST, (numModesForFullRD + 4)*sizeof(UInt));
+              ::memcpy(CandCostList, dSavedModeCostNSST, (numModesForFullRD + 4)*sizeof(Double));
+#else
               ::memcpy(uiRdModeList, uiSavedRdModeListNSST, (numModesForFullRD + 2)*sizeof(UInt));
               ::memcpy(CandCostList, dSavedModeCostNSST, (numModesForFullRD + 2)*sizeof(Double));
+#endif
 #if JVET_C0024_PBINTRA_FAST
+#if MOD_PDPC
+              ::memcpy(uiHadModeList, uiSavedHadModeListNSST, (numModesForFullRD + 4)*sizeof(UInt));
+              ::memcpy(CandHadList, dSavedHadListNSST, (numModesForFullRD + 4)*sizeof(Double));
+#else
               ::memcpy(uiHadModeList, uiSavedHadModeListNSST, (numModesForFullRD + 2)*sizeof(UInt));
               ::memcpy(CandHadList, dSavedHadListNSST, (numModesForFullRD + 2)*sizeof(Double));
 #endif
+#endif
               Int cnt = 0;
               Int i = 0;
-
+#if MOD_PDPC
+              for (i = 0; i < numModesForFullRD; i++)
+              {
+                  if (uiRdModeList[i] <= DC_IDX)
+                  {
+                    for (UInt j = i; j < numModesForFullRD + 3-cnt; j++)
+                    {
+                      uiRdModeList[j] = uiRdModeList[j + 1];
+                      uiRdPDPCList[j] = uiRdPDPCList[j + 1];
+                      CandCostList[j] = CandCostList[j + 1];
+                    }
+                    cnt++;
+                    i--;
+                  }
+                }
+#else
               for (i = 0; i < numModesForFullRD; i++){
                   if (uiRdModeList[i] <= DC_IDX){
                       for (UInt j = i; j < numModesForFullRD + 1 - cnt; j++){
@@ -5454,12 +5753,18 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
                       i--;
                   }
               }
+#endif
 
 #if JVET_C0024_PBINTRA_FAST
               cnt = 0;
               for (i = 0; i < numModesForFullRD; i++){
                   if (uiHadModeList[i] <= DC_IDX){
+#if MOD_PDPC
+                      for (UInt j = i; j < numModesForFullRD + 3 - cnt; j++)
+                      {
+#else
                       for (UInt j = i; j < numModesForFullRD + 1 - cnt; j++){
+#endif
                           uiHadModeList[j] = uiHadModeList[j + 1];
                           CandHadList[j] = CandHadList[j + 1];
                       }
@@ -5473,6 +5778,9 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
               numModesForFullRD = uiSavedNumRdModesNSST;
               ::memcpy(uiRdModeList, uiSavedRdModeListNSST, numModesForFullRD*sizeof(UInt));
               ::memcpy(CandCostList, dSavedModeCostNSST, numModesForFullRD*sizeof(Double));
+#if MOD_PDPC
+              ::memcpy(uiRdPDPCList, uiSavedRdPDPCListNSST, numModesForFullRD*sizeof(UInt));
+#endif
 #if JVET_C0024_PBINTRA_FAST
               ::memcpy(CandHadList, dSavedHadListNSST, numModesForFullRD*sizeof(Double));
 #endif
@@ -5518,12 +5826,32 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 
             if( !bSatdChecked[uiMode] )
             {
+#if MOD_PDPC
+              iPDPCidx = 0;
+
+              if( saveLoadTag == LOAD_ENC_INFO )
+              {
+#if PDPC_FORCE_MODE66
+                iPDPCidx = uiMode == 66 ? 0 : savedPdpcIdx;
+#else
+                iPDPCidx = savedPdpcIdx;
+#endif
+              }
+
+              pcCU->setPDPCIdxSubParts(iPDPCidx, uiPartOffset, uiDepth + uiInitTrDepth);              
+              Bool bUseFilter = false;
+
+              if( pcCU->getROTIdx(CHANNEL_TYPE_LUMA, uiAbsPartIdx) )
+              {
+                bUseFilter = TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, uiMode, puRect.width, puRect.height, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag());
+              }
+#else
               const Bool bUseFilter=TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, uiMode, puRect.width, puRect.height, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag()
 #if COM16_C983_RSAF_PREVENT_OVERSMOOTHING 
                 , sps.getUseRSAF() 
 #endif
                                                                                   );
-
+#endif
               predIntraAng( COMPONENT_Y, uiMode, piOrg, uiStride, piPred, uiStride, tuRecurseWithPU, bUseFilter, TComPrediction::UseDPCMForFirstPassIntraEstimation(tuRecurseWithPU, uiMode) );
 
 
@@ -5537,7 +5865,11 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #endif
               
 #if JVET_C0024_FAST_MRG
+#if MOD_PDPC
+              CandNum += updateCandListExt( uiMode, iPDPCidx, cost, numModesForFullRD, uiRdModeList, uiRdPDPCList, CandCostList );
+#else
               CandNum += updateCandList( uiMode, cost, numModesForFullRD, uiRdModeList, CandCostList );
+#endif
 #else
               CandNum += xUpdateCandList( uiMode, cost, numModesForFullRD, uiRdModeList, CandCostList );
 #endif
@@ -5556,6 +5888,42 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
               else if (uiSad < CandHadList[2])
               {
                 CandHadList[2] = uiSad;
+              }
+#endif
+#if MOD_PDPC
+#if PDPC_FORCE_MODE66
+              if( numOfPassesPDPC > 1 && uiMode != 66 )
+#else
+              if( numOfPassesPDPC > 1 )
+#endif
+              {
+                iPDPCidx = 1;
+                pcCU->setPDPCIdxSubParts(iPDPCidx, uiPartOffset, uiDepth + uiInitTrDepth);
+                predIntraAng( COMPONENT_Y, uiMode, piOrg, uiStride, piPred, uiStride, tuRecurseWithPU, bUseFilter, TComPrediction::UseDPCMForFirstPassIntraEstimation(tuRecurseWithPU, uiMode) );
+
+                // use hadamard transform here
+                uiSad = distParam.DistFunc(&distParam);
+                iModeBits = xModeBitsIntra( pcCU, uiMode, uiPartOffset, uiDepth, CHANNEL_TYPE_LUMA, uiPreds, iAboveLeftCase );
+                cost      = (Double)uiSad + (Double)iModeBits * sqrtLambdaForFirstPass;
+                CandNum += updateCandListExt( uiMode, iPDPCidx, cost, numModesForFullRD, uiRdModeList, uiRdPDPCList, CandCostList );
+
+#if JVET_C0024_PBINTRA_FAST 
+                if (uiSad < CandHadList[0])
+                {
+                  CandHadList[2] = CandHadList[1];
+                  CandHadList[1] = CandHadList[0];
+                  CandHadList[0] = uiSad;
+                }
+                else if (uiSad < CandHadList[1])
+                {
+                  CandHadList[2] = CandHadList[1];
+                  CandHadList[1] = uiSad;
+                }
+                else if (uiSad < CandHadList[2])
+                {
+                  CandHadList[2] = uiSad;
+                }
+#endif
               }
 #endif
               bSatdChecked[uiMode] = true; // Mark as checked
@@ -5600,10 +5968,41 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
           for( Int i=0; i < numModesForFullRD; i++)
           {
             mostProbableModeIncluded |= (mostProbableMode == uiRdModeList[i]);
+#if MOD_PDPC
+            if( mostProbableModeIncluded )
+            {
+              break;
+            }
+#endif
           }
           if (!mostProbableModeIncluded)
           {
+#if MOD_PDPC
+            uiRdModeList[numModesForFullRD] = mostProbableMode;
+            uiRdPDPCList[numModesForFullRD] = 0;
+
+            if( saveLoadTag == LOAD_ENC_INFO )
+            {
+              uiRdPDPCList[numModesForFullRD] = mostProbableMode == PLANAR_IDX ? 0 : savedPdpcIdx;
+#if PDPC_FORCE_MODE66
+              uiRdPDPCList[numModesForFullRD] = mostProbableMode == 66 ? 0 : uiRdPDPCList[numModesForFullRD];
+#endif
+            }
+            numModesForFullRD++;
+
+#if PDPC_FORCE_MODE66
+            if( numOfPassesPDPC > 1 && mostProbableMode != PLANAR_IDX && mostProbableMode != 66 )
+#else
+            if( numOfPassesPDPC > 1 && mostProbableMode != PLANAR_IDX )
+#endif
+            {
+              uiRdModeList[numModesForFullRD] = mostProbableMode;
+              uiRdPDPCList[numModesForFullRD] = 1;
+              numModesForFullRD++;
+            }
+#else
             uiRdModeList[numModesForFullRD++] = mostProbableMode;
+#endif
           }
         }
       }
@@ -5613,6 +6012,9 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
       for( Int i=0; i < numModesForFullRD; i++)
       {
         uiRdModeList[i] = i;
+#if MOD_PDPC
+        uiRdPDPCList[i] = 0;
+#endif
       }
     }
 #if COM16_C806_EMT
@@ -5621,6 +6023,9 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
       // Store the modes to be checked with RD
 #if JVET_C0024_QTBT
       uiSavedNumRdModes = numModesForFullRD;
+#if MOD_PDPC
+      ::memcpy( uiSavedRdPDPCList, uiRdPDPCList, numModesForFullRD*sizeof(UInt) );
+#endif
       ::memcpy( uiSavedRdModeList, uiRdModeList, numModesForFullRD*sizeof(UInt) );
 #else
       uiSavedNumRdModes[uiPU] = numModesForFullRD;
@@ -5657,9 +6062,19 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         {
           if( dModeCostStore[i] <= dThrFastMode * dBestModeCostStore )
           {
+#if MOD_PDPC
+            uiRdModeList[numModesForFullRD] = uiSavedRdModeList[i];
+            uiRdPDPCList[numModesForFullRD] = uiSavedRdPDPCList[i];
+            numModesForFullRD++;
+#else
             uiRdModeList[numModesForFullRD++] = uiSavedRdModeList[i];
+#endif
           }
         }
+
+#if RSAF_FLAG
+        assert( numModesForFullRD );
+#endif
 #else
         for( Int i=0; i < uiSavedNumRdModes[uiPU]; i++)
         {
@@ -5676,6 +6091,9 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #if JVET_C0024_QTBT
         numModesForFullRD = uiSavedNumRdModes;
         ::memcpy( uiRdModeList, uiSavedRdModeList, numModesForFullRD*sizeof(UInt) );
+#if MOD_PDPC
+        ::memcpy( uiRdPDPCList, uiSavedRdPDPCList, numModesForFullRD*sizeof(UInt) );
+#endif
 #else
         numModesForFullRD = uiSavedNumRdModes[uiPU];
         ::memcpy( uiRdModeList, uiSavedRdModeList[uiPU], numModesForFullRD*sizeof(UInt) );
@@ -5693,7 +6111,18 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
     UInt       uiBestPUMode  = 0;
     Distortion uiBestPUDistY = 0;
     Double     dBestPUCost   = MAX_DOUBLE;
+#if MOD_PDPC
+    UInt       uiBestPDPC    = 0;
+    UInt modePDPCflag[NUM_INTRA_MODE][2];
+    memset(modePDPCflag, 0, sizeof(modePDPCflag));
 
+    for( UInt uiMode = 0; uiMode < numModesForFullRD; uiMode++ )
+    {
+      UInt uiOrgMode = uiRdModeList[uiMode];
+      iPDPCidx = uiRdPDPCList[uiMode];
+      modePDPCflag[uiOrgMode][iPDPCidx] = 1;
+    }
+#endif
 #if JVET_C0024_PBINTRA_FAST
     if( pcCU->getSlice()->getSliceType()!=I_SLICE 
 #if COM16_C806_EMT
@@ -5701,30 +6130,58 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #endif
       ) 
     {                            
+#if MOD_PDPC
+      Bool doFullRD = false;
+#endif
       if(CandHadList[2] > (Double)pcCU->getInterHAD()*PBINTRA_RATIO) 
       {
         numModesForFullRD = 2;
+#if MOD_PDPC
+        doFullRD = true;
+#endif
       }
       if(CandHadList[1] > (Double)pcCU->getInterHAD()*PBINTRA_RATIO) 
       {
         numModesForFullRD = 1;
+#if MOD_PDPC
+        doFullRD = true;
+#endif
       }
       if(CandHadList[0] > (Double)pcCU->getInterHAD()*PBINTRA_RATIO) 
       {
         pcCU->getTotalDistortion() = MAX_UINT; 
         pcCU->getInterHAD() = 0;
+#if MOD_PDPC
+        return 0;
+#else
         return ;
+#endif
       }
+#if MOD_PDPC
+      if( doFullRD )
+      {
+         numModesForFullRD = initNumModesForFullRD;
+      }
+#endif
     }           
 #endif
 
 #if COM16_C983_RSAF 
+#if RSAF_FLAG
+    UChar bestRsafFlag = 0;
+
+    const Bool isRSAFEnabled = pcCU->getSlice()->getSPS()->getUseRSAF() && !pcCU->getPDPCIdx(uiPartOffset) && uiWidth*uiHeight>=64 && uiWidth*uiHeight<=1024;
+
+    for( Int rsafFlag = 0; rsafFlag < (isRSAFEnabled? 2 : 1); rsafFlag++ )
+    {
+#else
     const Bool isRSAFEnabled  = pcCU->getSlice()->getSPS()->getUseRSAF();
 #if !JVET_C0024_QTBT
     Bool isBestRSAF = false;
 #endif
     for (Int isNonRSAF = 0;  isNonRSAF < (isRSAFEnabled? 2 : 1) ;  isNonRSAF++) 
     {
+#endif
 #endif
 
 #if ENVIRONMENT_VARIABLE_DEBUG_AND_TEST
@@ -5742,7 +6199,15 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
       // set luma prediction mode
       UInt uiOrgMode = uiRdModeList[uiMode];
 
-#if COM16_C983_RSAF 
+#if COM16_C983_RSAF
+#if RSAF_FLAG
+    if( rsafFlag && uiOrgMode == DC_IDX )
+    {
+      continue;
+    }
+
+    pcCU->setRsafFlagSubParts( rsafFlag, uiPartOffset );
+#else
       if (isRSAFEnabled)
 #if JVET_C0024_QTBT
         if ( (uiWidth*uiHeight>1024 || uiOrgMode == DC_IDX) ^ isNonRSAF) //RSAF scan first
@@ -5751,9 +6216,13 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #endif
             continue;
 #endif
+#endif
 
       pcCU->setIntraDirSubParts ( CHANNEL_TYPE_LUMA, uiOrgMode, uiPartOffset, uiDepth + uiInitTrDepth );
-
+#if MOD_PDPC
+      iPDPCidx = uiRdPDPCList[uiMode];
+      pcCU->setPDPCIdxSubParts(iPDPCidx, uiPartOffset, uiDepth + uiInitTrDepth);
+#endif
       DEBUG_STRING_NEW(sMode)
       // set context models
 #if JVET_C0024_QTBT
@@ -5766,8 +6235,33 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
       Distortion uiPUDistY = 0;
       Double     dPUCost   = 0.0;
 
+#if MOD_PDPC
+      xRecurIntraCodingLumaQT( pcOrgYuv, pcPredYuv, pcResiYuv, m_resiPUBuffer, uiPUDistY, true, dPUCost, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sMode) );
 
-#if COM16_C983_RSAF
+      if( ( NSSTSaveFlag || saveLoadTag == LOAD_ENC_INFO ) && iPDPCidx && dPUCost > MAX_DOUBLE/2 )
+      {
+        skipModeList[uiOrgMode] = 1;
+      }
+
+      if( !modePDPCflag[uiOrgMode][0] && skipModeList[uiOrgMode] && iPDPCidx )
+      {
+        if( NSSTSaveFlag || saveLoadTag == LOAD_ENC_INFO )
+        {
+          iPDPCidx=0; uiSavedRdPDPCList[uiMode]=0;
+          pcCU->setPDPCIdxSubParts(iPDPCidx, uiPartOffset, uiDepth + uiInitTrDepth);
+
+          // set context models
+          m_pcRDGoOnSbacCoder->load( m_ppppcRDSbacCoder[uiWIdx][uiHIdx][CI_CURR_BEST] );
+
+          // determine residual for partition
+          uiPUDistY = 0;
+          dPUCost   = 0.0;
+
+          xRecurIntraCodingLumaQT( pcOrgYuv, pcPredYuv, pcResiYuv, m_resiPUBuffer, uiPUDistY, true, dPUCost, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sMode) );
+        }
+      }
+#else
+#if COM16_C983_RSAF && !RSAF_FLAG
       if ( isRSAFEnabled &&
 #if JVET_C0024_QTBT
            uiWidth*uiHeight>=64 && uiWidth*uiHeight<=1024 && uiOrgMode!=DC_IDX 
@@ -5817,9 +6311,10 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         uiPUDistY, dPUCost, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sMode) );
 #endif
 
-#if COM16_C983_RSAF
+#if COM16_C983_RSAF && !RSAF_FLAG
       }
 
+#endif
 #endif
 
 #if DEBUG_INTRA_SEARCH_COSTS
@@ -5830,6 +6325,16 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
       if ( 1==ucEmtUsageFlag && m_pcEncCfg->getUseFastIntraEMT() )
       {
 #if JVET_C0024_QTBT
+#if RSAF_FLAG
+        if( rsafFlag )
+        {
+          if( dModeCostStore[uiMode] > dPUCost )
+          {
+            dModeCostStore[uiMode] = dPUCost;
+          }
+        }
+        else
+#endif
         dModeCostStore[uiMode] = dPUCost;
 #else
         dModeCostStore[uiPU][uiMode] = dPUCost;
@@ -5847,10 +6352,19 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         }
 #endif
 
+#if RSAF_FLAG
+        bestRsafFlag = rsafFlag;
+#endif
+
         DEBUG_STRING_SWAP(sPU, sMode)
 #if HHI_RQT_INTRA_SPEEDUP_MOD
         uiSecondBestMode  = uiBestPUMode;
         dSecondBestPUCost = dBestPUCost;
+#endif
+
+#if MOD_PDPC
+        modeSelected = true;
+        uiBestPDPC = iPDPCidx;
 #endif
         uiBestPUMode  = uiOrgMode;
         uiBestPUDistY = uiPUDistY;
@@ -6185,6 +6699,18 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #endif
     //=== update PU data ====
     pcCU->setIntraDirSubParts     ( CHANNEL_TYPE_LUMA, uiBestPUMode, uiPartOffset, uiDepth + uiInitTrDepth );
+#if MOD_PDPC
+    pcCU->setPDPCIdxSubParts(uiBestPDPC, uiPartOffset, uiDepth + uiInitTrDepth);
+#endif
+#if RSAF_FLAG
+    pcCU->setRsafFlagSubParts( bestRsafFlag, uiPartOffset );
+
+    if( pcCU->getPDPCIdx(uiPartOffset) || uiBestPUMode == DC_IDX || uiWidth*uiHeight > 1024 || uiWidth*uiHeight < 64 )
+    {
+      assert( !bestRsafFlag );
+    }
+#endif
+
   } while (tuRecurseWithPU.nextSection(tuRecurseCU));
 
 #if !JVET_C0024_QTBT
@@ -6218,6 +6744,10 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 
   //===== set distortion (rate and r-d costs are determined later) =====
   pcCU->getTotalDistortion() = uiOverallDistY;
+
+#if MOD_PDPC
+  return modeSelected;
+#endif
 }
 
 
@@ -10268,7 +10798,7 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
                                   memcpy(&bestResiComp[y * tuCompRect.width], (pcResiCurrComp + (y * resiStride)), (sizeof(Pel)* tuCompRect.width));
                               }
                           }
-#if COM16_C983_RSAF
+#if COM16_C983_RSAF && !RSAF_FLAG
                           pcCU->setLumaIntraFilter(uiAbsPartIdx, false);
                           pcCU->setLumaIntraFilterHidden(uiAbsPartIdx, true);
 #endif
@@ -11259,6 +11789,9 @@ UInt TEncSearch::xModeBitsIntra( TComDataCU* pcCU, UInt uiMode, UInt uiPartOffse
     , false, piModes, iCase
 #endif
       );
+#if MOD_PDPC
+    m_pcEntropyCoder->encodePDPCIdx(pcCU, uiPartOffset);
+#endif
   }
   else
   {
@@ -11272,7 +11805,34 @@ UInt TEncSearch::xModeBitsIntra( TComDataCU* pcCU, UInt uiMode, UInt uiPartOffse
 
 
 
+#if MOD_PDPC
+UInt TEncSearch::updateCandListExt( UInt uiMode, UInt uiPDPC, Double uiCost, UInt uiFastCandNum, UInt * CandModeList, UInt * CandPDPCList, Double * CandCostList )
+{
+  UInt i;
+  UInt shift=0;
 
+  while( shift < uiFastCandNum && uiCost < CandCostList[ uiFastCandNum-1-shift ] )
+  {
+    shift++;
+  }
+
+  if( shift!=0 )
+  {
+    for(i=1; i<shift; i++)
+    {
+      CandModeList[ uiFastCandNum-i ] = CandModeList[ uiFastCandNum-1-i ];
+      CandCostList[ uiFastCandNum-i ] = CandCostList[ uiFastCandNum-1-i ];
+      CandPDPCList[ uiFastCandNum-i ] = CandPDPCList[ uiFastCandNum-1-i ];
+    }
+    CandModeList[ uiFastCandNum-shift ] = uiMode;
+    CandCostList[ uiFastCandNum-shift ] = uiCost;
+    CandPDPCList[ uiFastCandNum-shift ] = uiPDPC;
+    return 1;
+  }
+
+  return 0;
+}
+#endif
 #if JVET_C0024_FAST_MRG
 UInt TEncSearch::updateCandList( UInt uiMode, Double uiCost, UInt uiFastCandNum, UInt * CandModeList, Double * CandCostList )
 #else
@@ -11383,12 +11943,18 @@ Void  TEncSearch::xAddSymbolBitsInter( TComDataCU* pcCU, UInt& ruiBits )
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
     Int iNonZeroCoeffNonTs;
 #endif
+#if MOD_PDPC || RSAF_FLAG
+    Int numNonZeroCoeffLuma;
+#endif
     m_pcEntropyCoder->encodeCoeff   ( pcCU, 0, pcCU->getDepth(0), codeDeltaQp, codeChromaQpAdj
 #if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
       , bNonZeroCoeff
 #endif
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
       , iNonZeroCoeffNonTs
+#endif
+#if MOD_PDPC || RSAF_FLAG
+      , numNonZeroCoeffLuma
 #endif
       );
 

@@ -228,6 +228,10 @@ public:
 #if COM16_C1016_AFFINE
   Void codeAffineFlag    ( TComDataCU* pcCU, UInt uiAbsPartIdx );
 #endif
+
+#if RSAF_FLAG
+  Void codeRsafFlag      ( TComDataCU* pcCU, UInt absPartIdx, Int numNonZeroCoeff ) { assert(0); }
+#endif
 };
 
 //! \}

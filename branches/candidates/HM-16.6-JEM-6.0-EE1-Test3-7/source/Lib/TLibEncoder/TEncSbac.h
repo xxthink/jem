@@ -284,6 +284,10 @@ public:
   Void codeAffineFlag    ( TComDataCU* pcCU, UInt uiAbsPartIdx );
 #endif
 
+#if RSAF_FLAG
+  Void codeRsafFlag      ( TComDataCU* pcCU, UInt absPartIdx, Int numNonZeroCoeff );
+#endif
+
 private:
   ContextModel         m_contextModels[MAX_NUM_CTX_MOD];
   Int                  m_numContextModels;
@@ -373,6 +377,10 @@ private:
 
 #if COM16_C1016_AFFINE
   ContextModel3DBuffer m_cCUAffineFlagSCModel;
+#endif
+
+#if RSAF_FLAG
+  ContextModel3DBuffer m_cRsafFlagSCModel;
 #endif
 
   UInt m_golombRiceAdaptationStatistics[RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS];

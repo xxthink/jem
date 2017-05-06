@@ -192,6 +192,10 @@ public:
   Void  parseAffineMvd      ( TComDataCU* pcCU, UInt uiAbsPartAddr, UInt uiPartIdx, UInt uiDepth, RefPicList eRefList );
 #endif
 
+#if RSAF_FLAG
+  Void parseRsafFlag        ( TComDataCU* pcCU, UInt absPartIdx, Int numNonZeroCoeff ) { assert(0); }
+#endif
+
 protected:
   Bool  xMoreRbspData();
 #if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
