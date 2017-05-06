@@ -279,6 +279,13 @@
 #define COM16_C1045_BIO_HARMO_IMPROV                      1  ///< Improvement of BIO
 #define JVET_C0027_BIO                                    1   /// MV refinement max value up, BIO_LDB check optimization,  BIO  for 1/16 pel MV support
 #define JVET_F0028_BIO_NO_BLOCK_EXTENTION                 1
+#define EE2_TEST1                                         0  ///< restrict BIO in OBMC
+#if EE2_TEST1
+#define EE2_TEST2                                         0  ///< 4x4 BIO kernel
+#if EE2_TEST2
+#define EE2_TEST3                                         0  ///< synchronization of motion information
+#endif
+#endif
 #endif                                                       
 
 #define COM16_C1016_AFFINE                                1  ///< Affine motion prediction
