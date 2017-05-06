@@ -1194,7 +1194,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #if JVET_D0077_SAVE_LOAD_ENC_INFO
   Bool bUseSaveLoad = m_pcEncCfg->getUseSaveLoadEncInfo() && uiWidthIdx > 0 && uiHeightIdx > 0;
   Bool bUseSaveLoadSplitDecision = bUseSaveLoad && m_pcEncCfg->getUseSaveLoadSplitDecision();
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !MOD_PDPC
   ChannelType eChannelType = rpcBestCU->getTextType();
 #endif
   UInt uiZorderIdx = rpcBestCU->getZorderIdxInCtu();
@@ -1989,7 +1989,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
           }
 #endif
 
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !MOD_PDPC
           Char iPDPCidx = 0;  Char iNumberOfPassesPDPC = 2;
           if (rpcTempCU->getSlice()->getSliceType() != I_SLICE)  iNumberOfPassesPDPC = 2;
           if (!rpcTempCU->getSlice()->getSPS()->getUsePDPC()) iNumberOfPassesPDPC = 1;
@@ -2032,7 +2032,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
      {
 #endif
 
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !MOD_PDPC
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
        if (iROTidx) iNumberOfPassesPDPC = 1;
 #endif
@@ -2068,6 +2068,13 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
            rpcTempCU->setMPIIdxSubParts(iMPIidx, 0, uiDepth);
 #endif
 #if COM16_C1046_PDPC_INTRA
+#if MOD_PDPC
+           Char iPDPCidx = 0;
+           if( saveLoadTag == LOAD_ENC_INFO && isLuma(rpcTempCU->getTextType()) )
+           {
+             iPDPCidx = m_pcPredSearch->getSaveLoadPdpcIdx(uiWidthIdx, uiHeightIdx);
+           }
+#endif
            rpcTempCU->setPDPCIdxSubParts(iPDPCidx, 0, uiDepth);
 #endif
 
@@ -2149,7 +2156,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
          if (rpcBestCU->isIntra(0) && !bNonZeroCoeff) break;
        }
 #endif
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !MOD_PDPC
        if (rpcBestCU->isIntra(0) && !bNonZeroCoeff) break;
      }
 #endif
@@ -3612,7 +3619,7 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 #if VCEG_AZ05_INTRA_MPI
   m_pcEntropyCoder->encodeMPIIdx(pcCU, uiAbsPartIdx);
 #endif   
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !MOD_PDPC
   m_pcEntropyCoder->encodePDPCIdx(pcCU, uiAbsPartIdx);
 #endif  
 #if JVET_C0024_QTBT
@@ -3662,6 +3669,9 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
   Int iNonZeroCoeffNonTs;
 #endif
+#if MOD_PDPC || RSAF_FLAG
+  Int numNonZeroCoeffLuma;
+#endif
   m_pcEntropyCoder->encodeCoeff( pcCU, uiAbsPartIdx, uiDepth, bCodeDQP, codeChromaQpAdj
 #if VCEG_AZ05_ROT_TR  || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
     , bNonZeroCoeff
@@ -3669,9 +3679,17 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
     , iNonZeroCoeffNonTs
 #endif
+#if MOD_PDPC || RSAF_FLAG
+    , numNonZeroCoeffLuma
+#endif
     );
   setCodeChromaQpAdjFlag( codeChromaQpAdj );
   setdQPFlag( bCodeDQP );
+
+#if RSAF_FLAG
+  m_pcEntropyCoder->encodeRsafFlag( pcCU, uiAbsPartIdx, numNonZeroCoeffLuma );
+#endif
+
 #if JVET_C0024_DELTA_QP_FIX
   if( pps.getUseDQP() )
   { 
@@ -4777,9 +4795,16 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
   Pel resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE];
 #endif
 
+#if MOD_PDPC
+  Bool modeSelected = true;
+#endif
+
 #if JVET_C0024_QTBT
   if (isLuma(rpcBestCU->getTextType()))
   {
+#if MOD_PDPC
+    modeSelected=
+#endif
   m_pcPredSearch->estIntraPredLumaQT( rpcTempCU, m_pppcOrigYuv[uiWIdx][uiHIdx], m_pppcPredYuvTemp[uiWIdx][uiHIdx], m_pppcResiYuvTemp[uiWIdx][uiHIdx], m_pppcRecoYuvTemp[uiWIdx][uiHIdx], 
 #else
   m_pcPredSearch->estIntraPredLumaQT( rpcTempCU, m_ppcOrigYuv[uiDepth], m_ppcPredYuvTemp[uiDepth], m_ppcResiYuvTemp[uiDepth], m_ppcRecoYuvTemp[uiDepth], 
@@ -4824,7 +4849,10 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
       DEBUG_STRING_PASS_INTO(sTest) 
       );
   }
-
+#if MOD_PDPC
+  if( modeSelected )
+  {
+#endif
   m_pcEntropyCoder->resetBits();
 
   if ( rpcTempCU->getSlice()->getPPS()->getTransquantBypassEnableFlag())
@@ -4842,7 +4870,7 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
   m_pcEntropyCoder->encodeMPIIdx(rpcTempCU, 0, true);
 #endif 
 
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !MOD_PDPC
   m_pcEntropyCoder->encodePDPCIdx(rpcTempCU, 0, true);
 #endif
 #if JVET_C0024_QTBT
@@ -4868,7 +4896,9 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
   Int   iNonZeroCoeffNonTs;
 #endif
-
+#if MOD_PDPC || RSAF_FLAG
+  Int   numNonZeroCoeffLuma;
+#endif
   Bool bCodeDQP = getdQPFlag();
   Bool codeChromaQpAdjFlag = getCodeChromaQpAdjFlag();
   m_pcEntropyCoder->encodeCoeff( rpcTempCU, 0, uiDepth, bCodeDQP, codeChromaQpAdjFlag
@@ -4878,7 +4908,20 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
     , iNonZeroCoeffNonTs
 #endif
+#if MOD_PDPC || RSAF_FLAG
+    , numNonZeroCoeffLuma
+#endif
     );
+
+#if RSAF_FLAG
+  m_pcEntropyCoder->encodeRsafFlag( rpcTempCU, 0, numNonZeroCoeffLuma );
+
+  if( isLuma( rpcTempCU->getTextType() ) && rpcTempCU->getLumaIntraFilter(0) && numNonZeroCoeffLuma < RSAF_COEFF_TH )
+  {
+    rpcTempCU->getTotalCost() = MAX_DOUBLE;
+  }
+#endif
+
   setCodeChromaQpAdjFlag( codeChromaQpAdjFlag );
   setdQPFlag( bCodeDQP );
 
@@ -4898,6 +4941,21 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
 #if QTBT_NSST
   const Int iNonZeroCoeffThr = isLuma(rpcTempCU->getTextType()) ? NSST_SIG_NZ_LUMA + (rpcTempCU->getSlice()->isIntra() ? 0 : NSST_SIG_NZ_CHROMA) : NSST_SIG_NZ_CHROMA;
 
+#if MOD_PDPC
+  if ( ucNsstIdx && iNonZeroCoeffNonTs <= iNonZeroCoeffThr )
+  {
+    Bool isMDIS = false;
+    if( isLuma(rpcTempCU->getTextType()) )
+    {
+      isMDIS = TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, rpcTempCU->getIntraDir(CHANNEL_TYPE_LUMA, 0), rpcTempCU->getWidth(0), rpcTempCU->getHeight(0), rpcTempCU->getSlice()->getSPS()->getChromaFormatIdc(), rpcTempCU->getSlice()->getSPS()->getSpsRangeExtension().getIntraSmoothingDisabledFlag());
+    }
+
+    if( iNonZeroCoeffNonTs > 0 || isMDIS )
+    {
+      rpcTempCU->getTotalCost() = MAX_DOUBLE;
+    }
+  }
+#else
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
   if ( ucNsstIdx && iNonZeroCoeffNonTs <= iNonZeroCoeffThr && iNonZeroCoeffNonTs>0 )
 #else
@@ -4907,11 +4965,20 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
     rpcTempCU->getTotalCost() = MAX_DOUBLE;
   }
 #endif
+#endif
 
 #if !JVET_C0024_DELTA_QP_FIX
   xCheckDQP( rpcTempCU );
 #endif
-
+#if MOD_PDPC
+  if( isLuma(rpcTempCU->getTextType()) )
+  {
+    if( rpcTempCU->getPDPCIdx(0) && numNonZeroCoeffLuma <= MIN_PDPC_COEFF_THRESHOLD )
+    {
+      rpcTempCU->getTotalCost() = MAX_DOUBLE;
+    }
+  }
+#endif
   cost = rpcTempCU->getTotalCost();
 
 #if JVET_C0024_QTBT
@@ -4920,6 +4987,9 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
   xCheckBestMode(rpcBestCU, rpcTempCU, uiDepth DEBUG_STRING_PASS_INTO(sDebug) DEBUG_STRING_PASS_INTO(sTest));
 #if JVET_C0024_QTBT
   rpcTempCU->getInterHAD() = uiHAD;
+#endif
+#if MOD_PDPC
+  }
 #endif
 }
 

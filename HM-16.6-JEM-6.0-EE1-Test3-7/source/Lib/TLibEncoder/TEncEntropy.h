@@ -218,6 +218,10 @@ public:
 #if COM16_C1016_AFFINE
   virtual Void codeAffineFlag    ( TComDataCU* pcCU, UInt uiAbsPartIdx ) = 0;
 #endif
+
+#if RSAF_FLAG
+  virtual Void codeRsafFlag      ( TComDataCU* pcCU, UInt absPartIdx, Int numNonZeroCoeff ) = 0;
+#endif
 };
 
 /// entropy encoder class
@@ -347,6 +351,9 @@ public:
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
     , Int& iNonZeroCoeffNonTs
 #endif
+#if MOD_PDPC || RSAF_FLAG
+    , Int& numNonZeroCoeffLuma
+#endif
     );
 
   Void encodeCoeffNxN         ( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID );
@@ -412,6 +419,10 @@ public:
 
 #if COM16_C1016_AFFINE
   Void encodeAffineFlag      ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiPuIdx );
+#endif
+
+#if RSAF_FLAG
+  Void encodeRsafFlag        ( TComDataCU* pcCU, UInt absPartIdx, Int numNonZeroCoeff ) { m_pcEntropyCoderIf->codeRsafFlag( pcCU, absPartIdx, numNonZeroCoeff ); }
 #endif
 };// END CLASS DEFINITION TEncEntropy
 

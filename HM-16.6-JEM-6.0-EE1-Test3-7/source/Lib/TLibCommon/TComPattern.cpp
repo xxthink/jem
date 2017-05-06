@@ -280,6 +280,8 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
         useStrongIntraSmoothing = false;
       }
       const Bool bIsWeakSmoothing = !bRSAF || !bFilterRefSamples;
+#elif DISABLE_RSAF
+      useStrongIntraSmoothing = false;
 #endif
       const Pel bottomLeft = piIntraTemp[stride * uiTuHeight2];
       const Pel topLeft    = piIntraTemp[0];

@@ -1062,6 +1062,9 @@ Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
   , Int& iNonZeroCoeffNonTs
 #endif
+#if MOD_PDPC || RSAF_FLAG
+  , Int& numNonZeroCoeffLuma
+#endif
   )
 {
 #if ENVIRONMENT_VARIABLE_DEBUG_AND_TEST
@@ -1160,6 +1163,10 @@ Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
   iNonZeroCoeffNonTs = 0;
 #endif
+#if MOD_PDPC || RSAF_FLAG
+  numNonZeroCoeffLuma = 0;
+#endif
+
   const UInt uiFirstComp = isLuma(pcCU->getTextType()) ? COMPONENT_Y : COMPONENT_Cb;
   const UInt uiLastComp  = isLuma(pcCU->getTextType()) && pcCU->getSlice()->isIntra() ? COMPONENT_Y : pcCU->getPic()->getNumberValidComponents()-1;
   const Int iNonZeroCoeffThr = isLuma(pcCU->getTextType()) ? NSST_SIG_NZ_LUMA + (pcCU->getSlice()->isIntra() ? 0 : NSST_SIG_NZ_CHROMA) : NSST_SIG_NZ_CHROMA;
@@ -1176,6 +1183,12 @@ Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
     if( !pcCU->getTransformSkip( uiAbsPartIdx, compID) )
     {
       iNonZeroCoeffNonTs += iNumNonZeros;
+#if MOD_PDPC || RSAF_FLAG
+      if( isLuma(compID) )
+      {
+        numNonZeroCoeffLuma = iNonZeroCoeffNonTs;
+      }
+#endif
     }
 #else
     bNonZeroCoeff += countNonZeroCoeffs(pcCoef, uiWidth * uiHeight);
@@ -1202,6 +1215,16 @@ Void TEncEntropy::encodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
 #if VCEG_AZ05_ROT_TR    || VCEG_AZ05_INTRA_MPI || COM16_C1044_NSST || COM16_C1046_PDPC_INTRA
   bNonZeroCoeff = bCbfCU;
 #endif
+#endif
+
+#if MOD_PDPC
+  if( isLuma(pcCU->getTextType()) )
+  {
+    if( numNonZeroCoeffLuma > MIN_PDPC_COEFF_THRESHOLD )
+    {
+      encodePDPCIdx(pcCU, uiAbsPartIdx);
+    }
+  }
 #endif
 
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST

@@ -142,6 +142,9 @@ TEncSbac::TEncSbac()
 #if COM16_C1016_AFFINE
 , m_cCUAffineFlagSCModel               ( 1,             1,               NUM_AFFINE_FLAG_CTX           , m_contextModels + m_numContextModels, m_numContextModels)
 #endif
+#if RSAF_FLAG
+, m_cRsafFlagSCModel                   ( 1,             1,                      NUM_RSAF_FLAG_CTX                   , m_contextModels + m_numContextModels,          m_numContextModels)
+#endif
 {
   assert( m_numContextModels <= MAX_NUM_CTX_MOD );
 }
@@ -243,6 +246,9 @@ Void TEncSbac::resetEntropy           (const TComSlice *pSlice)
 #if COM16_C1016_AFFINE
   m_cCUAffineFlagSCModel.initBuffer               ( eSliceType, iQp, (UChar*)INIT_AFFINE_FLAG );
 #endif
+#if RSAF_FLAG
+  m_cRsafFlagSCModel.initBuffer                   ( eSliceType, iQp, (UChar*)INIT_RSAF_FLAG );
+#endif
 
   for (UInt statisticIndex = 0; statisticIndex < RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS ; statisticIndex++)
   {
@@ -342,6 +348,9 @@ SliceType TEncSbac::determineCabacInitIdx(const TComSlice *pSlice)
 #endif
 #if COM16_C1016_AFFINE
       curCost += m_cCUAffineFlagSCModel.calcCost               ( curSliceType, qp, (UChar*)INIT_AFFINE_FLAG );
+#endif
+#if RSAF_FLAG
+      curCost += m_cRsafFlagSCModel.calcCost                   ( curSliceType, qp, (UChar*)INIT_RSAF_FLAG );
 #endif
       if (curCost < bestCost)
       {
@@ -592,6 +601,9 @@ Void  TEncSbac::loadIntraDirMode( const TEncSbac* pSrc, const ChannelType chType
   if (isLuma(chType))
   {
     this->m_cCUIntraPredSCModel      .copyFrom( &pSrc->m_cCUIntraPredSCModel       );
+#if MOD_PDPC
+    this->m_cPDPCIdxSCModel          .copyFrom( &pSrc->m_cPDPCIdxSCModel       );
+#endif
   }
   else
   {
@@ -855,6 +867,23 @@ Void TEncSbac::codeMPIIdx(TComDataCU* pcCU, UInt uiAbsPartIdx)
   Int iNumberOfPassesPDPC = 1;
   if (pcCU->getSlice()->getSliceType() == I_SLICE) iNumberOfPassesPDPC = 2;
   else iNumberOfPassesPDPC = 2;
+
+#if MOD_PDPC
+  UInt blkSize = pcCU->getWidth(uiAbsPartIdx) * pcCU->getHeight(uiAbsPartIdx); 
+
+#if PDPC_FORCE_MODE66
+  UChar intraMode = pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx);
+
+  if( intraMode == PLANAR_IDX || intraMode == 66 || blkSize < MIN_PDPC_BLOCK_THRESHOLD )
+#else
+  if( pcCU->getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx) == PLANAR_IDX || blkSize < MIN_PDPC_BLOCK_THRESHOLD )
+#endif
+  {
+    assert( !pcCU->getPDPCIdx(uiAbsPartIdx) );
+    return;
+  }
+#endif
+
   if (iNumberOfPassesPDPC > 1) // for only 1 pass no signaling is needed 
   {
     if (iNumberOfPassesPDPC > 2)  // 3 or 4
@@ -888,7 +917,7 @@ Void TEncSbac::codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
 #if VCEG_AZ05_INTRA_MPI
     && pcCU->getMPIIdx(uiAbsPartIdx) ==0
 #endif  
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !ENABLE_PDPC_FOR_NSST
     && pcCU->getPDPCIdx(uiAbsPartIdx) == 0
 #endif  
     && !pcCU->getCUTransquantBypass(uiAbsPartIdx)
@@ -3788,6 +3817,31 @@ Void TEncSbac::codeCtxUpdateInfo  ( TComSlice* pcSlice,  TComStats* apcStats )
 {
   assert(0);
   return;
+}
+#endif
+
+#if RSAF_FLAG
+Void TEncSbac::codeRsafFlag( TComDataCU* pcCU, UInt absPartIdx, Int numNonZeroCoeff )
+{
+  if( pcCU->isIntra(absPartIdx) && isLuma(pcCU->getTextType()) )
+  {
+    const UInt rsafFlag = pcCU->getLumaIntraFilter( absPartIdx );
+    const UInt width = pcCU->getWidth(absPartIdx);
+    const UInt height = pcCU->getHeight(absPartIdx);
+    const UInt blkSize = width * height;
+    Int intraMode = pcCU->getIntraDir(CHANNEL_TYPE_LUMA, absPartIdx);
+
+    if( numNonZeroCoeff < RSAF_COEFF_TH || pcCU->getPDPCIdx(absPartIdx) || intraMode == DC_IDX || blkSize > 1024 || blkSize < 64 )
+    {
+      assert( !rsafFlag );
+      return;
+    }
+
+    Int ctx = Int(TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, intraMode, width, height, pcCU->getSlice()->getSPS()->getChromaFormatIdc(), pcCU->getSlice()->getSPS()->getSpsRangeExtension().getIntraSmoothingDisabledFlag(), true));
+
+    m_pcBinIf->encodeBin( rsafFlag ? 1 : 0, m_cRsafFlagSCModel.get(0, 0, ctx) );
+
+  }
 }
 #endif
 

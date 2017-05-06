@@ -354,7 +354,12 @@ protected:
   Void xGetInterPredictionError( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPartIdx, Distortion& ruiSAD, Bool Hadamard );
 
 public:
-  Void  estIntraPredLumaQT      ( TComDataCU* pcCU,
+#if MOD_PDPC
+  Bool
+#else
+  Void
+#endif
+    estIntraPredLumaQT      ( TComDataCU* pcCU,
                                   TComYuv*    pcOrgYuv,
                                   TComYuv*    pcPredYuv,
                                   TComYuv*    pcResiYuv,
@@ -415,6 +420,9 @@ public:
   Void xEncPCM    (TComDataCU* pcCU, UInt uiAbsPartIdx, Pel* piOrg, Pel* piPCM, Pel* piPred, Pel* piResi, Pel* piReco, UInt uiStride, UInt uiWidth, UInt uiHeight, const ComponentID compID );
   Void IPCMSearch (TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* rpcPredYuv, TComYuv* rpcResiYuv, TComYuv* rpcRecoYuv );
 #if JVET_C0024_FAST_MRG
+#if MOD_PDPC
+  static UInt updateCandListExt( UInt uiMode, UInt uiPDPC, Double uiCost, UInt uiFastCandNum, UInt * CandModeList, UInt * CandPDPCList, Double * CandCostList );
+#endif
   static UInt updateCandList( UInt uiMode, Double uiCost, UInt uiFastCandNum, UInt * CandModeList, Double * CandCostList );
 #if JVET_D0123_ME_CTX_LUT_BITS && JVET_C0024_FAST_MRG 
   Void getMrgCandBits( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiMrgIdxBits[MRG_MAX_NUM_CANDS]);
@@ -496,7 +504,7 @@ protected:
                                     TComTU      &rTu
                                     DEBUG_STRING_FN_DECLARE(sDebug));
 
-#if COM16_C983_RSAF
+#if COM16_C983_RSAF && !RSAF_FLAG
   Void  xRecurIntraCodingLumaQT_RSAF (TComYuv*    pcOrgYuv,
                                       TComYuv*    pcPredYuv,
                                       TComYuv*    pcResiYuv,

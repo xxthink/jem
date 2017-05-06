@@ -1313,6 +1313,13 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
     }
   }
 
+#if DISABLE_RSAF
+  m_useStrongIntraSmoothing = false;
+#endif
+#if EE1_TEST7
+  m_usePDPC = false;
+#endif
+
   /*
    * Set any derived parameters
    */
