@@ -1175,13 +1175,27 @@ Void TDecCu::xReconInter( TComDataCU* pcCU, UInt uiDepth )
 #if JVET_C0024_QTBT
   UInt uiWidthIdx = g_aucConvertToBit[pcCU->getWidth(0)];
   UInt uiHeightIdx = g_aucConvertToBit[pcCU->getHeight(0)];
-  m_pcPrediction->motionCompensation( pcCU, m_pppcYuvReco[uiWidthIdx][uiHeightIdx] );
+  m_pcPrediction->motionCompensation( pcCU, m_pppcYuvReco[uiWidthIdx][uiHeightIdx]
+#if EE2_TEST3
+#if JVET_E0052_DMVR
+    , true
+#endif
+    , REF_PIC_LIST_X, -1, true
+#endif
+    );
 #if COM16_C806_OBMC
   m_pcPrediction->subBlockOBMC( pcCU, 0, m_pppcYuvReco[uiWidthIdx][uiHeightIdx], m_pppcTmpYuv1[uiWidthIdx][uiHeightIdx], m_pppcTmpYuv2[uiWidthIdx][uiHeightIdx] );
 #endif
 #else
   // inter prediction
-  m_pcPrediction->motionCompensation( pcCU, m_ppcYuvReco[uiDepth] );
+  m_pcPrediction->motionCompensation( pcCU, m_ppcYuvReco[uiDepth]
+#if EE2_TEST3
+#if JVET_E0052_DMVR
+    , true
+#endif
+    , REF_PIC_LIST_X, -1, true
+#endif
+    );
 #if COM16_C806_OBMC
   m_pcPrediction->subBlockOBMC( pcCU, 0, m_ppcYuvReco[uiDepth], m_ppcTmpYuv1[uiDepth], m_ppcTmpYuv2[uiDepth] );
 #endif

@@ -144,6 +144,10 @@ protected:
   static const Int m_ICShiftDiff = 12;
 #endif
 
+#if EE2_TEST1
+  UInt   m_uiaBIOShift[64];
+#endif
+
 #if VCEG_AZ08_INTER_KLT
   TComPicYuv* m_tempPicYuv;
 #endif
@@ -200,6 +204,15 @@ protected:
   __inline Void fracFilter2DVer(Pel* piSrc, Int iSrcStride,  Int iWidth, Int iHeight, Int iDstStride,  Pel*& rpiDst, Int iMv, const Int iShift);
   __inline Void gradFilter1DHor (Pel* piSrc, Int iSrcStride,  Int iWidth, Int iHeight, Int iDstStride,  Pel*& rpiDst, Int iMV, const Int iShift);
   __inline Void gradFilter1DVer (Pel* piSrc, Int iSrcStride,  Int iWidth, Int iHeight, Int iDstStride,  Pel*& rpiDst, Int iMV, const Int iShift);
+#if EE2_TEST1
+  __inline Int64 divide64(Int64 numer, Int64 denom);
+  Pel optical_flow_averaging(Int64 s1, Int64 s2, Int64 s3, Int64 s5, Int64 s6, Pel pGradX0, Pel pGradX1, Pel pGradY0, Pel pGradY1, Pel pSrcY0Temp, 
+    Pel pSrcY1Temp, const int shiftNum, const int  offset, const Int64 limit, const Int64 denom_min_1, const Int64 denom_min_2, const Int bitDepth);
+#endif
+#if EE2_TEST2
+  __inline Void calcBlkGradient(Int sx, Int sy, Int64 *arraysGx2, Int64 *arraysGxGy, Int64 *arraysGxdI, Int64 *arraysGy2, Int64 *arraysGydI,
+                                Int64 &sGx2, Int64 &sGy2, Int64 &sGxGy, Int64 &sGxdI, Int64 &sGydI, Int iWidth, Int iHeight);
+#endif
 #endif
   Void xPredInterUni            ( TComDataCU* pcCU,                          UInt uiPartAddr,               Int iWidth, Int iHeight, RefPicList eRefPicList, TComYuv* pcYuvPred
 #if JVET_E0052_DMVR
@@ -217,8 +230,11 @@ protected:
 #if JVET_E0052_DMVR    
     , Bool bRefineflag
 #endif
-#if VCEG_AZ07_FRUC_MERGE
+#if VCEG_AZ07_FRUC_MERGE || EE2_TEST1
     , Bool bOBMC = false
+#endif
+#if EE2_TEST3
+    , Bool bUpdateMvBio = false
 #endif
     );
   Void xPredInterBlk(const ComponentID compID, TComDataCU *cu, TComPicYuv *refPic, UInt partAddr, TComMv *mv, Int width, Int height, TComYuv *dstPic, Bool bi, const Int bitDepth
@@ -250,7 +266,12 @@ protected:
 #endif
 #if JVET_E0052_DMVR
     , Bool bRefineflag
+#endif
+#if JVET_E0052_DMVR || EE2_TEST1
     , Bool bOBMC
+#endif
+#if EE2_TEST3
+    , Bool bMvUpdateBio = false
 #endif
     );
 
@@ -368,7 +389,11 @@ public:
 #if JVET_E0052_DMVR
     , Bool bRefineflag = true
 #endif
-    , RefPicList eRefPicList = REF_PIC_LIST_X, Int iPartIdx = -1 );
+    , RefPicList eRefPicList = REF_PIC_LIST_X, Int iPartIdx = -1
+#if EE2_TEST3
+    , Bool bUpdateMvBio = false
+#endif
+    );
 
 #if VCEG_AZ07_FRUC_MERGE
   Bool deriveFRUCMV( TComDataCU * pCU , UInt uiDepth , UInt uiAbsPartIdx , UInt uiPUIdx , Int nTargetRefIdx = -1 , RefPicList eTargetRefList = REF_PIC_LIST_0

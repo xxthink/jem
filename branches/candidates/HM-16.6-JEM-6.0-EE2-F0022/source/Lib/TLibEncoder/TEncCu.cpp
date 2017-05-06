@@ -4267,7 +4267,14 @@ Void TEncCu::xCheckRDCostMerge2Nx2NFRUC( TComDataCU*& rpcBestCU, TComDataCU*& rp
         }
         // do MC
 #if JVET_C0024_QTBT
-        m_pcPredSearch->motionCompensation ( rpcTempCU, m_pppcPredYuvTemp[uiWIdx][uiHIdx] );
+        m_pcPredSearch->motionCompensation ( rpcTempCU, m_pppcPredYuvTemp[uiWIdx][uiHIdx]
+#if EE2_TEST3
+#if JVET_E0052_DMVR
+          , true
+#endif
+          , REF_PIC_LIST_X, -1, true
+#endif
+          );
 #if COM16_C806_OBMC
         m_pcPredSearch->subBlockOBMC( rpcTempCU, 0, m_pppcPredYuvTemp[uiWIdx][uiHIdx], m_pppcTmpYuv1[uiWIdx][uiHIdx], m_pppcTmpYuv2[uiWIdx][uiHIdx] );
 #endif
@@ -4284,7 +4291,14 @@ Void TEncCu::xCheckRDCostMerge2Nx2NFRUC( TComDataCU*& rpcBestCU, TComDataCU*& rp
 #endif
           );
 #else
-        m_pcPredSearch->motionCompensation ( rpcTempCU, m_ppcPredYuvTemp[uhDepth] );
+        m_pcPredSearch->motionCompensation ( rpcTempCU, m_ppcPredYuvTemp[uhDepth]
+#if EE2_TEST3
+#if JVET_E0052_DMVR
+          , true
+#endif
+          , REF_PIC_LIST_X, -1, true
+#endif
+          );
 #if COM16_C806_OBMC
         m_pcPredSearch->subBlockOBMC( rpcTempCU, 0, m_ppcPredYuvTemp[uhDepth], m_ppcTmpYuv1[uhDepth], m_ppcTmpYuv2[uhDepth] );
 #endif
