@@ -1259,14 +1259,13 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
   Int targetQP = iBaseQP;
   if (m_pcEncCfg->getUseLumaDeltaQp() )
   {
-    if( uiQTBTDepth <= uiMaxDQPDepthQTBT ) 
-
-    m_LumaQPOffset= calculateLumaDQP(rpcTempCU, 0, m_pppcOrigYuv[uiWidthIdx][uiHeightIdx]);  // keep using the same m_QP_LUMA_OFFSET in the same LCU
-    targetQP = iBaseQP-m_LumaQPOffset;        // targetQP is used for control lambda
+    if (uiQTBTDepth <= uiMaxDQPDepthQTBT)
     {
-      iMinQP = iBaseQP-m_LumaQPOffset;
-      iMaxQP = iMinQP;   // make it same as MinQP to force encode choose the modified QP
+      m_LumaQPOffset = calculateLumaDQP(rpcTempCU, 0, m_pppcOrigYuv[uiWidthIdx][uiHeightIdx]);  // keep using the same m_QP_LUMA_OFFSET in the same LCU
     }
+    targetQP = Clip3(-sps.getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, iBaseQP - m_LumaQPOffset);  // targetQP is used for control lambda
+    iMinQP = targetQP;
+    iMaxQP = iMinQP;   // make it same as MinQP to force encode choose the modified QP
   }  
 
 #endif
