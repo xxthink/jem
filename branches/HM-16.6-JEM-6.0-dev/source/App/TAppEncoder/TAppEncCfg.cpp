@@ -1275,6 +1275,9 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 #if JVET_D0033_ADAPTIVE_CLIPPING
   ("AClip,-aclip", m_ClipParam.isActive, true, "Slice Level Adpative Clipping (Automated by default)")
 #endif
+#if JVET_F0096_BILATERAL_FILTER
+  ("BilateralFilter",                            m_useBilateralFilter,   true, "Enable bilateral filtering")
+#endif
   ;
 
 #if EXTENSION_360_VIDEO
@@ -3051,7 +3054,9 @@ Void TAppEncCfg::xPrintParameter()
 #if JVET_D0033_ADAPTIVE_CLIPPING
   printf("ACLIP:%d ",m_ClipParam.isActive?1:0);
 #endif
-
+#if JVET_F0096_BILATERAL_FILTER
+  printf("BilateralFilter:%d ", m_useBilateralFilter);
+#endif
 #if EXTENSION_360_VIDEO
   m_ext360.outputConfigurationSummary();
 #endif

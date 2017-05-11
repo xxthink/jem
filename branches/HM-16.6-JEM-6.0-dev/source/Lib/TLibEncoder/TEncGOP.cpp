@@ -1755,6 +1755,21 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
         g_ClipParam =pcPic->m_aclip_prm; // set the global for access from clipBD
 
 #endif
+#if JVET_F0096_BILATERAL_FILTER  
+        if(pcSlice->getSPS()->getUseBilateralFilter())
+        {
+          if(TComBilateralFilter::instance()->getInitFlag() == false)
+          {
+            TComBilateralFilter::instance()->createdivToMulLUTs();
+            for(Int qp=18; qp<MAX_QP+1; qp++ )
+            {
+              TComBilateralFilter::instance()->createBilateralFilterTable(qp);
+            }
+            TComBilateralFilter::instance()->setInitFlag(true);
+          }
+        }
+#endif
+
     // now compress (trial encode) the various slice segments (slices, and dependent slices)
     {
       const UInt numberOfCtusInFrame=pcPic->getPicSym()->getNumberOfCtusInFrame();

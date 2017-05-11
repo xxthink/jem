@@ -62,6 +62,7 @@ TComBilateralFilter::TComBilateralFilter()
       m_bilateralFilterTable[i][k] = 0;
     }
   }
+  m_initFlag = false;
 }
 
 TComBilateralFilter::~TComBilateralFilter()

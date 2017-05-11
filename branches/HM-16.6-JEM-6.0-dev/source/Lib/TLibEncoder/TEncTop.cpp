@@ -1157,7 +1157,9 @@ Void TEncTop::xInitSPS(TComSPS &sps)
 #if VCEG_AZ07_INTRA_BOUNDARY_FILTER
   sps.setUseIntraBoundaryFilter( m_useIntraBoundaryFilter );
 #endif
-
+#if JVET_F0096_BILATERAL_FILTER
+  sps.setUseBilateralFilter( m_useBilateralFilter );
+#endif
 }
 #else
 Void TEncTop::xInitSPS()
@@ -1389,6 +1391,9 @@ Void TEncTop::xInitSPS()
 #endif
 #if COM16_C983_RSAF
   m_cSPS.setUseRSAF( m_useRSAF );
+#endif
+#if JVET_F0096_BILATERAL_FILTER
+  m_cSPS.setUseBilateralFilter( m_useBilateralFilter );
 #endif
 }
 #endif
