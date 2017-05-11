@@ -893,6 +893,10 @@ private:
 #if COM16_C983_RSAF
   Bool             m_useRSAF;
 #endif
+#if JVET_F0096_BILATERAL_FILTER
+  Bool      m_useBilateralFilter;
+#endif
+
  // Parameter
   BitDepths        m_bitDepths;
   Int              m_qpBDOffset[MAX_NUM_CHANNEL_TYPE];
@@ -1178,6 +1182,10 @@ public:
 #if COM16_C983_RSAF
  Bool                   getUseRSAF ()  const                                                       { return m_useRSAF; }
  Void                   setUseRSAF ( Bool b )                                                      { m_useRSAF = b;    }
+#endif
+#if JVET_F0096_BILATERAL_FILTER
+  Bool                  getUseBilateralFilter ()  const                                            { return m_useBilateralFilter; }
+  Void                  setUseBilateralFilter (Bool b)                                             { m_useBilateralFilter = b;    }
 #endif
 
   // KTA tools

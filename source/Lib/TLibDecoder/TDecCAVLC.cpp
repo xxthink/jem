@@ -912,6 +912,9 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
 #if COM16_C983_RSAF
   READ_FLAG( uiCode, "rsaf_enabled_flag");      pcSPS->setUseRSAF( uiCode );
 #endif
+#if JVET_F0096_BILATERAL_FILTER
+  READ_FLAG( uiCode, "bilateral_filter_enabled_flag");      pcSPS->setUseBilateralFilter( uiCode );
+#endif
   // KTA tools
 
   READ_FLAG( uiCode, "sps_extension_present_flag");

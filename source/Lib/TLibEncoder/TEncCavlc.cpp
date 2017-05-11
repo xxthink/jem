@@ -670,6 +670,9 @@ Void TEncCavlc::codeSPS( const TComSPS* pcSPS )
 #if COM16_C983_RSAF
  WRITE_FLAG( pcSPS->getUseRSAF() ? 1 : 0,                "rsaf_enabled_flag" );
 #endif
+#if JVET_F0096_BILATERAL_FILTER
+ WRITE_FLAG( pcSPS->getUseBilateralFilter() ? 1 : 0,     "bilateral_filter_enabled_flag" );
+#endif
   // KTA tools
 
   Bool sps_extension_present_flag=false;

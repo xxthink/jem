@@ -2411,18 +2411,21 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
   }
 
 #if JVET_F0096_BILATERAL_FILTER
-  if (isLuma(compID))
+  if(pcCU->getSlice()->getSPS()->getUseBilateralFilter())        
   {
-    if( uiAbsSum && (pcCU->getQP(COMPONENT_Y) > 17))
+    if (isLuma(compID))
     {
-      TComBilateralFilter::instance()->bilateralFilterIntra(pcCU, uiWidth, uiHeight, piReco, uiStride, pcCU->getQP(COMPONENT_Y));
-      for( UInt uiY = 0; uiY < uiHeight; uiY++ )
+      if( uiAbsSum && (pcCU->getQP(COMPONENT_Y) > 17))
       {
-        memcpy(piRecQt + uiY * uiRecQtStride, piReco + uiY * uiStride, uiWidth * sizeof(Short));
-        memcpy(piRecIPred + uiY * uiRecIPredStride, piReco + uiY * uiStride , uiWidth * sizeof(Short));
-        uiY++;
-        memcpy(piRecQt + uiY * uiRecQtStride, piReco + uiY * uiStride, uiWidth * sizeof(Short));
-        memcpy(piRecIPred + uiY * uiRecIPredStride, piReco + uiY * uiStride , uiWidth * sizeof(Short));
+        TComBilateralFilter::instance()->bilateralFilterIntra(pcCU, uiWidth, uiHeight, piReco, uiStride, pcCU->getQP(COMPONENT_Y));
+        for( UInt uiY = 0; uiY < uiHeight; uiY++ )
+        {
+          memcpy(piRecQt + uiY * uiRecQtStride, piReco + uiY * uiStride, uiWidth * sizeof(Short));
+          memcpy(piRecIPred + uiY * uiRecIPredStride, piReco + uiY * uiStride , uiWidth * sizeof(Short));
+          uiY++;
+          memcpy(piRecQt + uiY * uiRecQtStride, piReco + uiY * uiStride, uiWidth * sizeof(Short));
+          memcpy(piRecIPred + uiY * uiRecIPredStride, piReco + uiY * uiStride , uiWidth * sizeof(Short));
+        }
       }
     }
   }
@@ -2754,16 +2757,19 @@ Bool TEncSearch::xIntraCodingTUBlockTM(TComYuv*    pcOrgYuv,
             }
         }
     }
-#if JVET_F0096_BILATERAL_FILTER
-    if (isLuma(compID))
+#if JVET_F0096_BILATERAL_FILTER  
+    if(pcCU->getSlice()->getSPS()->getUseBilateralFilter())        
     {
-      if( uiAbsSum && (pcCU->getQP(COMPONENT_Y) > 17))
+      if (isLuma(compID))
       {
-        TComBilateralFilter::instance()->bilateralFilterIntra(pcCU, uiWidth, uiHeight, piReco, uiStride, pcCU->getQP(COMPONENT_Y));
-        for( UInt uiY = 0; uiY < uiHeight; uiY++ )
+        if( uiAbsSum && (pcCU->getQP(COMPONENT_Y) > 17))
         {
-          memcpy(piRecQt + uiY * uiRecQtStride, piReco + uiY * uiStride, uiWidth * sizeof(Short));
-          memcpy(piRecIPred + uiY * uiRecIPredStride, piReco + uiY * uiStride , uiWidth * sizeof(Short));
+          TComBilateralFilter::instance()->bilateralFilterIntra(pcCU, uiWidth, uiHeight, piReco, uiStride, pcCU->getQP(COMPONENT_Y));
+          for( UInt uiY = 0; uiY < uiHeight; uiY++ )
+          {
+            memcpy(piRecQt + uiY * uiRecQtStride, piReco + uiY * uiStride, uiWidth * sizeof(Short));
+            memcpy(piRecIPred + uiY * uiRecIPredStride, piReco + uiY * uiStride , uiWidth * sizeof(Short));
+          }
         }
       }
     }
@@ -10475,26 +10481,29 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
                                   );
 #endif
 #if JVET_F0096_BILATERAL_FILTER
-                              if (isLuma(compID))
+                              if(pcCU->getSlice()->getSPS()->getUseBilateralFilter())        
                               {
-                                UInt minSize = std::min(tuWidth, tuHeight);
-                                if( (currAbsSum > 0) && (pcCU->getQP(uiAbsPartIdx) > 17) && (minSize < 16))
+                                if (isLuma(compID))
                                 {
-                                  Pel *pcPtrPred = pcPred->getAddr(compID, uiAbsPartIdx);
-                                  UInt uiStridePred = pcPred->getStride(compID);
+                                  UInt minSize = std::min(tuWidth, tuHeight);
+                                  if( (currAbsSum > 0) && (pcCU->getQP(uiAbsPartIdx) > 17) && (minSize < 16))
+                                  {
+                                    Pel *pcPtrPred = pcPred->getAddr(compID, uiAbsPartIdx);
+                                    UInt uiStridePred = pcPred->getStride(compID);
 #if JVET_C0024_QTBT
-                                  Pel *pcPtrRes = m_ppcQTTempTComYuv[uiWIdx][uiHIdx].getAddr(compID, uiAbsPartIdx);
-                                  UInt uiStrideRes = m_ppcQTTempTComYuv[uiWIdx][uiHIdx].getStride(compID);
-                                  Pel *pcPtrRec = m_ppcQTTempTComYuv[uiWIdx][uiHIdx].getAddr(compID, uiAbsPartIdx);
-                                  UInt uiStrideRec = m_ppcQTTempTComYuv[uiWIdx][uiHIdx].getStride(compID);
+                                    Pel *pcPtrRes = m_ppcQTTempTComYuv[uiWIdx][uiHIdx].getAddr(compID, uiAbsPartIdx);
+                                    UInt uiStrideRes = m_ppcQTTempTComYuv[uiWIdx][uiHIdx].getStride(compID);
+                                    Pel *pcPtrRec = m_ppcQTTempTComYuv[uiWIdx][uiHIdx].getAddr(compID, uiAbsPartIdx);
+                                    UInt uiStrideRec = m_ppcQTTempTComYuv[uiWIdx][uiHIdx].getStride(compID);
 #else
-                                  Pel *pcPtrRes = m_pcQTTempTComYuv[uiQTTempAccessLayer].getAddr(compID, uiAbsPartIdx);
-                                  UInt uiStrideRes = m_pcQTTempTComYuv[uiQTTempAccessLayer].getStride(compID);
-                                  Pel *pcPtrRec = m_pcQTTempTComYuv[uiQTTempAccessLayer].getAddr(compID, uiAbsPartIdx);
-                                  UInt uiStrideRec = m_pcQTTempTComYuv[uiQTTempAccessLayer].getStride(compID);
+                                    Pel *pcPtrRes = m_pcQTTempTComYuv[uiQTTempAccessLayer].getAddr(compID, uiAbsPartIdx);
+                                    UInt uiStrideRes = m_pcQTTempTComYuv[uiQTTempAccessLayer].getStride(compID);
+                                    Pel *pcPtrRec = m_pcQTTempTComYuv[uiQTTempAccessLayer].getAddr(compID, uiAbsPartIdx);
+                                    UInt uiStrideRec = m_pcQTTempTComYuv[uiQTTempAccessLayer].getStride(compID);
 #endif
-                                  const Int clipbd = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
-                                  TComBilateralFilter::instance()->bilateralFilterInter(pcCU, tuWidth, tuHeight, pcPtrRes, uiStrideRes, pcPtrPred, uiStridePred, pcPtrRec, uiStrideRec, clipbd, pcCU->getQP(uiAbsPartIdx));
+                                    const Int clipbd = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
+                                    TComBilateralFilter::instance()->bilateralFilterInter(pcCU, tuWidth, tuHeight, pcPtrRes, uiStrideRes, pcPtrPred, uiStridePred, pcPtrRec, uiStrideRec, clipbd, pcCU->getQP(uiAbsPartIdx));
+                                  }
                                 }
                               }
 #endif
