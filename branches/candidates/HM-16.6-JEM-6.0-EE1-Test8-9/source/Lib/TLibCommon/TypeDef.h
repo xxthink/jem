@@ -43,7 +43,8 @@
 #endif
 
 #include <vector>
-
+#define EE1_TEST8    1 // ARSS OFF
+#define EE1_TEST9    1 // PDPC OFF
 //! \ingroup TLibCommon
 //! \{
 ///////////////////////////////////////////////////////////
@@ -289,8 +290,8 @@
 #error JVET_C0025_AFFINE_FILTER_SIMPLIFICATION shall be off if no 1/16 MV accuracy
 #endif
 #endif
-
-#define COM16_C983_RSAF                                   1  ///< Adaptive reference sample smoothing
+#if !EE1_TEST8
+#define COM16_C983_RSAF                                  1  ///< Adaptive reference sample smoothing
 #if COM16_C983_RSAF                                          
 #define COM16_C983_RSAF_PREVENT_OVERSMOOTHING             1  ///< Harmonization with intra-prediction tools   
 #define COM16_C983_RSAF_ESTIMATION_MODE_FULL              1  ///< Full/fast estimation of the possiblity to hide the RSAF flag
@@ -298,7 +299,7 @@
 #define JVET_B0041_SIMPLIFICATION_2                       1  ///< Simplidication by cancelling TU split check using cbf value and result of hiding procedure for non-split TU.
 #define COM16_C983_RSAF_S_TICKET14                        1
 #endif                                                       
-
+#endif
 #define COM16_C1044_NSST                                  1  ///< Mode dependent non-separable secondary transforms
 #if COM16_C1044_NSST || VCEG_AZ05_ROT_TR
 #define JVET_C0042_UNIFIED_BINARIZATION 1       // unified binarization for NSST index and context modeling based on partition type and intra prediction mode
@@ -316,7 +317,7 @@
 #define JVET_D0120_NSST_IMPROV                            1  ///< JVET-D0120: NSST improvements using HyGT and 8x8 NSST  
 #define JVET_D0127_REDUNDANCY_REMOVAL                     1
 #endif
-
+#if !EE1_TEST9
 #define COM16_C1046_PDPC_INTRA                            1  ///< Position dependent intra prediction combination
 #if COM16_C1046_PDPC_INTRA
 #define FIX_TICKET20                                      1  ///< fixed ticket #20 (PDPC rate calculation in RDO)
@@ -324,7 +325,7 @@
 #if COM16_C1046_PDPC_INTRA && COM16_C983_RSAF                
 #define COM16_C1046_PDPC_RSAF_HARMONIZATION               1  ///< Harmonization between PDPC and RSAF
 #endif
-
+#endif
 #if COM16_C1046_PDPC_INTRA && VCEG_AZ05_INTRA_MPI
 #error
 #endif
