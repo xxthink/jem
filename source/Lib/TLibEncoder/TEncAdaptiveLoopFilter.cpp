@@ -1055,11 +1055,7 @@ Void TEncAdaptiveLoopFilter::xCalcRDCost(ALFParam* pAlfParam, UInt64& ruiRate, U
     m_pcEntropyCoder->resetEntropy(pSlice);
     m_pcEntropyCoder->resetBits();
 
-    m_pcEntropyCoder->encodeAlfParam(pAlfParam, pSlice->getSPS()->getMaxTotalCUDepth()
-#if FIX_TICKET12
-        , pSlice
-#endif
-      );
+    m_pcEntropyCoder->encodeAlfParam(pAlfParam, pSlice->getSPS()->getMaxTotalCUDepth(), pSlice);
     
     if(pAlfParam->cu_control_flag)
     {
@@ -1100,11 +1096,7 @@ Void TEncAdaptiveLoopFilter::xCalcRDCost(TComPicYuv* pcPicOrg, TComPicYuv* pcPic
     m_pcEntropyCoder->resetEntropy(pSlice);
     m_pcEntropyCoder->resetBits();
 
-    m_pcEntropyCoder->encodeAlfParam(pAlfParam, pSlice->getSPS()->getMaxTotalCUDepth()
-#if FIX_TICKET12
-        , pSlice
-#endif
-      );
+    m_pcEntropyCoder->encodeAlfParam(pAlfParam, pSlice->getSPS()->getMaxTotalCUDepth(), pSlice);
     
     if(pAlfParam->cu_control_flag)
     {
@@ -1143,11 +1135,7 @@ Void TEncAdaptiveLoopFilter::xCalcRDCostChroma(TComPicYuv* pcPicOrg, TComPicYuv*
     m_pcEntropyCoder->resetEntropy(pSlice);
     m_pcEntropyCoder->resetBits();
 
-    m_pcEntropyCoder->encodeAlfParam(pAlfParam, pSlice->getSPS()->getMaxTotalCUDepth()
-#if FIX_TICKET12
-        , pSlice
-#endif
-      );
+    m_pcEntropyCoder->encodeAlfParam(pAlfParam, pSlice->getSPS()->getMaxTotalCUDepth(), pSlice);
     
     if(pAlfParam->cu_control_flag)
     {

@@ -1328,7 +1328,6 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
       pcSlice->setAssociatedIRAPPOC(m_associatedIRAPPOC);
     }
     // Do decoding refresh marking if any
-#if FIX_TICKET12 
     if( pcSlice->getSPS()->getUseALF() )
     {
       if( m_pcAdaptiveLoopFilter->refreshAlfTempPred( pcSlice->getNalUnitType() , pcSlice->getPOC() ) )
@@ -1340,7 +1339,6 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
 #endif
       }
     }
-#endif
     pcSlice->decodingRefreshMarking(m_pocCRA, m_bRefreshPending, rcListPic, m_pcCfg->getEfficientFieldIRAPEnabled());
     m_pcEncTop->selectReferencePictureSet(pcSlice, pocCurr, iGOPid);
     if (!m_pcCfg->getEfficientFieldIRAPEnabled())
@@ -1913,14 +1911,10 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
       m_pcAdaptiveLoopFilter->resetALFParam( &cAlfParam );
       m_pcAdaptiveLoopFilter->ALFProcess( &cAlfParam, pcPic->getSlice(0)->getLambdas()[0], pcPic->getSlice(0)->getLambdas()[1], uiDist, uiBits, cAlfParam.alf_max_depth
 #if COM16_C806_ALF_TEMPPRED_NUM
-#if FIX_TICKET12
 #if JVET_E0104_ALF_TEMP_SCALABILITY
         , (pcSlice->getSliceType()== I_SLICE ? NULL: m_acStoredAlfPara[pcSlice->getTLayer()]), m_iStoredAlfParaNum[pcSlice->getTLayer()]
 #else
         , (pcSlice->getSliceType()== I_SLICE ? NULL: m_acStoredAlfPara), m_iStoredAlfParaNum
-#endif
-#else
-        , m_acStoredAlfPara, m_iStoredAlfParaNum
 #endif
 #endif
         );

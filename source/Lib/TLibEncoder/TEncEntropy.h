@@ -361,11 +361,7 @@ public:
 #endif 
 
 #if ALF_HM3_REFACTOR
-  Void encodeAlfParam(ALFParam* pAlfParam, UInt uiMaxTotalCUDepth
-#if FIX_TICKET12
-        ,const TComSlice * pSlice
-#endif
-    );
+  Void encodeAlfParam(ALFParam* pAlfParam, UInt uiMaxTotalCUDepth, const TComSlice * pSlice);
 #if !JVET_C0024_QTBT
   Void encodeAlfCtrlFlag       ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
 #endif

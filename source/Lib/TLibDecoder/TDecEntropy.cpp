@@ -1744,11 +1744,7 @@ Void TDecEntropy::decodeFilt(ALFParam* pAlfParam)
   }
 }
 
-Void TDecEntropy::decodeAlfParam(ALFParam* pAlfParam, UInt uiMaxTotalCUDepth
-#if FIX_TICKET12
-        , TComSlice * pSlice
-#endif
-  )
+Void TDecEntropy::decodeAlfParam(ALFParam* pAlfParam, UInt uiMaxTotalCUDepth, TComSlice * pSlice)
 {
   UInt uiSymbol;
 #if !JVET_C0038_GALF 
@@ -1763,14 +1759,14 @@ Void TDecEntropy::decodeAlfParam(ALFParam* pAlfParam, UInt uiMaxTotalCUDepth
   }
 #if COM16_C806_ALF_TEMPPRED_NUM
   //encode temporal reuse flag and index
-#if FIX_TICKET12
   if( pSlice->getSliceType() == I_SLICE)
   {
     uiSymbol = 0;
   }
   else
-#endif
-  m_pcEntropyDecoderIf->parseAlfFlag( uiSymbol );
+  {
+    m_pcEntropyDecoderIf->parseAlfFlag(uiSymbol);
+  }
   pAlfParam->temproalPredFlag = uiSymbol;
   if( uiSymbol )
   {
