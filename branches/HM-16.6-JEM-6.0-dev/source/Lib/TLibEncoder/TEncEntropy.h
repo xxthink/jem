@@ -169,11 +169,7 @@ public:
   virtual Void codeKLTFlags      (TComTU &rTu, ComponentID component) = 0;
 #endif
   virtual Void codeSAOBlkParam   (SAOBlkParam& saoBlkParam, const BitDepths &bitDepths, Bool* sliceEnabled, Bool leftMergeAvail, Bool aboveMergeAvail, Bool onlyEstMergeInfo = false)    =0;
-  virtual Void estBit               (estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, ChannelType chType
-#if RDOQ_BIT_ESTIMATE_FIX_TICKET29
-    , UInt uiScanIdx
-#endif
-    ) = 0;
+  virtual Void estBit               (estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, ChannelType chType, UInt uiScanIdx) = 0;
 #if JVET_D0123_ME_CTX_LUT_BITS
   virtual Void estPuMeBit           (estPuMeBitsSbacStruct* pcEstPuMeBitsSbac) = 0;
 #endif
@@ -351,11 +347,7 @@ public:
 
   Void encodeCoeffNxN         ( TComTU &rTu, TCoeff* pcCoef, const ComponentID compID );
 
-  Void estimateBit             ( estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, ChannelType chType 
-#if RDOQ_BIT_ESTIMATE_FIX_TICKET29
-    , UInt uiScanIdx
-#endif
-    );
+  Void estimateBit             ( estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, ChannelType chType, UInt uiScanIdx);
 #if JVET_D0123_ME_CTX_LUT_BITS
   Void estimatePuMeBit        ( estPuMeBitsSbacStruct* pcMePuEstBitsSbac );
 #endif
