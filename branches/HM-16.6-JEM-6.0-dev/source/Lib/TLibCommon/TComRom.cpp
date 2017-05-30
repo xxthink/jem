@@ -55,10 +55,8 @@
 #if JVET_C0024_AMAX_BT
 UInt g_uiBlkSize[ 10 ];
 UInt g_uiNumBlk[ 10 ];
-#if JVET_C0024_AMAX_BT_FIX
 UInt g_uiPrevISlicePOC = 0;
 Bool g_bInitAMaxBT = false;
-#endif
 #endif
 
 #if VCEG_AZ08_KLT_COMMON
