@@ -101,9 +101,6 @@
 #define JVET_C0024_AMAX_BT                                1  ///< slice level adaptive maximum BT size (encoder only)
 #define JVET_C0024_FAST_MRG                               1
 #define JVET_C0024_PBINTRA_FAST                           1
-#if JVET_C0024_PBINTRA_FAST
-#define JVET_C0024_PBINTRA_FAST_FIX                       1  ///< JVET-D0077
-#endif
 #define JVET_C0024_ITSKIP                                 1  ///< skip zero row/column in inverse transform (decoder speedup)
 
 #define JVET_D0077_FAST_EXT                               1  ///< extension of exsiting fast algorithm 

@@ -1949,7 +1949,6 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
           rpcTempCU->getInterHAD() = MAX_UINT;
           if (rpcBestCU->getPredictionMode(0)==MODE_INTER && !rpcBestCU->getSlice()->isIntra())
           {
-#if JVET_C0024_PBINTRA_FAST_FIX
 #if FIX_TICKET34            
             // redundant MC process to make sure that m_pppcPredYuvBest has the correct moiton compensation prediction data
 #if JVET_E0052_DMVR
@@ -1970,16 +1969,6 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
               , m_pppcOrigYuv[uiWidthIdx][uiHeightIdx]->getStride(COMPONENT_Y)
               , m_pppcPredYuvBest[uiWidthIdx][uiHeightIdx]->getAddr(COMPONENT_Y), m_pppcPredYuvBest[uiWidthIdx][uiHeightIdx]->getStride(COMPONENT_Y)
               , rpcTempCU->getWidth(0), rpcTempCU->getHeight(0), bUseHadamard);
-#else
-            m_pcPredSearch->motionCompensation ( rpcTempCU, m_pppcPredYuvTemp[uiWidthIdx][uiHeightIdx] );
-            // use hadamard transform here
-            DistParam distParam;
-            const Bool bUseHadamard=rpcTempCU->getCUTransquantBypass(0) == 0;
-            m_pcRdCost->setDistParam(distParam, rpcTempCU->getSlice()->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA), m_pppcOrigYuv[uiWidthIdx][uiHeightIdx]->getAddr(COMPONENT_Y)
-              , m_pppcOrigYuv[uiWidthIdx][uiHeightIdx]->getStride(COMPONENT_Y)
-              , m_pppcPredYuvTemp[uiWidthIdx][uiHeightIdx]->getAddr(COMPONENT_Y), m_pppcPredYuvTemp[uiWidthIdx][uiHeightIdx]->getStride(COMPONENT_Y)
-              , rpcTempCU->getWidth(0), rpcTempCU->getHeight(0), bUseHadamard);
-#endif
             distParam.bApplyWeight = false;
 
             UInt uiSad = distParam.DistFunc(&distParam);
