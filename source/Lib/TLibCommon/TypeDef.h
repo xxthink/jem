@@ -80,7 +80,6 @@
 #define JVET_C0024_QTBT                                   1
 
 #if JVET_C0024_QTBT
-#define FIX_TICKET32                                      1  ///< Fix of ticket #32 (Initialization for INIT_LAST)
 
 #define MIN_CU_LOG2                                       2
 #if MIN_CU_LOG2==1
