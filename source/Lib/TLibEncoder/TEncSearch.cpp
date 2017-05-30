@@ -2212,14 +2212,8 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
   if( useTransformSkip ? m_pcEncCfg->getUseRDOQTS() : m_pcEncCfg->getUseRDOQ() )
 #endif
   {
-#if RDOQ_BIT_ESTIMATE_FIX_TICKET29
     COEFF_SCAN_TYPE scanType = COEFF_SCAN_TYPE(pcCU->getCoefScanIdx(uiAbsPartIdx, uiWidth, uiHeight, compID));
-#endif
-    m_pcEntropyCoder->estimateBit( m_pcTrQuant->m_pcEstBitsSbac, uiWidth, uiHeight, chType 
-#if RDOQ_BIT_ESTIMATE_FIX_TICKET29
-      , scanType
-#endif
-      );
+    m_pcEntropyCoder->estimateBit( m_pcTrQuant->m_pcEstBitsSbac, uiWidth, uiHeight, chType, scanType);
   }
 
   //--- transform and quantization ---
@@ -2573,14 +2567,8 @@ Bool TEncSearch::xIntraCodingTUBlockTM(TComYuv*    pcOrgYuv,
     if (useTransformSkip ? m_pcEncCfg->getUseRDOQTS() : m_pcEncCfg->getUseRDOQ())
 #endif
     {
-#if RDOQ_BIT_ESTIMATE_FIX_TICKET29
       COEFF_SCAN_TYPE scanType = COEFF_SCAN_TYPE(pcCU->getCoefScanIdx(uiAbsPartIdx, uiWidth, uiHeight, compID));
-#endif
-        m_pcEntropyCoder->estimateBit(m_pcTrQuant->m_pcEstBitsSbac, uiWidth, uiHeight, chType
-#if RDOQ_BIT_ESTIMATE_FIX_TICKET29
-          , scanType
-#endif
-          );
+      m_pcEntropyCoder->estimateBit(m_pcTrQuant->m_pcEstBitsSbac, uiWidth, uiHeight, chType, scanType);
     }
 
     //--- transform and quantization ---
@@ -10254,14 +10242,8 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
 
                           if ((compID != COMPONENT_Cr) && ((transformSkipModeId == 1) ? m_pcEncCfg->getUseRDOQTS() : m_pcEncCfg->getUseRDOQ()))
                           {
-#if RDOQ_BIT_ESTIMATE_FIX_TICKET29
                             COEFF_SCAN_TYPE scanType = COEFF_SCAN_TYPE(pcCU->getCoefScanIdx(uiAbsPartIdx, tuCompRect.width, tuCompRect.height, compID));
-#endif
-                              m_pcEntropyCoder->estimateBit(m_pcTrQuant->m_pcEstBitsSbac, tuCompRect.width, tuCompRect.height, toChannelType(compID)
-#if RDOQ_BIT_ESTIMATE_FIX_TICKET29
-                                , scanType
-#endif
-                                );
+                            m_pcEntropyCoder->estimateBit(m_pcTrQuant->m_pcEstBitsSbac, tuCompRect.width, tuCompRect.height, toChannelType(compID), scanType);
                           }
 
 #if RDOQ_CHROMA_LAMBDA

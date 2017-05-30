@@ -80,7 +80,6 @@
 #define JVET_C0024_QTBT                                   1
 
 #if JVET_C0024_QTBT
-#define RDOQ_BIT_ESTIMATE_FIX_TICKET29                    1  // correct RDOQ uninitialized values in case of vertical scan 
 #define FIX_TICKET32                                      1  ///< Fix of ticket #32 (Initialization for INIT_LAST)
 
 #define MIN_CU_LOG2                                       2

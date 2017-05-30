@@ -180,11 +180,7 @@ public:
   Void estPuMeBit        ( estPuMeBitsSbacStruct* pcEstPuMeBitsSbac);
 #endif
 
-  Void estBit            ( estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, ChannelType chType 
-#if RDOQ_BIT_ESTIMATE_FIX_TICKET29
-    , UInt uiScanIdx
-#endif
-    );
+  Void estBit            ( estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, ChannelType chType, UInt uiScanIdx);
 
   Void xCodePredWeightTable          ( TComSlice* pcSlice );
 
