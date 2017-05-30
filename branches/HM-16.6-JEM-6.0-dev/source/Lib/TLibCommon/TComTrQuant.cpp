@@ -9239,17 +9239,6 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
   {
     iTransformShift = std::max<Int>(0, iTransformShift);
   }
-#if JVET_C0024_QTBT && !JVET_C0024_QTBT_FIX_QUANT_TICKET25
-  Int iWHScale = 1;
-  Int iWHShift = 0;
-  Int iWHOffset = 0;
-  if ((g_aucConvertToBit[ uiWidth ] + g_aucConvertToBit[ uiHeight ] + (MIN_CU_LOG2<<1))%2 !=0)
-  {
-    iWHOffset = 64; //1<<(iWHShift-1)
-    iWHShift = 7;
-    iWHScale = 181;
-  }
-#endif
   const Bool bUseGolombRiceParameterAdaptation = pcCU->getSlice()->getSPS()->getSpsRangeExtension().getPersistentRiceAdaptationEnabledFlag();
 #if VCEG_AZ07_CTX_RESIDUALCODING
   UInt uiPrevGRParam = 0;
@@ -9311,11 +9300,7 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
 #endif
 
   const Bool   enableScalingLists             = getUseScalingList(uiWidth, uiHeight, (pcCU->getTransformSkip(uiAbsPartIdx, compID) != 0));
-#if JVET_C0024_QTBT_FIX_QUANT_TICKET25
   const Int    defaultQuantisationCoefficient = ( uiLog2BlockWidth + uiLog2BlockHeight ) & 0x01 ? ( g_quantScales[cQP.rem] * 181 ) >> 7 : g_quantScales[cQP.rem];
-#else
-  const Int    defaultQuantisationCoefficient = g_quantScales[cQP.rem];
-#endif
 #if JVET_C0024_QTBT
   const Double defaultErrorScale              = getErrScaleCoeffNoScalingList(scalingListType, (uiLog2BlockWidth-1), (uiLog2BlockHeight-1), cQP.rem);
 #else
@@ -9400,13 +9385,7 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
 
       const Int    quantisationCoefficient = (enableScalingLists) ? piQCoef   [uiBlkPos] : defaultQuantisationCoefficient;
       const Double errorScale              = (enableScalingLists) ? pdErrScale[uiBlkPos] : defaultErrorScale;
-
-#if JVET_C0024_QTBT && !JVET_C0024_QTBT_FIX_QUANT_TICKET25
-      const Int64  tmpLevel                = (Int64(abs(plSrcCoeff[ uiBlkPos ])) * quantisationCoefficient * iWHScale + iWHOffset)>>iWHShift;
-#else
       const Int64  tmpLevel                = Int64(abs(plSrcCoeff[ uiBlkPos ])) * quantisationCoefficient;
-#endif
-
       const Intermediate_Int lLevelDouble  = (Intermediate_Int)min<Int64>(tmpLevel, std::numeric_limits<Intermediate_Int>::max() - (Intermediate_Int(1) << (iQBits - 1)));
 
 #if ADAPTIVE_QP_SELECTION
@@ -11592,15 +11571,13 @@ Void TComTrQuant::setErrScaleCoeff(UInt list, UInt size, Int qp, const Int maxLo
   }
 
 #if JVET_C0024_QTBT
-#if JVET_C0024_QTBT_FIX_QUANT_TICKET25
   if( (w+h)&1 )
   {
     Int quant = ( g_quantScales[qp] * 181 ) >> 7;
     getErrScaleCoeffNoScalingList(list, w, h, qp) = dErrScale / quant / quant / (1 << DISTORTION_PRECISION_ADJUSTMENT(2 * (bitDepths.recon[channelType] - 8)));
   }
   else
-#endif
-  getErrScaleCoeffNoScalingList(list, w, h, qp) = dErrScale / g_quantScales[qp] / g_quantScales[qp] / (1 << DISTORTION_PRECISION_ADJUSTMENT(2 * (bitDepths.recon[channelType] - 8)));
+    getErrScaleCoeffNoScalingList(list, w, h, qp) = dErrScale / g_quantScales[qp] / g_quantScales[qp] / (1 << DISTORTION_PRECISION_ADJUSTMENT(2 * (bitDepths.recon[channelType] - 8)));
 #else
   getErrScaleCoeffNoScalingList(list, size, qp) = dErrScale / g_quantScales[qp] / g_quantScales[qp] / (1 << DISTORTION_PRECISION_ADJUSTMENT(2 * (bitDepths.recon[channelType] - 8)));
 #endif
