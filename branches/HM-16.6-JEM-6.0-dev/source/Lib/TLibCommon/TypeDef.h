@@ -330,12 +330,6 @@
 #else
 #define JVET_B0039_QP_FIX                                 1  ///< Recalcualtes QP to align with a HM lambda (same relation as for all intra coding is used)
 #endif
-#define FIX_TICKET36                                      1  ///< Fix of ticket #36 (number of possible QP values exceeds the defined value)
-#if FIX_TICKET36
-#define JVET_B0039_INC_NUM_QP_PROB                        52 ///< Number of total allowed positive QP values, aligned with HEVC. may need to change if more QP values are allowed
-#else
-#define JVET_B0039_INC_NUM_QP_PROB                        7  ///< Number of context is increased when more QPs are used
-#endif
 #define FIX_TICKET30                                      1  ///< Fix of ticket #30 (Use of uninitialized Cabac coder for Intra 128x128 blocks)
 #define FIX_TICKET33                                      1  ///< Fix of ticket #33 (Block level IC flag is set based on slice level IC flag)
 #define FIX_TICKET34                                      1  ///< Fix of ticket #34 (Intra-fast encoder-side decisions based on possibly incorrect obmc pred buffer)
