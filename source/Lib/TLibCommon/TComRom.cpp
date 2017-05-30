@@ -3404,16 +3404,8 @@ const Int g_quantInterDefault8x8[8*8] =
 };
 
 #if JVET_C0024_QTBT
-const UInt g_scalingListSize   [SCALING_LIST_SIZE_NUM] = {4,16,64,256,1024,4096
-#if JVET_C0024_QTBT_FIX_QUANT_TICKET25
-  , 16384
-#endif
-};
-const UInt g_scalingListSizeX  [SCALING_LIST_SIZE_NUM] = {2, 4, 8, 16,  32, 64
-#if JVET_C0024_QTBT_FIX_QUANT_TICKET25
-  , 128
-#endif
-};
+const UInt g_scalingListSize   [SCALING_LIST_SIZE_NUM] = {4,16,64,256,1024,4096,16384};
+const UInt g_scalingListSizeX  [SCALING_LIST_SIZE_NUM] = {2, 4, 8, 16,  32, 64, 128};
 #else
 const UInt g_scalingListSize   [SCALING_LIST_SIZE_NUM] = {16,64,256,1024
 #if COM16_C806_T64

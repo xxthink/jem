@@ -80,7 +80,6 @@
 #define JVET_C0024_QTBT                                   1
 
 #if JVET_C0024_QTBT
-#define JVET_C0024_QTBT_FIX_QUANT_TICKET25                1  // JVET-D0025
 #define RDOQ_BIT_ESTIMATE_FIX_TICKET29                    1  // correct RDOQ uninitialized values in case of vertical scan 
 #define FIX_TICKET32                                      1  ///< Fix of ticket #32 (Initialization for INIT_LAST)
 
@@ -851,9 +850,7 @@ enum ScalingListSize
 #if COM16_C806_T64
   SCALING_LIST_64x64,
 #endif
-#if JVET_C0024_QTBT_FIX_QUANT_TICKET25
   SCALING_LIST_128x128,
-#endif
   SCALING_LIST_SIZE_NUM
 };
 
