@@ -3332,7 +3332,6 @@ Void TComAdaptiveLoopFilter::setAlfCtrlFlags(ALFParam *pAlfParam, TComDataCU *pc
 #endif
 }
 
-#if FIX_TICKET12
 Bool TComAdaptiveLoopFilter::refreshAlfTempPred( NalUnitType naluType , Int poc )
 {
   static bool pendingRefresh = false;
@@ -3359,7 +3358,6 @@ Bool TComAdaptiveLoopFilter::refreshAlfTempPred( NalUnitType naluType , Int poc 
 
   return( refresh );
 }
-#endif
 
 #endif
 
