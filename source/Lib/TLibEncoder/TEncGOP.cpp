@@ -1446,14 +1446,12 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     {
       Int refLayer=pcSlice->getDepth();
       if( refLayer>9) refLayer=9; // Max layer is 10  
-#if JVET_C0024_AMAX_BT_FIX
       if( g_bInitAMaxBT && pcSlice->getPOC() > g_uiPrevISlicePOC )
       {
         ::memset( g_uiBlkSize, 0, sizeof(g_uiBlkSize) );
         ::memset( g_uiNumBlk, 0, sizeof(g_uiNumBlk) );
         g_bInitAMaxBT = false;
       }
-#endif
       if (refLayer >= 0 && g_uiNumBlk[refLayer] != 0) 
       {
         Double dBlkSize = sqrt((Double)g_uiBlkSize[refLayer]/g_uiNumBlk[refLayer]);
@@ -1469,28 +1467,21 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
         {
           pcSlice->setMaxBTSize(128>MAX_BT_SIZE_INTER? MAX_BT_SIZE_INTER: 128);
         }
-#if !JVET_C0024_AMAX_BT_FIX
-        printf("\n previous layer=%d, avg blk size = %3.2f, current max BT set to %d\n", refLayer, dBlkSize, pcSlice->getMaxBTSize());
-#endif
 
         g_uiBlkSize[refLayer] = 0;
         g_uiNumBlk[refLayer] = 0;
       }
     }
-#if JVET_C0024_AMAX_BT_FIX
     else
     {
-#if JVET_C0024_AMAX_BT_FIX_TICKET23
       if( g_bInitAMaxBT  )
       {
         ::memset( g_uiBlkSize, 0, sizeof(g_uiBlkSize) );
         ::memset( g_uiNumBlk, 0, sizeof(g_uiNumBlk) );
       }
-#endif
       g_uiPrevISlicePOC = pcSlice->getPOC();
       g_bInitAMaxBT = true;
     }
-#endif
 #endif
 
 
