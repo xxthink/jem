@@ -1070,9 +1070,6 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
       }
 
       m_pcRateCtrl->setRCQP( estQP );
-#if ADAPTIVE_QP_SELECTION && !FIX_TICKET45
-      pCtu->getSlice()->setSliceQpBase( estQP );
-#endif
     }
 
     // run CTU trial encoder
