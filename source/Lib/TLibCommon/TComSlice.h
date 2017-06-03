@@ -1648,9 +1648,7 @@ private:
   Bool                       m_enableTMVPFlag;
 
   SliceType                  m_encCABACTableIdx;           // Used to transmit table selection across slices.
-#if PARALLEL_ENCODING_RAS_CABAC_INIT_PRESENT  
   NalUnitType                m_eLastNALUType;
-#endif
 #if VCEG_AZ06_IC
   Bool                       m_bApplyIC;
 #endif
