@@ -152,7 +152,7 @@ static inline const Char* getName(TComCodingStatisticsType name)
     "CABAC_BITS__MERGE_INDEX",
     "CABAC_BITS__MVP_IDX",
     "CABAC_BITS__SPLIT_FLAG",
-#if JVET_C0024_QTBT && JVET_C0046_FIX_DECODER_DEBUG_BIT_STATISTICS
+#if JVET_C0024_QTBT 
     "CABAC_BITS__BTSPLIT_FLAG",
 #endif
     "CABAC_BITS__PART_SIZE",
