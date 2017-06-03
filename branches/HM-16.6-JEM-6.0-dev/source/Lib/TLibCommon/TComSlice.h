@@ -1912,9 +1912,7 @@ public:
 #if VCEG_AZ07_INIT_PREVFRAME
   Void      setCtxMapQPIdxforStore  (Int iQPIdx)                                     { m_iCtxQPIdxStore = iQPIdx; }  
   Int       getCtxMapQPIdxforStore  ()     const                                     {  return  m_iCtxQPIdxStore; }
-#if VCEG_AZ07_INIT_PREVFRAME_FIX
   Void      updateStatsGlobal();
-#endif
 #endif
 #endif
 

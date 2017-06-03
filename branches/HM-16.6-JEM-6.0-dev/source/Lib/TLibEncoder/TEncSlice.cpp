@@ -1449,9 +1449,7 @@ Void TEncSlice::encodeSlice   ( TComPic* pcPic, TComOutputBitstream* pcSubstream
     pEncBin->freeMemoryforBinStrings();
   }
 #endif
-#if VCEG_AZ07_INIT_PREVFRAME_FIX
   pcSlice->updateStatsGlobal();
-#endif
 }
 
 Void TEncSlice::calculateBoundingCtuTsAddrForSlice(UInt &startCtuTSAddrSlice, UInt &boundingCtuTSAddrSlice, Bool &haveReachedTileBoundary,

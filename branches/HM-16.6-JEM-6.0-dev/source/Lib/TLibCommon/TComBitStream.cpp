@@ -427,11 +427,7 @@ TComStats::TComStats()
 #endif
     }
 #if VCEG_AZ07_INIT_PREVFRAME
-#if VCEG_AZ07_INIT_PREVFRAME_FIX
     m_uiLastIPOC = 0;
-#else
-    m_uiLastIPOC = -1;
-#endif
     for(Int i = 0; i < 2; i++)
     {
       for(Int j=0; j< NUM_QP_PROB; j++)  
