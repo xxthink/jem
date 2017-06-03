@@ -150,8 +150,6 @@
 #define VCEG_AZ08_USE_SSE_TMP_SAD                         1  ///< (default 1) If defined, will calculate the template difference use intel SSE 
 #endif
 #endif
-
-#define VCEG_AZ08_INTER_KLT_MV_BUGFIXED                   1  /// Fixed the bug related with mv (2016.2.29)
 #endif
 
 

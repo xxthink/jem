@@ -12651,9 +12651,6 @@ Void TComTrQuant::candidateSearch(TComDataCU *pcCU, UInt uiPartAddr, UInt uiBlkS
     UInt uiTarDepth = g_aucConvertToBit[uiBlkSize];
     Pel **tarPatch = m_pppTarPatch[uiTarDepth];
     Int      iRefIdx[2] = { -1, -1 };
-#if !VCEG_AZ08_INTER_KLT_MV_BUGFIXED
-    TComMv      cMvs[2];
-#endif
     UInt uiTargetCandiNum = g_uiDepth2MaxCandiNum[uiTarDepth];
     const Int channelBitDepth = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
     //Initialize the library for saving the best candidates
@@ -12675,11 +12672,7 @@ Void TComTrQuant::candidateSearch(TComDataCU *pcCU, UInt uiPartAddr, UInt uiBlkS
         iRefIdx[eRefPicList] = pcCU->getCUMvField(eRefPicList)->getRefIdx(uiPartAddr);
         if (iRefIdx[eRefPicList] >= 0)
         {
-#if VCEG_AZ08_INTER_KLT_MV_BUGFIXED
             cMvRefs[filledNum] = pcCU->getCUMvField(eRefPicList)->getMv(uiPartAddr);
-#else
-            cMvRefs[filledNum] = cMvs[eRefPicList];
-#endif
             iRefPOCs[filledNum] = pcCU->getSlice()->getRefPic(eRefPicList, iRefIdx[eRefPicList])->getPOC();
             filledNum++;
         }
@@ -12883,10 +12876,8 @@ Void TComTrQuant::searchCandidateFraBasedOnInteger(TComDataCU *pcCU, Pel **tarPa
 Void TComTrQuant::xSetSearchRange(TComDataCU* pcCU, TComMv& cMvPred, Int iSrchRng, TComMv& rcMvSrchRngLT, TComMv& rcMvSrchRngRB)
 {
     Int  iMvShift = 2;
-#if VCEG_AZ08_INTER_KLT_MV_BUGFIXED
 #if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
     iMvShift += VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE;
-#endif
 #endif
     TComMv cTmpMvPred = cMvPred;
     pcCU->clipMv(cTmpMvPred);
