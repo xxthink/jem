@@ -282,7 +282,6 @@
 #define COM16_C983_RSAF_ESTIMATION_MODE_FULL              1  ///< Full/fast estimation of the possiblity to hide the RSAF flag
 #define JVET_B0041_SIMPLIFICATION_1A                      1  ///< Simplidication by avoiding RSAF-enabled TU pass if RSAF-disabled pass evaluate to CBF==0 
 #define JVET_B0041_SIMPLIFICATION_2                       1  ///< Simplidication by cancelling TU split check using cbf value and result of hiding procedure for non-split TU.
-#define COM16_C983_RSAF_S_TICKET14                        1
 #endif                                                       
 
 #define COM16_C1044_NSST                                  1  ///< Mode dependent non-separable secondary transforms
