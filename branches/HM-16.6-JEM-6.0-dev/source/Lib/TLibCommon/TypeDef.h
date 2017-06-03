@@ -330,15 +330,6 @@
 #else
 #define JVET_B0039_QP_FIX                                 1  ///< Recalcualtes QP to align with a HM lambda (same relation as for all intra coding is used)
 #endif
-#define FIX_TICKET30                                      1  ///< Fix of ticket #30 (Use of uninitialized Cabac coder for Intra 128x128 blocks)
-#define FIX_TICKET33                                      1  ///< Fix of ticket #33 (Block level IC flag is set based on slice level IC flag)
-#define FIX_TICKET34                                      1  ///< Fix of ticket #34 (Intra-fast encoder-side decisions based on possibly incorrect obmc pred buffer)
-#define FIX_TICKET37                                      1  ///< Fix of ticket #37 (incorrect m_pppcPredYuvBest buffer copy)
-#define FIX_TICKET39                                      1  ///< Fix of ticket #39 (encoder bug of delta QP)
-#define FIX_TICKET40                                      1  ///< Fix of ticket #40 (ALF crash when image height is greater than image width)
-#define FIX_TICKET42                                      1  ///< Fix of ticket #42 (CTU bits/distortion calculation mistake for I slice when QTBT is enabled)
-#define FIX_TICKET43                                      1  ///< Fix of ticekt #43 (Different coding performance when D0127 is on/off)
-#define FIX_TICKET45                                      1  ///< Fix of ticket #45 (Console output error of nQP when LCU level rate control is enabled)
 
 ///////////////////////////////////////////////////////////
 // KTA tools section end

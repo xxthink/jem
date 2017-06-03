@@ -5144,17 +5144,10 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 
 #if JVET_D0127_REDUNDANCY_REMOVAL
 #if JVET_C0024_QTBT
-  Bool NSSTFlag = (pcCU->getROTIdx(CHANNEL_TYPE_LUMA, 0) == 0)
-#if FIX_TICKET43
-    || (uiWidth > 64 || uiHeight > 64)
-#endif
-    ;
+  Bool NSSTFlag = (pcCU->getROTIdx(CHANNEL_TYPE_LUMA, 0) == 0) || (uiWidth > 64 || uiHeight > 64);
   Bool NSSTSaveFlag = (pcCU->getROTIdx(CHANNEL_TYPE_LUMA, 0) == 0)
 #if COM16_C1046_PDPC_INTRA
       && (pcCU->getPDPCIdx(0) == 0)
-#endif
-#if COM16_C806_EMT && !FIX_TICKET43
-      && (pcCU->getEmtCuFlag(0) == 0)
 #endif
       ;
 #else
