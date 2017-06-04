@@ -6694,11 +6694,7 @@ Void TComTrQuant::xQuant(       TComTU       &rTu,
     }
 #endif
 
-#if JVET_C0024_ENCODER_OVERFLOW_FIX
     const Int64 iAdd   = (Int64)(pcCU->getSlice()->getSliceType()==I_SLICE ? 171 : 85) << ((Int64)iQBits-9);
-#else
-    const Int iAdd   = (pcCU->getSlice()->getSliceType()==I_SLICE ? 171 : 85) << (iQBits-9);
-#endif
     const Int qBits8 = iQBits - 8;
 
     for( Int uiBlockPos = 0; uiBlockPos < uiWidth*uiHeight; uiBlockPos++ )
@@ -6721,11 +6717,7 @@ Void TComTrQuant::xQuant(       TComTU       &rTu,
 
 #if JVET_C0024_QTBT
       const TCoeff quantisedMagnitude = TCoeff((tmpLevel * iWHScale + iAdd ) >> iQBits);
-#if JVET_C0024_ENCODER_OVERFLOW_FIX
     deltaU[uiBlockPos] = (TCoeff)((tmpLevel * iWHScale - ((Int64)quantisedMagnitude<<iQBits) )>> qBits8);
-#else
-    deltaU[uiBlockPos] = (TCoeff)((tmpLevel * iWHScale - (quantisedMagnitude<<iQBits) )>> qBits8);
-#endif
 #else
       const TCoeff quantisedMagnitude = TCoeff((tmpLevel + iAdd ) >> iQBits);
       deltaU[uiBlockPos] = (TCoeff)((tmpLevel - (quantisedMagnitude<<iQBits) )>> qBits8);
@@ -6808,11 +6800,7 @@ Bool TComTrQuant::xNeedRDOQ( TComTU &rTu, TCoeff * pSrc, const ComponentID compI
 
   // iAdd is different from the iAdd used in normal quantization
 #if JVET_C0024_QTBT
-#if JVET_C0024_ENCODER_OVERFLOW_FIX
   const Int64 iAdd   = (Int64)(compID == COMPONENT_Y ? 171 : 256) << (iQBits-9);
-#else
-  const Int64 iAdd   = (compID == COMPONENT_Y ? 171 : 256) << (iQBits-9);
-#endif
 #else
   const Int iAdd   = (compID == COMPONENT_Y ? 171 : 256) << (iQBits-9);
 #endif
@@ -11889,11 +11877,7 @@ Void TComTrQuant::transformSkipQuantOneSample(TComTU &rTu, const ComponentID com
   const Int iQBits = QUANT_SHIFT + cQP.per + iTransformShift;
   // QBits will be OK for any internal bit depth as the reduction in transform shift is balanced by an increase in Qp_per due to QpBDOffset
 
-#if JVET_C0024_ENCODER_OVERFLOW_FIX
   const Int iAdd = (Int64)( bUseHalfRoundingPoint ? 256 : (pcCU->getSlice()->getSliceType() == I_SLICE ? 171 : 85) ) << ((Int64)iQBits - 9);
-#else
-  const Int iAdd = ( bUseHalfRoundingPoint ? 256 : (pcCU->getSlice()->getSliceType() == I_SLICE ? 171 : 85) ) << (iQBits - 9);
-#endif
 
   TCoeff transformedCoefficient;
 
