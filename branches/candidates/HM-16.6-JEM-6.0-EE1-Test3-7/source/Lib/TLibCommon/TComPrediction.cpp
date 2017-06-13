@@ -1205,7 +1205,7 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
     const Pel *ptrSrc = getPredictorPtr( compID, bUseFilteredPredSamples );
 #endif
 
-#if MOD_PDPC
+#if MOD_PDPC || EE1_TEST7
     if( isLuma(compID) )
     {
       if( pcCU->getROTIdx(CHANNEL_TYPE_LUMA, uiAbsPartIdx) )

@@ -4941,7 +4941,7 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
 #if QTBT_NSST
   const Int iNonZeroCoeffThr = isLuma(rpcTempCU->getTextType()) ? NSST_SIG_NZ_LUMA + (rpcTempCU->getSlice()->isIntra() ? 0 : NSST_SIG_NZ_CHROMA) : NSST_SIG_NZ_CHROMA;
 
-#if MOD_PDPC
+#if MOD_PDPC || EE1_TEST7
   if ( ucNsstIdx && iNonZeroCoeffNonTs <= iNonZeroCoeffThr )
   {
     Bool isMDIS = false;

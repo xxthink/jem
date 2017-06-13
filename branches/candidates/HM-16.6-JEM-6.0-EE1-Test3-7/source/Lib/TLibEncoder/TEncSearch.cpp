@@ -5449,8 +5449,6 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
       numOfPassesPDPC = 1;
       numModesForFullRD = g_aucIntraModeNumFast_UseMPM[uiWIdx][uiHIdx];
     }
-
-    Int initNumModesForFullRD = numModesForFullRD;
 #else
     Int numModesForFullRD = g_aucIntraModeNumFast_UseMPM[uiWIdx][uiHIdx];
 #endif
@@ -6130,22 +6128,13 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #endif
       ) 
     {                            
-#if MOD_PDPC
-      Bool doFullRD = false;
-#endif
       if(CandHadList[2] > (Double)pcCU->getInterHAD()*PBINTRA_RATIO) 
       {
         numModesForFullRD = 2;
-#if MOD_PDPC
-        doFullRD = true;
-#endif
       }
       if(CandHadList[1] > (Double)pcCU->getInterHAD()*PBINTRA_RATIO) 
       {
         numModesForFullRD = 1;
-#if MOD_PDPC
-        doFullRD = true;
-#endif
       }
       if(CandHadList[0] > (Double)pcCU->getInterHAD()*PBINTRA_RATIO) 
       {
@@ -6157,12 +6146,6 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         return ;
 #endif
       }
-#if MOD_PDPC
-      if( doFullRD )
-      {
-         numModesForFullRD = initNumModesForFullRD;
-      }
-#endif
     }           
 #endif
 

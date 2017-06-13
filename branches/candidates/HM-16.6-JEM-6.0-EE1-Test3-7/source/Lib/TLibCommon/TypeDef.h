@@ -70,13 +70,14 @@
 
 #if EE1_TEST6
 #define RSAF_FLAG                                         1  // ARSS is signaled explicitly, no hiding
-#define RSAF_COEFF_TH                                     5  // coeff threshold to signal ARSS flag
+#define RSAF_COEFF_TH                                     3  // coeff threshold to signal ARSS flag
 #endif
 
 #if EE1_TEST7
 #define MOD_PDPC                                          0  // replace ARSS encoder RDs with PDPC, F0054
 #define DISABLE_RSAF                                      1  // disable ARSS
 #define PDPC_FORCE_PLANAR                                 1  // no PDPC flag is signaled for Planar, and PDPC index is inferred eqaul to 1
+#define MOD_PDPC_PLANAR_PARAM                             1  // new PDPC parameters for planar
 #endif
 
 #if MOD_PDPC
@@ -88,6 +89,8 @@
 #define MIN_PDPC_COEFF_THRESHOLD                          1  // coeff threshold to signal PDPC flag
 #define MIN_PDPC_BLOCK_THRESHOLD                          64 // min PDPC block area
 #define RD_COMPLEXITY                                     0  // different complexity setting
+
+#define MOD_PDPC_PLANAR_PARAM                             1  // new PDPC parameters for planar
 #endif
 
 //! \ingroup TLibCommon
