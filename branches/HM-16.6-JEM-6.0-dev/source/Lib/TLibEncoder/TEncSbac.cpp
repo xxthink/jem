@@ -1957,7 +1957,7 @@ Void TEncSbac::codeTransformSkipFlags (TComTU &rTu, ComponentID component )
     return;
   }
 
-#if JVET_F0031_RMV_REDUNDANT_TRSKIP
+#if JVET_F0031_RMV_REDUNDANT_TRSKIP && COM16_C806_EMT
   if (isLuma(component) && pcCU->getEmtCuFlag(uiAbsPartIdx))
   {
     return;
