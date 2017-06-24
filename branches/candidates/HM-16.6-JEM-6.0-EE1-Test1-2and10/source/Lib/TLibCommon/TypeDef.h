@@ -53,7 +53,7 @@
 #define EE1_TEST1                                         0   //< Set to 1 for EE1 test1, UW Planar, PDPC off and full ARSS
 #define EE1_TEST2                                         0   //< Set to 1 for EE1 test2, UW Planar, full PDPC and ARSS off
 #define EE1_TEST2_1                                       0   //< Set to 1 for EE1 test2.1, UW Planar, full PDPC, PDPC-L and ARSS off
-#define EE1_TEST10                                        1   //< Set to 1 for EE1 test10, UW Planar, full PDPC and constrained ARSS with explicit ARSS filter flag
+#define EE1_TEST10                                        0   //< Set to 1 for EE1 test10, UW Planar, full PDPC and constrained ARSS with explicit ARSS filter flag
 #define EE1_TEST10_1                                      0   //< Set to 1 for EE1 test10.1, UW Planar, full PDPC, PDPC-L and constrained ARSS with explicit ARSS filter flag
 
 #if EE1_TEST1
@@ -136,7 +136,7 @@
 #if F0054_PDPCL
 #define MIN_PDPC_COEFF_THRESHOLD                          1  // coeff threshold to signal PDPC flag
 #define SECOND_RD_COEF_CHECK                              1  // perform second RD check for PDPC mode that fails coef check
-#define MIN_PDPC_BLOCK_THRESHOLD                          64 // min PDPC block area
+#define MIN_PDPC_BLOCK_THRESHOLD                          32 // min PDPC block area
 #endif
 
 #if E0068_UW_PLANAR || F0104_W66
