@@ -785,6 +785,23 @@ Void TDecSbac::parsePDPCIdx(TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth)
   Int iNumberOfPassesPDPC = 1;
   if (pcCU->getSlice()->getSliceType() == I_SLICE) iNumberOfPassesPDPC = 2;
   else iNumberOfPassesPDPC = 2;
+
+#if F0054_PDPCL
+  UInt blkSize = pcCU->getWidth(uiAbsPartIdx) * pcCU->getHeight(uiAbsPartIdx); 
+
+  if( blkSize < MIN_PDPC_BLOCK_THRESHOLD )
+  {
+    iNumberOfPassesPDPC = 1;
+  }
+
+#if EE1_PDPC_INTRA_FOR_OTHER_MODE // NEW
+  if (pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx) == PLANAR_IDX || pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx) == VDIA_IDX)
+  {
+    iNumberOfPassesPDPC = 1;
+  }
+#endif
+#endif
+
   if (iNumberOfPassesPDPC > 1) // for only 1 pass no signaling is needed 
   {
     if (iNumberOfPassesPDPC > 2)  // 3 or 4
@@ -3769,7 +3786,11 @@ Void TDecSbac::parseRsafFlag( TComDataCU* pcCU, UInt absPartIdx, Int numNonZeroC
   if( pcCU->isIntra(absPartIdx) && pcCU->isModeAvailableForRsaf(intraMode, width, height) && blkSize <= 1024 && blkSize >= 64 )
 #endif
   {
-    Int ctx = Int(TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, intraMode, width, height, pcCU->getSlice()->getSPS()->getChromaFormatIdc(), pcCU->getSlice()->getSPS()->getSpsRangeExtension().getIntraSmoothingDisabledFlag(), true));
+    Int ctx = Int(TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, intraMode, width, height, pcCU->getSlice()->getSPS()->getChromaFormatIdc(), pcCU->getSlice()->getSPS()->getSpsRangeExtension().getIntraSmoothingDisabledFlag()
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+      , true
+#endif
+      ));
 
     UInt rsafFlag;
     m_pcTDecBinIf->decodeBin( rsafFlag, m_cRsafFlagSCModel.get(0, 0, ctx) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__EMT_TU_INDX) );

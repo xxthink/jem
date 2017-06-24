@@ -1133,8 +1133,8 @@ Void TDecEntropy::decodeChromaQpAdjustment( TComDataCU* pcCU, UInt uiAbsPartIdx 
 
 
 //! decode coefficients
-#if RSAF_FLAG
-Void TDecEntropy::decodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool& bCodeDQP, Bool& isChromaQpAdjCoded, Int& numNonZeroCoeff )
+#if F0054_PDPCL || RSAF_FLAG
+Void TDecEntropy::decodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool& bCodeDQP, Bool& isChromaQpAdjCoded, Int& numNonZeroCoeffLuma )
 #else
 Void TDecEntropy::decodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool& bCodeDQP, Bool& isChromaQpAdjCoded )
 #endif
@@ -1228,8 +1228,8 @@ Void TDecEntropy::decodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
   Int bCbfCU = pcCU->getSlice()->isIntra() ? (isLuma(pcCU->getTextType()) ? pcCU->getCbf(uiAbsPartIdx, COMPONENT_Y)
     : (pcCU->getCbf(uiAbsPartIdx, COMPONENT_Cb) || pcCU->getCbf(uiAbsPartIdx, COMPONENT_Cr) )): pcCU->getQtRootCbf(uiAbsPartIdx);
 #else
-#if RSAF_FLAG
-  numNonZeroCoeff = 0;
+#if F0054_PDPCL || RSAF_FLAG
+  numNonZeroCoeffLuma = 0;
 #endif
   Int iNonZeroCoeff = 0;
   const UInt uiFirstComp = isLuma(pcCU->getTextType()) ? COMPONENT_Y : COMPONENT_Cb;
@@ -1245,12 +1245,12 @@ Void TDecEntropy::decodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
     if( !pcCU->getTransformSkip( uiAbsPartIdx, compID) )
 #endif
-#if RSAF_FLAG
+#if F0054_PDPCL || RSAF_FLAG
     {
       iNonZeroCoeff += countNonZeroCoeffs(pcCoef, uiWidth * uiHeight);
       if( isLuma(compID) )
       {
-        numNonZeroCoeff = iNonZeroCoeff;
+        numNonZeroCoeffLuma = iNonZeroCoeff;
       }
     }
 #else
@@ -1275,6 +1275,19 @@ Void TDecEntropy::decodeCoeff( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
     , iNonZeroCoeffNonTs
 #endif
     );
+#endif
+#if F0054_PDPCL
+  if( isLuma(pcCU->getTextType()) )
+  {
+    if( numNonZeroCoeffLuma > MIN_PDPC_COEFF_THRESHOLD )
+    {
+      decodePDPCIdx(pcCU, uiAbsPartIdx, uiDepth);
+    }
+    else
+    {
+      pcCU->setPDPCIdxSubParts(0, uiAbsPartIdx, uiDepth);
+    }
+  }
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
 #if JVET_C0024_QTBT

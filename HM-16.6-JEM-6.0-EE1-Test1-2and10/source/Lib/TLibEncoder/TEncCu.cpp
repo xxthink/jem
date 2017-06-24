@@ -3613,7 +3613,7 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
   m_pcEntropyCoder->encodeMPIIdx(pcCU, uiAbsPartIdx);
 #endif   
 #if COM16_C1046_PDPC_INTRA
-#if !EE1_PDPC_INTRA_FOR_OTHER_MODE
+#if !EE1_PDPC_INTRA_FOR_OTHER_MODE && !F0054_PDPCL
   m_pcEntropyCoder->encodePDPCIdx(pcCU, uiAbsPartIdx);
 #endif
 #endif  
@@ -3649,7 +3649,7 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 
   // prediction Info ( Intra : direction mode, Inter : Mv, reference idx )
   m_pcEntropyCoder->encodePredInfo( pcCU, uiAbsPartIdx );
-#if EE1_PDPC_INTRA_FOR_OTHER_MODE
+#if EE1_PDPC_INTRA_FOR_OTHER_MODE && !F0054_PDPCL
   if (isLuma(pcCU->getTextType()))
   {
     if ((pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx) != PLANAR_IDX) && (pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx) != VDIA_IDX))
@@ -3673,7 +3673,7 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
   Int iNonZeroCoeffNonTs;
 #endif
-#if RSAF_FLAG
+#if F0054_PDPCL || RSAF_FLAG
   Int numNonZeroCoeff = 0;
 #endif
   m_pcEntropyCoder->encodeCoeff( pcCU, uiAbsPartIdx, uiDepth, bCodeDQP, codeChromaQpAdj
@@ -3683,7 +3683,7 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
     , iNonZeroCoeffNonTs
 #endif
-#if RSAF_FLAG
+#if F0054_PDPCL || RSAF_FLAG
   , numNonZeroCoeff
 #endif
     );
@@ -4799,9 +4799,22 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
   Pel resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE];
 #endif
 
+#if F0054_PDPCL
+  Bool modeSelected = false;
+#endif
 #if JVET_C0024_QTBT
   if (isLuma(rpcBestCU->getTextType()))
   {
+#if F0054_PDPCL                           
+  UInt uiBlkSize = rpcBestCU->getWidth(0)*rpcBestCU->getHeight(0);
+
+  if ( (uiBlkSize>=MIN_PDPC_BLOCK_THRESHOLD) || (rpcTempCU->getPDPCIdx(0)==0) )
+  {
+#endif
+
+#if F0054_PDPCL
+    modeSelected=
+#endif
   m_pcPredSearch->estIntraPredLumaQT( rpcTempCU, m_pppcOrigYuv[uiWIdx][uiHIdx], m_pppcPredYuvTemp[uiWIdx][uiHIdx], m_pppcResiYuvTemp[uiWIdx][uiHIdx], m_pppcRecoYuvTemp[uiWIdx][uiHIdx], 
 #else
   m_pcPredSearch->estIntraPredLumaQT( rpcTempCU, m_ppcOrigYuv[uiDepth], m_ppcPredYuvTemp[uiDepth], m_ppcResiYuvTemp[uiDepth], m_ppcRecoYuvTemp[uiDepth], 
@@ -4828,6 +4841,13 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
 #endif
 #if JVET_C0024_QTBT
   }
+#if F0054_PDPCL
+  }
+  else
+  {
+    modeSelected = true;
+  }
+#endif
   }
   if (rpcBestCU->getPic()->getChromaFormat()!=CHROMA_400 
     && (isChroma(rpcBestCU->getTextType()) || !rpcBestCU->getSlice()->isIntra()))
@@ -4846,7 +4866,10 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
       DEBUG_STRING_PASS_INTO(sTest) 
       );
   }
-
+#if F0054_PDPCL
+  if( (!modeSelected && rpcTempCU->getPDPCIdx(0)==1) || (rpcTempCU->getPDPCIdx(0)==0) )
+  {
+#endif
   m_pcEntropyCoder->resetBits();
 
   if ( rpcTempCU->getSlice()->getPPS()->getTransquantBypassEnableFlag())
@@ -4865,7 +4888,7 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
 #endif 
 
 #if COM16_C1046_PDPC_INTRA
-#if !EE1_PDPC_INTRA_FOR_OTHER_MODE
+#if !EE1_PDPC_INTRA_FOR_OTHER_MODE && !F0054_PDPCL
   m_pcEntropyCoder->encodePDPCIdx(rpcTempCU, 0, true);
 #endif
 #endif
@@ -4875,7 +4898,7 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
   m_pcEntropyCoder->encodePartSize( rpcTempCU, 0, uiDepth, true );
 #endif
   m_pcEntropyCoder->encodePredInfo( rpcTempCU, 0 );
-#if EE1_PDPC_INTRA_FOR_OTHER_MODE && COM16_C1046_PDPC_INTRA
+#if EE1_PDPC_INTRA_FOR_OTHER_MODE && COM16_C1046_PDPC_INTRA && !F0054_PDPCL
   if (isLuma(rpcBestCU->getTextType()))
   {
     if ((rpcTempCU->getIntraDir(CHANNEL_TYPE_LUMA, 0) != PLANAR_IDX) && (rpcTempCU->getIntraDir(CHANNEL_TYPE_LUMA, 0) != VDIA_IDX))
@@ -4901,8 +4924,8 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
   Int   iNonZeroCoeffNonTs;
 #endif
-#if RSAF_FLAG
-  Int numNonZeroCoeff = 0;
+#if F0054_PDPCL || RSAF_FLAG
+  Int numNonZeroCoeffLuma = 0;
 #endif
   Bool bCodeDQP = getdQPFlag();
   Bool codeChromaQpAdjFlag = getCodeChromaQpAdjFlag();
@@ -4913,15 +4936,15 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
     , iNonZeroCoeffNonTs
 #endif
-#if RSAF_FLAG
-    , numNonZeroCoeff
+#if F0054_PDPCL || RSAF_FLAG
+    , numNonZeroCoeffLuma
 #endif
     );
 
 #if RSAF_FLAG
-  m_pcEntropyCoder->encodeRsafFlag( rpcTempCU, 0, numNonZeroCoeff );
+  m_pcEntropyCoder->encodeRsafFlag( rpcTempCU, 0, numNonZeroCoeffLuma );
 
-  if( isLuma( rpcTempCU->getTextType() ) && rpcTempCU->getLumaIntraFilter(0) && numNonZeroCoeff < RSAF_COEFF_TH )
+  if( isLuma( rpcTempCU->getTextType() ) && rpcTempCU->getLumaIntraFilter(0) && numNonZeroCoeffLuma < RSAF_COEFF_TH )
   {
     rpcTempCU->getTotalCost() = MAX_DOUBLE;
   }
@@ -4959,7 +4982,15 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
 #if !JVET_C0024_DELTA_QP_FIX
   xCheckDQP( rpcTempCU );
 #endif
-
+#if F0054_PDPCL
+  if( isLuma(rpcTempCU->getTextType()) )
+  {
+    if( rpcTempCU->getPDPCIdx(0) && numNonZeroCoeffLuma <= MIN_PDPC_COEFF_THRESHOLD )
+    {
+      rpcTempCU->getTotalCost() = MAX_DOUBLE;
+    }
+  }
+#endif
   cost = rpcTempCU->getTotalCost();
 
 #if JVET_C0024_QTBT
@@ -4968,6 +4999,9 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
   xCheckBestMode(rpcBestCU, rpcTempCU, uiDepth DEBUG_STRING_PASS_INTO(sDebug) DEBUG_STRING_PASS_INTO(sTest));
 #if JVET_C0024_QTBT
   rpcTempCU->getInterHAD() = uiHAD;
+#endif
+#if F0054_PDPCL
+  }
 #endif
 }
 

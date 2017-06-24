@@ -322,7 +322,7 @@ private:
 
 public:
 
-#if RSAF_FLAG
+#if F0054_PDPCL || RSAF_FLAG
   Void decodeCoeff             ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool& bCodeDQP, Bool& isChromaQpAdjCoded, Int& numNonZeroCoeff );
 #else
   Void decodeCoeff             ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool& bCodeDQP, Bool& isChromaQpAdjCoded );
