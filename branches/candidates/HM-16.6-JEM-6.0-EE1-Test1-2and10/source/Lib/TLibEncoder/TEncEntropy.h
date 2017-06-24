@@ -351,7 +351,7 @@ public:
 #if JVET_C0045_C0053_NO_NSST_FOR_TS
     , Int& iNonZeroCoeffNonTs
 #endif
-#if RSAF_FLAG
+#if F0054_PDPCL || RSAF_FLAG
   , Int& numNonZeroCoeff
 #endif
     );

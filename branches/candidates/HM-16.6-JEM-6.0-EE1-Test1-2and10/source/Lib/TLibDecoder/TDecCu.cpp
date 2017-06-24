@@ -884,7 +884,7 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
 #if VCEG_AZ05_INTRA_MPI
   m_pcEntropyDecoder->decodeMPIIdx(pcCU, uiAbsPartIdx, uiDepth);
 #endif
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !F0054_PDPCL
 #if !EE1_PDPC_INTRA_FOR_OTHER_MODE
   m_pcEntropyDecoder->decodePDPCIdx(pcCU, uiAbsPartIdx, uiDepth);
 #endif
@@ -935,7 +935,7 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
 #else
   m_pcEntropyDecoder->decodePredInfo( pcCU, uiAbsPartIdx, uiDepth, m_ppcCU[uiDepth]);
 #endif
-#if EE1_PDPC_INTRA_FOR_OTHER_MODE
+#if EE1_PDPC_INTRA_FOR_OTHER_MODE && !F0054_PDPCL
   if (isLuma(pcCU->getTextType()))
   {
     if (((pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx) != PLANAR_IDX) && (pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx) != VDIA_IDX)))
@@ -951,15 +951,18 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
   m_pcEntropyDecoder->decodeICFlag( pcCU, uiAbsPartIdx, uiDepth );
 #endif
   // Coefficient decoding
+#if F0054_PDPCL || RSAF_FLAG
+  Int numNonZeroCoeffLuma = 0;   
+#endif
   Bool bCodeDQP = getdQPFlag();
   Bool isChromaQpAdjCoded = getIsChromaQpAdjCoded();
-
+  m_pcEntropyDecoder->decodeCoeff( pcCU, uiAbsPartIdx, uiDepth, bCodeDQP, isChromaQpAdjCoded 
+#if F0054_PDPCL || RSAF_FLAG
+  , numNonZeroCoeffLuma  
+#endif
+  );
 #if RSAF_FLAG
-  Int numNonZeroCoeff = 0;
-  m_pcEntropyDecoder->decodeCoeff( pcCU, uiAbsPartIdx, uiDepth, bCodeDQP, isChromaQpAdjCoded, numNonZeroCoeff );
-  m_pcEntropyDecoder->decodeRsafFlag( pcCU, uiAbsPartIdx, numNonZeroCoeff );
-#else
-  m_pcEntropyDecoder->decodeCoeff( pcCU, uiAbsPartIdx, uiDepth, bCodeDQP, isChromaQpAdjCoded );
+  m_pcEntropyDecoder->decodeRsafFlag( pcCU, uiAbsPartIdx, numNonZeroCoeffLuma );
 #endif
   setIsChromaQpAdjCoded( isChromaQpAdjCoded );
   setdQPFlag( bCodeDQP );

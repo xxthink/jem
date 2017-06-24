@@ -9400,7 +9400,11 @@ Bool TComDataCU::isModeAvailableForRsaf(const Int intraMode, const UInt uiWidth,
   }
 
 #if RESTRICTED_RSAF
-  return TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, intraMode, uiWidth, uiHeight, m_pcSlice->getSPS()->getChromaFormatIdc(), m_pcSlice->getSPS()->getSpsRangeExtension().getIntraSmoothingDisabledFlag(), true);
+  return TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, intraMode, uiWidth, uiHeight, m_pcSlice->getSPS()->getChromaFormatIdc(), m_pcSlice->getSPS()->getSpsRangeExtension().getIntraSmoothingDisabledFlag()
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+    , true
+#endif
+    );
 #else
   return true;
 #endif

@@ -601,6 +601,9 @@ Void  TEncSbac::loadIntraDirMode( const TEncSbac* pSrc, const ChannelType chType
   if (isLuma(chType))
   {
     this->m_cCUIntraPredSCModel      .copyFrom( &pSrc->m_cCUIntraPredSCModel       );
+#if F0054_PDPCL              
+    this->m_cPDPCIdxSCModel          .copyFrom( &pSrc->m_cPDPCIdxSCModel       );
+#endif
   }
   else
   {
@@ -864,6 +867,22 @@ Void TEncSbac::codeMPIIdx(TComDataCU* pcCU, UInt uiAbsPartIdx)
   Int iNumberOfPassesPDPC = 1;
   if (pcCU->getSlice()->getSliceType() == I_SLICE) iNumberOfPassesPDPC = 2;
   else iNumberOfPassesPDPC = 2;
+#if F0054_PDPCL
+  UInt blkSize = pcCU->getWidth(uiAbsPartIdx) * pcCU->getHeight(uiAbsPartIdx); 
+  
+  if( blkSize < MIN_PDPC_BLOCK_THRESHOLD )
+  {
+    assert( !pcCU->getPDPCIdx(uiAbsPartIdx) );
+    return;                                 
+  }
+
+#if EE1_PDPC_INTRA_FOR_OTHER_MODE // NEW
+  if (pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx) == PLANAR_IDX || pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiAbsPartIdx) == VDIA_IDX)
+  {
+    return;
+  }
+#endif
+#endif
   if (iNumberOfPassesPDPC > 1) // for only 1 pass no signaling is needed 
   {
     if (iNumberOfPassesPDPC > 2)  // 3 or 4
@@ -3821,7 +3840,11 @@ Void TEncSbac::codeRsafFlag( TComDataCU* pcCU, UInt absPartIdx, Int numNonZeroCo
       return;
     }
 
-    Int ctx = Int(TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, intraMode, width, height, pcCU->getSlice()->getSPS()->getChromaFormatIdc(), pcCU->getSlice()->getSPS()->getSpsRangeExtension().getIntraSmoothingDisabledFlag(), true));
+    Int ctx = Int(TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, intraMode, width, height, pcCU->getSlice()->getSPS()->getChromaFormatIdc(), pcCU->getSlice()->getSPS()->getSpsRangeExtension().getIntraSmoothingDisabledFlag()
+#if COM16_C983_RSAF_PREVENT_OVERSMOOTHING
+      , true
+#endif
+      ));
 
     m_pcBinIf->encodeBin( rsafFlag ? 1 : 0, m_cRsafFlagSCModel.get(0, 0, ctx) );
 

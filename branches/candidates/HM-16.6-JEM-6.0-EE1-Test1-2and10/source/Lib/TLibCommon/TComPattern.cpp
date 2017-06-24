@@ -259,6 +259,9 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
     }
 #endif
 
+#if F0054_PDPCL && !COM16_C983_RSAF
+    return;
+#endif
 #if !COM16_C983_RSAF
     if (bFilterRefSamples)
 #else
