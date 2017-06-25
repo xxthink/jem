@@ -113,64 +113,36 @@ const UChar TComPrediction::m_aucIntraFilter[MAX_NUM_CHANNEL_TYPE][MAX_INTRA_FIL
 
 
 #if E0068_UW_PLANAR || F0104_W66
+#if WEIGHT_LUT_8BITS
+const UInt TComPrediction::uiFinalShiftDenom = 9;
+const UInt TComPrediction::uiFinalDenomHalf = 256;
+#else
 const UInt TComPrediction::uiFinalShiftDenom = 10;
 const UInt TComPrediction::uiFinalDenomHalf = 512;
-#if JVET_C0024_CTU_256
-const UInt TComPrediction::uiFinalShift[513] = { 
-0, 1024, 512, 341, 256, 205, 171, 146, 128, 114, 103, 93, 85, 79, 73, 68,
-64, 60, 57, 54, 51, 49, 47, 45, 43, 41, 39, 38, 37, 35, 34, 33, 
-32, 31, 30, 29, 28, 28, 27, 26, 26, 25, 24, 24, 23, 23, 22, 22, 
-21, 21, 20, 20, 20, 19, 19, 19, 18, 18, 18, 17, 17, 17, 16, 16, 
-16, 16, 16, 15, 15, 15, 15, 14, 14, 14, 14, 14, 14, 13, 13, 13, 
-13, 13, 13, 12, 12, 12, 12, 12, 12, 11, 11, 11, 11, 11, 11, 11, 
-11, 11, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,  9,  9, 9, 
-9,  9,  9,  9,  9,  9,  9,  9,  9,  8,  8,  8,  8,  8,  8, 8, 
-8,  8,  8,  8,  8,  8,  8,  8,  8,  7,  7,  7,  7,  7,  7, 7, 
-7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  6, 6, 
-6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6, 6, 
-6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  5,  5,  5,  5,  5, 5, 
-5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5, 5, 
-5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5, 5, 
-5,  5,  5,  5,  5,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4, 4, 
-4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4, 4, 
-4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4, 4, 
-4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4, 4, 
-4,  4,  4,  4,  4,  4,  3,  3,  3,  3,  3,  3,  3,  3,  3, 3, 
-3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3, 3, 
-3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3, 3, 
-3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3, 3, 
-3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3, 3, 
-3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3, 3, 
-3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3, 3, 
-3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  2,  2,  2,  2, 2, 
-2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2, 2, 
-2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2, 2, 
-2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2, 2, 
-2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2, 2, 
-2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2, 2, 
-2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2, 2, 
-2 
-}; // MAX_CU_WIDTH+MAX_CU_HEIGHT+1
-#else
-const UInt TComPrediction::uiFinalShift[257] = { 
-0, 1024, 512, 341, 256, 205, 171, 146, 128, 114, 103, 93, 85, 79, 73, 68,
-64, 60, 57, 54, 51, 49, 47, 45, 43, 41, 39, 38, 37, 35, 34, 33, 
-32, 31, 30, 29, 28, 28, 27, 26, 26, 25, 24, 24, 23, 23, 22, 22, 
-21, 21, 20, 20, 20, 19, 19, 19, 18, 18, 18, 17, 17, 17, 16, 16, 
-16, 16, 16, 15, 15, 15, 15, 14, 14, 14, 14, 14, 14, 13, 13, 13, 
-13, 13, 13, 12, 12, 12, 12, 12, 12, 11, 11, 11, 11, 11, 11, 11, 
-11, 11, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,  9,  9, 9, 
-9,  9,  9,  9,  9,  9,  9,  9,  9,  8,  8,  8,  8,  8,  8, 8, 
-8,  8,  8,  8,  8,  8,  8,  8,  8,  7,  7,  7,  7,  7,  7, 7, 
-7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  6, 6, 
-6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6, 6, 
-6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  5,  5,  5,  5,  5, 5, 
-5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5, 5, 
-5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5, 5, 
-5,  5,  5,  5,  5,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4, 4, 
-4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4, 4, 
-4 }; // MAX_CU_WIDTH+MAX_CU_HEIGHT+1
 #endif
+const UInt TComPrediction::uiFinalShift[126] = {
+#if WEIGHT_LUT_8BITS
+  171, 128, 102, 85, 73, 64, 57, 51, 47, 43, 39, 37, 34,
+  32, 30, 28, 27, 26, 24, 23, 22, 21, 20, 20, 19, 18, 18, 17, 17,
+  16, 16, 15, 15, 14, 14, 13, 13, 13, 12, 12, 12, 12, 11, 11, 11,
+  11, 10, 10, 10, 10, 10, 9, 9, 9, 9, 9, 9, 9, 8, 8, 8,
+  8, 8, 8, 8, 8, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 6,
+  6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 5, 5,
+  5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+  5, 5, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+  4
+#else
+  341, 256, 205, 171, 146, 128, 114, 102, 93, 85, 79, 73, 68,
+  64, 60, 57, 54, 51, 49, 47, 45, 43, 41, 39, 38, 37, 35, 34, 33,
+  32, 31, 30, 29, 28, 28, 27, 26, 26, 25, 24, 24, 23, 23, 22, 22,
+  21, 21, 20, 20, 20, 19, 19, 19, 18, 18, 18, 17, 17, 17, 17, 16,
+  16, 16, 16, 15, 15, 15, 15, 14, 14, 14, 14, 14, 13, 13, 13, 13,
+  13, 13, 12, 12, 12, 12, 12, 12, 12, 12, 11, 11, 11, 11, 11, 11,
+  11, 11, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 9,  9,  9, 9,
+  9,  9,  9,  9,  9,  9,  9,  9,  9,  8,  8,  8,  8,  8,  8, 8,
+  8
+#endif
+};
 #endif
 
 // ====================================================================================================================
@@ -735,48 +707,52 @@ Void TComPrediction::xPredIntraAng(       Int bitDepth,
       Pel *pDsty=pDst;
 
 #if F0104_W66
-    if ( intraPredAngle == 32 && bIsModeVer )    // use weighted angular only for mode 66
-    {
-        for (Int y=0; y<height; y++, pDsty+=dstStride)
+      if( intraPredAngle == 32 && bIsModeVer ) // use weighted angular only for mode 66
+      {
+        for( Int y = 0; y<height; y++, pDsty += dstStride )
         {
-          for (Int x=0;x<width; x++)
+          for( Int x = 0; x<width; x++ )
           {
             Int  verWeight;
             Int  horWeight;
-            UInt uiFinalShiftSize = (1<<uiFinalShiftDenom);
+            UInt uiFinalShiftSize = ( 1 << uiFinalShiftDenom );
 
-            if (x<y)
+            if( ( x + y ) == 0 )
             {
-              verWeight = (x+1)*uiFinalShift[x+y+2];
+              verWeight = horWeight = uiFinalDenomHalf;
+            }
+            else if( x<y )
+            {
+              verWeight = ( x + 1 )*uiFinalShift[x + y - 1];
 
-              if ( verWeight>uiFinalShiftSize )
+              if( verWeight>uiFinalShiftSize )
               {
                 verWeight = uiFinalShiftSize;
               }
-              horWeight = uiFinalShiftSize-verWeight;
+              horWeight = uiFinalShiftSize - verWeight;
             }
             else
             {
-              horWeight = (y+1)*uiFinalShift[x+y+2];
+              horWeight = ( y + 1 )*uiFinalShift[x + y - 1];
 
-              if ( horWeight>uiFinalShiftSize )
+              if( horWeight>uiFinalShiftSize )
               {
                 horWeight = uiFinalShiftSize;
               }
-              verWeight = uiFinalShiftSize-horWeight;
+              verWeight = uiFinalShiftSize - horWeight;
             }
 
-            pDsty[x] = (short)((verWeight*refMain[x+y+2] + horWeight*refSide[x+y+2] + uiFinalDenomHalf - 1 ) >> (uiFinalShiftDenom));
+            pDsty[x] = (short)( ( verWeight*refMain[x + y + 2] + horWeight*refSide[x + y + 2] + uiFinalDenomHalf - 1 ) >> ( uiFinalShiftDenom ) );
 #if JVET_D0033_ADAPTIVE_CLIPPING
-                  pDsty[x] =  ClipA( pDsty[x],compID );
+            pDsty[x] = ClipA( pDsty[x], compID );
 #else
-                pDsty[x] =  Clip3( nMin, nMax, pDsty[x] );
+            pDsty[x] = Clip3( nMin, nMax, pDsty[x] );
 #endif
           }
         }
-    }
-    else
-    {
+      }
+      else
+      {
 #endif // F0104_W66
       for (Int y=0, deltaPos=intraPredAngle; y<height; y++, deltaPos+=intraPredAngle, pDsty+=dstStride)
       {
@@ -3555,17 +3531,27 @@ Void TComPrediction::xPredIntraPlanar( const Pel* pSrc, Int srcStride, Pel* rpDs
   Int topRight   = topRow[width];
 
 #if E0068_UW_PLANAR  // bottom-right position adjustment
-  Int bottomRight = (((width*bottomLeft)+(height*topRight))*uiFinalShift[width+height]+uiFinalDenomHalfm1)>>(uiFinalShiftDenom);
-  for(Int k=0;k<width;k++)
+  Int bottomRight = ( ( ( width*bottomLeft ) + ( height*topRight ) )*uiFinalShift[width + height - 3] + uiFinalDenomHalfm1 ) >> ( uiFinalShiftDenom );
+  UInt uiWeight;
+
+  if( width<3 )
+    uiWeight = uiFinalDenomHalf;
+  else
+    uiWeight = uiFinalShift[width - 3];
+  for( Int k = 0; k<width; k++ )
   {
-    bottomRow[k] = ((((width-k-1)*bottomLeft + (k+1)*bottomRight)*uiFinalShift[width] + uiFinalDenomHalfm1) >> (uiFinalShiftDenom)) - topRow[k];
-    topRow[k]     <<= shift1Dver;
+    bottomRow[k] = ( ( ( ( width - k - 1 )*bottomLeft + ( k + 1 )*bottomRight )*uiWeight + uiFinalDenomHalfm1 ) >> ( uiFinalShiftDenom ) ) - topRow[k];
+    topRow[k] <<= shift1Dver;
   }
 
-  for(Int k=0;k<height;k++)
+  if( height<3 )
+    uiWeight = uiFinalDenomHalf;
+  else
+    uiWeight = uiFinalShift[height - 3];
+  for( Int k = 0; k<height; k++ )
   {
-    rightColumn[k] = ((((height-k-1)*topRight + (k+1)*bottomRight)*uiFinalShift[height] + uiFinalDenomHalfm1) >> (uiFinalShiftDenom)) - leftColumn[k];
-    leftColumn[k]   <<= shift1Dhor;
+    rightColumn[k] = ( ( ( ( height - k - 1 )*topRight + ( k + 1 )*bottomRight )*uiWeight + uiFinalDenomHalfm1 ) >> ( uiFinalShiftDenom ) ) - leftColumn[k];
+    leftColumn[k] <<= shift1Dhor;
   }
 #else
   for(Int k=0;k<width;k++)
@@ -3600,27 +3586,31 @@ Void TComPrediction::xPredIntraPlanar( const Pel* pSrc, Int srcStride, Pel* rpDs
 #if E0068_UW_PLANAR  // Unequal Weight assignment for final predictor calculation
       Int  verWeight;
       Int  horWeight;
-      UInt uiFinalShiftSize = (1<<uiFinalShiftDenom);
+      UInt uiFinalShiftSize = ( 1 << uiFinalShiftDenom );
 
-      if (x<y)
+      if( ( x + y ) == 0 )
       {
-        verWeight = (x+1)*uiFinalShift[x+y+2];
+        verWeight = horWeight = uiFinalDenomHalf;
+      }
+      else if( x<y )
+      {
+        verWeight = ( x + 1 )*uiFinalShift[x + y - 1];
 
-        if ( verWeight>uiFinalShiftSize )
+        if( verWeight>uiFinalShiftSize )
         {
           verWeight = uiFinalShiftSize;
         }
-        horWeight = uiFinalShiftSize-verWeight;
+        horWeight = uiFinalShiftSize - verWeight;
       }
       else
       {
-        horWeight = (y+1)*uiFinalShift[x+y+2];
+        horWeight = ( y + 1 )*uiFinalShift[x + y - 1];
 
-        if ( horWeight>uiFinalShiftSize )
+        if( horWeight>uiFinalShiftSize )
         {
           horWeight = uiFinalShiftSize;
         }
-        verWeight = uiFinalShiftSize-horWeight;
+        verWeight = uiFinalShiftSize - horWeight;
       }
 #endif
 #if JVET_C0024_QTBT
