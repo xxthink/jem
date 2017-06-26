@@ -278,15 +278,21 @@
 #if VCEG_AZ05_BIO                                            
 #define COM16_C1045_BIO_HARMO_IMPROV                      1  ///< Improvement of BIO
 #define JVET_C0027_BIO                                    1   /// MV refinement max value up, BIO_LDB check optimization,  BIO  for 1/16 pel MV support
+#define EE2_TEST4                                         1  ///< simplified gradient filter for BIO
+#if EE2_TEST4
+#define JVET_F0028_BIO_NO_BLOCK_EXTENTION                 0
+#else
 #define JVET_F0028_BIO_NO_BLOCK_EXTENTION                 1
-#define EE2_TEST1                                         0  ///< restrict BIO in OBMC
+#endif
+#define EE2_DIVISION_FREE                                 1
+#define EE2_TEST1                                         1  ///< restrict BIO in OBMC
 #if EE2_TEST1
-#define EE2_TEST2                                         0  ///< 4x4 BIO kernel
+#define EE2_TEST2                                         1  ///< 4x4 BIO kernel
 #if EE2_TEST2
-#define EE2_TEST3                                         0  ///< synchronization of motion information
+#define EE2_TEST3                                         1  ///< synchronization of motion information
 #endif
 #endif
-#endif                                                       
+#endif
 
 #define COM16_C1016_AFFINE                                1  ///< Affine motion prediction
 #if COM16_C1016_AFFINE

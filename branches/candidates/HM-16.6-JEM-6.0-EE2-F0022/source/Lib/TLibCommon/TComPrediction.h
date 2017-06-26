@@ -144,7 +144,7 @@ protected:
   static const Int m_ICShiftDiff = 12;
 #endif
 
-#if EE2_TEST1
+#if EE2_DIVISION_FREE
   UInt   m_uiaBIOShift[64];
 #endif
 
@@ -196,6 +196,10 @@ protected:
 #if !JVET_F0028_BIO_NO_BLOCK_EXTENTION
   Void  xPredInterFrac(Pel* ref,Pel* dst,Int dstStride,Int refStride,Int xFrac,Int yFrac,Int width, Int height,Bool bi,ChromaFormat chFmt, const Int bitDepth);
 #endif
+
+#if EE2_TEST4
+  Void  xGradFilterXY_SIMP( Pel* gradX , Pel* gradY , Pel* pred , Int iGradStride , Int iPredStride , Int iWidth , Int iHeight );
+#else
   Void  xGradFilterX(Pel*  piRefY, Int iRefStride,Pel*  piDstY,Int iDstStride, Int iWidth, Int iHeight,Int iMVyFrac,Int iMVxFrac, const Int bitDepth);
   Void  xGradFilterY(Pel*  piRefY, Int iRefStride,Pel*  piDstY,Int iDstStride, Int iWidth, Int iHeight,Int iMVyFrac,Int iMVxFrac, const Int bitDepth);
   __inline Void gradFilter2DVer (Pel* piSrc, Int iSrcStride,  Int iWidth, Int iHeight, Int iDstStride,  Pel*& rpiDst, Int iMv, const Int iShift);
@@ -204,7 +208,9 @@ protected:
   __inline Void fracFilter2DVer(Pel* piSrc, Int iSrcStride,  Int iWidth, Int iHeight, Int iDstStride,  Pel*& rpiDst, Int iMv, const Int iShift);
   __inline Void gradFilter1DHor (Pel* piSrc, Int iSrcStride,  Int iWidth, Int iHeight, Int iDstStride,  Pel*& rpiDst, Int iMV, const Int iShift);
   __inline Void gradFilter1DVer (Pel* piSrc, Int iSrcStride,  Int iWidth, Int iHeight, Int iDstStride,  Pel*& rpiDst, Int iMV, const Int iShift);
-#if EE2_TEST1
+#endif
+
+#if EE2_DIVISION_FREE
   __inline Int64 divide64(Int64 numer, Int64 denom);
   Pel optical_flow_averaging(Int64 s1, Int64 s2, Int64 s3, Int64 s5, Int64 s6, Pel pGradX0, Pel pGradX1, Pel pGradY0, Pel pGradY1, Pel pSrcY0Temp, 
     Pel pSrcY1Temp, const int shiftNum, const int  offset, const Int64 limit, const Int64 denom_min_1, const Int64 denom_min_2, const Int bitDepth);
