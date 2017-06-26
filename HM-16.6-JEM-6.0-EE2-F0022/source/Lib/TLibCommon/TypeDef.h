@@ -284,7 +284,7 @@
 #else
 #define JVET_F0028_BIO_NO_BLOCK_EXTENTION                 1
 #endif
-#define EE2_DIVISION_FREE                                 1
+#define EE2_DIVISION_FREE                                 1  ///< division-free implementation for BIO
 #define EE2_TEST1                                         1  ///< restrict BIO in OBMC
 #if EE2_TEST1
 #define EE2_TEST2                                         1  ///< 4x4 BIO kernel
@@ -292,6 +292,35 @@
 #define EE2_TEST3                                         1  ///< synchronization of motion information
 #endif
 #endif
+
+#if EE2_TEST4
+#define EE2_TEST4p1                                       1  ///< simplified gradient filter + all of the above tests
+#define EE2_TEST4p2                                       0  ///< simplified gradient filter + restrict BIO in OBMC + 4x4 BIO kernel
+#define EE2_TEST4p3                                       0  ///< simplified gradient filter + 4x4 BIO kernel
+
+#ifdef EE2_TEST1
+#undef EE2_TEST1
+#endif
+#ifdef EE2_TEST2
+#undef EE2_TEST2
+#endif
+#ifdef EE2_TEST3
+#undef EE2_TEST3
+#endif
+
+#if EE2_TEST4p1
+#define EE2_TEST1                                         1  ///< restrict BIO in OBMC
+#define EE2_TEST2                                         1  ///< 4x4 BIO kernel
+#define EE2_TEST3                                         1  ///< synchronization of motion information
+#elif EE2_TEST4p2
+#define EE2_TEST1                                         1  ///< restrict BIO in OBMC
+#define EE2_TEST2                                         1  ///< 4x4 BIO kernel
+#elif EE2_TEST4p3
+#define EE2_TEST2                                         1  ///< 4x4 BIO kernel
+#endif
+
+#endif  // EE2_TEST4
+
 #endif
 
 #define COM16_C1016_AFFINE                                1  ///< Affine motion prediction
