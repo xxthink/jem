@@ -1961,10 +1961,6 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
   const UInt           uiWidth          = rect.width;
   const UInt           uiHeight         = rect.height;
 #if JVET_C0024_QTBT
-  if (isChroma(chType))
-  {
-      assert(uiWidth == pcCU->getWidth(0)>>1);
-  }
   const UInt           uiWIdx = g_aucConvertToBit[pcCU->getWidth(0)];
   const UInt           uiHIdx = g_aucConvertToBit[pcCU->getHeight(0)];
 #endif
@@ -2071,7 +2067,7 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
          
                                                                                 );
 #if JVET_E0077_ENHANCED_LM && JVET_C0024_QTBT
-    if (compID == COMPONENT_Y)
+    if (compID == COMPONENT_Y || bUseFilteredPredictions)
     {
 #endif
       initIntraPatternChType( rTu, compID, bUseFilteredPredictions, (compID==COMPONENT_Y) ? bFilter : false  DEBUG_STRING_PASS_INTO(sDebug) );
