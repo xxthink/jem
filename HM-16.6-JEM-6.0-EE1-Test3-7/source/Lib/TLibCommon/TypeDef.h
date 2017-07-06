@@ -49,6 +49,8 @@
 #define EE1_TEST5                                         0 // P-PDPC, PDPC for J66 is off and no PDPC flag, PDPC-L, ARSS off
 #define EE1_TEST6                                         0 // PDPC on, ARSS is explicitly signaled as in F0055
 #define EE1_TEST7                                         0 // P-PDPC, ARSS off
+#define EE1_TEST4_1                                       0 // Test 4 with decreased number of RDs
+#define EE1_TEST4_2                                       0 // Test 4 with increased number of RDs
 
 #if EE1_TEST3
 #define MOD_PDPC                                          1  // replace ARSS encoder RDs with PDPC, F0054
@@ -56,7 +58,7 @@
 #define PDPC_FORCE_MODE66                                 0  // no PDPC flag is signaled for Mode 66, and PDPC index is inferred eqaul to 0
 #endif
 
-#if EE1_TEST4
+#if EE1_TEST4 || EE1_TEST4_1 || EE1_TEST4_2
 #define MOD_PDPC                                          1  // replace ARSS encoder RDs with PDPC, F0054
 #define ENABLE_PDPC_FOR_NSST                              0  // enable PDPC with NSST
 #define PDPC_FORCE_MODE66                                 0  // no PDPC flag is signaled for Mode 66, and PDPC index is inferred eqaul to 0
@@ -91,6 +93,15 @@
 #define RD_COMPLEXITY                                     0  // different complexity setting
 
 #define MOD_PDPC_PLANAR_PARAM                             1  // new PDPC parameters for planar
+
+#if EE1_TEST4_1
+#define ADD_RDS                                           (-1)  // 1 or -1 for test 4
+#elif EE1_TEST4_2
+#define ADD_RDS                                           1  // 1 or -1 for test 4
+#else
+#define ADD_RDS                                           0  // 1 or -1 for test 4
+#endif
+
 #endif
 
 //! \ingroup TLibCommon

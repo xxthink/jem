@@ -5442,6 +5442,10 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
     numModesForFullRD = 2 * g_aucIntraModeNumFast_UseMPM[uiWIdx][uiHIdx] - 1;
 #endif
 
+#if ADD_RDS
+    numModesForFullRD += Int( ADD_RDS );
+#endif
+
     Int savedPdpcIdx = pcCU->getPDPCIdx(0);
 
     if(saveLoadTag == LOAD_ENC_INFO)
