@@ -1070,6 +1070,9 @@ Void fastInverseDst(TCoeff *tmp, TCoeff *block, Int shift, const TCoeff outputMi
  *  \param outputMinimum  minimum for clipping
  *  \param outputMaximum  maximum for clipping
  */
+#if 1800 < _MSC_VER && _MSC_VER < 2000
+#pragma optimize("", off)
+#endif
 #if JVET_D0077_TRANSFORM_OPT
 Void partialButterflyInverse4(TCoeff *src, TCoeff *dst, Int shift, Int line, Int iSkipLine, const TCoeff outputMinimum, const TCoeff outputMaximum)
 #else
