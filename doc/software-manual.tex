@@ -688,6 +688,24 @@ When 1, the Mean Square Error (MSE) values of each frame will also be output alo
 When 1, the Mean Square Error (MSE) values of the entire sequence will also be output alongside the default PSNR values.
 \\
 
+\Option{TrueBitdepthPSNR} &
+%\ShortOption{\None} &
+\Default{false} &
+When 1, compute PSNR using maxval = (1$<<$(bitdepth) - 1) instead of maxval = 255$<<$(bitdepth - 8).
+\\
+
+\Option{PreciseLog (-p)} &
+%\ShortOption{\None} &
+\Default{false} &
+Filename to use for producing log file of precise PSNR. If empty, do not produce a file.
+\\
+
+\Option{PrintMSSSIM} &
+%\ShortOption{\None} &
+\Default{false} &
+When 1, the MS-SSIM values of each frame and entire sequence will be output.
+\\
+
 \Option{SummaryOutFilename} &
 %\ShortOption{\None} &
 \Default{false} &
@@ -899,6 +917,12 @@ Specifies the value of general_non_packed_constraint_flag
 %\ShortOption{\None} &
 \Default{false} &
 Specifies the value of general_frame_only_constraint_flag
+\\
+
+\Option{ReWriteParamSetsFlag} &
+%\ShortOption{\None} &
+\Default{true} &
+Specifies whether outputing parameter sets before every (intra) random access point
 \\
 
 \end{OptionTableNoShorthand}
@@ -1814,6 +1838,24 @@ Enables affine motion prediction.
 %\ShortOption{\None} &
 \Default{true} &
 Enables adaptive reference sample smoothing.
+\\
+
+\Option{AClip (-aclip)} &
+%\ShortOption{\None} &
+\Default{true} &
+Enables slice level adaptive clipping.
+\\
+
+\Option{DMVR} &
+%\ShortOption{\None} &
+\Default{true} &
+Enable decoder-side motion vector refinement for merge candidates.
+\\
+
+\Option{BilateralFilter} &
+%\ShortOption{\None} &
+\Default{true} &
+Enables bilateral filtering.
 \\
 
 \end{OptionTableNoShorthand}

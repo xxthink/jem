@@ -1070,9 +1070,6 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
       }
 
       m_pcRateCtrl->setRCQP( estQP );
-#if ADAPTIVE_QP_SELECTION && !FIX_TICKET45
-      pCtu->getSlice()->setSliceQpBase( estQP );
-#endif
     }
 
     // run CTU trial encoder
@@ -1329,11 +1326,7 @@ Void TEncSlice::encodeSlice   ( TComPic* pcPic, TComOutputBitstream* pcSubstream
         m_pcEntropyCoder->setAlfCtrl(false);
       }
 
-      m_pcEntropyCoder->encodeAlfParam(&alfParam,pcSlice->getSPS()->getMaxTotalCUDepth()
-#if FIX_TICKET12
-        , pcSlice
-#endif
-        );
+      m_pcEntropyCoder->encodeAlfParam(&alfParam,pcSlice->getSPS()->getMaxTotalCUDepth(), pcSlice);
       if(alfParam.cu_control_flag)
       {
         m_pcEntropyCoder->encodeAlfCtrlParam(&alfParam);
@@ -1436,9 +1429,7 @@ Void TEncSlice::encodeSlice   ( TComPic* pcPic, TComOutputBitstream* pcSubstream
   }
 #endif
 
-#if PARALLEL_ENCODING_RAS_CABAC_INIT_PRESENT  
   m_eLastNALUType = pcSlice->getNalUnitType();
-#endif
 
   if (pcSlice->getPPS()->getCabacInitPresentFlag() && !pcSlice->getPPS()->getDependentSliceSegmentsEnabledFlag())
   {
@@ -1458,9 +1449,7 @@ Void TEncSlice::encodeSlice   ( TComPic* pcPic, TComOutputBitstream* pcSubstream
     pEncBin->freeMemoryforBinStrings();
   }
 #endif
-#if VCEG_AZ07_INIT_PREVFRAME_FIX
   pcSlice->updateStatsGlobal();
-#endif
 }
 
 Void TEncSlice::calculateBoundingCtuTsAddrForSlice(UInt &startCtuTSAddrSlice, UInt &boundingCtuTSAddrSlice, Bool &haveReachedTileBoundary,

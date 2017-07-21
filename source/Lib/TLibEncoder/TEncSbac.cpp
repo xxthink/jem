@@ -1353,11 +1353,7 @@ Void TEncSbac::codeIntraDirLumaAng( TComDataCU* pcCU, UInt absPartIdx, Bool isMu
 
 #if JVET_B0051_NON_MPM_MODE
 #if JVET_C0024_QTBT
-#if JVET_C0024_BT_FIX_TICKET22
       m_pcBinIf->encodeBin(( (dir[j]%4) ==0 ) ? 1 : 0, m_cCUIntraPredSCModel.get( 0, 0, 9 ) ); // flag to indicate if it is selected mode or non-selected mode
-#else
-      m_pcBinIf->encodeBin(( (dir[j]%4) ==0 ) ? 1 : 0, m_cCUIntraPredSCModel.get( 0, 0, 9/3 ) ); // flag to indicate if it is selected mode or non-selected mode
-#endif
 #else
       m_pcBinIf->encodeBin(( (dir[j]%4) ==0 ) ? 1 : 0, m_cCUIntraPredSCModel.get( 0, 0, 9+mode/3 ) ); // flag to indicate if it is selected mode or non-selected mode
 #endif
@@ -1961,7 +1957,7 @@ Void TEncSbac::codeTransformSkipFlags (TComTU &rTu, ComponentID component )
     return;
   }
 
-#if JVET_F0031_RMV_REDUNDANT_TRSKIP
+#if JVET_F0031_RMV_REDUNDANT_TRSKIP && COM16_C806_EMT
   if (isLuma(component) && pcCU->getEmtCuFlag(uiAbsPartIdx))
   {
     return;
@@ -3116,11 +3112,7 @@ Void TEncSbac::estInterDirBit     (estPuMeBitsSbacStruct* pcEstPuMeBitsSbac)
  *   estimate bit cost for CBP, significant map and significant coefficients
  ****************************************************************************
  */
-Void TEncSbac::estBit( estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, ChannelType chType 
-#if RDOQ_BIT_ESTIMATE_FIX_TICKET29
-  , UInt uiScanIdx
-#endif
-  )
+Void TEncSbac::estBit( estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, ChannelType chType, UInt uiScanIdx)
 {
   estCBFBit( pcEstBitsSbac );
 
@@ -3130,11 +3122,7 @@ Void TEncSbac::estBit( estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, 
   estSignificantMapBit( pcEstBitsSbac, width, height, chType );
 
   // encode last significant position
-  estLastSignificantPositionBit( pcEstBitsSbac, width, height, chType 
-#if RDOQ_BIT_ESTIMATE_FIX_TICKET29
-    , uiScanIdx
-#endif
-    );
+  estLastSignificantPositionBit( pcEstBitsSbac, width, height, chType, uiScanIdx);
 
   // encode significant coefficients
   estSignificantCoefficientsBit( pcEstBitsSbac, chType );
@@ -3284,20 +3272,14 @@ Void TEncSbac::estSignificantMapBit( estBitsSbacStruct* pcEstBitsSbac, Int width
  ****************************************************************************
  */
 
-Void TEncSbac::estLastSignificantPositionBit( estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, ChannelType chType 
-#if RDOQ_BIT_ESTIMATE_FIX_TICKET29
-  , UInt uiScanIdx
-#endif
-  )
+Void TEncSbac::estLastSignificantPositionBit( estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, ChannelType chType, UInt uiScanIdx)
 {
   //--------------------------------------------------------------------------------------------------.
-#if RDOQ_BIT_ESTIMATE_FIX_TICKET29
   // swap
   if (uiScanIdx == SCAN_VER)
   {
     swap(width, height);
   }
-#endif
 
   //set up the number of channels
 
@@ -3435,11 +3417,7 @@ Void  TEncSbac::loadContextsFromPrev (TComStats* apcStats, SliceType eSliceType,
 {
   if(bFromGloble)
   {
-#if VCEG_AZ07_INIT_PREVFRAME_FIX
     if(iQPIdx==-1 || !apcStats->aaQPUsed[eSliceType][iQPIdxRst].resetInit)
-#else
-    if(iQPIdx==-1 || (bAfterLastISlice && !apcStats->aaQPUsed[eSliceType][iQPIdxRst].resetInit))
-#endif
     {
       return;
     }

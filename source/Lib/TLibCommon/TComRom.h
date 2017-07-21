@@ -72,10 +72,8 @@ Void         destroyROM();
 #if JVET_C0024_AMAX_BT
 extern UInt g_uiBlkSize[ 10 ];
 extern UInt g_uiNumBlk[ 10 ];
-#if JVET_C0024_AMAX_BT_FIX
 extern UInt g_uiPrevISlicePOC;
 extern Bool g_bInitAMaxBT;
-#endif
 #endif
 
 // flexible conversion from relative to absolute index

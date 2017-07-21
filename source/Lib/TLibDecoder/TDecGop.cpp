@@ -226,9 +226,7 @@ Void TDecGop::decompressSlice(TComInputBitstream* pcBitstream, TComPic* pcPic
 
 #if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
   m_pcEntropyDecoder->updateStates (pcSlice->getSliceType(), pcSlice->getSliceQp(), m_apcStats);
-#if VCEG_AZ07_INIT_PREVFRAME_FIX
   pcSlice->updateStatsGlobal();
-#endif
 #endif
 
   // deallocate all created substreams, including internal buffers.
@@ -265,7 +263,6 @@ Void TDecGop::filterPicture(TComPic* pcPic)
   if( pcSlice->getSPS()->getUseALF() )
   {
 #if COM16_C806_ALF_TEMPPRED_NUM
-#if FIX_TICKET12
     if( m_pcAdaptiveLoopFilter->refreshAlfTempPred( pcSlice->getNalUnitType() , pcSlice->getPOC() ) )
     {
 #if JVET_E0104_ALF_TEMP_SCALABILITY
@@ -275,7 +272,6 @@ Void TDecGop::filterPicture(TComPic* pcPic)
 #endif
       assert( m_cAlfParam.temproalPredFlag == false );
     }
-#endif
     if( m_cAlfParam.temproalPredFlag )
     {
 #if JVET_E0104_ALF_TEMP_SCALABILITY

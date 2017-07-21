@@ -111,11 +111,7 @@ public: //methods
   Void getPreDBFStatistics(TComPic* pPic);
 private: //methods
   Void getStatistics(SAOStatData*** blkStats, TComPicYuv* orgYuv, TComPicYuv* srcYuv,TComPic* pPic, Bool isCalculatePreDeblockSamples = false);
-#if PARALLEL_ENCODING_SAO_FIX
   Void decidePicParams(Bool* sliceEnabled, TComPic* pic, const Double saoEncodingRate, const Double saoEncodingRateChroma);
-#else
-  Void decidePicParams(Bool* sliceEnabled, Int picTempLayer, const Double saoEncodingRate, const Double saoEncodingRateChroma);
-#endif
   Void decideBlkParams(TComPic* pic, Bool* sliceEnabled, SAOStatData*** blkStats, TComPicYuv* srcYuv, TComPicYuv* resYuv, SAOBlkParam* reconParams, SAOBlkParam* codedParams, const Bool bTestSAODisableAtPictureLevel, const Double saoEncodingRate, const Double saoEncodingRateChroma);
   Void getBlkStats(const ComponentID compIdx, const Int channelBitDepth, SAOStatData* statsDataTypes, Pel* srcBlk, Pel* orgBlk, Int srcStride, Int orgStride, Int width, Int height, Bool isLeftAvail,  Bool isRightAvail, Bool isAboveAvail, Bool isBelowAvail, Bool isAboveLeftAvail, Bool isAboveRightAvail, Bool isCalculatePreDeblockSamples);
   Void deriveModeNewRDO(const BitDepths &bitDepths, Int ctuRsAddr, SAOBlkParam* mergeList[NUM_SAO_MERGE_TYPES], Bool* sliceEnabled, SAOStatData*** blkStats, SAOBlkParam& modeParam, Double& modeNormCost, TEncSbac** cabacCoderRDO, Int inCabacLabel);
@@ -140,9 +136,7 @@ private: //members
   SAOStatData***         m_statData; //[ctu][comp][classes]
   SAOStatData***         m_preDBFstatData;
   Double                 m_saoDisabledRate[MAX_NUM_COMPONENT][MAX_TLAYER];
-#if PARALLEL_ENCODING_SAO_FIX
   Int                    m_LastIRAPPoc;
-#endif
   Int                    m_skipLinesR[MAX_NUM_COMPONENT][NUM_SAO_NEW_TYPES];
   Int                    m_skipLinesB[MAX_NUM_COMPONENT][NUM_SAO_NEW_TYPES];
 #if VCEG_AZ07_BAC_ADAPT_WDOW

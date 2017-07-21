@@ -326,11 +326,7 @@ public:
 
 #if ALF_HM3_REFACTOR
   // Adaptive Loop filter
-  Void decodeAlfParam(ALFParam* pAlfParam, UInt uiMaxTotalCUDepth
-#if FIX_TICKET12
-        , TComSlice * pSlice
-#endif
-    );
+  Void decodeAlfParam(ALFParam* pAlfParam, UInt uiMaxTotalCUDepth, TComSlice * pSlice);
   Void decodeAux(ALFParam* pAlfParam);
    Void decodeFilt(ALFParam* pAlfParam);
 #if JVET_C0038_GALF

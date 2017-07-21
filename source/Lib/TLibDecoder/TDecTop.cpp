@@ -664,6 +664,21 @@ Bool TDecTop::xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisp
 
   TComSlice* pcSlice = m_pcPic->getPicSym()->getSlice(m_uiSliceIdx);
 
+#if JVET_F0096_BILATERAL_FILTER
+  if(pcSlice->getSPS()->getUseBilateralFilter())
+  {
+    if(TComBilateralFilter::instance()->getInitFlag() == false)
+    {
+      TComBilateralFilter::instance()->createdivToMulLUTs();
+      for(Int qp=18; qp<MAX_QP+1; qp++ )
+      {
+        TComBilateralFilter::instance()->createBilateralFilterTable(qp);
+      }
+      TComBilateralFilter::instance()->setInitFlag(true);
+    }
+  }
+#endif
+
   // When decoding the slice header, the stored start and end addresses were actually RS addresses, not TS addresses.
   // Now, having set up the maps, convert them to the correct form.
   pcSlice->setSliceSegmentCurStartCtuTsAddr( m_pcPic->getPicSym()->getCtuRsToTsAddrMap(pcSlice->getSliceSegmentCurStartCtuTsAddr()) );

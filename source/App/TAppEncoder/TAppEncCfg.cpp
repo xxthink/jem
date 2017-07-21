@@ -725,9 +725,9 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
   const Int defaultLumaLevelTodQp_LumaChangePointsSDR[] = { 0, 117, 150, 184, 217, 250, 284, 317, 350, 384, 417, 450, 484 };
 
   // Multi-value input fields:                      // minval, maxval (incl), min_entries, max_entries (incl) [, default values, number of default values]
-  SMultiValueInput<Int>  cfg_lumaLeveltoDQPMappingLuma(0, 0, 0, 0);
-  SMultiValueInput<Int>  cfg_lumaLeveltoDQPMappingQP(0, 0, 0, 0);
-  
+  SMultiValueInput<Int>  cfg_lumaLeveltoDQPMappingQP(-MAX_QP, MAX_QP, 0, LUMA_LEVEL_TO_DQP_LUT_MAXSIZE); 
+  SMultiValueInput<Int>  cfg_lumaLeveltoDQPMappingLuma(0, std::numeric_limits<Int>::max(), 0, LUMA_LEVEL_TO_DQP_LUT_MAXSIZE);
+
   UInt lumaLevelToDeltaQPMode;
 #endif
 
@@ -1275,6 +1275,9 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 #if JVET_D0033_ADAPTIVE_CLIPPING
   ("AClip,-aclip", m_ClipParam.isActive, true, "Slice Level Adpative Clipping (Automated by default)")
 #endif
+#if JVET_F0096_BILATERAL_FILTER
+  ("BilateralFilter",                            m_useBilateralFilter,   true, "Enable bilateral filtering")
+#endif
   ;
 
 #if EXTENSION_360_VIDEO
@@ -1672,7 +1675,19 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
 
   if (m_lumaLevelToDeltaQPMapping.mode) 
   {
-    if (cfg_lumaLeveltoDQPMappingLuma.maxNumValuesIncl == 0)  // if mapping is not read from cfg files, use default values
+    if (cfg_lumaLeveltoDQPMappingLuma.values.size() != cfg_lumaLeveltoDQPMappingQP.values.size())
+    {
+      if (cfg_lumaLeveltoDQPMappingLuma.values.size() == 0 || cfg_lumaLeveltoDQPMappingQP.values.size() == 0)
+      {
+        fprintf(stderr, "Error: Both of LumaLevelToDeltaQPMappingLuma and LumaLevelToDeltaQPMappingDQP are needed.\n");
+      }
+      else
+      {
+        fprintf(stderr, "Error: Sizes of LumaLevelToDeltaQPMappingLuma and LumaLevelToDeltaQPMappingDQP are different.\n");
+      }
+      exit(EXIT_FAILURE);
+    }
+    if (cfg_lumaLeveltoDQPMappingLuma.values.size() == 0)  // if mapping is not read from cfg files, use default values
     {
       if (m_lumaLevelToDeltaQPMapping.isSDR)
       {
@@ -3051,7 +3066,9 @@ Void TAppEncCfg::xPrintParameter()
 #if JVET_D0033_ADAPTIVE_CLIPPING
   printf("ACLIP:%d ",m_ClipParam.isActive?1:0);
 #endif
-
+#if JVET_F0096_BILATERAL_FILTER
+  printf("BilateralFilter:%d ", m_useBilateralFilter);
+#endif
 #if EXTENSION_360_VIDEO
   m_ext360.outputConfigurationSummary();
 #endif

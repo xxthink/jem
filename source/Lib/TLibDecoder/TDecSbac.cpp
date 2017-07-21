@@ -1390,11 +1390,7 @@ Void TDecSbac::parseIntraDirLumaAng  ( TComDataCU* pcCU, UInt absPartIdx, UInt d
     {
 #if JVET_B0051_NON_MPM_MODE
 #if JVET_C0024_QTBT
-#if JVET_C0024_BT_FIX_TICKET22
       m_pcTDecBinIf->decodeBin( symbol, m_cCUIntraPredSCModel.get( 0, 0, 9) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
-#else
-      m_pcTDecBinIf->decodeBin( symbol, m_cCUIntraPredSCModel.get( 0, 0, 9/3) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
-#endif
 #else
       m_pcTDecBinIf->decodeBin( symbol, m_cCUIntraPredSCModel.get( 0, 0, 9+mode/3) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
 #endif
@@ -2096,7 +2092,7 @@ Void TDecSbac::parseTransformSkipFlags (TComTU &rTu, ComponentID component)
   {
     return;
   }
-#if JVET_F0031_RMV_REDUNDANT_TRSKIP
+#if JVET_F0031_RMV_REDUNDANT_TRSKIP && COM16_C806_EMT
   if (isLuma(component) && pcCU->getEmtCuFlag(uiAbsPartIdx))
   {
     return;
@@ -3571,11 +3567,7 @@ Void TDecSbac::loadContextsFromPrev (TComStats* apcStats, SliceType eSliceType, 
 {
   if(bFromGloble)
   {
-#if VCEG_AZ07_INIT_PREVFRAME_FIX
     if(iQPIdx==-1 || !apcStats->aaQPUsed[eSliceType][iQPIdxRst].resetInit)
-#else
-    if(iQPIdx==-1 || (bAfterLastISlice && !apcStats->aaQPUsed[eSliceType][iQPIdxRst].resetInit))
-#endif
     {
       return;
     }

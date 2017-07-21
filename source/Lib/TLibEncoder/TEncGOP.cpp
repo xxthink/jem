@@ -315,7 +315,28 @@ Int TEncGOP::xWritePPS (AccessUnit &accessUnit, const TComPPS *pps)
   return (Int)(accessUnit.back()->m_nalUnitData.str().size()) * 8;
 }
 
+#if WCG_LUMA_DQP_CM_SCALE_FIX_PPS
+Int TEncGOP::xWriteParameterSets (AccessUnit &accessUnit, TComSlice *slice, const Bool bSeqFirst)
+{
+  Int actualTotalBits = 0;
 
+  if (bSeqFirst)
+  {
+    actualTotalBits += xWriteVPS(accessUnit, m_pcEncTop->getVPS());
+  }
+  if (m_pcEncTop->SPSNeedsWriting(slice->getSPS()->getSPSId())) // Note this assumes that all changes to the SPS are made at the TEncTop level prior to picture creation (TEncTop::xGetNewPicBuffer).
+  {
+    assert(bSeqFirst); // Implementations that use more than 1 SPS need to be aware of activation issues.
+    actualTotalBits += xWriteSPS(accessUnit, slice->getSPS());
+  }
+  if (m_pcEncTop->PPSNeedsWriting(slice->getPPS()->getPPSId())) // Note this assumes that all changes to the PPS are made at the TEncTop level prior to picture creation (TEncTop::xGetNewPicBuffer).
+  {
+    actualTotalBits += xWritePPS(accessUnit, slice->getPPS());
+  }
+
+  return actualTotalBits;
+}
+#else
 Int TEncGOP::xWriteParameterSets (AccessUnit &accessUnit, TComSlice *slice)
 {
   Int actualTotalBits = 0;
@@ -326,7 +347,7 @@ Int TEncGOP::xWriteParameterSets (AccessUnit &accessUnit, TComSlice *slice)
 
   return actualTotalBits;
 }
-
+#endif
 // write SEI list into one NAL unit and add it to the Access unit at auPos
 Void TEncGOP::xWriteSEI (NalUnitType naluType, SEIMessages& seiMessages, AccessUnit &accessUnit, AccessUnit::iterator &auPos, Int temporalId, const TComSPS *sps)
 {
@@ -1307,7 +1328,6 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
       pcSlice->setAssociatedIRAPPOC(m_associatedIRAPPOC);
     }
     // Do decoding refresh marking if any
-#if FIX_TICKET12 
     if( pcSlice->getSPS()->getUseALF() )
     {
       if( m_pcAdaptiveLoopFilter->refreshAlfTempPred( pcSlice->getNalUnitType() , pcSlice->getPOC() ) )
@@ -1319,7 +1339,6 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
 #endif
       }
     }
-#endif
     pcSlice->decodingRefreshMarking(m_pocCRA, m_bRefreshPending, rcListPic, m_pcCfg->getEfficientFieldIRAPEnabled());
     m_pcEncTop->selectReferencePictureSet(pcSlice, pocCurr, iGOPid);
     if (!m_pcCfg->getEfficientFieldIRAPEnabled())
@@ -1425,14 +1444,12 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     {
       Int refLayer=pcSlice->getDepth();
       if( refLayer>9) refLayer=9; // Max layer is 10  
-#if JVET_C0024_AMAX_BT_FIX
       if( g_bInitAMaxBT && pcSlice->getPOC() > g_uiPrevISlicePOC )
       {
         ::memset( g_uiBlkSize, 0, sizeof(g_uiBlkSize) );
         ::memset( g_uiNumBlk, 0, sizeof(g_uiNumBlk) );
         g_bInitAMaxBT = false;
       }
-#endif
       if (refLayer >= 0 && g_uiNumBlk[refLayer] != 0) 
       {
         Double dBlkSize = sqrt((Double)g_uiBlkSize[refLayer]/g_uiNumBlk[refLayer]);
@@ -1448,28 +1465,21 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
         {
           pcSlice->setMaxBTSize(128>MAX_BT_SIZE_INTER? MAX_BT_SIZE_INTER: 128);
         }
-#if !JVET_C0024_AMAX_BT_FIX
-        printf("\n previous layer=%d, avg blk size = %3.2f, current max BT set to %d\n", refLayer, dBlkSize, pcSlice->getMaxBTSize());
-#endif
 
         g_uiBlkSize[refLayer] = 0;
         g_uiNumBlk[refLayer] = 0;
       }
     }
-#if JVET_C0024_AMAX_BT_FIX
     else
     {
-#if JVET_C0024_AMAX_BT_FIX_TICKET23
       if( g_bInitAMaxBT  )
       {
         ::memset( g_uiBlkSize, 0, sizeof(g_uiBlkSize) );
         ::memset( g_uiNumBlk, 0, sizeof(g_uiNumBlk) );
       }
-#endif
       g_uiPrevISlicePOC = pcSlice->getPOC();
       g_bInitAMaxBT = true;
     }
-#endif
 #endif
 
 
@@ -1478,14 +1488,12 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     {
       pcSlice->setSliceType ( P_SLICE );
     }
-#if PARALLEL_ENCODING_RAS_CABAC_INIT_PRESENT  
     // Prevent encoder from using cross RAP information
     if ((pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_TRAIL_N || pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_TRAIL_R || pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_TSA_N || pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_TSA_R || pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_STSA_R || pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_STSA_N) && // current slice belongs to trailing picture 
       (m_pcSliceEncoder->getLastNALUType() == NAL_UNIT_CODED_SLICE_RADL_N || m_pcSliceEncoder->getLastNALUType() == NAL_UNIT_CODED_SLICE_RADL_R || m_pcSliceEncoder->getLastNALUType() == NAL_UNIT_CODED_SLICE_RASL_N || m_pcSliceEncoder->getLastNALUType() == NAL_UNIT_CODED_SLICE_RASL_R))      // previous slice belongs to leading picture
     {
       m_pcSliceEncoder->setEncCABACTableIdx(pcSlice->getSliceType());
     }
-#endif
     pcSlice->setEncCABACTableIdx(m_pcSliceEncoder->getEncCABACTableIdx());
 
 
@@ -1734,6 +1742,21 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
         g_ClipParam =pcPic->m_aclip_prm; // set the global for access from clipBD
 
 #endif
+#if JVET_F0096_BILATERAL_FILTER  
+        if(pcSlice->getSPS()->getUseBilateralFilter())
+        {
+          if(TComBilateralFilter::instance()->getInitFlag() == false)
+          {
+            TComBilateralFilter::instance()->createdivToMulLUTs();
+            for(Int qp=18; qp<MAX_QP+1; qp++ )
+            {
+              TComBilateralFilter::instance()->createBilateralFilterTable(qp);
+            }
+            TComBilateralFilter::instance()->setInitFlag(true);
+          }
+        }
+#endif
+
     // now compress (trial encode) the various slice segments (slices, and dependent slices)
     {
       const UInt numberOfCtusInFrame=pcPic->getPicSym()->getNumberOfCtusInFrame();
@@ -1806,14 +1829,27 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
 
 #if JVET_D0135_PARAMS
     //if ( m_bSeqFirst || (m_pcCfg->getWriteParamSetsIDRFlag() && pcSlice->getIdrPicFlag()) )
+#if WCG_LUMA_DQP_CM_SCALE_FIX_PPS
+    bool writePS = m_bSeqFirst || (m_pcCfg->getReWriteParamSetsFlag() && (pcSlice->isIRAP()));
+    if (writePS)
+    {
+      m_pcEncTop->setParamSetChanged(pcSlice->getSPS()->getSPSId(), pcSlice->getPPS()->getPPSId());
+    }
+
+    // write various parameter sets
+    actualTotalBits += xWriteParameterSets(accessUnit, pcSlice, writePS);
+    if (writePS)
+#else
     if ( m_bSeqFirst || (m_pcCfg->getReWriteParamSetsFlag() && ( pcPic->getSlice(0)->getSliceType() == I_SLICE )))
+#endif
 #else
       if ( m_bSeqFirst )
 #endif
     {
+#if WCG_LUMA_DQP_CM_SCALE_FIX_PPS == 0
       // write various parameter sets
       actualTotalBits += xWriteParameterSets(accessUnit, pcSlice);
-
+#endif
       // create prefix SEI messages at the beginning of the sequence
       assert(leadingSeiMessages.empty());
       xCreateIRAPLeadingSEIMessages(leadingSeiMessages, pcSlice->getSPS(), pcSlice->getPPS());
@@ -1873,14 +1909,10 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
       m_pcAdaptiveLoopFilter->resetALFParam( &cAlfParam );
       m_pcAdaptiveLoopFilter->ALFProcess( &cAlfParam, pcPic->getSlice(0)->getLambdas()[0], pcPic->getSlice(0)->getLambdas()[1], uiDist, uiBits, cAlfParam.alf_max_depth
 #if COM16_C806_ALF_TEMPPRED_NUM
-#if FIX_TICKET12
 #if JVET_E0104_ALF_TEMP_SCALABILITY
         , (pcSlice->getSliceType()== I_SLICE ? NULL: m_acStoredAlfPara[pcSlice->getTLayer()]), m_iStoredAlfParaNum[pcSlice->getTLayer()]
 #else
         , (pcSlice->getSliceType()== I_SLICE ? NULL: m_acStoredAlfPara), m_iStoredAlfParaNum
-#endif
-#else
-        , m_acStoredAlfPara, m_iStoredAlfParaNum
 #endif
 #endif
         );
