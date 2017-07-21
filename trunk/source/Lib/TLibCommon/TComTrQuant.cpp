@@ -1070,6 +1070,9 @@ Void fastInverseDst(TCoeff *tmp, TCoeff *block, Int shift, const TCoeff outputMi
  *  \param outputMinimum  minimum for clipping
  *  \param outputMaximum  maximum for clipping
  */
+#if 1800 < _MSC_VER && _MSC_VER < 2000
+#pragma optimize("", off)
+#endif
 #if JVET_D0077_TRANSFORM_OPT
 Void partialButterflyInverse4(TCoeff *src, TCoeff *dst, Int shift, Int line, Int iSkipLine, const TCoeff outputMinimum, const TCoeff outputMaximum)
 #else
@@ -6694,11 +6697,7 @@ Void TComTrQuant::xQuant(       TComTU       &rTu,
     }
 #endif
 
-#if JVET_C0024_ENCODER_OVERFLOW_FIX
     const Int64 iAdd   = (Int64)(pcCU->getSlice()->getSliceType()==I_SLICE ? 171 : 85) << ((Int64)iQBits-9);
-#else
-    const Int iAdd   = (pcCU->getSlice()->getSliceType()==I_SLICE ? 171 : 85) << (iQBits-9);
-#endif
     const Int qBits8 = iQBits - 8;
 
     for( Int uiBlockPos = 0; uiBlockPos < uiWidth*uiHeight; uiBlockPos++ )
@@ -6721,11 +6720,7 @@ Void TComTrQuant::xQuant(       TComTU       &rTu,
 
 #if JVET_C0024_QTBT
       const TCoeff quantisedMagnitude = TCoeff((tmpLevel * iWHScale + iAdd ) >> iQBits);
-#if JVET_C0024_ENCODER_OVERFLOW_FIX
     deltaU[uiBlockPos] = (TCoeff)((tmpLevel * iWHScale - ((Int64)quantisedMagnitude<<iQBits) )>> qBits8);
-#else
-    deltaU[uiBlockPos] = (TCoeff)((tmpLevel * iWHScale - (quantisedMagnitude<<iQBits) )>> qBits8);
-#endif
 #else
       const TCoeff quantisedMagnitude = TCoeff((tmpLevel + iAdd ) >> iQBits);
       deltaU[uiBlockPos] = (TCoeff)((tmpLevel - (quantisedMagnitude<<iQBits) )>> qBits8);
@@ -6808,11 +6803,7 @@ Bool TComTrQuant::xNeedRDOQ( TComTU &rTu, TCoeff * pSrc, const ComponentID compI
 
   // iAdd is different from the iAdd used in normal quantization
 #if JVET_C0024_QTBT
-#if JVET_C0024_ENCODER_OVERFLOW_FIX
   const Int64 iAdd   = (Int64)(compID == COMPONENT_Y ? 171 : 256) << (iQBits-9);
-#else
-  const Int64 iAdd   = (compID == COMPONENT_Y ? 171 : 256) << (iQBits-9);
-#endif
 #else
   const Int iAdd   = (compID == COMPONENT_Y ? 171 : 256) << (iQBits-9);
 #endif
@@ -8630,22 +8621,25 @@ Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,
         std::cout << (*psDebug);
       }
 #endif
-#if JVET_F0096_BILATERAL_FILTER
-      if (isLuma(compID))
+#if JVET_F0096_BILATERAL_FILTER        
+      if(pcCU->getSlice()->getSPS()->getUseBilateralFilter())        
       {
-        UInt minSize = std::min(tuRect.width,tuRect.height);
-        if ((pcCU->getCbf(absPartIdxTU, compID, uiTrMode) != 0) && (pcCU->getQP(absPartIdxTU)>17) && (minSize < 16))
+        if (isLuma(compID))
         {
-          Pel* piPred = pcPred->getAddr(compID, absPartIdxTU);
-          UInt uiPredStride = pcPred->getStride(compID);
-          Pel* piResi = pResidual->getAddr(compID, absPartIdxTU);
-          UInt uiStrideRes = pResidual->getStride(compID);
-          UInt uiZOrder = pcCU->getZorderIdxInCtu() + absPartIdxTU;
-          TComPicYuv *picRec = pcCU->getPic()->getPicYuvRec();
-          Pel* piReco = picRec->getAddr(compID, pcCU->getCtuRsAddr(), uiZOrder);
-          UInt uiRecStride = picRec->getStride(compID);
-          const Int clipbd = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
-          TComBilateralFilter::instance()->bilateralFilterInter(pcCU, tuRect.width, tuRect.height, piResi, uiStrideRes, piPred, uiPredStride,  piReco, uiRecStride, clipbd, pcCU->getQP(absPartIdxTU));
+          UInt minSize = std::min(tuRect.width,tuRect.height);
+          if ((pcCU->getCbf(absPartIdxTU, compID, uiTrMode) != 0) && (pcCU->getQP(absPartIdxTU)>17) && (minSize < 16))
+          {
+            Pel* piPred = pcPred->getAddr(compID, absPartIdxTU);
+            UInt uiPredStride = pcPred->getStride(compID);
+            Pel* piResi = pResidual->getAddr(compID, absPartIdxTU);
+            UInt uiStrideRes = pResidual->getStride(compID);
+            UInt uiZOrder = pcCU->getZorderIdxInCtu() + absPartIdxTU;
+            TComPicYuv *picRec = pcCU->getPic()->getPicYuvRec();
+            Pel* piReco = picRec->getAddr(compID, pcCU->getCtuRsAddr(), uiZOrder);
+            UInt uiRecStride = picRec->getStride(compID);
+            const Int clipbd = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
+            TComBilateralFilter::instance()->bilateralFilterInter(pcCU, tuRect.width, tuRect.height, piResi, uiStrideRes, piPred, uiPredStride,  piReco, uiRecStride, clipbd, pcCU->getQP(absPartIdxTU));
+          }
         }
       }
 #endif
@@ -9236,17 +9230,6 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
   {
     iTransformShift = std::max<Int>(0, iTransformShift);
   }
-#if JVET_C0024_QTBT && !JVET_C0024_QTBT_FIX_QUANT_TICKET25
-  Int iWHScale = 1;
-  Int iWHShift = 0;
-  Int iWHOffset = 0;
-  if ((g_aucConvertToBit[ uiWidth ] + g_aucConvertToBit[ uiHeight ] + (MIN_CU_LOG2<<1))%2 !=0)
-  {
-    iWHOffset = 64; //1<<(iWHShift-1)
-    iWHShift = 7;
-    iWHScale = 181;
-  }
-#endif
   const Bool bUseGolombRiceParameterAdaptation = pcCU->getSlice()->getSPS()->getSpsRangeExtension().getPersistentRiceAdaptationEnabledFlag();
 #if VCEG_AZ07_CTX_RESIDUALCODING
   UInt uiPrevGRParam = 0;
@@ -9308,11 +9291,7 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
 #endif
 
   const Bool   enableScalingLists             = getUseScalingList(uiWidth, uiHeight, (pcCU->getTransformSkip(uiAbsPartIdx, compID) != 0));
-#if JVET_C0024_QTBT_FIX_QUANT_TICKET25
   const Int    defaultQuantisationCoefficient = ( uiLog2BlockWidth + uiLog2BlockHeight ) & 0x01 ? ( g_quantScales[cQP.rem] * 181 ) >> 7 : g_quantScales[cQP.rem];
-#else
-  const Int    defaultQuantisationCoefficient = g_quantScales[cQP.rem];
-#endif
 #if JVET_C0024_QTBT
   const Double defaultErrorScale              = getErrScaleCoeffNoScalingList(scalingListType, (uiLog2BlockWidth-1), (uiLog2BlockHeight-1), cQP.rem);
 #else
@@ -9397,13 +9376,7 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
 
       const Int    quantisationCoefficient = (enableScalingLists) ? piQCoef   [uiBlkPos] : defaultQuantisationCoefficient;
       const Double errorScale              = (enableScalingLists) ? pdErrScale[uiBlkPos] : defaultErrorScale;
-
-#if JVET_C0024_QTBT && !JVET_C0024_QTBT_FIX_QUANT_TICKET25
-      const Int64  tmpLevel                = (Int64(abs(plSrcCoeff[ uiBlkPos ])) * quantisationCoefficient * iWHScale + iWHOffset)>>iWHShift;
-#else
       const Int64  tmpLevel                = Int64(abs(plSrcCoeff[ uiBlkPos ])) * quantisationCoefficient;
-#endif
-
       const Intermediate_Int lLevelDouble  = (Intermediate_Int)min<Int64>(tmpLevel, std::numeric_limits<Intermediate_Int>::max() - (Intermediate_Int(1) << (iQBits - 1)));
 
 #if ADAPTIVE_QP_SELECTION
@@ -11589,15 +11562,13 @@ Void TComTrQuant::setErrScaleCoeff(UInt list, UInt size, Int qp, const Int maxLo
   }
 
 #if JVET_C0024_QTBT
-#if JVET_C0024_QTBT_FIX_QUANT_TICKET25
   if( (w+h)&1 )
   {
     Int quant = ( g_quantScales[qp] * 181 ) >> 7;
     getErrScaleCoeffNoScalingList(list, w, h, qp) = dErrScale / quant / quant / (1 << DISTORTION_PRECISION_ADJUSTMENT(2 * (bitDepths.recon[channelType] - 8)));
   }
   else
-#endif
-  getErrScaleCoeffNoScalingList(list, w, h, qp) = dErrScale / g_quantScales[qp] / g_quantScales[qp] / (1 << DISTORTION_PRECISION_ADJUSTMENT(2 * (bitDepths.recon[channelType] - 8)));
+    getErrScaleCoeffNoScalingList(list, w, h, qp) = dErrScale / g_quantScales[qp] / g_quantScales[qp] / (1 << DISTORTION_PRECISION_ADJUSTMENT(2 * (bitDepths.recon[channelType] - 8)));
 #else
   getErrScaleCoeffNoScalingList(list, size, qp) = dErrScale / g_quantScales[qp] / g_quantScales[qp] / (1 << DISTORTION_PRECISION_ADJUSTMENT(2 * (bitDepths.recon[channelType] - 8)));
 #endif
@@ -11909,11 +11880,7 @@ Void TComTrQuant::transformSkipQuantOneSample(TComTU &rTu, const ComponentID com
   const Int iQBits = QUANT_SHIFT + cQP.per + iTransformShift;
   // QBits will be OK for any internal bit depth as the reduction in transform shift is balanced by an increase in Qp_per due to QpBDOffset
 
-#if JVET_C0024_ENCODER_OVERFLOW_FIX
   const Int iAdd = (Int64)( bUseHalfRoundingPoint ? 256 : (pcCU->getSlice()->getSliceType() == I_SLICE ? 171 : 85) ) << ((Int64)iQBits - 9);
-#else
-  const Int iAdd = ( bUseHalfRoundingPoint ? 256 : (pcCU->getSlice()->getSliceType() == I_SLICE ? 171 : 85) ) << (iQBits - 9);
-#endif
 
   TCoeff transformedCoefficient;
 
@@ -12671,9 +12638,6 @@ Void TComTrQuant::candidateSearch(TComDataCU *pcCU, UInt uiPartAddr, UInt uiBlkS
     UInt uiTarDepth = g_aucConvertToBit[uiBlkSize];
     Pel **tarPatch = m_pppTarPatch[uiTarDepth];
     Int      iRefIdx[2] = { -1, -1 };
-#if !VCEG_AZ08_INTER_KLT_MV_BUGFIXED
-    TComMv      cMvs[2];
-#endif
     UInt uiTargetCandiNum = g_uiDepth2MaxCandiNum[uiTarDepth];
     const Int channelBitDepth = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
     //Initialize the library for saving the best candidates
@@ -12695,11 +12659,7 @@ Void TComTrQuant::candidateSearch(TComDataCU *pcCU, UInt uiPartAddr, UInt uiBlkS
         iRefIdx[eRefPicList] = pcCU->getCUMvField(eRefPicList)->getRefIdx(uiPartAddr);
         if (iRefIdx[eRefPicList] >= 0)
         {
-#if VCEG_AZ08_INTER_KLT_MV_BUGFIXED
             cMvRefs[filledNum] = pcCU->getCUMvField(eRefPicList)->getMv(uiPartAddr);
-#else
-            cMvRefs[filledNum] = cMvs[eRefPicList];
-#endif
             iRefPOCs[filledNum] = pcCU->getSlice()->getRefPic(eRefPicList, iRefIdx[eRefPicList])->getPOC();
             filledNum++;
         }
@@ -12903,10 +12863,8 @@ Void TComTrQuant::searchCandidateFraBasedOnInteger(TComDataCU *pcCU, Pel **tarPa
 Void TComTrQuant::xSetSearchRange(TComDataCU* pcCU, TComMv& cMvPred, Int iSrchRng, TComMv& rcMvSrchRngLT, TComMv& rcMvSrchRngRB)
 {
     Int  iMvShift = 2;
-#if VCEG_AZ08_INTER_KLT_MV_BUGFIXED
 #if VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE
     iMvShift += VCEG_AZ07_MV_ADD_PRECISION_BIT_FOR_STORE;
-#endif
 #endif
     TComMv cTmpMvPred = cMvPred;
     pcCU->clipMv(cTmpMvPred);

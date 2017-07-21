@@ -80,10 +80,6 @@
 #define JVET_C0024_QTBT                                   1
 
 #if JVET_C0024_QTBT
-#define JVET_C0024_BT_FIX_TICKET22                        1
-#define JVET_C0024_QTBT_FIX_QUANT_TICKET25                1  // JVET-D0025
-#define RDOQ_BIT_ESTIMATE_FIX_TICKET29                    1  // correct RDOQ uninitialized values in case of vertical scan 
-#define FIX_TICKET32                                      1  ///< Fix of ticket #32 (Initialization for INIT_LAST)
 
 #define MIN_CU_LOG2                                       2
 #if MIN_CU_LOG2==1
@@ -98,18 +94,12 @@
 #define JVET_C0024_SPS_MAX_BT_DEPTH                       1  ///< signal max BT depth in SPS 
 
 #define JVET_C0024_CTU_256                                0  ///< support CTU 256 for QTBT, force QT split for CU 256x256 
-#define JVET_C0024_ENCODER_OVERFLOW_FIX                   1  ///< fix the encoder overflow in the case of very high QP
 #define JVET_C0024_DELTA_QP_FIX                           1  ///< support delta QP signaling in QTBT
 
 // for fast algorithms
 #define JVET_C0024_AMAX_BT                                1  ///< slice level adaptive maximum BT size (encoder only)
-#define JVET_C0024_AMAX_BT_FIX                            1  ///< Support parallel encoding
-#define JVET_C0024_AMAX_BT_FIX_TICKET23                   1
 #define JVET_C0024_FAST_MRG                               1
 #define JVET_C0024_PBINTRA_FAST                           1
-#if JVET_C0024_PBINTRA_FAST
-#define JVET_C0024_PBINTRA_FAST_FIX                       1  ///< JVET-D0077
-#endif
 #define JVET_C0024_ITSKIP                                 1  ///< skip zero row/column in inverse transform (decoder speedup)
 
 #define JVET_D0077_FAST_EXT                               1  ///< extension of exsiting fast algorithm 
@@ -118,6 +108,7 @@
 #define JVET_D0077_SAVE_LOAD_ENC_INFO                     1  ///< save and load encoder decision for speedup
 
 #define WCG_LUMA_DQP_CM_SCALE                             1  ///< enable luma adaptive QP and chroma QP scale, intended for data in ST-2084 container
+#define WCG_LUMA_DQP_CM_SCALE_FIX_PPS                     1  // to enable two PPS with chroma QP offset in PPS according to QP and QP+1
 
 #define JVET_E0023_FAST_ENCODING_SETTING                  1
 #if JVET_E0023_FAST_ENCODING_SETTING
@@ -130,8 +121,6 @@
 #endif // end of JVET_C0024_QTBT
 
 #define JVET_C0046_OMIT_ASSERT_ERDPCM                     1  ///< for RExt, omit assertion related to Explict Residual DPCM
-
-#define JVET_C0046_FIX_DECODER_DEBUG_BIT_STATISTICS       1  ///< bugfix on DECODER_DEBUG_BIT_STATISTICS for QTBT
 
 #define VCEG_AZ08_USE_KLT                                 1  ///< KLT (if defined 1, use cfg option of KLT to control the enablement of intra KLT and inter KLT (INTERA_KLT, VCEG_AZ08_INTER_KLT should be set as 1); if 0, use INTERA_KLT, VCEG_AZ08_INTER_KLT to control the enablement.)
 
@@ -158,8 +147,6 @@
 #define VCEG_AZ08_USE_SSE_TMP_SAD                         1  ///< (default 1) If defined, will calculate the template difference use intel SSE 
 #endif
 #endif
-
-#define VCEG_AZ08_INTER_KLT_MV_BUGFIXED                   1  /// Fixed the bug related with mv (2016.2.29)
 #endif
 
 
@@ -167,7 +154,6 @@
 #if ALF_HM3_REFACTOR
 #define COM16_C806_ALF_TEMPPRED_NUM                       6  ///< 0: no temporal prediction
 #if COM16_C806_ALF_TEMPPRED_NUM
-#define FIX_TICKET12                                      1  ///< fixed ticket #12
 #define JVET_E0104_ALF_TEMP_SCALABILITY                   1  ///< ALF temporal prediction with temporal scalability as in JVET-E0104
 #if JVET_E0104_ALF_TEMP_SCALABILITY
 #define JVET_E0104_ALF_MAX_TEMPLAYERID                    5  ///< maximum number of temporal layers
@@ -265,9 +251,6 @@
 #define VCEG_AZ07_CTX_RESIDUALCODING                      1  ///< Context modeling for transform coefficient levels
 #define VCEG_AZ07_BAC_ADAPT_WDOW                          1  ///< Multi-hypothesis probability estimation
 #define VCEG_AZ07_INIT_PREVFRAME                          1  ///< Initialization for context models
-#if VCEG_AZ07_INIT_PREVFRAME
-#define VCEG_AZ07_INIT_PREVFRAME_FIX                      1  ///< Fix for GOP16
-#endif
 #endif                                                       
 
 #define VCEG_AZ05_MULTI_PARAM_CABAC                       1  ///< CABAC probability estimation with 2 windows 
@@ -296,7 +279,6 @@
 #define COM16_C983_RSAF_ESTIMATION_MODE_FULL              1  ///< Full/fast estimation of the possiblity to hide the RSAF flag
 #define JVET_B0041_SIMPLIFICATION_1A                      1  ///< Simplidication by avoiding RSAF-enabled TU pass if RSAF-disabled pass evaluate to CBF==0 
 #define JVET_B0041_SIMPLIFICATION_2                       1  ///< Simplidication by cancelling TU split check using cbf value and result of hiding procedure for non-split TU.
-#define COM16_C983_RSAF_S_TICKET14                        1
 #endif                                                       
 
 #define COM16_C1044_NSST                                  1  ///< Mode dependent non-separable secondary transforms
@@ -318,9 +300,6 @@
 #endif
 
 #define COM16_C1046_PDPC_INTRA                            1  ///< Position dependent intra prediction combination
-#if COM16_C1046_PDPC_INTRA
-#define FIX_TICKET20                                      1  ///< fixed ticket #20 (PDPC rate calculation in RDO)
-#endif
 #if COM16_C1046_PDPC_INTRA && COM16_C983_RSAF                
 #define COM16_C1046_PDPC_RSAF_HARMONIZATION               1  ///< Harmonization between PDPC and RSAF
 #endif
@@ -328,9 +307,6 @@
 #if COM16_C1046_PDPC_INTRA && VCEG_AZ05_INTRA_MPI
 #error
 #endif
-
-#define PARALLEL_ENCODING_SAO_FIX                         1  ///< Fix of SAO for parallel encoding proposed in JVET-B0036
-#define PARALLEL_ENCODING_RAS_CABAC_INIT_PRESENT          1  ///< Fix of CABAC initialization for parallel encoding proposed in JVET-B0036
 
 // encoder only changes
 #define COM16_C806_SIMD_OPT                               1  ///< SIMD optimization, no impact on RD performance
@@ -342,21 +318,6 @@
 #else
 #define JVET_B0039_QP_FIX                                 1  ///< Recalcualtes QP to align with a HM lambda (same relation as for all intra coding is used)
 #endif
-#define FIX_TICKET36                                      1  ///< Fix of ticket #36 (number of possible QP values exceeds the defined value)
-#if FIX_TICKET36
-#define JVET_B0039_INC_NUM_QP_PROB                        52 ///< Number of total allowed positive QP values, aligned with HEVC. may need to change if more QP values are allowed
-#else
-#define JVET_B0039_INC_NUM_QP_PROB                        7  ///< Number of context is increased when more QPs are used
-#endif
-#define FIX_TICKET30                                      1  ///< Fix of ticket #30 (Use of uninitialized Cabac coder for Intra 128x128 blocks)
-#define FIX_TICKET33                                      1  ///< Fix of ticket #33 (Block level IC flag is set based on slice level IC flag)
-#define FIX_TICKET34                                      1  ///< Fix of ticket #34 (Intra-fast encoder-side decisions based on possibly incorrect obmc pred buffer)
-#define FIX_TICKET37                                      1  ///< Fix of ticket #37 (incorrect m_pppcPredYuvBest buffer copy)
-#define FIX_TICKET39                                      1  ///< Fix of ticket #39 (encoder bug of delta QP)
-#define FIX_TICKET40                                      1  ///< Fix of ticket #40 (ALF crash when image height is greater than image width)
-#define FIX_TICKET42                                      1  ///< Fix of ticket #42 (CTU bits/distortion calculation mistake for I slice when QTBT is enabled)
-#define FIX_TICKET43                                      1  ///< Fix of ticekt #43 (Different coding performance when D0127 is on/off)
-#define FIX_TICKET45                                      1  ///< Fix of ticket #45 (Console output error of nQP when LCU level rate control is enabled)
 
 ///////////////////////////////////////////////////////////
 // KTA tools section end
@@ -851,9 +812,7 @@ enum ScalingListSize
 #if COM16_C806_T64
   SCALING_LIST_64x64,
 #endif
-#if JVET_C0024_QTBT_FIX_QUANT_TICKET25
   SCALING_LIST_128x128,
-#endif
   SCALING_LIST_SIZE_NUM
 };
 
@@ -1203,11 +1162,7 @@ typedef struct _QPFLAG
   Bool      used;      //same QP, same type has appearaed
   Bool      firstUsed; //same QP, same type was firstly signaled
 #if VCEG_AZ07_INIT_PREVFRAME
-#if VCEG_AZ07_INIT_PREVFRAME_FIX
   Int       resetInit; 
-#else
-  UInt      resetInit; //for the first B/P frame after intra slice, no init update
-#endif
 #endif
 } QPFlag;
 #endif

@@ -509,6 +509,9 @@ Void TAppEncTop::xInitLibCfg()
 #if JVET_D0033_ADAPTIVE_CLIPPING
   m_cTEncTop.setTchClipParam(m_ClipParam);
 #endif
+#if JVET_F0096_BILATERAL_FILTER
+  m_cTEncTop.setUseBilateralFilter(m_useBilateralFilter);
+#endif
   m_cTEncTop.setSummaryOutFilename                                ( m_summaryOutFilename );
   m_cTEncTop.setSummaryPicFilenameBase                            ( m_summaryPicFilenameBase );
   m_cTEncTop.setSummaryVerboseness                                ( m_summaryVerboseness );
@@ -632,13 +635,6 @@ Void TAppEncTop::encode()
   TExt360AppEncTop           ext360(*this, m_cTEncTop.getGOPEncoder()->getExt360Data(), *(m_cTEncTop.getGOPEncoder()), *pcPicYuvOrg);
 #endif
 
-#if JVET_F0096_BILATERAL_FILTER
-  TComBilateralFilter::instance()->createdivToMulLUTs();
-  for(Int qp=18; qp<MAX_QP+1; qp++ )
-  {
-    TComBilateralFilter::instance()->createBilateralFilterTable(qp);
-  }
-#endif
   while ( !bEos )
   {
     // get buffers

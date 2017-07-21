@@ -274,15 +274,7 @@ static const UInt notFirstGroupNeighbourhoodContextOffset[MAX_NUM_CHANNEL_TYPE] 
 #endif
 
 #if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ07_INIT_PREVFRAME
-#if JVET_B0039_INC_NUM_QP_PROB
-#define NUM_QP_PROB                  JVET_B0039_INC_NUM_QP_PROB                //could be set to N (N>5, depending on the allowed QPs in a coded sequence)
-#else
-#if FIX_TICKET36
-#define NUM_QP_PROB                  52                ///< Number of total allowed positive QP values, aligned with HEVC. may need to change if more QP values are allowed
-#else
-#define NUM_QP_PROB                  5                //could be set to N (N>5, depending on the allowed QPs in a coded sequence)
-#endif
-#endif
+#define NUM_QP_PROB                  52       //< Number of total allowed positive QP values, aligned with HEVC. may need to change if more QP values are allowed
 #define NUM_CTX_PBSLICE              MAX_NUM_CTX_MOD //could be set to the exact number of used contexts later
 #endif
 
@@ -631,7 +623,6 @@ INIT_QT_ROOT_CBF[NUMBER_OF_SLICE_TYPES][NUM_QT_ROOT_CBF_CTX] =
 static const UChar 
 INIT_LAST[NUMBER_OF_SLICE_TYPES][NUM_CTX_LAST_FLAG_SETS * NUM_CTX_LAST_FLAG_XY] =  
 {
-#if FIX_TICKET32
   { BSLICE_LUMA_LAST_POSITION_CONTEXT,    126,  111,  111,   79,  CNU, CNU, CNU, CNU, CNU, CNU,
     BSLICE_CHROMA_LAST_POSITION_CONTEXT,  CNU,  CNU,  CNU,  CNU,  CNU, CNU, CNU, CNU, CNU, CNU,
   },                                                              
@@ -641,17 +632,6 @@ INIT_LAST[NUMBER_OF_SLICE_TYPES][NUM_CTX_LAST_FLAG_SETS * NUM_CTX_LAST_FLAG_XY] 
   { ISLICE_LUMA_LAST_POSITION_CONTEXT,    143,  127,  111,   79,  CNU, CNU, CNU, CNU, CNU, CNU,
     ISLICE_CHROMA_LAST_POSITION_CONTEXT,  CNU,  CNU,  CNU,  CNU,  CNU, CNU, CNU, CNU, CNU, CNU,
   }, 
-#else
-  { BSLICE_LUMA_LAST_POSITION_CONTEXT,    126,  111,  111,   79,
-    BSLICE_CHROMA_LAST_POSITION_CONTEXT,  CNU,  CNU,  CNU,  CNU,
-  }, 
-  { PSLICE_LUMA_LAST_POSITION_CONTEXT,    111,  111,   95,   94,
-    PSLICE_CHROMA_LAST_POSITION_CONTEXT,  CNU,  CNU,  CNU,  CNU,
-  }, 
-  { ISLICE_LUMA_LAST_POSITION_CONTEXT,    143,  127,  111,   79, 
-    ISLICE_CHROMA_LAST_POSITION_CONTEXT,  CNU,  CNU,  CNU,  CNU,
-  }, 
-#endif
 };
 #else
 static const UChar

@@ -1308,11 +1308,7 @@ Void TEncEntropy::estimatePuMeBit (estPuMeBitsSbacStruct* pcEstPuMeBitsSbac )
 }
 #endif
 
-Void TEncEntropy::estimateBit (estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, const ChannelType chType
-#if RDOQ_BIT_ESTIMATE_FIX_TICKET29
-  , UInt uiScanIdx
-#endif
-  )
+Void TEncEntropy::estimateBit (estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, const ChannelType chType, UInt uiScanIdx)
 {
 #if JVET_C0024_QTBT
   if (width==2 || height==2)
@@ -1320,11 +1316,7 @@ Void TEncEntropy::estimateBit (estBitsSbacStruct* pcEstBitsSbac, Int width, Int 
       return;   //don't use RDOQ for 2xn;
   }
 
-  m_pcEntropyCoderIf->estBit ( pcEstBitsSbac, width, height, chType 
-#if RDOQ_BIT_ESTIMATE_FIX_TICKET29
-    , uiScanIdx
-#endif
-    );
+  m_pcEntropyCoderIf->estBit ( pcEstBitsSbac, width, height, chType, uiScanIdx);
 #else
   const UInt heightAtEntropyCoding = (width != height) ? (height >> 1) : height;
 
@@ -1866,11 +1858,7 @@ Void  print(ALFParam* pAlfParam)
 }
 #endif
 
-Void TEncEntropy::encodeAlfParam(ALFParam* pAlfParam , UInt uiMaxTotalCUDepth
-#if FIX_TICKET12
-        ,const TComSlice * pSlice
-#endif
-  )
+Void TEncEntropy::encodeAlfParam(ALFParam* pAlfParam , UInt uiMaxTotalCUDepth, const TComSlice * pSlice)
 {
   m_pcEntropyCoderIf->codeAlfFlag(pAlfParam->alf_flag);
   if (!pAlfParam->alf_flag)
@@ -1881,14 +1869,12 @@ Void TEncEntropy::encodeAlfParam(ALFParam* pAlfParam , UInt uiMaxTotalCUDepth
 
 #if COM16_C806_ALF_TEMPPRED_NUM
   //encode temporal prediction flag and index
-#if FIX_TICKET12
   if( pSlice->getSliceType() == I_SLICE)
   {
     assert(pAlfParam->temproalPredFlag == false);
   }
   else
-#endif
-  m_pcEntropyCoderIf->codeAlfFlag( pAlfParam->temproalPredFlag ? 1 : 0 );
+    m_pcEntropyCoderIf->codeAlfFlag( pAlfParam->temproalPredFlag ? 1 : 0 );
   if( pAlfParam->temproalPredFlag )
   {
     m_pcEntropyCoderIf->codeAlfUvlc( pAlfParam->prevIdx );

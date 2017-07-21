@@ -52,7 +52,9 @@ public:
   ~TComBilateralFilter();
   UShort** m_bilateralFilterTable;
   Int m_bilateralCenterWeightTable[5];
-
+  bool m_initFlag;
+  bool getInitFlag() const {return m_initFlag;};
+  Void setInitFlag(bool b) {m_initFlag = b;}
   UInt divToMulOneOverN[BILATERAL_FILTER_MAX_DENOMINATOR_PLUS_ONE];
   UChar divToMulShift[BILATERAL_FILTER_MAX_DENOMINATOR_PLUS_ONE];
   Void createdivToMulLUTs();

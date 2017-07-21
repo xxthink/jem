@@ -92,8 +92,13 @@ private:
   TEncSlice               m_cSliceEncoder;                ///< slice encoder
   TEncCu                  m_cCuEncoder;                   ///< CU encoder
   // SPS
+#if WCG_LUMA_DQP_CM_SCALE_FIX_PPS
+  ParameterSetMap<TComSPS> m_spsMap;                      ///< SPS. This is the base value. This is copied to TComPicSym
+  ParameterSetMap<TComPPS> m_ppsMap;                      ///< PPS. This is the base value. This is copied to TComPicSym
+#else
   TComSPS                 m_cSPS;                         ///< SPS. This is the base value. This is copied to TComPicSym
   TComPPS                 m_cPPS;                         ///< PPS. This is the base value. This is copied to TComPicSym
+#endif
   // RD cost computation
   TComRdCost              m_cRdCost;                      ///< RD cost computation class
 #if JVET_C0024_QTBT
@@ -124,6 +129,17 @@ private:
 #endif
 
 protected:
+#if WCG_LUMA_DQP_CM_SCALE_FIX_PPS
+  Void  xGetNewPicBuffer  ( TComPic*& rpcPic, Int ppsId ); ///< get picture buffer which will be processed. If ppsId<0, then the ppsMap will be queried for the first match.
+  Void  xInitVPS          (TComVPS &vps, const TComSPS &sps); ///< initialize VPS from encoder options
+  Void  xInitSPS          (TComSPS &sps);                 ///< initialize SPS from encoder options
+  Void  xInitPPS          (TComPPS &pps, const TComSPS &sps); ///< initialize PPS from encoder options
+  Void  xInitScalingLists (TComSPS &sps, TComPPS &pps);   ///< initialize scaling lists
+  Void  xInitHrdParameters(TComSPS &sps);                 ///< initialize HRD parameters
+
+  Void  xInitPPSforTiles  (TComPPS &pps);
+  Void  xInitRPS          (TComSPS &sps, Bool isFieldCoding);           ///< initialize PPS from encoder options
+#else
   Void  xGetNewPicBuffer  ( TComPic*& rpcPic );           ///< get picture buffer which will be processed
   Void  xInitVPS          ();                             ///< initialize VPS from encoder options
   Void  xInitSPS          ();                             ///< initialize SPS from encoder options
@@ -133,7 +149,7 @@ protected:
 
   Void  xInitPPSforTiles  ();
   Void  xInitRPS          (Bool isFieldCoding);           ///< initialize PPS from encoder options
-
+#endif
 public:
   TEncTop();
   virtual ~TEncTop();
@@ -171,6 +187,12 @@ public:
   TEncRateCtrl*           getRateCtrl           () { return &m_cRateCtrl;             }
   Void selectReferencePictureSet(TComSlice* slice, Int POCCurr, Int GOPid );
   Int getReferencePictureSetIdxForSOP(Int POCCurr, Int GOPid );
+
+#if WCG_LUMA_DQP_CM_SCALE_FIX_PPS
+  Void                   setParamSetChanged(Int spsId, Int ppsId);
+  Bool                   PPSNeedsWriting(Int ppsId);
+  Bool                   SPSNeedsWriting(Int spsId);
+#endif
   // -------------------------------------------------------------------------------------------------------------------
   // encoder function
   // -------------------------------------------------------------------------------------------------------------------
@@ -198,15 +220,31 @@ public:
 
 #if JVET_D0134_PSNR
 #if JVET_F0064_MSSSIM
+#if WCG_LUMA_DQP_CM_SCALE_FIX_PPS
+  Void printSummary(Bool isField) { m_cGOPEncoder.printOutSummary (m_uiNumAllPicCoded, isField, m_printMSEBasedSequencePSNR, m_printSequenceMSE, m_printMSSSIM, m_trueBidepthPSNR, m_spsMap.getFirstPS()->getBitDepths()); }
+#else  
   Void printSummary(Bool isField) { m_cGOPEncoder.printOutSummary (m_uiNumAllPicCoded, isField, m_printMSEBasedSequencePSNR, m_printSequenceMSE, m_printMSSSIM, m_trueBidepthPSNR, m_cSPS.getBitDepths()); }
+#endif
+#else
+#if WCG_LUMA_DQP_CM_SCALE_FIX_PPS
+  Void printSummary(Bool isField) { m_cGOPEncoder.printOutSummary (m_uiNumAllPicCoded, isField, m_printMSEBasedSequencePSNR, m_printSequenceMSE, m_trueBidepthPSNR, m_spsMap.getFirstPS()->getBitDepths()); }
 #else
   Void printSummary(Bool isField) { m_cGOPEncoder.printOutSummary (m_uiNumAllPicCoded, isField, m_printMSEBasedSequencePSNR, m_printSequenceMSE, m_trueBidepthPSNR, m_cSPS.getBitDepths()); }
 #endif
+#endif
 #else
 #if JVET_F0064_MSSSIM
+#if WCG_LUMA_DQP_CM_SCALE_FIX_PPS
+  Void printSummary(Bool isField) { m_cGOPEncoder.printOutSummary (m_uiNumAllPicCoded, isField, m_printMSEBasedSequencePSNR, m_printSequenceMSE, m_printMSSSIM, m_spsMap.getFirstPS()->getBitDepths()); }
+#else
   Void printSummary(Bool isField) { m_cGOPEncoder.printOutSummary (m_uiNumAllPicCoded, isField, m_printMSEBasedSequencePSNR, m_printSequenceMSE, m_printMSSSIM, m_cSPS.getBitDepths()); }
+#endif
+#else
+#if WCG_LUMA_DQP_CM_SCALE_FIX_PPS
+  Void printSummary(Bool isField) { m_cGOPEncoder.printOutSummary (m_uiNumAllPicCoded, isField, m_printMSEBasedSequencePSNR, m_printSequenceMSE, m_spsMap.getFirstPS()->getBitDepths()); }
 #else
   Void printSummary(Bool isField) { m_cGOPEncoder.printOutSummary (m_uiNumAllPicCoded, isField, m_printMSEBasedSequencePSNR, m_printSequenceMSE, m_cSPS.getBitDepths()); }
+#endif
 #endif
 #endif
 
@@ -216,7 +254,11 @@ public:
 #if JVET_D0134_PSNR
       , m_trueBidepthPSNR
 #endif
+#if WCG_LUMA_DQP_CM_SCALE_FIX_PPS
+      , m_spsMap.getFirstPS()->getBitDepths()
+#else
       , m_cSPS.getBitDepths()
+#endif
     );
   }
 #endif

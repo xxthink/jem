@@ -889,19 +889,15 @@ Void TEncCu::compressCtu( TComDataCU* pCtu )
       }
 #endif
 
-#if FIX_TICKET42
       Double lumaCTBTotalCost = pCtu->getTotalCost();
       Distortion lumaCTBTotalDistortion = pCtu->getTotalDistortion();
       UInt lumaCTBTotalBits = pCtu->getTotalBits();
       UInt lumaCTBTotalBins = pCtu->getTotalBins();
-#endif
       xCompressCU(m_pppcBestCU[uiWidthIdx][uiHeightIdx], m_pppcTempCU[uiWidthIdx][uiHeightIdx], 0, uiCTUSize, uiCTUSize, 0 DEBUG_STRING_PASS_INTO(sDebug));
-#if FIX_TICKET42
       pCtu->getTotalCost() += lumaCTBTotalCost;
       pCtu->getTotalDistortion() += lumaCTBTotalDistortion;
       pCtu->getTotalBits() += lumaCTBTotalBits;
       pCtu->getTotalBins() += lumaCTBTotalBins;
-#endif
     }
 #endif
 
@@ -1259,14 +1255,13 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
   Int targetQP = iBaseQP;
   if (m_pcEncCfg->getUseLumaDeltaQp() )
   {
-    if( uiQTBTDepth <= uiMaxDQPDepthQTBT ) 
-
-    m_LumaQPOffset= calculateLumaDQP(rpcTempCU, 0, m_pppcOrigYuv[uiWidthIdx][uiHeightIdx]);  // keep using the same m_QP_LUMA_OFFSET in the same LCU
-    targetQP = iBaseQP-m_LumaQPOffset;        // targetQP is used for control lambda
+    if (uiQTBTDepth <= uiMaxDQPDepthQTBT)
     {
-      iMinQP = iBaseQP-m_LumaQPOffset;
-      iMaxQP = iMinQP;   // make it same as MinQP to force encode choose the modified QP
+      m_LumaQPOffset = calculateLumaDQP(rpcTempCU, 0, m_pppcOrigYuv[uiWidthIdx][uiHeightIdx]);  // keep using the same m_QP_LUMA_OFFSET in the same LCU
     }
+    targetQP = Clip3(-sps.getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, iBaseQP - m_LumaQPOffset);  // targetQP is used for control lambda
+    iMinQP = targetQP;
+    iMaxQP = iMinQP;   // make it same as MinQP to force encode choose the modified QP
   }  
 
 #endif
@@ -1950,8 +1945,6 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
           rpcTempCU->getInterHAD() = MAX_UINT;
           if (rpcBestCU->getPredictionMode(0)==MODE_INTER && !rpcBestCU->getSlice()->isIntra())
           {
-#if JVET_C0024_PBINTRA_FAST_FIX
-#if FIX_TICKET34            
             // redundant MC process to make sure that m_pppcPredYuvBest has the correct moiton compensation prediction data
 #if JVET_E0052_DMVR
             m_pcPredSearch->motionCompensation ( rpcBestCU, m_pppcPredYuvBest[uiWidthIdx][uiHeightIdx], false );
@@ -1964,23 +1957,12 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
             m_pcPredSearch->subBlockOBMC( rpcBestCU, 0, m_pppcPredYuvBest[uiWidthIdx][uiHeightIdx], m_pppcTmpYuv1[uiWidthIdx][uiHeightIdx], m_pppcTmpYuv2[uiWidthIdx][uiHeightIdx] );
 #endif
 #endif
-#endif
             DistParam distParam;
             const Bool bUseHadamard=rpcTempCU->getCUTransquantBypass(0) == 0;
             m_pcRdCost->setDistParam(distParam, rpcTempCU->getSlice()->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA), m_pppcOrigYuv[uiWidthIdx][uiHeightIdx]->getAddr(COMPONENT_Y)
               , m_pppcOrigYuv[uiWidthIdx][uiHeightIdx]->getStride(COMPONENT_Y)
               , m_pppcPredYuvBest[uiWidthIdx][uiHeightIdx]->getAddr(COMPONENT_Y), m_pppcPredYuvBest[uiWidthIdx][uiHeightIdx]->getStride(COMPONENT_Y)
               , rpcTempCU->getWidth(0), rpcTempCU->getHeight(0), bUseHadamard);
-#else
-            m_pcPredSearch->motionCompensation ( rpcTempCU, m_pppcPredYuvTemp[uiWidthIdx][uiHeightIdx] );
-            // use hadamard transform here
-            DistParam distParam;
-            const Bool bUseHadamard=rpcTempCU->getCUTransquantBypass(0) == 0;
-            m_pcRdCost->setDistParam(distParam, rpcTempCU->getSlice()->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA), m_pppcOrigYuv[uiWidthIdx][uiHeightIdx]->getAddr(COMPONENT_Y)
-              , m_pppcOrigYuv[uiWidthIdx][uiHeightIdx]->getStride(COMPONENT_Y)
-              , m_pppcPredYuvTemp[uiWidthIdx][uiHeightIdx]->getAddr(COMPONENT_Y), m_pppcPredYuvTemp[uiWidthIdx][uiHeightIdx]->getStride(COMPONENT_Y)
-              , rpcTempCU->getWidth(0), rpcTempCU->getHeight(0), bUseHadamard);
-#endif
             distParam.bApplyWeight = false;
 
             UInt uiSad = distParam.DistFunc(&distParam);
@@ -3114,11 +3096,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
           rpcTempCU->setQPSubCUs( rpcTempCU->getRefQP( 0 ), 0, uiDepth, uiWidth, uiHeight, uiFirstNonZeroPartIdx, foundNonZeroCbf );
           
           m_pcEntropyCoder->resetBits();
-#if FIX_TICKET39
           m_pcEntropyCoder->encodeQP( rpcTempCU, uiFirstNonZeroPartIdx, false );
-#else
-          m_pcEntropyCoder->encodeQP( rpcTempCU, 0, false );
-#endif
           rpcTempCU->getTotalBits() += m_pcEntropyCoder->getNumberOfWrittenBits(); // dQP bits
           rpcTempCU->getTotalBins() += ((TEncBinCABAC *)((TEncSbac*)m_pcEntropyCoder->m_pcEntropyCoderIf)->getEncBinIf())->getBinsCoded();
           rpcTempCU->getTotalCost()  = m_pcRdCost->calcRdCost( rpcTempCU->getTotalBits(), rpcTempCU->getTotalDistortion() );
@@ -4509,16 +4487,12 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
     }
 #if JVET_C0024_QTBT
     rpcTempCU->copyPartFrom( m_pppcTempCUWoOBMC[uiWIdx][uiHIdx], 0, uhDepth, rpcTempCU->getWidth(0), rpcTempCU->getHeight(0) );
-#if FIX_TICKET34
     if (nOBMC == 0)
       m_pppcPredYuvWoOBMC[uiWIdx][uiHIdx]->copyToPartYuv(m_pppcPredYuvTemp[uiWIdx][uiHIdx], 0);
-#endif
 #else
     rpcTempCU->copyPartFrom( m_ppcTempCUWoOBMC[uhDepth], 0, uhDepth );
-#if FIX_TICKET34
     if (nOBMC == 0)
       m_ppcPredYuvWoOBMC[uhDepth]->copyToPartYuv(m_ppcPredYuvTemp[uhDepth], 0);
-#endif
 #endif
     rpcTempCU->setOBMCFlagSubParts( ( Bool )nOBMC , 0 , uhDepth );
 #endif
@@ -4527,23 +4501,9 @@ Void TEncCu::xCheckRDCostInter( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, 
 #endif
 #if JVET_C0024_QTBT
     m_pcPredSearch->encodeResAndCalcRdInterCU( rpcTempCU, m_pppcOrigYuv[uiWIdx][uiHIdx], 
-#if FIX_TICKET34
-        // no special treatment now
-#else
-#if COM16_C806_OBMC
-    nOBMC == 0 ? m_pppcPredYuvWoOBMC[uiWIdx][uiHIdx] :
-#endif
-#endif
     m_pppcPredYuvTemp[uiWIdx][uiHIdx], m_pppcResiYuvTemp[uiWIdx][uiHIdx], m_pppcResiYuvBest[uiWIdx][uiHIdx], m_pppcRecoYuvTemp[uiWIdx][uiHIdx], false 
 #else
   m_pcPredSearch->encodeResAndCalcRdInterCU( rpcTempCU, m_ppcOrigYuv[uhDepth], 
-#if FIX_TICKET34
-        // no special treatment now
-#else
-#if COM16_C806_OBMC
-    nOBMC == 0 ? m_ppcPredYuvWoOBMC[uhDepth] :
-#endif
-#endif
     m_ppcPredYuvTemp[uhDepth], m_ppcResiYuvTemp[uhDepth], m_ppcResiYuvBest[uhDepth], m_ppcRecoYuvTemp[uhDepth], false 
 #endif
 #if COM16_C806_EMT
@@ -4753,11 +4713,6 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
     if( rpcTempCU->getWidth( 0 ) > 64 )
 #endif
     {
-#if !FIX_TICKET30
-      rpcTempCU->getTotalCost() = MAX_DOUBLE / 4;
-      rpcTempCU->getTotalDistortion() = MAX_INT;
-      xCheckBestMode(rpcBestCU, rpcTempCU, uiDepth);
-#endif
       return;
     }
   }
@@ -5191,11 +5146,7 @@ Void TEncCu::xCopyYuv2Tmp( UInt uiPartUnitIdx, UInt uiNextDepth )
   UInt uiNextWIdx = uiWIdx - ((uiSplitMethod & 1)==0 ? 1: 0);
   UInt uiNextHIdx = uiHIdx - ((uiSplitMethod & 2)==0 ? 1: 0);
   m_pppcRecoYuvBest[uiNextWIdx][uiNextHIdx]->copyToPartYuv( m_pppcRecoYuvTemp[uiWIdx][uiHIdx], uiPartUnitIdx );
-#if FIX_TICKET37
   m_pppcPredYuvBest[uiNextWIdx][uiNextHIdx]->copyToPartYuv( m_pppcPredYuvTemp[uiWIdx][uiHIdx], uiPartUnitIdx );
-#else
-  m_pppcPredYuvBest[uiNextWIdx][uiNextHIdx]->copyToPartYuv( m_pppcPredYuvBest[uiWIdx][uiHIdx], uiPartUnitIdx );
-#endif
 #else
   UInt uiCurrDepth = uiNextDepth - 1;
   m_ppcRecoYuvBest[uiNextDepth]->copyToPartYuv( m_ppcRecoYuvTemp[uiCurrDepth], uiPartUnitIdx );
