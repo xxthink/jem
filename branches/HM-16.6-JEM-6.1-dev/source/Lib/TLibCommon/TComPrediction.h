@@ -144,6 +144,10 @@ protected:
   static const Int m_ICShiftDiff = 12;
 #endif
 
+#if JVET_G0082
+  UInt   m_uiaBIOShift[64];
+#endif
+
 #if VCEG_AZ08_INTER_KLT
   TComPicYuv* m_tempPicYuv;
 #endif
@@ -200,6 +204,12 @@ protected:
   __inline Void fracFilter2DVer(Pel* piSrc, Int iSrcStride,  Int iWidth, Int iHeight, Int iDstStride,  Pel*& rpiDst, Int iMv, const Int iShift);
   __inline Void gradFilter1DHor (Pel* piSrc, Int iSrcStride,  Int iWidth, Int iHeight, Int iDstStride,  Pel*& rpiDst, Int iMV, const Int iShift);
   __inline Void gradFilter1DVer (Pel* piSrc, Int iSrcStride,  Int iWidth, Int iHeight, Int iDstStride,  Pel*& rpiDst, Int iMV, const Int iShift);
+
+#if JVET_G0082
+  __inline Int64 divide64(Int64 numer, Int64 denom);
+  __inline Void calcBlkGradient(Int sx, Int sy, Int64 *arraysGx2, Int64 *arraysGxGy, Int64 *arraysGxdI, Int64 *arraysGy2, Int64 *arraysGydI,
+    Int64 &sGx2, Int64 &sGy2, Int64 &sGxGy, Int64 &sGxdI, Int64 &sGydI, Int iWidth, Int iHeight);
+#endif
 #endif
   Void xPredInterUni            ( TComDataCU* pcCU,                          UInt uiPartAddr,               Int iWidth, Int iHeight, RefPicList eRefPicList, TComYuv* pcYuvPred
 #if JVET_E0052_DMVR
@@ -217,7 +227,7 @@ protected:
 #if JVET_E0052_DMVR    
     , Bool bRefineflag
 #endif
-#if VCEG_AZ07_FRUC_MERGE
+#if VCEG_AZ07_FRUC_MERGE || JVET_G0082
     , Bool bOBMC = false
 #endif
     );
@@ -250,6 +260,8 @@ protected:
 #endif
 #if JVET_E0052_DMVR
     , Bool bRefineflag
+#endif
+#if JVET_E0052_DMVR || JVET_G0082
     , Bool bOBMC
 #endif
     );
