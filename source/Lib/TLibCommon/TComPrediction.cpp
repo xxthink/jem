@@ -4996,7 +4996,7 @@ UInt TComPrediction::xFrucRefineMvSearch( TComMvField * pBestMvField , RefPicLis
       mvCand.getMv() += mvOffset;
       UInt uiCost = xFrucGetMvCost( rMvStart.getMv() , mvCand.getMv() , rSearchRange , FRUC_MERGE_REFINE_MVWEIGHT );
 #if JVET_F0032_UNI_BI_SELECTION
-      if (bMvCostZero)
+      if (bMvCostZero && uiCost != MAX_UINT)
       {
           uiCost = 0;
       }
