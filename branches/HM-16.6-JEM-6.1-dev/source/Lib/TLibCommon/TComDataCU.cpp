@@ -66,7 +66,7 @@ TComDataCU::TComDataCU()
 #if VCEG_AZ05_INTRA_MPI
   m_MPIIdx             = NULL;
 #endif
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
   m_PDPCIdx           = NULL;
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
@@ -245,7 +245,7 @@ Void TComDataCU::create( ChromaFormat chromaFormatIDC, UInt uiNumPartition, UInt
 #if VCEG_AZ05_INTRA_MPI
     m_MPIIdx             = new Char[ uiNumPartition ];
 #endif
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
     m_PDPCIdx            = new Char[ uiNumPartition];
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
@@ -474,7 +474,7 @@ Void TComDataCU::destroy()
       m_MPIIdx = NULL; 
     }
 #endif
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
     if (m_PDPCIdx)
     {
       delete[] m_PDPCIdx;
@@ -821,7 +821,7 @@ Void TComDataCU::initCtu( TComPic* pcPic, UInt ctuRsAddr )
 #if VCEG_AZ05_INTRA_MPI
   memset( m_MPIIdx            , 0,                      m_uiNumPartition * sizeof( *m_MPIIdx ) );
 #endif
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
   memset( m_PDPCIdx           , 0,                      m_uiNumPartition * sizeof(*m_PDPCIdx) );
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
@@ -1088,7 +1088,7 @@ Void TComDataCU::initEstData( const UInt uiDepth, const Int qp, const Bool bTran
 #if VCEG_AZ05_INTRA_MPI
     m_MPIIdx[ui]        = 0;
 #endif
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
     m_PDPCIdx[ui]       = 0;
 #endif
 
@@ -1291,7 +1291,7 @@ Void TComDataCU::initSubBT(TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiCUDepth,
 #if VCEG_AZ05_INTRA_MPI
     memset( m_MPIIdx + uiZorderDst, 0, uiCurrPartNumb );
 #endif
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
     memset( m_PDPCIdx + uiZorderDst, 0, uiCurrPartNumb );
 #endif
 
@@ -1514,7 +1514,7 @@ Void TComDataCU::initSubCU( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth, 
 #if VCEG_AZ05_INTRA_MPI
     m_MPIIdx[ui]     = 0;
 #endif
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
     m_PDPCIdx[ui] = 0;
 #endif
 
@@ -1640,7 +1640,7 @@ Void TComDataCU::copySubCU( TComDataCU* pcCU, UInt uiAbsPartIdx )
 #if VCEG_AZ05_INTRA_MPI
   m_MPIIdx             = pcCU->getMPIIdx()           + uiPart;
 #endif
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
   m_PDPCIdx            = pcCU->getPDPCIdx()          + uiPart;
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
@@ -1807,7 +1807,7 @@ Void TComDataCU::copyInterPredInfoFrom    ( TComDataCU* pcCU, UInt uiAbsPartIdx,
 #if VCEG_AZ05_INTRA_MPI
   m_MPIIdx             = pcCU->getMPIIdx ()               + uiAbsPartIdx;
 #endif
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
   m_PDPCIdx            = pcCU->getPDPCIdx()               + uiAbsPartIdx;
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
@@ -1897,7 +1897,7 @@ Void TComDataCU::copySameSizeCUFrom(TComDataCU* pcCU, UInt uiPartUnitIdx, UInt u
 #if VCEG_AZ05_INTRA_MPI
     memcpy(m_MPIIdx + uiOffset, pcCU->getMPIIdx(), sizeof(*m_MPIIdx)   * uiNumPartition);
 #endif
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
     memcpy(m_PDPCIdx + uiOffset, pcCU->getPDPCIdx(), sizeof(*m_PDPCIdx)   * uiNumPartition);
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
@@ -2091,7 +2091,7 @@ Void TComDataCU::copyPartFrom( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDept
 #if VCEG_AZ05_INTRA_MPI
     memcpy( m_MPIIdx     + uiZorderDst, pcCU->getMPIIdx()+uiZorderSrc, uiCurrPartNumb );
 #endif
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC 
     memcpy( m_PDPCIdx    + uiZorderDst, pcCU->getPDPCIdx()+uiZorderSrc, uiCurrPartNumb );
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
@@ -2209,7 +2209,7 @@ Void TComDataCU::copyPartFrom( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDept
 #if VCEG_AZ05_INTRA_MPI
   memcpy( m_MPIIdx     + uiOffset, pcCU->getMPIIdx(),         sizeof( *m_MPIIdx )   * uiNumPartition );
 #endif
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
   memcpy( m_PDPCIdx    + uiOffset, pcCU->getPDPCIdx(),        sizeof( *m_PDPCIdx)   * uiNumPartition);
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
@@ -2388,7 +2388,7 @@ Void TComDataCU::copyToPic( UChar uhDepth )
 #if VCEG_AZ05_INTRA_MPI
       memcpy( pCtu->getMPIIdx()   + uiZorderDst, m_MPIIdx + uiZorderSrc, uiCurrPartNumb );
 #endif
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
       memcpy( pCtu->getPDPCIdx() + uiZorderDst, m_PDPCIdx + uiZorderSrc, uiCurrPartNumb);
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
@@ -2559,7 +2559,7 @@ Void TComDataCU::copyToPic( UChar uhDepth )
 #if VCEG_AZ05_INTRA_MPI
   memcpy( pCtu->getMPIIdx()   + m_absZIdxInCtu, m_MPIIdx, sizeof( *m_MPIIdx ) * m_uiNumPartition );
 #endif
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
   memcpy( pCtu->getPDPCIdx() + m_absZIdxInCtu, m_PDPCIdx, sizeof(*m_PDPCIdx) * m_uiNumPartition);
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
@@ -4989,7 +4989,7 @@ Void TComDataCU::setMPIIdxSubParts( Char MPIIdx, UInt absPartIdx, UInt depth  )
 }
 #endif
 
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
 Void TComDataCU::setPDPCIdxSubParts(Char PDPCIdx, UInt absPartIdx, UInt depth)
 {
 #if JVET_C0024_QTBT

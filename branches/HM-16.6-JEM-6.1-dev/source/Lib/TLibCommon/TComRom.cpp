@@ -3426,7 +3426,15 @@ Int ClipParam::ibdChroma;
 Int ClipParam::cquantiz;
 #endif
 #if COM16_C1046_PDPC_INTRA
-#if JVET_C0024_QTBT // lossless change, just remove unused entries from the table
+#if JVET_G0104_PLANAR_PDPC
+const Short g_pdpcParam[5][6] = {
+  { 33,   7,  33,   7,  30,  3 },
+  { 40,   8,  40,   8, -19,  1 },
+  { 32,   2,  32,   2, -37,  1 },
+  { 31,  -2,  31,  -2,  -4,  3 },
+  { 20,  -2,  20,  -2,   5,  5 },
+};
+#elif JVET_C0024_QTBT // lossless change, just remove unused entries from the table
 const Int g_pdpc_pred_param[5][35][6] = {
 { {  33,   7,  33,   7,  30,    3 },
   {  25,   5,  25,   5,   0,    0 },

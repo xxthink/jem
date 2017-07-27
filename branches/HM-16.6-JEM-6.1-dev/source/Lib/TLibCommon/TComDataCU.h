@@ -125,7 +125,7 @@ private:
 #if VCEG_AZ05_INTRA_MPI
   Char*          m_MPIIdx;             ///< array of MPIIdxs
 #endif
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
   Char*          m_PDPCIdx;             ///< array of PDPCIdxs
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
@@ -394,7 +394,7 @@ public:
   Void          setMPIIdxSubParts       ( Char MPIIdx, UInt absPartIdx, UInt depth );
 #endif
 
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
   Char*         getPDPCIdx               ()                          { return m_PDPCIdx; }
   Char          getPDPCIdx               (UInt idx)                  { return m_PDPCIdx[idx]; }
   Void          setPDPCIdx               (UInt idx, Char PDPCIdx)    { m_PDPCIdx[idx] = PDPCIdx; }

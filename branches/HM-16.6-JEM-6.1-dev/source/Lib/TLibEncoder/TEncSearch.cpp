@@ -1816,7 +1816,9 @@ TEncSearch::xEncIntraHeader( TComDataCU*  pcCU,
         m_pcEntropyCoder->encodeMPIIdx(pcCU, 0, true);
 #endif
       }
+#if !JVET_G0104_PLANAR_PDPC
       m_pcEntropyCoder->encodePDPCIdx( pcCU, 0, true );
+#endif
 #if JVET_C0024_QTBT
       if (pcCU->isIntra(0) )
 #else
@@ -3702,7 +3704,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
       Int iMPIidx = pcCU->getMPIIdx(uiAbsPartIdx);
       checkTM = checkTM & (iMPIidx == 0);
 #endif
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
       Int iPdpcIdx = pcCU->getPDPCIdx(uiAbsPartIdx);
       checkTM = checkTM & (iPdpcIdx == 0);
 #endif
@@ -5139,7 +5141,7 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #if JVET_C0024_QTBT
   Bool NSSTFlag = (pcCU->getROTIdx(CHANNEL_TYPE_LUMA, 0) == 0) || (uiWidth > 64 || uiHeight > 64);
   Bool NSSTSaveFlag = (pcCU->getROTIdx(CHANNEL_TYPE_LUMA, 0) == 0)
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
       && (pcCU->getPDPCIdx(0) == 0)
 #endif
       ;

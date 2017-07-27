@@ -104,7 +104,7 @@ public:
 #if VCEG_AZ05_INTRA_MPI
   virtual Void codeMPIIdx        (TComDataCU* pcCU, UInt uiAbsPartIdx)   = 0;
 #endif
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
   virtual Void codePDPCIdx       (TComDataCU* pcCU, UInt uiAbsPartIdx) = 0;
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
@@ -284,7 +284,7 @@ public:
 #if VCEG_AZ05_INTRA_MPI
   Void encodeMPIIdx       ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false);
 #endif
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
   Void encodePDPCIdx      ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false);
 #endif
 #if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
