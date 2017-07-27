@@ -101,7 +101,7 @@ Void TDecEntropy::decodeMPIIdx(TComDataCU* pcSubCU, UInt uiAbsPartIdx, UInt uiDe
 }
 #endif
 
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
 Void TDecEntropy::decodePDPCIdx(TComDataCU* pcSubCU, UInt uiAbsPartIdx, UInt uiDepth)
 {
   m_pcEntropyDecoderIf->parsePDPCIdx(pcSubCU, uiAbsPartIdx, uiDepth);

@@ -862,6 +862,9 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 #if !COM16_C1046_PDPC_RSAF_HARMONIZATION
     Pel *ptrSrc = getPredictorPtr(compID, false);
 #endif
+#if JVET_G0104_PLANAR_PDPC
+    if( uiDirMode == PLANAR_IDX )
+#else
 #if JVET_C0024_QTBT //different PDPC filter coeff between sizes, w!=h? JCA
     Int iBlkSizeGrp = std::min(4, 1 + std::max((Int)g_aucConvertToBit[iWidth], (Int) g_aucConvertToBit[iHeight]));
     Int blkSizeGroup[2] = { std::min(4, 1 + (Int)g_aucConvertToBit[iWidth]), std::min(4, 1 + (Int)g_aucConvertToBit[iHeight]) };
@@ -907,6 +910,7 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 
     //pdpc applied
     if (iPdpcIdx != 0) 
+#endif
     {
 #if COM16_C1046_PDPC_RSAF_HARMONIZATION 
       Pel *ptrSrc = getPredictorPtr(compID, false);
@@ -920,6 +924,11 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
       const Int iDoubleWidth = iWidth<<1;
 #endif
 
+#if JVET_G0104_PLANAR_PDPC
+      const Int blkSizeGroup[2] = { std::min( 4, 1 + (Int)g_aucConvertToBit[iWidth] ), std::min( 4, 1 + (Int)g_aucConvertToBit[iHeight] ) };
+      const Short *pdpcParam[2] = { g_pdpcParam[blkSizeGroup[0]], g_pdpcParam[blkSizeGroup[1]] };
+      const Short *pPdpcPar = pdpcParam[iWidth < iHeight];
+#else
 #if VCEG_AZ07_INTRA_65ANG_MODES
       Int   iSelMode = (uiDirMode > 1 ? 18 + ((Int(uiDirMode) - 34)>>1) : uiDirMode);
 #if JVET_C0024_QTBT
@@ -934,6 +943,7 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
       const Int *pPdpcPar = pdpcParam[iWidth < iHeight];
 #else
       const Int * pPdpcPar = g_pdpc_pred_param[iBlkSizeGrp][iPdpcIdx][uiDirMode];
+#endif
 #endif
 #endif
 
@@ -1083,7 +1093,15 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
     const Pel *ptrSrc = getPredictorPtr( compID, bUseFilteredPredSamples );
 #endif
 
-#if COM16_C1046_PDPC_RSAF_HARMONIZATION
+#if JVET_G0104_PLANAR_PDPC
+    if( isLuma( compID ) )
+    {
+      if( pcCU->getROTIdx( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) )
+      {
+        ptrSrc = getPredictorPtr( compID, bUseFilteredPredSamples );
+      }
+    }
+#elif COM16_C1046_PDPC_RSAF_HARMONIZATION
     const Pel *ptrSrc = getPredictorPtr(compID, bUseFilteredPredSamples);
 #endif
 

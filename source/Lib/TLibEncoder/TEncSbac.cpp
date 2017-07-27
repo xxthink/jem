@@ -844,7 +844,7 @@ Void TEncSbac::codeMPIIdx(TComDataCU* pcCU, UInt uiAbsPartIdx)
 }
 #endif
 
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
  Void TEncSbac::codePDPCIdx(TComDataCU* pcCU, UInt uiAbsPartIdx)
  {
   if (!pcCU->getSlice()->getSPS()->getUsePDPC()) return;
@@ -888,7 +888,7 @@ Void TEncSbac::codeROTIdx ( TComDataCU* pcCU, UInt uiAbsPartIdx,UInt uiDepth  )
 #if VCEG_AZ05_INTRA_MPI
     && pcCU->getMPIIdx(uiAbsPartIdx) ==0
 #endif  
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
     && pcCU->getPDPCIdx(uiAbsPartIdx) == 0
 #endif  
     && !pcCU->getCUTransquantBypass(uiAbsPartIdx)

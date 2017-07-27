@@ -898,7 +898,7 @@ Void TDecCavlc::parseSPS(TComSPS* pcSPS)
 #if VCEG_AZ05_INTRA_MPI
   READ_FLAG( uiCode, "mpi_enabled_flag" );      pcSPS->setUseMPI( uiCode );
 #endif
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
   READ_FLAG(uiCode, "pdpc_enabled_flag");      pcSPS->setUsePDPC(uiCode);
 #endif
 #if VCEG_AZ05_ROT_TR
@@ -2061,7 +2061,7 @@ Void TDecCavlc::parseMPIIdx ( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt 
 }
 #endif
 
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
 Void TDecCavlc::parsePDPCIdx(TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, UInt /*uiDepth*/)
 {
   assert(0);
