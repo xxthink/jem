@@ -198,7 +198,7 @@ Void TEncEntropy::encodeMPIIdx(TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD)
   m_pcEntropyCoderIf->codeMPIIdx(pcCU, uiAbsPartIdx);
 }
 #endif
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
 Void TEncEntropy::encodePDPCIdx(TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD)
 {
   if (bRD)

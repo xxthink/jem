@@ -1316,6 +1316,10 @@ Bool TAppEncCfg::parseCfg( Int argc, Char* argv[] )
     }
   }
 
+#if JVET_G0104_PLANAR_PDPC
+  m_useStrongIntraSmoothing = false;
+#endif
+
   /*
    * Set any derived parameters
    */

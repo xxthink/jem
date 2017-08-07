@@ -262,6 +262,7 @@
 #define COM16_C1045_BIO_HARMO_IMPROV                      1  ///< Improvement of BIO
 #define JVET_C0027_BIO                                    1   /// MV refinement max value up, BIO_LDB check optimization,  BIO  for 1/16 pel MV support
 #define JVET_F0028_BIO_NO_BLOCK_EXTENTION                 1
+#define JVET_G0082                                        1
 #endif                                                       
 
 #define COM16_C1016_AFFINE                                1  ///< Affine motion prediction
@@ -273,13 +274,17 @@
 #endif
 #endif
 
+#define JVET_G0104_PLANAR_PDPC                            1  ///< apply PDPC for planar mode
+
+#if !JVET_G0104_PLANAR_PDPC
 #define COM16_C983_RSAF                                   1  ///< Adaptive reference sample smoothing
 #if COM16_C983_RSAF                                          
 #define COM16_C983_RSAF_PREVENT_OVERSMOOTHING             1  ///< Harmonization with intra-prediction tools   
 #define COM16_C983_RSAF_ESTIMATION_MODE_FULL              1  ///< Full/fast estimation of the possiblity to hide the RSAF flag
 #define JVET_B0041_SIMPLIFICATION_1A                      1  ///< Simplidication by avoiding RSAF-enabled TU pass if RSAF-disabled pass evaluate to CBF==0 
 #define JVET_B0041_SIMPLIFICATION_2                       1  ///< Simplidication by cancelling TU split check using cbf value and result of hiding procedure for non-split TU.
-#endif                                                       
+#endif
+#endif
 
 #define COM16_C1044_NSST                                  1  ///< Mode dependent non-separable secondary transforms
 #if COM16_C1044_NSST || VCEG_AZ05_ROT_TR
@@ -368,6 +373,7 @@
 #define ADAPTIVE_QP_SELECTION                             1 ///< G382: Adaptive reconstruction levels, non-normative part for adaptive QP selection
 
 #define JVET_E0059_FLOATING_POINT_QP_FIX                  1 ///< Replace floating point QP with a source-file frame number.
+#define JVET_G0101_QP_SWITCHING                           1 ///< After switching POC, increase base QP instead of frame level QP.
 
 #define AMP_ENC_SPEEDUP                                   1 ///< encoder only speed-up by AMP mode skipping
 #if AMP_ENC_SPEEDUP

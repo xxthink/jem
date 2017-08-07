@@ -884,7 +884,7 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
 #if VCEG_AZ05_INTRA_MPI
   m_pcEntropyDecoder->decodeMPIIdx(pcCU, uiAbsPartIdx, uiDepth);
 #endif
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
   m_pcEntropyDecoder->decodePDPCIdx(pcCU, uiAbsPartIdx, uiDepth);
 #endif
 #if JVET_C0024_QTBT

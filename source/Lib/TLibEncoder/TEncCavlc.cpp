@@ -656,7 +656,7 @@ Void TEncCavlc::codeSPS( const TComSPS* pcSPS )
 #if VCEG_AZ05_INTRA_MPI
   WRITE_FLAG( pcSPS->getUseMPI () ? 1 : 0,                "mpi_enabled_flag" ); 
 #endif
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
   WRITE_FLAG( pcSPS->getUsePDPC() ? 1 : 0,                "pdpc_enabled_flag" );
 #endif
 #if VCEG_AZ05_ROT_TR
@@ -1396,7 +1396,7 @@ Void TEncCavlc::codeMPIIdx    ( TComDataCU* pcCU, UInt uiAbsPartIdx )
   assert(0);
 }
 #endif
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
 Void TEncCavlc::codePDPCIdx(TComDataCU* pcCU, UInt uiAbsPartIdx)
 {
   assert(0);

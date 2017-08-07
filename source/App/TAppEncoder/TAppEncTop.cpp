@@ -492,7 +492,7 @@ Void TAppEncTop::xInitLibCfg()
 #if VCEG_AZ05_INTRA_MPI
   m_cTEncTop.setUseMPI(m_useMPI);
 #endif
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
   m_cTEncTop.setUsePDPC(m_usePDPC);
 #endif
 #if VCEG_AZ05_ROT_TR
