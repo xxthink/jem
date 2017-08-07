@@ -220,7 +220,7 @@ Void TEncTop::create ()
 #if VCEG_AZ05_INTRA_MPI
   m_cSPS.setUseMPI( m_useMPI );
 #endif
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
   m_cSPS.setUsePDPC(m_usePDPC);
 #endif
 #if VCEG_AZ05_ROT_TR
@@ -1135,7 +1135,7 @@ Void TEncTop::xInitSPS(TComSPS &sps)
 #if VCEG_AZ05_INTRA_MPI
   sps.setUseMPI( m_useMPI );
 #endif
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
   sps.setUsePDPC(m_usePDPC);
 #endif
 #if VCEG_AZ05_ROT_TR
@@ -1377,7 +1377,7 @@ Void TEncTop::xInitSPS()
 #if VCEG_AZ05_INTRA_MPI
   m_cSPS.setUseMPI( m_useMPI );
 #endif
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
   m_cSPS.setUsePDPC(m_usePDPC);
 #endif
 #if VCEG_AZ05_ROT_TR
@@ -2471,6 +2471,15 @@ Int TEncCfg::getQPForPicture(const UInt gopIndex, TComSlice *pSlice)
 
     qp = getBaseQP();
 
+#if JVET_G0101_QP_SWITCHING
+    // modify QP if a fractional QP was originally specified, cause dQPs to be 0 or 1.
+    const Int* pdQPs = getdQPs();
+    if ( pdQPs )
+    {
+      qp += pdQPs[ pSlice->getPOC() ];
+    }
+#endif
+
     if(sliceType==I_SLICE)
     {
       qp += getIntraQPOffset();
@@ -2490,12 +2499,14 @@ Int TEncCfg::getQPForPicture(const UInt gopIndex, TComSlice *pSlice)
       }
     }
 
+#if !JVET_G0101_QP_SWITCHING
     // modify QP if a fractional QP was originally specified, cause dQPs to be 0 or 1.
     const Int* pdQPs = getdQPs();
     if ( pdQPs )
     {
       qp += pdQPs[ pSlice->getPOC() ];
     }
+#endif
   }
   qp = Clip3( -lumaQpBDOffset, MAX_QP, qp );
   return qp;

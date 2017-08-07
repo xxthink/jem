@@ -1238,7 +1238,7 @@ public:
   Bool getUseMPI ()                                             { return m_useMPI;        }
   Void setUseMPI ( Bool b )                                     { m_useMPI  = b;       }
 #endif
-#if COM16_C1046_PDPC_INTRA
+#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
   Bool getUsePDPC()                                             { return m_usePDPC; }
   Void setUsePDPC(Bool b)                                       { m_usePDPC = b; }
 #endif
