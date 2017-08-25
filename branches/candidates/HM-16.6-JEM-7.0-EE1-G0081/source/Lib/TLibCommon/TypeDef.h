@@ -49,6 +49,25 @@
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////
+#define EE1_TEST2                                         0
+#define EE1_TEST3                                         1
+
+#if (EE1_TEST2 && EE1_TEST3)
+#error TEST2 and TEST3 cannot be both ON
+#endif
+
+#if EE1_TEST2
+#define E0068_UW_PLANAR                                   1
+#define F0104_W66                                         0
+#define G0081_SETTING5                                    0   // code change proposed in G0081 setting5
+#endif
+
+#if EE1_TEST3
+#define E0068_UW_PLANAR                                   1
+#define F0104_W66                                         1
+#define G0081_SETTING5                                    1   // code change proposed in G0081 setting5
+#endif
+
 #define JVET_F0096_BILATERAL_FILTER                       1   // for bitexact implementation with division see JVET-F0096
 #define JVET_F0031_RMV_REDUNDANT_TRSKIP                   1
 

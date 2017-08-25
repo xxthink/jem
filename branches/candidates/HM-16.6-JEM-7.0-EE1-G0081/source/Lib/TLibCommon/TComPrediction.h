@@ -88,6 +88,11 @@ class TComPrediction : public TComWeightPrediction
 {
 private:
   static const UChar m_aucIntraFilter[MAX_NUM_CHANNEL_TYPE][MAX_INTRA_FILTER_DEPTHS];
+#if E0068_UW_PLANAR || F0104_W66
+  static const UInt uiFinalShiftDenom;
+  static const UInt uiFinalDenomHalf;
+  static const UInt uiFinalShift[MAX_CU_SIZE - 2];
+#endif
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
   UInt*  m_puiW;
   UInt*  m_puiH;
