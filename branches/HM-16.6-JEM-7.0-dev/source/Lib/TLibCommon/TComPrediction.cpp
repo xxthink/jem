@@ -2215,14 +2215,14 @@ Void TComPrediction::xPredInterFrac(Pel* ref,Pel* dst,Int dstStride,Int refStrid
 __inline Void TComPrediction::calcBlkGradient(Int sx, Int sy, Int64 *arraysGx2, Int64 *arraysGxGy, Int64 *arraysGxdI, Int64 *arraysGy2, Int64 *arraysGydI,
   Int64 &sGx2, Int64 &sGy2, Int64 &sGxGy, Int64 &sGxdI, Int64 &sGydI, Int iWidth, Int iHeight)
 {
-  static const UInt weightTbl[8][8] = { 1, 2, 3, 4, 4, 3, 2, 1,
-    2, 4, 6, 8, 8, 6, 4, 2,
-    3, 6, 9, 12, 12, 9, 6, 3,
-    4, 8, 12, 16, 16, 12, 8, 4,
-    4, 8, 12, 16, 16, 12, 8, 4,
-    3, 6, 9, 12, 12, 9, 6, 3,
-    2, 4, 6, 8, 8, 6, 4, 2,
-    1, 2, 3, 4, 4, 3, 2, 1 };
+  static const UInt weightTbl[8][8] = { { 1, 2, 3, 4, 4, 3, 2, 1 },
+    { 2, 4, 6, 8, 8, 6, 4, 2 },
+    { 3, 6, 9, 12, 12, 9, 6, 3 },
+    { 4, 8, 12, 16, 16, 12, 8, 4 },
+    { 4, 8, 12, 16, 16, 12, 8, 4 },
+    { 3, 6, 9, 12, 12, 9, 6, 3 },
+    { 2, 4, 6, 8, 8, 6, 4, 2 },
+    { 1, 2, 3, 4, 4, 3, 2, 1 } };
 
   Int64 *pGx2 = arraysGx2;
   Int64 *pGy2 = arraysGy2;

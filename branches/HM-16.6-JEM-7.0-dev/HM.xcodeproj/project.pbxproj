@@ -126,6 +126,8 @@
 		712FAEB71379BA6600DB5314 /* AnnexBread.h in Headers */ = {isa = PBXBuildFile; fileRef = 712FAEB31379BA6600DB5314 /* AnnexBread.h */; };
 		712FAEB81379BA6600DB5314 /* NALread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712FAEB41379BA6600DB5314 /* NALread.cpp */; };
 		712FAEB91379BA6600DB5314 /* NALread.h in Headers */ = {isa = PBXBuildFile; fileRef = 712FAEB51379BA6600DB5314 /* NALread.h */; };
+		714E554F1F50633400339568 /* TComBilateralFilter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 714E554D1F50633400339568 /* TComBilateralFilter.cpp */; };
+		714E55501F50633400339568 /* TComBilateralFilter.h in Headers */ = {isa = PBXBuildFile; fileRef = 714E554E1F50633400339568 /* TComBilateralFilter.h */; };
 		7184647713FAE75800747BF9 /* program_options_lite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7184647513FAE75800747BF9 /* program_options_lite.cpp */; };
 		7184647813FAE75800747BF9 /* program_options_lite.h in Headers */ = {isa = PBXBuildFile; fileRef = 7184647613FAE75800747BF9 /* program_options_lite.h */; };
 		719E0DAB1A927238000361D4 /* SEIEncoder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 719E0DA91A927238000361D4 /* SEIEncoder.cpp */; };
@@ -347,6 +349,8 @@
 		712FAEB31379BA6600DB5314 /* AnnexBread.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AnnexBread.h; path = source/Lib/TLibDecoder/AnnexBread.h; sourceTree = "<group>"; };
 		712FAEB41379BA6600DB5314 /* NALread.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = NALread.cpp; path = source/Lib/TLibDecoder/NALread.cpp; sourceTree = "<group>"; };
 		712FAEB51379BA6600DB5314 /* NALread.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = NALread.h; path = source/Lib/TLibDecoder/NALread.h; sourceTree = "<group>"; };
+		714E554D1F50633400339568 /* TComBilateralFilter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = TComBilateralFilter.cpp; path = source/Lib/TLibCommon/TComBilateralFilter.cpp; sourceTree = "<group>"; };
+		714E554E1F50633400339568 /* TComBilateralFilter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = TComBilateralFilter.h; path = source/Lib/TLibCommon/TComBilateralFilter.h; sourceTree = "<group>"; };
 		7184647513FAE75800747BF9 /* program_options_lite.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = program_options_lite.cpp; path = source/Lib/TAppCommon/program_options_lite.cpp; sourceTree = "<group>"; };
 		7184647613FAE75800747BF9 /* program_options_lite.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = program_options_lite.h; path = source/Lib/TAppCommon/program_options_lite.h; sourceTree = "<group>"; };
 		719E0DA91A927238000361D4 /* SEIEncoder.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = SEIEncoder.cpp; path = source/Lib/TLibEncoder/SEIEncoder.cpp; sourceTree = "<group>"; };
@@ -482,6 +486,8 @@
 		6767959711AD61D700421804 /* TLibCommon */ = {
 			isa = PBXGroup;
 			children = (
+				714E554D1F50633400339568 /* TComBilateralFilter.cpp */,
+				714E554E1F50633400339568 /* TComBilateralFilter.h */,
 				712FAEA81379BA2F00DB5314 /* AccessUnit.h */,
 				6767959911AD61FC00421804 /* CommonDef.h */,
 				671E0D3811B6AD8C00F3747B /* ContextModel.cpp */,
@@ -721,6 +727,7 @@
 				712FAEAA1379BA2F00DB5314 /* AccessUnit.h in Headers */,
 				712FAEAB1379BA2F00DB5314 /* NAL.h in Headers */,
 				DBDDB3AC13E26B4400A70251 /* TComInterpolationFilter.h in Headers */,
+				714E55501F50633400339568 /* TComBilateralFilter.h in Headers */,
 				DB7795C313F1226500C92469 /* TEncPic.h in Headers */,
 				DB7795C513F1226500C92469 /* TEncPreanalyzer.h in Headers */,
 				DBC9C94114477F6400A77A93 /* TComSampleAdaptiveOffset.h in Headers */,
@@ -996,6 +1003,7 @@
 				61601BB815A74998008F8892 /* TComChromaFormat.cpp in Sources */,
 				61601BBB15A74998008F8892 /* TComTU.cpp in Sources */,
 				71161E9F16A7253F0021E8A8 /* SEI.cpp in Sources */,
+				714E554F1F50633400339568 /* TComBilateralFilter.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1134,7 +1142,7 @@
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = source/Lib;
-				MACOSX_DEPLOYMENT_TARGET = 10.7;
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
 			};
@@ -1150,7 +1158,7 @@
 				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = source/Lib;
-				MACOSX_DEPLOYMENT_TARGET = 10.7;
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				SDKROOT = macosx;
 			};
 			name = Release;
