@@ -44,6 +44,12 @@
 
 #include <vector>
 
+#define EE1_TEST5                                         1
+
+#if EE1_TEST5
+#define STRONG_SMOOTHING                                  1 // strong intra reference filter fix
+#endif
+
 //! \ingroup TLibCommon
 //! \{
 ///////////////////////////////////////////////////////////
