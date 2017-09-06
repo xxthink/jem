@@ -44,6 +44,15 @@
 
 #include <vector>
 
+#define EE1_TEST1                                         1
+#define EE1_TEST1_1                                       0
+
+#if EE1_TEST1 || EE1_TEST1_1
+#define FORCE_PDPC_NSST                                   1  // apply PDPC with NSST index equal PDPC_NSST_INDEX, MDIS is applied with NSST index equal to MDIS_NSST_INDEX
+#define PDPC_NSST_INDEX                                   1
+#define MDIS_NSST_INDEX                                   3
+#endif
+
 //! \ingroup TLibCommon
 //! \{
 ///////////////////////////////////////////////////////////

@@ -879,7 +879,7 @@ private:
 #if VCEG_AZ05_INTRA_MPI
   Bool             m_useMPI;
 #endif
-#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
+#if COM16_C1046_PDPC_INTRA && (!JVET_G0104_PLANAR_PDPC || FORCE_PDPC_NSST)
   Bool             m_usePDPC;
 #endif
 #if VCEG_AZ05_ROT_TR
@@ -1164,7 +1164,7 @@ public:
  Bool                   getUseMPI ()  const                                                        { return m_useMPI;        }
  Void                   setUseMPI ( Bool b )                                                       { m_useMPI  = b;          }
 #endif
-#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
+#if COM16_C1046_PDPC_INTRA && (!JVET_G0104_PLANAR_PDPC || FORCE_PDPC_NSST)
  Bool                   getUsePDPC()  const                                                        { return m_usePDPC; }
  Void                   setUsePDPC( Bool b )                                                       { m_usePDPC = b; }
 #endif

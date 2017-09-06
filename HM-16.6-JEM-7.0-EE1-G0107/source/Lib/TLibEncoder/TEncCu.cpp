@@ -4853,7 +4853,7 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
 #if QTBT_NSST
   const Int iNonZeroCoeffThr = isLuma(rpcTempCU->getTextType()) ? NSST_SIG_NZ_LUMA + (rpcTempCU->getSlice()->isIntra() ? 0 : NSST_SIG_NZ_CHROMA) : NSST_SIG_NZ_CHROMA;
 
-#if JVET_G0104_PLANAR_PDPC
+#if JVET_G0104_PLANAR_PDPC && !FORCE_PDPC_NSST
   if( ucNsstIdx && iNonZeroCoeffNonTs <= iNonZeroCoeffThr )
   {
     Bool isMDIS = false;
@@ -4875,6 +4875,39 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
 #endif
   {
     rpcTempCU->getTotalCost() = MAX_DOUBLE;
+  }
+#endif
+
+#if FORCE_PDPC_NSST
+  if( ucNsstIdx && !iNonZeroCoeffNonTs )
+  {
+    if( ucNsstIdx == PDPC_NSST_INDEX )
+    {
+      if( rpcTempCU->getIntraDir( rpcTempCU->getTextType(), 0 ) != PLANAR_IDX || ( !rpcTempCU->getSlice()->isIntra() && rpcTempCU->getIntraDir( CHANNEL_TYPE_CHROMA, 0 ) != PLANAR_IDX ) )
+      {
+        rpcTempCU->getTotalCost() = MAX_DOUBLE;
+      }
+    }
+#if EE1_TEST1
+    else if( ucNsstIdx == MDIS_NSST_INDEX && isLuma( rpcTempCU->getTextType() ) )
+#else
+    else if( ucNsstIdx && ucNsstIdx != PDPC_NSST_INDEX && isLuma( rpcTempCU->getTextType() ) )
+#endif
+    {
+      Bool isMDIS = TComPrediction::filteringIntraReferenceSamples( COMPONENT_Y, rpcTempCU->getIntraDir( CHANNEL_TYPE_LUMA, 0 ), rpcTempCU->getWidth( 0 ), rpcTempCU->getHeight( 0 ), rpcTempCU->getSlice()->getSPS()->getChromaFormatIdc(), rpcTempCU->getSlice()->getSPS()->getSpsRangeExtension().getIntraSmoothingDisabledFlag() );
+
+      if( isMDIS )
+      {
+        rpcTempCU->getTotalCost() = MAX_DOUBLE;
+      }
+    }
+
+    rpcTempCU->setROTIdxSubParts( rpcTempCU->getTextType(), 0, 0, uiDepth );
+
+    if( !rpcTempCU->getSlice()->isIntra() )
+    {
+      rpcTempCU->setROTIdxSubParts( CHANNEL_TYPE_CHROMA, 0, 0, uiDepth );
+    }
   }
 #endif
 #endif
