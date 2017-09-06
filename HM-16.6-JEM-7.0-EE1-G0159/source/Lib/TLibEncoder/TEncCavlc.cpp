@@ -1521,6 +1521,9 @@ Void TEncCavlc::codeIPCMInfo( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/ )
 }
 
 Void TEncCavlc::codeIntraDirLumaAng( TComDataCU* /*pcCU*/, UInt /*uiAbsPartIdx*/, Bool /*isMultiple*/
+#if SECOND_INTRA_MPM
+  , UChar* /*secondMpm*/, Char* /*secondMpmIdx*/, Char* /*numMpmSecondMpmBeforeCurMode*/
+#endif
 #if VCEG_AZ07_INTRA_65ANG_MODES
                                     , Int* /*piModes*/, Int /*iCase*/
 #endif

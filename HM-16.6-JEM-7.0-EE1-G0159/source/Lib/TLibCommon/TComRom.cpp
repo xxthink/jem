@@ -3984,6 +3984,12 @@ const Int g_pdpc_pred_param[5][2][35][7] =
 
 #endif
 
-
+#if EE1_TEST9
+const Int g_aiDefaultIntraModes2[21] = {2, HOR_IDX, DIA_IDX, VER_IDX, VDIA_IDX, 
+                                        2+8, HOR_IDX+8, DIA_IDX+8, VER_IDX+8, 
+                                        2+4, 2+12, HOR_IDX+4, HOR_IDX+12, 
+                                        DIA_IDX+4, DIA_IDX+12, VER_IDX+4, VER_IDX+12, 
+                                        HOR_IDX-1, HOR_IDX+1, VER_IDX-1, VER_IDX+1}; 
+#endif
 
 //! \}

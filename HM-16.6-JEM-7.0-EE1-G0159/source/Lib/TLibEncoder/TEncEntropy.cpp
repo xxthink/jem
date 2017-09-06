@@ -656,12 +656,18 @@ Void TEncEntropy::xEncodeTransform( Bool& bCodeDQP, Bool& codeChromaQpAdj, TComT
 #endif //#if JVET_C0024_QTBT
 //! encode intra direction for luma
 Void TEncEntropy::encodeIntraDirModeLuma  ( TComDataCU* pcCU, UInt absPartIdx, Bool isMultiplePU 
+#if SECOND_INTRA_MPM
+  , UChar* secondMpm, Char*  secondMpmIdx, Char*  numMpmSecondMpmBeforeCurMode
+#endif
 #if VCEG_AZ07_INTRA_65ANG_MODES
                                            , Int* piModes, Int  iAboveLeftCase
 #endif
                                            )
 {
   m_pcEntropyCoderIf->codeIntraDirLumaAng( pcCU, absPartIdx , isMultiplePU
+#if SECOND_INTRA_MPM
+    , secondMpm, secondMpmIdx, numMpmSecondMpmBeforeCurMode 
+#endif
 #if VCEG_AZ07_INTRA_65ANG_MODES
     , piModes, iAboveLeftCase
 #endif

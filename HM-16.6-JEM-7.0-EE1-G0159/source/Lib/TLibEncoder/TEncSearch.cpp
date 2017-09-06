@@ -1797,7 +1797,13 @@ TEncSearch::xEncIntraHeader( TComDataCU*  pcCU,
                             UInt         uiTrDepth,
                             UInt         uiAbsPartIdx,
                             Bool         bLuma,
-                            Bool         bChroma )
+                            Bool         bChroma 
+#if SECOND_INTRA_MPM
+                          , UChar* secondMpm
+                          , Char*  secondMpmIdx
+                          , Char*  numMpmSecondMpmBeforeCurMode  
+#endif
+                    )
 {
   if( bLuma )
   {
@@ -1842,7 +1848,14 @@ TEncSearch::xEncIntraHeader( TComDataCU*  pcCU,
 #endif
       if (uiAbsPartIdx==0)
       {
-        m_pcEntropyCoder->encodeIntraDirModeLuma ( pcCU, 0 );
+        m_pcEntropyCoder->encodeIntraDirModeLuma ( pcCU, 0 
+#if SECOND_INTRA_MPM
+          , false
+          , secondMpm
+          , secondMpmIdx
+          , numMpmSecondMpmBeforeCurMode
+#endif
+        );
       }
 #if !JVET_C0024_QTBT
     }
@@ -1889,13 +1902,25 @@ UInt
 TEncSearch::xGetIntraBitsQT(TComTU &rTu,
                             Bool         bLuma,
                             Bool         bChroma,
-                            Bool         bRealCoeff /* just for test */ )
+                            Bool         bRealCoeff /* just for test */ 
+#if SECOND_INTRA_MPM
+                           , UChar* secondMpm
+                           , Char*  secondMpmIdx
+                           , Char*  numMpmSecondMpmBeforeCurMode  
+#endif
+              )
 {
   TComDataCU* pcCU=rTu.getCU();
   const UInt uiAbsPartIdx = rTu.GetAbsPartIdxTU();
   const UInt uiTrDepth=rTu.GetTransformDepthRel();
   m_pcEntropyCoder->resetBits();
-  xEncIntraHeader ( pcCU, uiTrDepth, uiAbsPartIdx, bLuma, bChroma );
+  xEncIntraHeader ( pcCU, uiTrDepth, uiAbsPartIdx, bLuma, bChroma 
+#if SECOND_INTRA_MPM
+    , secondMpm
+    , secondMpmIdx
+    , numMpmSecondMpmBeforeCurMode  
+#endif
+                    );
   xEncSubdivCbfQT ( rTu, bLuma, bChroma );
 
   if( bLuma )
@@ -2786,7 +2811,13 @@ TEncSearch::xRecurIntraCodingLumaQT_RSAF(TComYuv*    pcOrgYuv,
 #endif
                                     Double&     dRDCost,
                                     TComTU&     rTu
-                                    DEBUG_STRING_FN_DECLARE(sDebug))
+                                    DEBUG_STRING_FN_DECLARE(sDebug)
+#if SECOND_INTRA_MPM
+                                  , UChar* secondMpm
+                                  , Char*  secondMpmIdx
+                                  , Char*  numMpmSecondMpmBeforeCurMode  
+#endif
+                    )
 {
   TComDataCU   *pcCU          = rTu.getCU();
 
@@ -2829,6 +2860,11 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
 #endif
                             dRDCost,
                             rTu
+#if SECOND_INTRA_MPM
+                          , secondMpm
+                          , secondMpmIdx
+                          , numMpmSecondMpmBeforeCurMode  
+#endif
                          );
   return;
 }
@@ -3132,7 +3168,13 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
         else
         {
 
-          UInt uiSingleBits = xGetIntraBitsQT( rTu, true, false, false );
+          UInt uiSingleBits = xGetIntraBitsQT( rTu, true, false, false 
+#if SECOND_INTRA_MPM
+            , secondMpm
+            , secondMpmIdx
+            , numMpmSecondMpmBeforeCurMode  
+#endif
+                  );
 #if JVET_C0024_QTBT
           if(m_pcEncCfg->getRDpenalty() && (uiWIdx+uiHIdx+(1<<MIN_CU_LOG2)>=10) && !isIntraSlice)
 #else
@@ -3310,7 +3352,13 @@ if (rTu.getRect(COMPONENT_Y).width==4) //RSAF is not applied to 4x4 TUs.
           if (bSuccessful == true && uiSingleCbfLuma) //assume only cbf being nonzero, can use TM mode
           {
               //----- determine rate and r-d cost ----- 
-              UInt uiSingleBits = xGetIntraBitsQT(rTu, true, false, false); 
+              UInt uiSingleBits = xGetIntraBitsQT(rTu, true, false, false
+#if SECOND_INTRA_MPM
+                , secondMpm
+                , secondMpmIdx
+                , numMpmSecondMpmBeforeCurMode  
+#endif 
+                  ); 
 #if JVET_C0024_QTBT
               if(m_pcEncCfg->getRDpenalty() && (uiWIdx+uiHIdx+(1<<MIN_CU_LOG2)>=10) && !isIntraSlice)
 #else
@@ -3550,6 +3598,11 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
 #endif
                                     Double&     dRDCost,
                                     TComTU&     rTu
+#if SECOND_INTRA_MPM
+                                  , UChar* secondMpm
+                                  , Char*  secondMpmIdx
+                                  , Char*  numMpmSecondMpmBeforeCurMode  
+#endif
                                     DEBUG_STRING_FN_DECLARE(sDebug))
 {
   TComDataCU   *pcCU          = rTu.getCU();
@@ -3825,7 +3878,13 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
         }
         else
         {
-          UInt uiSingleBits = xGetIntraBitsQT( rTu, true, false, false );
+          UInt uiSingleBits = xGetIntraBitsQT( rTu, true, false, false 
+#if SECOND_INTRA_MPM
+            , secondMpm
+            , secondMpmIdx
+            , numMpmSecondMpmBeforeCurMode  
+#endif
+              );
           singleCostTmp     = m_pcRdCost->calcRdCost( uiSingleBits, singleDistTmpLuma );
         }
         if(singleCostTmp < dSingleCost)
@@ -4039,7 +4098,13 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
       else
       {
 #endif
-      UInt uiSingleBits = xGetIntraBitsQT( rTu, true, false, false );
+      UInt uiSingleBits = xGetIntraBitsQT( rTu, true, false, false 
+#if SECOND_INTRA_MPM
+        , secondMpm
+        , secondMpmIdx
+        , numMpmSecondMpmBeforeCurMode  
+#endif
+                  );
 #if JVET_C0024_QTBT
       if(m_pcEncCfg->getRDpenalty() && (uiWIdx+uiHIdx+(1<<MIN_CU_LOG2)>=10) && !isIntraSlice)
 #else
@@ -4190,7 +4255,13 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
         if (bSuccessful == true && uiSingleCbfLuma) //assume only cbf being nonzero, can use TM mode
         {
             //----- determine rate and r-d cost ----- 
-            UInt uiSingleBits = xGetIntraBitsQT(rTu, true, false, false); 
+            UInt uiSingleBits = xGetIntraBitsQT(rTu, true, false, false
+#if SECOND_INTRA_MPM
+              , secondMpm
+              , secondMpmIdx
+              , numMpmSecondMpmBeforeCurMode  
+#endif
+                  ); 
 #if JVET_C0024_QTBT
             if(m_pcEncCfg->getRDpenalty() && (uiWIdx+uiHIdx+(MIN_CU_LOG2<<1)>=10) && !isIntraSlice)
 #else
@@ -5215,6 +5286,12 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
   TComTURecurse tuRecurseCU(pcCU, 0);
   TComTURecurse tuRecurseWithPU(tuRecurseCU, false, (uiInitTrDepth==0)?TComTU::DONT_SPLIT : TComTU::QUAD_SPLIT);
 
+#if SECOND_INTRA_MPM
+    static UChar secondMpm[NUM_INTRA_MODE];
+    static Char secondMpmIdx[NUM_INTRA_MODE];
+    static Char numMpmSecondMpmBeforeCurMode[NUM_INTRA_MODE];
+#endif
+
 #if COM16_C806_EMT
   UInt uiPU = 0;
 #endif
@@ -5283,10 +5360,47 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
       Int uiPreds[6] = {-1, -1, -1, -1, -1, -1};
       Int iAboveLeftCase=0, iMode=-1;
 
+#if EE1_TEST9
+    Int numAddedModes = -1;
+#endif
+
 #if JVET_C0055_INTRA_MPM
-      pcCU->getIntraDirPredictor( uiPartOffset, uiPreds, COMPONENT_Y, &iMode ); // Pre-calculate the MPMs, so avoid redundant MPM calculations during the SATD loop
+      pcCU->getIntraDirPredictor( uiPartOffset, uiPreds, COMPONENT_Y
+#if EE1_TEST9
+    ,&numAddedModes
+#endif
+    , &iMode 
+    ); // Pre-calculate the MPMs, so avoid redundant MPM calculations during the SATD loop
 #else
-      pcCU->getIntraDirPredictor( uiPartOffset, uiPreds, COMPONENT_Y, iAboveLeftCase, &iMode ); // Pre-calculate the MPMs, so avoid redundant MPM calculations during the SATD loop
+      pcCU->getIntraDirPredictor( uiPartOffset, uiPreds, COMPONENT_Y, iAboveLeftCase, 
+#if EE1_TEST9
+    ,&numAddedModes
+#endif
+    &iMode ); // Pre-calculate the MPMs, so avoid redundant MPM calculations during the SATD loop
+#endif
+
+#if SECOND_INTRA_MPM
+      pcCU->getSecondMPM( secondMpm, uiPreds
+#if EE1_TEST9
+        , numAddedModes
+#endif
+      );
+      memset( secondMpmIdx, 0, sizeof( secondMpmIdx ) );
+      memset( numMpmSecondMpmBeforeCurMode, 0, sizeof( numMpmSecondMpmBeforeCurMode ) );
+
+      Int secondMpmIndex = -1;
+      Int count = 2;   //assume DC and Planar are MPMs
+      for( Int i = 2; i < numModesAvailable; i++ )
+      {
+        if( secondMpm[i] > 0 )
+        {
+          count++;
+          secondMpmIndex += Int( secondMpm[i] == 2 );
+        }
+
+        secondMpmIdx[i] = secondMpmIndex;
+        numMpmSecondMpmBeforeCurMode[i] = count;
+      }
 #endif
 
       assert( iMode >= 0 );
@@ -5356,6 +5470,9 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 
         // NB xModeBitsIntra will not affect the mode for chroma that may have already been pre-estimated.
         iModeBits+=xModeBitsIntra( pcCU, uiMode, uiPartOffset, uiDepth, CHANNEL_TYPE_LUMA 
+#if SECOND_INTRA_MPM
+        , secondMpm, secondMpmIdx, numMpmSecondMpmBeforeCurMode
+#endif
 #if VCEG_AZ07_INTRA_65ANG_MODES
           , uiPreds, iAboveLeftCase
 #endif
@@ -5533,7 +5650,12 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 
               // use hadamard transform here
               Distortion uiSad = distParam.DistFunc(&distParam);
+#if SECOND_INTRA_MPM
+              UInt   iModeBits = xModeBitsIntra( pcCU, uiMode, uiPartOffset, uiDepth, CHANNEL_TYPE_LUMA, secondMpm, 
+                secondMpmIdx, numMpmSecondMpmBeforeCurMode, uiPreds, iAboveLeftCase );
+#else
               UInt   iModeBits = xModeBitsIntra( pcCU, uiMode, uiPartOffset, uiDepth, CHANNEL_TYPE_LUMA, uiPreds, iAboveLeftCase );
+#endif
               Double cost      = (Double)uiSad + (Double)iModeBits * sqrtLambdaForFirstPass;
               
 #if DEBUG_INTRA_SEARCH_COSTS
@@ -5788,7 +5910,11 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #else
         resiLumaPU, 
 #endif
-        uiPUDistY, true, dPUCost, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sMode) );
+        uiPUDistY, true, dPUCost, tuRecurseWithPU 
+#if SECOND_INTRA_MPM
+        , secondMpm, cSecondMpmIdx, cNumMpmSecondMpmBeforeCurMode
+#endif
+        DEBUG_STRING_PASS_INTO(sMode));
 #else
       xRecurIntraCodingLumaQT_RSAF( pcOrgYuv, pcPredYuv, pcResiYuv, 
 #if COM16_C806_LARGE_CTU
@@ -5809,7 +5935,11 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #else
         resiLumaPU, 
 #endif
-        uiPUDistY, true, dPUCost, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sMode) );
+        uiPUDistY, true, dPUCost, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sMode) 
+#if SECOND_INTRA_MPM
+        , secondMpm, secondMpmIdx, numMpmSecondMpmBeforeCurMode
+#endif
+       );
 #else
       xRecurIntraCodingLumaQT( pcOrgYuv, pcPredYuv, pcResiYuv, 
 #if COM16_C806_LARGE_CTU
@@ -11229,6 +11359,9 @@ Void TEncSearch::xSetInterResidualQTData( TComYuv* pcResi, Bool bSpatial, TComTU
 
 
 UInt TEncSearch::xModeBitsIntra( TComDataCU* pcCU, UInt uiMode, UInt uiPartOffset, UInt uiDepth, const ChannelType chType 
+#if SECOND_INTRA_MPM
+                                , UChar* secondMpm, Char* secondMpmIdx, Char* numMpmSecondMpmBeforeCurMode
+#endif
 #if VCEG_AZ07_INTRA_65ANG_MODES
                                 , Int* piModes, Int  iCase
 #endif
@@ -11256,7 +11389,12 @@ UInt TEncSearch::xModeBitsIntra( TComDataCU* pcCU, UInt uiMode, UInt uiPartOffse
   if (isLuma(chType))
   {
     m_pcEntropyCoder->encodeIntraDirModeLuma ( pcCU, uiPartOffset
-#if VCEG_AZ07_INTRA_65ANG_MODES
+#if SECOND_INTRA_MPM
+    , false
+    , secondMpm
+    , secondMpmIdx, numMpmSecondMpmBeforeCurMode
+    , piModes, iCase
+#elif VCEG_AZ07_INTRA_65ANG_MODES
     , false, piModes, iCase
 #endif
       );

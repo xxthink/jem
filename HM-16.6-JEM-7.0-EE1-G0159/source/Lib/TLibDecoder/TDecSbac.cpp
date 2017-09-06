@@ -1336,9 +1336,15 @@ Void TDecSbac::parseIntraDirLumaAng  ( TComDataCU* pcCU, UInt absPartIdx, UInt d
 #else
     Int preds[NUM_MOST_PROBABLE_MODES] = {-1, -1, -1};
 #endif
+#if EE1_TEST9
+  Int iNumAddedModes = -1;
+#endif
     pcCU->getIntraDirPredictor(absPartIdx+partOffset*j, preds, COMPONENT_Y
 #if VCEG_AZ07_INTRA_65ANG_MODES && !JVET_C0055_INTRA_MPM
       , iLeftAboveCase
+#endif
+#if EE1_TEST9
+    , &iNumAddedModes
 #endif
       );
 
@@ -1395,18 +1401,64 @@ Void TDecSbac::parseIntraDirLumaAng  ( TComDataCU* pcCU, UInt absPartIdx, UInt d
       m_pcTDecBinIf->decodeBin( symbol, m_cCUIntraPredSCModel.get( 0, 0, 9+mode/3) RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
 #endif
 
+#if SECOND_INTRA_MPM
+      Bool secondMpmFlag = symbol;
+#endif
       if(!symbol) //Non-selected mode
       {
         xReadTruncBinCode(symbol, 45 RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(STATS__CABAC_BITS__MVD_EP) );     
+#if !SECOND_INTRA_MPM 
         symbol  += (symbol/3) ;
         symbol ++;       
+#endif
       }
       else // selected mode
       {
         m_pcTDecBinIf->decodeBinsEP( symbol, 4  RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
+#if !SECOND_INTRA_MPM 
         symbol <<=2;
+#endif
       }
 
+#if SECOND_INTRA_MPM
+      UChar selectedIntraModes[NUM_INTRA_MODE];
+      pcCU->getSecondMPM(selectedIntraModes, preds
+#if EE1_TEST9
+    , iNumAddedModes
+#endif
+    );
+
+      if( secondMpmFlag )
+      {
+        Int secondMpmIndex = -1;
+        intraPredMode = -1;
+#if JVET_E0077_ENHANCED_LM
+        for( Int i = 0; i < NUM_INTRA_MODE - NUM_INTRA_MODE_NON_ANG + 1; i++ )
+#else
+        for( Int i = 0; i < NUM_INTRA_MODE; i++ )
+#endif
+        {
+          secondMpmIndex += Int(selectedIntraModes[i] == 2);
+
+          if( secondMpmIndex == symbol )
+          {
+            intraPredMode = i;
+            break;
+          }
+        }
+
+        assert( intraPredMode >= 0 );
+      }
+      else
+      {
+        for( Int i = 0; i <= symbol; i++ )
+        {
+          symbol += Int(selectedIntraModes[i] > 0);
+        }
+        
+        intraPredMode = symbol;
+      }
+#else
       intraPredMode = symbol;
 
       //postponed sorting of MPMs (only in remaining branch)
@@ -1430,6 +1482,7 @@ Void TDecSbac::parseIntraDirLumaAng  ( TComDataCU* pcCU, UInt absPartIdx, UInt d
       {
         intraPredMode += ( intraPredMode >= preds[i] );
       }
+#endif
 #else
 #if VCEG_AZ07_INTRA_65ANG_MODES
       m_pcTDecBinIf->decodeBinsEP( symbol, 4 RExt__DECODER_DEBUG_BIT_STATISTICS_PASS_OPT_ARG(ctype) );
