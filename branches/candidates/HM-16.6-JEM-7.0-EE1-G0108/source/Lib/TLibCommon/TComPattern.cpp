@@ -294,7 +294,11 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
 #endif
         const Bool bilinearLeft  = abs((bottomLeft + topLeft ) - (2 * piIntraTemp[stride * uiTuHeight])) < threshold; //difference between the
         const Bool bilinearAbove = abs((topLeft    + topRight) - (2 * piIntraTemp[         uiTuWidth ])) < threshold; //ends and the middle
+#if STRONG_SMOOTHING
+        if( uiTuWidth * uiTuHeight < 1024 || !bilinearLeft || !bilinearAbove )
+#else
         if ((uiTuWidth < 32) || (!bilinearLeft) || (!bilinearAbove))
+#endif
         {
           useStrongIntraSmoothing = false;
         }
@@ -310,6 +314,28 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
 
       if (useStrongIntraSmoothing)
       {
+#if STRONG_SMOOTHING
+        *piDestPtr = *piSrcPtr; // next to the bottom left is not filtered
+        piDestPtr -= stride;
+
+        const Pel middle = piIntraTemp[stride * uiTuHeight];
+
+        Int shift = g_aucConvertToBit[uiTuWidth] + MIN_CU_LOG2;
+        Int offset = uiTuWidth >> 1;
+
+        for( UInt i = 1; i<uiTuWidth; i++, piDestPtr -= stride )
+        {
+          *piDestPtr = ( ( ( uiTuWidth - i ) * bottomLeft ) + ( i * middle ) + offset ) >> shift;
+        }
+
+        shift = g_aucConvertToBit[uiTuHeight] + MIN_CU_LOG2;
+        offset = uiTuHeight >> 1;
+
+        for( UInt i = 1; i<uiTuHeight; i++, piDestPtr -= stride )
+        {
+          *piDestPtr = ( ( ( uiTuHeight - i ) * middle ) + ( i * topLeft ) + offset ) >> shift;
+        }
+#else
 #if JVET_C0024_QTBT
         const Int shift = g_aucConvertToBit[uiTuHeight] + MIN_CU_LOG2 + 1; //log2(uiTuHeight2)    //it is a bug for non-square PU for strong filter, JCA
 #else
@@ -320,6 +346,7 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
         {
           *piDestPtr = (((uiTuHeight2 - i) * bottomLeft) + (i * topLeft) + uiTuHeight) >> shift;
         }
+#endif
 
         piSrcPtr -= stride * (uiTuHeight2 - 1);
       }
@@ -365,6 +392,31 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
 
       if (useStrongIntraSmoothing)
       {
+#if STRONG_SMOOTHING
+        const Pel middle = piIntraTemp[uiTuWidth];
+
+        Int shift = g_aucConvertToBit[uiTuWidth] + MIN_CU_LOG2;
+        Int offset = uiTuWidth >> 1;
+
+        for( UInt i = 1; i<uiTuWidth; i++, piDestPtr++ )
+        {
+          *piDestPtr = ( ( ( uiTuWidth - i ) * topLeft ) + ( i * middle ) + offset ) >> shift;
+        }
+
+        shift = g_aucConvertToBit[uiTuHeight] + MIN_CU_LOG2;
+        offset = uiTuHeight >> 1;
+
+        for( UInt i = 1; i<uiTuHeight; i++, piDestPtr++ )
+        {
+          *piDestPtr = ( ( ( uiTuHeight - i ) * middle ) + ( i * topRight ) + offset ) >> shift;
+        }
+
+        piSrcPtr += uiTuWidth2 - 2;
+
+        *piDestPtr = *piSrcPtr; //next to the far right is not filtered
+        piDestPtr++;
+        piSrcPtr++;
+#else
 #if JVET_C0024_QTBT
         const Int shift = g_aucConvertToBit[uiTuWidth] + MIN_CU_LOG2 + 1; //log2(uiTuWidth2)
 #else
@@ -377,6 +429,7 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
         }
 
         piSrcPtr += uiTuWidth2 - 1;
+#endif
       }
       else
       {
