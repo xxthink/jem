@@ -181,6 +181,9 @@ public:
   Void codeQtCbfZero           ( TComTU &rTu, const ChannelType chType );
   Void codeQtRootCbfZero       ( );
   Void codeIntraDirLumaAng     ( TComDataCU* pcCU, UInt absPartIdx, Bool isMultiple
+#if SECOND_INTRA_MPM
+    , UChar* secondMpm = NULL, Char* secondMpmIdx = NULL, Char* numMpmSecondMpmBeforeCurMode = NULL
+#endif
 #if VCEG_AZ07_INTRA_65ANG_MODES
     , Int* piModes = NULL, Int  iAboveLeftCase = -1
 #endif

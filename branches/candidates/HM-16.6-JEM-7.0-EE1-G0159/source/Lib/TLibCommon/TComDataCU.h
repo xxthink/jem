@@ -966,6 +966,9 @@ public:
 #if VCEG_AZ07_INTRA_65ANG_MODES && !JVET_C0055_INTRA_MPM
     , Int &iAboveLeftCase
 #endif
+#if EE1_TEST9
+  , Int* piNumNeighAdded = NULL
+#endif
     , Int* piMode = NULL );
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -1015,6 +1018,14 @@ public:
 
 #if VCEG_AZ08_INTER_KLT
   Void          interpolatePic                 ( TComPic* pcPic );
+#endif
+
+#if SECOND_INTRA_MPM
+  Void          getSecondMPM(UChar selectedIntraModes[NUM_INTRA_MODE], Int preds[NUM_MOST_PROBABLE_MODES]
+#if EE1_TEST9
+    , Int iNumAddedModes
+#endif
+      );
 #endif
 };
 

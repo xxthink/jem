@@ -46,6 +46,13 @@
 
 //! \ingroup TLibCommon
 //! \{
+#define EE1_TEST8                                         1 // secondary MPM offset is with increment of 1
+#define EE1_TEST9                                         0 // secondary MPM derivation depends on the MPM index
+
+#if EE1_TEST8 || EE1_TEST9
+#define SECOND_INTRA_MPM                                  1 // secondary MPM list
+#endif
+
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////

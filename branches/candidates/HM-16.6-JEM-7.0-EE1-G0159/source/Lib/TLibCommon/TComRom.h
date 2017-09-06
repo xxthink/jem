@@ -282,6 +282,9 @@ extern const Int g_pdpc_pred_param[5][2][35][7];
 #endif
 #endif
 
+#if EE1_TEST9
+extern const Int g_aiDefaultIntraModes2[21]; 
+#endif
 //! \}
 #if JVET_E0077_ENHANCED_LM
 Bool   IsLMMode(UInt uiIntraMode);

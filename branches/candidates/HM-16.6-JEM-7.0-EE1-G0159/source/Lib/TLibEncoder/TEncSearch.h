@@ -437,11 +437,23 @@ protected:
                                     UInt         uiTrDepth,
                                     UInt         uiAbsPartIdx,
                                     Bool         bLuma,
-                                    Bool         bChroma );
+                                    Bool         bChroma 
+#if SECOND_INTRA_MPM
+                                  , UChar* secondMpm = NULL
+                                  , Char*  secondMpmIdx = NULL
+                                  , Char*  numMpmSecondMpmBeforeCurMode = NULL
+#endif
+                    );
   UInt  xGetIntraBitsQT           ( TComTU &rTu,
                                     Bool         bLuma,
                                     Bool         bChroma,
-                                    Bool         bRealCoeff );
+                                    Bool         bRealCoeff 
+#if SECOND_INTRA_MPM
+                                  , UChar* secondMpm = NULL
+                                  , Char*  secondMpmIdx = NULL
+                                  , Char*  numMpmSecondMpmBeforeCurMode = NULL
+#endif
+                    );
 
   UInt  xGetIntraBitsQTChroma    ( TComTU &rTu,
                                    ComponentID compID,
@@ -494,6 +506,11 @@ protected:
 #endif
                                     Double&      dRDCost,
                                     TComTU      &rTu
+#if SECOND_INTRA_MPM
+                                  , UChar* secondMpm = NULL
+                                  , Char*  secondMpmIdx = NULL
+                                  , Char*  numMpmSecondMpmBeforeCurMode = NULL
+#endif
                                     DEBUG_STRING_FN_DECLARE(sDebug));
 
 #if COM16_C983_RSAF
@@ -511,6 +528,11 @@ protected:
 #endif
                                       Double&      dRDCost,
                                       TComTU      &rTu
+#if SECOND_INTRA_MPM
+                                    , UChar* secondMpm = NULL
+                                    , Char*  secondMpmIdx = NULL
+                                    , Char*  numMpmSecondMpmBeforeCurMode = NULL 
+#endif
                                       DEBUG_STRING_FN_DECLARE(sDebug));
 #endif
 
@@ -820,6 +842,9 @@ protected:
   Void xSetInterResidualQTData( TComYuv* pcResi, Bool bSpatial, TComTU &rTu  );
 
   UInt  xModeBitsIntra ( TComDataCU* pcCU, UInt uiMode, UInt uiPartOffset, UInt uiDepth, const ChannelType compID 
+#if SECOND_INTRA_MPM
+  , UChar* secondMpm = NULL, Char* secondMpmIdx = NULL, Char* numMpmSecondMpmBeforeCurMode = NULL
+#endif
 #if VCEG_AZ07_INTRA_65ANG_MODES
     , Int* piModes = NULL
     , Int  iAboveLeftCase = -1

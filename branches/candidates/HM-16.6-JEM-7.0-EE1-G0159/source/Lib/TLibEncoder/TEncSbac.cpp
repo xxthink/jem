@@ -1217,6 +1217,9 @@ Void TEncSbac::codeTransformSubdivFlag( UInt uiSymbol, UInt uiCtx )
 
 
 Void TEncSbac::codeIntraDirLumaAng( TComDataCU* pcCU, UInt absPartIdx, Bool isMultiple
+#if SECOND_INTRA_MPM
+  , UChar* secondMpm, Char* secondMpmIdx, Char* numMpmSecondMpmBeforeCurMode
+#endif
 #if VCEG_AZ07_INTRA_65ANG_MODES
                                    , Int* piModes, Int iAboveLeftCase
 #endif
@@ -1254,6 +1257,10 @@ Void TEncSbac::codeIntraDirLumaAng( TComDataCU* pcCU, UInt absPartIdx, Bool isMu
   Int aiCase[4]={0,0,0,0};
 #endif
 
+#if EE1_TEST9
+  Int numAddedModes[4] = {-1, -1, -1, -1};
+#endif
+
   for (j=0;j<partNum;j++)
   {
     dir[j] = pcCU->getIntraDir( CHANNEL_TYPE_LUMA, absPartIdx+partOffset*j );
@@ -1271,6 +1278,9 @@ Void TEncSbac::codeIntraDirLumaAng( TComDataCU* pcCU, UInt absPartIdx, Bool isMu
     pcCU->getIntraDirPredictor(absPartIdx+partOffset*j, preds[j], COMPONENT_Y
 #if VCEG_AZ07_INTRA_65ANG_MODES && !JVET_C0055_INTRA_MPM
     , aiCase[j]
+#endif
+#if EE1_TEST9
+  , &numAddedModes[j]
 #endif
     );
     for(UInt i = 0; i < NUM_MOST_PROBABLE_MODES; i++)
@@ -1324,6 +1334,61 @@ Void TEncSbac::codeIntraDirLumaAng( TComDataCU* pcCU, UInt absPartIdx, Bool isMu
     }
     else
     {
+#if SECOND_INTRA_MPM
+      UChar selectedIntraModes[NUM_INTRA_MODE];
+      if( secondMpm )
+      {
+        assert( !isMultiple );
+        selectedIntraModes[dir[j]] = secondMpm[dir[j]];
+      }
+      else
+      {
+        pcCU->getSecondMPM(selectedIntraModes, preds[j]
+#if EE1_TEST9
+             , numAddedModes[j]
+#endif
+           );
+      }
+
+      assert(selectedIntraModes[dir[j]] != 1);
+
+      UInt secondMpmFlag = selectedIntraModes[dir[j]] == 2;
+
+      m_pcBinIf->encodeBin( secondMpmFlag, m_cCUIntraPredSCModel.get( 0, 0, 9 ) ); // flag to indicate if it is selected mode or non-selected mode
+
+      // calculate the second MPM index            
+      Int secondMpmIndex = -1;
+      Int count = 0;
+
+      if( secondMpmIdx && numMpmSecondMpmBeforeCurMode )
+      {
+        secondMpmIndex = secondMpmIdx[dir[j]];
+        count = numMpmSecondMpmBeforeCurMode[dir[j]];
+      }
+      else
+      {
+        for( Int i = 0; i <= dir[j]; i++ )
+        {
+          if( selectedIntraModes[i] )
+          {
+            count++;
+            secondMpmIndex += Int(selectedIntraModes[i] == 2);
+          }
+        }
+      }
+
+      if( secondMpmFlag ) 
+      {
+        assert(secondMpmIndex >= 0);
+        m_pcBinIf->encodeBinsEP( secondMpmIndex, 4 );  // selected mode is 4-bit FLC coded
+      }
+      else
+      {
+        assert(Int(dir[j]) - count >= 0);
+        dir[j] -= count;
+        xWriteTruncBinCode(dir[j], 45);
+      }
+#else
 #if VCEG_AZ07_INTRA_65ANG_MODES
       std::sort(preds[j], preds[j]+6);
 #else
@@ -1375,6 +1440,7 @@ Void TEncSbac::codeIntraDirLumaAng( TComDataCU* pcCU, UInt absPartIdx, Bool isMu
 #endif
 #else
       m_pcBinIf->encodeBinsEP( dir[j], 5 );
+#endif
 #endif
     }
   }

@@ -3530,6 +3530,9 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
 #if VCEG_AZ07_INTRA_65ANG_MODES && !JVET_C0055_INTRA_MPM
                                       , Int &iLeftAboveCase
 #endif
+#if EE1_TEST9
+                                      , Int* piNumNeighAdded
+#endif
                                       , Int* piMode  )
 {
 #if JVET_C0055_INTRA_MPM
@@ -3771,7 +3774,12 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
   }
 #endif 
   UInt numAddedModes = modeIdx;
-
+#if EE1_TEST9
+  if( piNumNeighAdded )
+  {
+    *piNumNeighAdded = numAddedModes;
+  }
+#endif
   // -+1 derived modes
 #if JVET_E0062_MULTI_DMS  
   for( UInt idx = 0; idx < numAddedModes && modeIdx < iMaxModeNum; idx++ )
@@ -9345,5 +9353,148 @@ Bool TComDataCU::isAffineMrgFlagCoded( UInt uiAbsPartIdx, UInt uiPUIdx )
   return ( isLeftAvailable || isAboveAvailable || isAboveRightAvailable || isBottomLeftAvailable || isAboveLeftAvailable );
 }
 #endif // end AFFINE
+
+#if SECOND_INTRA_MPM
+Void TComDataCU::getSecondMPM(UChar selectedIntraModes[NUM_INTRA_MODE], Int preds[NUM_MOST_PROBABLE_MODES]
+#if EE1_TEST9
+    , Int iNumAddedModes
+#endif
+      )
+{
+  memset(selectedIntraModes, 0, NUM_INTRA_MODE * sizeof(UChar));
+
+#if VCEG_AZ07_INTRA_65ANG_MODES
+  const Int offset = 62;
+#else
+  const Int offset = 29;
+#endif
+  const Int mod = offset + 3;
+
+  UInt numSelectedModes = 16;
+#if JVET_E0077_ENHANCED_LM
+  const Int numIntraModes = NUM_INTRA_MODE - NUM_INTRA_MODE_NON_ANG + 1;
+#else
+  const Int numIntraModes = NUM_INTRA_MODE;
+#endif
+
+  // mark first MPM modes
+  for( Int i = 0; i < NUM_MOST_PROBABLE_MODES; i++ )
+  {
+    selectedIntraModes[preds[i]] = 1;
+  }
+
+#if EE1_TEST9
+  const UInt numDerivedModes[] = { 4, 3, 3, 2, 2, 2 };
+
+  Int noNeighLrgDC = 0, numSecondMpms = 0;
+
+  for( UInt idx = 0; idx < iNumAddedModes && numSecondMpms < numSelectedModes; idx++ )
+  {
+     if( preds[idx] <= DC_IDX )
+     {
+      continue;
+     }
+     Int mode = preds[idx];
+
+     for( Int delta = 1; delta <= numDerivedModes[noNeighLrgDC] && numSecondMpms < numSelectedModes; delta++ )
+     {
+       //-1
+       Int candMode = ( ( mode - delta + offset ) % mod ) + 2;
+       if( candMode > DC_IDX )
+       {
+         if( !selectedIntraModes[candMode] )
+         {
+          selectedIntraModes[candMode] = 2;
+          numSecondMpms++;
+         }
+
+         if( numSecondMpms == numSelectedModes )
+         {
+            break;
+         }
+       }
+
+       //+1
+       candMode = ( ( mode + delta - 1 ) % mod ) + 2;
+       if( candMode < numIntraModes - 1 )
+       {
+         if( !selectedIntraModes[candMode] )
+         {
+          selectedIntraModes[candMode] = 2;
+          numSecondMpms++;
+         }
+       }
+     }
+
+     noNeighLrgDC++;
+  }
+
+  // Fill the remaining ones
+  for (UInt i=0; i < 21 && numSecondMpms < numSelectedModes; i++)
+  {
+    Int candMode = g_aiDefaultIntraModes2[i];
+    if( !selectedIntraModes[candMode] )
+    {
+      selectedIntraModes[candMode] = 2;
+      numSecondMpms++;
+    }
+  }
+
+  assert(numSecondMpms == numSelectedModes);
+#else //EE1_TEST8
+  Int n = 0, delta = 1;
+  while( n < numSelectedModes )
+  {
+    for( Int i = 0; i < NUM_MOST_PROBABLE_MODES; i++ )
+    {
+      if( preds[i] <= DC_IDX )
+      {
+        continue;
+      }
+
+      //+delta
+      Int candMode = ( ( preds[i] + delta - 1) % mod ) + 2;
+
+      if( candMode >= 0 && candMode < numIntraModes - 1 )
+      {
+        if( !selectedIntraModes[candMode] )
+        {
+          selectedIntraModes[candMode] = 2;
+          n++;
+        }
+      }
+
+      if( n == numSelectedModes )
+      {
+        break;
+      }
+
+      //-delta
+      candMode = ( ( preds[i] - delta + offset ) % mod ) + 2;
+
+      if( candMode >= 0 && candMode < numIntraModes - 1 )
+      {
+        if( !selectedIntraModes[candMode] )
+        {
+          selectedIntraModes[candMode] = 2;
+          n++;
+        }
+      }
+
+      if( n == numSelectedModes )
+      {
+        break;
+      }
+
+    }
+
+    delta++;
+    assert( delta < numIntraModes );
+  }
+
+  assert( n == numSelectedModes );
+#endif
+}
+#endif
 
 //! \}

@@ -143,6 +143,9 @@ public:
   virtual Void codeQtCbfZero     ( TComTU &rTu, const ChannelType chType ) = 0;
   virtual Void codeQtRootCbfZero ( ) = 0;
   virtual Void codeIntraDirLumaAng( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool isMultiplePU 
+#if SECOND_INTRA_MPM
+  , UChar* secondMpm = NULL, Char* secondMpmIdx = NULL, Char* numMpmSecondMpmBeforeCurMode = NULL
+#endif
 #if VCEG_AZ07_INTRA_65ANG_MODES
     , Int* piModes = NULL, Int iAboveLeftCase = -1
 #endif
@@ -303,6 +306,9 @@ public:
   Void encodeIPCMInfo          ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
   Void encodePredInfo          ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void encodeIntraDirModeLuma  ( TComDataCU* pcCU, UInt absPartIdx, Bool isMultiplePU = false 
+#if SECOND_INTRA_MPM
+    , UChar* secondMpm = NULL, Char*  secondMpmIdx = NULL, Char*  numMpmSecondMpmBeforeCurMode =NULL 
+#endif
 #if VCEG_AZ07_INTRA_65ANG_MODES
     , Int* piModes = NULL, Int iAboveLeftCase = -1
 #endif
