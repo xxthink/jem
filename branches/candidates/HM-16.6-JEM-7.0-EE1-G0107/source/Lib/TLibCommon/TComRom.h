@@ -273,7 +273,7 @@ extern const UInt g_scalingListSize [SCALING_LIST_SIZE_NUM];
 extern const UInt g_scalingListSizeX[SCALING_LIST_SIZE_NUM];
 
 #if COM16_C1046_PDPC_INTRA
-#if JVET_G0104_PLANAR_PDPC
+#if JVET_G0104_PLANAR_PDPC && !FORCE_PDPC_NSST
 extern const Short g_pdpcParam[5][6];
 #elif JVET_C0024_QTBT // lossless change, just remove unused entries from the table
 extern const Int g_pdpc_pred_param[5][35][6];

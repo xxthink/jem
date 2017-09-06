@@ -1309,6 +1309,18 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
 
   const UInt uiChFinalMode = ((chFmt == CHROMA_422)       && !bIsLuma) ? g_chroma422IntraAngleMappingTable[uiChCodedMode] : uiChCodedMode;
   //===== init availability pattern =====
+#if FORCE_PDPC_NSST
+  Bool bUseFilteredPredictions = false;
+
+#if EE1_TEST1
+  if( isLuma( compID ) && pcCU->getROTIdx( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) == MDIS_NSST_INDEX )
+#else
+  if( isLuma( compID ) && pcCU->getROTIdx( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) && pcCU->getROTIdx( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) != PDPC_NSST_INDEX )
+#endif
+  {
+    bUseFilteredPredictions = TComPrediction::filteringIntraReferenceSamples( compID, uiChFinalMode, uiWidth, uiHeight, chFmt, pcCU->getSlice()->getSPS()->getSpsRangeExtension().getIntraSmoothingDisabledFlag() );
+  }
+#else
 #if !COM16_C983_RSAF
   const 
 #endif
@@ -1322,6 +1334,7 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
                                                                                   , sps.getUseRSAF()
 #endif
                                                                                    );
+#endif
 
 #if DEBUG_STRING
   std::ostream &ss(std::cout);

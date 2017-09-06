@@ -136,9 +136,15 @@ TComPrediction::TComPrediction()
   iRefListIdx = -1;  
 #endif
 #if COM16_C1046_PDPC_INTRA
+#if FORCE_PDPC_NSST
+  piTempRef = new Pel[4 * MAX_CU_SIZE + 1];
+  piFiltRef = new Pel[4 * MAX_CU_SIZE + 1];
+  piBinBuff = new Pel[4 * MAX_CU_SIZE + 9];
+#else
   piTempRef = new Int[4 * MAX_CU_SIZE + 1];
   piFiltRef = new Int[4 * MAX_CU_SIZE + 1];
   piBinBuff = new Int[4 * MAX_CU_SIZE + 9];
+#endif
 #endif
 
 #if COM16_C806_VCEG_AZ10_SUB_PU_TMVP
@@ -862,7 +868,7 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 #if !COM16_C1046_PDPC_RSAF_HARMONIZATION
     Pel *ptrSrc = getPredictorPtr(compID, false);
 #endif
-#if JVET_G0104_PLANAR_PDPC
+#if JVET_G0104_PLANAR_PDPC && !FORCE_PDPC_NSST
     if( uiDirMode == PLANAR_IDX )
 #else
 #if JVET_C0024_QTBT //different PDPC filter coeff between sizes, w!=h? JCA
@@ -873,6 +879,28 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 #endif
     
 #if JVET_C0024_QTBT
+#if FORCE_PDPC_NSST
+    Int iPdpcIdx = 0;
+
+    if( uiDirMode == PLANAR_IDX )
+    {
+      iPdpcIdx = 1;
+    }
+    else if( pcCU->getROTIdx( pcCU->getTextType(), uiAbsPartIdx ) == PDPC_NSST_INDEX )
+    {
+      iPdpcIdx = 1;
+    }
+    else if( isChroma( pcCU->getTextType() ) )
+    {
+      assert( pcCU->getSlice()->isIntra() );
+
+      UInt absPartIdx = pcCU->getZorderIdxInCtu() + uiAbsPartIdx;
+      absPartIdx = g_auiRasterToZscan[g_auiZscanToRaster[absPartIdx] + (pcCU->getHeight( uiAbsPartIdx ) / pcCU->getPic()->getMinCUHeight()) / 2 * pcCU->getPic()->getNumPartInCtuWidth() + (pcCU->getWidth( uiAbsPartIdx ) / pcCU->getPic()->getMinCUWidth()) / 2];
+      iPdpcIdx = pcCU->getPic()->getCtu( pcCU->getCtuRsAddr() )->isIntra( absPartIdx ) ? (pcCU->getPic()->getCtu( pcCU->getCtuRsAddr() )->getROTIdx( CHANNEL_TYPE_LUMA, absPartIdx ) == PDPC_NSST_INDEX ? 1 : 0) : 0;
+    }
+
+    if( uiDirMode == PLANAR_IDX || ( iPdpcIdx && pcCU->getSlice()->getSPS()->getUsePDPC() ) )
+#else
     Int iPdpcIdx = pcCU->getPDPCIdx(uiAbsPartIdx);
 
     if( isChroma(pcCU->getTextType()) )
@@ -883,6 +911,7 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
     }
 
     if( iPdpcIdx && pcCU->getSlice()->getSPS()->getUsePDPC() )
+#endif
 #else
     Int iPdpcIdx = 0; //PDPC Idx
     
@@ -901,7 +930,7 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
       if ((eSize == SIZE_NxN) && (iBlkSizeGrp == 1)) iBlkSizeGrp = 0;
 #endif
     }
-#if JVET_C0024_QTBT
+#if JVET_C0024_QTBT && !FORCE_PDPC_NSST
     else
     {
       iPdpcIdx = 0;
@@ -924,7 +953,7 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
       const Int iDoubleWidth = iWidth<<1;
 #endif
 
-#if JVET_G0104_PLANAR_PDPC
+#if JVET_G0104_PLANAR_PDPC && !FORCE_PDPC_NSST
       const Int blkSizeGroup[2] = { std::min( 4, 1 + (Int)g_aucConvertToBit[iWidth] ), std::min( 4, 1 + (Int)g_aucConvertToBit[iHeight] ) };
       const Short *pdpcParam[2] = { g_pdpcParam[blkSizeGroup[0]], g_pdpcParam[blkSizeGroup[1]] };
       const Short *pPdpcPar = pdpcParam[iWidth < iHeight];
@@ -947,6 +976,15 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 #endif
 #endif
 
+#if FORCE_PDPC_NSST
+#if JVET_C0024_QTBT
+      Pel * piRefVector = piTempRef + iDoubleSize;
+      Pel * piLowpRefer = piFiltRef + iDoubleSize;
+#else
+      Pel * piRefVector = piTempRef + iDoubleWidth;
+      Pel * piLowpRefer = piFiltRef + iDoubleWidth;
+#endif
+#else
 #if JVET_C0024_QTBT
       Int * piRefVector = piTempRef + iDoubleSize;
       Int * piLowpRefer = piFiltRef + iDoubleSize;
@@ -954,11 +992,16 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
       Int * piRefVector = piTempRef + iDoubleWidth;
       Int * piLowpRefer = piFiltRef + iDoubleWidth;
 #endif
+#endif
 
       //unfiltered reference
 #if JVET_C0024_QTBT
+#if FORCE_PDPC_NSST
+      memcpy( piRefVector, ptrSrc, sizeof( Pel ) * ( iDoubleSize + 1 ) );
+#else
       for (Int j = 0; j <= iDoubleSize; j++)
         piRefVector[j] = ptrSrc[j];
+#endif
 
       for (Int i = 1; i <= iDoubleSize; i++)
         piRefVector[-i] = ptrSrc[i*iSrcStride];
@@ -975,8 +1018,12 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
       { // filter reference samples
 #if JVET_C0024_QTBT
         xReferenceFilter(iDoubleSize, pPdpcPar[4], pPdpcPar[5], piRefVector, piLowpRefer);
+#if FORCE_PDPC_NSST
+        memcpy( ptrSrc, piLowpRefer, sizeof( Pel ) * ( iDoubleSize + 1 ) );
+#else
         for (Int j = 0; j <= iDoubleSize; j++)
           ptrSrc[j] = piLowpRefer[j];
+#endif
         for (Int i = 1; i <= iDoubleSize; i++)
           ptrSrc[i*iSrcStride] = piLowpRefer[-i];
 #else
@@ -1021,8 +1068,12 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
       if (pPdpcPar[5] != 0) 
       {
 #if JVET_C0024_QTBT
-        for (int j = 0; j <= iDoubleSize; j++)
+#if FORCE_PDPC_NSST
+        memcpy( ptrSrc, piRefVector, sizeof( Pel ) * ( iDoubleSize + 1 ) );
+#else
+        for( int j = 0; j <= iDoubleSize; j++ )
           ptrSrc[j] = piRefVector[j];
+#endif
 
         for (int i = 1; i <= iDoubleSize; i++)
           ptrSrc[i*iSrcStride] = piRefVector[-i];
@@ -1096,7 +1147,13 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 #if JVET_G0104_PLANAR_PDPC
     if( isLuma( compID ) )
     {
+#if EE1_TEST1
+      if( pcCU->getROTIdx( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) == MDIS_NSST_INDEX )
+#elif EE1_TEST1_1
+      if( pcCU->getROTIdx( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) && pcCU->getROTIdx( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) != PDPC_NSST_INDEX )
+#else
       if( pcCU->getROTIdx( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) )
+#endif
       {
         ptrSrc = getPredictorPtr( compID, bUseFilteredPredSamples );
       }
@@ -7646,7 +7703,11 @@ Void TComPrediction::getMvPredAffineAMVP( TComDataCU* pcCU, UInt uiPartIdx, UInt
 
 #if COM16_C1046_PDPC_INTRA
 #if JVET_C0024_QTBT
+#if FORCE_PDPC_NSST
+Void TComPrediction::xReferenceFilter( Int iDoubleSize, Int iOrigWeight, Int iFilterOrder, Pel * piRefrVector, Pel * piLowPassRef )
+#else
 void TComPrediction::xReferenceFilter(Int iDoubleSize, Int iOrigWeight, Int iFilterOrder, Int * piRefrVector, Int * piLowPassRef)
+#endif
 #else
 void TComPrediction::xReferenceFilter(Int iBlkSize, Int iOrigWeight, Int iFilterOrder, Int * piRefrVector, Int * piLowPassRef)
 #endif
@@ -7662,12 +7723,22 @@ void TComPrediction::xReferenceFilter(Int iBlkSize, Int iOrigWeight, Int iFilter
 #if !JVET_C0024_QTBT
   const Int iDoubleSize = 2 * iBlkSize;                   // symmetric representation
 #endif
+#if FORCE_PDPC_NSST
+  Pel * piTmp = &piBinBuff[2 * MAX_CU_SIZE + 4];   // to  use negative indexes
+  Pel * piDat = piRefrVector;
+  Pel * piRes = piLowPassRef;
+#else
   Int * piTmp = &piBinBuff[2 * MAX_CU_SIZE + 4];   // to  use negative indexes
   Int * piDat = piRefrVector;
   Int * piRes = piLowPassRef;
+#endif
   
+#if FORCE_PDPC_NSST
+  memcpy( &piTmp[-iDoubleSize], &piDat[-iDoubleSize], sizeof( Pel ) * ( 2 * iDoubleSize + 1 ) );
+#else
   for (Int k = -iDoubleSize; k <= iDoubleSize; k++)
     piTmp[k] = piDat[k];
+#endif
 
   for (Int n = 1; n <= 3; n++)
   {

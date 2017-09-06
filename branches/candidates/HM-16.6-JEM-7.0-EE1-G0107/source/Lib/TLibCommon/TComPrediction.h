@@ -108,9 +108,15 @@ protected:
 #endif
 
 #if COM16_C1046_PDPC_INTRA
+#if FORCE_PDPC_NSST
+  Pel* piTempRef;
+  Pel* piFiltRef;
+  Pel* piBinBuff;
+#else
   Int* piTempRef;
   Int* piFiltRef;
   Int* piBinBuff;
+#endif
 #endif
   Pel*      m_piYuvExt[MAX_NUM_COMPONENT][NUM_PRED_BUF];
   Int       m_iYuvExtSize;
@@ -268,7 +274,11 @@ protected:
 
   Void xGetLLSPrediction ( const Pel* pSrc0, Int iSrcStride, Pel* pDst0, Int iDstStride, UInt uiWidth, UInt uiHeight, UInt uiExt0, const ChromaFormat chFmt  DEBUG_STRING_FN_DECLARE(sDebug) );
 #if COM16_C1046_PDPC_INTRA
+#if FORCE_PDPC_NSST
+  Void xReferenceFilter( Int iBlkSize, Int iOrigWeight, Int iFilterOrder, Pel * piRefVector, Pel * piLowPassRef );
+#else
   Void xReferenceFilter  (Int iBlkSize, Int iOrigWeight, Int iFilterOrder, Int * piRefVector, Int * piLowPassRef);
+#endif
 #endif
   Void xDCPredFiltering( const Pel* pSrc, Int iSrcStride, Pel* pDst, Int iDstStride, Int iWidth, Int iHeight, ChannelType channelType );
 

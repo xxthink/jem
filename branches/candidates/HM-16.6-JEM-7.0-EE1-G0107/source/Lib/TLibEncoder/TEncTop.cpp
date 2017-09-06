@@ -220,7 +220,7 @@ Void TEncTop::create ()
 #if VCEG_AZ05_INTRA_MPI
   m_cSPS.setUseMPI( m_useMPI );
 #endif
-#if COM16_C1046_PDPC_INTRA && !JVET_G0104_PLANAR_PDPC
+#if COM16_C1046_PDPC_INTRA && (!JVET_G0104_PLANAR_PDPC || FORCE_PDPC_NSST)
   m_cSPS.setUsePDPC(m_usePDPC);
 #endif
 #if VCEG_AZ05_ROT_TR

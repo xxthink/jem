@@ -2085,9 +2085,27 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
           bUseFilteredPredictions = bFilter; 
         }
 #else
+#if FORCE_PDPC_NSST
+    Bool bUseFilteredPredictions = false;
+
+    if( isLuma( compID ) )
+    {
+#if EE1_TEST1
+      if( pcCU->getROTIdx( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) == MDIS_NSST_INDEX )
+#else
+      if( pcCU->getROTIdx( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) && pcCU->getROTIdx( CHANNEL_TYPE_LUMA, uiAbsPartIdx ) != PDPC_NSST_INDEX )
+#endif
+      {
+        bUseFilteredPredictions = TComPrediction::filteringIntraReferenceSamples( compID, uiChFinalMode, uiWidth, uiHeight, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag() );
+      }
+
+      initIntraPatternChType( rTu, compID, bUseFilteredPredictions DEBUG_STRING_PASS_INTO( sDebug ) );
+    }
+#else
     const Bool bUseFilteredPredictions=TComPrediction::filteringIntraReferenceSamples(compID, uiChFinalMode, uiWidth, uiHeight, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag());
 
     initIntraPatternChType( rTu, compID, bUseFilteredPredictions DEBUG_STRING_PASS_INTO(sDebug) );
+#endif
 #endif
 #if COM16_C983_RSAF
 #if JVET_E0077_ENHANCED_LM && JVET_C0024_QTBT
@@ -5137,6 +5155,10 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #endif
   }
 
+#if FORCE_PDPC_NSST
+  UChar nsstIndex = pcCU->getROTIdx( CHANNEL_TYPE_LUMA, 0 );
+#endif
+
 #if JVET_D0127_REDUNDANCY_REMOVAL
 #if JVET_C0024_QTBT
   Bool NSSTFlag = (pcCU->getROTIdx(CHANNEL_TYPE_LUMA, 0) == 0) || (uiWidth > 64 || uiHeight > 64);
@@ -5262,7 +5284,15 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 
     // this should always be true
     assert (tuRecurseWithPU.ProcessComponentSection(COMPONENT_Y));
+#if FORCE_PDPC_NSST
+#if EE1_TEST1
+    initIntraPatternChType( tuRecurseWithPU, COMPONENT_Y, nsstIndex == MDIS_NSST_INDEX DEBUG_STRING_PASS_INTO( sTemp2 ) );
+#else
+    initIntraPatternChType( tuRecurseWithPU, COMPONENT_Y, nsstIndex && nsstIndex != PDPC_NSST_INDEX DEBUG_STRING_PASS_INTO( sTemp2 ) );
+#endif
+#else
     initIntraPatternChType( tuRecurseWithPU, COMPONENT_Y, true DEBUG_STRING_PASS_INTO(sTemp2) );
+#endif
 
     Bool doFastSearch = (numModesForFullRD != numModesAvailable);
     if (doFastSearch)
@@ -5340,12 +5370,25 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
           continue;
         }
         bSatdChecked[uiMode] = true;
-#endif        
+#endif
+#if FORCE_PDPC_NSST
+        Bool bUseFilter = false;
+
+#if EE1_TEST1
+        if( nsstIndex == MDIS_NSST_INDEX )
+#else
+        if( nsstIndex && nsstIndex != PDPC_NSST_INDEX )
+#endif
+        {
+          bUseFilter = TComPrediction::filteringIntraReferenceSamples( COMPONENT_Y, uiMode, puRect.width, puRect.height, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag() );
+        }
+#else
         const Bool bUseFilter=TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, uiMode, puRect.width, puRect.height, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag()
 #if COM16_C983_RSAF_PREVENT_OVERSMOOTHING 
           , sps.getUseRSAF()
 #endif
-                                                                            );
+                                                                   );
+#endif 
 
         predIntraAng( COMPONENT_Y, uiMode, piOrg, uiStride, piPred, uiStride, tuRecurseWithPU, bUseFilter, TComPrediction::UseDPCMForFirstPassIntraEstimation(tuRecurseWithPU, uiMode) );
 
@@ -5522,11 +5565,24 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 
             if( !bSatdChecked[uiMode] )
             {
+#if FORCE_PDPC_NSST
+              Bool bUseFilter = false;
+
+#if EE1_TEST1
+              if( nsstIndex == MDIS_NSST_INDEX )
+#else
+              if( nsstIndex && nsstIndex != PDPC_NSST_INDEX )
+#endif
+              {
+                bUseFilter = TComPrediction::filteringIntraReferenceSamples( COMPONENT_Y, uiMode, puRect.width, puRect.height, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag() );
+              }
+#else
               const Bool bUseFilter=TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, uiMode, puRect.width, puRect.height, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag()
 #if COM16_C983_RSAF_PREVENT_OVERSMOOTHING 
                 , sps.getUseRSAF() 
 #endif
-                                                                                  );
+              );
+#endif
 
               predIntraAng( COMPONENT_Y, uiMode, piOrg, uiStride, piPred, uiStride, tuRecurseWithPU, bUseFilter, TComPrediction::UseDPCMForFirstPassIntraEstimation(tuRecurseWithPU, uiMode) );
 
