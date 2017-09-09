@@ -84,17 +84,27 @@ public:
 
   Void updateLPS () //code "0"
   {
-    iP1-= (iP1 >> m_ucWdow);
+#if JVET_G0112_CABAC_CDAR
+    iP1 -= (iP1 >> m_ucAdptShft1);
+    iP0 -= (iP0 >> m_ucAdptShft0);
+#else  
+    iP1 -= (iP1 >> m_ucWdow);
 #if VCEG_AZ05_MULTI_PARAM_CABAC
-    iP0-= (iP0 >> 8);
+    iP0 -= (iP0 >> 8);
+#endif
 #endif
   }
   
   Void updateMPS () //code "1"
   {
+#if JVET_G0112_CABAC_CDAR
+    iP1 +=  ((32768 - iP1) >> m_ucAdptShft1);
+    iP0 +=  ((32768 - iP0) >> m_ucAdptShft0);
+#else
     iP1 +=  ((32768-iP1) >> m_ucWdow);
 #if VCEG_AZ05_MULTI_PARAM_CABAC
     iP0 +=  ((32768-iP0) >> 8);
+#endif
 #endif
   }
 
@@ -119,7 +129,11 @@ public:
   }
 
   static Int getEntropyBitsTrm( Int val ) { return m_entropyBits[val][0]; }
+#if JVET_G0112_CABAC_CDAR
+  Void  init         ( Int qp, UInt initData );
+#else
   Void  init         ( Int qp, Int initValue     );
+#endif
 #if VCEG_AZ07_INIT_PREVFRAME
   Void  setState     ( UShort uiState )  { iP1 = uiState;
 #if VCEG_AZ05_MULTI_PARAM_CABAC
@@ -172,6 +186,9 @@ public:
 private:
 
 #if  VCEG_AZ07_BAC_ADAPT_WDOW  || VCEG_AZ05_MULTI_PARAM_CABAC 
+#if JVET_G0112_CABAC_CDAR
+  UChar  m_ucAdptShft0, m_ucAdptShft1;
+#endif
   UShort iP1;
   UChar         m_ucWdow;
   UInt          m_iCtxIdx;
