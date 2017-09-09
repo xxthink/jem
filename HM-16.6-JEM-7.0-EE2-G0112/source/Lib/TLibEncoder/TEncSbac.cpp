@@ -165,6 +165,89 @@ Void TEncSbac::resetEntropy           (const TComSlice *pSlice)
     eSliceType = encCABACTableIdx;
   }
 
+#if JVET_G0112_CABAC_CDAR
+
+  m_cCUSplitFlagSCModel.initBuffer                ( eSliceType, iQp, (UInt*)INIT_SPLIT_FLAG );
+#if JVET_C0024_QTBT
+  m_cBTSplitFlagSCModel.initBuffer                ( eSliceType, iQp, (UInt*)INIT_BTSPLIT_MODE );
+#endif
+  m_cCUSkipFlagSCModel.initBuffer                 ( eSliceType, iQp, (UInt*)INIT_SKIP_FLAG );
+#if VCEG_AZ05_INTRA_MPI
+  m_cMPIIdxSCModel.initBuffer                     ( eSliceType, iQp, (UInt*)INIT_MPIIdx_FLAG );
+#endif 
+#if COM16_C1046_PDPC_INTRA
+  m_cPDPCIdxSCModel.initBuffer                    ( eSliceType, iQp, (UInt*)INIT_PDPCIdx_FLAG);
+#endif
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+  m_cROTidxSCModel.initBuffer                     ( eSliceType, iQp, (UInt*)INIT_ROT_TR_IDX );
+#endif
+  m_cCUMergeFlagExtSCModel.initBuffer             ( eSliceType, iQp, (UInt*)INIT_MERGE_FLAG_EXT);
+  m_cCUMergeIdxExtSCModel.initBuffer              ( eSliceType, iQp, (UInt*)INIT_MERGE_IDX_EXT);
+#if VCEG_AZ07_FRUC_MERGE
+  m_cCUFRUCMgrModeSCModel.initBuffer              ( eSliceType, iQp, (UInt*)INIT_FRUCMGRMODEBIN1 );
+  m_cCUFRUCMESCModel.initBuffer                   ( eSliceType, iQp, (UInt*)INIT_FRUCMGRMODEBIN2 );
+#endif
+  m_cCUPartSizeSCModel.initBuffer                 ( eSliceType, iQp, (UInt*)INIT_PART_SIZE );
+  m_cCUPredModeSCModel.initBuffer                 ( eSliceType, iQp, (UInt*)INIT_PRED_MODE );
+  m_cCUIntraPredSCModel.initBuffer                ( eSliceType, iQp, (UInt*)INIT_INTRA_PRED_MODE );
+  m_cCUChromaPredSCModel.initBuffer               ( eSliceType, iQp, (UInt*)INIT_CHROMA_PRED_MODE );
+  m_cCUInterDirSCModel.initBuffer                 ( eSliceType, iQp, (UInt*)INIT_INTER_DIR );
+  m_cCUMvdSCModel.initBuffer                      ( eSliceType, iQp, (UInt*)INIT_MVD );
+  m_cCURefPicSCModel.initBuffer                   ( eSliceType, iQp, (UInt*)INIT_REF_PIC );
+  m_cCUDeltaQpSCModel.initBuffer                  ( eSliceType, iQp, (UInt*)INIT_DQP );
+  m_cCUQtCbfSCModel.initBuffer                    ( eSliceType, iQp, (UInt*)INIT_QT_CBF );
+  m_cCUQtRootCbfSCModel.initBuffer                ( eSliceType, iQp, (UInt*)INIT_QT_ROOT_CBF );
+  m_cCUSigCoeffGroupSCModel.initBuffer            ( eSliceType, iQp, (UInt*)INIT_SIG_CG_FLAG );
+  m_cCUSigSCModel.initBuffer                      ( eSliceType, iQp, (UInt*)INIT_SIG_FLAG );
+  m_cCuCtxLastX.initBuffer                        ( eSliceType, iQp, (UInt*)INIT_LAST_X );
+  m_cCuCtxLastY.initBuffer                        ( eSliceType, iQp, (UInt*)INIT_LAST_Y );
+  m_cCUOneSCModel.initBuffer                      ( eSliceType, iQp, (UInt*)INIT_ONE_FLAG );
+#if !VCEG_AZ07_CTX_RESIDUALCODING
+  m_cCUAbsSCModel.initBuffer                      ( eSliceType, iQp, (UInt*)INIT_ABS_FLAG );
+#endif
+  m_cMVPIdxSCModel.initBuffer                     ( eSliceType, iQp, (UInt*)INIT_MVP_IDX );
+  m_cCUTransSubdivFlagSCModel.initBuffer          ( eSliceType, iQp, (UInt*)INIT_TRANS_SUBDIV_FLAG );
+  m_cSaoMergeSCModel.initBuffer                   ( eSliceType, iQp, (UInt*)INIT_SAO_MERGE_FLAG );
+  m_cSaoTypeIdxSCModel.initBuffer                 ( eSliceType, iQp, (UInt*)INIT_SAO_TYPE_IDX );
+  m_cTransformSkipSCModel.initBuffer              ( eSliceType, iQp, (UInt*)INIT_TRANSFORMSKIP_FLAG );
+#if VCEG_AZ08_KLT_COMMON
+  m_cKLTFlagSCModel.initBuffer                    ( eSliceType, iQp, (UInt*)INIT_KLT_FLAG);
+#endif
+  m_CUTransquantBypassFlagSCModel.initBuffer      ( eSliceType, iQp, (UInt*)INIT_CU_TRANSQUANT_BYPASS_FLAG );
+  m_explicitRdpcmFlagSCModel.initBuffer           ( eSliceType, iQp, (UInt*)INIT_EXPLICIT_RDPCM_FLAG);
+  m_explicitRdpcmDirSCModel.initBuffer            ( eSliceType, iQp, (UInt*)INIT_EXPLICIT_RDPCM_DIR);
+  m_cCrossComponentPredictionSCModel.initBuffer   ( eSliceType, iQp, (UInt*)INIT_CROSS_COMPONENT_PREDICTION  );
+  m_ChromaQpAdjFlagSCModel.initBuffer             ( eSliceType, iQp, (UInt*)INIT_CHROMA_QP_ADJ_FLAG );
+  m_ChromaQpAdjIdcSCModel.initBuffer              ( eSliceType, iQp, (UInt*)INIT_CHROMA_QP_ADJ_IDC );
+#if COM16_C806_OBMC
+  m_cCUOBMCFlagSCModel.initBuffer                 ( eSliceType, iQp, (UInt*)INIT_OBMC_FLAG );
+#endif
+#if VCEG_AZ07_IMV
+  m_cCUiMVFlagSCModel.initBuffer                  ( eSliceType, iQp, (UInt*)INIT_IMV_FLAG );
+#endif
+#if VCEG_AZ06_IC
+  m_cCUICFlagSCModel.initBuffer                   ( eSliceType, iQp, (UInt*)INIT_IC_FLAG );
+#endif
+#if ALF_HM3_REFACTOR
+  m_cCUAlfCtrlFlagSCModel.initBuffer              ( eSliceType, iQp, (UInt*)INIT_ALF_CTRL_FLAG );
+#if !JVET_C0038_GALF
+  m_cALFFlagSCModel.initBuffer                    ( eSliceType, iQp, (UInt*)INIT_ALF_FLAG );
+#endif
+  m_cALFUvlcSCModel.initBuffer                    ( eSliceType, iQp, (UInt*)INIT_ALF_UVLC );
+#if !JVET_C0038_GALF
+  m_cALFSvlcSCModel.initBuffer                    ( eSliceType, iQp, (UInt*)INIT_ALF_SVLC );
+#endif
+#endif
+#if COM16_C806_EMT
+  m_cEmtTuIdxSCModel.initBuffer                   ( eSliceType, iQp, (UInt*)INIT_EMT_TU_IDX );
+  m_cEmtCuFlagSCModel.initBuffer                  ( eSliceType, iQp, (UInt*)INIT_EMT_CU_FLAG );
+#endif 
+#if COM16_C1016_AFFINE
+  m_cCUAffineFlagSCModel.initBuffer               ( eSliceType, iQp, (UInt*)INIT_AFFINE_FLAG );
+#endif
+
+#else
+
   m_cCUSplitFlagSCModel.initBuffer                ( eSliceType, iQp, (UChar*)INIT_SPLIT_FLAG );
 #if JVET_C0024_QTBT
   m_cBTSplitFlagSCModel.initBuffer                ( eSliceType, iQp, (UChar*)INIT_BTSPLIT_MODE );
@@ -244,6 +327,8 @@ Void TEncSbac::resetEntropy           (const TComSlice *pSlice)
   m_cCUAffineFlagSCModel.initBuffer               ( eSliceType, iQp, (UChar*)INIT_AFFINE_FLAG );
 #endif
 
+#endif
+
   for (UInt statisticIndex = 0; statisticIndex < RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS ; statisticIndex++)
   {
     m_golombRiceAdaptationStatistics[statisticIndex] = 0;
@@ -274,6 +359,79 @@ SliceType TEncSbac::determineCabacInitIdx(const TComSlice *pSlice)
     {
       UInt curCost          = 0;
       SliceType curSliceType  = aSliceTypeChoices[idx];
+
+#if JVET_G0112_CABAC_CDAR
+
+      curCost  = m_cCUSplitFlagSCModel.calcCost                ( curSliceType, qp, (UInt*)INIT_SPLIT_FLAG );
+#if JVET_C0024_QTBT
+      curCost += m_cBTSplitFlagSCModel.calcCost                ( curSliceType, qp, (UInt*)INIT_BTSPLIT_MODE );
+#endif
+      curCost += m_cCUSkipFlagSCModel.calcCost                 ( curSliceType, qp, (UInt*)INIT_SKIP_FLAG );
+#if VCEG_AZ05_INTRA_MPI
+      curCost += m_cMPIIdxSCModel.calcCost                     ( curSliceType, qp, (UInt*)INIT_MPIIdx_FLAG );
+#endif
+#if COM16_C1046_PDPC_INTRA
+      curCost += m_cPDPCIdxSCModel.calcCost                    ( curSliceType, qp, (UInt*)INIT_PDPCIdx_FLAG);
+#endif
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+      curCost += m_cROTidxSCModel.calcCost                     ( curSliceType, qp, (UInt*)INIT_ROT_TR_IDX );
+#endif
+      curCost += m_cCUMergeFlagExtSCModel.calcCost             ( curSliceType, qp, (UInt*)INIT_MERGE_FLAG_EXT);
+      curCost += m_cCUMergeIdxExtSCModel.calcCost              ( curSliceType, qp, (UInt*)INIT_MERGE_IDX_EXT);
+#if VCEG_AZ07_FRUC_MERGE
+      curCost += m_cCUFRUCMgrModeSCModel.calcCost              ( curSliceType, qp, (UInt*)INIT_FRUCMGRMODEBIN1);
+      curCost += m_cCUFRUCMESCModel.calcCost                   ( curSliceType, qp, (UInt*)INIT_FRUCMGRMODEBIN2);
+#endif
+      curCost += m_cCUPartSizeSCModel.calcCost                 ( curSliceType, qp, (UInt*)INIT_PART_SIZE );
+      curCost += m_cCUPredModeSCModel.calcCost                 ( curSliceType, qp, (UInt*)INIT_PRED_MODE );
+      curCost += m_cCUIntraPredSCModel.calcCost                ( curSliceType, qp, (UInt*)INIT_INTRA_PRED_MODE );
+      curCost += m_cCUChromaPredSCModel.calcCost               ( curSliceType, qp, (UInt*)INIT_CHROMA_PRED_MODE );
+      curCost += m_cCUInterDirSCModel.calcCost                 ( curSliceType, qp, (UInt*)INIT_INTER_DIR );
+      curCost += m_cCUMvdSCModel.calcCost                      ( curSliceType, qp, (UInt*)INIT_MVD );
+      curCost += m_cCURefPicSCModel.calcCost                   ( curSliceType, qp, (UInt*)INIT_REF_PIC );
+      curCost += m_cCUDeltaQpSCModel.calcCost                  ( curSliceType, qp, (UInt*)INIT_DQP );
+      curCost += m_cCUQtCbfSCModel.calcCost                    ( curSliceType, qp, (UInt*)INIT_QT_CBF );
+      curCost += m_cCUQtRootCbfSCModel.calcCost                ( curSliceType, qp, (UInt*)INIT_QT_ROOT_CBF );
+      curCost += m_cCUSigCoeffGroupSCModel.calcCost            ( curSliceType, qp, (UInt*)INIT_SIG_CG_FLAG );
+      curCost += m_cCUSigSCModel.calcCost                      ( curSliceType, qp, (UInt*)INIT_SIG_FLAG );
+      curCost += m_cCuCtxLastX.calcCost                        ( curSliceType, qp, (UInt*)INIT_LAST_X );
+      curCost += m_cCuCtxLastY.calcCost                        ( curSliceType, qp, (UInt*)INIT_LAST_Y );
+      curCost += m_cCUOneSCModel.calcCost                      ( curSliceType, qp, (UInt*)INIT_ONE_FLAG );
+#if !VCEG_AZ07_CTX_RESIDUALCODING
+      curCost += m_cCUAbsSCModel.calcCost                      ( curSliceType, qp, (UInt*)INIT_ABS_FLAG );
+#endif
+      curCost += m_cMVPIdxSCModel.calcCost                     ( curSliceType, qp, (UInt*)INIT_MVP_IDX );
+      curCost += m_cCUTransSubdivFlagSCModel.calcCost          ( curSliceType, qp, (UInt*)INIT_TRANS_SUBDIV_FLAG );
+      curCost += m_cSaoMergeSCModel.calcCost                   ( curSliceType, qp, (UInt*)INIT_SAO_MERGE_FLAG );
+      curCost += m_cSaoTypeIdxSCModel.calcCost                 ( curSliceType, qp, (UInt*)INIT_SAO_TYPE_IDX );
+      curCost += m_cTransformSkipSCModel.calcCost              ( curSliceType, qp, (UInt*)INIT_TRANSFORMSKIP_FLAG );
+#if VCEG_AZ08_KLT_COMMON
+      curCost += m_cKLTFlagSCModel.calcCost                    ( curSliceType, qp, (UInt*)INIT_KLT_FLAG);
+#endif
+      curCost += m_CUTransquantBypassFlagSCModel.calcCost      ( curSliceType, qp, (UInt*)INIT_CU_TRANSQUANT_BYPASS_FLAG );
+      curCost += m_explicitRdpcmFlagSCModel.calcCost           ( curSliceType, qp, (UInt*)INIT_EXPLICIT_RDPCM_FLAG);
+      curCost += m_explicitRdpcmDirSCModel.calcCost            ( curSliceType, qp, (UInt*)INIT_EXPLICIT_RDPCM_DIR);
+      curCost += m_cCrossComponentPredictionSCModel.calcCost   ( curSliceType, qp, (UInt*)INIT_CROSS_COMPONENT_PREDICTION );
+      curCost += m_ChromaQpAdjFlagSCModel.calcCost             ( curSliceType, qp, (UInt*)INIT_CHROMA_QP_ADJ_FLAG );
+      curCost += m_ChromaQpAdjIdcSCModel.calcCost              ( curSliceType, qp, (UInt*)INIT_CHROMA_QP_ADJ_IDC );
+#if COM16_C806_OBMC
+      curCost += m_cCUOBMCFlagSCModel.calcCost                 ( curSliceType, qp, (UInt*)INIT_OBMC_FLAG );
+#endif
+#if COM16_C806_EMT
+      curCost += m_cEmtTuIdxSCModel.calcCost                   ( curSliceType, qp, (UInt*)INIT_EMT_TU_IDX );
+      curCost += m_cEmtCuFlagSCModel.calcCost                  ( curSliceType, qp, (UInt*)INIT_EMT_CU_FLAG );
+#endif
+#if VCEG_AZ07_IMV
+      curCost += m_cCUiMVFlagSCModel.calcCost                  ( curSliceType, qp, (UInt*)INIT_IMV_FLAG );
+#endif
+#if VCEG_AZ06_IC
+      curCost += m_cCUICFlagSCModel.calcCost                   ( curSliceType, qp, (UInt*)INIT_IC_FLAG );
+#endif
+#if COM16_C1016_AFFINE
+      curCost += m_cCUAffineFlagSCModel.calcCost               ( curSliceType, qp, (UInt*)INIT_AFFINE_FLAG );
+#endif
+
+#else
 
       curCost  = m_cCUSplitFlagSCModel.calcCost                ( curSliceType, qp, (UChar*)INIT_SPLIT_FLAG );
 #if JVET_C0024_QTBT
@@ -343,6 +501,9 @@ SliceType TEncSbac::determineCabacInitIdx(const TComSlice *pSlice)
 #if COM16_C1016_AFFINE
       curCost += m_cCUAffineFlagSCModel.calcCost               ( curSliceType, qp, (UChar*)INIT_AFFINE_FLAG );
 #endif
+
+#endif
+
       if (curCost < bestCost)
       {
         bestSliceType = curSliceType;

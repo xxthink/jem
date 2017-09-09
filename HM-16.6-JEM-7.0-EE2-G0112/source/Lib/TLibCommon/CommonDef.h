@@ -64,7 +64,7 @@ inline Int64 abs (Int64 x) { return _abs64(x); };
 // Version information
 // ====================================================================================================================
 
-#define NV_VERSION        "HM-16.6-JEM-7.0"                 ///< Current software version
+#define NV_VERSION        "HM-16.6-JEM-7.0-EE-2"                 ///< Current software version
 
 // ====================================================================================================================
 // Platform information
@@ -332,7 +332,11 @@ static const Int MDCS_MAXIMUM_HEIGHT =                              8; ///< (mea
 static const Int LOG2_MAX_NUM_COLUMNS_MINUS1 =                      7;
 static const Int LOG2_MAX_NUM_ROWS_MINUS1 =                         7;
 
+#if JVET_G0112_CABAC_CDAR
+static const Int CABAC_INIT_PRESENT_FLAG =                          0;
+#else
 static const Int CABAC_INIT_PRESENT_FLAG =                          1;
+#endif
 
 static const Int LUMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS =   4;
 static const Int CHROMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS = 8;

@@ -49,6 +49,15 @@
 ///////////////////////////////////////////////////////////
 // KTA tools section start
 ///////////////////////////////////////////////////////////
+
+#define JVET_G0112_CABAC_CDAR_EE2_TEST                    1   ///< Experiment number (1, 2, or 3) 
+
+#if     JVET_G0112_CABAC_CDAR_EE2_TEST == 1
+#define JVET_G0112_CABAC_CDAR                             0   ///< Add Context-Dependent double-window Adaptation Response
+#else
+#define JVET_G0112_CABAC_CDAR                             1   ///< Add Context-Dependent double-window Adaptation Response
+#endif
+
 #define JVET_F0096_BILATERAL_FILTER                       1   // for bitexact implementation with division see JVET-F0096
 #define JVET_F0031_RMV_REDUNDANT_TRSKIP                   1
 
@@ -257,6 +266,10 @@
 #define VCEG_AZ05_BIO                                     1  ///< Bi-directional optical flow (BIO)
 #define VCEG_AZ05_INTRA_MPI                               0  ///< Multi-parameter Intra prediction
 #define VCEG_AZ05_ROT_TR                                  0  
+
+#if JVET_G0112_CABAC_CDAR && !VCEG_AZ05_MULTI_PARAM_CABAC
+#error                                                       
+#endif
 
 #if VCEG_AZ05_BIO                                            
 #define COM16_C1045_BIO_HARMO_IMPROV                      1  ///< Improvement of BIO

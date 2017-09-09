@@ -78,9 +78,15 @@ ContextModel3DBuffer::ContextModel3DBuffer( UInt uiSizeZ, UInt uiSizeY, UInt uiS
  * \param  qp             input QP value
  * \param  ctxModel       given probability table
  */
+#if JVET_G0112_CABAC_CDAR
+Void ContextModel3DBuffer::initBuffer( SliceType sliceType, Int qp, UInt * ctxModel )
+#else
 Void ContextModel3DBuffer::initBuffer( SliceType sliceType, Int qp, UChar* ctxModel )
+#endif
 {
+#if JVET_G0112_CABAC_CDAR_EE2_TEST != 1
   ctxModel += sliceType * m_sizeXYZ;
+#endif
 
   for ( Int n = 0; n < m_sizeXYZ; n++ )
   {
@@ -96,7 +102,11 @@ Void ContextModel3DBuffer::initBuffer( SliceType sliceType, Int qp, UChar* ctxMo
  * \param  qp             input QP value
  * \param  ctxModel      given probability table
  */
+#if JVET_G0112_CABAC_CDAR
+UInt ContextModel3DBuffer::calcCost( SliceType sliceType, Int qp, UInt * ctxModel )
+#else
 UInt ContextModel3DBuffer::calcCost( SliceType sliceType, Int qp, UChar* ctxModel )
+#endif
 {
   UInt cost = 0;
   ctxModel += sliceType * m_sizeXYZ;

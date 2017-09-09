@@ -59,6 +59,48 @@ const UShort m_MappedProb[128] =
  31425,  31493,  31558,  31619,  31678,  31733,  31785,  31835,  31883,  31928,  31970,  32011,  32049,  32086,  32120,  32153,
 };
 #endif
+
+#if JVET_G0112_CABAC_CDAR
+/**
+ - initialize context model with respect to QP and initialization value
+ .
+ \param  qp         input QP value
+ \param  initData   24 bit initialization value
+ */
+Void ContextModel::init( Int qp, UInt initData )
+{
+  qp = Clip3(0, 51, qp);
+
+  if ( initData<0x100 )
+  {
+    m_ucAdptShft0 = 8;
+    m_ucAdptShft1 = 4;
+  }
+#if JVET_G0112_CABAC_CDAR_EE2_TEST == 2
+  else
+  {
+    m_ucAdptShft0 = UChar((initData >>  8) & 0xF);
+    m_ucAdptShft1 = UChar((initData >> 12) & 0xF);
+  }
+#else
+  else if ( ( qp<30 ) || ( initData<0x10000 ) )
+  {
+    m_ucAdptShft0 = UChar((initData >>  8) & 0xF);
+    m_ucAdptShft1 = UChar((initData >> 12) & 0xF);
+  }
+  else
+  {
+    m_ucAdptShft0 = UChar((initData >> 16) & 0xF);
+    m_ucAdptShft1 = UChar((initData >> 20) & 0xF);
+  }
+#endif
+
+  assert( ( m_ucAdptShft0>1 ) && ( m_ucAdptShft0<10 ) &&
+          ( m_ucAdptShft1>1 ) && ( m_ucAdptShft1<10 ) );
+
+  Int  slope      = Int((initData >> 4) & 0xF) * 5 - 45;
+  Int  offset     = Int((initData & 0xF) << 3) - 16;
+#else
 /**
  - initialize context model with respect to QP and initialization value
  .
@@ -71,6 +113,7 @@ Void ContextModel::init( Int qp, Int initValue )
 
   Int  slope      = (initValue>>4)*5 - 45;
   Int  offset     = ((initValue&15)<<3)-16;
+#endif
   Int  initState  =  min( max( 1, ( ( ( slope * qp ) >> 4 ) + offset ) ), 126 );
 #if VCEG_AZ07_BAC_ADAPT_WDOW || VCEG_AZ05_MULTI_PARAM_CABAC
   iP1             = m_MappedProb[initState];

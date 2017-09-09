@@ -188,6 +188,89 @@ Void TDecSbac::resetEntropy(TComSlice* pSlice)
     }
   }
 
+#if JVET_G0112_CABAC_CDAR
+
+  m_cCUSplitFlagSCModel.initBuffer                ( sliceType, qp, (UInt*)INIT_SPLIT_FLAG );
+#if JVET_C0024_QTBT
+  m_cBTSplitFlagSCModel.initBuffer                ( sliceType, qp, (UInt*)INIT_BTSPLIT_MODE );
+#endif
+  m_cCUSkipFlagSCModel.initBuffer                 ( sliceType, qp, (UInt*)INIT_SKIP_FLAG );
+#if VCEG_AZ05_INTRA_MPI
+  m_cMPIIdxSCModel.initBuffer                     ( sliceType, qp, (UInt*)INIT_MPIIdx_FLAG );
+#endif
+#if COM16_C1046_PDPC_INTRA
+  m_cPDPCIdxSCModel.initBuffer                    ( sliceType, qp, (UInt*)INIT_PDPCIdx_FLAG);
+#endif
+#if VCEG_AZ05_ROT_TR || COM16_C1044_NSST
+  m_cROTidxSCModel.initBuffer        ( sliceType, qp, (UInt*)INIT_ROT_TR_IDX );
+#endif
+  m_cCUMergeFlagExtSCModel.initBuffer             ( sliceType, qp, (UInt*)INIT_MERGE_FLAG_EXT );
+  m_cCUMergeIdxExtSCModel.initBuffer              ( sliceType, qp, (UInt*)INIT_MERGE_IDX_EXT );
+#if VCEG_AZ07_FRUC_MERGE
+  m_cCUFRUCMgrModeSCModel.initBuffer              ( sliceType, qp, (UInt*)INIT_FRUCMGRMODEBIN1 );
+  m_cCUFRUCMESCModel.initBuffer                   ( sliceType, qp, (UInt*)INIT_FRUCMGRMODEBIN2 );
+#endif
+  m_cCUPartSizeSCModel.initBuffer                 ( sliceType, qp, (UInt*)INIT_PART_SIZE );
+  m_cCUPredModeSCModel.initBuffer                 ( sliceType, qp, (UInt*)INIT_PRED_MODE );
+  m_cCUIntraPredSCModel.initBuffer                ( sliceType, qp, (UInt*)INIT_INTRA_PRED_MODE );
+  m_cCUChromaPredSCModel.initBuffer               ( sliceType, qp, (UInt*)INIT_CHROMA_PRED_MODE );
+  m_cCUInterDirSCModel.initBuffer                 ( sliceType, qp, (UInt*)INIT_INTER_DIR );
+  m_cCUMvdSCModel.initBuffer                      ( sliceType, qp, (UInt*)INIT_MVD );
+  m_cCURefPicSCModel.initBuffer                   ( sliceType, qp, (UInt*)INIT_REF_PIC );
+  m_cCUDeltaQpSCModel.initBuffer                  ( sliceType, qp, (UInt*)INIT_DQP );
+  m_cCUQtCbfSCModel.initBuffer                    ( sliceType, qp, (UInt*)INIT_QT_CBF );
+  m_cCUQtRootCbfSCModel.initBuffer                ( sliceType, qp, (UInt*)INIT_QT_ROOT_CBF );
+  m_cCUSigCoeffGroupSCModel.initBuffer            ( sliceType, qp, (UInt*)INIT_SIG_CG_FLAG );
+  m_cCUSigSCModel.initBuffer                      ( sliceType, qp, (UInt*)INIT_SIG_FLAG );
+  m_cCuCtxLastX.initBuffer                        ( sliceType, qp, (UInt*)INIT_LAST_X );
+  m_cCuCtxLastY.initBuffer                        ( sliceType, qp, (UInt*)INIT_LAST_Y );
+  m_cCUOneSCModel.initBuffer                      ( sliceType, qp, (UInt*)INIT_ONE_FLAG );
+#if !VCEG_AZ07_CTX_RESIDUALCODING
+  m_cCUAbsSCModel.initBuffer                      ( sliceType, qp, (UInt*)INIT_ABS_FLAG );
+#endif
+  m_cMVPIdxSCModel.initBuffer                     ( sliceType, qp, (UInt*)INIT_MVP_IDX );
+  m_cSaoMergeSCModel.initBuffer                   ( sliceType, qp, (UInt*)INIT_SAO_MERGE_FLAG );
+  m_cSaoTypeIdxSCModel.initBuffer                 ( sliceType, qp, (UInt*)INIT_SAO_TYPE_IDX );
+  m_cCUTransSubdivFlagSCModel.initBuffer          ( sliceType, qp, (UInt*)INIT_TRANS_SUBDIV_FLAG );
+  m_cTransformSkipSCModel.initBuffer              ( sliceType, qp, (UInt*)INIT_TRANSFORMSKIP_FLAG );
+#if VCEG_AZ08_KLT_COMMON
+  m_cKLTFlagSCModel.initBuffer                    ( sliceType, qp, (UInt*)INIT_KLT_FLAG );
+#endif
+  m_CUTransquantBypassFlagSCModel.initBuffer      ( sliceType, qp, (UInt*)INIT_CU_TRANSQUANT_BYPASS_FLAG );
+  m_explicitRdpcmFlagSCModel.initBuffer           ( sliceType, qp, (UInt*)INIT_EXPLICIT_RDPCM_FLAG);
+  m_explicitRdpcmDirSCModel.initBuffer            ( sliceType, qp, (UInt*)INIT_EXPLICIT_RDPCM_DIR);
+  m_cCrossComponentPredictionSCModel.initBuffer   ( sliceType, qp, (UInt*)INIT_CROSS_COMPONENT_PREDICTION );
+  m_ChromaQpAdjFlagSCModel.initBuffer             ( sliceType, qp, (UInt*)INIT_CHROMA_QP_ADJ_FLAG );
+  m_ChromaQpAdjIdcSCModel.initBuffer              ( sliceType, qp, (UInt*)INIT_CHROMA_QP_ADJ_IDC );
+#if VCEG_AZ07_IMV
+  m_cCUiMVFlagSCModel.initBuffer                  ( sliceType, qp, (UInt*)INIT_IMV_FLAG );
+#endif
+#if COM16_C806_OBMC
+  m_cCUOBMCFlagSCModel.initBuffer                 ( sliceType, qp, (UInt*)INIT_OBMC_FLAG );
+#endif
+#if VCEG_AZ06_IC
+  m_cCUICFlagSCModel.initBuffer                   ( sliceType, qp, (UInt*)INIT_IC_FLAG );
+#endif  
+#if ALF_HM3_REFACTOR
+  m_cCUAlfCtrlFlagSCModel.initBuffer              ( sliceType, qp, (UInt*)INIT_ALF_CTRL_FLAG );
+#if !JVET_C0038_GALF
+  m_cALFFlagSCModel.initBuffer                    ( sliceType, qp, (UInt*)INIT_ALF_FLAG );
+#endif
+  m_cALFUvlcSCModel.initBuffer                    ( sliceType, qp, (UInt*)INIT_ALF_UVLC );
+#if !JVET_C0038_GALF
+  m_cALFSvlcSCModel.initBuffer                    ( sliceType, qp, (UInt*)INIT_ALF_SVLC );
+#endif
+#endif
+#if COM16_C806_EMT
+  m_cEmtTuIdxSCModel.initBuffer                   ( sliceType, qp, (UInt*)INIT_EMT_TU_IDX );
+  m_cEmtCuFlagSCModel.initBuffer                  ( sliceType, qp, (UInt*)INIT_EMT_CU_FLAG );
+#endif
+#if COM16_C1016_AFFINE
+  m_cCUAffineFlagSCModel.initBuffer               ( sliceType, qp, (UInt*)INIT_AFFINE_FLAG );
+#endif
+
+#else
+
   m_cCUSplitFlagSCModel.initBuffer                ( sliceType, qp, (UChar*)INIT_SPLIT_FLAG );
 #if JVET_C0024_QTBT
   m_cBTSplitFlagSCModel.initBuffer                ( sliceType, qp, (UChar*)INIT_BTSPLIT_MODE );
@@ -265,6 +348,8 @@ Void TDecSbac::resetEntropy(TComSlice* pSlice)
 #endif
 #if COM16_C1016_AFFINE
   m_cCUAffineFlagSCModel.initBuffer               ( sliceType, qp, (UChar*)INIT_AFFINE_FLAG );
+#endif
+
 #endif
 
   for (UInt statisticIndex = 0; statisticIndex < RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS ; statisticIndex++)
